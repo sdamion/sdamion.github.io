@@ -28,17 +28,17 @@
         }
         
         html, body {
-            height: 100%;
-            overflow-x: hidden;
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch; /* Smooth scrolling for iOS */
+            margin: 0;
+            padding: 0;
+            min-height: 100%; /* Ensure full height */
+            height: auto; /* Allow content overflow */
+            overflow-x: hidden; /* Prevent horizontal scroll */
+            overflow-y: auto; /* Allow vertical scroll */
+            -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+            scroll-behavior: smooth; /* Smooth scrolling behavior */
         }
 
         body {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh; /* Adjust for dynamic content */
             background-color: #b0adad;
             color: #1d1d1f;
         }
@@ -46,6 +46,7 @@
         .container {
             text-align: center;
             max-width: 90%;
+            margin: auto; /* Center the container */
             padding: 20px;
         }
         
@@ -81,7 +82,7 @@
         }
         
         p {
-            font-size: 2rem;
+            font-size: 1rem;
             color: #000000;
             margin-bottom: 20px;
             line-height: 1.5;
