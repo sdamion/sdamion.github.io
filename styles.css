@@ -13,6 +13,9 @@ html, body {
     overflow-y: auto; /* Allow vertical scroll */
     -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
     scroll-behavior: smooth; /* Smooth scrolling behavior */
+    display: flex;
+    justify-content: center;
+    align-items: center;    
 }
 
 body {
