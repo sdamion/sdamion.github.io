@@ -21,34 +21,31 @@
     <link rel="preload" href="tdsp_logo4.webp" as="image">
     <!-- <link rel="stylesheet" href="styles.css"> -->
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        html, body {
-            margin: 0;
-            padding: 0;
-            min-height: 100%; /* Ensure full height */
-            height: auto; /* Allow content overflow */
-            overflow-x: hidden; /* Prevent horizontal scroll */
-            overflow-y: auto; /* Allow vertical scroll */
-            -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
-            scroll-behavior: smooth; /* Smooth scrolling behavior */
-        }
-
-        body {
-            background-color: #b0adad;
-            color: #1d1d1f;
-        }
-        
-        .container {
-            text-align: center;
-            max-width: 90%;
-            margin: auto; /* Center the container */
-            padding: 20px;
-        }
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+    
+    body, h1, p {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    }
+    
+    body {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        background-color: #b0adad;
+        color: #1d1d1f;
+        overflow: hidden;
+    }
+    
+    .container {
+        text-align: center;
+        max-width: 90%;
+        padding: 20px;
+    }
         
         h1 {
             font-size: 3rem;
