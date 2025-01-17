@@ -15,7 +15,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 100vh; /* Adjust for dynamic content */
+    min-height: 100%; /* Adjust for dynamic content */
     background-color: #b0adad;
     color: #1d1d1f;
 }
