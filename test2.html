@@ -7,108 +7,180 @@
     <meta name="keywords" content="Cardano, ADA, IAG, staking, DRep, Dutch stake pool">
     <meta name="author" content="The Dutch Stake Pool">
 
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="The Dutch Stake Pool | Reliable Cardano Staking">
+    <meta property="og:description" content="Join our Dutch Bare-Metal, low-fee stake pool for $ADA and $IAG. Discover a reliable DRep today.">
+    <meta property="og:image" content="tdsp_logo4.webp">
+    <meta property="og:url" content="https://www.thedutchstakepool.com">
+    <meta property="og:type" content="website">
+
     <title>The Dutch Stake Pool | Reliable Cardano Staking</title>
     <link rel="icon" href="tdsp_logo4_ico.webp" type="image/webp">
 
+    <!-- Preload Main Logo -->
+    <link rel="preload" href="tdsp_logo4.webp" as="image">
+    <!-- <link rel="stylesheet" href="styles.css"> -->
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
+        
+        html, body {
+            height: 100%;
+            overflow-x: hidden;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch; /* Smooth scrolling for iOS */
+        }
 
         body {
             display: flex;
             align-items: center;
             justify-content: center;
-            height: 100vh;
+            min-height: 100vh; /* Adjust for dynamic content */
             background-color: #b0adad;
             color: #1d1d1f;
-            overflow: hidden;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
         }
-
+        
         .container {
             text-align: center;
             max-width: 90%;
             padding: 20px;
         }
-
+        
         h1 {
             font-size: 3rem;
             color: #000000;
             font-weight: 700;
             margin-bottom: 20px;
+            transition: color 0.3s ease-in-out;
         }
-
+        
+        h2 {
+            font-size: 2rem;
+            color: #000000;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+        
+        h1:hover {
+            color: #555;
+        }
+        
+        img {
+            width: 100%;
+            max-width: 600px;
+            height: auto;
+            cursor: pointer;
+            transition: transform 0.3s ease-in-out;
+        }
+        
+        img:hover {
+            transform: scale(1.05);
+        }
+        
         p {
             font-size: 2rem;
             color: #000000;
             margin-bottom: 20px;
             line-height: 1.5;
         }
-
-        /* Keyframes for Auto Hover */
-        @keyframes autoHover {
-            0% {
-                transform: scale(1); /* Initial size */
-                box-shadow: none; /* No shadow */
-            }
-            50% {
-                transform: scale(1.1); /* Enlarged size */
-                box-shadow: 0px 8px 20px rgba(0, 0, 0, 0.3); /* Shadow effect */
-            }
-            100% {
-                transform: scale(1); /* Return to normal size */
-                box-shadow: none; /* Remove shadow */
-            }
-        }
-
-        /* Logo Styles */
-        .logo-container img {
+        
+        table {
+            border-collapse: collapse;
             width: 100%;
-            max-width: 600px;
-            height: auto;
-            cursor: pointer;
-            transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
-            animation: autoHover 1.5s ease-in-out; /* Auto hover animation on page load */
+            background-color: #b0adad;
+            font-size: 2rem;
+        }
+        th, td {
+            border: 1px solid #555;
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #b0adad;
+        }
+        
+        .links {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+        
+        .links a img {
+            width: 40px;
+            height: 40px;
+            transition: all 0.3s ease-in-out;
+        }
+        
+        .links a:hover img {
+            opacity: 0.8;
+            transform: scale(1.1);
+        }
+        
+        .links a {
+            text-decoration: none;
+        }
+        
+        a:focus {
+            outline: 2px solid #555;
+            outline-offset: 2px;
         }
 
-        .logo-container img:hover {
-            transform: scale(1.1); /* Enlarge the logo on hover */
-            box-shadow: 0px 8px 20px rgba(0, 0, 0, 0.3); /* Add shadow on hover */
+        @media (prefers-color-scheme: light) {
+            body {
+                background-color: #1d1d1f;
+                color: #ffffff;
+            }
+            h1 {
+                color: #ffffff;
+            }
         }
-
-        .logo-container img:active {
-            transform: scale(0.95); /* Slightly shrink the logo on click */
-            box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.5); /* Adjust shadow for click */
-        }
-
+        
         @media (max-width: 480px) {
             h1 {
                 font-size: 2rem;
             }
-
+        
             p {
-                font-size: 1rem;
+                font-size: 0.9rem;
             }
-
-            .logo-container img {
-                max-width: 300px;
+        
+            .links a img {
+                width: 30px;
+                height: 30px;
             }
         }
     </style>
+    <script>
+        function goToDetails() {
+            window.location.href = "details.html";
+        }
+    </script>
 </head>
 <body>
     <main class="container" id="main-content">
         <h1>Welcome to The Dutch Stake Pool</h1>
-        <!-- Clickable Logo with Auto Hover Effect -->
-        <div class="logo-container">
-            <a href="details.html">
-                <img src="tdsp_logo4.webp" alt="The Dutch Stake Pool Logo - Reliable Bare-Metal Low-Fee Stake Pool">
+        <img src="tdsp_logo4.webp" alt="The Dutch Stake Pool Logo - Reliable Bare-Metal Low-Fee Stake Pool" onclick="goToDetails()">
+        <p>Dutch Bare-Metal, low-fee stake pool. The one-stop shop for staking $ADA and $IAG. If you're looking for a DRep, click on the ADA logo below.</p>
+
+        <div class="links">
+            <!-- Twitter Logo as a clickable link -->
+            <a href="https://twitter.com/DamionDutch" target="_blank" rel="noopener noreferrer" aria-label="Follow The Dutch Stake Pool on Twitter">
+                <img src="X-logo_ico.webp" alt="Follow The Dutch Stake Pool on Twitter">
+            </a>
+
+            <!-- Cardano DRep Logo as a clickable link -->
+            <a href="https://gov.tools/connected/drep_directory/drep1u634jgjwly7gqd90tuhqrwayze2x0revzz657tael3kpq24uxpl" target="_blank" rel="noopener noreferrer" aria-label="View The Dutch Stake Pool's DRep ID">
+                <img src="cardano_logo_ico.webp" alt="View The Dutch Stake Pool's DRep ID">
+            </a>
+
+            <!-- Join Stake pool clickable link -->
+            <a href="https://pool.pm/b4099d09df1748b807ed9a3112eb5d978a2b499bb12c46f14b3749ea" target="_blank" rel="noopener noreferrer" aria-label="Join The Dutch Stake Pool">
+                <img src="stakebutton_ico.webp" alt="Join The Dutch Stake Pool - Stake with us">
             </a>
         </div>
-        <p>Dutch Bare-Metal, low-fee stake pool. The one-stop shop for staking $ADA and $IAG. If you're looking for a DRep, click on the ADA logo below.</p>
     </main>
 </body>
 </html>
