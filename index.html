@@ -36,7 +36,7 @@
             align-items: center;
             justify-content: center;
             height: 100vh;
-            background-color: #EEEEEE;
+            background-color: #b0adad;
             color: #1d1d1f;
             overflow: hidden;
         }
@@ -63,6 +63,12 @@
             width: 100%;
             max-width: 600px;
             height: auto;
+            cursor: pointer;
+            transition: transform 0.3s ease-in-out;
+        }
+
+        img:hover {
+            transform: scale(1.05);
         }
 
         p {
@@ -98,39 +104,6 @@
             outline-offset: 2px;
         }
 
-        .skip-link {
-            position: absolute;
-            top: -40px;
-            left: 0;
-            background: #000;
-            color: #fff;
-            padding: 8px;
-            z-index: 100;
-            transition: top 0.3s ease;
-        }
-
-        .skip-link:focus {
-            top: 0;
-        }
-
-        #back-to-top {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: #000;
-            color: #fff;
-            border: none;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            display: none;
-            cursor: pointer;
-        }
-
-        #back-to-top:focus {
-            outline: 2px solid #fff;
-        }
-
         @media (prefers-color-scheme: light) {
             body {
                 background-color: #1d1d1f;
@@ -157,55 +130,34 @@
         }
     </style>
 
-    <!-- Structured Data for SEO -->
-    <script type="application/ld+json">
-    {
-        "@context": "https://schema.org",
-        "@type": "Organization",
-        "name": "The Dutch Stake Pool",
-        "url": "https://www.thedutchstakepool.com",
-        "logo": "tdsp_logo4.webp",
-        "sameAs": [
-            "https://twitter.com/DamionDutch",
-            "https://gov.tools/connected/drep_directory/drep1u634jgjwly7gqd90tuhqrwayze2x0revzz657tael3kpq24uxpl",
-            "https://pool.pm/b4099d09df1748b807ed9a3112eb5d978a2b499bb12c46f14b3749ea"
-        ]
-    }
+    <script>
+        function goToDetails() {
+            window.location.href = "details.html";
+        }
     </script>
 </head>
 <body>
-    <a href="#main-content" class="skip-link">Skip to content</a>
     <main class="container" id="main-content">
         <h1>Welcome to The Dutch Stake Pool</h1>
-        <img src="tdsp_logo4.webp" alt="The Dutch Stake Pool Logo - Reliable Bare-Metal Low-Fee Stake Pool" width="600" height="auto">
+        <img src="tdsp_logo4.webp" alt="The Dutch Stake Pool Logo - Reliable Bare-Metal Low-Fee Stake Pool" onclick="goToDetails()">
         <p>Dutch Bare-Metal, low-fee stake pool. The one-stop shop for staking $ADA and $IAG. If you're looking for a DRep, click on the ADA logo below.</p>
 
         <div class="links">
             <!-- Twitter Logo as a clickable link -->
             <a href="https://twitter.com/DamionDutch" target="_blank" rel="noopener noreferrer" aria-label="Follow The Dutch Stake Pool on Twitter">
-                <img src="X-logo_ico.webp" alt="Follow The Dutch Stake Pool on Twitter" loading="lazy">
+                <img src="X-logo_ico.webp" alt="Follow The Dutch Stake Pool on Twitter">
             </a>
 
             <!-- Cardano DRep Logo as a clickable link -->
             <a href="https://gov.tools/connected/drep_directory/drep1u634jgjwly7gqd90tuhqrwayze2x0revzz657tael3kpq24uxpl" target="_blank" rel="noopener noreferrer" aria-label="View The Dutch Stake Pool's DRep ID">
-                <img src="cardano_logo_ico.webp" alt="View The Dutch Stake Pool's DRep ID" loading="lazy">
+                <img src="cardano_logo_ico.webp" alt="View The Dutch Stake Pool's DRep ID">
             </a>
 
             <!-- Join Stake pool clickable link -->
             <a href="https://pool.pm/b4099d09df1748b807ed9a3112eb5d978a2b499bb12c46f14b3749ea" target="_blank" rel="noopener noreferrer" aria-label="Join The Dutch Stake Pool">
-                <img src="stakebutton_ico.webp" alt="Join The Dutch Stake Pool - Stake with us" loading="lazy">
+                <img src="stakebutton_ico.webp" alt="Join The Dutch Stake Pool - Stake with us">
             </a>
         </div>
     </main>
-    <button id="back-to-top" aria-label="Back to top">&uarr;</button>
-    <script>
-        const backToTopButton = document.getElementById('back-to-top');
-        window.addEventListener('scroll', () => {
-            backToTopButton.style.display = window.scrollY > 200 ? 'block' : 'none';
-        });
-        backToTopButton.addEventListener('click', () => {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        });
-    </script>
 </body>
 </html>
