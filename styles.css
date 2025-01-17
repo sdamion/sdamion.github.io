@@ -32,6 +32,13 @@ h1 {
     transition: color 0.3s ease-in-out;
 }
 
+h2 {
+    font-size: 2rem;
+    color: #000000;
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+
 h1:hover {
     color: #555;
 }
@@ -49,10 +56,26 @@ img:hover {
 }
 
 p {
-    font-size: 1rem;
+    font-size: 2rem;
     color: #000000;
     margin-bottom: 20px;
     line-height: 1.5;
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    background-color: #b0adad;
+    font-size: 2rem;
+
+}
+th, td {
+    border: 1px solid #555;
+    padding: 10px;
+    text-align: left;
+}
+th {
+    background-color: #b0adad;
 }
 
 .links {
