@@ -82,11 +82,12 @@ table {
 }
 th, td {
     border: 0px solid #555;
-    padding: 10px;
+    /* padding: 10px; */
     text-align: center;
 }
 th {
     background-color: #b0adad;
+
 }
 
 .links {
