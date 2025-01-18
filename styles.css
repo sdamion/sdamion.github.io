@@ -62,14 +62,14 @@ img:hover {
 }
 
 p {
-    font-size: 2rem;
+    font-size: 1rem;
     color: #000000;
     margin-bottom: 20px;
     line-height: 1.5;
 }
 
 p2 {
-    font-size: 2rem;
+    font-size: 1rem;
     color: #000000;
     margin-bottom: 20px;
 }
@@ -79,7 +79,7 @@ table {
     width: 100%;
     height: auto;
     background-color: #b0adad;
-    font-size: 2rem;
+    font-size: 1rem;
 }
 th, td {
     border: 0px solid #555;
