@@ -98,6 +98,7 @@ th {
 
 .links a img {
     width: 60px;
+    height: auto;
     transition: all 0.3s ease-in-out;
 }
 
