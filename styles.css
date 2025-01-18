@@ -89,11 +89,11 @@ th {
     background-color: #b0adad;
 }
 
-.links {
+/* .links {
     display: flex;
     justify-content: center;
     gap: 50px;
-}
+} */
 
 .links a img {
     width: 60px;
