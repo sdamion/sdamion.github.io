@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
     <meta name="description" content="Dutch Bare-Metal, low-fee stake pool for Staking $ADA and $IAG. Find a reliable DRep here.">
-    <meta name="keywords" content="Cardano, ADA, IAG, staking, DRep, Dutch stake pool, bare-metal pool, low fees">
+    <meta name="keywords" content="Cardano, ADA, IAG, staking, DRep, Dutch stake pool">
     <meta name="author" content="The Dutch Stake Pool">
 
     <!-- Open Graph Meta Tags -->
@@ -24,7 +24,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
 
     <!-- Security Policy -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https://*; script-src 'self'; style-src 'self'; connect-src https://api.coingecko.com">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https://*; script-src 'self'; style-src 'self'; connect-src https://api.coingecko.com; frame-src 'self'; form-action 'self'">
 
     <link rel="icon" sizes="192x192" href="tdsp_logo4_ico.webp">
     <link rel="apple-touch-icon" href="tdsp_logo4_ico.webp">
@@ -36,19 +36,18 @@
     <!-- Preload Main Logo -->
     <link rel="preload" href="tdsp_logo4.webp" as="image">
     <link rel="stylesheet" href="styles.css">
+
     <script src="scripts.js" defer></script>
 </head>
 <body>
-    <header role="banner">
+    <main class="container" id="main-content">
         <h1>Welcome To The Dutch Stake Pool</h1>
-    </header>
-        <picture>
-            <source srcset="tdsp_logo4.webp" type="image/webp">
-            <img src="tdsp_logo4.png" alt="The Dutch Stake Pool Logo - Reliable Bare-Metal Low-Fee Stake Pool">
-        </picture>
+        <a href="details.html" rel="noopener noreferrer" aria-label="Stake to Iagon Node">
+        <img src="tdsp_logo4.webp" alt="The Dutch Stake Pool Logo - Reliable Bare-Metal Low-Fee Stake Pool" onclick="goToDetails()">
+        </a>
         <p>Dutch Bare-Metal, low-fee stake pool. The one-stop shop for staking $ADA and $IAG. If you're looking for a DRep, click on the ADA logo below.</p>
 
-        <nav>
+        <div class="links">
             <table>
                 <tr>
                     <td>
@@ -67,18 +66,19 @@
                         </a>
                     </td>
                     <td>
-                        <a href="https://app.iagon.com/" target="_blank" rel="noopener noreferrer" aria-label="Stake to Iagon Node">
+                        <a href="https://app.iagon.com/" rel="noopener noreferrer" aria-label="Stake to Iagon Node">
                             <img src="iagonLogoLight2.webp" alt="Join The Iagon Node">
                         </a>
                     </td>
                 </tr>
             </table>
-        </nav>
-        <div class="prices">
-            <strong>ADA:</strong> <span id="ada-price   ">Loading...</span> <strong>IAG:</strong> <span id="iag-price">Loading...</span><br>
         </div>
-    <footer>
-        <p>&copy; 2025 The Dutch Stake Pool. All rights reserved.</p>
-    </footer>
+        <div class="prices">
+            <strong>ADA:</strong> <span id="ada-price">Loading...</span>      <strong>IAG:</strong> <span id="iag-price">Loading...</span><br>
+        </div>
+        <footer>
+            <p>&copy; 2025 The Dutch Stake Pool. All rights reserved.</p>
+        </footer>
+    </main>
 </body>
 </html>
