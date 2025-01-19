@@ -2,118 +2,83 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stake with Eternl</title>
-    <script src="https://cdn.jsdelivr.net/npm/@emurgo/cardano-serialization-lib-browser"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="description" content="Dutch Bare-Metal, low-fee stake pool for Staking $ADA and $IAG. Find a reliable DRep here.">
+    <meta name="keywords" content="Cardano, ADA, IAG, staking, DRep, Dutch stake pool, bare-metal pool, low fees">
+    <meta name="author" content="The Dutch Stake Pool">
+
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="The Dutch Stake Pool | Reliable Cardano Staking">
+    <meta property="og:description" content="Join our Dutch Bare-Metal, low-fee stake pool for $ADA and $IAG. Discover a reliable DRep today.">
+    <meta property="og:image" content="tdsp_logo4.webp">
+    <meta property="og:url" content="https://www.thedutchstakepool.com">
+    <meta property="og:type" content="website">
+
+    <!-- Web App Meta Tags -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="The Dutch Stake Pool">
+    <meta name="apple-mobile-web-app-title" content="The Dutch Stake Pool">
+    <meta name="theme-color" content="#b0adad">
+    <meta name="msapplication-navbutton-color" content="#b0adad">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+    <!-- Security Policy -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https://*; script-src 'self'; style-src 'self'; connect-src https://api.coingecko.com">
+
+    <link rel="icon" sizes="192x192" href="tdsp_logo4_ico.webp">
+    <link rel="apple-touch-icon" href="tdsp_logo4_ico.webp">
+    <link rel="manifest" href="manifest.json">
+
+    <title>The Dutch Stake Pool | Reliable Cardano Staking</title>
+    <link rel="icon" href="tdsp_logo4_ico.webp" type="image/webp">
+
+    <!-- Preload Main Logo -->
+    <link rel="preload" href="tdsp_logo4.webp" as="image">
+    <link rel="stylesheet" href="styles.css">
+    <script src="scripts.js" defer></script>
 </head>
 <body>
-    <button id="stakeButton">Stake to Our Pool</button>
+    <header role="banner">
+        <h1>Welcome To The Dutch Stake Pool</h1>
+    </header>
+        <picture>
+            <source srcset="tdsp_logo4.webp" type="image/webp">
+            <img src="tdsp_logo4.png" alt="The Dutch Stake Pool Logo - Reliable Bare-Metal Low-Fee Stake Pool">
+        </picture>
+        <p>Dutch Bare-Metal, low-fee stake pool. The one-stop shop for staking $ADA and $IAG. If you're looking for a DRep, click on the ADA logo below.</p>
 
-    <script>
-        const poolId = "pool1ksye6zwlzaytspldngc3966aj79zkjvmkykydu2txay75c0krfp"; // Replace with your pool's Bech32 ID
-        const cardanoSubmitApiUrl = "http://192.168.1.35:6000/api/submit/tx"; // Replace with your Cardano submit-api URL
-
-        async function fetchProtocolParameters() {
-            const response = await fetch("https://api.koios.rest/api/v0/epoch_params");
-            const params = await response.json();
-            const latestParams = params[params.length - 1];
-            return {
-                linearFee: {
-                    minFeeA: latestParams.min_fee_a,
-                    minFeeB: latestParams.min_fee_b,
-                },
-                coinsPerUtxoWord: latestParams.coins_per_utxo_size,
-                keyDeposit: latestParams.key_deposit,
-                poolDeposit: latestParams.pool_deposit,
-                maxTxSize: latestParams.max_tx_size,
-            };
-        }
-
-        document.getElementById("stakeButton").addEventListener("click", async () => {
-            try {
-                if (!window.cardano || !window.cardano.eternl) {
-                    alert("Eternl Wallet not detected. Please install it to proceed.");
-                    return;
-                }
-
-                const CSL = window.Cardano;
-                const api = await window.cardano.eternl.enable();
-
-                // Fetch protocol parameters
-                const protocolParameters = await fetchProtocolParameters();
-
-                // Get user's address and UTXOs
-                const usedAddresses = await api.getUsedAddresses();
-                const userAddress = CSL.Address.from_bytes(
-                    Buffer.from(usedAddresses[0], "hex")
-                );
-                const utxos = await api.getUtxos();
-
-                // Build inputs
-                const inputs = utxos.map((utxoHex) => {
-                    const utxo = CSL.TransactionUnspentOutput.from_bytes(Buffer.from(utxoHex, "hex"));
-                    return utxo;
-                });
-
-                // Build delegation certificate
-                const stakeKeyHash = userAddress.to_stake_cred().to_keyhash();
-                const stakeCredential = CSL.StakeCredential.from_keyhash(stakeKeyHash);
-                const delegationCert = CSL.Certificate.new_stake_delegation(
-                    CSL.StakeDelegation.new(
-                        stakeCredential,
-                        CSL.Ed25519KeyHash.from_bech32(poolId)
-                    )
-                );
-
-                // Initialize transaction builder
-                const txBuilder = CSL.TransactionBuilder.new(
-                    CSL.LinearFee.new(
-                        CSL.BigNum.from_str(protocolParameters.linearFee.minFeeA.toString()),
-                        CSL.BigNum.from_str(protocolParameters.linearFee.minFeeB.toString())
-                    ),
-                    CSL.BigNum.from_str(protocolParameters.poolDeposit.toString()),
-                    CSL.BigNum.from_str(protocolParameters.keyDeposit.toString()),
-                    CSL.BigNum.from_str(protocolParameters.coinsPerUtxoWord.toString()),
-                    protocolParameters.maxTxSize,
-                    5000 // maxValueSize
-                );
-
-                // Add inputs and certificate
-                inputs.forEach((input) => txBuilder.add_input(input.output().address(), input.input(), input.output().amount()));
-                txBuilder.add_certificate(delegationCert);
-
-                // Add change address
-                txBuilder.add_change_if_needed(userAddress);
-
-                // Build transaction body
-                const txBody = txBuilder.build();
-                const txBodyHex = Buffer.from(txBody.to_bytes()).toString("hex");
-
-                // Sign the transaction
-                const signedTxHex = await api.signTx(txBodyHex, true);
-
-                // Submit signed transaction via local Cardano submit API
-                const response = await fetch(cardanoSubmitApiUrl, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/cbor",
-                    },
-                    body: Buffer.from(signedTxHex, "hex"),
-                });
-
-                if (response.ok) {
-                    const txHash = await response.text();
-                    alert(`Transaction submitted successfully! Tx Hash: ${txHash}`);
-                } else {
-                    const error = await response.text();
-                    console.error("Error submitting transaction:", error);
-                    alert("Failed to submit transaction. Check your API.");
-                }
-            } catch (error) {
-                console.error("Error during staking:", error);
-                alert("An error occurred. Please try again.");
-            }
-        });
-    </script>
+        <nav>
+            <table>
+                <tr>
+                    <td>
+                        <a href="https://twitter.com/DamionDutch" target="_blank" rel="noopener noreferrer" aria-label="Follow The Dutch Stake Pool on Twitter">
+                            <img src="X-logo_ico.webp" alt="Follow The Dutch Stake Pool on Twitter">
+                        </a>
+                    </td>
+                    <td>
+                        <a href="https://pool.pm/b4099d09df1748b807ed9a3112eb5d978a2b499bb12c46f14b3749ea" target="_blank" rel="noopener noreferrer" aria-label="Join The Dutch Stake Pool">
+                            <img src="stakebutton_ico.webp" alt="Join The Dutch Stake Pool - Stake with us">
+                        </a>
+                    </td>
+                    <td>
+                        <a href="https://gov.tools/connected/drep_directory/drep1u634jgjwly7gqd90tuhqrwayze2x0revzz657tael3kpq24uxpl" target="_blank" rel="noopener noreferrer" aria-label="View The Dutch Stake Pool's DRep ID">
+                            <img src="cardano_logo_ico.webp" alt="View The Dutch Stake Pool's DRep ID">
+                        </a>
+                    </td>
+                    <td>
+                        <a href="https://app.iagon.com/" target="_blank" rel="noopener noreferrer" aria-label="Stake to Iagon Node">
+                            <img src="iagonLogoLight2.webp" alt="Join The Iagon Node">
+                        </a>
+                    </td>
+                </tr>
+            </table>
+        </nav>
+        <div class="prices">
+            <strong>ADA:</strong> <span id="ada-price   ">Loading...</span> <strong>IAG:</strong> <span id="iag-price">Loading...</span><br>
+        </div>
+    <footer>
+        <p>&copy; 2025 The Dutch Stake Pool. All rights reserved.</p>
+    </footer>
 </body>
 </html>

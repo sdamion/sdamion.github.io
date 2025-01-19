@@ -23,6 +23,9 @@
     <meta name="msapplication-navbutton-color" content="#b0adad">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
 
+    <!-- Security Policy -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https://*; script-src 'self'; style-src 'self'; connect-src https://api.coingecko.com">
+
     <link rel="icon" sizes="192x192" href="tdsp_logo4_ico.webp">
     <link rel="apple-touch-icon" href="tdsp_logo4_ico.webp">
     <link rel="manifest" href="manifest.json">
@@ -35,10 +38,31 @@
     <link rel="stylesheet" href="styles.css">
 
     <script>
-        function goToDetails() {
-            window.location.href = "details.html";
+        async function fetchPrices() {
+            try {
+                const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,cardano,iagon&vs_currencies=usd');
+                const data = await response.json();
+                
+                const adaPrice = data.cardano.usd.toFixed(2);
+                const iagPrice = data.iagon.usd.toFixed(2);
+                
+                document.getElementById('ada-price').textContent = `$${adaPrice}`;
+                document.getElementById('iag-price').textContent = `$${iagPrice}`;
+            } catch (error) {
+                console.error('Error fetching prices:', error);
+                document.getElementById('ada-price').textContent = 'N/A';
+                document.getElementById('iag-price').textContent = 'N/A';
+            }
         }
-    </script>
+    
+        // Fetch prices when the page loads
+        window.onload = () => {
+            fetchPrices();
+    
+            // Set up auto-update every 60 seconds (60000 ms)
+            setInterval(fetchPrices, 60000);
+        };
+    </script>    
 </head>
 <body>
     <main class="container" id="main-content">
@@ -49,28 +73,21 @@
         <div class="links">
             <table>
                 <tr>
-                    <!-- Twitter Logo as a clickable link -->
                     <td>
                         <a href="https://twitter.com/DamionDutch" target="_blank" rel="noopener noreferrer" aria-label="Follow The Dutch Stake Pool on Twitter">
                             <img src="X-logo_ico.webp" alt="Follow The Dutch Stake Pool on Twitter">
                         </a>
                     </td>
-                    
-                    <!-- Cardano DRep Logo as a clickable link -->
-                    <td>
-                        <a href="https://gov.tools/connected/drep_directory/drep1u634jgjwly7gqd90tuhqrwayze2x0revzz657tael3kpq24uxpl" target="_blank" rel="noopener noreferrer" aria-label="View The Dutch Stake Pool's DRep ID">
-                            <img src="cardano_logo_ico.webp" alt="View The Dutch Stake Pool's DRep ID">
-                        </a>
-                    </td>
-                    
-                    <!-- Join Stake Pool clickable link -->
                     <td>
                         <a href="https://pool.pm/b4099d09df1748b807ed9a3112eb5d978a2b499bb12c46f14b3749ea" target="_blank" rel="noopener noreferrer" aria-label="Join The Dutch Stake Pool">
                             <img src="stakebutton_ico.webp" alt="Join The Dutch Stake Pool - Stake with us">
                         </a>
                     </td>
-                    
-                    <!-- Stake to my Iagon node -->
+                    <td>
+                        <a href="https://gov.tools/connected/drep_directory/drep1u634jgjwly7gqd90tuhqrwayze2x0revzz657tael3kpq24uxpl" target="_blank" rel="noopener noreferrer" aria-label="View The Dutch Stake Pool's DRep ID">
+                            <img src="cardano_logo_ico.webp" alt="View The Dutch Stake Pool's DRep ID">
+                        </a>
+                    </td>
                     <td>
                         <a href="https://app.iagon.com/" target="_blank" rel="noopener noreferrer" aria-label="Stake to Iagon Node">
                             <img src="iagonLogoLight2.webp" alt="Join The Iagon Node">
@@ -79,6 +96,12 @@
                 </tr>
             </table>
         </div>
+        <div class="prices">
+            <strong>ADA:</strong> <span id="ada-price">Loading...</span>      <strong>IAG:</strong> <span id="iag-price">Loading...</span><br>
+        </div>
+        <footer>
+            <p>&copy; 2025 The Dutch Stake Pool. All rights reserved.</p>
+        </footer>
     </main>
 </body>
 </html>
