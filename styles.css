@@ -71,8 +71,9 @@ table {
     border-collapse: collapse;
     width: auto;
     height: auto;
-    background-color: #b0adad;
+    background-color: inherit; /* Matches the body's background color */
     font-size: 1rem;
+    color: inherit; /* Matches the body's text color */
 }
 
 th, td {
@@ -81,9 +82,9 @@ th, td {
     text-align: center;
     width: auto;
     height: auto;
-    color: inherit; /* Adapts to light/dark mode */
+    background-color: inherit; /* Matches the body's background color */
+    color: inherit; /* Matches the body's text color */
 }
-
 th {
     background-color: #b0adad;
 }
