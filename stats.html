@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Live statistics for Reliable Stake Pool, including active stake, active delegators, blocks minted, and rewards.">
+    <title>Stake Pool Stats</title>
+    <link rel="stylesheet" href="styles.css">
+    <script>
+        async function fetchStakePoolStats() {
+            const activeStake = document.getElementById('active-stake');
+            const activeDelegators = document.getElementById('active-delegators');
+            const blocksMinted = document.getElementById('blocks-minted');
+            const rewards = document.getElementById('rewards');
+            const errorMessage = document.getElementById('error-message');
+
+            try {
+                const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
+                const targetUrl = 'https://poolstats.io/pools/id/b4099d09df1748b807ed9a3112eb5d978a2b499bb12c46f14b3749ea/pooldata.json';
+
+                const response = await fetch(proxyUrl + targetUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+
+                const stats = await response.json();
+
+                // Ensure keys match your JSON structure
+                activeStake.textContent = stats.active_stake || '0';
+                activeDelegators.textContent = stats.delegates || '0';
+                blocksMinted.textContent = stats.total_blocks || '0';
+                rewards.textContent = stats.total_rewards_paid || '0';
+
+                errorMessage.style.display = 'none'; // Hide error message if data loads successfully
+            } catch (error) {
+                console.error('Error fetching stake pool stats:', error);
+
+                activeStake.textContent = 'N/A';
+                activeDelegators.textContent = 'N/A';
+                blocksMinted.textContent = 'N/A';
+                rewards.textContent = 'N/A';
+
+                errorMessage.style.display = 'block'; // Show error message to the user
+                errorMessage.textContent = 'Unable to load stake pool statistics. Please try again later.';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', fetchStakePoolStats);
+    </script>
+</head>
+<body>
+    <div class="stakepool-stats" role="region" aria-labelledby="stats-heading">
+        <h2 id="stats-heading">Stake Pool Statistics</h2>
+        <ul>
+            <li><strong>Active Stake:</strong> <span id="active-stake" aria-live="polite">Loading...</span></li>
+            <li><strong>Active Delegators:</strong> <span id="active-delegators" aria-live="polite">Loading...</span></li>
+            <li><strong>Blocks Minted:</strong> <span id="blocks-minted" aria-live="polite">Loading...</span></li>
+            <li><strong>Rewards:</strong> <span id="rewards" aria-live="polite">Loading...</span></li>
+        </ul>
+        <p id="error-message" role="alert" style="color: red; display: none;"></p>
+    </div>
+
+    <footer>
+        &copy; 2025 Reliable Stake Pool. All rights reserved.
+    </footer>
+</body>
+</html>
