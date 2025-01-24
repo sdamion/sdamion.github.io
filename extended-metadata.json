@@ -4,12 +4,20 @@
     "url_png_logo": "https://thedutchstakepool.com/stakepool_logo.png",
     "location": "Zoetermeer, The Netherlands",
     "social": {
-        "twitter_handle": "https://twitter.com/damiondutch",
-        "linkedin_handle": "https://www.linkedin.com/in/damionseedorf",
-        "ada_handle": "$tdsp"
+      "twitter_handle": "damiondutch",
+      "linkedin_handle": "damionseedorf",
+      "ada_handle": "tdsp"
     },
+    "company": {
+      "name": "The Dutch Stake Pool",
+      "addr": "",
+      "city": "Zoetermeer",
+      "country": "The Netherlands",
+      "company_id": "",
+      "vat_id": ""
+  },
     "about": {
-      "Website": "https://www.thedutchstakepool.com/details.html"
+      "Website": "https://thedutchstakepool.com/details.html"
     }
   }
 }
