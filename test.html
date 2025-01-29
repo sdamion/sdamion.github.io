@@ -1,33 +1,55 @@
-<body>
-    <header>
-        <nav class="navbar">
-            <a href="/" class="logo">
-                <img src="tdsp_logo4_ico.webp" alt="The Dutch Stake Pool Logo">
-            </a>
-            <div class="menu">
-                <a href="details.html" aria-label="About Us">About</a>
-                <a href="https://tool.jamonbread.io/delegate/pool1ksye6zwlzaytspldngc3966aj79zkjvmkykydu2txay75c0krfp" target="_blank" rel="noopener noreferrer" aria-label="Delegate">Delegate</a>
-                <a href="https://gov.tools/connected/drep_directory/drep1u634jgjwly7gqd90tuhqrwayze2x0revzz657tael3kpq24uxpl" target="_blank" rel="noopener noreferrer" aria-label="DRep Directory">DRep Directory</a>
-                <a href="https://twitter.com/DamionDutch" target="_blank" rel="noopener noreferrer" aria-label="Twitter">Twitter</a>
-            </div>
-        </nav>
-    </header>
-    <main class="container" id="main-content">
-        <h1>Welcome To The Dutch Stake Pool</h1>
-        <a href="details.html" rel="noopener noreferrer" aria-label="Stake to Iagon Node">
-            <img src="tdsp_logo4.webp" alt="The Dutch Stake Pool Logo - Reliable Bare-Metal Low-Fee Stake Pool">
-        </a>
-        <p>Dutch Bare-Metal, low-fee stake pool. The one-stop shop for staking $ADA and $IAG. If you're looking for a DRep, click on the ADA logo below.</p>
+import { useState, useEffect } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
-        <div class="links">
-            <!-- Existing links remain here -->
-        </div>
-        <div class="prices">
-            <p><strong>ADA:</strong> <span id="ada-price">Loading...</span>      <strong>IAG:</strong> <span id="iag-price">Loading...</span>
-            </p>
-        </div>
-        <footer">
-            &copy; 2025 The Dutch Stake Pool. All rights reserved.
-        </footer>
-    </main>
-</body>
+const API_URL = "https://js.cexplorer.io/api-static/pool/pool1ksye6zwlzaytspldngc3966aj79zkjvmkykydu2txay75c0krfp.json";
+
+export default function PoolInfo() {
+  const [poolData, setPoolData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchPoolData = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(API_URL);
+      if (!response.ok) {
+        throw new Error("Failed to fetch data");
+      }
+      const data = await response.json();
+      setPoolData(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPoolData();
+    const interval = setInterval(fetchPoolData, 300000); // 5 minutes
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="p-6 max-w-3xl mx-auto bg-white shadow-lg rounded-lg">
+        <h1 className="text-2xl font-bold mb-4 text-center">Cardano Stake Pool Info</h1>
+        <Button onClick={fetchPoolData} className="mb-4 w-full">Refresh Data</Button>
+        {loading && <p className="text-center">Loading...</p>}
+        {error && <p className="text-red-500 text-center">Error: {error}</p>}
+        {poolData && (
+          <Card>
+            <CardContent className="p-4">
+              <p><strong>Ticker:</strong> {poolData.ticker}</p>
+              <p><strong>Pool ID:</strong> {poolData.pool_id}</p>
+              <p><strong>Live Stake:</strong> {poolData.live_stake} ADA</p>
+              <p><strong>Delegators:</strong> {poolData.delegators}</p>
+              <p><strong>Margin:</strong> {poolData.margin}%</p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </div>
+  );
+}
