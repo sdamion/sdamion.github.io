@@ -3,6 +3,5 @@
 "description": "True decentralized Stakepool running from home on Bare-Metal. No centralized cloud nodes.  ",
 "ticker": "TDSP",
 "homepage": "https://thedutchstakepool.com/",
-"logo": "https://thedutchstakepool.com/stakepool_logo.png",
 "extended": "https://thedutchstakepool.com/extended-metadata.json"
 }

@@ -15,6 +15,9 @@
       "country": "The Netherlands",
       "company_id": "",
       "vat_id": ""
+    },
+    "about": {
+      "me": "https://www.thedutchstakepool.com/details.html"
     }
   }
 }
