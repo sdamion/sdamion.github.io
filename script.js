@@ -10,44 +10,71 @@ document.addEventListener("DOMContentLoaded", function () {
         })
         .then(data => {
             const table = document.getElementById("data-table");
-            const thead = table.querySelector("thead");
-            const tbody = table.querySelector("tbody");
+            const tbody = table.querySelector("tbody"); // No thead needed
 
             // Clear previous table content
-            thead.innerHTML = "<tr><th>Key</th><th>Value</th></tr>";
             tbody.innerHTML = "";
 
-            function formatValue(value) {
-                if (typeof value === "object" && value !== null) {
-                    return Object.entries(value).map(([key, val]) => 
-                        `<strong>${key.replace(/_/g, " ").toUpperCase()}</strong>: ${val}`
-                    ).join("<br>");
+            function addRow(key, value) {
+                // Exclude specific keys from being added
+                const excludedKeys = ["code", "time", "msg", "pool_id", "name", "pool_id_hash", "position", "handles", "url", "img", "stats", "updated", "terms"];
+                if (excludedKeys.includes(key.toLowerCase())) {
+                    return;
                 }
-                return value;
-            }
 
-            Object.entries(data).forEach(([key, value]) => {
                 const tr = document.createElement("tr");
                 const tdKey = document.createElement("td");
                 const tdValue = document.createElement("td");
 
                 tdKey.textContent = key.replace(/_/g, " ").toUpperCase();
-                tdValue.innerHTML = formatValue(value);
 
-                // If the value is a URL, make it a clickable link
-                if (typeof value === "string" && value.startsWith("http")) {
-                    tdValue.innerHTML = `<a href="${value}" target="_blank">${value}</a>`;
+                // Special case: If key is "stake", "pledge", or "tax_fix", divide by 1 million
+                if (["stake", "pledge", "tax_fix"].includes(key.toLowerCase()) && !isNaN(value)) {
+                    value = (value / 1_000_000).toLocaleString() + " ADA";
                 }
 
-                // If the value is an image, display it
-                if (typeof value === "string" && value.match(/\.(jpeg|jpg|gif|png|webp)$/)) {
+                if (typeof value === "object" && value !== null) {
+                    // If value is an object, break it down into separate rows
+                    Object.entries(value).forEach(([subKey, subValue]) => {
+                        addRow(subKey, subValue);
+                    });
+                    return;
+                }
+
+                // If value is a URL, create a clickable link
+                if (typeof value === "string" && value.startsWith("http")) {
+                    tdValue.innerHTML = `<a href="${value}" target="_blank">${value}</a>`;
+                } 
+                // If value is an image URL, display the image
+                else if (typeof value === "string" && value.match(/\.(jpeg|jpg|gif|png|webp)$/)) {
                     tdValue.innerHTML = `<img src="${value}" alt="Pool Image" style="max-width: 100px; border-radius: 10px;">`;
+                } 
+                else {
+                    tdValue.textContent = value;
                 }
 
                 tr.appendChild(tdKey);
                 tr.appendChild(tdValue);
                 tbody.appendChild(tr);
+            }
+
+            // Process each key-value pair from the JSON object
+            Object.entries(data).forEach(([key, value]) => {
+                addRow(key, value);
             });
+
+            // Append Attribution Inside Table as a Row
+            const trAttribution = document.createElement("tr");
+            const tdAttribution = document.createElement("td");
+            tdAttribution.setAttribute("colspan", "2"); // Make it span both columns
+            tdAttribution.className = "attribution";
+            tdAttribution.innerHTML = `
+                <strong>Source:</strong> <a href="https://cexplorer.io" target="_blank">Cexplorer.io</a><br>
+                <strong>Disclaimer:</strong> <a href="https://cexplorer.io/disclaimer" target="_blank">Cexplorer.io Disclaimer</a>
+            `;
+
+            trAttribution.appendChild(tdAttribution);
+            tbody.appendChild(trAttribution); // Append attribution row inside the table
         })
         .catch(error => console.error("Error fetching the JSON data:", error));
 });
