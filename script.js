@@ -70,7 +70,7 @@ document.addEventListener("DOMContentLoaded", function () {
             tdAttribution.className = "attribution";
             tdAttribution.innerHTML = `
                 <strong>Source:</strong> <a href="https://cexplorer.io" target="_blank">Cexplorer.io</a><br>
-                <strong>Disclaimer:</strong> <a href="https://cexplorer.io/disclaimer" target="_blank">Cexplorer.io Disclaimer</a>
+                <strong>Disclaimer:</strong> <a href="https://cexplorer.io/disclaimer" target="_blank">Cexplorer.io Disclaimer</a><br>
             `;
 
             trAttribution.appendChild(tdAttribution);
