@@ -1,7 +1,7 @@
 // Fetch and display ADA and IAG prices asynchronously
 async function fetchPrices() {
     try {
-        const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,cardano,iagon&vs_currencies=usd');
+        const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=cardano,iagon,strch&vs_currencies=usd');
         const data = await response.json();
 
         const adaPrice = data.cardano.usd.toFixed(2);
