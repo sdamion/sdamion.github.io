@@ -19,11 +19,6 @@ document.addEventListener("DOMContentLoaded", function() {
             const priceData = await priceResponse.json();
             document.getElementById("starch-price").innerText = priceData?.price || "N/A";
 
-            // Fetch mining trends (last 7 days)
-            const historyResponse = await fetch(`${API_BASE_URL}/leaderboard/week`);
-            const historyData = await historyResponse.json();
-            updateChart(historyData);
-
             // Update last updated time
             document.getElementById("last-updated").innerText = new Date().toLocaleTimeString();
         } catch (error) {
