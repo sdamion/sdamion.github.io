@@ -1,43 +1,37 @@
-document.addEventListener("DOMContentLoaded", function () {
-    const baseUrl = "https://api.starch.one";
+document.addEventListener("DOMContentLoaded", function() {
+    const API_BASE_URL = "https://api.starch.one";
+    let historyChart;
 
-    async function fetchStarchPrice() {
+    async function fetchStats() {
         try {
-            const response = await fetch(`${baseUrl}/market/strch/prices`);
-            if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
-            const data = await response.json();
-            document.getElementById("starch-price").innerText = `Starch Price: $${data.current_price}`;
+            // Fetch active miners
+            const minersResponse = await fetch(`${API_BASE_URL}/teams/B0ADAD/members`);
+            const minersData = await minersResponse.json();
+            const activeMiners = minersData?.filter(miner => miner.status === "active") || [];
+            document.getElementById("active-miners").innerText = activeMiners.length;
+
+            // Display active miners list
+            const activeMinersList = document.getElementById("active-miners-list");
+            activeMinersList.innerHTML = activeMiners.map(miner => `<li>${miner.name}</li>`).join("");
+
+            // Fetch Starch (STRCH) Price
+            const priceResponse = await fetch(`${API_BASE_URL}/market/strch/prices`);
+            const priceData = await priceResponse.json();
+            document.getElementById("starch-price").innerText = priceData?.price || "N/A";
+
+            // Fetch mining trends (last 7 days)
+            const historyResponse = await fetch(`${API_BASE_URL}/leaderboard/week`);
+            const historyData = await historyResponse.json();
+            updateChart(historyData);
+
+            // Update last updated time
+            document.getElementById("last-updated").innerText = new Date().toLocaleTimeString();
         } catch (error) {
-            console.error("Error fetching starch price:", error);
-            document.getElementById("starch-price").innerText = "Failed to load Starch price.";
+            console.error("Error fetching data:", error);
         }
     }
 
-    async function fetchTeams() {
-        try {
-            const response = await fetch(`${baseUrl}/teams`);
-            if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
-            const data = await response.json();
-            const teamsTable = document.getElementById("teams-table");
-
-            teamsTable.innerHTML = data.map(team => `
-                <tr>
-                    <td>${team.name}</td>
-                    <td>${team.color_id}</td>
-                    <td>${team.members_count}</td>
-                </tr>
-            `).join("");
-
-            document.getElementById("loading-text").style.display = "none";
-        } catch (error) {
-            console.error("Error fetching teams:", error);
-            document.getElementById("teams-table").innerHTML = "<tr><td colspan='3'>Failed to load teams.</td></tr>";
-        }
-    }
-
-    async function fetchData() {
-        await Promise.all([fetchStarchPrice(), fetchTeams()]);
-    }
-
-    fetchData();
+    // Fetch data every 49 seconds (CSP-compliant)
+    fetchStats();
+    setInterval(fetchStats, 49 * 1000);
 });

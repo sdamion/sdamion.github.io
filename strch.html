@@ -1,21 +1,21 @@
-<?php
-$nonce = base64_encode(random_bytes(16)); // Generate a secure nonce
-header("Content-Security-Policy: 
-    default-src 'self'; 
-    script-src 'self' 'nonce-$nonce' https://cdn.jsdelivr.net; 
-    connect-src 'self' https://api.starch.one; 
-    img-src 'self' data: https://api.starch.one; 
-    style-src 'self' 'nonce-$nonce'; 
-    frame-src 'self';
-");
-?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Company B0ADAD Stats</title>
+    <?php
+    $nonce = base64_encode(random_bytes(16)); // Generate a secure nonce
+    header("Content-Security-Policy: 
+        default-src 'self'; 
+        script-src 'self' 'nonce-$nonce' https://cdn.jsdelivr.net; 
+        connect-src 'self' https://api.starch.one; 
+        img-src 'self' data: https://api.starch.one; 
+        style-src 'self' 'nonce-$nonce'; 
+        frame-src 'self';
+    ");
+    ?>
+
     <script nonce="<?= $nonce ?>" src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style nonce="<?= $nonce ?>">
         body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
@@ -47,44 +47,6 @@ header("Content-Security-Policy:
 
     <div class="refresh-time">Last Updated: <span id="last-updated">Never</span></div>
 
-    <script nonce="<?= $nonce ?>">
-        document.addEventListener("DOMContentLoaded", function() {
-            const API_BASE_URL = "https://api.starch.one";
-            let historyChart;
-    
-            async function fetchStats() {
-                try {
-                    // Fetch active miners
-                    const minersResponse = await fetch(`${API_BASE_URL}/teams/B0ADAD/members`);
-                    const minersData = await minersResponse.json();
-                    const activeMiners = minersData?.filter(miner => miner.status === "active") || [];
-                    document.getElementById("active-miners").innerText = activeMiners.length;
-    
-                    // Display active miners list
-                    const activeMinersList = document.getElementById("active-miners-list");
-                    activeMinersList.innerHTML = activeMiners.map(miner => `<li>${miner.name}</li>`).join("");
-    
-                    // Fetch Starch (STRCH) Price
-                    const priceResponse = await fetch(`${API_BASE_URL}/market/strch/prices`);
-                    const priceData = await priceResponse.json();
-                    document.getElementById("starch-price").innerText = priceData?.price || "N/A";
-    
-                    // Fetch mining trends (last 7 days)
-                    const historyResponse = await fetch(`${API_BASE_URL}/leaderboard/week`);
-                    const historyData = await historyResponse.json();
-                    updateChart(historyData);
-    
-                    // Update last updated time
-                    document.getElementById("last-updated").innerText = new Date().toLocaleTimeString();
-                } catch (error) {
-                    console.error("Error fetching data:", error);
-                }
-            }
-        
-            // Fetch data every 49 seconds (CSP-compliant)
-            fetchStats();
-            setInterval(fetchStats, 49 * 1000);
-        });
-    </script>    
+    <script src="strch.js" nonce="<?php echo $nonce; ?>"></script>
 </body>
 </html>
