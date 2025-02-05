@@ -1,52 +1,67 @@
+<?php
+// Set CSP before any HTML output
+$nonce = base64_encode(random_bytes(16));
+header("Content-Security-Policy: 
+    default-src 'self'; 
+    script-src 'self' 'nonce-$nonce' https://api.starch.one; 
+    connect-src 'self' https://api.starch.one; 
+    img-src 'self' data: https://api.starch.one; 
+    style-src 'self' 'nonce-$nonce'; 
+    frame-src 'self';
+");
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Company B0ADAD Stats</title>
-    <?php
-    $nonce = base64_encode(random_bytes(16)); // Generate a secure nonce
-    header("Content-Security-Policy: 
-        default-src 'self'; 
-        script-src 'self' 'nonce-$nonce' https://cdn.jsdelivr.net; 
-        connect-src 'self' https://api.starch.one; 
-        img-src 'self' data: https://api.starch.one; 
-        style-src 'self' 'nonce-$nonce'; 
-        frame-src 'self';
-    ");
-    ?>
-
-    <script nonce="<?= $nonce ?>" src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style nonce="<?= $nonce ?>">
-        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-        h1 { color: #333; }
-        .stats-container { display: flex; justify-content: center; gap: 20px; margin-top: 20px; flex-wrap: wrap; }
-        .stat-box { border: 1px solid #ddd; padding: 10px; width: 200px; text-align: center; }
-        .refresh-button { margin: 20px; padding: 10px 15px; font-size: 16px; cursor: pointer; }
-        .refresh-time { margin-top: 15px; font-size: 14px; color: #666; }
-        .miner-list { text-align: left; margin: 20px auto; width: 300px; }
-        canvas { max-width: 600px; margin: auto; }
+    <style nonce="<?php echo $nonce; ?>">
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+        .stats-container {
+            margin-top: 20px;
+        }
+        .stat-box {
+            font-size: 20px;
+            margin: 10px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            display: inline-block;
+            min-width: 200px;
+        }
+        .refresh-button {
+            padding: 10px 15px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .refresh-time {
+            margin-top: 10px;
+            font-size: 14px;
+            color: gray;
+        }
     </style>
 </head>
 <body>
     <h1>Company B0ADAD Stats</h1>
-    <button class="refresh-button" onclick="fetchStats()">🔄 Refresh Stats</button>
+    <button class="refresh-button">🔄 Refresh Stats</button>
 
     <div class="stats-container">
         <div class="stat-box"><strong>Active Miners:</strong> <span id="active-miners">Loading...</span></div>
-        <div class="stat-box"><strong>Starch Price:</strong> <span id="starch-price">Loading...</span></div>
     </div>
-
-    <div class="miner-list">
-        <h3>Active Miners List</h3>
-        <ul id="active-miners-list"></ul>
-    </div>
-
-    <h3>Mining Trends (Last 7 Days)</h3>
-    <canvas id="historyChart"></canvas>
 
     <div class="refresh-time">Last Updated: <span id="last-updated">Never</span></div>
 
     <script src="strch.js" nonce="<?php echo $nonce; ?>"></script>
+    <script nonce="<?php echo $nonce; ?>">
+        document.addEventListener("DOMContentLoaded", function () {
+            const refreshButton = document.querySelector(".refresh-button");
+            refreshButton.addEventListener("click", fetchStats);
+            fetchStats(); // Load stats on page load
+        });
+    </script>
 </body>
 </html>
