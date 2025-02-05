@@ -47,21 +47,13 @@ header("Content-Security-Policy:
 </head>
 <body>
     <h1>Company B0ADAD Stats</h1>
-    <button class="refresh-button">🔄 Refresh Stats</button>
-
     <div class="stats-container">
         <div class="stat-box"><strong>Active Miners:</strong> <span id="active-miners">Loading...</span></div>
     </div>
 
     <div class="refresh-time">Last Updated: <span id="last-updated">Never</span></div>
 
-    <script src="strch.js" nonce="<?php echo $nonce; ?>"></script>
-    <script nonce="<?php echo $nonce; ?>">
-        document.addEventListener("DOMContentLoaded", function () {
-            const refreshButton = document.querySelector(".refresh-button");
-            refreshButton.addEventListener("click", fetchStats);
-            fetchStats(); // Load stats on page load
-        });
-    </script>
+    <script src="strch.js" nonce="<?php echo $nonce; ?>" defer></script>
+
 </body>
 </html>
