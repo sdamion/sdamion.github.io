@@ -15,45 +15,30 @@ header("Content-Security-Policy:
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Company B0ADAD Stats</title>
-    <style nonce="<?php echo $nonce; ?>">
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin: 20px;
-        }
-        .stats-container {
-            margin-top: 20px;
-        }
-        .stat-box {
-            font-size: 20px;
-            margin: 10px;
-            padding: 10px;
-            border: 1px solid #ccc;
-            display: inline-block;
-            min-width: 200px;
-        }
-        .refresh-button {
-            padding: 10px 15px;
-            font-size: 16px;
-            cursor: pointer;
-        }
-        .refresh-time {
-            margin-top: 10px;
-            font-size: 14px;
-            color: gray;
-        }
-    </style>
+    <title>The Dutch Stake Pool | Starch Mining Stats</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/webp" sizes="192x192" href="tdsp_logo_ico.webp">
 </head>
 <body>
-    <h1>Company B0ADAD Stats</h1>
-    <div class="stats-container">
-        <div class="stat-box"><strong>Active Miners:</strong> <span id="active-miners">Loading...</span></div>
-    </div>
+    <main class="container">
+        <h1>Starch Mining Stats</h1>
 
-    <div class="refresh-time">Last Updated: <span id="last-updated">Never</span></div>
-
-    <script src="strch.js" nonce="<?php echo $nonce; ?>" defer></script>
-
+        <section>
+            <h2>Name </h2>
+            <p><span id="team-name">Loading...</span></p>
+            
+            <h2>Account Balance</h2>
+            <p><span id="team-balance">Loading...</span></p>
+    
+            
+            <h2>Starch Miners</h2>
+            <p><span id="miners-list">Loading...</span></p>
+            
+            
+            
+            <div class="refresh-time">Last Updated: <span id="last-updated">Never</span></div>
+        </section>
+        <script src="strch.js" nonce="<?php echo $nonce; ?>" defer></script>
+    </main>
 </body>
 </html>
