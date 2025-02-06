@@ -11,10 +11,9 @@
 html, body {
     margin: 0;
     padding: 0;
-    min-height: 100%;
-    height: auto;
-    overflow-x: hidden;
-    overflow-y: auto;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
     -webkit-overflow-scrolling: touch;
     scroll-behavior: smooth;
     display: flex;
@@ -25,11 +24,17 @@ html, body {
     color: #000;
 }
 
-/* Container */
+/* Center Content */
 .container {
     text-align: center;
+    width: 100%;
     max-width: 90%;
     padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
 }
 
 /* Headings */
@@ -61,17 +66,36 @@ p {
     line-height: 1.5;
     color: inherit;
 }
-
 /* Images */
 img {
     width: 100%;
     max-width: 600px;
     height: auto;
-    cursor: pointer;
-    transition: transform 0.3s ease-in-out;
 }
 
-img:hover {
+
+/* Specific Image Hover Effect */
+img[src="about_logo.webp"],
+img[src="stats_ico.webp"],
+img[src="starchCompanyLogo.webp"],
+img[src="stakebutton_ico.webp"],
+img[src="iagonLogoLight.webp"],
+img[src="X-logo_ico.webp"],
+img[src="govtools.webp"] {
+    transition: transform 0.3s ease-in-out;
+    width: 100%;
+    max-width: 600px;
+    height: auto;
+    cursor: pointer;
+}
+
+img[src="about_logo.webp"]:hover,
+img[src="stats_ico.webp"]:hover,
+img[src="starchCompanyLogo.webp"]:hover,
+img[src="stakebutton_ico.webp"]:hover,
+img[src="iagonLogoLight.webp"]:hover,
+img[src="X-logo_ico.webp"]:hover,
+img[src="govtools.webp"]:hover {
     transform: scale(1.05);
 }
 
