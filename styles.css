@@ -12,7 +12,7 @@ html, body {
     margin: 0;
     padding: 0;
     width: 100%;
-    height: 100vh;
+    height: auto;
     overflow-x: hidden;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
@@ -29,12 +29,13 @@ html, body {
 .container {
     text-align: center;
     width: min(90%, 1200px);
+    height: min(90%, 400px);
     padding: 20px;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    height: 100vh;
+    min-height: 100vh
 }
 
 /* Headings */
@@ -75,29 +76,16 @@ img {
 }
 
 /* Specific Image Hover Effect */
-img[src="about_logo.webp"],
-img[src="stats_ico.webp"],
-img[src="starchCompanyLogo.webp"],
-img[src="stakebutton_ico.webp"],
-img[src="iagonLogoLight.webp"],
-img[src="X-logo_ico.webp"],
-img[src="govtools.webp"] {
-    transition: transform 0.3s ease-in-out;
+.hover-effect {
+    transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     width: 100%;
     max-width: 600px;
     height: auto;
     cursor: pointer;
 }
 
-img[src="about_logo.webp"]:hover,
-img[src="stats_ico.webp"]:hover,
-img[src="starchCompanyLogo.webp"]:hover,
-img[src="stakebutton_ico.webp"]:hover,
-img[src="iagonLogoLight.webp"]:hover,
-img[src="X-logo_ico.webp"]:hover,
-img[src="govtools.webp"]:hover {
+.hover-effect:hover {
     transform: scale(1.05);
-    transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 /* Tables */
@@ -143,10 +131,13 @@ th {
     transform: scale(1.1);
 }
 
-a:focus {
-    outline: 3px solid #bbb;
-    outline-offset: 2px;
+a:focus-visible,
+button:focus-visible {
+    outline: 3px solid rgba(255, 255, 255, 0.8);
+    outline-offset: 4px;
+    border-radius: 5px;
 }
+
 
 /* Buttons */
 button {
