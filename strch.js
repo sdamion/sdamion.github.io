@@ -1,70 +1,92 @@
 const API_BASE_URL = "https://api.starch.one";
 const TEAM_ID = "B0ADAD"; // Replace with your actual team ID
 
+// General function to fetch data with error handling
+async function fetchData(url) {
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+        return await response.json();
+    } catch (error) {
+        console.error(`Failed to fetch ${url}:`, error);
+        return null; // Return null instead of breaking the whole function
+    }
+}
+
 async function fetchStats() {
     try {
-        // Fetch team profile
-        const teamProfileResponse = await fetch(`${API_BASE_URL}/teams/${TEAM_ID}/profile`);
-        if (!teamProfileResponse.ok) throw new Error(`HTTP Error: ${teamProfileResponse.status}`);
+        console.log("Fetching team, circulating supply, and market cap data...");
 
-        const teamProfile = await teamProfileResponse.json();
-        document.getElementById("team-name").innerText = teamProfile.name || "Unknown Team";
+        // Fetch team profile, account, circulating supply, and market cap in parallel
+        const [teamProfile, teamAccount, circulatingSupply, marketCapData] = await Promise.all([
+            fetchData(`${API_BASE_URL}/teams/${TEAM_ID}/profile`),
+            fetchData(`${API_BASE_URL}/teams/${TEAM_ID}/account`),
+            fetchData(`${API_BASE_URL}/assets/strch/circulating_supply`),
+            fetchData(`${API_BASE_URL}/market/strch/prices`) // Fetch market cap data
+        ]);
 
-        // Fetch team account
-        const teamAccountResponse = await fetch(`${API_BASE_URL}/teams/${TEAM_ID}/account`);
-        if (!teamAccountResponse.ok) throw new Error(`HTTP Error: ${teamAccountResponse.status}`);
+        // Update Team Name
+        document.getElementById("team-name").innerText = teamProfile?.name || "Unknown Team";
 
-        const teamAccount = await teamAccountResponse.json();
-        document.getElementById("team-balance").innerText = teamAccount.balance || "N/A";
+        // Update Team Balance
+        document.getElementById("team-balance").innerText = teamAccount?.balance 
+            ? `${Number(teamAccount.balance).toLocaleString()} STRCH`
+            : "N/A";
 
-        // Fetch team members
-        const membersResponse = await fetch(`${API_BASE_URL}/teams/${TEAM_ID}/members`);
-        if (!membersResponse.ok) throw new Error(`HTTP Error: ${membersResponse.status}`);
+        // Update Circulating Supply
+        console.log("Circulating Supply Response:", circulatingSupply);
+        document.getElementById("circulating-supply").innerText = circulatingSupply?.strch
+            ? `${Number(circulatingSupply.strch).toLocaleString()} STRCH`
+            : "N/A";
 
-        const membersData = await membersResponse.json();
-        const membersArray = Array.isArray(membersData) ? membersData : membersData.members || [];
+        // Update Market Cap (from API directly)
+        console.log("Market Cap Response:", marketCapData);
+        document.getElementById("market-cap").innerText = marketCapData?.amount
+            ? `$${Number(marketCapData.amount).toLocaleString()}`
+            : "N/A";
+
+        // Fetch Team Members
+        console.log("Fetching miners...");
+        const membersData = await fetchData(`${API_BASE_URL}/teams/${TEAM_ID}/members`);
+        const membersArray = Array.isArray(membersData) ? membersData : membersData?.members || [];
 
         const minersListElement = document.getElementById("miners-list");
         minersListElement.innerHTML = "<li>Loading miner data...</li>";
 
-        // Fetch achievements, pending blocks, and miner account for each miner
+        if (membersArray.length === 0) {
+            minersListElement.innerHTML = "<li>No miners found.</li>";
+            return;
+        }
+
+        // Fetch details for each miner
         const minersWithDetails = await Promise.all(membersArray.map(async (miner_id) => {
-            try {
-                // Fetch achievements
-                const achievementsResponse = await fetch(`${API_BASE_URL}/achievements/${miner_id}`);
-                const achievements = achievementsResponse.ok ? await achievementsResponse.json() : [];
+            const [pendingBlocks, minerAccount] = await Promise.all([
+                fetchData(`${API_BASE_URL}/pending_blocks/${miner_id}`) || [],
+                fetchData(`${API_BASE_URL}/miners/${miner_id}/account`) || {}
+            ]);
 
-                // Fetch pending blocks
-                const pendingBlocksResponse = await fetch(`${API_BASE_URL}/pending_blocks/${miner_id}`);
-                const pendingBlocks = pendingBlocksResponse.ok ? await pendingBlocksResponse.json() : [];
-
-                // Fetch miner account
-                const minerAccountResponse = await fetch(`${API_BASE_URL}/miners/${miner_id}/account`);
-                const minerAccount = minerAccountResponse.ok ? await minerAccountResponse.json() : {};
-
-                return { miner_id, achievements, pendingBlocks, minerAccount };
-            } catch (error) {
-                console.error(`Failed to fetch details for miner ${miner_id}:`, error);
-                return { miner_id, achievements: ["Error fetching achievements"], pendingBlocks: ["Error fetching blocks"], minerAccount: {} };
-            }
+            return { miner_id, pendingBlocks, minerAccount };
         }));
 
-        // Update the list with miner details
-        minersListElement.innerHTML = minersWithDetails.map(({ miner_id, achievements, pendingBlocks, minerAccount }) => `
-            <strong>Miner:</strong> ${miner_id} <br> 
-            <strong>Balance:</strong> ${minerAccount.balance || "N/A"}<br>
-            <strong>Pending Blocks:</strong> ${pendingBlocks.length > 0 ? pendingBlocks.join(", ") : "None"}<br>
+        // Update the UI with miner details
+        minersListElement.innerHTML = minersWithDetails.map(({ miner_id, pendingBlocks, minerAccount }) => `
+            <li>
+                <strong>Miner:</strong> ${miner_id} <br> 
+                <strong>Balance:</strong> ${minerAccount.balance ? Number(minerAccount.balance).toLocaleString() + " STRCH" : "N/A"}<br>
+                <strong>Pending Blocks:</strong> ${pendingBlocks.length ? pendingBlocks.join(", ") : "None"}
+            </li>
         `).join("");
 
-        // Update active miners count
-        document.getElementById("last-updated").innerText = new Date().toLocaleTimeString();
+        // Update last updated time
+        document.getElementById("last-updated").innerText = `Last updated: ${new Date().toLocaleTimeString()}`;
 
     } catch (error) {
         console.error("Error fetching stats:", error);
-        document.getElementById("active-miners").innerText = "Error";
-        document.getElementById("miners-list").innerHTML = "<li>Error loading data</li>";
         document.getElementById("team-name").innerText = "Error Loading Team";
         document.getElementById("team-balance").innerText = "Error";
+        document.getElementById("circulating-supply").innerText = "Error";
+        document.getElementById("market-cap").innerText = "Error";
+        document.getElementById("miners-list").innerHTML = "<li>Error loading data</li>";
     }
 }
 

@@ -10,14 +10,14 @@
     },
     "company": {
       "name": "The Dutch Stake Pool",
-      "addr": "https://thedutchstakepool.com/details.html",
+      "addr": "https://thedutchstakepool.com/about.html",
       "city": "Zoetermeer",
       "country": "The Netherlands",
       "company_id": "",
       "vat_id": ""
     },
     "about": {
-      "me": "https://www.thedutchstakepool.com/details.html"
+      "me": "https://www.thedutchstakepool.com/about.html"
     }
   }
 }

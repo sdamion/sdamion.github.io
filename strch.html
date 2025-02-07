@@ -22,6 +22,12 @@ header("Content-Security-Policy:
 <body>
     <main class="container">
         <h1>Starch Mining Stats</h1>
+        <h2>Circulating Supply</h2>
+        <p><span id="circulating-supply">Loading...</span></p>
+
+        <h2>Market Cap</h2>
+        <p><span id="market-cap">Loading...</span></p>
+
 
         <section>
             <h2>Name </h2>
@@ -30,11 +36,8 @@ header("Content-Security-Policy:
             <h2>Account Balance</h2>
             <p><span id="team-balance">Loading...</span></p>
     
-            
             <h2>Starch Miners</h2>
             <p><span id="miners-list">Loading...</span></p>
-            
-            
             
             <div class="refresh-time">Last Updated: <span id="last-updated">Never</span></div>
             <div>Source <a href="https://starch.one" target="_blank" rel="noopener noreferrer" aria-label="Starch.one">http://starch.one</a></div>
@@ -48,7 +51,7 @@ header("Content-Security-Policy:
                             <img src="tdsp_logo.webp" alt="The Dutch Stake Pool Logo - Reliable Bare-Metal Low-Fee Stake Pool" class="hover-effect">
                     </td>
                     <td>
-                        <a href="about.html" rel="noopener noreferrer" aria-label="About The Dutch Stake Poolt">
+                        <a href="about.html" rel="noopener noreferrer" aria-label="About The Dutch Stake Pool">
                             <img src="about_logo.webp" alt="The Dutch Stake Pool Logo - Reliable Bare-Metal Low-Fee Stake Pool">
                     </td>
                     <td>
@@ -79,7 +82,7 @@ header("Content-Security-Policy:
                 </tr>
             </table>
         </div>
-        <footer">
+        <footer>
             &copy; 2025 The Dutch Stake Pool. All rights reserved.
         </footer>
         <script src="strch.js" nonce="<?php echo $nonce; ?>" defer></script>
