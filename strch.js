@@ -1,5 +1,5 @@
 const API_BASE_URL = "https://api.starch.one";
-const TEAM_ID = "B0ADAD"; // Replace with your actual team ID
+const TEAMS = ["B0ADAD", "868C0C"]; // Two teams
 
 // General function to fetch data with error handling
 async function fetchData(url) {
@@ -15,78 +15,68 @@ async function fetchData(url) {
 
 async function fetchStats() {
     try {
-        console.log("Fetching team, circulating supply, and market cap data...");
+        console.log("Fetching team data...");
 
-        // Fetch team profile, account, circulating supply, and market cap in parallel
-        const [teamProfile, teamAccount, circulatingSupply, marketCapData] = await Promise.all([
-            fetchData(`${API_BASE_URL}/teams/${TEAM_ID}/profile`),
-            fetchData(`${API_BASE_URL}/teams/${TEAM_ID}/account`),
-            fetchData(`${API_BASE_URL}/assets/strch/circulating_supply`),
-            fetchData(`${API_BASE_URL}/market/strch/prices`) // Fetch market cap data
-        ]);
-
-        // Update Team Name
-        document.getElementById("team-name").innerText = teamProfile?.name || "Unknown Team";
-
-        // Update Team Balance
-        document.getElementById("team-balance").innerText = teamAccount?.balance 
-            ? `${Number(teamAccount.balance).toLocaleString()} STRCH`
-            : "N/A";
-
-        // Update Circulating Supply
-        console.log("Circulating Supply Response:", circulatingSupply);
-        document.getElementById("circulating-supply").innerText = circulatingSupply?.strch
-            ? `${Number(circulatingSupply.strch).toLocaleString()} STRCH`
-            : "N/A";
-
-        // Update Market Cap (from API directly)
-        console.log("Market Cap Response:", marketCapData);
-        document.getElementById("market-cap").innerText = marketCapData?.amount
-            ? `${Number(marketCapData.amount).toLocaleString()} ADA`
-            : "N/A";
-
-        // Fetch Team Members
-        console.log("Fetching miners...");
-        const membersData = await fetchData(`${API_BASE_URL}/teams/${TEAM_ID}/members`);
-        const membersArray = Array.isArray(membersData) ? membersData : membersData?.members || [];
-
-        const minersListElement = document.getElementById("miners-list");
-        minersListElement.innerHTML = "<li>Loading miner data...</li>";
-
-        if (membersArray.length === 0) {
-            minersListElement.innerHTML = "<li>No miners found.</li>";
-            return;
-        }
-
-        // Fetch details for each miner
-        const minersWithDetails = await Promise.all(membersArray.map(async (miner_id) => {
-            const [pendingBlocks, minerAccount] = await Promise.all([
-                fetchData(`${API_BASE_URL}/pending_blocks/${miner_id}`) || [],
-                fetchData(`${API_BASE_URL}/miners/${miner_id}/account`) || {}
+        // Fetch and display data for each team
+        for (const teamID of TEAMS) {
+            const [teamProfile, teamAccount, membersData] = await Promise.all([
+                fetchData(`${API_BASE_URL}/teams/${teamID}/profile`),
+                fetchData(`${API_BASE_URL}/teams/${teamID}/account`),
+                fetchData(`${API_BASE_URL}/teams/${teamID}/members`)
             ]);
 
-            return { miner_id, pendingBlocks, minerAccount };
-        }));
+            // Update Team Name & Balance
+            document.getElementById(`team-name-${teamID}`).innerText = teamProfile?.name || "Unknown Team";
+            document.getElementById(`team-balance-${teamID}`).innerText = teamAccount?.balance
+                ? `${Number(teamAccount.balance).toLocaleString()} STRCH`
+                : "N/A";
 
-        // Update the UI with miner details
-        minersListElement.innerHTML = minersWithDetails.map(({ miner_id, pendingBlocks, minerAccount }) => `
-            <li>
-                <strong>Miner:</strong> ${miner_id} <br> 
-                <strong>Balance:</strong> ${minerAccount.balance ? Number(minerAccount.balance).toLocaleString() + " STRCH" : "N/A"}<br>
-                <strong>Pending Blocks:</strong> ${pendingBlocks.length ? pendingBlocks.join(", ") : "None"}
-            </li>
-        `).join("");
+            // Handle Miner Data
+            console.log(`Fetching individual miner data for Team ${teamID}...`);
+            const membersArray = Array.isArray(membersData) ? membersData : membersData?.members || [];
+            let minerBalances = 0;
+            let totalPendingBlocks = 0;
+            let totalMinedBlocks = 0;
+
+            if (membersArray.length > 0) {
+                const minerDetails = await Promise.all(membersArray.map(async (miner_id) => {
+                    const minerAccount = await fetchData(`${API_BASE_URL}/miners/${miner_id}/account`) || {};
+
+                    minerBalances += minerAccount.balance ? Number(minerAccount.balance) : 0;
+                    totalMinedBlocks += minerAccount.blocks ? Number(minerAccount.blocks) : 0;
+
+                    const pendingBlocks = await fetchData(`${API_BASE_URL}/pending_blocks/${miner_id}`) || [];
+                    totalPendingBlocks += pendingBlocks.length || 0;
+
+                    return { miner_id, pendingBlocks, minerAccount };
+                }));
+
+                // Update UI with miner data
+                document.getElementById(`total-miners-${teamID}`).innerText = membersArray.length;
+                document.getElementById(`total-miner-balance-${teamID}`).innerText = `${Number(minerBalances).toLocaleString()} STRCH`;
+                document.getElementById(`total-pending-blocks-${teamID}`).innerText = totalPendingBlocks;
+                document.getElementById(`total-mined-blocks-${teamID}`).innerText = `${Number(totalMinedBlocks).toLocaleString()}`;
+            } else {
+                document.getElementById(`total-miners-${teamID}`).innerText = "0";
+                document.getElementById(`total-miner-balance-${teamID}`).innerText = "N/A";
+                document.getElementById(`total-pending-blocks-${teamID}`).innerText = "N/A";
+                document.getElementById(`total-mined-blocks-${teamID}`).innerText = "N/A";
+            }
+        }
 
         // Update last updated time
         document.getElementById("last-updated").innerText = `Last updated: ${new Date().toLocaleTimeString()}`;
 
     } catch (error) {
         console.error("Error fetching stats:", error);
-        document.getElementById("team-name").innerText = "Error Loading Team";
-        document.getElementById("team-balance").innerText = "Error";
-        document.getElementById("circulating-supply").innerText = "Error";
-        document.getElementById("market-cap").innerText = "Error";
-        document.getElementById("miners-list").innerHTML = "<li>Error loading data</li>";
+        for (const teamID of TEAMS) {
+            document.getElementById(`team-name-${teamID}`).innerText = "Error Loading Team";
+            document.getElementById(`team-balance-${teamID}`).innerText = "Error";
+            document.getElementById(`total-miners-${teamID}`).innerText = "Error";
+            document.getElementById(`total-miner-balance-${teamID}`).innerText = "Error";
+            document.getElementById(`total-pending-blocks-${teamID}`).innerText = "Error";
+            document.getElementById(`total-mined-blocks-${teamID}`).innerText = "Error";
+        }
     }
 }
 
