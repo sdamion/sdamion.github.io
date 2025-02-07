@@ -118,6 +118,7 @@ th {
 
 .links a {
     text-decoration: none;
+    position: relative;
 }
 
 .links a img {
@@ -126,22 +127,29 @@ th {
     transition: all 0.3s ease-in-out;
 }
 
-.links a:hover img {
-    opacity: 0.8;
-    transform: scale(1.1);
-}
-
-a:focus-visible,
-button:focus-visible {
-    outline: 3px solid rgba(255, 255, 255, 0.8);
-    outline-offset: 4px;
+a:hover::after {
+    content: attr(aria-label);
+    position: absolute;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: #fff;
+    padding: 5px 10px;
+    font-size: 0.9rem;
     border-radius: 5px;
+    white-space: nowrap;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-top: 5px;
+    z-index: 10;
+    pointer-events: none;
+    opacity: 1;
+    transition: opacity 0.2s ease-in-out;
 }
-
 
 /* Buttons */
 button {
     transition: background-color 0.3s ease-in-out, transform 0.2s;
+    cursor:pointer
 }
 
 button:hover {
