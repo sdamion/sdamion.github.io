@@ -95,12 +95,13 @@ table {
     background-color: inherit;
     font-size: 1rem;
     color: inherit;
+    margin:0 auto;
 }
 
 th, td {
     border: none;
-    padding: 10px;
-    text-align: center;
+    padding: 8px 12px;
+    text-align: left;
     background-color: inherit;
     color: inherit;
 }
@@ -190,5 +191,12 @@ button:focus {
 
     .container {
         padding: 30px;
+    }
+    table {
+        width: 100%;
+    }
+
+    table td, table th {
+        padding: 6px;
     }
 }
