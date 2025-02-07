@@ -29,7 +29,7 @@ async function fetchStats() {
             document.getElementById(`team-name-${teamID}`).innerText = teamProfile?.name || "Unknown Team";
             document.getElementById(`team-balance-${teamID}`).innerText = teamAccount?.balance
                 ? `${Number(teamAccount.balance).toLocaleString()} STRCH`
-                : "N/A";
+                : "0";
 
             // Handle Miner Data
             console.log(`Fetching individual miner data for Team ${teamID}...`);
@@ -58,9 +58,9 @@ async function fetchStats() {
                 document.getElementById(`total-mined-blocks-${teamID}`).innerText = `${Number(totalMinedBlocks).toLocaleString()}`;
             } else {
                 document.getElementById(`total-miners-${teamID}`).innerText = "0";
-                document.getElementById(`total-miner-balance-${teamID}`).innerText = "N/A";
-                document.getElementById(`total-pending-blocks-${teamID}`).innerText = "N/A";
-                document.getElementById(`total-mined-blocks-${teamID}`).innerText = "N/A";
+                document.getElementById(`total-miner-balance-${teamID}`).innerText = "0";
+                document.getElementById(`total-pending-blocks-${teamID}`).innerText = "0";
+                document.getElementById(`total-mined-blocks-${teamID}`).innerText = "0";
             }
         }
 
