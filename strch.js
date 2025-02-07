@@ -42,7 +42,7 @@ async function fetchStats() {
         // Update Market Cap (from API directly)
         console.log("Market Cap Response:", marketCapData);
         document.getElementById("market-cap").innerText = marketCapData?.amount
-            ? `$${Number(marketCapData.amount).toLocaleString()}`
+            ? `${Number(marketCapData.amount).toLocaleString()} ADA`
             : "N/A";
 
         // Fetch Team Members
