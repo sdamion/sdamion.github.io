@@ -94,10 +94,9 @@ table {
     border-collapse: collapse;
     width: auto;
     background-color: inherit;
-    font-size: 1rem;
+    font-size: 1.2rem;
     color: inherit;
     margin:0 auto;
-    font-size: 1.2rem;
 }
 
 th, td {
@@ -200,4 +199,8 @@ footer {
     .container {
         padding: 30px;
     }
+    table {
+        font-size: 1rem;
+    }
+    
 }
