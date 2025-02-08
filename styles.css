@@ -13,7 +13,7 @@ html, body {
     padding: 0;
     width: 100%;
     height: auto;
-    overflow-x: hidden;
+    overflow-x: auto; /* Allows horizontal scrolling */
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     scroll-behavior: smooth;
@@ -40,7 +40,7 @@ html, body {
 
 /* Headings - Ensure Consistency Across Pages */
 h1, h2 {
-    all: unset; /* Resets any conflicting styles */
+    all: unset;
     text-align: center;
     color: inherit;
     font-weight: 700;
@@ -50,11 +50,32 @@ h1, h2 {
 
 /* Consistent Font Sizes */
 h1 {
-    font-size: 3rem !important; /* Override any external styles */
+    font-size: 3rem !important;
 }
 
 h2 {
     font-size: 2rem !important;
+}
+
+/* Adjustments for Smaller Screens */
+@media (max-width: 768px) {
+    h1 {
+        font-size: 2.2rem !important;
+    }
+
+    h2 {
+        font-size: 1.8rem !important;
+    }
+}
+
+@media (max-width: 480px) {
+    h1 {
+        font-size: 2rem !important;
+    }
+
+    h2 {
+        font-size: 1.6rem !important;
+    }
 }
 
 /* Paragraphs */
@@ -65,17 +86,25 @@ p {
     color: inherit;
 }
 
+/* Table Wrapping for Horizontal Scrolling */
+.table-container {
+    width: 100%;
+    overflow-x: auto;
+    margin: 10px 0;
+}
+
 /* Tables */
 table {
     border-collapse: collapse;
-    width: auto;
+    width: 100%;
+    min-width: 600px; /* Ensures tables don't shrink too much */
     font-size: 1.2rem;
     margin: 0 auto;
 }
 
 th, td {
     padding: 8px 12px;
-    text-align: left;
+    text-align: center;
     white-space: nowrap; /* Prevents text wrapping */
 }
 
@@ -88,12 +117,6 @@ th {
     display: flex;
     justify-content: center;
     gap: 50px;
-}
-img {
-    max-width: 100%;
-    height: auto;
-    display: block;
-    margin: 0 auto; /* Centers image */
 }
 
 .links a img {
@@ -130,39 +153,38 @@ button:focus {
     }
 }
 
-
-@media (max-width: 768px) {
+/* Small Screen Adjustments */
+@media (max-width: 480px) {
     h1 {
-        font-size: 2.2rem;
+        font-size: 2rem !important;
     }
 
     h2 {
-        font-size: 1.8rem;
+        font-size: 1.6rem !important;
     }
 
     p {
-        font-size: 1rem;
-    }
-
-    table {
-        font-size: 0.8rem;
-    }
-
-    .links {
-        gap: 20px;
-    }
-}
-
-@media (max-width: 480px) {
-    h1 {
-        font-size: 1.8rem;
-    }
-
-    h2 {
-        font-size: 1.4rem;
+        font-size: 0.9rem;
     }
 
     .links a img {
-        width: 40px;
+        width: 30px;
+    }
+
+    .container {
+        padding: 30px;
+    }
+
+    .table-container {
+        overflow-x: auto; /* Ensures scrolling works */
+    }
+
+    table {
+        width: 100%;
+        min-width: 500px; /* Adjust to ensure readability */
+    }
+
+    th, td {
+        padding: 6px;
     }
 }
