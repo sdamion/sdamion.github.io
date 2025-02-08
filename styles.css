@@ -36,6 +36,7 @@ html, body {
     justify-content: center;
     align-items: center;
     min-height: 100vh;
+    font-size: 1.2rem;
 }
 
 /* Headings */
