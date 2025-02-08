@@ -13,7 +13,7 @@ html, body {
     padding: 0;
     width: 100%;
     height: auto;
-    overflow-x: auto; /* Allows horizontal scrolling */
+    overflow-x: hidden;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     scroll-behavior: smooth;
@@ -38,17 +38,17 @@ html, body {
     min-height: 100vh;
 }
 
-/* Headings - Ensure Consistency Across Pages */
+/* Headings */
 h1, h2 {
-    all: unset;
+    all: unset; /* Removes any conflicting inherited styles */
     text-align: center;
     color: inherit;
     font-weight: 700;
-    transition: color 0.3s ease-in-out;
     margin-bottom: 20px;
+    transition: color 0.3s ease-in-out;
 }
 
-/* Consistent Font Sizes */
+/* Ensure consistent font sizes */
 h1 {
     font-size: 3rem !important;
 }
@@ -57,10 +57,10 @@ h2 {
     font-size: 2rem !important;
 }
 
-/* Adjustments for Smaller Screens */
+/* Responsive fixes for smaller screens */
 @media (max-width: 768px) {
     h1 {
-        font-size: 2.2rem !important;
+        font-size: 2.5rem !important;
     }
 
     h2 {
@@ -86,25 +86,42 @@ p {
     color: inherit;
 }
 
-/* Table Wrapping for Horizontal Scrolling */
-.table-container {
+/* Images */
+img {
     width: 100%;
-    overflow-x: auto;
-    margin: 10px 0;
+    max-width: 600px;
+    height: auto;
+}
+
+/* Specific Image Hover Effect */
+.hover-effect {
+    transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    width: 100%;
+    max-width: 600px;
+    height: auto;
+    cursor: pointer;
+}
+
+.hover-effect:hover {
+    transform: scale(1.05);
 }
 
 /* Tables */
 table {
     border-collapse: collapse;
-    width: 100%;
-    min-width: 600px; /* Ensures tables don't shrink too much */
-    font-size: 1.2rem;
+    width: auto;
+    background-color: inherit;
+    font-size: 1rem;
+    color: inherit;
     margin: 0 auto;
 }
 
 th, td {
+    border: none;
     padding: 8px 12px;
-    text-align: center;
+    text-align: left;
+    background-color: inherit;
+    color: inherit;
     white-space: nowrap; /* Prevents text wrapping */
 }
 
@@ -119,10 +136,35 @@ th {
     gap: 50px;
 }
 
+.links a {
+    text-decoration: none;
+    position: relative;
+}
+
 .links a img {
     width: 75px;
     height: auto;
     transition: all 0.3s ease-in-out;
+}
+
+/* Tooltip Effect */
+a:hover::after {
+    content: attr(aria-label);
+    position: absolute;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: #fff;
+    padding: 5px 10px;
+    font-size: 0.9rem;
+    border-radius: 5px;
+    white-space: nowrap;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-top: 5px;
+    z-index: 10;
+    pointer-events: none;
+    opacity: 1;
+    transition: opacity 0.2s ease-in-out;
 }
 
 /* Buttons */
@@ -175,16 +217,11 @@ button:focus {
         padding: 30px;
     }
 
-    .table-container {
-        overflow-x: auto; /* Ensures scrolling works */
-    }
-
     table {
         width: 100%;
-        min-width: 500px; /* Adjust to ensure readability */
     }
 
-    th, td {
+    table td, table th {
         padding: 6px;
     }
 }
