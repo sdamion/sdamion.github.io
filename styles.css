@@ -35,29 +35,47 @@ html, body {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    min-height: 100vh
+    min-height: 100vh;
 }
 
-/* Headings */
+/* Headings - Ensure Consistency Across Pages */
 h1, h2 {
+    all: unset; /* Resets any conflicting styles */
+    text-align: center;
     color: inherit;
-    transition: color 0.3s ease-in-out;
-}
-
-h1 {
-    font-size: 3rem;
     font-weight: 700;
+    transition: color 0.3s ease-in-out;
     margin-bottom: 20px;
 }
 
-h2 {
-    font-size: 2rem;
-    margin-bottom: 1px;
-    line-height: 1;
+/* Consistent Font Sizes */
+h1 {
+    font-size: 3rem !important; /* Override any external styles */
 }
 
-h1:hover {
-    color: #555;
+h2 {
+    font-size: 2rem !important;
+}
+
+/* Adjustments for Smaller Screens */
+@media (max-width: 768px) {
+    h1 {
+        font-size: 2.5rem !important;
+    }
+
+    h2 {
+        font-size: 1.8rem !important;
+    }
+}
+
+@media (max-width: 480px) {
+    h1 {
+        font-size: 2rem !important;
+    }
+
+    h2 {
+        font-size: 1.6rem !important;
+    }
 }
 
 /* Paragraphs */
@@ -68,42 +86,18 @@ p {
     color: inherit;
 }
 
-/* Images */
-img {
-    width: 100%;
-    max-width: 600px;
-    height: auto;
-}
-
-/* Specific Image Hover Effect */
-.hover-effect {
-    transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-    width: 100%;
-    max-width: 600px;
-    height: auto;
-    cursor: pointer;
-}
-
-.hover-effect:hover {
-    transform: scale(1.05);
-}
-
 /* Tables */
 table {
     border-collapse: collapse;
     width: auto;
-    background-color: inherit;
     font-size: 1rem;
-    color: inherit;
-    margin:0 auto;
+    margin: 0 auto;
 }
 
 th, td {
-    border: none;
     padding: 8px 12px;
     text-align: left;
-    background-color: inherit;
-    color: inherit;
+    white-space: nowrap; /* Prevents text wrapping */
 }
 
 th {
@@ -117,40 +111,16 @@ th {
     gap: 50px;
 }
 
-.links a {
-    text-decoration: none;
-    position: relative;
-}
-
 .links a img {
     width: 75px;
     height: auto;
     transition: all 0.3s ease-in-out;
 }
 
-a:hover::after {
-    content: attr(aria-label);
-    position: absolute;
-    background-color: rgba(0, 0, 0, 0.8);
-    color: #fff;
-    padding: 5px 10px;
-    font-size: 0.9rem;
-    border-radius: 5px;
-    white-space: nowrap;
-    top: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    margin-top: 5px;
-    z-index: 10;
-    pointer-events: none;
-    opacity: 1;
-    transition: opacity 0.2s ease-in-out;
-}
-
 /* Buttons */
 button {
     transition: background-color 0.3s ease-in-out, transform 0.2s;
-    cursor:pointer
+    cursor: pointer;
 }
 
 button:hover {
@@ -178,7 +148,11 @@ button:focus {
 /* Small Screen Adjustments */
 @media (max-width: 480px) {
     h1 {
-        font-size: 2rem;
+        font-size: 2rem !important;
+    }
+
+    h2 {
+        font-size: 1.6rem !important;
     }
 
     p {
@@ -192,6 +166,7 @@ button:focus {
     .container {
         padding: 30px;
     }
+
     table {
         width: 100%;
     }

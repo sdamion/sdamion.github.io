@@ -6,13 +6,13 @@ header("Content-Security-Policy:
     script-src 'self' 'nonce-$nonce' https://api.starch.one; 
     connect-src 'self' https://api.starch.one; 
     img-src 'self' data: https://api.starch.one; 
-    style-src 'self' 'nonce-$nonce'; 
+    style-src 'self' 'nonce-$nonce' https://fonts.googleapis.com; 
+    font-src 'self' https://fonts.gstatic.com; 
     frame-src 'self';
 ");
 ?>
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">

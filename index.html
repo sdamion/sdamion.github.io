@@ -24,8 +24,17 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
 
     <!-- Security Policy -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https://*; script-src 'self'; style-src 'self'; connect-src https://api.coingecko.com; frame-src 'self'; form-action 'self'">
-
+        <!-- Security Policy -->
+        <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self'; 
+        img-src 'self' https://*; 
+        script-src 'self'; 
+        style-src 'self' https://fonts.googleapis.com; 
+        font-src 'self' https://fonts.gstatic.com; 
+        connect-src https://api.coingecko.com; 
+        frame-src 'self'; 
+        form-action 'self'">
+        
     <link rel="icon" sizes="192x192" href="tdsp_logo_ico.webp">
     <link rel="apple-touch-icon" href="tdsp_logo_ico.webp">
     <link rel="manifest" href="manifest.json">
