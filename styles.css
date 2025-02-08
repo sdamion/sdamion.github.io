@@ -184,13 +184,13 @@ footer {
 /* Small Screen Adjustments */
 @media (max-width: 480px) {
     h1 {
-        font-size: 1.2rem;
+        font-size: 1rem;
     }
     footer {
         font-size: 0.7rem;
     }
     p {
-        font-size: 1.2rem;
+        font-size: 1rem;
     }
 
     .links a img {
