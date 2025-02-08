@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", function () {
-    const url = "https://js.cexplorer.io/api-static/pool/pool1ksye6zwlzaytspldngc3966aj79zkjvmkykydu2txay75c0krfp.json"; 
+    const url = "https://js.cexplorer.io/api-static/pool/pool1ksye6zwlzaytspldngc3966aj79zkjvmkykydu2txay75c0krfp.json";
 
     fetch(url)
         .then(response => {
@@ -22,7 +22,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
             function addRow(key, value) {
                 // Excluded keys
-                const excludedKeys = ["code", "time", "msg", "pool_id", "name", "pool_id_hash", "position", "handles", "url", "img", "stats", "updated", "terms", "stake_active"];
+                const excludedKeys = [
+                    "code", "time", "msg", "pool_id", "name", "pool_id_hash", "position", "handles", "url", "img", "stats", "updated", "terms", "stake_active",
+                    "est_epoch", "roa_short", "roa_lifetime", "luck_lifetime"
+                ];
                 if (excludedKeys.includes(key.toLowerCase())) {
                     return;
                 }
