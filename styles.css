@@ -12,9 +12,8 @@ html, body {
     margin: 0;
     padding: 0;
     width: 100%;
-    min-width: 100%;
     height: auto;
-    overflow-x: auto;
+    overflow-x: hidden;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     scroll-behavior: smooth;
@@ -29,9 +28,7 @@ html, body {
 /* Center Content */
 .container {
     text-align: center;
-    width: 100%;
-    min-width: 100%;
-    overflow-x: auto;
+    width: min(90%, 1200px);
     height: min(90%, 400px);
     padding: 20px;
     display: flex;
@@ -39,9 +36,7 @@ html, body {
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    white-space: normal;
 }
-
 
 /* Headings - Ensure Consistency Across Pages */
 h1, h2 {
@@ -71,16 +66,7 @@ p {
 }
 
 /* Tables */
-.table-container {
-    overflow-x: auto;
-    width: 100%;
-    max-width: 100%;
-}
-
 table {
-    display: block;
-    overflow-x: auto;
-    white-space: nowrap;
     border-collapse: collapse;
     width: auto;
     font-size: 1.2rem;
@@ -156,6 +142,10 @@ button:focus {
 
     p {
         font-size: 1rem;
+    }
+
+    table {
+        font-size: 0.8rem;
     }
 
     .links {
