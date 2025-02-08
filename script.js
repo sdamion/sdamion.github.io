@@ -10,31 +10,44 @@ document.addEventListener("DOMContentLoaded", function () {
         })
         .then(data => {
             const table = document.getElementById("data-table");
-            const tbody = table.querySelector("tbody"); // No thead needed
+            const tbody = table.querySelector("tbody");
 
             // Clear previous table content
             tbody.innerHTML = "";
 
+            function formatKeyName(key) {
+                key = key.replace(/_/g, " ").toLowerCase();
+                return key.charAt(0).toUpperCase() + key.slice(1);
+            }
+
             function addRow(key, value) {
-                // Exclude specific keys from being added
-                const excludedKeys = ["code", "time", "msg", "pool_id", "name", "pool_id_hash", "position", "handles", "url", "img", "stats", "updated", "terms"];
+                // Excluded keys
+                const excludedKeys = ["code", "time", "msg", "pool_id", "name", "pool_id_hash", "position", "handles", "url", "img", "stats", "updated", "terms", "stake_active"];
                 if (excludedKeys.includes(key.toLowerCase())) {
                     return;
                 }
+
+                // Custom label mapping
+                const keyMapping = {
+                    "stake": "Total Stake",
+                    "tax_ratio": "Margin (%)",
+                    "tax_fix": "Fixed Cost"
+                };
+
+                const displayKey = keyMapping[key.toLowerCase()] || formatKeyName(key);
 
                 const tr = document.createElement("tr");
                 const tdKey = document.createElement("td");
                 const tdValue = document.createElement("td");
 
-                tdKey.textContent = key.replace(/_/g, " ").toUpperCase();
+                tdKey.innerHTML = `<strong>${displayKey}</strong>`; // Bold key text
 
-                // Special case: If key is "stake", "pledge", or "tax_fix", divide by 1 million
-                if (["stake", "pledge", "tax_fix"].includes(key.toLowerCase()) && !isNaN(value)) {
+                // Special case: Format ADA values
+                if (["Total Stake", "Fixed Cost", "Pledge"].includes(displayKey) && !isNaN(value)) {
                     value = (value / 1_000_000).toLocaleString() + " ADA";
                 }
 
                 if (typeof value === "object" && value !== null) {
-                    // If value is an object, break it down into separate rows
                     Object.entries(value).forEach(([subKey, subValue]) => {
                         addRow(subKey, subValue);
                     });
@@ -58,7 +71,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 tbody.appendChild(tr);
             }
 
-            // Process each key-value pair from the JSON object
+            // Process each key-value pair from JSON
             Object.entries(data).forEach(([key, value]) => {
                 addRow(key, value);
             });
@@ -66,7 +79,7 @@ document.addEventListener("DOMContentLoaded", function () {
             // Append Attribution Inside Table as a Row
             const trAttribution = document.createElement("tr");
             const tdAttribution = document.createElement("td");
-            tdAttribution.setAttribute("colspan", "2"); // Make it span both columns
+            tdAttribution.setAttribute("colspan", "2");
             tdAttribution.className = "attribution";
             tdAttribution.innerHTML = `
                 <strong>Source:</strong> <a href="https://cexplorer.io" target="_blank">Cexplorer.io</a><br>
@@ -74,7 +87,7 @@ document.addEventListener("DOMContentLoaded", function () {
             `;
 
             trAttribution.appendChild(tdAttribution);
-            tbody.appendChild(trAttribution); // Append attribution row inside the table
+            tbody.appendChild(trAttribution);
         })
         .catch(error => console.error("Error fetching the JSON data:", error));
 });
