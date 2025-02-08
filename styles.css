@@ -183,7 +183,10 @@ footer {
 /* Small Screen Adjustments */
 @media (max-width: 480px) {
     h1 {
-        font-size: 1.0rem;
+        font-size: 2.0rem;
+    }
+    h2 {
+        font-size: 1.5rem;
     }
     footer {
         font-size: 0.7rem;
@@ -198,9 +201,10 @@ footer {
 
     .container {
         padding: 30px;
+        font-size: 1.0rem;
     }
     table {
-        font-size: 1rem;
+        font-size: 1.0rem;
     }
     
 }
