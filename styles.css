@@ -68,7 +68,8 @@ p {
 /* Tables */
 table {
     border-collapse: collapse;
-    width: auto;
+    width: 100%;
+    min-width: 600px;
     font-size: 1.2rem;
     margin: 0 auto;
 }
@@ -131,43 +132,38 @@ button:focus {
 }
 
 
-/* Adjustments for Smaller Screens */
 @media (max-width: 768px) {
     h1 {
-        font-size: 2.2rem !important;
+        font-size: 2.2rem;
     }
 
     h2 {
-        font-size: 1.8rem !important;
+        font-size: 1.8rem;
+    }
+
+    p {
+        font-size: 1rem;
+    }
+
+    table {
+        font-size: 1rem;
+    }
+
+    .links {
+        gap: 20px;
     }
 }
 
 @media (max-width: 480px) {
     h1 {
-        font-size: 2rem !important;
+        font-size: 1.8rem;
     }
 
     h2 {
-        font-size: 1.6rem !important;
-    }
-
-    p {
-        font-size: 0.9rem;
+        font-size: 1.4rem;
     }
 
     .links a img {
-        width: 30px;
-    }
-
-    .container {
-        padding: 30px;
-    }
-
-    table {
-        width: 100%;
-    }
-
-    table td, table th {
-        padding: 6px;
+        width: 40px;
     }
 }
