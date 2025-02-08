@@ -66,22 +66,17 @@ p {
 }
 
 /* Tables */
-.table-container {
-    width: 100%;
-    overflow-x: auto;
-}
-
 table {
-    width: 100%;
-    min-width: 600px; /* Ensures table doesn’t shrink too much */
     border-collapse: collapse;
+    width: auto;
+    font-size: 1.2rem;
+    margin: 0 auto;
 }
 
 th, td {
     padding: 8px 12px;
     text-align: left;
-    white-space: nowrap; /* Prevents wrapping */
-    
+    white-space: nowrap; /* Prevents text wrapping */
 }
 
 th {
@@ -155,10 +150,6 @@ button:focus {
 
     .links {
         gap: 20px;
-    }
-    .table-container {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch; /* Smooth scrolling on mobile */
     }
 }
 
