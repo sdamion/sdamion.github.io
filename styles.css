@@ -51,6 +51,10 @@ h1 {
     margin-bottom: 20px;
 }
 
+a {
+    color: inherit; /* Inherits the text color from <h1> */
+}
+
 h2 {
     font-size: 2rem;
     margin-bottom: 1px;
