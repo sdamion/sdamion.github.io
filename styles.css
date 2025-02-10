@@ -206,5 +206,11 @@ footer {
     table {
         font-size: 1.0rem;
     }
-    
+    th, td {
+        border: none;
+        padding: 6px 10px;
+        text-align: left;
+        background-color: inherit;
+        color: inherit;
+    }
 }
