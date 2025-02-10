@@ -61,10 +61,6 @@ h2 {
     line-height: 1;
 }
 
-h1:hover {
-    color: #555;
-}
-
 /* Paragraphs */
 p {
     font-size: 1.2rem;
