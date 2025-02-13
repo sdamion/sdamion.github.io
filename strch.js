@@ -13,6 +13,11 @@ async function fetchData(url) {
     }
 }
 
+// Function to format balance with 3 decimals and "M"
+function formatBalance(balance) {
+    return balance ? `${(Number(balance) / 1_000_000).toFixed(3)}M` : "0M";
+}
+
 async function fetchStats() {
     try {
         console.log("Fetching team data...");
@@ -27,9 +32,7 @@ async function fetchStats() {
 
             // Update Team Name & Balance
             document.getElementById(`team-name-${teamID}`).innerText = teamProfile?.name || "Unknown Team";
-            document.getElementById(`team-balance-${teamID}`).innerText = teamAccount?.balance
-                ? `${Number(teamAccount.balance).toLocaleString()} STRCH`
-                : "0";
+            document.getElementById(`team-balance-${teamID}`).innerText = formatBalance(teamAccount?.balance);
 
             // Handle Miner Data
             console.log(`Fetching individual miner data for Team ${teamID}...`);
@@ -53,12 +56,12 @@ async function fetchStats() {
 
                 // Update UI with miner data
                 document.getElementById(`total-miners-${teamID}`).innerText = membersArray.length;
-                document.getElementById(`total-miner-balance-${teamID}`).innerText = `${Number(minerBalances).toLocaleString()} STRCH`;
+                document.getElementById(`total-miner-balance-${teamID}`).innerText = formatBalance(minerBalances);
                 document.getElementById(`total-pending-blocks-${teamID}`).innerText = totalPendingBlocks;
                 document.getElementById(`total-mined-blocks-${teamID}`).innerText = `${Number(totalMinedBlocks).toLocaleString()}`;
             } else {
                 document.getElementById(`total-miners-${teamID}`).innerText = "0";
-                document.getElementById(`total-miner-balance-${teamID}`).innerText = "0";
+                document.getElementById(`total-miner-balance-${teamID}`).innerText = "0M";
                 document.getElementById(`total-pending-blocks-${teamID}`).innerText = "0";
                 document.getElementById(`total-mined-blocks-${teamID}`).innerText = "0";
             }
