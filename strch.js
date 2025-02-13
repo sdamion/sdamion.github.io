@@ -21,6 +21,7 @@ function formatBalance(balance) {
 async function fetchStats() {
     try {
         console.log("Fetching team data...");
+        let totalTeamBalance = 0;
 
         // Fetch and display data for each team
         for (const teamID of TEAMS) {
@@ -30,9 +31,12 @@ async function fetchStats() {
                 fetchData(`${API_BASE_URL}/teams/${teamID}/members`)
             ]);
 
+            const teamBalance = teamAccount?.balance ? Number(teamAccount.balance) : 0;
+            totalTeamBalance += teamBalance; // Accumulate total balance
+
             // Update Team Name & Balance
             document.getElementById(`team-name-${teamID}`).innerText = teamProfile?.name || "Unknown Team";
-            document.getElementById(`team-balance-${teamID}`).innerText = formatBalance(teamAccount?.balance);
+            document.getElementById(`team-balance-${teamID}`).innerText = formatBalance(teamBalance);
 
             // Handle Miner Data
             console.log(`Fetching individual miner data for Team ${teamID}...`);
@@ -67,6 +71,9 @@ async function fetchStats() {
             }
         }
 
+        // Update total team balance in UI
+        document.getElementById("total-teams-balance").innerText = formatBalance(totalTeamBalance);
+
         // Update last updated time
         document.getElementById("last-updated").innerText = `Last updated: ${new Date().toLocaleTimeString()}`;
 
@@ -80,6 +87,7 @@ async function fetchStats() {
             document.getElementById(`total-pending-blocks-${teamID}`).innerText = "Error";
             document.getElementById(`total-mined-blocks-${teamID}`).innerText = "Error";
         }
+        document.getElementById("total-teams-balance").innerText = "Error";
     }
 }
 
