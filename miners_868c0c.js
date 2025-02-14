@@ -9,7 +9,16 @@ async function fetchJson(url) {
         return await response.json();
     } catch (error) {
         console.error(`❌ Error fetching ${url}:`, error.message);
+        displayError(`Failed to load data from ${url}`);
         return null;
+    }
+}
+
+// Display error messages in UI
+function displayError(message) {
+    const errorMessage = document.getElementById('errorMessage');
+    if (errorMessage) {
+        errorMessage.innerHTML = `<p style="color: red;">❌ ${message}</p>`;
     }
 }
 
@@ -19,10 +28,10 @@ async function getTeamBalance(teamId) {
     return response ? response.balance : 0;
 }
 
-// Fetch miners from the team
+// Fetch miners from the team (limited to 50 to prevent API overload)
 async function getMinersByTeam(teamId) {
     const response = await fetchJson(`${baseUrl}/teams/${teamId}/members`);
-    return response?.members?.map(minerId => ({ miner_id: minerId })) || [];
+    return response?.members?.slice(0, 50).map(minerId => ({ miner_id: minerId })) || []; 
 }
 
 // Fetch weekly rank for a miner
@@ -36,11 +45,15 @@ async function getMinerStats(minerId) {
     const account = await fetchJson(`${baseUrl}/miners/${minerId}/account`);
     return account 
         ? { 
-            balance: account.balance,  // Keep full precision
+            balance: account.balance,  
             minedBlocks: Math.floor(account.blocks) || 0 
         } 
         : { balance: 0, minedBlocks: 0 };
 }
+
+// Format balance in millions
+const formatBalance = (balance) => 
+    new Intl.NumberFormat('en-US', { style: 'decimal', minimumFractionDigits: 3, maximumFractionDigits: 3 }).format(balance / 1_000_000) + 'M';
 
 // Fetch miner data and display it in the table
 async function fetchMinerData() {
@@ -54,6 +67,7 @@ async function fetchMinerData() {
             console.warn(`⚠️ No miners found for team ${teamId}`);
             tableBody.innerHTML = `<tr><td colspan="5">🚫 No miners found for this team.</td></tr>`;
             totalBalanceRow.innerHTML = `<td colspan="5">🚫 No data available.</td>`;
+            renderChart([]); // Render empty chart
             return;
         }
 
@@ -82,10 +96,10 @@ async function fetchMinerData() {
         const tableRows = minersData.map(({ miner_id, rank, minedBlocks, balance }, index) => `
             <tr>
                 <td>${index + 1}</td>
-                <td>${miner_id}</td>
+                <td><a href="https://starch.one/miner/${miner_id}" target="_blank" style="text-decoration: none; color: #007BFF;">${miner_id}</a></td>
                 <td>${rank}</td>
                 <td>${minedBlocks}</td>
-                <td>${(balance / 1_000_000).toFixed(3)}M</td>
+                <td>${formatBalance(balance)}</td>
             </tr>
         `).join('');
 
@@ -100,10 +114,10 @@ async function fetchMinerData() {
         // Calculate total balance (full precision)
         const totalBalance = totalMinerBalance + teamBalance;
 
-        // Convert to millions with "M" for display
+        // Display formatted total balance
         totalBalanceRow.innerHTML = `
             <td colspan="4"><strong>Total</strong> (Miners + Company)<strong>:</strong></td>
-            <td><strong>${(totalBalance / 1_000_000).toFixed(3)}M</strong></td>
+            <td><strong>${formatBalance(totalBalance)}</strong></td>
         `;
 
         renderChart(minersData);
@@ -111,6 +125,7 @@ async function fetchMinerData() {
         console.error(`🚨 Error processing data for team ${teamId}:`, error);
         tableBody.innerHTML = `<tr><td colspan="5">❌ Error loading data.</td></tr>`;
         totalBalanceRow.innerHTML = `<td colspan="5">❌ Error calculating total balance.</td>`;
+        displayError("Unexpected error occurred while fetching miner data.");
     }
 }
 
@@ -123,12 +138,21 @@ function renderChart(minersData) {
     }
 
     const ctx = canvas.getContext('2d');
-    const labels = minersData.map(({ miner_id }) => miner_id);
-    const data = minersData.map(({ minedBlocks }) => minedBlocks);
 
+    // Clear previous chart instance
     if (minerChartInstance) {
         minerChartInstance.destroy();
     }
+
+    if (!minersData.length) {
+        ctx.font = '16px Arial';
+        ctx.textAlign = "center";
+        ctx.fillText('No Data Available', canvas.width / 2, canvas.height / 2);
+        return;
+    }
+
+    const labels = minersData.map(({ miner_id }) => miner_id);
+    const data = minersData.map(({ minedBlocks }) => minedBlocks);
 
     minerChartInstance = new Chart(ctx, {
         type: 'bar',
@@ -157,4 +181,5 @@ function renderChart(minersData) {
 // Event Listener for Refresh Button
 document.getElementById('refreshButton')?.addEventListener('click', fetchMinerData);
 
+// Initialize data fetch
 fetchMinerData();
