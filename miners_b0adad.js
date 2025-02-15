@@ -33,7 +33,7 @@ async function getMinersByTeam(teamId) {
 
 async function getMinerWeeklyLeaderboard(minerId) {
     const response = await fetchJson(`${baseUrl}/leaderboard/miners/${minerId}/week`);
-    return response?.rank ?? 'No Blocks(W)';
+    return response?.rank ?? 'N/Blk(W)';
 }
 
 async function getMinerStats(minerId) {
