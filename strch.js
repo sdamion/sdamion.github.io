@@ -9,7 +9,7 @@ async function fetchData(url) {
         return await response.json();
     } catch (error) {
         console.error(`Failed to fetch ${url}:`, error);
-        return null; // Return null instead of breaking the whole function
+        return null;
     }
 }
 
@@ -22,8 +22,8 @@ async function fetchStats() {
     try {
         console.log("Fetching team data...");
         let totalTeamBalance = 0;
+        let totalCompanyBlocks = 0; // New variable to track company-wide blocks
 
-        // Fetch and display data for each team
         for (const teamID of TEAMS) {
             const [teamProfile, teamAccount, membersData] = await Promise.all([
                 fetchData(`${API_BASE_URL}/teams/${teamID}/profile`),
@@ -32,13 +32,11 @@ async function fetchStats() {
             ]);
 
             const teamBalance = teamAccount?.balance ? Number(teamAccount.balance) : 0;
-            totalTeamBalance += teamBalance; // Accumulate total balance
+            totalTeamBalance += teamBalance;
 
-            // Update Team Name & Balance
             document.getElementById(`team-name-${teamID}`).innerText = teamProfile?.name || "Unknown Team";
             document.getElementById(`team-balance-${teamID}`).innerText = formatBalance(teamBalance);
 
-            // Handle Miner Data
             console.log(`Fetching individual miner data for Team ${teamID}...`);
             const membersArray = Array.isArray(membersData) ? membersData : membersData?.members || [];
             let minerBalances = 0;
@@ -48,7 +46,6 @@ async function fetchStats() {
             if (membersArray.length > 0) {
                 const minerDetails = await Promise.all(membersArray.map(async (miner_id) => {
                     const minerAccount = await fetchData(`${API_BASE_URL}/miners/${miner_id}/account`) || {};
-
                     minerBalances += minerAccount.balance ? Number(minerAccount.balance) : 0;
                     totalMinedBlocks += minerAccount.blocks ? Number(minerAccount.blocks) : 0;
 
@@ -58,7 +55,6 @@ async function fetchStats() {
                     return { miner_id, pendingBlocks, minerAccount };
                 }));
 
-                // Update UI with miner data
                 document.getElementById(`total-miners-${teamID}`).innerText = membersArray.length;
                 document.getElementById(`total-miner-balance-${teamID}`).innerText = formatBalance(minerBalances);
                 document.getElementById(`total-pending-blocks-${teamID}`).innerText = totalPendingBlocks;
@@ -69,12 +65,14 @@ async function fetchStats() {
                 document.getElementById(`total-pending-blocks-${teamID}`).innerText = "0";
                 document.getElementById(`total-mined-blocks-${teamID}`).innerText = "0";
             }
+
+            // Add team mined blocks to total company blocks
+            totalCompanyBlocks += totalMinedBlocks;
         }
 
-        // Update total team balance in UI
         document.getElementById("total-teams-balance").innerText = formatBalance(totalTeamBalance);
+        document.getElementById("total-company-blocks").innerText = `${Number(totalCompanyBlocks).toLocaleString()}`;
 
-        // Update last updated time
         document.getElementById("last-updated").innerText = `Last updated: ${new Date().toLocaleTimeString()}`;
 
     } catch (error) {
@@ -88,6 +86,7 @@ async function fetchStats() {
             document.getElementById(`total-mined-blocks-${teamID}`).innerText = "Error";
         }
         document.getElementById("total-teams-balance").innerText = "Error";
+        document.getElementById("total-company-blocks").innerText = "Error";
     }
 }
 
