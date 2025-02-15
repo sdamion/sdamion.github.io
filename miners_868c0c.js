@@ -89,8 +89,13 @@ async function fetchMinerData() {
 
         const minersData = await Promise.all(minerDataPromises);
 
-        // Sort by mined blocks (Descending)
-        minersData.sort((a, b) => b.minedBlocks - a.minedBlocks);
+// Sort by rank (ascending), treating "N/A" as the lowest rank
+minersData.sort((a, b) => {
+    const rankA = isNaN(a.rank) ? Infinity : Number(a.rank);
+    const rankB = isNaN(b.rank) ? Infinity : Number(b.rank);
+    return rankA - rankB;
+});
+
 
         // Generate table rows with numbering
         const tableRows = minersData.map(({ miner_id, rank, minedBlocks, balance }, index) => `

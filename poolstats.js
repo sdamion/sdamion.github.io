@@ -78,19 +78,6 @@ document.addEventListener("DOMContentLoaded", function () {
             Object.entries(data).forEach(([key, value]) => {
                 addRow(key, value);
             });
-
-            // Append Attribution Inside Table as a Row
-            const trAttribution = document.createElement("tr");
-            const tdAttribution = document.createElement("td");
-            tdAttribution.setAttribute("colspan", "2");
-            tdAttribution.className = "attribution";
-            tdAttribution.innerHTML = `
-                <strong>Source:</strong> <a href="https://cexplorer.io" target="_blank">Cexplorer.io</a><br>
-                <strong>Disclaimer:</strong> <a href="https://cexplorer.io/disclaimer" target="_blank">Cexplorer.io Disclaimer</a><br>
-            `;
-
-            trAttribution.appendChild(tdAttribution);
-            tbody.appendChild(trAttribution);
         })
         .catch(error => console.error("Error fetching the JSON data:", error));
 });

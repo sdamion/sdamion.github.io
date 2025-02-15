@@ -61,6 +61,10 @@ h2 {
     line-height: 1;
 }
 
+.small-text {
+    font-size: 14px;
+}
+
 /* Paragraphs */
 p {
     font-size: 1.2rem;
@@ -187,6 +191,9 @@ footer {
     }
     h2 {
         font-size: 1.7rem;
+    }
+    .small-text {
+        font-size: 0.8rem;
     }
     footer {
         font-size: 0.7rem;
