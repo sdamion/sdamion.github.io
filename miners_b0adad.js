@@ -21,11 +21,6 @@ function displayError(message) {
     }
 }
 
-async function getTeamBalance(teamId) {
-    const response = await fetchJson(`${baseUrl}/teams/${teamId}/account`);
-    return response ? response.balance : 0;
-}
-
 async function getMinersByTeam(teamId) {
     const response = await fetchJson(`${baseUrl}/teams/${teamId}/members`);
     return response?.members?.slice(0, 50).map(minerId => ({ miner_id: minerId })) || []; 
@@ -101,14 +96,12 @@ async function fetchMinerData() {
 
         const totalMinerBalance = minersData.reduce((sum, miner) => sum + miner.balance, 0);
         const totalMinedBlocks = minersData.reduce((sum, miner) => sum + miner.minedBlocks, 0);
-        const teamBalance = await getTeamBalance(teamId);
-        const totalBalance = totalMinerBalance + teamBalance;
 
         totalBalanceRow.innerHTML = `
-            <td colspan="2"><strong>Total</strong> (Miners + Company):</td>
+            <td colspan="2"><strong>Total Miners:</strong></td>
             <td></td>
             <td><strong>${totalMinedBlocks} Blocks</strong></td>
-            <td colspan="2"><strong>${formatBalance(totalBalance)}</strong></td>
+            <td><strong>${formatBalance(totalMinerBalance)}</strong></td>
         `;
 
         renderChart(minersData);
