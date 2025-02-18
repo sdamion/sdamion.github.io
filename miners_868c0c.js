@@ -1,5 +1,8 @@
 const baseUrl = 'https://api.starch.one';
 const teamId = '868C0C';
+const CACHE_KEY = '868C0C';
+const CACHE_EXPIRATION = 2 * 60 * 1000; // 2 minutes
+const CONCURRENT_LIMIT = 10; // Fetch 10 miners at a time
 let minerChartInstance = null;
 
 async function fetchJson(url) {
@@ -23,7 +26,7 @@ function displayError(message) {
 
 async function getMinersByTeam(teamId) {
     const response = await fetchJson(`${baseUrl}/teams/${teamId}/members`);
-    return response?.members?.slice(0, 50).map(minerId => ({ miner_id: minerId })) || []; 
+    return response?.members?.slice(0, 100).map(minerId => ({ miner_id: minerId })) || []; 
 }
 
 async function getMinerWeeklyLeaderboard(minerId) {
@@ -44,7 +47,30 @@ async function getMinerStats(minerId) {
 const formatBalance = (balance) => 
     new Intl.NumberFormat('en-US', { style: 'decimal', minimumFractionDigits: 3, maximumFractionDigits: 3 }).format(balance / 1_000_000) + 'M';
 
+function loadCache() {
+    const cachedData = localStorage.getItem(CACHE_KEY);
+    if (cachedData) {
+        const { timestamp, data } = JSON.parse(cachedData);
+        if (Date.now() - timestamp < CACHE_EXPIRATION) {
+            return data;
+        }
+    }
+    return null;
+}
+
+function saveCache(data) {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ timestamp: Date.now(), data }));
+}
+
+// 🔹 Fetch Miner Data in Parallel (10 at a Time)
 async function fetchMinerData() {
+    const cachedData = loadCache();
+    if (cachedData) {
+        console.log("✅ Using cached data");
+        updateUI(cachedData);
+        return;
+    }
+
     const tableBody = document.querySelector('#minersTable tbody');
     const totalBalanceRow = document.getElementById('totalBalanceRow');
     tableBody.innerHTML = `<tr><td colspan="5">⏳ Loading...</td></tr>`;
@@ -60,21 +86,27 @@ async function fetchMinerData() {
 
         tableBody.innerHTML = '';
 
-        const minerDataPromises = miners.map(async ({ miner_id }) => {
-            const [stats, rank] = await Promise.allSettled([
-                getMinerStats(miner_id),
-                getMinerWeeklyLeaderboard(miner_id)
-            ]);
+        let minersData = [];
+        for (let i = 0; i < miners.length; i += CONCURRENT_LIMIT) {
+            const batch = miners.slice(i, i + CONCURRENT_LIMIT);
+            
+            const minerDataPromises = batch.map(async ({ miner_id }) => {
+                const [stats, rank] = await Promise.allSettled([
+                    getMinerStats(miner_id),
+                    getMinerWeeklyLeaderboard(miner_id)
+                ]);
 
-            return {
-                miner_id,
-                rank: rank.status === 'fulfilled' ? rank.value : 'N/A',
-                minedBlocks: stats.status === 'fulfilled' ? stats.value.minedBlocks : 0,
-                balance: stats.status === 'fulfilled' ? stats.value.balance : 0
-            };
-        });
+                return {
+                    miner_id,
+                    rank: rank.status === 'fulfilled' ? rank.value : 'N/A',
+                    minedBlocks: stats.status === 'fulfilled' ? stats.value.minedBlocks : 0,
+                    balance: stats.status === 'fulfilled' ? stats.value.balance : 0
+                };
+            });
 
-        const minersData = await Promise.all(minerDataPromises);
+            const batchResults = await Promise.all(minerDataPromises);
+            minersData.push(...batchResults);
+        }
 
         minersData.sort((a, b) => {
             const rankA = isNaN(a.rank) ? Infinity : Number(a.rank);
@@ -82,35 +114,43 @@ async function fetchMinerData() {
             return rankA - rankB;
         });
 
-        const tableRows = minersData.map(({ miner_id, rank, minedBlocks, balance }, index) => `
-            <tr>
-                <td>${index + 1}</td>
-                <td><a href="https://starch.one/miner/${miner_id}" target="_blank" style="text-decoration: none; color: #007BFF;">${miner_id}</a></td>
-                <td>${rank}</td>
-                <td>${minedBlocks > 0 ? minedBlocks : '0'}</td>
-                <td>${formatBalance(balance)}</td>
-            </tr>
-        `).join('');
-
-        tableBody.innerHTML = tableRows || `<tr><td colspan="5">🚫 No miners found.</td></tr>`;
-
-        const totalMinerBalance = minersData.reduce((sum, miner) => sum + miner.balance, 0);
-        const totalMinedBlocks = minersData.reduce((sum, miner) => sum + miner.minedBlocks, 0);
-
-        totalBalanceRow.innerHTML = `
-            <td colspan="2"></td>
-            <td></td>
-            <td><strong>${totalMinedBlocks} Blocks</strong></td>
-            <td><strong>${formatBalance(totalMinerBalance)} $STRCH</strong></td>
-        `;
-
-        renderChart(minersData);
+        saveCache(minersData);
+        updateUI(minersData);
     } catch (error) {
         console.error(`🚨 Error processing data for team ${teamId}:`, error);
         tableBody.innerHTML = `<tr><td colspan="5">❌ Error loading data.</td></tr>`;
         totalBalanceRow.innerHTML = `<td colspan="5">❌ Error calculating total balance.</td>`;
         displayError("Unexpected error occurred while fetching miner data.");
     }
+}
+
+function updateUI(minersData) {
+    const tableBody = document.querySelector('#minersTable tbody');
+    const totalBalanceRow = document.getElementById('totalBalanceRow');
+
+    const tableRows = minersData.map(({ miner_id, rank, minedBlocks, balance }, index) => `
+        <tr>
+            <td>${index + 1}</td>
+            <td><a href="https://starch.one/miner/${miner_id}" target="_blank" style="text-decoration: none; color: #007BFF;">${miner_id}</a></td>
+            <td>${rank}</td>
+            <td>${minedBlocks > 0 ? minedBlocks : '0'}</td>
+            <td>${formatBalance(balance)}</td>
+        </tr>
+    `).join('');
+
+    tableBody.innerHTML = tableRows || `<tr><td colspan="5">🚫 No miners found.</td></tr>`;
+
+    const totalMinerBalance = minersData.reduce((sum, miner) => sum + miner.balance, 0);
+    const totalMinedBlocks = minersData.reduce((sum, miner) => sum + miner.minedBlocks, 0);
+
+    totalBalanceRow.innerHTML = `
+        <td colspan="2"></td>
+        <td></td>
+        <td><strong>${totalMinedBlocks} Blocks</strong></td>
+        <td><strong>${formatBalance(totalMinerBalance)} $STRCH</strong></td>
+    `;
+
+    renderChart(minersData);
 }
 
 function renderChart(minersData) {
@@ -160,4 +200,9 @@ function renderChart(minersData) {
 }
 
 document.getElementById('refreshButton')?.addEventListener('click', fetchMinerData);
+
+// Fetch miner data initially
 fetchMinerData();
+
+// Auto refresh every 2 minutes
+setInterval(fetchMinerData, 120000);
