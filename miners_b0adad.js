@@ -98,10 +98,10 @@ async function fetchMinerData() {
         const totalMinedBlocks = minersData.reduce((sum, miner) => sum + miner.minedBlocks, 0);
 
         totalBalanceRow.innerHTML = `
-            <td colspan="2"><strong>Total Miners:</strong></td>
+            <td colspan="2"></td>
             <td></td>
             <td><strong>${totalMinedBlocks} Blocks</strong></td>
-            <td><strong>${formatBalance(totalMinerBalance)}</strong></td>
+            <td><strong>${formatBalance(totalMinerBalance)} $STRCH</strong></td>
         `;
 
         renderChart(minersData);

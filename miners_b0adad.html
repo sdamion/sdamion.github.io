@@ -25,6 +25,7 @@ header("Content-Security-Policy:
     <script src="chart.js"></script>
     <main class="container">
         <h1>TDSP01 Miner stats <a href="miners_868c0c.html" rel="noopener noreferrer" aria-label="Miners TDSP01">></a></h1>
+        <div id="totalBalanceRow"></div>
         <canvas id="minerChart"></canvas>
         <br>
         <div class="table-container">
@@ -39,11 +40,6 @@ header("Content-Security-Policy:
                 </tr>
             </thead>
             <tbody></tbody>
-            <tfoot>
-                <tr id="totalBalanceRow">
-                    <td colspan="4">⏳ Calculating total balance...</td>
-                </tr>
-            </tfoot>
         </table>
         </div>
         <div class="refresh-time small-text">Last Updated: <span id="last-updated">Never</span></div>
