@@ -2,7 +2,7 @@ const baseUrl = 'https://api.starch.one';
 const teamId = 'B0ADAD';
 const CACHE_KEY = 'B0ADAD';
 const CACHE_EXPIRATION = 2 * 60 * 1000; // 2 minutes
-const CONCURRENT_LIMIT = 20; // Fetch 10 miners at a time
+const CONCURRENT_LIMIT = 20; // Fetch 20 miners at a time
 let minerChartInstance = null;
 
 async function fetchJson(url) {
@@ -26,12 +26,17 @@ function displayError(message) {
 
 async function getMinersByTeam(teamId) {
     const response = await fetchJson(`${baseUrl}/teams/${teamId}/members`);
-    return response?.members?.slice(0, 100).map(minerId => ({ miner_id: minerId })) || []; 
+    return response?.members?.slice(0, 100).map(minerId => ({ miner_id: minerId })) || [];
 }
 
-async function getMinerWeeklyLeaderboard(minerId) {
-    const response = await fetchJson(`${baseUrl}/leaderboard/miners/${minerId}/week`);
-    return response?.rank ?? 'N/Blk(W)';
+async function getWeeklyLeaderboard() {
+    const response = await fetchJson(`${baseUrl}/leaderboard/week`);
+    if (!response || !response.leaderboard) return {};
+
+    return response.leaderboard.reduce((acc, entry) => {
+        acc[entry.miner_id] = entry.rank;
+        return acc;
+    }, {});
 }
 
 async function getMinerStats(minerId) {
@@ -51,8 +56,6 @@ async function getMinerStats(minerId) {
         } 
         : { balance: 0, minedBlocks: 0, isOnline: false };
 }
-
-
 
 async function getTeamBalance(teamId) {
     const teamData = await fetchJson(`${baseUrl}/teams/${teamId}/account`);
@@ -86,7 +89,11 @@ async function fetchMinerData() {
     }
 
     try {
-        const miners = await getMinersByTeam(teamId);
+        const [miners, leaderboard] = await Promise.all([
+            getMinersByTeam(teamId),
+            getWeeklyLeaderboard()
+        ]);
+
         if (!miners.length) {
             updateUI([], await getTeamBalance(teamId));
             return;
@@ -95,19 +102,15 @@ async function fetchMinerData() {
         let minersData = [];
         for (let i = 0; i < miners.length; i += CONCURRENT_LIMIT) {
             const batch = miners.slice(i, i + CONCURRENT_LIMIT);
-            
-            const minerDataPromises = batch.map(async ({ miner_id }) => {
-                const [stats, rank] = await Promise.allSettled([
-                    getMinerStats(miner_id),
-                    getMinerWeeklyLeaderboard(miner_id)
-                ]);
 
+            const minerDataPromises = batch.map(async ({ miner_id }) => {
+                const stats = await getMinerStats(miner_id);
                 return {
                     miner_id,
-                    rank: rank.status === 'fulfilled' ? rank.value : 'N/A',
-                    minedBlocks: stats.status === 'fulfilled' ? stats.value.minedBlocks : 0,
-                    balance: stats.status === 'fulfilled' ? stats.value.balance : 0,
-                    isOnline: stats.status === 'fulfilled' ? stats.value.isOnline : false
+                    rank: leaderboard[miner_id] || 'N/A',
+                    minedBlocks: stats.minedBlocks || 0,
+                    balance: stats.balance || 0,
+                    isOnline: stats.isOnline
                 };
             });
 
@@ -133,19 +136,13 @@ async function fetchMinerData() {
 function updateUI(minersData, teamBalance = 0) {
     const tableBody = document.querySelector('#minersTable tbody');
     const totalBalanceRow = document.getElementById('totalBalanceRow');
-    const chartCanvas = document.getElementById('minerChart');
-    
-    if (!chartCanvas) {
-        console.error('Chart element not found');
-        return;
-    }
 
     const tableRows = minersData.map(({ miner_id, rank, minedBlocks, balance, isOnline }, index) => `
         <tr>
             <td>${index + 1}</td>
-            <td><a href="https://starch.one/miner/${miner_id}" target="_blank" style="text-decoration: none; color: #007BFF;">${miner_id}</a></td>
+            <td><a href="https://starch.one/miner/${miner_id}" target="_blank">${miner_id}</a></td>
             <td>${rank}</td>
-            <td>${minedBlocks > 0 ? minedBlocks : '0'}</td>
+            <td>${minedBlocks}</td>
             <td>${formatBalance(balance)}</td>
             <td style="color: ${isOnline ? 'green' : 'red'}; font-weight: bold;">${isOnline ? '🟢 Online' : '🔴 Offline'}</td>
         </tr>
@@ -153,18 +150,14 @@ function updateUI(minersData, teamBalance = 0) {
 
     tableBody.innerHTML = tableRows || `<tr><td colspan="6">🚫 No miners found.</td></tr>`;
 
-    const totalMinerBalance = minersData.reduce((sum, miner) => sum + miner.balance, 0);
-    const totalMinedBlocks = minersData.reduce((sum, miner) => sum + miner.minedBlocks, 0);
-    const totalBalance = totalMinerBalance + teamBalance;
+    const totalBalance = minersData.reduce((sum, miner) => sum + miner.balance, 0) + teamBalance;
 
     totalBalanceRow.innerHTML = `
         <td colspan="3"></td>
-        <td><strong>${totalMinedBlocks} Blocks</strong></td>
+        <td><strong>${minersData.reduce((sum, miner) => sum + miner.minedBlocks, 0)} Blocks</strong></td>
         <td><strong>${formatBalance(totalBalance)} $STRCH</strong></td>
         <td></td>
     `;
-
-    renderChart(minersData);
 }
 
 function renderChart(minersData) {

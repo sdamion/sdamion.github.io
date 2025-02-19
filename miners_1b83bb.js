@@ -36,23 +36,13 @@ async function getMinerWeeklyLeaderboard(minerId) {
 
 async function getMinerStats(minerId) {
     const account = await fetchJson(`${baseUrl}/miners/${minerId}/account`);
-    const attendanceData = await fetchJson(`${baseUrl}/miners/${minerId}/attendance`);
-
-    let isOnline = false;
-    if (attendanceData && attendanceData.attendance?.length > 0 && attendanceData.last_block_id) {
-        isOnline = attendanceData.attendance[0] === attendanceData.last_block_id;
-    }
-
     return account 
         ? { 
             balance: account.balance,  
             minedBlocks: Math.floor(account.blocks) || 0,
-            isOnline 
         } 
-        : { balance: 0, minedBlocks: 0, isOnline: false };
+        : { balance: 0, minedBlocks: 0};
 }
-
-
 
 async function getTeamBalance(teamId) {
     const teamData = await fetchJson(`${baseUrl}/teams/${teamId}/account`);
@@ -147,7 +137,6 @@ function updateUI(minersData, teamBalance = 0) {
             <td>${rank}</td>
             <td>${minedBlocks > 0 ? minedBlocks : '0'}</td>
             <td>${formatBalance(balance)}</td>
-            <td style="color: ${isOnline ? 'green' : 'red'}; font-weight: bold;">${isOnline ? '🟢 Online' : '🔴 Offline'}</td>
         </tr>
     `).join('');
 
