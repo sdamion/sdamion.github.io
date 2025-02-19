@@ -2,7 +2,7 @@ const baseUrl = 'https://api.starch.one';
 const teamId = '868C0C';
 const CACHE_KEY = '868C0C';
 const CACHE_EXPIRATION = 2 * 60 * 1000; // 2 minutes
-const CONCURRENT_LIMIT = 20; // Fetch 10 miners at a time
+const CONCURRENT_LIMIT = 50; // Fetch 10 miners at a time
 let minerChartInstance = null;
 
 async function fetchJson(url) {
