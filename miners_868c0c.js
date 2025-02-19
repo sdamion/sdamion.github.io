@@ -44,6 +44,11 @@ async function getMinerStats(minerId) {
         : { balance: 0, minedBlocks: 0 };
 }
 
+async function getTeamBalance(teamId) {
+    const teamData = await fetchJson(`${baseUrl}/teams/${teamId}/account`);
+    return teamData?.balance ?? 0;
+}
+
 const formatBalance = (balance) => 
     new Intl.NumberFormat('en-US', { style: 'decimal', minimumFractionDigits: 3, maximumFractionDigits: 3 }).format(balance / 1_000_000) + 'M';
 
@@ -62,29 +67,20 @@ function saveCache(data) {
     localStorage.setItem(CACHE_KEY, JSON.stringify({ timestamp: Date.now(), data }));
 }
 
-// 🔹 Fetch Miner Data in Parallel (10 at a Time)
 async function fetchMinerData() {
     const cachedData = loadCache();
     if (cachedData) {
         console.log("✅ Using cached data");
-        updateUI(cachedData);
+        updateUI(cachedData, await getTeamBalance(teamId));
         return;
     }
-
-    const tableBody = document.querySelector('#minersTable tbody');
-    const totalBalanceRow = document.getElementById('totalBalanceRow');
-    tableBody.innerHTML = `<tr><td colspan="5">⏳ Loading...</td></tr>`;
 
     try {
         const miners = await getMinersByTeam(teamId);
         if (!miners.length) {
-            tableBody.innerHTML = `<tr><td colspan="5">🚫 No miners found for this team.</td></tr>`;
-            totalBalanceRow.innerHTML = `<td colspan="5">🚫 No data available.</td>`;
-            renderChart([]);
+            updateUI([], await getTeamBalance(teamId));
             return;
         }
-
-        tableBody.innerHTML = '';
 
         let minersData = [];
         for (let i = 0; i < miners.length; i += CONCURRENT_LIMIT) {
@@ -114,19 +110,24 @@ async function fetchMinerData() {
             return rankA - rankB;
         });
 
+        const teamBalance = await getTeamBalance(teamId);
         saveCache(minersData);
-        updateUI(minersData);
+        updateUI(minersData, teamBalance);
     } catch (error) {
         console.error(`🚨 Error processing data for team ${teamId}:`, error);
-        tableBody.innerHTML = `<tr><td colspan="5">❌ Error loading data.</td></tr>`;
-        totalBalanceRow.innerHTML = `<td colspan="5">❌ Error calculating total balance.</td>`;
         displayError("Unexpected error occurred while fetching miner data.");
     }
 }
 
-function updateUI(minersData) {
+function updateUI(minersData, teamBalance = 0) {
     const tableBody = document.querySelector('#minersTable tbody');
     const totalBalanceRow = document.getElementById('totalBalanceRow');
+    const chartCanvas = document.getElementById('minerChart');
+    
+    if (!chartCanvas) {
+        console.error('Chart element not found');
+        return;
+    }
 
     const tableRows = minersData.map(({ miner_id, rank, minedBlocks, balance }, index) => `
         <tr>
@@ -142,17 +143,17 @@ function updateUI(minersData) {
 
     const totalMinerBalance = minersData.reduce((sum, miner) => sum + miner.balance, 0);
     const totalMinedBlocks = minersData.reduce((sum, miner) => sum + miner.minedBlocks, 0);
+    const totalBalance = totalMinerBalance + teamBalance;
 
     totalBalanceRow.innerHTML = `
         <td colspan="2"></td>
         <td></td>
         <td><strong>${totalMinedBlocks} Blocks</strong></td>
-        <td><strong>${formatBalance(totalMinerBalance)} $STRCH</strong></td>
+        <td><strong>${formatBalance(totalBalance)} $STRCH</strong></td>
     `;
 
-    renderChart(minersData);
+    renderChart(minersData)
 }
-
 function renderChart(minersData) {
     const canvas = document.getElementById('minerChart');
     if (!canvas) {
@@ -201,8 +202,6 @@ function renderChart(minersData) {
 
 document.getElementById('refreshButton')?.addEventListener('click', fetchMinerData);
 
-// Fetch miner data initially
 fetchMinerData();
 
-// Auto refresh every 2 minutes
 setInterval(fetchMinerData, 120000);
