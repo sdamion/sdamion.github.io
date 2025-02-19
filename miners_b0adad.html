@@ -28,6 +28,12 @@ header("Content-Security-Policy:
         <div id="totalBalanceRow"></div>
         <canvas id="minerChart"></canvas>
         <br>
+        <label for="teamSelector">Select Team:</label>
+        <select id="teamSelector"></select>
+        <input id="customTeamId" type="text">
+        <button id="refreshButton">Refresh</button>
+        <h1 id="teamName"></h1>
+        <p id="teamBalance"></p>
         <div class="table-container">
         <table id="minersTable">
             <thead>
@@ -39,7 +45,7 @@ header("Content-Security-Policy:
                     <th>$STRCH</th>
                 </tr>
             </thead>
-            <tbody></tbody>
+            <tbody id="minerTableBody"></tbody>
         </table>
         </div>
         <div class="refresh-time small-text">Last Updated: <span id="last-updated">Never</span></div>

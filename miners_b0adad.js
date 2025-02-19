@@ -1,8 +1,10 @@
 const baseUrl = 'https://api.starch.one';
-const teamId = 'B0ADAD';
-const CACHE_KEY = 'B0ADAD';
+const teams = {
+    'B0ADAD': 'TDSP01',
+    '868C0C': 'TDSP02'
+};
+let selectedTeamId = Object.keys(teams)[0];
 const CACHE_EXPIRATION = 2 * 60 * 1000; // 2 minutes
-const CONCURRENT_LIMIT = 20;
 let minerChartInstance = null;
 
 async function fetchJson(url) {
@@ -26,12 +28,12 @@ function displayError(message) {
 
 async function getMinersByTeam(teamId) {
     const response = await fetchJson(`${baseUrl}/teams/${teamId}/members`);
-    return response?.members?.slice(0, 100).map(minerId => ({ miner_id: minerId })) || []; 
+    return response?.members?.slice(0, 100).map(minerId => ({ miner_id: minerId })) || [];
 }
 
 async function getMinerWeeklyLeaderboard(minerId) {
     const response = await fetchJson(`${baseUrl}/leaderboard/miners/${minerId}/week`);
-    return response?.rank ?? 'N/Blk(W)';
+    return response?.rank ?? 'N/A';
 }
 
 async function getMinerStats(minerId) {
@@ -41,7 +43,7 @@ async function getMinerStats(minerId) {
             balance: account.balance,  
             minedBlocks: Math.floor(account.blocks) || 0,
         } 
-        : { balance: 0, minedBlocks: 0};
+        : { balance: 0, minedBlocks: 0 };
 }
 
 async function getTeamBalance(teamId) {
@@ -53,7 +55,7 @@ const formatBalance = (balance) =>
     new Intl.NumberFormat('en-US', { style: 'decimal', minimumFractionDigits: 3, maximumFractionDigits: 3 }).format(balance / 1_000_000) + 'M';
 
 function loadCache() {
-    const cachedData = localStorage.getItem(CACHE_KEY);
+    const cachedData = localStorage.getItem(selectedTeamId);
     if (cachedData) {
         const { timestamp, data } = JSON.parse(cachedData);
         if (Date.now() - timestamp < CACHE_EXPIRATION) {
@@ -64,96 +66,109 @@ function loadCache() {
 }
 
 function saveCache(data) {
-    localStorage.setItem(CACHE_KEY, JSON.stringify({ timestamp: Date.now(), data }));
+    localStorage.setItem(selectedTeamId, JSON.stringify({ timestamp: Date.now(), data }));
 }
 
 async function fetchMinerData() {
     const cachedData = loadCache();
     if (cachedData) {
         console.log("✅ Using cached data");
-        updateUI(cachedData, await getTeamBalance(teamId));
+        updateUI(cachedData, await getTeamBalance(selectedTeamId));
         return;
     }
 
     try {
-        const miners = await getMinersByTeam(teamId);
+        const miners = await getMinersByTeam(selectedTeamId);
         if (!miners.length) {
-            updateUI([], await getTeamBalance(teamId));
+            updateUI([], await getTeamBalance(selectedTeamId));
             return;
         }
 
-        let minersData = [];
-        for (let i = 0; i < miners.length; i += CONCURRENT_LIMIT) {
-            const batch = miners.slice(i, i + CONCURRENT_LIMIT);
-            
-            const minerDataPromises = batch.map(async ({ miner_id }) => {
-                const [stats, rank] = await Promise.allSettled([
-                    getMinerStats(miner_id),
-                    getMinerWeeklyLeaderboard(miner_id)
-                ]);
+        // Fetch all miner data concurrently
+        const minerDataPromises = miners.map(async ({ miner_id }) => {
+            const [stats, rank] = await Promise.allSettled([
+                getMinerStats(miner_id),
+                getMinerWeeklyLeaderboard(miner_id)
+            ]);
 
-                return {
-                    miner_id,
-                    rank: rank.status === 'fulfilled' ? rank.value : 'N/A',
-                    minedBlocks: stats.status === 'fulfilled' ? stats.value.minedBlocks : 0,
-                    balance: stats.status === 'fulfilled' ? stats.value.balance : 0,
-                    isOnline: stats.status === 'fulfilled' ? stats.value.isOnline : false
-                };
-            });
+            return {
+                miner_id,
+                rank: rank.status === 'fulfilled' ? rank.value : 'N/A',
+                minedBlocks: stats.status === 'fulfilled' ? stats.value.minedBlocks : 0,
+                balance: stats.status === 'fulfilled' ? stats.value.balance : 0,
+            };
+        });
 
-            const batchResults = await Promise.all(minerDataPromises);
-            minersData.push(...batchResults);
-        }
+        const minersData = await Promise.all(minerDataPromises);
 
+        // Sort by rank (lowest first)
         minersData.sort((a, b) => {
             const rankA = isNaN(a.rank) ? Infinity : Number(a.rank);
             const rankB = isNaN(b.rank) ? Infinity : Number(b.rank);
             return rankA - rankB;
         });
 
-        const teamBalance = await getTeamBalance(teamId);
+        const teamBalance = await getTeamBalance(selectedTeamId);
         saveCache(minersData);
         updateUI(minersData, teamBalance);
     } catch (error) {
-        console.error(`🚨 Error processing data for team ${teamId}:`, error);
+        console.error(`🚨 Error processing data for team ${selectedTeamId}:`, error);
         displayError("Unexpected error occurred while fetching miner data.");
     }
 }
 
 function updateUI(minersData, teamBalance = 0) {
-    const tableBody = document.querySelector('#minersTable tbody');
-    const totalBalanceRow = document.getElementById('totalBalanceRow');
-    const chartCanvas = document.getElementById('minerChart');
-    
-    if (!chartCanvas) {
-        console.error('Chart element not found');
+    const teamNameElement = document.getElementById('teamName');
+    const balanceDisplay = document.getElementById('teamBalance');
+    const minerTableBody = document.getElementById('minerTableBody');
+
+    if (teamNameElement) {
+        teamNameElement.innerText = teams[selectedTeamId] || selectedTeamId;
+    } else {
+        console.error("🚨 Element with ID 'teamName' not found in the DOM.");
+    }
+
+    if (balanceDisplay) {
+        balanceDisplay.innerText = `Team Balance: ${formatBalance(teamBalance)}`;
+    } else {
+        console.error("🚨 Element with ID 'teamBalance' not found in the DOM.");
+    }
+
+    if (minerTableBody) {
+        minerTableBody.innerHTML = minersData.map(({ miner_id, rank, minedBlocks, balance }, index) =>
+            `<tr>
+                <td>${index + 1}</td>
+                <td><a href="https://starch.one/miner/${miner_id}" target="_blank" style="text-decoration: none; color: #007BFF;">${miner_id}</a></td>
+                <td>${rank}</td>
+                <td>${minedBlocks}</td>
+                <td>${formatBalance(balance)}</td>
+            </tr>`
+        ).join('');
+    } else {
+        console.error("🚨 Element with ID 'minerTableBody' not found in the DOM.");
+    }
+
+    renderChart(minersData);
+}
+function populateTeamSelector() {
+    const teamSelector = document.getElementById('teamSelector');
+    if (!teamSelector) {
+        console.error("🚨 Element with ID 'teamSelector' not found in the DOM.");
         return;
     }
 
-    const tableRows = minersData.map(({ miner_id, rank, minedBlocks, balance, isOnline }, index) => `
-        <tr>
-            <td>${index + 1}</td>
-            <td><a href="https://starch.one/miner/${miner_id}" target="_blank" style="text-decoration: none; color: #007BFF;">${miner_id}</a></td>
-            <td>${rank}</td>
-            <td>${minedBlocks > 0 ? minedBlocks : '0'}</td>
-            <td>${formatBalance(balance)}</td>
-        </tr>
-    `).join('');
+    teamSelector.innerHTML = Object.entries(teams).map(([teamId, teamName]) => 
+        `<option value="${teamId}">${teamName} (${teamId})</option>`
+    ).join('');
 
-    tableBody.innerHTML = tableRows || `<tr><td colspan="6">🚫 No miners found.</td></tr>`;
+    // Set default selection
+    teamSelector.value = selectedTeamId;
 
-    const totalMinerBalance = minersData.reduce((sum, miner) => sum + miner.balance, 0);
-    const totalMinedBlocks = minersData.reduce((sum, miner) => sum + miner.minedBlocks, 0);
-    const totalBalance = totalMinerBalance + teamBalance;
-
-    totalBalanceRow.innerHTML = `
-        <td colspan="3"></td>
-        <td><strong>${totalMinedBlocks} Blocks</strong></td>
-        <td><strong>${formatBalance(totalBalance)} $STRCH</strong></td>
-        <td></td>
-    `;
-
-    renderChart(minersData);
+    // Trigger data fetch when selection changes
+    teamSelector.addEventListener('change', (event) => {
+        selectedTeamId = event.target.value;
+        fetchMinerData();
+    });
 }
 
 function renderChart(minersData) {
@@ -169,6 +184,7 @@ function renderChart(minersData) {
     }
 
     if (!minersData.length) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.font = '16px Arial';
         ctx.textAlign = "center";
         ctx.fillText('No Data Available', canvas.width / 2, canvas.height / 2);
@@ -202,7 +218,30 @@ function renderChart(minersData) {
     });
 }
 
-document.getElementById('refreshButton')?.addEventListener('click', fetchMinerData);
+// Event listeners
+document.addEventListener("DOMContentLoaded", () => {
+    populateTeamSelector(); // Load teams into the dropdown
 
-fetchMinerData();
-setInterval(fetchMinerData, 120000);
+    const customTeamId = document.getElementById('customTeamId');
+    const refreshButton = document.getElementById('refreshButton');
+
+    if (customTeamId) {
+        customTeamId.addEventListener('input', (event) => {
+            event.target.value = event.target.value.toUpperCase(); // Convert to uppercase
+        });
+
+        customTeamId.addEventListener('change', (event) => {
+            selectedTeamId = event.target.value.toUpperCase(); // Ensure uppercase when selected
+            fetchMinerData();
+        });
+    }
+
+    if (refreshButton) {
+        refreshButton.addEventListener('click', fetchMinerData);
+    }
+
+    fetchMinerData();
+    setInterval(fetchMinerData, 120000);
+});
+
+
