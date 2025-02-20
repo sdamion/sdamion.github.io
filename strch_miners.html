@@ -16,18 +16,24 @@ header("Content-Security-Policy:
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Dutch Stake Pool | Starch Mining Stats TDSP 02</title>
+    <title>The Dutch Stake Pool | Starch Mining Stats TDSP 01</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="icon" type="image/webp" sizes="192x192" href="tdsp_logo_ico.webp">
 </head>
 <body>
-    <script src="miners_868c0c.js" nonce="<?php echo $nonce; ?>" defer></script>
+    <script src="strch_miners.js" nonce="<?php echo $nonce; ?>" defer></script>
     <script src="chart.js"></script>
     <main class="container">
-        <h1><a href="miners_b0adad.html" rel="noopener noreferrer" aria-label="Miners TDSP01"><</a> TDSP02 Miner stats</h1>
+        <h1 id="teamName"></id></h1>
         <div id="totalBalanceRow"></div>
         <canvas id="minerChart"></canvas>
         <br>
+        <label for="teamSelector">Select Team:</label>
+        <select id="teamSelector"></select>
+        <!-- <input id="customTeamId" type="text"> -->
+        <button id="refreshButton">Refresh</button>
+        <h1 id="teamName"></h1>
+        <p id="teamBalance"></p>
         <div class="table-container">
         <table id="minersTable">
             <thead>
@@ -39,9 +45,7 @@ header("Content-Security-Policy:
                     <th>$STRCH</th>
                 </tr>
             </thead>
-            <tbody></tbody>
-            <tfoot>
-            </tfoot>
+            <tbody id="minerTableBody"></tbody>
         </table>
         </div>
         <div class="refresh-time small-text">Last Updated: <span id="last-updated">Never</span></div>
