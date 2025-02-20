@@ -21,7 +21,7 @@ header("Content-Security-Policy:
     <link rel="icon" type="image/webp" sizes="192x192" href="tdsp_logo_ico.webp">
 </head>
 <body>
-    <script src="strch_miners.js" nonce="<?php echo $nonce; ?>" defer></script>
+    <script src="strchold.js" nonce="<?php echo $nonce; ?>" defer></script>
     <script src="chart.js"></script>
     <main class="container">
         <h1 id="teamName"></id></h1>
@@ -34,6 +34,7 @@ header("Content-Security-Policy:
         <button id="refreshButton">Refresh</button>
         <h1 id="teamName"></h1>
         <p id="teamBalance"></p>
+        <p id="weeklyBlocks"></p>
         <div class="table-container">
         <table id="minersTable">
             <thead>
