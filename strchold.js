@@ -35,22 +35,17 @@ function displayError(message) {
 
 async function getMinersByTeam(teamId) {
     const response = await fetchJson(`${baseUrl}/teams/${teamId}/members`);
-    return response?.members?.slice(0, 100).map(minerId => ({ miner_id: minerId })) || [];
-}
-
-async function getMinerStats(minerId) {
-    const response = await fetchJson(`${baseUrl}/miners/${minerId}/account`);
-    return response ? { balance: response.balance } : { balance: 0 };
-}
-
-async function getMinerWeeklyData(minerId) {
-    const response = await fetchJson(`${baseUrl}/leaderboard/miners/${minerId}/week`);
-    return response ? { rank: response.rank ?? 'N/A', blocks: response.blocks ?? 0 } : { rank: 'N/A', blocks: 0 };
+    return response?.members?.slice(0, 100) || [];
 }
 
 async function getTeamBalance(teamId) {
     const response = await fetchJson(`${baseUrl}/teams/${teamId}/account`);
     return response?.balance ?? 0;
+}
+
+async function getWeeklyLeaderboard() {
+    const response = await fetchJson(`${baseUrl}/leaderboard/week`);
+    return response?.miners ?? [];
 }
 
 const formatBalance = (balance) => 
@@ -82,29 +77,30 @@ async function fetchMinerData() {
     }
 
     try {
-        const miners = await getMinersByTeam(selectedTeamId);
+        const [miners, leaderboardData] = await Promise.all([
+            getMinersByTeam(selectedTeamId),
+            getWeeklyLeaderboard()
+        ]);
+
         if (!miners.length) {
             const teamBalance = await getTeamBalance(selectedTeamId);
             updateUI([], teamBalance, 0);
             return;
         }
 
-        // Fetch all miner data concurrently
-        const minerDataPromises = miners.map(async ({ miner_id }) => {
-            const [stats, weeklyData] = await Promise.allSettled([
-                getMinerStats(miner_id),
-                getMinerWeeklyData(miner_id)
-            ]);
-
-            return {
-                miner_id,
-                rank: weeklyData.status === 'fulfilled' ? weeklyData.value.rank : 'N/A',
-                balance: stats.status === 'fulfilled' ? stats.value.balance : 0,
-                weeklyBlocks: weeklyData.status === 'fulfilled' ? weeklyData.value.blocks : 0
-            };
+        // Create a lookup table for miner stats from leaderboard data
+        const leaderboardMap = {};
+        leaderboardData.forEach(({ miner_id, rank, balance, blocks }) => {
+            leaderboardMap[miner_id] = { rank, balance, blocks };
         });
 
-        const minersData = await Promise.all(minerDataPromises);
+        // Process miner data
+        const minersData = miners.map(miner_id => ({
+            miner_id,
+            rank: leaderboardMap[miner_id]?.rank ?? 'N/A',
+            balance: leaderboardMap[miner_id]?.balance ?? 0,
+            weeklyBlocks: leaderboardMap[miner_id]?.blocks ?? 0
+        }));
 
         // Sort by rank (lowest first)
         minersData.sort((a, b) => {
@@ -196,6 +192,7 @@ function renderChart(minersData) {
 
 document.addEventListener("DOMContentLoaded", () => {
     populateTeamSelector();
+    addCustomTeamInput();
     fetchMinerData();
     setInterval(fetchMinerData, 120000);
 });

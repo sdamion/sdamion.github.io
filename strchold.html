@@ -1,16 +1,20 @@
 <?php
 // Set CSP before any HTML output
 $nonce = base64_encode(random_bytes(16));
-header("Content-Security-Policy: 
-    default-src 'self'; 
-    script-src 'self' 'nonce-$nonce' https://api.starch.one; 
-    connect-src 'self' https://api.starch.one; 
-    img-src 'self' data: https://api.starch.one; 
-    style-src 'self' 'nonce-$nonce' https://fonts.googleapis.com; 
-    font-src 'self' https://fonts.gstatic.com; 
-    frame-src 'self';
-");
+
+header("Content-Security-Policy: "
+    . "default-src 'self'; "
+    . "script-src 'self' 'nonce-$nonce' https://api.starch.one https://cdn.jsdelivr.net; "
+    . "connect-src 'self' https://api.starch.one; "
+    . "img-src 'self' data: https://api.starch.one; "
+    . "style-src 'self' 'nonce-$nonce' https://fonts.googleapis.com; "
+    . "font-src 'self' https://fonts.gstatic.com; "
+    . "frame-src 'self';"
+);
+  
+header("Cache-Control: max-age=120, must-revalidate");
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -31,8 +35,8 @@ header("Content-Security-Policy:
         <label for="teamSelector">Select Team:</label>
         <select id="teamSelector"></select>
         <!-- <input id="customTeamId" type="text"> -->
+        <!-- <button id="searchTeamButton">Search</button> -->
         <button id="refreshButton">Refresh</button>
-        <h1 id="teamName"></h1>
         <p id="teamBalance"></p>
         <p id="weeklyBlocks"></p>
         <div class="table-container">
@@ -41,7 +45,7 @@ header("Content-Security-Policy:
                 <tr>
                     <th>#</th>
                     <th>Miner</th>
-                    <th>Rank(Weekly)</th>
+                    <th>Rank</th>
                     <th>Blocks</th>
                     <th>$STRCH</th>
                 </tr>
