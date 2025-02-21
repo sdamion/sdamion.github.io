@@ -48,6 +48,11 @@ async function getWeeklyLeaderboard() {
     return response?.miners ?? [];
 }
 
+async function getMinerBalance(minerId) {
+    const response = await fetchJson(`${baseUrl}/miners/${minerId}/account`);
+    return response?.balance ?? 0;
+}
+
 const formatBalance = (balance) => 
     new Intl.NumberFormat('en-US', { style: 'decimal', minimumFractionDigits: 3, maximumFractionDigits: 3 }).format(balance / 1_000_000) + 'M';
 
@@ -88,18 +93,21 @@ async function fetchMinerData() {
             return;
         }
 
-        // Create a lookup table for miner stats from leaderboard data
-        const leaderboardMap = {};
-        leaderboardData.forEach(({ miner_id, rank, balance, blocks }) => {
-            leaderboardMap[miner_id] = { rank, balance, blocks };
-        });
+        const leaderboardMap = new Map(
+            leaderboardData.map(({ miner_id, rank, balance, blocks }) => 
+                [miner_id, { rank, balance, blocks }]
+            )
+        );
+
+        // Fetch balances in parallel for all miners
+        const minerBalances = await Promise.all(miners.map(miner_id => getMinerBalance(miner_id)));
 
         // Process miner data
-        const minersData = miners.map(miner_id => ({
+        const minersData = miners.map((miner_id, index) => ({
             miner_id,
-            rank: leaderboardMap[miner_id]?.rank ?? 'N/A',
-            balance: leaderboardMap[miner_id]?.balance ?? 0,
-            weeklyBlocks: leaderboardMap[miner_id]?.blocks ?? 0
+            rank: leaderboardMap.get(miner_id)?.rank ?? 'N/A',
+            balance: Number(minerBalances[index]) || 0,
+            weeklyBlocks: leaderboardMap.get(miner_id)?.blocks ?? 0
         }));
 
         // Sort by rank (lowest first)
@@ -137,10 +145,10 @@ function updateUI(minersData, teamBalance = 0, totalWeeklyBlocks = 0) {
                 <td><a href="https://starch.one/miner/${miner_id}" target="_blank" style="text-decoration: none; color: #007BFF;">${miner_id}</a></td>
                 <td>${rank}</td>
                 <td>${weeklyBlocks}</td>
-                <td>${formatBalance(balance)}</td>
+                <td>${balance ? formatBalance(balance) : '0.000M'}</td>
             </tr>`
         ).join('');
-    }
+    }    
 
     renderChart(minersData);
 }
