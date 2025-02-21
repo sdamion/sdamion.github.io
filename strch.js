@@ -127,7 +127,7 @@ function updateUI(minersData, teamBalance = 0, totalWeeklyBlocks = 0) {
     const minerTableBody = document.getElementById('minerTableBody');
 
     if (teamNameElement) teamNameElement.innerText = teams[selectedTeamId] || selectedTeamId;
-    if (balanceDisplay) balanceDisplay.innerText = `Team Balance: ${formatBalance(teamBalance)}`;
+    if (balanceDisplay) balanceDisplay.innerText = `Company Balance: ${formatBalance(teamBalance)}`;
     if (weeklyBlocksDisplay) weeklyBlocksDisplay.innerText = `Weekly Blocks: ${totalWeeklyBlocks}`;
 
     if (minerTableBody) {
@@ -192,7 +192,7 @@ function renderChart(minersData) {
         data: {
             labels: minersData.map(({ miner_id }) => miner_id),
             datasets: [{
-                label: 'Mined Blocks (24h)',
+                label: 'Mined Blocks (Week)',
                 data: minersData.map(({ weeklyBlocks }) => weeklyBlocks),
                 backgroundColor: 'rgba(255, 215, 0, 0.8)',
                 borderColor: 'rgba(255, 215, 0, 1)',
