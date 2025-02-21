@@ -195,6 +195,10 @@ function renderChart(minersData) {
         return;
     }
 
+    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+    gradient.addColorStop(0, 'rgba(255, 215, 0, 1)');
+    gradient.addColorStop(1, 'rgba(255, 200, 0, 1)');
+
     minerChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
@@ -202,10 +206,26 @@ function renderChart(minersData) {
             datasets: [{
                 label: 'Mined Blocks (Week)',
                 data: minersData.map(({ weeklyBlocks }) => weeklyBlocks),
-                backgroundColor: 'rgba(255, 215, 0, 0.8)',
+                backgroundColor: gradient,
                 borderColor: 'rgba(255, 215, 0, 1)',
-                borderWidth: 1
+                borderWidth: 2,
+                borderRadius: 5,
+                hoverBackgroundColor: 'rgba(255, 140, 0, 0.8)',
+                hoverBorderColor: 'rgba(255, 140, 0, 1)',
+                barThickness: 20
             }]
+        },
+        options: {
+            plugins: {
+                legend: { display: true }
+            },
+            scales: {
+                y: { beginAtZero: true }
+            },
+            animation: {
+                duration: 1000,
+                easing: 'easeInOutBounce'
+            }
         }
     });
 }
