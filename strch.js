@@ -160,6 +160,18 @@ function populateTeamSelector() {
     });
 }
 
+function addCustomTeamInput() {
+    const customTeamInput = document.getElementById('customTeamId');
+    if (!customTeamInput) return;
+
+    customTeamInput.addEventListener('keypress', (event) => {
+        if (event.key === 'Enter' && customTeamInput.value.trim() !== '') {
+            selectedTeamId = customTeamInput.value.trim().toUpperCase();
+            fetchMinerData();
+        }
+    });
+}
+
 function renderChart(minersData) {
     const canvas = document.getElementById('minerChart');
     if (!canvas) return;
