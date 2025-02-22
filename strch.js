@@ -35,7 +35,7 @@ function displayError(message) {
 
 async function getMinersByTeam(teamId) {
     const response = await fetchJson(`${baseUrl}/teams/${teamId}/members`);
-    return response?.members?.slice(0, 100) || [];
+    return response?.members?.slice(0, 200) || [];
 }
 
 async function getTeamBalance(teamId) {
