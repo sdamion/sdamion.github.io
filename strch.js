@@ -174,11 +174,19 @@ function addCustomTeamInput() {
 
     customTeamInput.addEventListener('keypress', (event) => {
         if (event.key === 'Enter' && customTeamInput.value.trim() !== '') {
-            selectedTeamId = customTeamInput.value.trim().toUpperCase();
-            fetchMinerData();
+            const customTeamId = customTeamInput.value.trim().toUpperCase();
+
+            // Validate if it's a valid 6-character hex color code
+            if (/^[0-9A-F]{6}$/i.test(customTeamId)) {
+                selectedTeamId = customTeamId;
+                fetchMinerData();
+            } else {
+                displayError("Invalid Team ID! Must be a 6-character HEX code.");
+            }
         }
     });
 }
+
 
 function renderChart(minersData) {
     const canvas = document.getElementById('minerChart');
@@ -195,9 +203,13 @@ function renderChart(minersData) {
         return;
     }
 
+    // Extract color from team ID and generate hover color (darker shade)
+    const baseColor = `#${selectedTeamId}`;
+    const hoverColor = shadeColor(baseColor, -20); // Darken color by 20%
+
     const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-    gradient.addColorStop(0, 'rgba(255, 215, 0, 1)');
-    gradient.addColorStop(1, 'rgba(255, 200, 0, 1)');
+    gradient.addColorStop(0, baseColor);
+    gradient.addColorStop(1, hoverColor);
 
     minerChartInstance = new Chart(ctx, {
         type: 'bar',
@@ -207,11 +219,11 @@ function renderChart(minersData) {
                 label: 'Mined Blocks (Week)',
                 data: minersData.map(({ weeklyBlocks }) => weeklyBlocks),
                 backgroundColor: gradient,
-                borderColor: 'rgba(255, 215, 0, 1)',
+                borderColor: baseColor,
                 borderWidth: 2,
                 borderRadius: 5,
-                hoverBackgroundColor: 'rgba(255, 140, 0, 0.8)',
-                hoverBorderColor: 'rgba(255, 140, 0, 1)',
+                hoverBackgroundColor: hoverColor,
+                hoverBorderColor: baseColor,
                 barThickness: 20
             }]
         },
@@ -228,6 +240,19 @@ function renderChart(minersData) {
             }
         }
     });
+}
+
+// Helper function to darken or lighten a hex color
+function shadeColor(color, percent) {
+    let R = parseInt(color.substring(1, 3), 16);
+    let G = parseInt(color.substring(3, 5), 16);
+    let B = parseInt(color.substring(5, 7), 16);
+
+    R = Math.min(255, Math.max(0, R + percent * 2.55));
+    G = Math.min(255, Math.max(0, G + percent * 2.55));
+    B = Math.min(255, Math.max(0, B + percent * 2.55));
+
+    return `rgb(${Math.round(R)}, ${Math.round(G)}, ${Math.round(B)})`;
 }
 
 document.addEventListener("DOMContentLoaded", () => {
