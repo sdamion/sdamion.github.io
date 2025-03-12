@@ -1,0 +1,93 @@
+<?php
+// Set CSP before any HTML output
+$nonce = base64_encode(random_bytes(16));
+
+header("Content-Security-Policy: "
+    . "default-src 'self'; "
+    . "script-src 'self' 'nonce-$nonce' https://api.starch.one https://cdn.jsdelivr.net; "
+    . "connect-src 'self' https://api.starch.one; "
+    . "img-src 'self' data: https://api.starch.one; "
+    . "style-src 'self' 'nonce-$nonce' https://fonts.googleapis.com; "
+    . "font-src 'self' https://fonts.gstatic.com; "
+    . "frame-src 'self';"
+);
+  
+header("Cache-Control: max-age=120, must-revalidate");
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Dutch Stake Pool | Starch Mining Stats TDSP 01</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/webp" sizes="192x192" href="tdsp_logo_ico.webp">
+</head>
+<body>
+
+
+    <br>
+    <div class="links">
+        <table>
+            <tr>
+                <td>
+                    <a href="index.html" rel="noopener noreferrer" aria-label="The Dutch Stake Pool - Home">
+                        <img src="tdsp_logo.webp"
+                            alt="The Dutch Stake Pool Logo - Reliable Bare-Metal Low-Fee Stake Pool"
+                            class="hover-effect">
+                </td>
+                <td>
+                    <a href="about.html" rel="noopener noreferrer" aria-label="About The Dutch Stake Pool">
+                        <img src="about_logo.webp"
+                            alt="The Dutch Stake Pool Logo - Reliable Bare-Metal Low-Fee Stake Pool">
+                </td>
+                <td>
+                    <a href="poolstats.html" rel="noopener noreferrer" aria-label="Pool Stats">
+                        <img src="stats_ico.webp" alt="The Dutch Stake Pool - Statistics" class="hover-effect">
+                    </a>
+                </td>
+                <td>
+                    <a href="https://tool.jamonbread.io/delegate/pool1ksye6zwlzaytspldngc3966aj79zkjvmkykydu2txay75c0krfp"
+                        target="_blank" rel="noopener noreferrer" aria-label="Stake Now">
+                        <img src="stakebutton_ico.webp" alt="Join The Dutch Stake Pool - Stake with us"
+                            class="hover-effect">
+                    </a>
+                </td>
+                <td>
+                    <a href="https://app.iagon.com/" target="_blank" rel="noopener noreferrer"
+                        aria-label="Stake to Iagon Node">
+                        <img src="iagonLogoLight.webp" alt="Join The Iagon Node" class="hover-effect">
+                    </a>
+                </td>
+                <td>
+                    <a href="https://xerberus.io/" target="_blank" rel="noopener noreferrer" aria-label="Xerberus.io">
+                        <img src="Xer_Logo.webp" alt="Xerberus.io" class="hover-effect">
+                    </a>
+                </td>
+                <td>
+                    <a href="https://cornucopias.io/" target="_blank" rel="noopener noreferrer" aria-label="Cornucopias.io">
+                        <img src="copi_logo.webp" alt="Cornucopias.io" class="hover-effect">
+                    </a>
+                </td>
+                <td>
+                    <a href="https://blockfrost.io/" target="_blank" rel="noopener noreferrer" aria-label="Blockfrost.io">
+                        <img src="Icebreaker_logo.webp" alt="Blockfrost.io" class="hover-effect">
+                    </a>
+                </td>
+                <td>
+                    <a href="https://twitter.com/DamionDutch" target="_blank" rel="noopener noreferrer"
+                        aria-label="Follow The Dutch Stake Pool on Twitter">
+                        <img src="X-logo_ico.webp" alt="Follow The Dutch Stake Pool on Twitter"
+                            class="hover-effect">
+                    </a>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <footer>
+        &copy; 2025 The Dutch Stake Pool. All rights reserved.
+    </footer>
+</main>
+</body>
+</html>

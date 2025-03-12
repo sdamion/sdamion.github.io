@@ -1,0 +1,91 @@
+{
+  "@context": {
+    "@language": "en-us",
+    "CIP100": "https://github.com/cardano-foundation/CIPs/blob/master/CIP-0100/README.md#",
+    "CIP119": "https://github.com/cardano-foundation/CIPs/blob/master/CIP-0119/README.md#",
+    "hashAlgorithm": "CIP100:hashAlgorithm",
+    "body": {
+      "@id": "CIP119:body",
+      "@context": {
+        "references": {
+          "@id": "CIP119:references",
+          "@container": "@set",
+          "@context": {
+            "GovernanceMetadata": "CIP100:GovernanceMetadataReference",
+            "Identity": "CIP119:IdentityReference",
+            "Link": "CIP119:LinkReference",
+            "Other": "CIP100:OtherReference",
+            "label": "CIP100:reference-label",
+            "uri": "CIP100:reference-uri",
+            "referenceHash": {
+              "@id": "CIP119:referenceHash",
+              "@context": {
+                "hashDigest": "CIP119:hashDigest",
+                "hashAlgorithm": "CIP100:hashAlgorithm"
+              }
+            }
+          }
+        },
+        "paymentAddress": "CIP119:paymentAddress",
+        "givenName": "CIP119:givenName",
+        "image": {
+          "@id": "CIP119:image",
+          "@context": {
+            "ImageObject": "https://schema.org/ImageObject",
+            "contentUrl": "CIP119:contentUrl",
+            "sha256": "CIP119:sha256"
+          }
+        },
+        "objectives": "CIP119:objectives",
+        "motivations": "CIP119:motivations",
+        "qualifications": "CIP119:qualifications",
+        "doNotList": "CIP119:doNotList"
+      }
+    },
+    "authors": {
+      "@id": "CIP100:authors",
+      "@container": "@set",
+      "@context": {
+        "name": "http://xmlns.com/foaf/0.1/name",
+        "witness": {
+          "@id": "CIP100:witness",
+          "@context": {
+            "witnessAlgorithm": "CIP100:witnessAlgorithm",
+            "publicKey": "CIP100:publicKey",
+            "signature": "CIP100:signature"
+          }
+        }
+      }
+    }
+  },
+  "hashAlgorithm": "blake2b-256",
+  "body": {
+    "givenName": "damiondutch",
+    "image": {
+      "@type": "ImageObject",
+      "contentUrl": "https://www.thedutchstakepool.com/tdsp_logo.webp",
+      "sha256": "de453f024eea48c45a5f2eab80ac24f97303fe4aa2a0dafcb9e2b80dfa189533"
+    },
+    "motivations": "My vote is my word.",
+    "objectives": "Make Cardano great again and again and again",
+    "paymentAddress": "addr1qxmwedpnmh76mkxa9y86mdaqgdvgv24jdq89x4kd7hhcprya9qy3wd9d4acz982sauru8jvmsm90ek7eq87483q8j99qs4zsas",
+    "qualifications": "With 20 years of experience as an IT consultant, I have specialized as a DevOps engineer, focusing on building and maintaining robust IT infrastructures. In the blockchain space, I bring extensive experience, having successfully managed a mining farm with 22 GPUs dedicated to Ethereum mining. ",
+    "references": [
+      {
+        "@type": "Link",
+        "label": "Stake pool",
+        "uri": "https://www.thedutchstakepool.com/about.html"
+      },
+      {
+        "@type": "Link",
+        "label": "X",
+        "uri": "https://x.com/DamionDutch"
+      },
+      {
+        "@type": "Identity",
+        "label": "Linkedin",
+        "uri": "https://www.linkedin.com/in/damionseedorf"
+      }
+    ]
+  }
+}
