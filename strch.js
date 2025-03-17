@@ -1,7 +1,7 @@
 const baseUrl = 'https://api.starch.one';
 const teams = {
-    '868C0C': 'TDSP02',
     'B0ADAD': 'TDSP01',
+    '868C0C': 'TDSP02',
     '1B83BB': 'StarchWhale'
 };
 let selectedTeamId = Object.keys(teams)[0];
