@@ -33,10 +33,10 @@ async function fetchPerformanceData() {
         const performanceData = await response.json();
         if (!performanceData.success) throw new Error("Invalid performance history response");
 
-        // Get last 7 days of data
+        // Get last 14 days of data
         const today = new Date();
         const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(today.getDate() - 7);
+        sevenDaysAgo.setDate(today.getDate() - 14);
 
         const lastWeekData = performanceData.data
             .filter(entry => new Date(entry.date) >= sevenDaysAgo)
@@ -72,7 +72,7 @@ function updateChart(dates, scores) {
         data: {
             labels: dates,
             datasets: [{
-                label: 'Performance Score (Last 7 Days)',
+                label: 'Performance Score',
                 data: scores,
                 backgroundColor: barColors,
                 borderColor: 'rgba(0, 0, 0, 0.5)',
