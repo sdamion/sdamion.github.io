@@ -76,7 +76,7 @@ p {
 /* Images */
 img {
     width: 100%;
-    max-width: 600px;
+    max-width: 450px;
     height: auto;
 }
 
@@ -128,7 +128,7 @@ th {
 }
 
 .links a img {
-    width: 75px;
+    width: 40px;
     height: auto;
     transition: all 0.3s ease-in-out;
 }
