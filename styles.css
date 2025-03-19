@@ -116,7 +116,7 @@ th {
 }
 
 .online {
-    color: green;
+    color: rgb(155, 89, 182);
     font-weight: bold;
 }
 .offline {
