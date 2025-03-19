@@ -61,43 +61,43 @@ function updateChart(dates, scores) {
     }
 
     // Set color dynamically based on score
-    const barColors = scores.map(score => {
-        if (score >= 65) return 'rgba(0, 200, 0, 0.7)';  // Green
-        if (score >= 40) return 'rgba(255, 200, 0, 0.7)'; // Yellow
-        return 'rgba(255, 0, 0, 0.7)'; // Red
-    });
+const barColors = scores.map((score, index) => {
+        const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+        gradient.addColorStop(0, 'rgba(34, 167, 240, 0.7)'); // Light Blue
+        gradient.addColorStop(1, 'rgba(155, 89, 182, 0.7)'); // Purple
+        return gradient;
+    
+});
 
-    new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: dates,
-            datasets: [{
-                label: 'Performance Score',
-                data: scores,
-                backgroundColor: barColors,
-                borderColor: 'rgba(0, 0, 0, 0.5)',
-                borderWidth: 2,
-                borderRadius: 5,
-                hoverBorderColor: 'black',
-                barThickness: 20
-            }]
+new Chart(ctx, {
+    type: 'bar',
+    data: {
+        labels: dates,
+        datasets: [{
+            label: 'Performance Score',
+            data: scores,
+            backgroundColor: barColors,
+            borderWidth: 0,
+            borderRadius: 5,
+            hoverBorderColor: 'black',
+            barThickness: 20
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: { display: true }
         },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: { display: true }
-            },
-            scales: {
-                y: { beginAtZero: true, max: 100 }
-            },
-            animation: {
-                duration: 1000,
-                easing: 'easeInOutBounce'
-            }
+        scales: {
+            y: { beginAtZero: true, max: 80 }
+        },
+        animation: {
+            duration: 1000,
+            easing: 'easeInOutBounce'
         }
-    });
+    }
+});
 }
-
 // Initial Data Fetch
 fetchData();
 fetchPerformanceData();
