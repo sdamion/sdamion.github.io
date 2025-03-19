@@ -33,10 +33,10 @@ async function fetchPerformanceData() {
         const performanceData = await response.json();
         if (!performanceData.success) throw new Error("Invalid performance history response");
 
-        // Get last 14 days of data
+        // Get last 7 days of data
         const today = new Date();
         const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(today.getDate() - 14);
+        sevenDaysAgo.setDate(today.getDate() - 8);
 
         const lastWeekData = performanceData.data
             .filter(entry => new Date(entry.date) >= sevenDaysAgo)
