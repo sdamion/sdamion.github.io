@@ -1,6 +1,6 @@
 async function fetchData() {
     try {
-        const response = await fetch('http://87.215.225.164:5000/api/resource/6738f8cddce9fe405732f092');
+        const response = await fetch('https://www.tdsp.online/api/resource/6738f8cddce9fe405732f092');
         if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
 
         const data = await response.json();
@@ -27,7 +27,7 @@ async function fetchData() {
 
 async function fetchPerformanceData() {
     try {
-        const response = await fetch('http://87.215.225.164:5000/api/resource/6738f8cddce9fe405732f092/performance/history');
+        const response = await fetch('https://www.tdsp.online/api/resource/6738f8cddce9fe405732f092/performance/history');
         if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
 
         const performanceData = await response.json();
