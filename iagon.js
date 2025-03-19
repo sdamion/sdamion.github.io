@@ -62,7 +62,7 @@ function updateChart(dates, scores) {
 
     // Set color dynamically based on score
 const barColors = scores.map((score, index) => {
-        const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+        const gradient = ctx.createLinearGradient(30, 30, 30, 300);
         gradient.addColorStop(0, 'rgba(34, 167, 240, 0.7)'); // Light Blue
         gradient.addColorStop(1, 'rgba(155, 89, 182, 0.7)'); // Purple
         return gradient;
