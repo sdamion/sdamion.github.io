@@ -1,13 +1,5 @@
 <?php
-// Set CSP before any HTML output
-$nonce = base64_encode(random_bytes(16));
-header("Content-Security-Policy: 
-    default-src 'self'; 
-    img-src 'self' data: https://*; 
-    style-src 'self' 'nonce-$nonce' https://fonts.googleapis.com; 
-    font-src 'self' https://fonts.gstatic.com; 
-    frame-src 'self';
-");
+require_once 'security-headers.php'; // must be first, before any HTML is sent
 ?>
 <!DOCTYPE html>
 <html lang="en">

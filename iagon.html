@@ -1,15 +1,5 @@
 <?php
-// Set CSP before any HTML output
-$nonce = base64_encode(random_bytes(16));
-header("Content-Security-Policy: 
-    default-src 'self'; 
-    script-src 'self' 'nonce-$nonce' https://www.tdsp.online/api/resource/6738f8cddce9fe405732f092/dashboard-info; 
-    connect-src 'self' https://www.tdsp.online/api/resource/6738f8cddce9fe405732f092/dashboard-info; 
-    img-src 'self' data: https://*; 
-    style-src 'self' 'nonce-$nonce' https://fonts.googleapis.com; 
-    font-src 'self' https://fonts.gstatic.com; 
-    frame-src 'self';
-");
+require_once 'security-headers.php'; // must be first, before any HTML is sent
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -21,8 +11,8 @@ header("Content-Security-Policy:
         <link rel="icon" type="image/webp" sizes="192x192" href="tdsp_logo_ico.webp">
     </head>
 <body>
-    <script src="iagon.js" nonce="<?php echo $nonce; ?>" defer></script>
-    <script src="chart.js"></script>
+    <script src="iagon.js" nonce="<?= $GLOBALS['csp_nonce'] ?>" defer></script>
+    <script src="chart.js" nonce="<?= $GLOBALS['csp_nonce'] ?>" defer></script>
     <main class="container">
     <h1>Iagon Node Stats</h1>
     <canvas id="performanceChart"></canvas>

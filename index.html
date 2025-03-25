@@ -1,15 +1,5 @@
 <?php
-// Set CSP before any HTML output
-$nonce = base64_encode(random_bytes(16));
-header("Content-Security-Policy: 
-    default-src 'self'; 
-    script-src 'self' 'nonce-$nonce' https://api.coingecko.com; 
-    connect-src 'self' https://api.coingecko.com; 
-    img-src 'self' data: https://*; 
-    style-src 'self' 'nonce-$nonce' https://fonts.googleapis.com; 
-    font-src 'self' https://fonts.gstatic.com; 
-    frame-src 'self';
-");
+require_once 'security-headers.php'; // must be first, before any HTML is sent
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -47,7 +37,7 @@ header("Content-Security-Policy:
     <link rel="preload" href="tdsp_logo.webp" as="image">
     <link rel="stylesheet" href="styles.css">
 
-    <script src="index.js" defer></script>
+    <script nonce="<?= $GLOBALS['csp_nonce'] ?>" src="index.js" defer></script>
 </head>
 <body>
     <main class="container" id="main-content">

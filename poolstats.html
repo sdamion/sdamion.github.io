@@ -1,14 +1,5 @@
 <?php
-    $nonce = base64_encode(random_bytes(16)); // Generate a secure nonce for CSP
-    header("Content-Security-Policy: 
-      default-src 'self'; 
-      script-src 'self' https://js.cexplorer.io 'nonce-$nonce'; 
-      connect-src 'self' https://js.cexplorer.io; 
-      img-src 'self' data: https://cexplorer.io https://js.cexplorer.io; 
-      style-src 'self' 'nonce-$nonce' https://js.cexplorer.io https://fonts.googleapis.com; 
-      font-src 'self' https://fonts.gstatic.com;
-      frame-src 'self'
-    ");
+require_once 'security-headers.php'; // must be first, before any HTML is sent
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -35,7 +26,7 @@
       <div class="small-text">Disclaimer <a href="https://cexplorer.io/disclaimer" target="_blank" rel="noopener noreferrer"
               aria-label="https://cexplorer.io/disclaimer">https://cexplorer.io/disclaimer</a></div>
     </section>
-    <script src="poolstats.js" nonce="<?php echo $nonce; ?>"></script>
+    <script src="poolstats.js" nonce="<?= $GLOBALS['csp_nonce'] ?>"></script>
     <div class="links">
       <table>
           <tr>

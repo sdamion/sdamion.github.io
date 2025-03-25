@@ -13,13 +13,12 @@ html, body {
     padding: 0;
     width: 100%;
     height: auto;
-    overflow-x: hidden;
+    overflow-x: clip;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     scroll-behavior: smooth;
-    display: flex;
-    justify-content: center;
-    align-items: center;
     font-family: 'Poppins', sans-serif;
     background-color: #b0adad;
     color: #000;
@@ -27,16 +26,17 @@ html, body {
 
 /* Center Content */
 .container {
+    margin: auto;
     text-align: center;
     width: min(90%, 1200px);
-    height: min(90%, 400px);
+    /* height: min(90%, 400px); */
     padding: 20px;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    font-size: 1.2rem;
+    font-size: clamp(1rem, 1.2vw, 1.2rem);
 }
 
 /* Headings */
@@ -71,6 +71,7 @@ p {
     margin-bottom: 20px;
     line-height: 1.5;
     color: inherit;
+    object-fit: contain;
 }
 
 /* Images */
@@ -163,8 +164,13 @@ a:hover::after {
 
 /* Buttons */
 button {
-    transition: background-color 0.3s ease-in-out, transform 0.2s;
-    cursor:pointer
+    transition: all 0.3s ease;
+    cursor:pointer;
+    background-color: #ccc;
+    color: #000;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
 }
 
 button:hover {
@@ -177,15 +183,26 @@ button:focus {
     outline-offset: 2px;
 }
 
+button:focus:not(:focus-visible) {
+    outline: none;
+}
+
+a:focus {
+    outline: 2px solid #bbb;
+    outline-offset: 2px;
+}
+
 footer {
     font-size: 0.7rem;
+    text-align: center;
+    padding: 10px;
 }
 
 /* Dark Mode */
 @media (prefers-color-scheme: dark) {
     body {
         background-color: #393737;
-        color: #fff;
+        color: #888;
     }
 
     h1, h2, p, table, th, td {

@@ -1,18 +1,5 @@
 <?php
-// Set CSP before any HTML output
-$nonce = base64_encode(random_bytes(16));
-
-header("Content-Security-Policy: "
-    . "default-src 'self'; "
-    . "script-src 'self' 'nonce-$nonce' https://api.starch.one https://cdn.jsdelivr.net; "
-    . "connect-src 'self' https://api.starch.one; "
-    . "img-src 'self' data: https://api.starch.one; "
-    . "style-src 'self' 'nonce-$nonce' https://fonts.googleapis.com; "
-    . "font-src 'self' https://fonts.gstatic.com; "
-    . "frame-src 'self';"
-);
-  
-header("Cache-Control: max-age=120, must-revalidate");
+require_once 'security-headers.php'; // must be first, before any HTML is sent
 ?>
 
 <!DOCTYPE html>
@@ -25,8 +12,8 @@ header("Cache-Control: max-age=120, must-revalidate");
     <link rel="icon" type="image/webp" sizes="192x192" href="tdsp_logo_ico.webp">
 </head>
 <body>
-    <script src="strch.js" nonce="<?php echo $nonce; ?>" defer></script>
-    <script src="chart.js"></script>
+    <script src="strch.js" nonce="<?= $GLOBALS['csp_nonce'] ?>" defer></script>
+    <script src="chart.js" nonce="<?= $GLOBALS['csp_nonce'] ?>"></script>
     <main class="container">
         <h1 id="teamName"></id></h1>
         <div id="totalBalanceRow"></div>
