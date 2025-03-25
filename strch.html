@@ -15,7 +15,7 @@ require_once 'security-headers.php'; // must be first, before any HTML is sent
     <script src="strch.js" nonce="<?= $GLOBALS['csp_nonce'] ?>" defer></script>
     <script src="chart.js" nonce="<?= $GLOBALS['csp_nonce'] ?>"></script>
     <main class="container">
-        <h1 id="teamName"></id></h1>
+        <h1 id="teamName"></h1>
         <div id="totalBalanceRow"></div>
         <canvas id="minerChart"></canvas>
         <br>
@@ -39,8 +39,7 @@ require_once 'security-headers.php'; // must be first, before any HTML is sent
         </table>
         </div>
         <div class="refresh-time small-text">Last Updated: <span id="last-updated">Never</span></div>
-        <div class="small-text">Source <a href="https://starch.one" target="_blank" rel="noopener noreferrer"
-                aria-label="Starch.one">http://starch.one</a></div>
+        <div class="small-text">Source <a href="https://starch.one" target="_blank" rel="noopener noreferrer" aria-label="Starch.one">http://starch.one</a></div>
         <br>
     <div class="links">
         <table>
@@ -48,10 +47,12 @@ require_once 'security-headers.php'; // must be first, before any HTML is sent
                 <td>
                     <a href="index.html" rel="noopener noreferrer" aria-label="Home">
                         <img src="tdsp_logo.webp" alt="The Dutch Stake Pool Logo - Reliable Bare-Metal Low-Fee Stake Pool" class="hover-effect">
+                    </a>
                 </td>
                 <td>
                     <a href="about.html" rel="noopener noreferrer" aria-label="About">
                         <img src="about_logo.webp" alt="The Dutch Stake Pool Logo - Reliable Bare-Metal Low-Fee Stake Pool" class="hover-effect">
+                    </a>
                 </td>
                 <td>
                     <a href="poolstats.html" rel="noopener noreferrer" aria-label="SPO Stats">
