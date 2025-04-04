@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Connect Cardano Wallet</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 50px;
+    }
+    .wallet-button {
+      background-color: #1976d2;
+      color: white;
+      padding: 15px 30px;
+      font-size: 18px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+    .wallet-button:hover {
+      background-color: #125ea4;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Connect Your Cardano Wallet</h1>
+  <button class="wallet-button" onclick="connectWallet()">Connect Wallet</button>
+
+  <p id="wallet-address" style="margin-top: 30px;"></p>
+
+  <script>
+    async function connectWallet() {
+      if (!window.cardano || !window.cardano.nami) {
+        alert("No Cardano wallet extension found. Please install Nami, Eternl, Flint, or Typhon.");
+        return;
+      }
+
+      try {
+        const api = await window.cardano.nami.enable();
+        const addresses = await api.getUsedAddresses();
+        const firstAddress = addresses[0];
+
+        document.getElementById("wallet-address").innerText =
+          "Connected wallet address:\n" + firstAddress;
+      } catch (err) {
+        console.error(err);
+        alert("Failed to connect to wallet.");
+      }
+    }
+  </script>
+
+</body>
+</html>

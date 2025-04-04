@@ -1,83 +1,89 @@
 document.addEventListener("DOMContentLoaded", function () {
-    const url = "https://js.cexplorer.io/api-static/pool/pool1ksye6zwlzaytspldngc3966aj79zkjvmkykydu2txay75c0krfp.json";
+    const poolInfoUrl = "https://www.tdsp.online/api/adastat/pool-info";
 
-    fetch(url)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
+    function formatKeyName(key) {
+        key = key.replace(/_/g, " ").toLowerCase();
+        return key.charAt(0).toUpperCase() + key.slice(1);
+    }
+
+    function formatAda(value) {
+        return (value / 1_000_000).toLocaleString() + " ADA";
+    }
+
+    function addRow(tbody, label, value) {
+        const tr = document.createElement("tr");
+        const tdKey = document.createElement("td");
+        const tdValue = document.createElement("td");
+
+        tdKey.innerHTML = `<strong>${label}</strong>`;
+
+        if (typeof value === "string" && value.startsWith("http")) {
+            if (value.match(/\.(jpeg|jpg|gif|png|webp)$/)) {
+                tdValue.innerHTML = `<img src="${value}" alt="Image" style="max-width: 100px; border-radius: 10px;">`;
+            } else {
+                tdValue.innerHTML = `<a href="${value}" target="_blank">${value}</a>`;
             }
-            return response.json();
-        })
-        .then(data => {
-            const table = document.getElementById("data-table");
-            const tbody = table.querySelector("tbody");
+        } else if (typeof value === "boolean") {
+            tdValue.textContent = value ? "Yes" : "No";
+        } else {
+            tdValue.textContent = value;
+        }
 
-            // Clear previous table content
-            tbody.innerHTML = "";
+        tr.appendChild(tdKey);
+        tr.appendChild(tdValue);
+        tbody.appendChild(tr);
+    }
 
-            function formatKeyName(key) {
-                key = key.replace(/_/g, " ").toLowerCase();
-                return key.charAt(0).toUpperCase() + key.slice(1);
-            }
-
-            function addRow(key, value) {
-                // Excluded keys
-                const excludedKeys = [
-                    "code", "time", "msg", "pool_id", "name", "pool_id_hash", "position", "handles", "url", "img", "stats", "updated", "terms", "stake_active",
-                    "est_epoch", "roa_short", "roa_lifetime", "luck_lifetime"
-                ];
-                if (excludedKeys.includes(key.toLowerCase())) {
-                    return;
+    function fetchData() {
+        fetch(poolInfoUrl)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
                 }
+                return response.json();
+            })
+            .then(json => {
+                const data = json.data;
+                const table = document.getElementById("data-table");
+                const tbody = table.querySelector("tbody");
+                tbody.innerHTML = ""; // Clear previous data
 
-                // Custom label mapping
-                const keyMapping = {
-                    "stake": "Total Stake",
-                    "tax_ratio": "Margin (%)",
-                    "tax_fix": "Fixed Cost"
-                };
+                // Selected fields
+                addRow(tbody, "Ticker", data.ticker);
+                addRow(tbody, "Active Stake", formatAda(data.active_stake));
+                addRow(tbody, "Live Stake", formatAda(data.live_stake));
+                addRow(tbody, "Owner Stake", formatAda(data.owner_stake));
+                addRow(tbody, "Pledge", formatAda(data.pledge));
+                addRow(tbody, "Fixed Cost", formatAda(data.fixed_cost));
+                addRow(tbody, "Margin (%)", (parseFloat(data.margin) * 100).toFixed(2) + " %");
+                addRow(tbody, "Delegators", data.delegator);
+                addRow(tbody, "Mithril Certified", data.mithril);
 
-                const displayKey = keyMapping[key.toLowerCase()] || formatKeyName(key);
-
-                const tr = document.createElement("tr");
-                const tdKey = document.createElement("td");
-                const tdValue = document.createElement("td");
-
-                tdKey.innerHTML = `<strong>${displayKey}</strong>`; // Bold key text
-
-                // Special case: Format ADA values
-                if (["Total Stake", "Fixed Cost", "Pledge"].includes(displayKey) && !isNaN(value)) {
-                    value = (value / 1_000_000).toLocaleString() + " ADA";
-                }
-
-                if (typeof value === "object" && value !== null) {
-                    Object.entries(value).forEach(([subKey, subValue]) => {
-                        addRow(subKey, subValue);
+                // Relays
+                if (Array.isArray(data.relays)) {
+                    data.relays.forEach((relay, index) => {
+                        const relayInfo = `${relay.status}`;
+                        addRow(tbody, `Relay ${index + 1}`, relayInfo);
                     });
-                    return;
                 }
+            })
+            .catch(error => console.error("Error fetching the JSON data:", error));
+    }
 
-                // If value is a URL, create a clickable link
-                if (typeof value === "string" && value.startsWith("http")) {
-                    tdValue.innerHTML = `<a href="${value}" target="_blank">${value}</a>`;
-                } 
-                // If value is an image URL, display the image
-                else if (typeof value === "string" && value.match(/\.(jpeg|jpg|gif|png|webp)$/)) {
-                    tdValue.innerHTML = `<img src="${value}" alt="Pool Image" style="max-width: 100px; border-radius: 10px;">`;
-                } 
-                else {
-                    tdValue.textContent = value;
-                }
+    // Optional: if you have performance data
+    function fetchPerformanceData() {
+        // Placeholder for additional data fetching
+        // Add similar fetch logic here if needed
+        console.log("Performance data fetch stub.");
+    }
 
-                tr.appendChild(tdKey);
-                tr.appendChild(tdValue);
-                tbody.appendChild(tr);
-            }
+    // Initial fetch
+    fetchData();
+    fetchPerformanceData();
 
-            // Process each key-value pair from JSON
-            Object.entries(data).forEach(([key, value]) => {
-                addRow(key, value);
-            });
-        })
-        .catch(error => console.error("Error fetching the JSON data:", error));
+    // Auto-refresh every 12 hours
+    setInterval(() => {
+        fetchData();
+        fetchPerformanceData();
+    }, 12 * 60 * 60 * 1000);
 });
