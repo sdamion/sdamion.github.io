@@ -81,9 +81,9 @@ document.addEventListener("DOMContentLoaded", function () {
     fetchData();
     fetchPerformanceData();
 
-    // Auto-refresh every 12 hours
+    // Auto-refresh every 1 hours
     setInterval(() => {
         fetchData();
         fetchPerformanceData();
-    }, 12 * 60 * 60 * 1000);
+    }, 1 * 60 * 60 * 1000);
 });

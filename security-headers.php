@@ -14,7 +14,7 @@ header("Content-Security-Policy:
     object-src 'none'; 
     script-src 'self' 'nonce-$nonce' https://api.coingecko.com  https://api.starch.one https://cdn.jsdelivr.net;
     style-src 'self' 'nonce-$nonce' https://fonts.googleapis.com;
-    connect-src 'self' https://api.coingecko.com  https://api.starch.one https://www.tdsp.online/api/resource/6738f8cddce9fe405732f092;
+    connect-src 'self' https://api.coingecko.com  https://api.starch.one https://www.tdsp.online/api;
     font-src 'self' https://fonts.gstatic.com;
     frame-src 'self';
     form-action 'self';

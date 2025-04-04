@@ -102,8 +102,8 @@ new Chart(ctx, {
 fetchData();
 fetchPerformanceData();
 
-// Auto-refresh every 12 hours (12 * 60 * 60 * 1000 milliseconds)
+// Auto-refresh every 1 hours (1 * 60 * 60 * 1000 milliseconds)
 setInterval(() => {
     fetchData();
     fetchPerformanceData();
-}, 12 * 60 * 60 * 1000);
+}, 1 * 60 * 60 * 1000);
