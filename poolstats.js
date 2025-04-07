@@ -25,6 +25,9 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         } else if (typeof value === "boolean") {
             tdValue.textContent = value ? "Yes" : "No";
+        } else if (typeof value === "string" && value.includes("<span")) {
+            // Render HTML content such as colored status
+            tdValue.innerHTML = value;
         } else {
             tdValue.textContent = value;
         }
@@ -59,11 +62,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 addRow(tbody, "Delegators", data.delegator);
                 addRow(tbody, "Mithril Certified", data.mithril);
 
-                // Relays
+                // Relays with status color formatting
                 if (Array.isArray(data.relays)) {
                     data.relays.forEach((relay, index) => {
-                        const relayInfo = `${relay.status}`;
-                        addRow(tbody, `Relay ${index + 1}`, relayInfo);
+                        const status = relay.status.toLowerCase();
+                        const coloredStatus = `<span style="font-weight: bold; color: ${status === "online" ? "green" : "red"};">${relay.status}</span>`;
+                        addRow(tbody, `Relay ${index + 1}`, coloredStatus);
                     });
                 }
             })
@@ -73,7 +77,6 @@ document.addEventListener("DOMContentLoaded", function () {
     // Optional: if you have performance data
     function fetchPerformanceData() {
         // Placeholder for additional data fetching
-        // Add similar fetch logic here if needed
         console.log("Performance data fetch stub.");
     }
 
@@ -81,7 +84,7 @@ document.addEventListener("DOMContentLoaded", function () {
     fetchData();
     fetchPerformanceData();
 
-    // Auto-refresh every 1 hours
+    // Auto-refresh every 1 hour
     setInterval(() => {
         fetchData();
         fetchPerformanceData();
