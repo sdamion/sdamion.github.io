@@ -51,8 +51,10 @@ require_once 'security-headers.php'; // must be first, before any HTML is sent
         <section>
             <h2>Other Staking Options</h2>
             <p>Starch Mining<br>
-            Iagon parner staking.<br>
+            Iagon partner staking.<br>
             Partner Chain Nodes when live.
+            Xerberus Nodes<br>
+            Cornucopias Storage Node
             </p>
         </section>
         <div class="links">
@@ -79,10 +81,10 @@ require_once 'security-headers.php'; // must be first, before any HTML is sent
                         </a>
                     </td>
                     <td>
-                        <a href="https://tool.jamonbread.io/delegate/pool1ksye6zwlzaytspldngc3966aj79zkjvmkykydu2txay75c0krfp" target="_blank" rel="noopener noreferrer" aria-label="Stake Now">
-                            <img src="stakebutton_ico.webp" alt="Join The Dutch Stake Pool - Stake with us" class="hover-effect">
+                        <a href="#" onclick="openModal(event)" aria-label="Stake Now">
+                          <img src="stakebutton_ico.webp" alt="Join The Dutch Stake Pool - Stake with us" class="hover-effect">
                         </a>
-                    </td>
+                      </td>
                     <td>
                         <a href="https://xerberus.io/" target="_blank" rel="noopener noreferrer" aria-label="Xerberus.io">
                             <img src="Xer_Logo.webp" alt="Xerberus.io" class="hover-effect">
@@ -106,6 +108,20 @@ require_once 'security-headers.php'; // must be first, before any HTML is sent
                 </tr>
             </table>
         </div>
+        <!-- Modal -->
+        <div id="iframeModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background-color:rgba(0,0,0,0.8); z-index:9999;">
+        <div style="position:relative; width:90%; max-width:900px; height:80vh; margin:5vh auto; background:#fff; border-radius:10px; overflow:hidden;">
+            <button onclick="closeModal()" style="position:absolute; top:10px; right:10px; background:red; color:#fff; border:none; padding:5px 10px; border-radius:5px; z-index:10;">Close</button>
+            <iframe
+            src="https://tool.jamonbread.io/delegate/pool1ksye6zwlzaytspldngc3966aj79zkjvmkykydu2txay75c0krfp"
+            width="100%"
+            height="100%"
+            style="border:none;"
+            title="Delegate to The Dutch Pool"
+            ></iframe>
+        </div>
+        </div>
+        <script src="stakenow.js" nonce="<?= $GLOBALS['csp_nonce'] ?>"></script>
         <footer>
             &copy; 2025 The Dutch Stake Pool. All rights reserved.
         </footer>
