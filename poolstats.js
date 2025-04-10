@@ -1,6 +1,6 @@
 document.addEventListener("DOMContentLoaded", function () {
     const poolInfoUrl = "https://www.tdsp.online/api/adastat/pool-info";
-
+    const epochInfoUrl = "https://www.tdsp.online/api/adastat/epoch-info";
     function formatKeyName(key) {
         key = key.replace(/_/g, " ").toLowerCase();
         return key.charAt(0).toUpperCase() + key.slice(1);
@@ -38,41 +38,46 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function fetchData() {
-        fetch(poolInfoUrl)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(json => {
-                const data = json.data;
-                const table = document.getElementById("data-table");
-                const tbody = table.querySelector("tbody");
-                tbody.innerHTML = ""; // Clear previous data
-
-                // Selected fields
-                addRow(tbody, "Ticker", data.ticker);
-                addRow(tbody, "Active Stake", formatAda(data.active_stake));
-                addRow(tbody, "Live Stake", formatAda(data.live_stake));
-                addRow(tbody, "Owner Stake", formatAda(data.owner_stake));
-                addRow(tbody, "Pledge", formatAda(data.pledge));
-                addRow(tbody, "Fixed Cost", formatAda(data.fixed_cost));
-                addRow(tbody, "Margin (%)", (parseFloat(data.margin) * 100).toFixed(2) + " %");
-                addRow(tbody, "Delegators", data.delegator);
-                addRow(tbody, "Mithril Certified", data.mithril);
-
-                // Relays with status color formatting
-                if (Array.isArray(data.relays)) {
-                    data.relays.forEach((relay, index) => {
-                        const status = relay.status.toLowerCase();
-                        const coloredStatus = `<span style="font-weight: bold; color: ${status === "online" ? "green" : "red"};">${relay.status}</span>`;
-                        addRow(tbody, `Relay ${index + 1}`, coloredStatus);
-                    });
-                }
-            })
-            .catch(error => console.error("Error fetching the JSON data:", error));
+        Promise.all([
+            fetch(poolInfoUrl),
+            fetch(epochInfoUrl)
+        ])
+        .then(async ([poolResponse, epochResponse]) => {
+            if (!poolResponse.ok || !epochResponse.ok) {
+                throw new Error(`HTTP error! Status: Pool ${poolResponse.status}, Epoch ${epochResponse.status}`);
+            }
+    
+            const poolJson = await poolResponse.json();
+            const epochJson = await epochResponse.json();
+    
+            const table = document.getElementById("data-table");
+            const tbody = table.querySelector("tbody");
+            tbody.innerHTML = ""; // Clear previous data
+    
+            // Selected fields
+            addRow(tbody, "Epoch", epochJson.data.epoch_no);
+            addRow(tbody, "Ticker", poolJson.data.ticker);
+            addRow(tbody, "Active Stake", formatAda(poolJson.data.active_stake));
+            addRow(tbody, "Live Stake", formatAda(poolJson.data.live_stake));
+            addRow(tbody, "Owner Stake", formatAda(poolJson.data.owner_stake));
+            addRow(tbody, "Pledge", formatAda(poolJson.data.pledge));
+            addRow(tbody, "Fixed Cost", formatAda(poolJson.data.fixed_cost));
+            addRow(tbody, "Margin (%)", (parseFloat(poolJson.data.margin) * 100).toFixed(2) + " %");
+            addRow(tbody, "Delegators", poolJson.data.delegator);
+            addRow(tbody, "Mithril Certified", poolJson.data.mithril);
+    
+            // Relays with status color formatting
+            if (Array.isArray(poolJson.data.relays)) {
+                poolJson.data.relays.forEach((relay, index) => {
+                    const status = relay.status.toLowerCase();
+                    const coloredStatus = `<span style="font-weight: bold; color: ${status === "online" ? "green" : "red"};">${relay.status}</span>`;
+                    addRow(tbody, `Relay ${index + 1}`, coloredStatus);
+                });
+            }
+        })
+        .catch(error => console.error("Error fetching the JSON data:", error));
     }
+    
 
     // Optional: if you have performance data
     function fetchPerformanceData() {
