@@ -1,0 +1,49 @@
+<div class="links">
+    <div class="link-grid">
+        <a href="index.html" rel="noopener noreferrer" aria-label="Home">
+            <img src="tdsp_logo.webp" alt="The Dutch Stake Pool Logo - Reliable Bare-Metal Low-Fee Stake Pool" class="hover-effect">
+        </a>
+        <a href="about.html" rel="noopener noreferrer" aria-label="About">
+            <img src="about_logo.webp" alt="The Dutch Stake Pool Logo - Reliable Bare-Metal Low-Fee Stake Pool" class="hover-effect">
+        </a>
+        <a href="poolstats.html" rel="noopener noreferrer" aria-label="SPO Stats">
+            <img src="stats_ico.webp" alt="The Dutch Stake Pool - Statistics" class="hover-effect">
+        </a>
+    
+        <a href="strch.html" rel="noopener noreferrer" aria-label="Starch Miner Company Stats">
+            <img src="starchCompanyLogo.webp" alt="Join TDSP Starch Company" class="hover-effect">
+        </a>
+        <a href="iagon.html" rel="noopener noreferrer" aria-label="Iagon Stats">
+            <img src="iagonLogoLight.webp" alt="Join The Iagon Node" class="hover-effect">
+        </a>
+        <a href="https://cornucopias.io/" target="_blank" rel="noopener noreferrer" aria-label="Cornucopias.io">
+            <img src="copi_logo.webp" alt="Cornucopias.io" class="hover-effect">
+        </a>
+        <a href="#" onclick="openModal(event, 'xerberusModal')" aria-label="Xerberus.io">
+            <img src="Xer_Logo.webp" alt="Xerberus.io" class="hover-effect">
+        </a>
+        <a href="https://blockfrost.grafana.net/public-dashboards/8d618eda298d472a996ca3473ab36177" target="_blank" rel="noopener noreferrer">
+            <img src="Icebreaker_logo.webp" alt="Blockfrost.io" class="hover-effect">
+        </a>
+        <a href="https://twitter.com/DamionDutch" target="_blank" rel="noopener noreferrer">
+            <img src="X-logo_ico.webp" alt="Follow The Dutch Stake Pool on Twitter" class="hover-effect">
+        </a>
+        <a href="#" onclick="openModal(event, 'stakenow')" aria-label="Stake Now">
+            <img src="stakebutton_ico.webp" alt="Join The Dutch Stake Pool - Stake with us" class="hover-effect">
+        </a>
+    </div>
+</div>
+
+<div id="stakenow" class="iframe-modal">
+    <div class="iframe-content">
+        <button onclick="closeModal('stakenow')">Close</button>
+        <iframe src="https://tool.jamonbread.io/delegate/pool1ksye6zwlzaytspldngc3966aj79zkjvmkykydu2txay75c0krfp" title="Delegate to The Dutch Pool" loading="lazy"></iframe>
+    </div>
+</div>
+<div id="xerberusModal" class="iframe-modal">
+    <div class="iframe-content">
+        <button onclick="closeModal('xerberusModal')">Close</button>
+        <iframe src="https://explorer.xerberus.io/#/0x01e5d426a4d964d2708a2114569d38fb05c6ff0694b2bb005b7328fa13e36d5c" title="Xerberus.io" loading="lazy"></iframe>
+    </div>
+</div>
+<script src="links.js" nonce="<?= $GLOBALS['csp_nonce'] ?>"></script>

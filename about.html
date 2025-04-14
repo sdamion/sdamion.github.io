@@ -57,71 +57,23 @@ require_once 'security-headers.php'; // must be first, before any HTML is sent
             Cornucopias Storage Node
             </p>
         </section>
-        <div class="links">
-            <table>
-                <tr>                 
-                    <td>
-                        <a href="index.html" rel="noopener noreferrer" aria-label="Home">
-                            <img src="tdsp_logo.webp" alt="The Dutch Stake Pool Logo - Reliable Bare-Metal Low-Fee Stake Pool" class="hover-effect">
-                        </a>
-                    </td>
-                    <td>
-                        <a href="poolstats.html" rel="noopener noreferrer" aria-label="SPO Stats">
-                            <img src="stats_ico.webp" alt="The Dutch Stake Pool - Statistics" class="hover-effect">
-                        </a>
-                    </td>
-                    <td>
-                        <a href="strch.html" rel="noopener noreferrer" aria-label="Starch Stats">
-                            <img src="starchCompanyLogo.webp" alt="Join TDSP Starch Company" class="hover-effect">
-                        </a>
-                    </td>
-                    <td>
-                        <a href="iagon.html" rel="noopener noreferrer" aria-label="Iagon Stats">
-                            <img src="iagonLogoLight.webp" alt="Join The Iagon Node" class="hover-effect">
-                        </a>
-                    </td>
-                    <td>
-                        <a href="#" onclick="openModal(event)" aria-label="Stake Now">
-                          <img src="stakebutton_ico.webp" alt="Join The Dutch Stake Pool - Stake with us" class="hover-effect">
-                        </a>
-                      </td>
-                    <td>
-                        <a href="https://xerberus.io/" target="_blank" rel="noopener noreferrer" aria-label="Xerberus.io">
-                            <img src="Xer_Logo.webp" alt="Xerberus.io" class="hover-effect">
-                        </a>
-                    </td>
-                    <td>
-                        <a href="https://cornucopias.io/" target="_blank" rel="noopener noreferrer" aria-label="Cornucopias.io">
-                            <img src="copi_logo.webp" alt="Cornucopias.io" class="hover-effect">
-                        </a>
-                    </td>
-                    <td>
-                        <a href="https://blockfrost.io/" target="_blank" rel="noopener noreferrer" aria-label="Blockfrost.io">
-                            <img src="Icebreaker_logo.webp" alt="Blockfrost.io" class="hover-effect">
-                        </a>
-                    </td>
-                    <td>
-                        <a href="https://twitter.com/DamionDutch" target="_blank" rel="noopener noreferrer" aria-label="Follow The Dutch Stake Pool on Twitter">
-                            <img src="X-logo_ico.webp" alt="Follow The Dutch Stake Pool on Twitter" class="hover-effect">
-                        </a>
-                    </td>
-                </tr>
-            </table>
-        </div>
-        <!-- Modal -->
-        <div id="iframeModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background-color:rgba(0,0,0,0.8); z-index:9999;">
-        <div style="position:relative; width:90%; max-width:900px; height:80vh; margin:5vh auto; background:#fff; border-radius:10px; overflow:hidden;">
-            <button onclick="closeModal()" style="position:absolute; top:10px; right:10px; background:red; color:#fff; border:none; padding:5px 10px; border-radius:5px; z-index:10;">Close</button>
-            <iframe
-            src="https://tool.jamonbread.io/delegate/pool1ksye6zwlzaytspldngc3966aj79zkjvmkykydu2txay75c0krfp"
-            width="100%"
-            height="100%"
-            style="border:none;"
-            title="Delegate to The Dutch Pool"
-            ></iframe>
-        </div>
-        </div>
-        <script src="stakenow.js" nonce="<?= $GLOBALS['csp_nonce'] ?>"></script>
+        <div id="links-container"></div>
+        <script>
+            // Load the external HTML file and inject it
+            fetch('links.html')
+                .then(response => response.text())
+                .then(data => {
+                    document.getElementById('links-container').innerHTML = data;
+        
+                    // Load stakenow.js after the HTML is injected
+                    const script = document.createElement('script');
+                    script.src = 'links.js';
+                    script.defer = true;
+                    script.setAttribute('nonce', '<?= $GLOBALS["csp_nonce"] ?>');
+                    document.body.appendChild(script);
+                })
+                .catch(error => console.error('Error loading links.html:', error));
+        </script>
         <footer>
             &copy; 2025 The Dutch Stake Pool. All rights reserved.
         </footer>
