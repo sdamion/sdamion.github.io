@@ -1,6 +1,24 @@
+// --- API URLs ---
+const IAGON_NODE_URL = 'https://www.tdsp.online/api/resource/6738f8cddce9fe405732f092';
+const IAGON_PERFORMANCE_URL = `${IAGON_NODE_URL}/performance/history`;
+const GECKOTERMINAL_IAG_URL = 'https://api.geckoterminal.com/api/v2/simple/networks/cardano/token_price/5d16cc1a177b5d9ba9cfa9793b07e60f1fb70fea1f8aef064415d114494147';
+
+// --- Globals to compute USD rewards ---
+let currentRewards = null;
+let currentIAGPrice = null;
+
+function updateRewardUSD() {
+    if (currentRewards !== null && currentIAGPrice !== null) {
+        const usdValue = (currentRewards * currentIAGPrice).toFixed(2);
+        const el = document.getElementById("reward-usd");
+        if (el) el.textContent = `$${usdValue}`;
+    }
+}
+
+// --- Fetch IAGON Node Data ---
 async function fetchData() {
     try {
-        const response = await fetch('https://www.tdsp.online/api/resource/6738f8cddce9fe405732f092');
+        const response = await fetch(IAGON_NODE_URL);
         if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
 
         const data = await response.json();
@@ -15,25 +33,33 @@ async function fetchData() {
         document.getElementById("used-storage").textContent = (data.storage_details.storage_consumed_in_bytes / (1000 ** 3)).toFixed(2) + " GB";
         document.getElementById("storage-available").textContent = (data.storage_details.storage_available_in_bytes / (1000 ** 3)).toFixed(2) + " GB";
 
-        document.getElementById("staked").textContent = (data.stake_details.staked_amount.quantity / 1e6).toFixed(2) + " IAG";
-        document.getElementById("rewards").textContent = (data.reward_details.accumulated_reward.quantity / 1e6).toFixed(2) + " IAG";
-        document.getElementById("fees").textContent = (data.reward_details.accumulated_fee.quantity / 1e6).toFixed(6) + " ADA";
+        const rewards = data.reward_details.accumulated_reward.quantity / 1e6;
+        const staked = data.stake_details.staked_amount.quantity / 1e6;
+        const fees = data.reward_details.accumulated_fee.quantity / 1e6;
+
+        document.getElementById("staked").textContent = staked.toFixed(2) + " IAG";
+        document.getElementById("rewards").textContent = rewards.toFixed(2) + " IAG";
+        document.getElementById("fees").textContent = fees.toFixed(6) + " ADA";
+
+        currentRewards = rewards;
+        updateRewardUSD();
 
     } catch (error) {
-        console.error("Error fetching data:", error);
-        document.getElementById("status-text").textContent = "Error Loading Data";
+        console.error("Error fetching node data:", error);
+        const statusEl = document.getElementById("status-text");
+        if (statusEl) statusEl.textContent = "Error Loading Data";
     }
 }
 
+// --- Fetch IAGON Performance History ---
 async function fetchPerformanceData() {
     try {
-        const response = await fetch('https://www.tdsp.online/api/resource/6738f8cddce9fe405732f092/performance/history');
+        const response = await fetch(IAGON_PERFORMANCE_URL);
         if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
 
         const performanceData = await response.json();
         if (!performanceData.success) throw new Error("Invalid performance history response");
 
-        // Get last 7 days of data
         const today = new Date();
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(today.getDate() - 8);
@@ -42,7 +68,9 @@ async function fetchPerformanceData() {
             .filter(entry => new Date(entry.date) >= sevenDaysAgo)
             .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-        const dates = lastWeekData.map(entry => new Date(entry.date).toISOString().split('T')[0]);
+        const dates = lastWeekData.map(entry =>
+            new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        );
         const scores = lastWeekData.map(entry => entry.score);
 
         updateChart(dates, scores);
@@ -52,58 +80,85 @@ async function fetchPerformanceData() {
     }
 }
 
+// --- Update Performance Chart ---
 function updateChart(dates, scores) {
     const ctx = document.getElementById('performanceChart').getContext('2d');
 
-    // Destroy existing chart instance if it exists (prevents memory leak)
     if (Chart.getChart(ctx)) {
         Chart.getChart(ctx).destroy();
     }
 
-    // Set color dynamically based on score
-const barColors = scores.map((score, index) => {
+    const barColors = scores.map(() => {
         const gradient = ctx.createLinearGradient(30, 30, 30, 200);
-        gradient.addColorStop(0, 'rgba(34, 167, 240, 0.7)'); // Light Blue
-        gradient.addColorStop(1, 'rgba(155, 89, 182, 0.7)'); // Purple
+        gradient.addColorStop(0, 'rgba(34, 167, 240, 0.7)');
+        gradient.addColorStop(1, 'rgba(155, 89, 182, 0.7)');
         return gradient;
-    
-});
+    });
 
-new Chart(ctx, {
-    type: 'bar',
-    data: {
-        labels: dates,
-        datasets: [{
-            label: 'Performance Score',
-            data: scores,
-            backgroundColor: barColors,
-            borderWidth: 0,
-            borderRadius: 5,
-            hoverBorderColor: 'black',
-            barThickness: 20
-        }]
-    },
-    options: {
-        responsive: true,
-        plugins: {
-            legend: { display: true }
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: dates,
+            datasets: [{
+                label: 'Performance Score',
+                data: scores,
+                backgroundColor: barColors,
+                borderWidth: 0,
+                borderRadius: 5,
+                hoverBorderColor: 'black',
+                barThickness: 20
+            }]
         },
-        scales: {
-            y: { beginAtZero: true, max: 80 }
-        },
-        animation: {
-            duration: 1000,
-            easing: 'easeInOutBounce'
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: true }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    suggestedMax: Math.max(...scores, 80) + 5
+                }
+            },
+            animation: {
+                duration: 1000,
+                easing: 'easeInOutBounce'
+            }
         }
-    }
-});
+    });
 }
-// Initial Data Fetch
+
+// --- Fetch IAG Token Price from GeckoTerminal ---
+async function fetchIAGPrice() {
+    try {
+        const response = await fetch(GECKOTERMINAL_IAG_URL);
+        if (!response.ok) throw new Error(`GeckoTerminal HTTP Error: ${response.status}`);
+
+        const data = await response.json();
+        const priceStr = data?.data?.attributes?.token_prices?.["5d16cc1a177b5d9ba9cfa9793b07e60f1fb70fea1f8aef064415d114494147"];
+        const iagPrice = parseFloat(priceStr)?.toFixed(6) || 'N/A';
+
+        const el = document.getElementById("iag-price");
+        if (el) el.textContent = `$${iagPrice}`;
+
+        currentIAGPrice = parseFloat(priceStr);
+        updateRewardUSD();
+
+    } catch (error) {
+        console.error("Error fetching IAG price:", error);
+        const el = document.getElementById("iag-price");
+        if (el) el.textContent = "N/A";
+    }
+}
+
+// --- Initial Data Fetch ---
 fetchData();
 fetchPerformanceData();
+fetchIAGPrice();
 
-// Auto-refresh every 1 hours (1 * 60 * 60 * 1000 milliseconds)
+// --- Auto-refresh every hour ---
 setInterval(() => {
     fetchData();
     fetchPerformanceData();
+    fetchIAGPrice();
 }, 1 * 60 * 60 * 1000);
