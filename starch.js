@@ -1,6 +1,6 @@
 const baseUrl = 'https://api.starch.one';
 const teams = {
-    'B0ADAD': 'TDSP01',
+    'B0ADAD': '50% Company',
     '868C0C': 'TDSP02',
     '1B83BB': 'StarchWhale'
 };
@@ -135,7 +135,14 @@ function updateUI(minersData, teamBalance = 0, totalWeeklyBlocks = 0) {
     const minerTableBody = document.getElementById('minerTableBody');
 
     if (teamNameElement) teamNameElement.innerText = teams[selectedTeamId] || selectedTeamId;
-    if (balanceDisplay) balanceDisplay.innerText = `Company Balance: ${formatBalance(teamBalance)}`;
+    if (balanceDisplay) {
+        let html = `Company Balance: ${formatBalance(teamBalance)}`;
+        if (selectedTeamId === 'B0ADAD') {
+            const giveawayBalance = teamBalance / 2;
+            html += `<br>🎁 Giveaway Balance (50%): ${formatBalance(giveawayBalance)}`;
+        }
+        balanceDisplay.innerHTML = html;
+    }    
     if (weeklyBlocksDisplay) weeklyBlocksDisplay.innerText = `Weekly Blocks: ${totalWeeklyBlocks}`;
 
     if (minerTableBody) {
