@@ -2,55 +2,52 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Connect Cardano Wallet</title>
+  <title>Giveaway Every 5 Minutes</title>
   <style>
-    body {
-      font-family: sans-serif;
-      text-align: center;
-      padding: 50px;
-    }
-    .wallet-button {
-      background-color: #1976d2;
-      color: white;
-      padding: 15px 30px;
-      font-size: 18px;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      margin-top: 20px;
-    }
-    .wallet-button:hover {
-      background-color: #125ea4;
-    }
+    table { border-collapse: collapse; width: 50%; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
   </style>
 </head>
 <body>
-
-  <h1>Connect Your Cardano Wallet</h1>
-  <button class="wallet-button" onclick="connectWallet()">Connect Wallet</button>
-
-  <p id="wallet-address" style="margin-top: 30px;"></p>
+  <h2>🕒 Last 10 Giveaway Winners</h2>
+  <table id="resultsTable">
+    <thead>
+      <tr><th>#</th><th>ID</th><th>Time</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
 
   <script>
-    async function connectWallet() {
-      if (!window.cardano || !window.cardano.nami) {
-        alert("No Cardano wallet extension found. Please install Nami, Eternl, Flint, or Typhon.");
-        return;
-      }
+    const idList = ['abc123', 'def456', 'ghi789', 'jkl012', 'mno345', 'pqr678', 'stu901'];
+    let lastWinners = [];
 
-      try {
-        const api = await window.cardano.nami.enable();
-        const addresses = await api.getUsedAddresses();
-        const firstAddress = addresses[0];
+    function selectWinner() {
+      const randomIndex = Math.floor(Math.random() * idList.length);
+      const winnerId = idList[randomIndex];
+      const timestamp = new Date().toLocaleTimeString();
 
-        document.getElementById("wallet-address").innerText =
-          "Connected wallet address:\n" + firstAddress;
-      } catch (err) {
-        console.error(err);
-        alert("Failed to connect to wallet.");
-      }
+      // Save result
+      lastWinners.unshift({ id: winnerId, time: timestamp });
+      if (lastWinners.length > 10) lastWinners.pop();
+
+      // Update table
+      updateTable();
     }
-  </script>
 
+    function updateTable() {
+      const tbody = document.querySelector('#resultsTable tbody');
+      tbody.innerHTML = ''; // Clear table
+
+      lastWinners.forEach((entry, index) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `<td>${index + 1}</td><td>${entry.id}</td><td>${entry.time}</td>`;
+        tbody.appendChild(row);
+      });
+    }
+
+    // Run immediately and every 5 minutes
+    selectWinner();
+    setInterval(selectWinner, 5 * 60 * 1000); // 5 minutes
+  </script>
 </body>
 </html>

@@ -1,6 +1,7 @@
 document.addEventListener("DOMContentLoaded", function () {
     const poolInfoUrl = "https://www.tdsp.online/api/adastat/pool-info";
     const epochInfoUrl = "https://www.tdsp.online/api/adastat/epoch-info";
+
     function formatKeyName(key) {
         key = key.replace(/_/g, " ").toLowerCase();
         return key.charAt(0).toUpperCase() + key.slice(1);
@@ -26,7 +27,6 @@ document.addEventListener("DOMContentLoaded", function () {
         } else if (typeof value === "boolean") {
             tdValue.textContent = value ? "Yes" : "No";
         } else if (typeof value === "string" && value.includes("<span")) {
-            // Render HTML content such as colored status
             tdValue.innerHTML = value;
         } else {
             tdValue.textContent = value;
@@ -46,15 +46,14 @@ document.addEventListener("DOMContentLoaded", function () {
             if (!poolResponse.ok || !epochResponse.ok) {
                 throw new Error(`HTTP error! Status: Pool ${poolResponse.status}, Epoch ${epochResponse.status}`);
             }
-    
+
             const poolJson = await poolResponse.json();
             const epochJson = await epochResponse.json();
-    
+
             const table = document.getElementById("data-table");
             const tbody = table.querySelector("tbody");
-            tbody.innerHTML = ""; // Clear previous data
-    
-            // Selected fields
+            tbody.innerHTML = "";
+
             addRow(tbody, "Epoch", epochJson.data.epoch_no);
             addRow(tbody, "Ticker", poolJson.data.ticker);
             addRow(tbody, "Active Stake", formatAda(poolJson.data.active_stake));
@@ -65,31 +64,31 @@ document.addEventListener("DOMContentLoaded", function () {
             addRow(tbody, "Margin (%)", (parseFloat(poolJson.data.margin) * 100).toFixed(2) + " %");
             addRow(tbody, "Delegators", poolJson.data.delegator);
             addRow(tbody, "Mithril Certified", poolJson.data.mithril);
-    
-            // Relays with status color formatting
+
             if (Array.isArray(poolJson.data.relays)) {
                 poolJson.data.relays.forEach((relay, index) => {
                     const status = relay.status.toLowerCase();
-                    const coloredStatus = `<span style="font-weight: bold; color: ${status === "online" ? "green" : "red"};">${relay.status}</span>`;
+                    let displayLabel = relay.status;
+
+                    if (status === "offline") {
+                        displayLabel = "maintenance";
+                    }
+
+                    const coloredStatus = `<span style="font-weight: bold; color: ${status === "online" ? "green" : "orange"};">${displayLabel}</span>`;
                     addRow(tbody, `Relay ${index + 1}`, coloredStatus);
                 });
             }
         })
         .catch(error => console.error("Error fetching the JSON data:", error));
     }
-    
 
-    // Optional: if you have performance data
     function fetchPerformanceData() {
-        // Placeholder for additional data fetching
         console.log("Performance data fetch stub.");
     }
 
-    // Initial fetch
     fetchData();
     fetchPerformanceData();
 
-    // Auto-refresh every 1 hour
     setInterval(() => {
         fetchData();
         fetchPerformanceData();
