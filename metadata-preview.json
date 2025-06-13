@@ -2,6 +2,5 @@
 "name": "The Dutch Stake Pool",
 "description": "True decentralized Stakepool",
 "ticker": "TDSP",
-"homepage": "https://thedutchstakepool.com/",
-"extended": "https://thedutchstakepool.com/extended-metadata.json"
+"homepage": "https://thedutchstakepool.com/"
 }
