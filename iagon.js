@@ -15,7 +15,6 @@ function updateRewardUSD() {
     }
 }
 
-// --- Fetch IAGON Node Data ---
 async function fetchData() {
     try {
         const response = await fetch(IAGON_NODE_URL);
@@ -23,30 +22,59 @@ async function fetchData() {
 
         const data = await response.json();
 
-        document.getElementById("name").textContent = data.name;
-        document.getElementById("status-text").innerHTML = data.runtime_details.active_status ? 
-            '<span class="online">Online</span>' : '<span class="offline">Offline</span>';
-        document.getElementById("location").textContent = data.location_details.country;
+        // --- Basic Node Info ---
+        const nameEl = document.getElementById("name");
+        if (nameEl && data.name) nameEl.textContent = data.name;
 
-        document.getElementById("total-storage").textContent = (data.storage_details.storage_capacity / 1000).toFixed(2) + " TB";
-        document.getElementById("committed-storage").textContent = (data.storage_details.committed_storage_in_bytes / (1000 ** 4)).toFixed(2) + " TB";
-        document.getElementById("used-storage").textContent = (data.storage_details.storage_consumed_in_bytes / (1000 ** 3)).toFixed(2) + " GB";
-        document.getElementById("storage-available").textContent = (data.storage_details.storage_available_in_bytes / (1000 ** 3)).toFixed(2) + " GB";
-        // Add "available to stake"
-        const totalTB = data.storage_details.storage_capacity / 1000;
-        const committedTB = data.storage_details.committed_storage_in_bytes / (1000 ** 4);
-        const availableToStakeTB = (totalTB - committedTB).toFixed(2);
-        document.getElementById("available-to-stake").textContent = availableToStakeTB + " TB";
+        const statusEl = document.getElementById("status-text");
+        if (statusEl) {
+            const isOnline = data.runtime_details?.active_status;
+            statusEl.innerHTML = isOnline
+                ? '<span class="online">Online</span>'
+                : '<span class="offline">Offline</span>';
+        }
 
-        const rewards = data.reward_details.accumulated_reward.quantity / 1e6;
-        const staked = data.stake_details.staked_amount.quantity / 1e6;
-        const fees = data.reward_details.accumulated_fee.quantity / 1e6;
+        const locationEl = document.getElementById("location");
+        if (locationEl && data.location_details?.country) {
+            locationEl.textContent = data.location_details.country;
+        }
 
-        document.getElementById("staked").textContent = staked.toFixed(2) + " IAG";
-        document.getElementById("rewards").textContent = rewards.toFixed(2) + " IAG";
-        document.getElementById("fees").textContent = fees.toFixed(6) + " ADA";
+        // --- Storage Stats ---
+        const storage = data.storage_details;
+        if (storage) {
+            const totalTB = (storage.storage_capacity ?? 0) / 1000;
+            const committedTB = (storage.committed_storage_in_bytes ?? 0) / (1000 ** 4);
+            const usedGB = (storage.storage_consumed_in_bytes ?? 0) / (1000 ** 3);
+            const availableGB = (storage.storage_available_in_bytes ?? 0) / (1000 ** 3);
+            const availableToStakeTB = (totalTB - committedTB);
 
-        currentRewards = rewards;
+            const setText = (id, value, unit) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = value.toFixed(2) + ` ${unit}`;
+            };
+
+            setText("total-storage", totalTB, "TB");
+            setText("committed-storage", committedTB, "TB");
+            setText("used-storage", usedGB, "GB");
+            setText("storage-available", availableGB, "GB");
+            setText("available-to-stake", availableToStakeTB, "TB");
+        }
+
+        // --- Rewards & Staking ---
+        const rewards = data.reward_details?.accumulated_reward?.quantity ?? 0;
+        const fees = data.reward_details?.accumulated_fee?.quantity ?? 0;
+        const staked = data.stake_details?.staked_amount?.quantity ?? 0;
+
+        const stakedEl = document.getElementById("staked");
+        if (stakedEl) stakedEl.textContent = (staked / 1e6).toFixed(2) + " IAG";
+
+        const rewardsEl = document.getElementById("rewards");
+        if (rewardsEl) rewardsEl.textContent = (rewards / 1e6).toFixed(2) + " IAG";
+
+        const feesEl = document.getElementById("fees");
+        if (feesEl) feesEl.textContent = (fees / 1e6).toFixed(6) + " ADA";
+
+        currentRewards = rewards / 1e6;
         updateRewardUSD();
 
     } catch (error) {
