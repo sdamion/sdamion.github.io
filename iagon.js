@@ -32,6 +32,11 @@ async function fetchData() {
         document.getElementById("committed-storage").textContent = (data.storage_details.committed_storage_in_bytes / (1000 ** 4)).toFixed(2) + " TB";
         document.getElementById("used-storage").textContent = (data.storage_details.storage_consumed_in_bytes / (1000 ** 3)).toFixed(2) + " GB";
         document.getElementById("storage-available").textContent = (data.storage_details.storage_available_in_bytes / (1000 ** 3)).toFixed(2) + " GB";
+        // Add "available to stake"
+        const totalTB = data.storage_details.storage_capacity / 1000;
+        const committedTB = data.storage_details.committed_storage_in_bytes / (1000 ** 4);
+        const availableToStakeTB = (totalTB - committedTB).toFixed(2);
+        document.getElementById("available-to-stake").textContent = availableToStakeTB + " TB";
 
         const rewards = data.reward_details.accumulated_reward.quantity / 1e6;
         const staked = data.stake_details.staked_amount.quantity / 1e6;
