@@ -17,6 +17,12 @@ require_once 'security-headers.php'; // must be first, before any HTML is sent
     <meta property="og:url" content="https://www.thedutchstakepool.com">
     <meta property="og:type" content="website">
 
+    <!-- Twitter Card (Optional but Recommended) -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="The Dutch Stake Pool | Reliable Cardano Staking">
+    <meta name="twitter:description" content="Join our Dutch Bare-Metal, low-fee stake pool for $ADA and $IAG. Discover a reliable DRep today.">
+    <meta name="twitter:image" content="tdsp_logo.webp">
+
     <!-- Web App Meta Tags -->
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -24,18 +30,25 @@ require_once 'security-headers.php'; // must be first, before any HTML is sent
     <meta name="apple-mobile-web-app-title" content="The Dutch Stake Pool">
     <meta name="theme-color" content="#b0adad">
     <meta name="msapplication-navbutton-color" content="#b0adad">
-    <meta name="msapplication-TileImage" content="favicon.ico">
+    <meta name="msapplication-TileImage" content="favicon.png">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
 
-    <link rel="icon" href="favicon.png" type="image/x-icon">
+    <!-- Favicon and Manifest -->
+    <link rel="icon" href="favicon.png" type="image/png">
     <link rel="apple-touch-icon" sizes="180x180" href="favicon.png">
-    <link rel="manifest" href="manifest.json" type="application/json">
+    <link rel="manifest" href="manifest.json">
+
+    <!-- Canonical URL (SEO best practice) -->
+    <link rel="canonical" href="https://www.thedutchstakepool.com">
+
+    <!-- Page Title -->
     <title>The Dutch Stake Pool | Reliable Cardano Staking</title>
 
-    <!-- Preload Main Logo -->
+    <!-- Preload Logo -->
     <link rel="preload" href="tdsp_logo.webp" as="image">
     <link rel="stylesheet" href="styles.css">
 
+    <!-- JavaScript with CSP nonce -->
     <script nonce="<?= $GLOBALS['csp_nonce'] ?>" src="index.js" defer></script>
 </head>
 <body>
