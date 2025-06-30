@@ -26,26 +26,58 @@ require_once 'security-headers.php'; // must be first, before any HTML is sent
         </section>
 
         <section>
-            <h2>Stake Pool Hardware</h2>
-            <p>
-            <strong>Server 1</strong><br>
-                HP Z440<br>
-                Intel XEON E5-2660 v4<br>
-                192GB Memory<br>
-                11TB HDD (5 disks, 1 parity disk)<br>
-                Blockproducer Node1 and Relay Node1 (in 2 VMs)<br>
-                Option for adding disks for a second Iagon Node and partner chains<br>
-                <br>
-            <strong>Server 2</strong><br>
-                Asrock B550<br>
-                AMD Ryzen 5 5600G<br>
-                128GB Memory<br>
-                28TB HDD (RAID10)<br>
-                Relay Node2 and Iagon Storage Node1<br>
-                Option for adding more storage space for Iagon and partner chains<br>
-                <br>
-                <strong>Network</strong><br>
-                Business Optic fiber Internet</p>
+              <div className="mt-12 space-y-6">
+                <h3 className="text-2xl font-semibold">Infrastructure</h3>
+                <div className="grid md:grid-cols-2 gap-8">
+                  <div className="bg-card p-6 rounded-lg border border-orange-500">
+                    <h4 className="text-lg font-semibold mb-4">
+                      Server 1 - Intel NUC I5
+                    </h4>
+                    <ul className="space-y-2 text-muted-foreground">
+                      <li>Intel I5 8 Threads</li>
+                      <li>40GB Memory</li>
+                      <li>500GB NVME</li>
+                      <li>Blockproducer Node</li>
+                    </ul>
+                  </div>
+                  <br>
+                  <div className="bg-card p-6 rounded-lg border border-orange-500">
+                    <h4 className="text-lg font-semibold mb-4">
+                      Server 2 - Intel NUC I3
+                    </h4>
+                    <ul className="space-y-2 text-muted-foreground">
+                      <li>Intel I3 6 Threads</li>
+                      <li>32GB Memory</li>
+                      <li>1TB NVME</li>
+                      <li>Relay Node 1</li>
+                    </ul>
+                  </div>
+                  <br>
+                  <div className="bg-card p-6 rounded-lg border border-orange-500">
+                    <h4 className="text-lg font-semibold mb-4">
+                      Server 3 - Intel NUC I5 
+                    </h4>
+                    <ul className="space-y-2 text-muted-foreground">
+                      <li>Intel I5 8 Threads</li>
+                      <li>32GB Memory</li>
+                      <li>500GB NVME</li>
+                      <li>Relay Node 2</li>
+                    </ul>
+                  </div>
+                  <br>
+                  <div className="bg-card p-6 rounded-lg border border-orange-500">
+                    <h4 className="text-lg font-semibold mb-4">
+                      Server 4 - Asrock B550
+                    </h4>
+                    <ul className="space-y-2 text-muted-foreground">
+                      <li>AMD Ryzen 5 12 Threads </li>
+                      <li>128GB Memory</li>
+                      <li>59TB HDD NVME Cache (ZFS RAID)</li>
+                      <li>Iagon Storage Node</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
         </section>
         <br><br>
         <section>
