@@ -1,6 +1,6 @@
 {
     "name": "The Dutch Stake Pool",
-    "short_name": "DutchStakePool",
+    "short_name": "TDSP",
     "description": "Reliable Cardano staking and DRep services for $ADA and $IAG.",
     "start_url": "/index.html",
     "scope": "/",
@@ -9,12 +9,12 @@
     "theme_color": "#b0adad",
     "icons": [
       {
-        "src": "tdsp_logo_ico.webp",
+        "src": "favicon192x192.png",
         "sizes": "192x192",
         "type": "image/webp"
       },
       {
-        "src": "tdsp_logo_ico.webp",
+        "src": "favicon512x512.png",
         "sizes": "512x512",
         "type": "image/webp"
       }
