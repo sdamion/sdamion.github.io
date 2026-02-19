@@ -5,7 +5,14 @@
     fetch('links.html')
         .then(response => response.text())
         .then(data => {
-            document.getElementById('links-container').innerHTML = data;
+            // Parse fetched HTML and append safely to container (avoid innerHTML)
+            const container = document.getElementById('links-container');
+            if (container) {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(data, 'text/html');
+                // Move children into the container
+                Array.from(doc.body.childNodes).forEach(node => container.appendChild(node));
+            }
 
             // Load links.js after HTML is injected
             const script = document.createElement('script');

@@ -50,7 +50,59 @@ function goToDetails() {
 }
 
 // Fetch prices on page load and set up auto-update
+// Initialize UI behaviors and price fetching when DOM is ready
 document.addEventListener("DOMContentLoaded", () => {
     fetchPrices();
     setInterval(fetchPrices, 60000); // Auto-update every 60 seconds
+    initUI();
 });
+
+function initUI() {
+    setupRevealOnScroll();
+    setupHeaderVisibility();
+}
+
+function setupRevealOnScroll() {
+    const mainRoot = document.getElementById('main-content');
+    console.debug('Reveal root element:', mainRoot);
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            console.debug('IO entry', entry.target && entry.target.id, entry.isIntersecting, entry.intersectionRatio);
+            if (entry.isIntersecting) {
+                entry.target.classList.add('visible');
+            }
+        });
+    }, { threshold: 0.12, root: mainRoot || null, rootMargin: '0px 0px -10% 0px' });
+
+    const targets = Array.from(document.querySelectorAll('.section, .hero-logo, .link-grid, h2, p'));
+    targets.forEach(el => {
+        el.classList.add('reveal');
+        observer.observe(el);
+    });
+
+    // Fallback: if observer didn't trigger within 1s, reveal everything so the page isn't stuck hidden
+    setTimeout(() => {
+        const stillHidden = targets.filter(t => !t.classList.contains('visible'));
+        if (stillHidden.length) {
+            console.warn('Reveal fallback: forcing visible on', stillHidden.length, 'elements');
+            stillHidden.forEach(t => t.classList.add('visible'));
+        }
+    }, 1000);
+}
+
+function setupHeaderVisibility() {
+    let lastY = window.scrollY;
+    const header = document.getElementById('site-header');
+    if (!header) return;
+
+    document.addEventListener('scroll', () => {
+        const y = window.scrollY;
+        if (y > lastY && y > 50) {
+            header.style.transform = 'translateY(-110%)';
+            header.style.transition = 'transform 300ms ease';
+        } else {
+            header.style.transform = '';
+        }
+        lastY = y;
+    }, { passive: true });
+}

@@ -36,11 +36,16 @@
 
     function updateTable() {
       const tbody = document.querySelector('#resultsTable tbody');
-      tbody.innerHTML = ''; // Clear table
+      while (tbody.firstChild) tbody.removeChild(tbody.firstChild);
 
       lastWinners.forEach((entry, index) => {
         const row = document.createElement('tr');
-        row.innerHTML = `<td>${index + 1}</td><td>${entry.id}</td><td>${entry.time}</td>`;
+        const tdIndex = document.createElement('td'); tdIndex.textContent = String(index + 1);
+        const tdId = document.createElement('td'); tdId.textContent = entry.id;
+        const tdTime = document.createElement('td'); tdTime.textContent = entry.time;
+        row.appendChild(tdIndex);
+        row.appendChild(tdId);
+        row.appendChild(tdTime);
         tbody.appendChild(row);
       });
     }

@@ -75,22 +75,7 @@ require_once 'security-headers.php'; // must be first, before any HTML is sent
             </p>
         </section>
         <div id="links-container"></div>
-        <script>
-            // Load the external HTML file and inject it
-            fetch('links.html')
-                .then(response => response.text())
-                .then(data => {
-                    document.getElementById('links-container').innerHTML = data;
-        
-                    // Load stakenow.js after the HTML is injected
-                    const script = document.createElement('script');
-                    script.src = 'links.js';
-                    script.defer = true;
-                    script.setAttribute('nonce', '<?= $GLOBALS["csp_nonce"] ?>');
-                    document.body.appendChild(script);
-                })
-                .catch(error => console.error('Error loading links.html:', error));
-        </script>
+        <script src="links-loader.js" nonce="<?= $GLOBALS['csp_nonce'] ?>" defer></script>
         <footer>
             &copy; 2025 The Dutch Stake Pool. All rights reserved.
         </footer>

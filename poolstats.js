@@ -15,19 +15,32 @@ document.addEventListener("DOMContentLoaded", function () {
         const tr = document.createElement("tr");
         const tdKey = document.createElement("td");
         const tdValue = document.createElement("td");
-
-        tdKey.innerHTML = `<strong>${label}</strong>`;
+        const strong = document.createElement('strong');
+        strong.textContent = label;
+        tdKey.appendChild(strong);
 
         if (typeof value === "string" && value.startsWith("http")) {
             if (value.match(/\.(jpeg|jpg|gif|png|webp)$/)) {
-                tdValue.innerHTML = `<img src="${value}" alt="Image" style="max-width: 100px; border-radius: 10px;">`;
+                const img = document.createElement('img');
+                img.src = value;
+                img.alt = 'Image';
+                img.style.maxWidth = '100px';
+                img.style.borderRadius = '10px';
+                tdValue.appendChild(img);
             } else {
-                tdValue.innerHTML = `<a href="${value}" target="_blank">${value}</a>`;
+                const a = document.createElement('a');
+                a.href = value;
+                a.target = '_blank';
+                a.textContent = value;
+                tdValue.appendChild(a);
             }
         } else if (typeof value === "boolean") {
             tdValue.textContent = value ? "Yes" : "No";
         } else if (typeof value === "string" && value.includes("<span")) {
-            tdValue.innerHTML = value;
+            // Parse small trusted HTML fragments safely
+            const parser = new DOMParser();
+            const frag = parser.parseFromString(value, 'text/html');
+            Array.from(frag.body.childNodes).forEach(n => tdValue.appendChild(n));
         } else {
             tdValue.textContent = value;
         }
@@ -52,7 +65,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
             const table = document.getElementById("data-table");
             const tbody = table.querySelector("tbody");
-            tbody.innerHTML = "";
+            // Clear tbody safely without using innerHTML
+            while (tbody.firstChild) tbody.removeChild(tbody.firstChild);
 
             addRow(tbody, "Epoch", epochJson.data.epoch_no);
             addRow(tbody, "Ticker", poolJson.data.ticker);

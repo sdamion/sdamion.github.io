@@ -29,7 +29,11 @@ async function fetchJson(url, attempts = 0) {
 function displayError(message) {
     const errorMessage = document.getElementById('errorMessage');
     if (errorMessage) {
-        errorMessage.innerHTML = `<p style="color: red;">❌ ${message}</p>`;
+        errorMessage.textContent = '';
+        const p = document.createElement('p');
+        p.style.color = 'red';
+        p.textContent = `❌ ${message}`;
+        errorMessage.appendChild(p);
     }
 }
 
@@ -136,26 +140,44 @@ function updateUI(minersData, teamBalance = 0, totalWeeklyBlocks = 0) {
 
     if (teamNameElement) teamNameElement.innerText = teams[selectedTeamId] || selectedTeamId;
     if (balanceDisplay) {
-        let html = `Company Balance: ${formatBalance(teamBalance)}`;
+        balanceDisplay.textContent = '';
+        const textNode = document.createTextNode(`Company Balance: ${formatBalance(teamBalance)}`);
+        balanceDisplay.appendChild(textNode);
         if (selectedTeamId === 'B0ADAD') {
-            const giveawayBalance = teamBalance / 2;
-            html += `<br>🎁 Giveaway Balance (50%): ${formatBalance(giveawayBalance)}`;
+            const br = document.createElement('br');
+            balanceDisplay.appendChild(br);
+            const span = document.createElement('span');
+            span.textContent = `🎁 Giveaway Balance (50%): ${formatBalance(teamBalance / 2)}`;
+            balanceDisplay.appendChild(span);
         }
-        balanceDisplay.innerHTML = html;
-    }    
+    }
     if (weeklyBlocksDisplay) weeklyBlocksDisplay.innerText = `Weekly Blocks: ${totalWeeklyBlocks}`;
 
     if (minerTableBody) {
-        minerTableBody.innerHTML = minersData.map(({ miner_id, rank, balance, weeklyBlocks }, index) =>
-            `<tr>
-                <td>${index + 1}</td>
-                <td><a href="https://starch.one/miner/${miner_id}" target="_blank" style="text-decoration: none; color: #007BFF;">${miner_id}</a></td>
-                <td>${rank}</td>
-                <td>${weeklyBlocks}</td>
-                <td>${balance ? formatBalance(balance) : '0.000M'}</td>
-            </tr>`
-        ).join('');
-    }    
+        while (minerTableBody.firstChild) minerTableBody.removeChild(minerTableBody.firstChild);
+        minersData.forEach(({ miner_id, rank, balance, weeklyBlocks }, index) => {
+            const tr = document.createElement('tr');
+            const tdIndex = document.createElement('td'); tdIndex.textContent = String(index + 1);
+            const tdLink = document.createElement('td');
+            const a = document.createElement('a');
+            a.href = `https://starch.one/miner/${miner_id}`;
+            a.target = '_blank';
+            a.style.textDecoration = 'none';
+            a.style.color = '#007BFF';
+            a.textContent = miner_id;
+            tdLink.appendChild(a);
+            const tdRank = document.createElement('td'); tdRank.textContent = String(rank);
+            const tdWeekly = document.createElement('td'); tdWeekly.textContent = String(weeklyBlocks);
+            const tdBalance = document.createElement('td'); tdBalance.textContent = balance ? formatBalance(balance) : '0.000M';
+
+            tr.appendChild(tdIndex);
+            tr.appendChild(tdLink);
+            tr.appendChild(tdRank);
+            tr.appendChild(tdWeekly);
+            tr.appendChild(tdBalance);
+            minerTableBody.appendChild(tr);
+        });
+    }
 
     renderChart(minersData);
 }
@@ -164,10 +186,14 @@ function populateTeamSelector() {
     const teamSelector = document.getElementById('teamSelector');
     if (!teamSelector) return;
 
-    teamSelector.innerHTML = Object.entries(teams).map(([teamId, teamName]) => 
-        `<option value="${teamId}">${teamName} (${teamId})</option>`
-    ).join('');
-
+    teamSelector.innerHTML = '';
+    while (teamSelector.firstChild) teamSelector.removeChild(teamSelector.firstChild);
+    Object.entries(teams).forEach(([teamId, teamName]) => {
+        const opt = document.createElement('option');
+        opt.value = teamId;
+        opt.textContent = `${teamName} (${teamId})`;
+        teamSelector.appendChild(opt);
+    });
     teamSelector.value = selectedTeamId;
     teamSelector.addEventListener('change', (event) => {
         selectedTeamId = event.target.value;
