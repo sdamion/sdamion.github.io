@@ -54,89 +54,23 @@ require_once 'security-headers.php'; // must be first, before any HTML is sent
     <script nonce="<?= $GLOBALS['csp_nonce'] ?>" src="index.js" defer></script>
 </head>
 <body>
-    <header class="site-header" id="site-header">
-        <div class="header-inner container">
-            <a class="brand" href="/">
-                <img src="tdsp_logo.webp" alt="The Dutch Stake Pool" loading="lazy">
-                <span>The Dutch Stake Pool</span>
-            </a>
-            <nav class="nav">
-                <a href="#links" class="nav-link">Links</a>
-                <a href="#prices" class="nav-link">Prices</a>
-                <a href="#about" class="nav-link">About</a>
-            </nav>
-        </div>
-    </header>
+    <main class="container" id="main-content">
+    <h1>The Dutch Stake Pool</h1>
+    <img src="tdsp_logo.webp" alt="The Dutch Stake Pool Logo - Reliable Bare-Metal Low-Fee Stake Pool" loading="lazy">
+    
+    <p>The one-stop shop for staking and node operations.</p>
 
-    <main id="main-content">
-        <section class="section hero" id="hero" aria-label="Hero">
-            <div class="container">
-                <h1>The Dutch Stake Pool</h1>
-                <p class="lead">Reliable bare-metal, low-fee stake pool for Cardano staking.</p>
-                <img class="hero-logo" src="tdsp_logo.webp" alt="The Dutch Stake Pool Logo" loading="lazy">
-            </div>
-        </section>
-
-        <section class="section" id="links" aria-label="Links">
-            <div class="container">
-                <h2>Useful Links</h2>
-                <div id="links-container" class="link-grid" aria-live="polite"></div>
-            </div>
-            <script nonce="<?= $GLOBALS['csp_nonce'] ?>" src="links-loader.js" defer></script>
-        </section>
-
-        <section class="section" id="prices" aria-label="Prices">
-            <div class="container">
-                <h2>Prices</h2>
-                <p class="small-text"><strong>ADA:</strong> <span id="ada-price">Loading...</span> | <strong>IAG:</strong> <span id="iag-price">Loading...</span> | <strong>STRCH:</strong> <span id="strch-price">Loading...</span></p>
-                <p class="small-text">Price data from <a href="https://www.coingecko.com" target="_blank" rel="noopener noreferrer">CoinGecko</a> and <a href="https://www.geckoterminal.com" target="_blank" rel="noopener noreferrer">GeckoTerminal</a>.</p>
-            </div>
-        </section>
-
-        <section class="section" id="about" aria-label="About">
-            <div class="container">
-                <h2>About</h2>
-                <p>We run secure, reliable staking infrastructure and provide transparent information for delegators.</p>
-            </div>
-        </section>
-
-        <!-- Embedded pages as sections -->
-        <section class="section" id="about-page" aria-label="About Page">
-            <div class="container" id="about-page-container">
-                <h2>About (loading...)</h2>
-            </div>
-        </section>
-
-        <section class="section" id="poolstats-page" aria-label="Pool Stats Page">
-            <div class="container" id="poolstats-page-container">
-                <h2>Pool Stats (loading...)</h2>
-            </div>
-        </section>
-
-        <section class="section" id="starch-page" aria-label="Starch Page">
-            <div class="container" id="starch-page-container">
-                <h2>Starch (loading...)</h2>
-            </div>
-        </section>
-
-        <section class="section" id="miner-page" aria-label="Miner Page">
-            <div class="container" id="miner-page-container">
-                <h2>Miner (loading...)</h2>
-            </div>
-        </section>
-
-        <section class="section" id="links-page" aria-label="Links Page">
-            <div class="container" id="links-page-container">
-                <h2>Links (loading...)</h2>
-            </div>
-        </section>
-
-        <footer class="site-footer">
-            <div class="container">
-                &copy; 2025 The Dutch Stake Pool. All rights reserved.
-            </div>
-        </footer>
+    <div id="links-container"></div>
+    <script nonce="<?= $GLOBALS['csp_nonce'] ?>" src="links-loader.js" defer></script>
+    
+    <div class="prices">
+        <p><strong>ADA:</strong> <span id="ada-price">Loading...</span> | <strong>IAG:</strong> <span id="iag-price">Loading...</span> | <strong>STRCH:</strong> <span id="strch-price">Loading...</span><br>
+        Price powered by <a href="https://www.coingecko.com" target="_blank" rel="noopener noreferrer" aria-label="Coingecko">Coingecko</a> and <a href="https://www.geckoterminal.com" target="_blank" rel="noopener noreferrer" aria-label="Geckoterminal">Geckoterminal</a>
+        </p>
+    </div>
+    <footer>
+        &copy; 2025 The Dutch Stake Pool. All rights reserved.
+    </footer>
     </main>
-    <script nonce="<?= $GLOBALS['csp_nonce'] ?>" src="page-loader.js" defer></script>
 </body>
 </html>
