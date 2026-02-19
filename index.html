@@ -61,22 +61,7 @@ require_once 'security-headers.php'; // must be first, before any HTML is sent
     <p>The one-stop shop for staking and node operations.</p>
 
     <div id="links-container"></div>
-    <script>
-        // Load the external HTML file and inject it
-        fetch('links.html')
-            .then(response => response.text())
-            .then(data => {
-                document.getElementById('links-container').innerHTML = data;
-    
-                // Load stakenow.js after the HTML is injected
-                const script = document.createElement('script');
-                script.src = 'links.js';
-                script.defer = true;
-                script.setAttribute('nonce', '<?= $GLOBALS["csp_nonce"] ?>');
-                document.body.appendChild(script);
-            })
-            .catch(error => console.error('Error loading links.html:', error));
-    </script>
+    <script nonce="<?= $GLOBALS['csp_nonce'] ?>" src="links-loader.js" defer></script>
     
     <div class="prices">
         <p><strong>ADA:</strong> <span id="ada-price">Loading...</span> | <strong>IAG:</strong> <span id="iag-price">Loading...</span> | <strong>STRCH:</strong> <span id="strch-price">Loading...</span><br>
