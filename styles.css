@@ -325,6 +325,14 @@ main {
     border-bottom: 1px solid rgba(0,0,0,0.06);
 }
 
+/* Prevent header container from inheriting full-page min-height */
+.site-header .container,
+.site-header .header-inner.container {
+    min-height: 0; /* override .container default of 100vh */
+    padding: 8px 16px;
+    align-items: center;
+}
+
 .header-inner {
     display: flex;
     align-items: center;

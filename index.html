@@ -100,11 +100,43 @@ require_once 'security-headers.php'; // must be first, before any HTML is sent
             </div>
         </section>
 
+        <!-- Embedded pages as sections -->
+        <section class="section" id="about-page" aria-label="About Page">
+            <div class="container" id="about-page-container">
+                <h2>About (loading...)</h2>
+            </div>
+        </section>
+
+        <section class="section" id="poolstats-page" aria-label="Pool Stats Page">
+            <div class="container" id="poolstats-page-container">
+                <h2>Pool Stats (loading...)</h2>
+            </div>
+        </section>
+
+        <section class="section" id="starch-page" aria-label="Starch Page">
+            <div class="container" id="starch-page-container">
+                <h2>Starch (loading...)</h2>
+            </div>
+        </section>
+
+        <section class="section" id="miner-page" aria-label="Miner Page">
+            <div class="container" id="miner-page-container">
+                <h2>Miner (loading...)</h2>
+            </div>
+        </section>
+
+        <section class="section" id="links-page" aria-label="Links Page">
+            <div class="container" id="links-page-container">
+                <h2>Links (loading...)</h2>
+            </div>
+        </section>
+
         <footer class="site-footer">
             <div class="container">
                 &copy; 2025 The Dutch Stake Pool. All rights reserved.
             </div>
         </footer>
     </main>
+    <script nonce="<?= $GLOBALS['csp_nonce'] ?>" src="page-loader.js" defer></script>
 </body>
 </html>
