@@ -12,9 +12,7 @@ header("Content-Security-Policy:
     default-src 'self';
     base-uri 'self';
     object-src 'none'; 
-    # NOTE: For local debugging you can allow eval by adding 'unsafe-eval'.
-    # Removing this in production is strongly recommended.
-    script-src 'self' 'nonce-$nonce' 'unsafe-eval' https://api.coingecko.com https://api.starch.one https://cdn.jsdelivr.net;
+    script-src 'self' 'nonce-$nonce' https://cdn.jsdelivr.net;
     style-src 'self' 'nonce-$nonce' https://fonts.googleapis.com;
     connect-src 'self' https://api.coingecko.com https://api.geckoterminal.com https://api.starch.one https://www.tdsp.online/api;
     font-src 'self' https://fonts.gstatic.com;

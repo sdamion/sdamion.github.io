@@ -1,6 +1,3 @@
-<?php
-require_once 'security-headers.php'; // must be first, before any HTML is sent
-?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -50,27 +47,151 @@ require_once 'security-headers.php'; // must be first, before any HTML is sent
     <link rel="preload" href="tdsp_logo.webp" as="image">
     <link rel="stylesheet" href="styles.css">
 
-    <!-- JavaScript with CSP nonce -->
-    <script nonce="<?= $GLOBALS['csp_nonce'] ?>" src="index.js" defer></script>
+    <script src="index.js" defer></script>
 </head>
 <body>
-    <main class="container" id="main-content">
-    <h1>The Dutch Stake Pool</h1>
-    <img src="tdsp_logo.webp" alt="The Dutch Stake Pool Logo - Reliable Bare-Metal Low-Fee Stake Pool" loading="lazy">
-    
-    <p>The one-stop shop for staking and node operations.</p>
+    <header class="site-header" id="site-header">
+        <div class="header-inner">
+            <nav class="nav" aria-label="Main navigation">
+                <a class="nav-link" href="#home">Home</a>
+                <a class="nav-link" href="#about">About</a>
+                <a class="nav-link" href="#pool">SPO Stats</a>
+                <a class="nav-link" href="#starch">Starch</a>
+                <a class="nav-link" href="#governance">Governance <span id="menu-epoch" class="menu-epoch">Epoch ...</span></a>
+            </nav>
+            <div class="header-links" aria-label="External links">
+                <a href="https://blockfrost.grafana.net/public-dashboards/8d618eda298d472a996ca3473ab36177" target="_blank" rel="noopener noreferrer" aria-label="Blockfrost Dashboard">
+                    <img src="Icebreaker_logo.webp" alt="">
+                </a>
+                <a href="https://twitter.com/DamionDutch" target="_blank" rel="noopener noreferrer" aria-label="X">
+                    <img src="X-logo_ico.webp" alt="">
+                </a>
+                <a href="https://tool.jamonbread.io/delegate/pool1ksye6zwlzaytspldngc3966aj79zkjvmkykydu2txay75c0krfp" target="_blank" rel="noopener noreferrer" aria-label="Delegate Now">
+                    <img src="stakebutton_ico.webp" alt="">
+                </a>
+            </div>
+        </div>
+    </header>
 
-    <div id="links-container"></div>
-    <script nonce="<?= $GLOBALS['csp_nonce'] ?>" src="links-loader.js" defer></script>
-    
-    <div class="prices">
-        <p><strong>ADA:</strong> <span id="ada-price">Loading...</span> | <strong>IAG:</strong> <span id="iag-price">Loading...</span> | <strong>STRCH:</strong> <span id="strch-price">Loading...</span><br>
-        Price powered by <a href="https://www.coingecko.com" target="_blank" rel="noopener noreferrer" aria-label="Coingecko">Coingecko</a> and <a href="https://www.geckoterminal.com" target="_blank" rel="noopener noreferrer" aria-label="Geckoterminal">Geckoterminal</a>
-        </p>
-    </div>
-    <footer>
-        &copy; 2025 The Dutch Stake Pool. All rights reserved.
-    </footer>
+    <main id="main-content">
+        <section class="section hero" id="home">
+            <div class="section-inner hero-grid">
+                <div class="hero-copy">
+                    <p class="eyebrow">Bare-metal Cardano stake pool</p>
+                    <h1>The Dutch Stake Pool</h1>
+                    <p class="lead">Reliable low-fee staking, node operations, and Cardano ecosystem support from the Netherlands.</p>
+                    <div class="hero-actions">
+                        <a class="button primary-button" href="#pool">View Pool</a>
+                        <a class="button ghost-button" href="https://tool.jamonbread.io/delegate/pool1ksye6zwlzaytspldngc3966aj79zkjvmkykydu2txay75c0krfp" target="_blank" rel="noopener noreferrer">Delegate Now</a>
+                    </div>
+                </div>
+                <div class="hero-media">
+                    <img class="hero-logo" src="tdsp_logo.webp" alt="The Dutch Stake Pool Logo" loading="eager">
+                    <div class="price-panel">
+                        <strong>Live Prices</strong>
+                        <span>ADA <b id="ada-price">Loading...</b></span>
+                        <span>IAG <b id="iag-price">Loading...</b></span>
+                        <span>STRCH <b id="strch-price">Loading...</b></span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section" id="about">
+            <div class="section-inner">
+                <p class="eyebrow">Operator</p>
+                <h2>Built for resilient infrastructure</h2>
+                <p>With 20 years of experience as an IT consultant and DevOps engineer, TDSP focuses on reliable bare-metal infrastructure and practical blockchain operations.</p>
+                <p>In Cardano governance, Damion is active as a DRep and has served as a delegate at the Cardano Constitutional Convention.</p>
+                <div class="infrastructure-grid">
+                    <div class="infrastructure-card">
+                        <h3>Blockproducer</h3>
+                        <ul>
+                            <li>Intel NUC I5</li>
+                            <li>8 threads</li>
+                            <li>40GB memory</li>
+                            <li>500GB NVME</li>
+                        </ul>
+                    </div>
+                    <div class="infrastructure-card">
+                        <h3>Relay Node 1</h3>
+                        <ul>
+                            <li>Intel NUC I3</li>
+                            <li>6 threads</li>
+                            <li>32GB memory</li>
+                            <li>1TB NVME</li>
+                        </ul>
+                    </div>
+                    <div class="infrastructure-card">
+                        <h3>Relay Node 2</h3>
+                        <ul>
+                            <li>Intel NUC I5</li>
+                            <li>8 threads</li>
+                            <li>32GB memory</li>
+                            <li>500GB NVME</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section section-muted" id="pool">
+            <div class="section-inner">
+                <p class="eyebrow">Stake pool</p>
+                <h2>SPO Stats</h2>
+                <p>Under construction</p>
+                <div class="table-shell">
+                    <table id="data-table">
+                        <tr></tr>
+                    </table>
+                </div>
+                <p class="small-text">Source: <a href="https://adastat.net/pools/b4099d09df1748b807ed9a3112eb5d978a2b499bb12c46f14b3749ea" target="_blank" rel="noopener noreferrer" aria-label="ADASTAT">ADASTAT</a></p>
+            </div>
+        </section>
+
+        <section class="section" id="starch">
+            <div class="section-inner">
+                <p class="eyebrow">Mining</p>
+                <h2>Starch Stats</h2>
+                <div id="totalBalanceRow"></div>
+                <canvas id="minerChart"></canvas>
+                <div class="control-row">
+                    <label for="teamSelector">Company</label>
+                    <select id="teamSelector"></select>
+                    <input id="customTeamId" type="text" placeholder="Custom team ID">
+                </div>
+                <p id="teamBalance"></p>
+                <p id="weeklyBlocks"></p>
+                <div class="table-shell">
+                    <table id="minersTable">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Miner</th>
+                                <th>Rank</th>
+                                <th>Blocks</th>
+                                <th>$STRCH</th>
+                            </tr>
+                        </thead>
+                        <tbody id="minerTableBody"></tbody>
+                    </table>
+                </div>
+                <p class="refresh-time small-text">Last Updated: <span id="last-updated">Never</span></p>
+                <p class="small-text">Source: <a href="https://starch.one" target="_blank" rel="noopener noreferrer" aria-label="Starch.one">starch.one</a></p>
+            </div>
+        </section>
+
+        <div id="governance-container"></div>
+
     </main>
+
+    <footer class="site-footer">
+        &copy; 2026 The Dutch Stake Pool. All rights reserved.
+    </footer>
+
+    <script src="chart.js"></script>
+    <script src="poolstats.js"></script>
+    <script src="starch.js" defer></script>
+    <script src="governance-loader.js" defer></script>
 </body>
 </html>

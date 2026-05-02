@@ -1,6 +1,3 @@
-<?php
-require_once 'security-headers.php'; // must be first, before any HTML is sent
-?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -26,38 +23,36 @@ require_once 'security-headers.php'; // must be first, before any HTML is sent
         </section>
 
         <section>
-              <div className="mt-12 space-y-6">
-                <h3 className="text-2xl font-semibold">Infrastructure</h3>
-                <div className="grid md:grid-cols-2 gap-8">
-                  <div className="bg-card p-6 rounded-lg border border-orange-500">
-                    <h4 className="text-lg font-semibold mb-4">
+              <div class="infrastructure">
+                <h3>Infrastructure</h3>
+                <div class="infrastructure-grid">
+                  <div class="infrastructure-card">
+                    <h4>
                       Server 1 - Intel NUC I5
                     </h4>
-                    <ul className="space-y-2 text-muted-foreground">
+                    <ul>
                       <li>Intel I5 8 Threads</li>
                       <li>40GB Memory</li>
                       <li>500GB NVME</li>
                       <li>Blockproducer Node</li>
                     </ul>
                   </div>
-                  <br>
-                  <div className="bg-card p-6 rounded-lg border border-orange-500">
-                    <h4 className="text-lg font-semibold mb-4">
+                  <div class="infrastructure-card">
+                    <h4>
                       Server 2 - Intel NUC I3
                     </h4>
-                    <ul className="space-y-2 text-muted-foreground">
+                    <ul>
                       <li>Intel I3 6 Threads</li>
                       <li>32GB Memory</li>
                       <li>1TB NVME</li>
                       <li>Relay Node 1</li>
                     </ul>
                   </div>
-                  <br>
-                  <div className="bg-card p-6 rounded-lg border border-orange-500">
-                    <h4 className="text-lg font-semibold mb-4">
+                  <div class="infrastructure-card">
+                    <h4>
                       Server 3 - Intel NUC I5 
                     </h4>
-                    <ul className="space-y-2 text-muted-foreground">
+                    <ul>
                       <li>Intel I5 8 Threads</li>
                       <li>32GB Memory</li>
                       <li>500GB NVME</li>
@@ -75,9 +70,9 @@ require_once 'security-headers.php'; // must be first, before any HTML is sent
             </p>
         </section>
         <div id="links-container"></div>
-        <script src="links-loader.js" nonce="<?= $GLOBALS['csp_nonce'] ?>" defer></script>
+        <script src="links-loader.js" defer></script>
         <footer>
-            &copy; 2025 The Dutch Stake Pool. All rights reserved.
+            &copy; 2026 The Dutch Stake Pool. All rights reserved.
         </footer>
     </main>
 </body>

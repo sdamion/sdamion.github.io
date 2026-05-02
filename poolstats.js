@@ -1,14 +1,16 @@
 document.addEventListener("DOMContentLoaded", function () {
     const poolInfoUrl = "https://www.tdsp.online/api/adastat/pool-info";
     const epochInfoUrl = "https://www.tdsp.online/api/adastat/epoch-info";
-
-    function formatKeyName(key) {
-        key = key.replace(/_/g, " ").toLowerCase();
-        return key.charAt(0).toUpperCase() + key.slice(1);
-    }
+    const isLocalPreview = ['localhost', '127.0.0.1'].includes(window.location.hostname);
 
     function formatAda(value) {
         return (value / 1_000_000).toLocaleString() + " ADA";
+    }
+
+    function getTableBody() {
+        const table = document.getElementById("data-table");
+        if (!table) return null;
+        return table.querySelector("tbody") || table.appendChild(document.createElement("tbody"));
     }
 
     function addRow(tbody, label, value) {
@@ -51,6 +53,14 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function fetchData() {
+        if (isLocalPreview) {
+            const tbody = getTableBody();
+            if (!tbody) return;
+            while (tbody.firstChild) tbody.removeChild(tbody.firstChild);
+            addRow(tbody, "Pool data", "Live on production site");
+            return;
+        }
+
         Promise.all([
             fetch(poolInfoUrl),
             fetch(epochInfoUrl)
@@ -63,8 +73,8 @@ document.addEventListener("DOMContentLoaded", function () {
             const poolJson = await poolResponse.json();
             const epochJson = await epochResponse.json();
 
-            const table = document.getElementById("data-table");
-            const tbody = table.querySelector("tbody");
+            const tbody = getTableBody();
+            if (!tbody) return;
             // Clear tbody safely without using innerHTML
             while (tbody.firstChild) tbody.removeChild(tbody.firstChild);
 
@@ -93,18 +103,17 @@ document.addEventListener("DOMContentLoaded", function () {
                 });
             }
         })
-        .catch(error => console.error("Error fetching the JSON data:", error));
-    }
-
-    function fetchPerformanceData() {
-        console.log("Performance data fetch stub.");
+        .catch(() => {
+            const tbody = getTableBody();
+            if (!tbody) return;
+            while (tbody.firstChild) tbody.removeChild(tbody.firstChild);
+            addRow(tbody, "Pool data", "Temporarily unavailable");
+        });
     }
 
     fetchData();
-    fetchPerformanceData();
 
     setInterval(() => {
         fetchData();
-        fetchPerformanceData();
     }, 1 * 60 * 60 * 1000);
 });

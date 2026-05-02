@@ -143,13 +143,6 @@ function updateUI(minersData, teamBalance = 0, totalWeeklyBlocks = 0) {
         balanceDisplay.textContent = '';
         const textNode = document.createTextNode(`Company Balance: ${formatBalance(teamBalance)}`);
         balanceDisplay.appendChild(textNode);
-        if (selectedTeamId === 'B0ADAD') {
-            const br = document.createElement('br');
-            balanceDisplay.appendChild(br);
-            const span = document.createElement('span');
-            span.textContent = `🎁 Giveaway Balance (50%): ${formatBalance(teamBalance / 2)}`;
-            balanceDisplay.appendChild(span);
-        }
     }
     if (weeklyBlocksDisplay) weeklyBlocksDisplay.innerText = `Weekly Blocks: ${totalWeeklyBlocks}`;
 

@@ -8,39 +8,48 @@ const TOKEN_IDS = {
     IAG: "5d16cc1a177b5d9ba9cfa9793b07e60f1fb70fea1f8aef064415d114494147",
 };
 
+const IS_LOCAL_PREVIEW = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+
 // Fetch and display ADA, IAG, STRCH, XER, and COPI prices asynchronously
 async function fetchPrices() {
-    try {
-        // Fetch both API sources in parallel
-        const [coingeckoResponse, geckoterminalResponse] = await Promise.all([
-            fetch(COINGECKO_API_URL),
-            fetch(GECKOTERMINAL_API_URL)
-        ]);
+    const adaEl = document.getElementById('ada-price');
+    const iagEl = document.getElementById('iag-price');
+    const strchEl = document.getElementById('strch-price');
 
-        if (!coingeckoResponse.ok) throw new Error(`CoinGecko HTTP Error: ${coingeckoResponse.status}`);
-        if (!geckoterminalResponse.ok) throw new Error(`GeckoTerminal HTTP Error: ${geckoterminalResponse.status}`);
+    if (IS_LOCAL_PREVIEW) {
+        if (adaEl) adaEl.textContent = 'Live online';
+        if (iagEl) iagEl.textContent = 'Live online';
+        if (strchEl) strchEl.textContent = 'Live online';
+        return;
+    }
 
-        const coingeckoData = await coingeckoResponse.json();
-        const geckoterminalData = await geckoterminalResponse.json();
+    const [coingeckoResult, geckoterminalResult] = await Promise.allSettled([
+        fetch(COINGECKO_API_URL).then(response => {
+            if (!response.ok) throw new Error(`CoinGecko HTTP Error: ${response.status}`);
+            return response.json();
+        }),
+        fetch(GECKOTERMINAL_API_URL).then(response => {
+            if (!response.ok) throw new Error(`GeckoTerminal HTTP Error: ${response.status}`);
+            return response.json();
+        })
+    ]);
 
-        // Extract ADA price
-        const adaPrice = coingeckoData.cardano?.usd?.toFixed(2) || 'N/A';
+    if (coingeckoResult.status === 'fulfilled') {
+        const adaPrice = coingeckoResult.value.cardano?.usd?.toFixed(2);
+        if (adaEl) adaEl.textContent = adaPrice ? `$${adaPrice}` : 'N/A';
+    } else if (adaEl) {
+        adaEl.textContent = 'N/A';
+    }
 
-        // Extract token prices from GeckoTerminal
-        const tokenPrices = geckoterminalData?.data?.attributes?.token_prices || {};
-        const iagPrice = parseFloat(tokenPrices[TOKEN_IDS.IAG])?.toFixed(6) || 'N/A';
-        const strchPrice = parseFloat(tokenPrices[TOKEN_IDS.STRCH])?.toFixed(12) || 'N/A';
-
-        // Update UI
-        document.getElementById('ada-price').textContent = `$${adaPrice}`;
-        document.getElementById('iag-price').textContent = `$${iagPrice}`;
-        document.getElementById('strch-price').textContent = `$${strchPrice}`;
-
-    } catch (error) {
-        console.error('Error fetching prices:', error);
-        document.getElementById('ada-price').textContent = 'N/A';
-        document.getElementById('iag-price').textContent = 'N/A';
-        document.getElementById('strch-price').textContent = 'N/A';
+    if (geckoterminalResult.status === 'fulfilled') {
+        const tokenPrices = geckoterminalResult.value?.data?.attributes?.token_prices || {};
+        const iagPrice = parseFloat(tokenPrices[TOKEN_IDS.IAG]);
+        const strchPrice = parseFloat(tokenPrices[TOKEN_IDS.STRCH]);
+        if (iagEl) iagEl.textContent = Number.isFinite(iagPrice) ? `$${iagPrice.toFixed(6)}` : 'N/A';
+        if (strchEl) strchEl.textContent = Number.isFinite(strchPrice) ? `$${strchPrice.toFixed(12)}` : 'N/A';
+    } else {
+        if (iagEl) iagEl.textContent = 'N/A';
+        if (strchEl) strchEl.textContent = 'N/A';
     }
 }
 
@@ -57,25 +66,28 @@ document.addEventListener("DOMContentLoaded", () => {
     initUI();
 });
 
+document.addEventListener('tdsp:content-loaded', () => {
+    initUI();
+});
+
 function initUI() {
     setupRevealOnScroll();
     setupHeaderVisibility();
 }
 
 function setupRevealOnScroll() {
-    const mainRoot = document.getElementById('main-content');
-    console.debug('Reveal root element:', mainRoot);
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
-            console.debug('IO entry', entry.target && entry.target.id, entry.isIntersecting, entry.intersectionRatio);
             if (entry.isIntersecting) {
                 entry.target.classList.add('visible');
             }
         });
-    }, { threshold: 0.12, root: mainRoot || null, rootMargin: '0px 0px -10% 0px' });
+    }, { threshold: 0.12, root: null, rootMargin: '0px 0px -10% 0px' });
 
     const targets = Array.from(document.querySelectorAll('.section, .hero-logo, .link-grid, h2, p'));
     targets.forEach(el => {
+        if (el.dataset.revealObserved === 'true') return;
+        el.dataset.revealObserved = 'true';
         el.classList.add('reveal');
         observer.observe(el);
     });
@@ -84,25 +96,47 @@ function setupRevealOnScroll() {
     setTimeout(() => {
         const stillHidden = targets.filter(t => !t.classList.contains('visible'));
         if (stillHidden.length) {
-            console.warn('Reveal fallback: forcing visible on', stillHidden.length, 'elements');
             stillHidden.forEach(t => t.classList.add('visible'));
         }
     }, 1000);
 }
 
 function setupHeaderVisibility() {
-    let lastY = window.scrollY;
-    const header = document.getElementById('site-header');
-    if (!header) return;
+    const navLinks = Array.from(document.querySelectorAll('.nav-link[href^="#"]'));
+    const sections = navLinks
+        .map(link => document.querySelector(link.getAttribute('href')))
+        .filter(Boolean);
 
-    document.addEventListener('scroll', () => {
-        const y = window.scrollY;
-        if (y > lastY && y > 50) {
-            header.style.transform = 'translateY(-110%)';
-            header.style.transition = 'transform 300ms ease';
-        } else {
-            header.style.transform = '';
-        }
-        lastY = y;
-    }, { passive: true });
+    if (!navLinks.length || !sections.length) return;
+
+    const observer = new IntersectionObserver((entries) => {
+        const visible = entries
+            .filter(entry => entry.isIntersecting)
+            .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+
+        if (!visible) return;
+
+        navLinks.forEach(link => {
+            link.classList.toggle('active', link.getAttribute('href') === `#${visible.target.id}`);
+        });
+    }, {
+        rootMargin: '-25% 0px -55% 0px',
+        threshold: [0.1, 0.25, 0.5]
+    });
+
+    sections.forEach(section => observer.observe(section));
+
+    navLinks.forEach(link => {
+        if (link.dataset.navBound === 'true') return;
+        link.dataset.navBound = 'true';
+        link.addEventListener('click', () => {
+            navLinks.forEach(item => item.classList.remove('active'));
+            link.classList.add('active');
+        });
+    });
+
+    const firstLink = navLinks[0];
+    if (firstLink) {
+        firstLink.classList.add('active');
+    }
 }

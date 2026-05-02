@@ -1,6 +1,3 @@
-<?php
-require_once 'security-headers.php'; // must be first, before any HTML is sent
-?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -22,11 +19,11 @@ require_once 'security-headers.php'; // must be first, before any HTML is sent
     <div class="small-text">Source: <a href="https://adastat.net/pools/b4099d09df1748b807ed9a3112eb5d978a2b499bb12c46f14b3749ea" target="_blank" rel="noopener noreferrer"
     aria-label="ADASTAT">https://adastat.net/</a></div>
     </section>
-    <script src="poolstats.js" nonce="<?= $GLOBALS['csp_nonce'] ?>"></script>
+    <script src="poolstats.js"></script>
     <div id="links-container"></div>
-    <script src="links-loader.js" nonce="<?= $GLOBALS['csp_nonce'] ?>" defer></script>
+    <script src="links-loader.js" defer></script>
     <footer>
-        &copy; 2025 The Dutch Stake Pool. All rights reserved.
+        &copy; 2026 The Dutch Stake Pool. All rights reserved.
     </footer>
     </main>
 </body>

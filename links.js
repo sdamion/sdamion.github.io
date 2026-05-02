@@ -8,9 +8,11 @@ function openModal(event, modalId) {
   modal.setAttribute("tabindex", "-1");
   modal.focus();
 
-  // Store the trigger element to restore focus later
-  modal.dataset.trigger = event.currentTarget;
-  modal.dataset.modalId = modalId;
+  // Store the trigger element to restore focus later.
+  document.querySelectorAll(".iframe-modal").forEach(item => {
+    item._triggerElement = null;
+  });
+  modal._triggerElement = event.currentTarget;
 }
 
 function closeModal(modalId) {
@@ -20,10 +22,11 @@ function closeModal(modalId) {
   modal.style.display = "none";
 
   // Restore focus to the element that triggered the modal
-  const trigger = modal.dataset.trigger;
+  const trigger = modal._triggerElement;
   if (trigger && typeof trigger.focus === "function") {
     trigger.focus();
   }
+  modal._triggerElement = null;
 }
 
 // Escape key closes any open modal
