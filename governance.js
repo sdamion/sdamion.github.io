@@ -466,8 +466,8 @@ function formatVotePercentages(percentages) {
 function getVoteColorClass(percentages) {
     const yes = Number(percentages?.yes);
     if (!Number.isFinite(yes)) return 'vote-neutral';
-    if (yes >= 76) return 'vote-green';
-    if (yes >= 38) return 'vote-orange';
+    if (yes >= 67) return 'vote-green';
+    if (yes >= 33.5) return 'vote-orange';
     return 'vote-red';
 }
 
