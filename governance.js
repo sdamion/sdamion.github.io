@@ -2,7 +2,10 @@ const KOIOS_PROPOSALS_URL = 'https://api.koios.rest/api/v1/proposal_list?order=b
 const KOIOS_TIP_URL = 'https://api.koios.rest/api/v1/tip';
 const KOIOS_VOTING_SUMMARY_URL = 'https://api.koios.rest/api/v1/proposal_voting_summary';
 const LOCAL_PROXY_PATH = '/__koios_proxy__?url=';
-const CORS_PROXY_URL = 'https://api.codetabs.com/v1/proxy?quest=';
+const CORS_PROXY_URLS = [
+    'https://api.codetabs.com/v1/proxy/?quest=',
+    'https://api.codetabs.com/v1/proxy?quest='
+];
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initGovernance);
@@ -84,7 +87,17 @@ async function fetchViaProxy(url) {
         return fetchJson(`${LOCAL_PROXY_PATH}${encodeURIComponent(url)}`);
     }
 
-    return fetchJson(`${CORS_PROXY_URL}${encodeURIComponent(url)}`);
+    let lastError = null;
+
+    for (const proxyUrl of CORS_PROXY_URLS) {
+        try {
+            return await fetchJson(`${proxyUrl}${encodeURIComponent(url)}`);
+        } catch (error) {
+            lastError = error;
+        }
+    }
+
+    throw lastError || new Error('Proxy request failed');
 }
 
 function shouldUseLocalProxy() {
