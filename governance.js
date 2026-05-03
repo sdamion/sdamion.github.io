@@ -344,11 +344,14 @@ function getGovernanceGroupSignature(proposals) {
 function getVoteDisplayFromProposalSummary(summary, proposal) {
     if (!summary) return null;
 
-    const poolVotesCast = (Number(summary.pool_yes_votes_cast) || 0)
+    const poolHasCastVotes = (Number(summary.pool_yes_votes_cast) || 0)
         + (Number(summary.pool_no_votes_cast) || 0)
-        + (Number(summary.pool_abstain_votes_cast) || 0);
+        + (Number(summary.pool_abstain_votes_cast) || 0) > 0;
+    const poolHasVotePower = (Number(summary.pool_yes_vote_power) || 0) > 0
+        || (Number(summary.pool_no_vote_power) || 0) > 0
+        || (Number(summary.pool_active_abstain_vote_power) || 0) > 0;
 
-    if (poolVotesCast > 0 || usesPoolVoting(proposal)) {
+    if ((poolHasCastVotes || poolHasVotePower) && usesPoolVoting(proposal)) {
         const poolPercentages = getPercentagesFromSummary(summary, 'pool');
         if (poolPercentages) {
             return { source: 'pool', label: 'SPO', percentages: poolPercentages };
