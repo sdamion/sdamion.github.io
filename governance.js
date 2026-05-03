@@ -3,7 +3,12 @@ const KOIOS_VOTES_URL = 'https://api.koios.rest/api/v1/vote_list?limit=10000&sel
 const KOIOS_TIP_URL = 'https://api.koios.rest/api/v1/tip';
 const KOIOS_VOTING_SUMMARY_URL = 'https://api.koios.rest/api/v1/proposal_voting_summary';
 const LOCAL_PROXY_PATH = '/__koios_proxy__?url=';
-const CORS_PROXY_URLS = [
+const DEFAULT_CORS_PROXY_URLS = [
+    'https://api.codetabs.com/v1/proxy/?quest=',
+    'https://api.codetabs.com/v1/proxy?quest='
+];
+const SUMMARY_CORS_PROXY_URLS = [
+    'https://cors.utilitytool.app/',
     'https://api.codetabs.com/v1/proxy/?quest=',
     'https://api.codetabs.com/v1/proxy?quest='
 ];
@@ -136,16 +141,31 @@ async function fetchViaProxy(url) {
     }
 
     let lastError = null;
+    const proxyUrls = getProxyUrlsForTarget(url);
 
-    for (const proxyUrl of CORS_PROXY_URLS) {
+    for (const proxyUrl of proxyUrls) {
         try {
-            return await fetchJson(`${proxyUrl}${encodeURIComponent(url)}`);
+            return await fetchJson(buildProxyRequestUrl(proxyUrl, url));
         } catch (error) {
             lastError = error;
         }
     }
 
     throw lastError || new Error('Proxy request failed');
+}
+
+function getProxyUrlsForTarget(url) {
+    return url.startsWith(KOIOS_VOTING_SUMMARY_URL)
+        ? SUMMARY_CORS_PROXY_URLS
+        : DEFAULT_CORS_PROXY_URLS;
+}
+
+function buildProxyRequestUrl(proxyUrl, targetUrl) {
+    if (proxyUrl === 'https://cors.utilitytool.app/') {
+        return `${proxyUrl}${encodeURIComponent(targetUrl)}`;
+    }
+
+    return `${proxyUrl}${encodeURIComponent(targetUrl)}`;
 }
 
 function shouldUseLocalProxy() {
