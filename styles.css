@@ -695,6 +695,29 @@ p {
     color: var(--text);
 }
 
+.pool-banner {
+    display: inline-flex;
+    align-items: center;
+    min-height: 42px;
+    margin: 0 0 16px;
+    padding: 0 14px;
+    border: 1px solid rgba(20, 184, 166, 0.28);
+    border-radius: 8px;
+    background: rgba(20, 184, 166, 0.10);
+    color: var(--text);
+    font-weight: 700;
+    animation: pool-banner-blink 1.4s ease-in-out infinite;
+}
+
+@keyframes pool-banner-blink {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.45;
+    }
+}
+
 .table-shell {
     width: 100%;
     margin-top: 24px;
