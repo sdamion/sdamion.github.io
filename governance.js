@@ -8,7 +8,7 @@ const DEFAULT_CORS_PROXY_URLS = [
     'https://api.codetabs.com/v1/proxy?quest='
 ];
 const SUMMARY_CORS_PROXY_URLS = [
-    'https://cors.utilitytool.app/',
+    'https://bypass.cors.rest/proxy?url=',
     'https://api.codetabs.com/v1/proxy/?quest=',
     'https://api.codetabs.com/v1/proxy?quest='
 ];
@@ -161,10 +161,6 @@ function getProxyUrlsForTarget(url) {
 }
 
 function buildProxyRequestUrl(proxyUrl, targetUrl) {
-    if (proxyUrl === 'https://cors.utilitytool.app/') {
-        return `${proxyUrl}${encodeURIComponent(targetUrl)}`;
-    }
-
     return `${proxyUrl}${encodeURIComponent(targetUrl)}`;
 }
 
