@@ -1,6 +1,7 @@
 const KOIOS_PROPOSALS_URL = 'https://api.koios.rest/api/v1/proposal_list?order=block_time.desc&limit=500';
 const KOIOS_TIP_URL = 'https://api.koios.rest/api/v1/tip';
-const KOIOS_VOTES_URL = 'https://api.koios.rest/api/v1/vote_list';
+const KOIOS_VOTING_SUMMARY_URL = 'https://api.koios.rest/api/v1/proposal_voting_summary';
+const LOCAL_PROXY_PATH = '/__koios_proxy__?url=';
 const CORS_PROXY_URL = 'https://api.codetabs.com/v1/proxy?quest=';
 
 if (document.readyState === 'loading') {
@@ -70,24 +71,25 @@ async function fetchGovernanceProposals() {
     return Array.isArray(proxied) ? proxied : [];
 }
 
-async function fetchGovernanceVotes(proposalIds) {
-    if (!proposalIds.length) return [];
+async function fetchGovernanceVoteSummary(proposalId) {
+    if (!proposalId) return null;
 
-    const chunks = chunkArray(proposalIds, 30);
-    const allVotes = [];
-
-    for (const chunk of chunks) {
-        const ids = chunk.map(encodeURIComponent).join(',');
-        const url = `${KOIOS_VOTES_URL}?proposal_id=in.(${ids})&select=proposal_id,vote&limit=5000`;
-        const votes = await fetchViaProxy(url);
-        if (Array.isArray(votes)) allVotes.push(...votes);
-    }
-
-    return allVotes;
+    const url = `${KOIOS_VOTING_SUMMARY_URL}?_proposal_id=${encodeURIComponent(proposalId)}`;
+    const summary = await fetchViaProxy(url);
+    return Array.isArray(summary) ? summary[0] || null : null;
 }
 
 async function fetchViaProxy(url) {
+    if (shouldUseLocalProxy()) {
+        return fetchJson(`${LOCAL_PROXY_PATH}${encodeURIComponent(url)}`);
+    }
+
     return fetchJson(`${CORS_PROXY_URL}${encodeURIComponent(url)}`);
+}
+
+function shouldUseLocalProxy() {
+    const host = window.location.hostname;
+    return host === '127.0.0.1' || host === 'localhost';
 }
 
 async function fetchJson(url) {
@@ -125,18 +127,28 @@ async function enrichGovernanceVotes(proposals) {
         .filter(Boolean);
 
     proposals.forEach(proposal => {
+        proposal.voteSummary = null;
         proposal.votePercentages = null;
     });
 
     try {
-        const votes = await fetchGovernanceVotes(proposalIds);
-        const percentagesByProposal = getVotePercentagesByProposal(votes);
+        const summaries = await mapWithConcurrency(proposalIds, 6, async proposalId => ({
+            proposalId,
+            summary: await fetchGovernanceVoteSummary(proposalId).catch(() => null)
+        }));
+        const summariesByProposal = Object.fromEntries(
+            summaries
+                .filter(entry => entry?.proposalId)
+                .map(entry => [entry.proposalId, entry.summary])
+        );
 
         proposals.forEach(proposal => {
-            proposal.votePercentages = percentagesByProposal[proposal.proposal_id] || null;
+            proposal.voteSummary = summariesByProposal[proposal.proposal_id] || null;
+            proposal.votePercentages = getVotePercentagesFromSummary(proposal.voteSummary);
         });
     } catch (error) {
         proposals.forEach(proposal => {
+            proposal.voteSummary = null;
             proposal.votePercentages = null;
         });
     }
@@ -237,6 +249,7 @@ function openGovernanceOverlay(proposal) {
     addDetailRow(content, 'Expired epoch', proposal.expired_epoch);
     addDetailRow(content, 'Dropped epoch', proposal.dropped_epoch);
     addDetailRow(content, 'Vote percentages', formatVotePercentages(proposal.votePercentages));
+    addVoteSummaryRows(content, proposal.voteSummary);
     addDetailRow(content, 'Deposit', formatLovelace(proposal.deposit));
     addDetailRow(content, 'Return address', proposal.return_address);
     addDetailRow(content, 'Metadata URL', proposal.meta_url);
@@ -295,6 +308,18 @@ function addDetailRow(container, label, value) {
     row.appendChild(key);
     row.appendChild(text);
     container.appendChild(row);
+}
+
+function addVoteSummaryRows(container, summary) {
+    if (!summary) return;
+
+    addDetailRow(container, 'DRep yes votes', summary.drep_yes_votes_cast);
+    addDetailRow(container, 'DRep yes stake', formatCompactAdaFromLovelace(summary.drep_yes_vote_power));
+    addDetailRow(container, 'DRep no votes', summary.drep_no_votes_cast);
+    addDetailRow(container, 'DRep no stake', formatCompactAdaFromLovelace(summary.drep_no_vote_power));
+    addDetailRow(container, 'DRep abstain votes', summary.drep_abstain_votes_cast);
+    addDetailRow(container, 'DRep always abstain stake', formatCompactAdaFromLovelace(summary.drep_always_abstain_vote_power));
+    addDetailRow(container, 'DRep always no-confidence stake', formatCompactAdaFromLovelace(summary.drep_always_no_confidence_vote_power));
 }
 
 function cleanGovernanceText(text) {
@@ -379,31 +404,40 @@ function getExpirationText(proposal) {
     return 'No expiration data';
 }
 
-function getVotePercentagesByProposal(votes) {
-    const totals = votes.reduce((groups, vote) => {
-        if (!vote.proposal_id) return groups;
+function getVotePercentagesFromSummary(summary) {
+    if (!summary) return null;
 
-        groups[vote.proposal_id] = groups[vote.proposal_id] || { yes: 0, no: 0, abstain: 0 };
-        const key = String(vote.vote || '').toLowerCase();
-        if (key in groups[vote.proposal_id]) {
-            groups[vote.proposal_id][key] += 1;
+    const yes = Number(summary.drep_yes_pct);
+    const no = Number(summary.drep_no_pct);
+    const abstain = getDerivedDrepAbstainPercentage(summary, yes, no);
+
+    if (![yes, no, abstain].every(Number.isFinite)) return null;
+
+    return { yes, no, abstain };
+}
+
+function getDerivedDrepAbstainPercentage(summary, yes, no) {
+    const explicit = Number(summary.drep_abstain_pct);
+    if (Number.isFinite(explicit)) return explicit;
+
+    const derived = 100 - yes - no;
+    return Math.abs(derived) < 0.000001 ? 0 : derived;
+}
+
+async function mapWithConcurrency(items, concurrency, mapper) {
+    const results = new Array(items.length);
+    let index = 0;
+
+    const workers = Array.from({ length: Math.max(1, Math.min(concurrency, items.length)) }, async () => {
+        while (index < items.length) {
+            const currentIndex = index;
+            index += 1;
+            results[currentIndex] = await mapper(items[currentIndex], currentIndex);
         }
+    });
 
-        return groups;
-    }, {});
-
-    return Object.entries(totals).reduce((percentages, [proposalId, votesForProposal]) => {
-        const total = votesForProposal.yes + votesForProposal.no + votesForProposal.abstain;
-        if (!total) return percentages;
-
-        percentages[proposalId] = {
-            yes: votesForProposal.yes / total * 100,
-            no: votesForProposal.no / total * 100,
-            abstain: votesForProposal.abstain / total * 100
-        };
-
-        return percentages;
-    }, {});
+    await Promise.all(workers);
+    return results;
 }
 
 function formatVotePercentages(percentages) {
@@ -452,4 +486,15 @@ function formatPercentage(value) {
     if (!Number.isFinite(number)) return value;
     const rounded = Math.round(number * 100) / 100;
     return `${rounded.toLocaleString()}%`;
+}
+
+function formatCompactAdaFromLovelace(value) {
+    const lovelace = Number(value);
+    if (!Number.isFinite(lovelace)) return value;
+
+    const ada = lovelace / 1_000_000;
+    return `${new Intl.NumberFormat(undefined, {
+        notation: 'compact',
+        maximumFractionDigits: 2
+    }).format(ada)} ADA`;
 }
