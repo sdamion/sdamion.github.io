@@ -1,5 +1,7 @@
 const DASHBOARD_API_URL = 'https://api.tdsp.online/api/dashboard';
 const ACTIVE_REFRESH_INTERVAL_MS = 60 * 1000;
+const EPOCH_DURATION_SECONDS = 432000;
+const APPROVAL_GRACE_PERIOD_SECONDS = 300;
 
 let governanceRefreshTimer = null;
 let lastActiveRenderSignature = '';
@@ -121,6 +123,11 @@ function getDashboardEpoch(payload) {
     ];
 
     return candidates.map(Number).find(Number.isFinite) ?? null;
+}
+
+function getDashboardTip(payload = governanceState) {
+    if (Array.isArray(payload?.tip) && payload.tip.length) return payload.tip[0];
+    return payload?.tip || null;
 }
 
 function updateEpochDisplayFromDashboardPayload(payload) {
@@ -446,9 +453,38 @@ function usesPoolVoting(proposal) {
 }
 
 function getGovernanceStatus(proposal) {
+    if (meetsGovernanceApprovalThreshold(proposal)) return 'approved';
     if (proposal.dropped_epoch !== null || proposal.expired_epoch !== null) return 'rejected';
     if (proposal.ratified_epoch !== null || proposal.enacted_epoch !== null) return 'approved';
     return 'active';
+}
+
+function meetsGovernanceApprovalThreshold(proposal) {
+    const yes = Number(proposal?.votePercentages?.yes);
+    if (!Number.isFinite(yes)) return false;
+    if (!hasPassedExpirationGracePeriod(proposal)) return false;
+
+    if (proposal?.voteDisplay?.source === 'pool') {
+        return yes >= 50;
+    }
+
+    return yes >= 67;
+}
+
+function hasPassedExpirationGracePeriod(proposal) {
+    const expirationEpoch = Number(proposal?.expiration);
+    if (!Number.isFinite(expirationEpoch)) return false;
+
+    const tip = getDashboardTip();
+    const currentEpoch = Number(tip?.epoch_no);
+    const currentEpochSlot = Number(tip?.epoch_slot);
+
+    if (!Number.isFinite(currentEpoch) || !Number.isFinite(currentEpochSlot)) return false;
+    if (currentEpoch < expirationEpoch) return false;
+    if (currentEpoch === expirationEpoch) return false;
+
+    const elapsedSinceExpirationEnd = ((currentEpoch - expirationEpoch - 1) * EPOCH_DURATION_SECONDS) + currentEpochSlot;
+    return elapsedSinceExpirationEnd >= APPROVAL_GRACE_PERIOD_SECONDS;
 }
 
 function shouldShowVotePercentages(proposal) {
