@@ -140,7 +140,16 @@ function updateEpochDisplayFromDashboard(dashboard) {
 
 async function fetchJson(url) {
     const response = await fetch(url);
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    if (!response.ok) {
+        let detail = '';
+        try {
+            const payload = await response.json();
+            detail = payload?.detail || payload?.error || '';
+        } catch {
+            detail = '';
+        }
+        throw new Error(detail ? `HTTP ${response.status}: ${detail}` : `HTTP ${response.status}`);
+    }
     return response.json();
 }
 

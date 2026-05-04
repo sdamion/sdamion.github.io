@@ -8,6 +8,7 @@ const root = __dirname;
 const host = '127.0.0.1';
 const port = Number(process.env.PORT || 4173);
 const DASHBOARD_API_URL = 'https://api.tdsp.online/api/dashboard';
+const UPSTREAM_TIMEOUT_MS = 8000;
 
 const mimeTypes = {
     '.html': 'text/html; charset=utf-8',
@@ -101,7 +102,7 @@ async function proxyKoiosRequest(requestUrl, res) {
         return;
     }
 
-    https.get(parsedTarget, upstream => {
+    const upstreamRequest = https.get(parsedTarget, upstream => {
         const chunks = [];
 
         upstream.on('data', chunk => chunks.push(chunk));
@@ -113,16 +114,22 @@ async function proxyKoiosRequest(requestUrl, res) {
             });
             res.end(body);
         });
-    }).on('error', () => {
+    });
+
+    upstreamRequest.setTimeout(UPSTREAM_TIMEOUT_MS, () => {
+        upstreamRequest.destroy(new Error('Koios upstream timeout'));
+    });
+
+    upstreamRequest.on('error', error => {
         res.writeHead(502, { 'Content-Type': 'application/json; charset=utf-8' });
-        res.end(JSON.stringify({ error: 'Upstream request failed' }));
+        res.end(JSON.stringify({ error: 'Upstream request failed', detail: error.message }));
     });
 }
 
 async function proxyDashboardRequest(res) {
     const parsedTarget = new URL(DASHBOARD_API_URL);
 
-    https.get(parsedTarget, upstream => {
+    const upstreamRequest = https.get(parsedTarget, upstream => {
         const chunks = [];
 
         upstream.on('data', chunk => chunks.push(chunk));
@@ -134,8 +141,14 @@ async function proxyDashboardRequest(res) {
             });
             res.end(body);
         });
-    }).on('error', () => {
+    });
+
+    upstreamRequest.setTimeout(UPSTREAM_TIMEOUT_MS, () => {
+        upstreamRequest.destroy(new Error('Dashboard upstream timeout'));
+    });
+
+    upstreamRequest.on('error', error => {
         res.writeHead(502, { 'Content-Type': 'application/json; charset=utf-8' });
-        res.end(JSON.stringify({ error: 'Dashboard upstream request failed' }));
+        res.end(JSON.stringify({ error: 'Dashboard upstream request failed', detail: error.message }));
     });
 }
