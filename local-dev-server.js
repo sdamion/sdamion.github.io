@@ -7,6 +7,7 @@ const { URL } = require('url');
 const root = __dirname;
 const host = '127.0.0.1';
 const port = Number(process.env.PORT || 4173);
+const DASHBOARD_API_URL = 'https://api.tdsp.online/api/dashboard';
 
 const mimeTypes = {
     '.html': 'text/html; charset=utf-8',
@@ -28,6 +29,11 @@ const server = http.createServer(async (req, res) => {
 
         if (requestUrl.pathname === '/__koios_proxy__') {
             await proxyKoiosRequest(requestUrl, res);
+            return;
+        }
+
+        if (requestUrl.pathname === '/__dashboard_proxy__') {
+            await proxyDashboardRequest(res);
             return;
         }
 
@@ -110,5 +116,26 @@ async function proxyKoiosRequest(requestUrl, res) {
     }).on('error', () => {
         res.writeHead(502, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify({ error: 'Upstream request failed' }));
+    });
+}
+
+async function proxyDashboardRequest(res) {
+    const parsedTarget = new URL(DASHBOARD_API_URL);
+
+    https.get(parsedTarget, upstream => {
+        const chunks = [];
+
+        upstream.on('data', chunk => chunks.push(chunk));
+        upstream.on('end', () => {
+            const body = Buffer.concat(chunks);
+            res.writeHead(upstream.statusCode || 502, {
+                'Content-Type': upstream.headers['content-type'] || 'application/json; charset=utf-8',
+                'Cache-Control': 'no-store'
+            });
+            res.end(body);
+        });
+    }).on('error', () => {
+        res.writeHead(502, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ error: 'Dashboard upstream request failed' }));
     });
 }

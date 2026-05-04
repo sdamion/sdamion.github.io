@@ -1,4 +1,5 @@
 const DASHBOARD_API_URL = 'https://api.tdsp.online/api/dashboard';
+const LOCAL_DASHBOARD_PROXY_PATH = '/__dashboard_proxy__';
 const ACTIVE_REFRESH_INTERVAL_MS = 60 * 1000;
 
 let governanceRefreshTimer = null;
@@ -100,7 +101,16 @@ function scheduleActiveRefresh() {
 }
 
 async function fetchGovernanceDashboard() {
-    return fetchJson(DASHBOARD_API_URL);
+    return fetchJson(getDashboardApiUrl());
+}
+
+function getDashboardApiUrl() {
+    return shouldUseLocalProxy() ? LOCAL_DASHBOARD_PROXY_PATH : DASHBOARD_API_URL;
+}
+
+function shouldUseLocalProxy() {
+    const host = window.location.hostname;
+    return host === '127.0.0.1' || host === 'localhost';
 }
 
 function getDashboardEpoch(dashboard) {
@@ -136,7 +146,12 @@ async function fetchJson(url) {
 
 function getDashboardGovernanceProposals(dashboard) {
     const proposals = extractProposalCollection(dashboard);
-    return proposals.map(normalizeGovernanceProposal).filter(proposal => proposal?.proposal_id);
+    const summaryLookup = extractVotingSummaryLookup(dashboard);
+    return proposals
+        .map(proposal => normalizeGovernanceProposal(proposal, summaryLookup.get(
+            proposal?.proposal_id || proposal?.id || proposal?.gov_action_id || proposal?.action_id || ''
+        )))
+        .filter(proposal => proposal?.proposal_id);
 }
 
 function extractProposalCollection(dashboard) {
@@ -211,7 +226,7 @@ function isProposalLike(value) {
     );
 }
 
-function normalizeGovernanceProposal(proposal) {
+function normalizeGovernanceProposal(proposal, linkedSummary = null) {
     const normalized = { ...proposal };
     normalized.proposal_id = proposal?.proposal_id || proposal?.id || proposal?.gov_action_id || proposal?.action_id || '';
     normalized.proposal_tx_hash = proposal?.proposal_tx_hash || proposal?.tx_hash || proposal?.transaction_hash || '';
@@ -229,10 +244,14 @@ function normalizeGovernanceProposal(proposal) {
     normalized.meta_json = proposal?.meta_json ?? proposal?.metadata ?? proposal?.meta ?? {};
     normalized.proposal_description = proposal?.proposal_description ?? proposal?.description ?? null;
     normalized.voteSummary = normalizeVotingSummary(
-        proposal?.voteSummary
+        linkedSummary
+        || proposal?.voteSummary
         || proposal?.voting_summary
         || proposal?.summary
         || proposal?.vote_summary
+        || proposal?.votes
+        || proposal?.voting
+        || proposal
         || null
     );
     normalized.voteDisplay = getVoteDisplayFromProposalSummary(normalized.voteSummary, normalized);
@@ -264,12 +283,12 @@ function normalizeVotingSummary(summary) {
     if (!summary || typeof summary !== 'object') return null;
     return {
         ...summary,
-        drep_yes_pct: pickFirstNumber(summary.drep_yes_pct, summary.drep_yes_percentage, summary.drep?.yes_pct, summary.drep?.yes),
-        drep_no_pct: pickFirstNumber(summary.drep_no_pct, summary.drep_no_percentage, summary.drep?.no_pct, summary.drep?.no),
-        drep_abstain_pct: pickFirstNumber(summary.drep_abstain_pct, summary.drep_abstain_percentage, summary.drep?.abstain_pct, summary.drep?.abstain),
-        pool_yes_pct: pickFirstNumber(summary.pool_yes_pct, summary.pool_yes_percentage, summary.spo_yes_pct, summary.spo_yes_percentage, summary.pool?.yes_pct, summary.pool?.yes),
-        pool_no_pct: pickFirstNumber(summary.pool_no_pct, summary.pool_no_percentage, summary.spo_no_pct, summary.spo_no_percentage, summary.pool?.no_pct, summary.pool?.no),
-        pool_abstain_pct: pickFirstNumber(summary.pool_abstain_pct, summary.pool_abstain_percentage, summary.spo_abstain_pct, summary.spo_abstain_percentage, summary.pool?.abstain_pct, summary.pool?.abstain),
+        drep_yes_pct: pickFirstNumber(summary.drep_yes_pct, summary.drep_yes_percentage, summary.drep_yes_percent, summary.drep?.yes_pct, summary.drep?.yes_percentage, summary.drep?.yes_percent, summary.drep?.yes),
+        drep_no_pct: pickFirstNumber(summary.drep_no_pct, summary.drep_no_percentage, summary.drep_no_percent, summary.drep?.no_pct, summary.drep?.no_percentage, summary.drep?.no_percent, summary.drep?.no),
+        drep_abstain_pct: pickFirstNumber(summary.drep_abstain_pct, summary.drep_abstain_percentage, summary.drep_abstain_percent, summary.drep?.abstain_pct, summary.drep?.abstain_percentage, summary.drep?.abstain_percent, summary.drep?.abstain),
+        pool_yes_pct: pickFirstNumber(summary.pool_yes_pct, summary.pool_yes_percentage, summary.pool_yes_percent, summary.spo_yes_pct, summary.spo_yes_percentage, summary.spo_yes_percent, summary.pool?.yes_pct, summary.pool?.yes_percentage, summary.pool?.yes_percent, summary.pool?.yes, summary.spo?.yes_pct, summary.spo?.yes_percentage, summary.spo?.yes_percent, summary.spo?.yes),
+        pool_no_pct: pickFirstNumber(summary.pool_no_pct, summary.pool_no_percentage, summary.pool_no_percent, summary.spo_no_pct, summary.spo_no_percentage, summary.spo_no_percent, summary.pool?.no_pct, summary.pool?.no_percentage, summary.pool?.no_percent, summary.pool?.no, summary.spo?.no_pct, summary.spo?.no_percentage, summary.spo?.no_percent, summary.spo?.no),
+        pool_abstain_pct: pickFirstNumber(summary.pool_abstain_pct, summary.pool_abstain_percentage, summary.pool_abstain_percent, summary.spo_abstain_pct, summary.spo_abstain_percentage, summary.spo_abstain_percent, summary.pool?.abstain_pct, summary.pool?.abstain_percentage, summary.pool?.abstain_percent, summary.pool?.abstain, summary.spo?.abstain_pct, summary.spo?.abstain_percentage, summary.spo?.abstain_percent, summary.spo?.abstain),
         committee_yes_pct: pickFirstNumber(summary.committee_yes_pct, summary.committee?.yes_pct, summary.committee?.yes),
         committee_no_pct: pickFirstNumber(summary.committee_no_pct, summary.committee?.no_pct, summary.committee?.no),
         drep_yes_votes_cast: pickFirstNumber(summary.drep_yes_votes_cast, summary.drep?.yes_votes_cast, summary.drep_yes_votes),
@@ -286,6 +305,61 @@ function normalizeVotingSummary(summary) {
         pool_no_vote_power: pickFirstNumber(summary.pool_no_vote_power, summary.spo_no_vote_power, summary.pool?.no_vote_power, summary.pool_no_stake),
         pool_active_abstain_vote_power: pickFirstNumber(summary.pool_active_abstain_vote_power, summary.spo_active_abstain_vote_power, summary.pool?.active_abstain_vote_power)
     };
+}
+
+function extractVotingSummaryLookup(root) {
+    const lookup = new Map();
+    collectVotingSummaries(root, lookup, new Set());
+    return lookup;
+}
+
+function collectVotingSummaries(node, lookup, seen) {
+    if (!node || typeof node !== 'object' || seen.has(node)) return;
+    seen.add(node);
+
+    if (Array.isArray(node)) {
+        for (const item of node) {
+            if (isVotingSummaryLike(item)) {
+                const proposalId = item.proposal_id || item.id || item.gov_action_id || item.action_id;
+                if (proposalId && !lookup.has(proposalId)) lookup.set(proposalId, item);
+            }
+            collectVotingSummaries(item, lookup, seen);
+        }
+        return;
+    }
+
+    if (isVotingSummaryLike(node)) {
+        const proposalId = node.proposal_id || node.id || node.gov_action_id || node.action_id;
+        if (proposalId && !lookup.has(proposalId)) lookup.set(proposalId, node);
+    }
+
+    for (const value of Object.values(node)) {
+        if (value && typeof value === 'object') {
+            collectVotingSummaries(value, lookup, seen);
+        }
+    }
+}
+
+function isVotingSummaryLike(value) {
+    if (!value || typeof value !== 'object') return false;
+
+    return Boolean(
+        value.drep_yes_pct
+        || value.drep_no_pct
+        || value.pool_yes_pct
+        || value.pool_no_pct
+        || value.spo_yes_pct
+        || value.spo_no_pct
+        || value.drep_yes_percentage
+        || value.drep_no_percentage
+        || value.pool_yes_percentage
+        || value.pool_no_percentage
+        || value.spo_yes_percentage
+        || value.spo_no_percentage
+        || value.drep?.yes_pct
+        || value.pool?.yes_pct
+        || value.spo?.yes_pct
+    );
 }
 
 function pickFirstNumber(...values) {
