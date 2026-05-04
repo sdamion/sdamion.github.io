@@ -6,7 +6,7 @@ const { URL } = require('url');
 
 const root = __dirname;
 const host = '127.0.0.1';
-const port = Number(process.env.PORT || 4174);
+const port = Number(process.env.PORT || 4173);
 
 const mimeTypes = {
     '.html': 'text/html; charset=utf-8',

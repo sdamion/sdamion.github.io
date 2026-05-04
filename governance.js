@@ -1,20 +1,9 @@
-const KOIOS_PROPOSALS_URL = 'https://api.koios.rest/api/v1/proposal_list?order=block_time.desc&limit=500';
-const KOIOS_TIP_URL = 'https://api.koios.rest/api/v1/tip';
-const KOIOS_VOTING_SUMMARY_URL = 'https://api.koios.rest/api/v1/proposal_voting_summary';
-const LOCAL_PROXY_PATH = '/__koios_proxy__?url=';
-const DEFAULT_CORS_PROXY_URLS = [
-    'https://api.codetabs.com/v1/proxy/?quest=',
-    'https://api.codetabs.com/v1/proxy?quest='
-];
-const SUMMARY_CORS_PROXY_URLS = [
-    'https://bypass.cors.rest/proxy?url=',
-    'https://api.codetabs.com/v1/proxy/?quest=',
-    'https://api.codetabs.com/v1/proxy?quest='
-];
+const DASHBOARD_API_URL = 'https://api.tdsp.online/api/dashboard';
 const ACTIVE_REFRESH_INTERVAL_MS = 60 * 1000;
 
 let governanceRefreshTimer = null;
 let lastActiveRenderSignature = '';
+let governanceState = null;
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initGovernance);
@@ -32,8 +21,8 @@ async function loadCurrentEpoch() {
     if (!epochElement) return;
 
     try {
-        const tip = await fetchViaProxy(KOIOS_TIP_URL);
-        const epoch = Array.isArray(tip) ? tip[0]?.epoch_no : tip?.epoch_no;
+        const dashboard = governanceState || await fetchGovernanceDashboard();
+        const epoch = getDashboardEpoch(dashboard);
         epochElement.textContent = Number.isFinite(epoch) ? `Epoch ${epoch}` : '';
     } catch (error) {
         epochElement.textContent = '';
@@ -50,33 +39,17 @@ async function loadGovernanceActions() {
     if (!groups.active || !groups.approved || !groups.rejected) return;
 
     try {
-        const proposals = await fetchGovernanceProposals();
+        const dashboard = await fetchGovernanceDashboard();
+        governanceState = dashboard;
+        const proposals = getDashboardGovernanceProposals(dashboard);
         const grouped = groupGovernanceProposals(proposals);
-
-        resetGovernanceVotes([
-            ...grouped.active,
-            ...grouped.approved,
-            ...grouped.rejected
-        ]);
 
         renderGovernanceGroup(groups.active, grouped.active, 'No active actions found.');
         renderGovernanceGroup(groups.approved, grouped.approved, 'No approved actions found.');
         renderGovernanceGroup(groups.rejected, grouped.rejected, 'No rejected actions found.');
         updateGovernanceCounts(grouped);
         lastActiveRenderSignature = getGovernanceGroupSignature(grouped.active);
-
-        enrichGovernanceVotes([
-            ...grouped.active,
-            ...grouped.approved,
-            ...grouped.rejected
-        ]).then(() => {
-            renderGovernanceGroup(groups.active, grouped.active, 'No active actions found.');
-            renderGovernanceGroup(groups.approved, grouped.approved, 'No approved actions found.');
-            renderGovernanceGroup(groups.rejected, grouped.rejected, 'No rejected actions found.');
-            updateGovernanceCounts(grouped);
-            lastActiveRenderSignature = getGovernanceGroupSignature(grouped.active);
-        }).catch(() => {});
-
+        updateEpochDisplayFromDashboard(dashboard);
         scheduleActiveRefresh();
     } catch (error) {
         Object.values(groups).forEach(group => {
@@ -90,30 +63,28 @@ async function loadGovernanceActions() {
 }
 
 async function refreshActiveGovernanceGroup() {
-    const container = document.getElementById('governance-active');
-    if (!container) return;
+    const groups = {
+        active: document.getElementById('governance-active'),
+        approved: document.getElementById('governance-approved'),
+        rejected: document.getElementById('governance-rejected')
+    };
+    if (!groups.active || !groups.approved || !groups.rejected) return;
 
-    const proposals = await fetchGovernanceProposals().catch(() => null);
-    if (!Array.isArray(proposals)) return;
-
+    const dashboard = await fetchGovernanceDashboard().catch(() => null);
+    if (!dashboard) return;
+    governanceState = dashboard;
+    updateEpochDisplayFromDashboard(dashboard);
+    const proposals = getDashboardGovernanceProposals(dashboard);
     const grouped = groupGovernanceProposals(proposals);
     const activeProposals = grouped.active;
-    resetGovernanceVotes(activeProposals);
-
-    const summariesByProposal = await fetchGovernanceSummaries(activeProposals).catch(() => null);
-    if (!summariesByProposal) return;
-
-    applyGovernanceSummaries(activeProposals, summariesByProposal);
 
     const nextSignature = getGovernanceGroupSignature(activeProposals);
     if (nextSignature === lastActiveRenderSignature) return;
 
-    renderGovernanceGroup(container, activeProposals, 'No active actions found.');
-    updateGovernanceCounts({
-        active: activeProposals,
-        approved: document.querySelectorAll('#governance-approved .governance-card'),
-        rejected: document.querySelectorAll('#governance-rejected .governance-card')
-    });
+    renderGovernanceGroup(groups.active, grouped.active, 'No active actions found.');
+    renderGovernanceGroup(groups.approved, grouped.approved, 'No approved actions found.');
+    renderGovernanceGroup(groups.rejected, grouped.rejected, 'No rejected actions found.');
+    updateGovernanceCounts(grouped);
     lastActiveRenderSignature = nextSignature;
 }
 
@@ -125,74 +96,33 @@ function scheduleActiveRefresh() {
     }, ACTIVE_REFRESH_INTERVAL_MS);
 }
 
-async function fetchGovernanceProposals() {
-    const proxied = await fetchViaProxy(KOIOS_PROPOSALS_URL);
-    return Array.isArray(proxied) ? proxied : [];
+async function fetchGovernanceDashboard() {
+    return fetchJson(DASHBOARD_API_URL);
 }
 
-async function fetchGovernanceVoteSummary(proposalId) {
-    if (!proposalId) return null;
+function getDashboardEpoch(dashboard) {
+    const candidates = [
+        dashboard?.epoch,
+        dashboard?.current_epoch,
+        dashboard?.epoch_no,
+        dashboard?.tip?.epoch_no,
+        dashboard?.governance?.epoch,
+        dashboard?.governance?.current_epoch,
+        dashboard?.governance?.tip?.epoch_no,
+        dashboard?.data?.epoch,
+        dashboard?.data?.current_epoch,
+        dashboard?.data?.tip?.epoch_no
+    ];
 
-    const url = `${KOIOS_VOTING_SUMMARY_URL}?_proposal_id=${encodeURIComponent(proposalId)}`;
-    const summary = await fetchViaProxy(url);
-    return Array.isArray(summary) ? summary[0] || null : null;
+    return candidates.map(Number).find(Number.isFinite) ?? null;
 }
 
-async function fetchGovernanceSummaries(proposals) {
-    const proposalIds = proposals
-        .map(proposal => proposal?.proposal_id)
-        .filter(Boolean);
+function updateEpochDisplayFromDashboard(dashboard) {
+    const epochElement = document.getElementById('menu-epoch');
+    if (!epochElement) return;
 
-    const summaries = await mapWithConcurrency(proposalIds, 6, async proposalId => ({
-        proposalId,
-        summary: await fetchGovernanceVoteSummary(proposalId).catch(() => null)
-    }));
-
-    return Object.fromEntries(
-        summaries
-            .filter(entry => entry?.proposalId)
-            .map(entry => [entry.proposalId, entry.summary])
-    );
-}
-
-async function enrichGovernanceVotes(proposals) {
-    const summariesByProposal = await fetchGovernanceSummaries(proposals);
-    applyGovernanceSummaries(proposals, summariesByProposal);
-}
-
-function applyGovernanceSummaries(proposals, summariesByProposal) {
-    proposals.forEach(proposal => {
-        const summary = summariesByProposal[proposal.proposal_id] || null;
-        proposal.voteSummary = summary;
-        proposal.voteDisplay = getVoteDisplayFromProposalSummary(summary, proposal);
-        proposal.votePercentages = proposal.voteDisplay?.percentages || null;
-    });
-}
-
-async function fetchViaProxy(url) {
-    if (shouldUseLocalProxy()) {
-        return fetchJson(`${LOCAL_PROXY_PATH}${encodeURIComponent(url)}`);
-    }
-
-    let lastError = null;
-    const proxyUrls = url.startsWith(KOIOS_VOTING_SUMMARY_URL)
-        ? SUMMARY_CORS_PROXY_URLS
-        : DEFAULT_CORS_PROXY_URLS;
-
-    for (const proxyUrl of proxyUrls) {
-        try {
-            return await fetchJson(`${proxyUrl}${encodeURIComponent(url)}`);
-        } catch (error) {
-            lastError = error;
-        }
-    }
-
-    throw lastError || new Error('Proxy request failed');
-}
-
-function shouldUseLocalProxy() {
-    const host = window.location.hostname;
-    return host === '127.0.0.1' || host === 'localhost';
+    const epoch = getDashboardEpoch(dashboard);
+    epochElement.textContent = Number.isFinite(epoch) ? `Epoch ${epoch}` : '';
 }
 
 async function fetchJson(url) {
@@ -201,19 +131,91 @@ async function fetchJson(url) {
     return response.json();
 }
 
-function mapWithConcurrency(items, concurrency, mapper) {
-    const results = new Array(items.length);
-    let index = 0;
+function getDashboardGovernanceProposals(dashboard) {
+    const proposals = [
+        dashboard?.proposals,
+        dashboard?.governance?.proposals,
+        dashboard?.governance,
+        dashboard?.data?.proposals,
+        dashboard?.data?.governance?.proposals,
+        dashboard?.data?.governance,
+        dashboard?.dashboard?.proposals,
+        dashboard?.dashboard?.governance?.proposals
+    ].find(Array.isArray);
 
-    const workers = Array.from({ length: Math.max(1, Math.min(concurrency, items.length)) }, async () => {
-        while (index < items.length) {
-            const currentIndex = index;
-            index += 1;
-            results[currentIndex] = await mapper(items[currentIndex], currentIndex);
-        }
-    });
+    if (!Array.isArray(proposals)) return [];
+    return proposals.map(normalizeGovernanceProposal).filter(proposal => proposal?.proposal_id);
+}
 
-    return Promise.all(workers).then(() => results);
+function normalizeGovernanceProposal(proposal) {
+    const normalized = { ...proposal };
+    normalized.proposal_id = proposal?.proposal_id || proposal?.id || proposal?.gov_action_id || proposal?.action_id || '';
+    normalized.proposal_tx_hash = proposal?.proposal_tx_hash || proposal?.tx_hash || proposal?.transaction_hash || '';
+    normalized.proposal_type = proposal?.proposal_type || proposal?.type || proposal?.gov_action_type || 'Governance';
+    normalized.block_time = proposal?.block_time ?? proposal?.created_at ?? proposal?.createdAt ?? proposal?.time ?? 0;
+    normalized.proposed_epoch = coerceNullableNumber(proposal?.proposed_epoch ?? proposal?.proposal_epoch ?? proposal?.epoch);
+    normalized.expiration = coerceNullableNumber(proposal?.expiration ?? proposal?.expires_epoch ?? proposal?.expired_after_epoch);
+    normalized.ratified_epoch = coerceNullableNumber(proposal?.ratified_epoch);
+    normalized.enacted_epoch = coerceNullableNumber(proposal?.enacted_epoch);
+    normalized.expired_epoch = coerceNullableNumber(proposal?.expired_epoch);
+    normalized.dropped_epoch = coerceNullableNumber(proposal?.dropped_epoch);
+    normalized.deposit = proposal?.deposit ?? proposal?.deposit_lovelace ?? '';
+    normalized.return_address = proposal?.return_address ?? proposal?.returnAddress ?? '';
+    normalized.meta_url = proposal?.meta_url ?? proposal?.metadata_url ?? proposal?.url ?? '';
+    normalized.meta_json = proposal?.meta_json ?? proposal?.metadata ?? proposal?.meta ?? {};
+    normalized.proposal_description = proposal?.proposal_description ?? proposal?.description ?? null;
+    normalized.voteSummary = normalizeVotingSummary(
+        proposal?.voteSummary
+        || proposal?.voting_summary
+        || proposal?.summary
+        || proposal?.vote_summary
+        || null
+    );
+    normalized.voteDisplay = getVoteDisplayFromProposalSummary(normalized.voteSummary, normalized);
+    normalized.votePercentages = normalized.voteDisplay?.percentages || null;
+    return normalized;
+}
+
+function normalizeVotingSummary(summary) {
+    if (!summary || typeof summary !== 'object') return null;
+    return {
+        ...summary,
+        drep_yes_pct: pickFirstNumber(summary.drep_yes_pct, summary.drep_yes_percentage, summary.drep?.yes_pct, summary.drep?.yes),
+        drep_no_pct: pickFirstNumber(summary.drep_no_pct, summary.drep_no_percentage, summary.drep?.no_pct, summary.drep?.no),
+        drep_abstain_pct: pickFirstNumber(summary.drep_abstain_pct, summary.drep_abstain_percentage, summary.drep?.abstain_pct, summary.drep?.abstain),
+        pool_yes_pct: pickFirstNumber(summary.pool_yes_pct, summary.pool_yes_percentage, summary.spo_yes_pct, summary.spo_yes_percentage, summary.pool?.yes_pct, summary.pool?.yes),
+        pool_no_pct: pickFirstNumber(summary.pool_no_pct, summary.pool_no_percentage, summary.spo_no_pct, summary.spo_no_percentage, summary.pool?.no_pct, summary.pool?.no),
+        pool_abstain_pct: pickFirstNumber(summary.pool_abstain_pct, summary.pool_abstain_percentage, summary.spo_abstain_pct, summary.spo_abstain_percentage, summary.pool?.abstain_pct, summary.pool?.abstain),
+        committee_yes_pct: pickFirstNumber(summary.committee_yes_pct, summary.committee?.yes_pct, summary.committee?.yes),
+        committee_no_pct: pickFirstNumber(summary.committee_no_pct, summary.committee?.no_pct, summary.committee?.no),
+        drep_yes_votes_cast: pickFirstNumber(summary.drep_yes_votes_cast, summary.drep?.yes_votes_cast, summary.drep_yes_votes),
+        drep_no_votes_cast: pickFirstNumber(summary.drep_no_votes_cast, summary.drep?.no_votes_cast, summary.drep_no_votes),
+        drep_abstain_votes_cast: pickFirstNumber(summary.drep_abstain_votes_cast, summary.drep?.abstain_votes_cast, summary.drep_abstain_votes),
+        drep_yes_vote_power: pickFirstNumber(summary.drep_yes_vote_power, summary.drep?.yes_vote_power, summary.drep_yes_stake),
+        drep_no_vote_power: pickFirstNumber(summary.drep_no_vote_power, summary.drep?.no_vote_power, summary.drep_no_stake),
+        drep_always_abstain_vote_power: pickFirstNumber(summary.drep_always_abstain_vote_power, summary.drep?.always_abstain_vote_power),
+        drep_always_no_confidence_vote_power: pickFirstNumber(summary.drep_always_no_confidence_vote_power, summary.drep?.always_no_confidence_vote_power),
+        pool_yes_votes_cast: pickFirstNumber(summary.pool_yes_votes_cast, summary.spo_yes_votes_cast, summary.pool?.yes_votes_cast, summary.pool_yes_votes),
+        pool_no_votes_cast: pickFirstNumber(summary.pool_no_votes_cast, summary.spo_no_votes_cast, summary.pool?.no_votes_cast, summary.pool_no_votes),
+        pool_abstain_votes_cast: pickFirstNumber(summary.pool_abstain_votes_cast, summary.spo_abstain_votes_cast, summary.pool?.abstain_votes_cast, summary.pool_abstain_votes),
+        pool_yes_vote_power: pickFirstNumber(summary.pool_yes_vote_power, summary.spo_yes_vote_power, summary.pool?.yes_vote_power, summary.pool_yes_stake),
+        pool_no_vote_power: pickFirstNumber(summary.pool_no_vote_power, summary.spo_no_vote_power, summary.pool?.no_vote_power, summary.pool_no_stake),
+        pool_active_abstain_vote_power: pickFirstNumber(summary.pool_active_abstain_vote_power, summary.spo_active_abstain_vote_power, summary.pool?.active_abstain_vote_power)
+    };
+}
+
+function pickFirstNumber(...values) {
+    for (const value of values) {
+        const number = Number(value);
+        if (Number.isFinite(number)) return number;
+    }
+    return null;
+}
+
+function coerceNullableNumber(value) {
+    if (value === null || value === undefined || value === '') return null;
+    const number = Number(value);
+    return Number.isFinite(number) ? number : null;
 }
 
 function groupGovernanceProposals(proposals) {
@@ -229,14 +231,6 @@ function groupGovernanceProposals(proposals) {
     });
 
     return groups;
-}
-
-function resetGovernanceVotes(proposals) {
-    proposals.forEach(proposal => {
-        proposal.voteSummary = null;
-        proposal.voteDisplay = null;
-        proposal.votePercentages = null;
-    });
 }
 
 function getVoteDisplayFromProposalSummary(summary, proposal) {
