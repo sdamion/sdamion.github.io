@@ -162,7 +162,7 @@ function getGovernanceProposalsFromDashboardPayload(payload) {
                 item?.voting_summary || item?.vote_summary || item?.summary || item?.vote_percentages || item?.votePercentages || null,
                 item
             ))
-            .filter(proposal => proposal?.proposal_id);
+            .filter(proposal => proposal?.proposal_id && !shouldHideGovernanceProposal(proposal));
     }
 
     const items = Array.isArray(payload?.data) ? payload.data : [];
@@ -172,7 +172,11 @@ function getGovernanceProposalsFromDashboardPayload(payload) {
             item?.voting_summary || item?.vote_summary || item?.summary || item?.vote_percentages || item?.votePercentages || null,
             item
         ))
-        .filter(proposal => proposal?.proposal_id);
+        .filter(proposal => proposal?.proposal_id && !shouldHideGovernanceProposal(proposal));
+}
+
+function shouldHideGovernanceProposal(proposal) {
+    return proposal?.proposal_type === 'InfoAction';
 }
 
 function normalizeGovernanceProposal(proposal, linkedSummary = null, container = null) {
