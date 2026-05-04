@@ -1,5 +1,4 @@
-const DASHBOARD_API_URL = 'https://api.tdsp.online/api/dashboard';
-const LOCAL_DASHBOARD_PROXY_PATH = '/__dashboard_proxy__';
+const DASHBOARD_API_URL = 'http://192.168.1.193:3001/api/dashboard';
 const ACTIVE_REFRESH_INTERVAL_MS = 60 * 1000;
 
 let governanceRefreshTimer = null;
@@ -22,8 +21,8 @@ async function loadCurrentEpoch() {
     if (!epochElement) return;
 
     try {
-        const dashboard = governanceState || await fetchGovernanceDashboard();
-        const epoch = getDashboardEpoch(dashboard);
+        const dashboardPayload = governanceState || await fetchGovernanceDashboardPayload();
+        const epoch = getDashboardEpoch(dashboardPayload);
         epochElement.textContent = Number.isFinite(epoch) ? `Epoch ${epoch}` : '';
     } catch (error) {
         epochElement.textContent = '';
@@ -40,9 +39,9 @@ async function loadGovernanceActions() {
     if (!groups.active || !groups.approved || !groups.rejected) return;
 
     try {
-        const dashboard = await fetchGovernanceDashboard();
-        governanceState = dashboard;
-        const proposals = getDashboardGovernanceProposals(dashboard);
+        const dashboardPayload = await fetchGovernanceDashboardPayload();
+        governanceState = dashboardPayload;
+        const proposals = getGovernanceProposalsFromDashboardPayload(dashboardPayload);
         if (!proposals.length) {
             throw new Error('No governance proposals found in dashboard payload');
         }
@@ -53,7 +52,7 @@ async function loadGovernanceActions() {
         renderGovernanceGroup(groups.rejected, grouped.rejected, 'No rejected actions found.');
         updateGovernanceCounts(grouped);
         lastActiveRenderSignature = getGovernanceGroupSignature(grouped.active);
-        updateEpochDisplayFromDashboard(dashboard);
+        updateEpochDisplayFromDashboardPayload(dashboardPayload);
         scheduleActiveRefresh();
     } catch (error) {
         Object.values(groups).forEach(group => {
@@ -74,11 +73,11 @@ async function refreshActiveGovernanceGroup() {
     };
     if (!groups.active || !groups.approved || !groups.rejected) return;
 
-    const dashboard = await fetchGovernanceDashboard().catch(() => null);
-    if (!dashboard) return;
-    governanceState = dashboard;
-    updateEpochDisplayFromDashboard(dashboard);
-    const proposals = getDashboardGovernanceProposals(dashboard);
+    const dashboardPayload = await fetchGovernanceDashboardPayload().catch(() => null);
+    if (!dashboardPayload) return;
+    governanceState = dashboardPayload;
+    updateEpochDisplayFromDashboardPayload(dashboardPayload);
+    const proposals = getGovernanceProposalsFromDashboardPayload(dashboardPayload);
     const grouped = groupGovernanceProposals(proposals);
     const activeProposals = grouped.active;
 
@@ -100,41 +99,35 @@ function scheduleActiveRefresh() {
     }, ACTIVE_REFRESH_INTERVAL_MS);
 }
 
-async function fetchGovernanceDashboard() {
-    return fetchJson(getDashboardApiUrl());
+async function fetchGovernanceDashboardPayload() {
+    return fetchJson(DASHBOARD_API_URL);
 }
 
-function getDashboardApiUrl() {
-    return shouldUseLocalProxy() ? LOCAL_DASHBOARD_PROXY_PATH : DASHBOARD_API_URL;
-}
-
-function shouldUseLocalProxy() {
-    const host = window.location.hostname;
-    return host === '127.0.0.1' || host === 'localhost';
-}
-
-function getDashboardEpoch(dashboard) {
+function getDashboardEpoch(payload) {
+    const firstItem = Array.isArray(payload?.data) ? payload.data[0] : null;
+    const firstProposal = Array.isArray(payload?.proposals) ? payload.proposals[0] : null;
     const candidates = [
-        dashboard?.epoch,
-        dashboard?.current_epoch,
-        dashboard?.epoch_no,
-        dashboard?.tip?.epoch_no,
-        dashboard?.governance?.epoch,
-        dashboard?.governance?.current_epoch,
-        dashboard?.governance?.tip?.epoch_no,
-        dashboard?.data?.epoch,
-        dashboard?.data?.current_epoch,
-        dashboard?.data?.tip?.epoch_no
+        payload?.epoch,
+        payload?.epoch_no,
+        payload?.current_epoch,
+        payload?.tip?.[0]?.epoch_no,
+        firstProposal?.voting_summary?.epoch_no,
+        firstProposal?.vote_summary?.epoch_no,
+        firstProposal?.proposed_epoch,
+        firstItem?.voting_summary?.epoch_no,
+        firstItem?.vote_summary?.epoch_no,
+        firstItem?.proposal?.proposed_epoch,
+        firstItem?.proposed_epoch
     ];
 
     return candidates.map(Number).find(Number.isFinite) ?? null;
 }
 
-function updateEpochDisplayFromDashboard(dashboard) {
+function updateEpochDisplayFromDashboardPayload(payload) {
     const epochElement = document.getElementById('menu-epoch');
     if (!epochElement) return;
 
-    const epoch = getDashboardEpoch(dashboard);
+    const epoch = getDashboardEpoch(payload);
     epochElement.textContent = Number.isFinite(epoch) ? `Epoch ${epoch}` : '';
 }
 
@@ -153,89 +146,29 @@ async function fetchJson(url) {
     return response.json();
 }
 
-function getDashboardGovernanceProposals(dashboard) {
-    const proposals = extractProposalCollection(dashboard);
-    const summaryLookup = extractVotingSummaryLookup(dashboard);
-    return proposals
-        .map(proposal => normalizeGovernanceProposal(proposal, summaryLookup.get(
-            proposal?.proposal_id || proposal?.id || proposal?.gov_action_id || proposal?.action_id || ''
-        )))
+function getGovernanceProposalsFromDashboardPayload(payload) {
+    const proposals = Array.isArray(payload?.proposals) ? payload.proposals : [];
+    if (proposals.length) {
+        return proposals
+            .map(item => normalizeGovernanceProposal(
+                item?.proposal || item,
+                item?.voting_summary || item?.vote_summary || item?.summary || item?.vote_percentages || item?.votePercentages || null,
+                item
+            ))
+            .filter(proposal => proposal?.proposal_id);
+    }
+
+    const items = Array.isArray(payload?.data) ? payload.data : [];
+    return items
+        .map(item => normalizeGovernanceProposal(
+            item?.proposal || item,
+            item?.voting_summary || item?.vote_summary || item?.summary || item?.vote_percentages || item?.votePercentages || null,
+            item
+        ))
         .filter(proposal => proposal?.proposal_id);
 }
 
-function extractProposalCollection(dashboard) {
-    const directCandidates = [
-        dashboard?.proposals,
-        dashboard?.governance?.proposals,
-        dashboard?.governance?.actions,
-        dashboard?.governance,
-        dashboard?.data?.proposals,
-        dashboard?.data?.governance?.proposals,
-        dashboard?.data?.governance?.actions,
-        dashboard?.data?.governance,
-        dashboard?.dashboard?.proposals,
-        dashboard?.dashboard?.governance?.proposals,
-        dashboard?.dashboard?.governance?.actions
-    ];
-
-    for (const candidate of directCandidates) {
-        const proposals = normalizeProposalCollection(candidate);
-        if (proposals.length) return proposals;
-    }
-
-    return findProposalCollectionDeep(dashboard) || [];
-}
-
-function normalizeProposalCollection(candidate) {
-    if (Array.isArray(candidate)) return candidate;
-
-    if (candidate && typeof candidate === 'object') {
-        const values = Object.values(candidate);
-        if (values.length && values.every(value => value && typeof value === 'object' && !Array.isArray(value))) {
-            const proposalLikeCount = values.filter(isProposalLike).length;
-            if (proposalLikeCount >= Math.max(1, Math.ceil(values.length / 2))) {
-                return values;
-            }
-        }
-    }
-
-    return [];
-}
-
-function findProposalCollectionDeep(root, seen = new Set()) {
-    if (!root || typeof root !== 'object' || seen.has(root)) return null;
-    seen.add(root);
-
-    const direct = normalizeProposalCollection(root);
-    if (direct.length) return direct;
-
-    for (const value of Object.values(root)) {
-        if (!value || typeof value !== 'object') continue;
-
-        const nested = findProposalCollectionDeep(value, seen);
-        if (nested?.length) return nested;
-    }
-
-    return null;
-}
-
-function isProposalLike(value) {
-    return Boolean(
-        value
-        && typeof value === 'object'
-        && (
-            value.proposal_id
-            || value.gov_action_id
-            || value.action_id
-            || value.proposal_tx_hash
-            || value.proposal_type
-            || value.meta_json?.body?.title
-            || value.metadata?.body?.title
-        )
-    );
-}
-
-function normalizeGovernanceProposal(proposal, linkedSummary = null) {
+function normalizeGovernanceProposal(proposal, linkedSummary = null, container = null) {
     const normalized = { ...proposal };
     normalized.proposal_id = proposal?.proposal_id || proposal?.id || proposal?.gov_action_id || proposal?.action_id || '';
     normalized.proposal_tx_hash = proposal?.proposal_tx_hash || proposal?.tx_hash || proposal?.transaction_hash || '';
@@ -252,20 +185,35 @@ function normalizeGovernanceProposal(proposal, linkedSummary = null) {
     normalized.meta_url = proposal?.meta_url ?? proposal?.metadata_url ?? proposal?.url ?? '';
     normalized.meta_json = proposal?.meta_json ?? proposal?.metadata ?? proposal?.meta ?? {};
     normalized.proposal_description = proposal?.proposal_description ?? proposal?.description ?? null;
-    normalized.voteSummary = normalizeVotingSummary(
+    let rawVoteSummary = normalizeVotingSummary(
         linkedSummary
+        || container?.voting_summary
+        || container?.vote_summary
+        || container?.summary
+        || container?.vote_percentages
+        || container?.votePercentages
         || proposal?.voteSummary
         || proposal?.voting_summary
         || proposal?.summary
         || proposal?.vote_summary
         || proposal?.votes
         || proposal?.voting
-        || proposal
         || null
     );
+    if (!hasStructuredVoteSummary(rawVoteSummary)) {
+        rawVoteSummary = normalizeGenericVotePercentages(
+            container?.vote_percentages
+            || container?.votePercentages
+            || proposal?.vote_percentages
+            || proposal?.votePercentages
+            || null,
+            normalized
+        );
+    }
+    normalized.voteSummary = hasStructuredVoteSummary(rawVoteSummary) ? rawVoteSummary : null;
     normalized.voteDisplay = getVoteDisplayFromProposalSummary(normalized.voteSummary, normalized);
     normalized.votePercentages = normalized.voteDisplay?.percentages || null;
-    applyDerivedGovernanceStatus(normalized, proposal);
+    applyDerivedGovernanceStatus(normalized, container || proposal);
     return normalized;
 }
 
@@ -292,12 +240,54 @@ function normalizeVotingSummary(summary) {
     if (!summary || typeof summary !== 'object') return null;
     return {
         ...summary,
-        drep_yes_pct: pickFirstNumber(summary.drep_yes_pct, summary.drep_yes_percentage, summary.drep_yes_percent, summary.drep?.yes_pct, summary.drep?.yes_percentage, summary.drep?.yes_percent, summary.drep?.yes),
-        drep_no_pct: pickFirstNumber(summary.drep_no_pct, summary.drep_no_percentage, summary.drep_no_percent, summary.drep?.no_pct, summary.drep?.no_percentage, summary.drep?.no_percent, summary.drep?.no),
-        drep_abstain_pct: pickFirstNumber(summary.drep_abstain_pct, summary.drep_abstain_percentage, summary.drep_abstain_percent, summary.drep?.abstain_pct, summary.drep?.abstain_percentage, summary.drep?.abstain_percent, summary.drep?.abstain),
-        pool_yes_pct: pickFirstNumber(summary.pool_yes_pct, summary.pool_yes_percentage, summary.pool_yes_percent, summary.spo_yes_pct, summary.spo_yes_percentage, summary.spo_yes_percent, summary.pool?.yes_pct, summary.pool?.yes_percentage, summary.pool?.yes_percent, summary.pool?.yes, summary.spo?.yes_pct, summary.spo?.yes_percentage, summary.spo?.yes_percent, summary.spo?.yes),
-        pool_no_pct: pickFirstNumber(summary.pool_no_pct, summary.pool_no_percentage, summary.pool_no_percent, summary.spo_no_pct, summary.spo_no_percentage, summary.spo_no_percent, summary.pool?.no_pct, summary.pool?.no_percentage, summary.pool?.no_percent, summary.pool?.no, summary.spo?.no_pct, summary.spo?.no_percentage, summary.spo?.no_percent, summary.spo?.no),
-        pool_abstain_pct: pickFirstNumber(summary.pool_abstain_pct, summary.pool_abstain_percentage, summary.pool_abstain_percent, summary.spo_abstain_pct, summary.spo_abstain_percentage, summary.spo_abstain_percent, summary.pool?.abstain_pct, summary.pool?.abstain_percentage, summary.pool?.abstain_percent, summary.pool?.abstain, summary.spo?.abstain_pct, summary.spo?.abstain_percentage, summary.spo?.abstain_percent, summary.spo?.abstain),
+        drep_yes_pct: pickFirstNumber(
+            summary.drep_yes_pct, summary.drep_yes_percentage, summary.drep_yes_percent, summary.drepYesPct, summary.drepYesPercentage,
+            summary.drep?.yes_pct, summary.drep?.yes_percentage, summary.drep?.yes_percent, summary.drep?.yesPct, summary.drep?.yesPercentage, summary.drep?.yes,
+            summary.drep_votes?.yes_pct, summary.drep_votes?.yes_percentage, summary.drep_votes?.yes, summary.drepVotes?.yesPct, summary.drepVotes?.yesPercentage, summary.drepVotes?.yes,
+            summary.votes?.drep?.yes_pct, summary.votes?.drep?.yes_percentage, summary.votes?.drep?.yes
+        ),
+        drep_no_pct: pickFirstNumber(
+            summary.drep_no_pct, summary.drep_no_percentage, summary.drep_no_percent, summary.drepNoPct, summary.drepNoPercentage,
+            summary.drep?.no_pct, summary.drep?.no_percentage, summary.drep?.no_percent, summary.drep?.noPct, summary.drep?.noPercentage, summary.drep?.no,
+            summary.drep_votes?.no_pct, summary.drep_votes?.no_percentage, summary.drep_votes?.no, summary.drepVotes?.noPct, summary.drepVotes?.noPercentage, summary.drepVotes?.no,
+            summary.votes?.drep?.no_pct, summary.votes?.drep?.no_percentage, summary.votes?.drep?.no
+        ),
+        drep_abstain_pct: pickFirstNumber(
+            summary.drep_abstain_pct, summary.drep_abstain_percentage, summary.drep_abstain_percent, summary.drepAbstainPct, summary.drepAbstainPercentage,
+            summary.drep?.abstain_pct, summary.drep?.abstain_percentage, summary.drep?.abstain_percent, summary.drep?.abstainPct, summary.drep?.abstainPercentage, summary.drep?.abstain,
+            summary.drep_votes?.abstain_pct, summary.drep_votes?.abstain_percentage, summary.drep_votes?.abstain, summary.drepVotes?.abstainPct, summary.drepVotes?.abstainPercentage, summary.drepVotes?.abstain,
+            summary.votes?.drep?.abstain_pct, summary.votes?.drep?.abstain_percentage, summary.votes?.drep?.abstain
+        ),
+        pool_yes_pct: pickFirstNumber(
+            summary.pool_yes_pct, summary.pool_yes_percentage, summary.pool_yes_percent, summary.poolYesPct, summary.poolYesPercentage,
+            summary.spo_yes_pct, summary.spo_yes_percentage, summary.spo_yes_percent, summary.spoYesPct, summary.spoYesPercentage,
+            summary.pool?.yes_pct, summary.pool?.yes_percentage, summary.pool?.yes_percent, summary.pool?.yesPct, summary.pool?.yesPercentage, summary.pool?.yes,
+            summary.spo?.yes_pct, summary.spo?.yes_percentage, summary.spo?.yes_percent, summary.spo?.yesPct, summary.spo?.yesPercentage, summary.spo?.yes,
+            summary.pool_votes?.yes_pct, summary.pool_votes?.yes_percentage, summary.pool_votes?.yes, summary.poolVotes?.yesPct, summary.poolVotes?.yesPercentage, summary.poolVotes?.yes,
+            summary.spo_votes?.yes_pct, summary.spo_votes?.yes_percentage, summary.spo_votes?.yes, summary.spoVotes?.yesPct, summary.spoVotes?.yesPercentage, summary.spoVotes?.yes,
+            summary.votes?.pool?.yes_pct, summary.votes?.pool?.yes_percentage, summary.votes?.pool?.yes,
+            summary.votes?.spo?.yes_pct, summary.votes?.spo?.yes_percentage, summary.votes?.spo?.yes
+        ),
+        pool_no_pct: pickFirstNumber(
+            summary.pool_no_pct, summary.pool_no_percentage, summary.pool_no_percent, summary.poolNoPct, summary.poolNoPercentage,
+            summary.spo_no_pct, summary.spo_no_percentage, summary.spo_no_percent, summary.spoNoPct, summary.spoNoPercentage,
+            summary.pool?.no_pct, summary.pool?.no_percentage, summary.pool?.no_percent, summary.pool?.noPct, summary.pool?.noPercentage, summary.pool?.no,
+            summary.spo?.no_pct, summary.spo?.no_percentage, summary.spo?.no_percent, summary.spo?.noPct, summary.spo?.noPercentage, summary.spo?.no,
+            summary.pool_votes?.no_pct, summary.pool_votes?.no_percentage, summary.pool_votes?.no, summary.poolVotes?.noPct, summary.poolVotes?.noPercentage, summary.poolVotes?.no,
+            summary.spo_votes?.no_pct, summary.spo_votes?.no_percentage, summary.spo_votes?.no, summary.spoVotes?.noPct, summary.spoVotes?.noPercentage, summary.spoVotes?.no,
+            summary.votes?.pool?.no_pct, summary.votes?.pool?.no_percentage, summary.votes?.pool?.no,
+            summary.votes?.spo?.no_pct, summary.votes?.spo?.no_percentage, summary.votes?.spo?.no
+        ),
+        pool_abstain_pct: pickFirstNumber(
+            summary.pool_abstain_pct, summary.pool_abstain_percentage, summary.pool_abstain_percent, summary.poolAbstainPct, summary.poolAbstainPercentage,
+            summary.spo_abstain_pct, summary.spo_abstain_percentage, summary.spo_abstain_percent, summary.spoAbstainPct, summary.spoAbstainPercentage,
+            summary.pool?.abstain_pct, summary.pool?.abstain_percentage, summary.pool?.abstain_percent, summary.pool?.abstainPct, summary.pool?.abstainPercentage, summary.pool?.abstain,
+            summary.spo?.abstain_pct, summary.spo?.abstain_percentage, summary.spo?.abstain_percent, summary.spo?.abstainPct, summary.spo?.abstainPercentage, summary.spo?.abstain,
+            summary.pool_votes?.abstain_pct, summary.pool_votes?.abstain_percentage, summary.pool_votes?.abstain, summary.poolVotes?.abstainPct, summary.poolVotes?.abstainPercentage, summary.poolVotes?.abstain,
+            summary.spo_votes?.abstain_pct, summary.spo_votes?.abstain_percentage, summary.spo_votes?.abstain, summary.spoVotes?.abstainPct, summary.spoVotes?.abstainPercentage, summary.spoVotes?.abstain,
+            summary.votes?.pool?.abstain_pct, summary.votes?.pool?.abstain_percentage, summary.votes?.pool?.abstain,
+            summary.votes?.spo?.abstain_pct, summary.votes?.spo?.abstain_percentage, summary.votes?.spo?.abstain
+        ),
         committee_yes_pct: pickFirstNumber(summary.committee_yes_pct, summary.committee?.yes_pct, summary.committee?.yes),
         committee_no_pct: pickFirstNumber(summary.committee_no_pct, summary.committee?.no_pct, summary.committee?.no),
         drep_yes_votes_cast: pickFirstNumber(summary.drep_yes_votes_cast, summary.drep?.yes_votes_cast, summary.drep_yes_votes),
@@ -316,67 +306,82 @@ function normalizeVotingSummary(summary) {
     };
 }
 
-function extractVotingSummaryLookup(root) {
-    const lookup = new Map();
-    collectVotingSummaries(root, lookup, new Set());
-    return lookup;
-}
+function normalizeGenericVotePercentages(percentages, proposal) {
+    if (!percentages || typeof percentages !== 'object') return null;
 
-function collectVotingSummaries(node, lookup, seen) {
-    if (!node || typeof node !== 'object' || seen.has(node)) return;
-    seen.add(node);
-
-    if (Array.isArray(node)) {
-        for (const item of node) {
-            if (isVotingSummaryLike(item)) {
-                const proposalId = item.proposal_id || item.id || item.gov_action_id || item.action_id;
-                if (proposalId && !lookup.has(proposalId)) lookup.set(proposalId, item);
-            }
-            collectVotingSummaries(item, lookup, seen);
-        }
-        return;
-    }
-
-    if (isVotingSummaryLike(node)) {
-        const proposalId = node.proposal_id || node.id || node.gov_action_id || node.action_id;
-        if (proposalId && !lookup.has(proposalId)) lookup.set(proposalId, node);
-    }
-
-    for (const value of Object.values(node)) {
-        if (value && typeof value === 'object') {
-            collectVotingSummaries(value, lookup, seen);
-        }
-    }
-}
-
-function isVotingSummaryLike(value) {
-    if (!value || typeof value !== 'object') return false;
-
-    return Boolean(
-        value.drep_yes_pct
-        || value.drep_no_pct
-        || value.pool_yes_pct
-        || value.pool_no_pct
-        || value.spo_yes_pct
-        || value.spo_no_pct
-        || value.drep_yes_percentage
-        || value.drep_no_percentage
-        || value.pool_yes_percentage
-        || value.pool_no_percentage
-        || value.spo_yes_percentage
-        || value.spo_no_percentage
-        || value.drep?.yes_pct
-        || value.pool?.yes_pct
-        || value.spo?.yes_pct
+    const yes = pickFirstNumber(
+        percentages.yes_pct,
+        percentages.yes_percentage,
+        percentages.yesPercent,
+        percentages.yes
     );
+    const no = pickFirstNumber(
+        percentages.no_pct,
+        percentages.no_percentage,
+        percentages.noPercent,
+        percentages.no
+    );
+    const abstain = pickFirstNumber(
+        percentages.abstain_pct,
+        percentages.abstain_percentage,
+        percentages.abstainPercent,
+        percentages.abstain,
+        Number.isFinite(yes) && Number.isFinite(no) ? 100 - yes - no : null
+    );
+
+    if (![yes, no, abstain].every(Number.isFinite)) return null;
+
+    if (usesPoolVoting(proposal)) {
+        return {
+            pool_yes_pct: yes,
+            pool_no_pct: no,
+            pool_abstain_pct: abstain
+        };
+    }
+
+    return {
+        drep_yes_pct: yes,
+        drep_no_pct: no,
+        drep_abstain_pct: abstain
+    };
+}
+
+function hasStructuredVoteSummary(summary) {
+    if (!summary || typeof summary !== 'object') return false;
+
+    return [
+        summary.drep_yes_pct,
+        summary.drep_no_pct,
+        summary.drep_abstain_pct,
+        summary.pool_yes_pct,
+        summary.pool_no_pct,
+        summary.pool_abstain_pct,
+        summary.drep_yes_votes_cast,
+        summary.drep_no_votes_cast,
+        summary.drep_abstain_votes_cast,
+        summary.pool_yes_votes_cast,
+        summary.pool_no_votes_cast,
+        summary.pool_abstain_votes_cast,
+        summary.drep_yes_vote_power,
+        summary.drep_no_vote_power,
+        summary.pool_yes_vote_power,
+        summary.pool_no_vote_power
+    ].some(value => Number.isFinite(Number(value)));
 }
 
 function pickFirstNumber(...values) {
     for (const value of values) {
-        const number = Number(value);
+        const number = normalizePercentageNumber(value);
         if (Number.isFinite(number)) return number;
     }
     return null;
+}
+
+function normalizePercentageNumber(value) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return NaN;
+    if (number >= 0 && number <= 1) return number * 100;
+    return number;
 }
 
 function coerceNullableNumber(value) {
