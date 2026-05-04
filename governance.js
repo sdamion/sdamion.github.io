@@ -42,6 +42,9 @@ async function loadGovernanceActions() {
         const dashboard = await fetchGovernanceDashboard();
         governanceState = dashboard;
         const proposals = getDashboardGovernanceProposals(dashboard);
+        if (!proposals.length) {
+            throw new Error('No governance proposals found in dashboard payload');
+        }
         const grouped = groupGovernanceProposals(proposals);
 
         renderGovernanceGroup(groups.active, grouped.active, 'No active actions found.');
@@ -132,19 +135,80 @@ async function fetchJson(url) {
 }
 
 function getDashboardGovernanceProposals(dashboard) {
-    const proposals = [
+    const proposals = extractProposalCollection(dashboard);
+    return proposals.map(normalizeGovernanceProposal).filter(proposal => proposal?.proposal_id);
+}
+
+function extractProposalCollection(dashboard) {
+    const directCandidates = [
         dashboard?.proposals,
         dashboard?.governance?.proposals,
+        dashboard?.governance?.actions,
         dashboard?.governance,
         dashboard?.data?.proposals,
         dashboard?.data?.governance?.proposals,
+        dashboard?.data?.governance?.actions,
         dashboard?.data?.governance,
         dashboard?.dashboard?.proposals,
-        dashboard?.dashboard?.governance?.proposals
-    ].find(Array.isArray);
+        dashboard?.dashboard?.governance?.proposals,
+        dashboard?.dashboard?.governance?.actions
+    ];
 
-    if (!Array.isArray(proposals)) return [];
-    return proposals.map(normalizeGovernanceProposal).filter(proposal => proposal?.proposal_id);
+    for (const candidate of directCandidates) {
+        const proposals = normalizeProposalCollection(candidate);
+        if (proposals.length) return proposals;
+    }
+
+    return findProposalCollectionDeep(dashboard) || [];
+}
+
+function normalizeProposalCollection(candidate) {
+    if (Array.isArray(candidate)) return candidate;
+
+    if (candidate && typeof candidate === 'object') {
+        const values = Object.values(candidate);
+        if (values.length && values.every(value => value && typeof value === 'object' && !Array.isArray(value))) {
+            const proposalLikeCount = values.filter(isProposalLike).length;
+            if (proposalLikeCount >= Math.max(1, Math.ceil(values.length / 2))) {
+                return values;
+            }
+        }
+    }
+
+    return [];
+}
+
+function findProposalCollectionDeep(root, seen = new Set()) {
+    if (!root || typeof root !== 'object' || seen.has(root)) return null;
+    seen.add(root);
+
+    const direct = normalizeProposalCollection(root);
+    if (direct.length) return direct;
+
+    for (const value of Object.values(root)) {
+        if (!value || typeof value !== 'object') continue;
+
+        const nested = findProposalCollectionDeep(value, seen);
+        if (nested?.length) return nested;
+    }
+
+    return null;
+}
+
+function isProposalLike(value) {
+    return Boolean(
+        value
+        && typeof value === 'object'
+        && (
+            value.proposal_id
+            || value.gov_action_id
+            || value.action_id
+            || value.proposal_tx_hash
+            || value.proposal_type
+            || value.meta_json?.body?.title
+            || value.metadata?.body?.title
+        )
+    );
 }
 
 function normalizeGovernanceProposal(proposal) {
@@ -155,10 +219,10 @@ function normalizeGovernanceProposal(proposal) {
     normalized.block_time = proposal?.block_time ?? proposal?.created_at ?? proposal?.createdAt ?? proposal?.time ?? 0;
     normalized.proposed_epoch = coerceNullableNumber(proposal?.proposed_epoch ?? proposal?.proposal_epoch ?? proposal?.epoch);
     normalized.expiration = coerceNullableNumber(proposal?.expiration ?? proposal?.expires_epoch ?? proposal?.expired_after_epoch);
-    normalized.ratified_epoch = coerceNullableNumber(proposal?.ratified_epoch);
-    normalized.enacted_epoch = coerceNullableNumber(proposal?.enacted_epoch);
-    normalized.expired_epoch = coerceNullableNumber(proposal?.expired_epoch);
-    normalized.dropped_epoch = coerceNullableNumber(proposal?.dropped_epoch);
+    normalized.ratified_epoch = coerceNullableNumber(proposal?.ratified_epoch ?? proposal?.ratifiedEpoch);
+    normalized.enacted_epoch = coerceNullableNumber(proposal?.enacted_epoch ?? proposal?.enactedEpoch);
+    normalized.expired_epoch = coerceNullableNumber(proposal?.expired_epoch ?? proposal?.expiredEpoch);
+    normalized.dropped_epoch = coerceNullableNumber(proposal?.dropped_epoch ?? proposal?.droppedEpoch);
     normalized.deposit = proposal?.deposit ?? proposal?.deposit_lovelace ?? '';
     normalized.return_address = proposal?.return_address ?? proposal?.returnAddress ?? '';
     normalized.meta_url = proposal?.meta_url ?? proposal?.metadata_url ?? proposal?.url ?? '';
@@ -173,7 +237,27 @@ function normalizeGovernanceProposal(proposal) {
     );
     normalized.voteDisplay = getVoteDisplayFromProposalSummary(normalized.voteSummary, normalized);
     normalized.votePercentages = normalized.voteDisplay?.percentages || null;
+    applyDerivedGovernanceStatus(normalized, proposal);
     return normalized;
+}
+
+function applyDerivedGovernanceStatus(normalized, rawProposal) {
+    const rawStatus = String(
+        rawProposal?.status
+        || rawProposal?.proposal_status
+        || rawProposal?.governance_status
+        || rawProposal?.state
+        || ''
+    ).toLowerCase();
+
+    if (rawStatus.includes('reject') || rawStatus.includes('drop') || rawStatus.includes('expire')) {
+        normalized.dropped_epoch = normalized.dropped_epoch ?? normalized.proposed_epoch ?? 0;
+        return;
+    }
+
+    if (rawStatus.includes('approve') || rawStatus.includes('ratif') || rawStatus.includes('enact')) {
+        normalized.ratified_epoch = normalized.ratified_epoch ?? normalized.proposed_epoch ?? 0;
+    }
 }
 
 function normalizeVotingSummary(summary) {
