@@ -452,8 +452,7 @@ function getGovernanceStatus(proposal) {
 }
 
 function shouldShowVotePercentages(proposal) {
-    const status = getGovernanceStatus(proposal);
-    return status === 'active' || status === 'approved';
+    return Boolean(proposal?.votePercentages);
 }
 
 function renderGovernanceGroup(container, proposals, emptyMessage) {
