@@ -1,4 +1,4 @@
-const DASHBOARD_API_URL = 'http://192.168.1.193:3001/api/dashboard';
+const DASHBOARD_API_URL = 'https://api.tdsp.online/api/dashboard';
 const ACTIVE_REFRESH_INTERVAL_MS = 60 * 1000;
 
 let governanceRefreshTimer = null;
