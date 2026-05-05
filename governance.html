@@ -2,7 +2,7 @@
     <div class="section-inner">
         <p class="eyebrow">Cardano governance</p>
         <h2>Governance Actions</h2>
-        <p>Live overview of Cardano governance actions, grouped by active, approved, rejected, and Info Actions status.</p>
+        <p>Grouped by Treasury Withdrawals and Info Actions.</p>
 
         <div class="governance-summary" id="governance-summary">
             <div><strong id="gov-active-count">0</strong><span>Active</span></div>
@@ -11,32 +11,40 @@
             <div><strong id="gov-info-count">0</strong><span>Info Actions</span></div>
         </div>
 
-        <div class="governance-columns" id="governance-actions">
-            <section class="governance-column">
-                <h3>Active</h3>
-                <div id="governance-active" class="governance-list">
-                    <p class="small-text">Loading...</p>
-                </div>
-            </section>
-            <section class="governance-column">
-                <h3>Approved</h3>
-                <div id="governance-approved" class="governance-list">
-                    <p class="small-text">Loading...</p>
-                </div>
-            </section>
-            <section class="governance-column">
-                <h3>Rejected</h3>
-                <div id="governance-rejected" class="governance-list">
-                    <p class="small-text">Loading...</p>
-                </div>
-            </section>
-            <section class="governance-column">
-                <h3>Info Actions</h3>
-                <div id="governance-info" class="governance-list">
-                    <p class="small-text">Loading...</p>
-                </div>
-            </section>
-        </div>
+        <section class="governance-group">
+            <h3 class="governance-group-title">Treasury Withdrawals</h3>
+            <div class="governance-columns" id="governance-actions">
+                <section class="governance-column">
+                    <h3>Active</h3>
+                    <div id="governance-active" class="governance-list">
+                        <p class="small-text">Loading...</p>
+                    </div>
+                </section>
+                <section class="governance-column">
+                    <h3>Approved</h3>
+                    <div id="governance-approved" class="governance-list">
+                        <p class="small-text">Loading...</p>
+                    </div>
+                </section>
+                <section class="governance-column">
+                    <h3>Rejected</h3>
+                    <div id="governance-rejected" class="governance-list">
+                        <p class="small-text">Loading...</p>
+                    </div>
+                </section>
+            </div>
+        </section>
+
+        <section class="governance-group">
+            <h3 class="governance-group-title">Info Actions</h3>
+            <div class="governance-columns governance-columns-single">
+                <section class="governance-column">
+                    <div id="governance-info" class="governance-list">
+                        <p class="small-text">Loading...</p>
+                    </div>
+                </section>
+            </div>
+        </section>
 
         <p class="small-text">Source: <a href="https://api.koios.rest/" target="_blank" rel="noopener noreferrer" aria-label="Koios API">Koios API</a></p>
     </div>

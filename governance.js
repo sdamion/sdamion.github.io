@@ -1,5 +1,7 @@
 const DASHBOARD_API_URL = 'https://api.tdsp.online/api/dashboard';
+const PROPOSAL_VOTES_API_BASE_URL = 'https://api.tdsp.online/api/proposal';
 const LOCAL_DASHBOARD_PROXY_PATH = '/__dashboard_proxy__';
+const LOCAL_PROPOSAL_VOTES_PROXY_PATH = '/__proposal_votes_proxy__';
 const ACTIVE_REFRESH_INTERVAL_MS = 60 * 1000;
 const EPOCH_DURATION_SECONDS = 432000;
 const APPROVAL_GRACE_PERIOD_SECONDS = 300;
@@ -7,6 +9,7 @@ const APPROVAL_GRACE_PERIOD_SECONDS = 300;
 let governanceRefreshTimer = null;
 let lastActiveRenderSignature = '';
 let governanceState = null;
+const proposalVotesCache = new Map();
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initGovernance);
@@ -121,6 +124,15 @@ async function fetchGovernanceDashboardPayload() {
 function shouldUseLocalDashboardProxy() {
     const host = window.location.hostname;
     return host === '127.0.0.1' || host === 'localhost';
+}
+
+function getProposalVotesApiUrl(proposalId) {
+    if (shouldUseLocalDashboardProxy()) {
+        const params = new URLSearchParams({ proposalId });
+        return `${LOCAL_PROPOSAL_VOTES_PROXY_PATH}?${params.toString()}`;
+    }
+
+    return `${PROPOSAL_VOTES_API_BASE_URL}/${encodeURIComponent(proposalId)}/votes`;
 }
 
 function getDashboardEpoch(payload) {
@@ -320,6 +332,7 @@ function normalizeVotingSummary(summary) {
         drep_abstain_votes_cast: pickFirstNumber(summary.drep_abstain_votes_cast, summary.drep?.abstain_votes_cast, summary.drep_abstain_votes),
         drep_yes_vote_power: pickFirstNumber(summary.drep_yes_vote_power, summary.drep?.yes_vote_power, summary.drep_yes_stake),
         drep_no_vote_power: pickFirstNumber(summary.drep_no_vote_power, summary.drep?.no_vote_power, summary.drep_no_stake),
+        drep_active_abstain_vote_power: pickFirstNumber(summary.drep_active_abstain_vote_power, summary.drep?.active_abstain_vote_power, summary.drep_abstain_vote_power, summary.drep?.abstain_vote_power),
         drep_always_abstain_vote_power: pickFirstNumber(summary.drep_always_abstain_vote_power, summary.drep?.always_abstain_vote_power),
         drep_always_no_confidence_vote_power: pickFirstNumber(summary.drep_always_no_confidence_vote_power, summary.drep?.always_no_confidence_vote_power),
         pool_yes_votes_cast: pickFirstNumber(summary.pool_yes_votes_cast, summary.spo_yes_votes_cast, summary.pool?.yes_votes_cast, summary.pool_yes_votes),
@@ -588,6 +601,11 @@ function openGovernanceOverlay(proposal) {
 
     const content = document.createElement('div');
     content.className = 'governance-detail-content';
+    const voteDetailsContainer = document.createElement('div');
+    voteDetailsContainer.className = 'governance-vote-details';
+    voteDetailsContainer.dataset.proposalId = proposal.proposal_id;
+    addVoteDetailsState(voteDetailsContainer, 'Loading vote details...');
+    content.appendChild(voteDetailsContainer);
 
     addDetailRow(content, 'Action ID', proposal.proposal_id);
     addDetailRow(content, 'Transaction', proposal.proposal_tx_hash);
@@ -601,15 +619,14 @@ function openGovernanceOverlay(proposal) {
     if (shouldShowVotePercentages(proposal)) {
         addDetailRow(content, `${proposal.voteDisplay?.label || 'Vote'} percentages`, formatVotePercentages(proposal.votePercentages, proposal.voteDisplay?.label));
     }
-    addVoteSummaryRows(content, proposal.voteSummary, proposal.voteDisplay?.source);
     addDetailRow(content, 'Deposit', formatLovelace(proposal.deposit));
     addDetailRow(content, 'Return address', proposal.return_address);
     addDetailRow(content, 'Metadata URL', proposal.meta_url);
 
     const body = proposal.meta_json?.body || proposal.meta_json || {};
-    addDetailRow(content, 'Abstract', body.abstract);
-    addDetailRow(content, 'Motivation', body.motivation);
-    addDetailRow(content, 'Rationale', body.rationale);
+    addMarkdownDetailSection(content, 'Abstract', body.abstract);
+    addMarkdownDetailSection(content, 'Motivation', body.motivation);
+    addMarkdownDetailSection(content, 'Rationale', body.rationale);
 
     if (proposal.proposal_description) {
         const raw = document.createElement('pre');
@@ -631,6 +648,10 @@ function openGovernanceOverlay(proposal) {
 
     close.focus();
     document.addEventListener('keydown', handleGovernanceOverlayKeydown);
+    loadProposalVoteDetails(proposal, voteDetailsContainer).catch(() => {
+        if (!voteDetailsContainer.isConnected) return;
+        addVoteDetailsState(voteDetailsContainer, 'Vote details could not be loaded.');
+    });
 }
 
 function closeGovernanceOverlay() {
@@ -662,6 +683,375 @@ function addDetailRow(container, label, value) {
     container.appendChild(row);
 }
 
+function addMarkdownDetailSection(container, label, value) {
+    if (value === null || value === undefined || value === '') return;
+    const cleanValue = cleanGovernanceText(String(value));
+    if (!cleanValue) return;
+
+    const section = document.createElement('section');
+    section.className = 'governance-markdown-section';
+
+    const heading = document.createElement('strong');
+    heading.textContent = label;
+
+    const body = document.createElement('div');
+    body.className = 'governance-markdown';
+    renderMarkdown(body, cleanValue);
+
+    section.appendChild(heading);
+    section.appendChild(body);
+    container.appendChild(section);
+}
+
+function addVoteDetailsState(container, message) {
+    container.textContent = '';
+    const text = document.createElement('p');
+    text.className = 'small-text';
+    text.textContent = message;
+    container.appendChild(text);
+}
+
+async function loadProposalVoteDetails(proposal, container) {
+    if (!proposal?.proposal_id || !container?.isConnected) return;
+
+    const payload = await fetchProposalVotesPayload(proposal.proposal_id);
+    if (!container.isConnected || container.dataset.proposalId !== proposal.proposal_id) return;
+
+    const detailProposal = mergeProposalVoteDetails(proposal, payload);
+    renderVoteDetailsPanel(container, detailProposal, payload);
+
+    if (!container.childNodes.length) {
+        addVoteDetailsState(container, 'No vote details found for this action.');
+    }
+}
+
+async function fetchProposalVotesPayload(proposalId) {
+    if (proposalVotesCache.has(proposalId)) return proposalVotesCache.get(proposalId);
+
+    const request = fetchJson(getProposalVotesApiUrl(proposalId));
+    proposalVotesCache.set(proposalId, request);
+
+    try {
+        return await request;
+    } catch (error) {
+        proposalVotesCache.delete(proposalId);
+        throw error;
+    }
+}
+
+function mergeProposalVoteDetails(proposal, payload) {
+    const detail = extractProposalVoteDetail(payload, proposal.proposal_id);
+    if (!detail) return proposal;
+
+    const summary = normalizeVotingSummary(
+        detail?.voting_summary
+        || detail?.vote_summary
+        || detail?.summary
+        || detail?.vote_percentages
+        || detail?.votePercentages
+        || detail
+    );
+
+    const nextProposal = {
+        ...proposal,
+        voteSummary: hasStructuredVoteSummary(summary) ? summary : proposal.voteSummary
+    };
+    nextProposal.voteDisplay = getVoteDisplayFromProposalSummary(nextProposal.voteSummary, nextProposal) || proposal.voteDisplay;
+    nextProposal.votePercentages = nextProposal.voteDisplay?.percentages || proposal.votePercentages;
+    return nextProposal;
+}
+
+function extractProposalVoteDetail(payload, proposalId) {
+    if (!payload) return null;
+
+    if (Array.isArray(payload)) {
+        return payload.find(item => matchesProposalId(item, proposalId)) || payload[0] || null;
+    }
+
+    if (Array.isArray(payload?.data)) {
+        return payload.data.find(item => matchesProposalId(item, proposalId)) || payload.data[0] || null;
+    }
+
+    if (payload?.proposal || payload?.voting_summary || payload?.vote_summary || payload?.summary) {
+        return payload;
+    }
+
+    return null;
+}
+
+function matchesProposalId(item, proposalId) {
+    const itemProposalId = item?.proposal_id
+        || item?.proposal?.proposal_id
+        || item?.id
+        || item?.proposalId;
+    return itemProposalId === proposalId;
+}
+
+function renderVoteDetailsPanel(container, proposal, payload) {
+    container.textContent = '';
+
+    const summary = proposal?.voteSummary;
+    const drepBreakdown = getDrepStakeBreakdown(summary);
+    const drepVotes = getDrepVotes(payload);
+
+    if (drepBreakdown.length) {
+        container.appendChild(createDrepVoteChartSection(drepBreakdown, drepVotes));
+    }
+
+    addVoteSummaryRows(container, summary, proposal.voteDisplay?.source);
+}
+
+function createDrepVoteChartSection(breakdown, drepVotes) {
+    const section = document.createElement('section');
+    section.className = 'governance-vote-chart';
+
+    const title = document.createElement('strong');
+    title.textContent = 'DRep vote overview';
+    section.appendChild(title);
+
+    const layout = document.createElement('div');
+    layout.className = 'governance-vote-chart-layout';
+
+    const chart = document.createElement('div');
+    chart.className = 'governance-pie-chart';
+    const segments = getPieChartSegments(breakdown);
+    chart.style.background = buildPieChartGradient(segments);
+
+    const total = breakdown.reduce((sum, item) => sum + item.value, 0);
+    const center = document.createElement('div');
+    center.className = 'governance-pie-chart-center';
+    center.innerHTML = `<span>ADA represented</span><strong>${formatCompactAdaFromLovelace(total)}</strong>`;
+    chart.appendChild(center);
+
+    segments.forEach(segment => {
+        chart.appendChild(createPieAmountLabel(segment));
+    });
+    layout.appendChild(chart);
+
+    const legend = document.createElement('div');
+    legend.className = 'governance-vote-legend';
+
+    const detailsPanel = document.createElement('div');
+    detailsPanel.className = 'governance-no-votes';
+    detailsPanel.hidden = true;
+
+    breakdown.forEach(item => {
+        legend.appendChild(createVoteLegendItem(item, drepVotes, detailsPanel));
+    });
+
+    layout.appendChild(legend);
+    section.appendChild(layout);
+    section.appendChild(detailsPanel);
+
+    return section;
+}
+
+function createVoteLegendItem(item, drepVotes, detailsPanel) {
+    const interactive = ['no', 'abstain', 'always-abstain', 'always-no-confidence', 'yes'].includes(item.key);
+    const element = document.createElement(interactive ? 'button' : 'div');
+    element.className = `governance-vote-legend-item${interactive ? ' is-clickable' : ''}`;
+
+    if (interactive) {
+        element.type = 'button';
+        element.dataset.voteGroup = item.key;
+        element.setAttribute('aria-expanded', 'false');
+        element.addEventListener('click', () => {
+            const isSameGroup = detailsPanel.dataset.activeGroup === item.key;
+            const shouldOpen = detailsPanel.hidden || !isSameGroup;
+
+            if (shouldOpen) {
+                renderDrepDetailsPanel(detailsPanel, item, drepVotes);
+            } else {
+                detailsPanel.hidden = true;
+                detailsPanel.dataset.activeGroup = '';
+            }
+
+            document.querySelectorAll('.governance-vote-legend-item.is-clickable').forEach(button => {
+                button.setAttribute('aria-expanded', String(shouldOpen && button.dataset.voteGroup === item.key));
+            });
+        });
+    }
+
+    const swatch = document.createElement('span');
+    swatch.className = 'governance-vote-swatch';
+    swatch.style.backgroundColor = item.color;
+
+    const text = document.createElement('span');
+    text.className = 'governance-vote-legend-copy';
+
+    const label = document.createElement('strong');
+    label.textContent = item.label;
+
+    const value = document.createElement('span');
+    value.textContent = formatVoteLegendDetail(item, drepVotes);
+
+    text.appendChild(label);
+    text.appendChild(value);
+    element.appendChild(swatch);
+    element.appendChild(text);
+    return element;
+}
+
+function formatVoteLegendDetail(item, drepVotes) {
+    const votePercentage = getDrepVoteCountPercentage(item.key, drepVotes);
+    if (votePercentage !== null) return formatPercentage(votePercentage);
+    return 'No direct votes';
+}
+
+function renderDrepDetailsPanel(container, item, drepVotes) {
+    container.textContent = '';
+    container.hidden = false;
+    container.dataset.activeGroup = item.key;
+
+    if (item.key === 'always-abstain' || item.key === 'always-no-confidence') {
+        const title = document.createElement('strong');
+        title.textContent = item.label;
+
+        const message = document.createElement('p');
+        message.className = 'small-text';
+        message.textContent = 'This API only provides stake totals for this bucket, not individual DRep IDs.';
+
+        container.appendChild(title);
+        container.appendChild(message);
+        return;
+    }
+
+    const votes = drepVotes.filter(vote => String(vote?.vote || '').toLowerCase() === mapBreakdownKeyToVote(item.key));
+    renderNoVotesList(container, votes, item.label);
+}
+
+function renderNoVotesList(container, votes, headingLabel = 'DRep votes') {
+    const title = document.createElement('strong');
+    title.textContent = `${headingLabel} (${votes.length})`;
+
+    const list = document.createElement('div');
+    list.className = 'governance-no-votes-list';
+
+    votes.forEach(vote => {
+        const row = document.createElement('div');
+        row.className = 'governance-no-vote-row';
+
+        const id = document.createElement('span');
+        id.className = 'governance-no-vote-id';
+        id.textContent = vote?.voter_id || vote?.voterId || vote?.voter_hex || 'Unknown DRep';
+
+        row.appendChild(id);
+        list.appendChild(row);
+    });
+
+    container.appendChild(title);
+    container.appendChild(list);
+}
+
+function mapBreakdownKeyToVote(key) {
+    if (key === 'yes') return 'yes';
+    if (key === 'no') return 'no';
+    return 'abstain';
+}
+
+function getDrepStakeBreakdown(summary) {
+    if (!summary) return [];
+
+    const items = [
+        {
+            key: 'yes',
+            label: 'DRep yes stake',
+            value: Number(summary.drep_yes_vote_power) || 0,
+            color: '#34d399'
+        },
+        {
+            key: 'no',
+            label: 'DRep no stake',
+            value: Number(summary.drep_no_vote_power) || 0,
+            color: '#f87171'
+        },
+        {
+            key: 'abstain',
+            label: 'DRep abstain votes',
+            value: Number(summary.drep_active_abstain_vote_power) || 0,
+            count: Number(summary.drep_abstain_votes_cast) || 0,
+            color: '#60a5fa'
+        },
+        {
+            key: 'always-abstain',
+            label: 'DRep always abstain stake',
+            value: Number(summary.drep_always_abstain_vote_power) || 0,
+            color: '#fbbf24'
+        },
+        {
+            key: 'always-no-confidence',
+            label: 'DRep always no-confidence stake',
+            value: Number(summary.drep_always_no_confidence_vote_power) || 0,
+            color: '#a78bfa'
+        }
+    ];
+
+    return items.filter(item => item.value > 0 || item.key === 'abstain');
+}
+
+function getPieChartSegments(items) {
+    const total = items.reduce((sum, item) => sum + item.value, 0);
+    if (!total) return [];
+
+    let start = 0;
+    return items.map(item => {
+        const span = (item.value / total) * 360;
+        const end = start + span;
+        const segment = {
+            ...item,
+            start,
+            end,
+            mid: start + span / 2
+        };
+        start = end;
+        return segment;
+    });
+}
+
+function buildPieChartGradient(items) {
+    const total = items.reduce((sum, item) => sum + item.value, 0);
+    if (!total) return 'conic-gradient(#334155 0deg 360deg)';
+
+    return `conic-gradient(${items.map(item => `${item.color} ${item.start}deg ${item.end}deg`).join(', ')})`;
+}
+
+function getDrepVotes(payload) {
+    const dreps = payload?.votes?.dreps;
+    if (Array.isArray(dreps)) return dreps;
+    if (!dreps || typeof dreps !== 'object') return [];
+
+    return ['yes', 'no', 'abstain', 'unknown'].flatMap(key => {
+        const bucket = dreps[key];
+        return Array.isArray(bucket) ? bucket : [];
+    });
+}
+
+function getDrepVoteCountPercentage(key, drepVotes) {
+    const voteKey = mapBreakdownKeyToVote(key);
+    if (!voteKey) return null;
+
+    const totalVotes = drepVotes.length;
+    if (!totalVotes) return 0;
+
+    const matchingVotes = drepVotes.filter(vote => String(vote?.vote || '').toLowerCase() === voteKey).length;
+    return (matchingVotes / totalVotes) * 100;
+}
+
+function createPieAmountLabel(segment) {
+    const label = document.createElement('span');
+    label.className = 'governance-pie-label';
+    label.textContent = formatCompactAdaFromLovelace(segment.value);
+
+    const radians = ((segment.mid - 90) * Math.PI) / 180;
+    const radius = segment.end - segment.start < 18 ? 57 : 48;
+    const x = 50 + (Math.cos(radians) * radius);
+    const y = 50 + (Math.sin(radians) * radius);
+
+    label.style.left = `${x}%`;
+    label.style.top = `${y}%`;
+    return label;
+}
+
 function addVoteSummaryRows(container, summary, source) {
     if (!summary) return;
 
@@ -677,13 +1067,13 @@ function addVoteSummaryRows(container, summary, source) {
     addDetailRow(container, 'DRep no votes', summary.drep_no_votes_cast);
     addDetailRow(container, 'DRep no stake', formatCompactAdaFromLovelace(summary.drep_no_vote_power));
     addDetailRow(container, 'DRep abstain votes', summary.drep_abstain_votes_cast);
+    addDetailRow(container, 'DRep abstain stake', formatCompactAdaFromLovelace(summary.drep_active_abstain_vote_power));
     addDetailRow(container, 'DRep always abstain stake', formatCompactAdaFromLovelace(summary.drep_always_abstain_vote_power));
     addDetailRow(container, 'DRep always no-confidence stake', formatCompactAdaFromLovelace(summary.drep_always_no_confidence_vote_power));
 }
 
 function cleanGovernanceText(text) {
     return text
-        .replace(/^\s*\[image\d*\]:\s*<[^>]*>\s*$/gim, '')
         .replace(/\n{3,}/g, '\n\n')
         .trim();
 }
@@ -734,6 +1124,253 @@ function appendRichText(container, text) {
     if (lastIndex < text.length) {
         container.appendChild(document.createTextNode(text.slice(lastIndex)));
     }
+}
+
+function renderMarkdown(container, markdown) {
+    const lines = cleanGovernanceText(markdown).replace(/\r\n?/g, '\n').split('\n');
+    let index = 0;
+
+    while (index < lines.length) {
+        const line = lines[index];
+
+        if (!line.trim()) {
+            index += 1;
+            continue;
+        }
+
+        if (line.trim().startsWith('```')) {
+            const language = line.trim().slice(3).trim();
+            index += 1;
+            const codeLines = [];
+            while (index < lines.length && !lines[index].trim().startsWith('```')) {
+                codeLines.push(lines[index]);
+                index += 1;
+            }
+            if (index < lines.length) index += 1;
+
+            const pre = document.createElement('pre');
+            pre.className = 'governance-markdown-code';
+            if (language) pre.dataset.language = language;
+            pre.textContent = codeLines.join('\n');
+            container.appendChild(pre);
+            continue;
+        }
+
+        const headingMatch = line.match(/^(#{1,6})\s+(.+)$/);
+        if (headingMatch) {
+            const level = Math.min(6, headingMatch[1].length + 1);
+            const heading = document.createElement(`h${level}`);
+            appendMarkdownInline(heading, headingMatch[2].trim());
+            container.appendChild(heading);
+            index += 1;
+            continue;
+        }
+
+        if (isMarkdownTable(lines, index)) {
+            const { element, nextIndex } = renderMarkdownTable(lines, index);
+            container.appendChild(element);
+            index = nextIndex;
+            continue;
+        }
+
+        if (/^>\s?/.test(line)) {
+            const quoteLines = [];
+            while (index < lines.length && /^>\s?/.test(lines[index])) {
+                quoteLines.push(lines[index].replace(/^>\s?/, ''));
+                index += 1;
+            }
+
+            const blockquote = document.createElement('blockquote');
+            renderMarkdown(blockquote, quoteLines.join('\n'));
+            container.appendChild(blockquote);
+            continue;
+        }
+
+        if (/^\s*([-*+])\s+/.test(line) || /^\s*\d+\.\s+/.test(line)) {
+            const { element, nextIndex } = renderMarkdownList(lines, index);
+            container.appendChild(element);
+            index = nextIndex;
+            continue;
+        }
+
+        const paragraphLines = [];
+        while (index < lines.length) {
+            const current = lines[index];
+            if (!current.trim()) break;
+            if (current.trim().startsWith('```')) break;
+            if (/^(#{1,6})\s+/.test(current)) break;
+            if (/^>\s?/.test(current)) break;
+            if (/^\s*([-*+])\s+/.test(current) || /^\s*\d+\.\s+/.test(current)) break;
+            if (isMarkdownTable(lines, index)) break;
+            paragraphLines.push(current.trim());
+            index += 1;
+        }
+
+        const paragraph = document.createElement('p');
+        appendMarkdownInline(paragraph, paragraphLines.join(' '));
+        container.appendChild(paragraph);
+    }
+}
+
+function renderMarkdownList(lines, startIndex) {
+    const ordered = /^\s*\d+\.\s+/.test(lines[startIndex]);
+    const list = document.createElement(ordered ? 'ol' : 'ul');
+    let index = startIndex;
+
+    while (index < lines.length) {
+        const line = lines[index];
+        if (ordered && !/^\s*\d+\.\s+/.test(line)) break;
+        if (!ordered && !/^\s*[-*+]\s+/.test(line)) break;
+
+        const item = document.createElement('li');
+        const text = line.replace(/^\s*(?:[-*+]|\d+\.)\s+/, '');
+        appendMarkdownInline(item, text);
+        list.appendChild(item);
+        index += 1;
+    }
+
+    return { element: list, nextIndex: index };
+}
+
+function isMarkdownTable(lines, index) {
+    if (index + 1 >= lines.length) return false;
+    const header = lines[index];
+    const separator = lines[index + 1];
+    return header.includes('|') && /^[\s|:-]+$/.test(separator.trim()) && separator.includes('-');
+}
+
+function renderMarkdownTable(lines, startIndex) {
+    const table = document.createElement('table');
+    table.className = 'governance-markdown-table';
+
+    const headerCells = splitMarkdownTableRow(lines[startIndex]);
+    const thead = document.createElement('thead');
+    const headRow = document.createElement('tr');
+    headerCells.forEach(cellText => {
+        const th = document.createElement('th');
+        appendMarkdownInline(th, cellText);
+        headRow.appendChild(th);
+    });
+    thead.appendChild(headRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    let index = startIndex + 2;
+    while (index < lines.length && lines[index].includes('|') && lines[index].trim()) {
+        const bodyRow = document.createElement('tr');
+        splitMarkdownTableRow(lines[index]).forEach(cellText => {
+            const td = document.createElement('td');
+            appendMarkdownInline(td, cellText);
+            bodyRow.appendChild(td);
+        });
+        tbody.appendChild(bodyRow);
+        index += 1;
+    }
+
+    table.appendChild(tbody);
+    return { element: table, nextIndex: index };
+}
+
+function splitMarkdownTableRow(row) {
+    return row
+        .trim()
+        .replace(/^\|/, '')
+        .replace(/\|$/, '')
+        .split('|')
+        .map(cell => cell.trim());
+}
+
+function appendMarkdownInline(container, text) {
+    const tokens = tokenizeMarkdownInline(text);
+    tokens.forEach(token => appendMarkdownToken(container, token));
+}
+
+function tokenizeMarkdownInline(text) {
+    const tokens = [];
+    let index = 0;
+
+    while (index < text.length) {
+        const remaining = text.slice(index);
+
+        let match = remaining.match(/^\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/);
+        if (match) {
+            tokens.push({ type: 'link', label: match[1], href: match[2] });
+            index += match[0].length;
+            continue;
+        }
+
+        match = remaining.match(/^`([^`]+)`/);
+        if (match) {
+            tokens.push({ type: 'code', text: match[1] });
+            index += match[0].length;
+            continue;
+        }
+
+        match = remaining.match(/^\*\*([^*]+)\*\*/);
+        if (match) {
+            tokens.push({ type: 'strong', children: tokenizeMarkdownInline(match[1]) });
+            index += match[0].length;
+            continue;
+        }
+
+        match = remaining.match(/^\*([^*]+)\*/);
+        if (match) {
+            tokens.push({ type: 'em', children: tokenizeMarkdownInline(match[1]) });
+            index += match[0].length;
+            continue;
+        }
+
+        match = remaining.match(/^(https?:\/\/[^\s<>"')\]]+)/);
+        if (match) {
+            tokens.push({ type: 'link', label: match[1], href: match[1] });
+            index += match[0].length;
+            continue;
+        }
+
+        const nextSpecial = remaining.search(/(\[|`|\*\*|\*|https?:\/\/)/);
+        if (nextSpecial === -1) {
+            tokens.push({ type: 'text', text: remaining });
+            break;
+        }
+        if (nextSpecial > 0) {
+            tokens.push({ type: 'text', text: remaining.slice(0, nextSpecial) });
+            index += nextSpecial;
+            continue;
+        }
+
+        tokens.push({ type: 'text', text: remaining[0] });
+        index += 1;
+    }
+
+    return tokens;
+}
+
+function appendMarkdownToken(container, token) {
+    if (token.type === 'text') {
+        container.appendChild(document.createTextNode(token.text));
+        return;
+    }
+
+    if (token.type === 'code') {
+        const code = document.createElement('code');
+        code.textContent = token.text;
+        container.appendChild(code);
+        return;
+    }
+
+    if (token.type === 'link') {
+        const link = document.createElement('a');
+        link.href = token.href;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = token.label;
+        container.appendChild(link);
+        return;
+    }
+
+    const element = document.createElement(token.type === 'strong' ? 'strong' : 'em');
+    token.children.forEach(child => appendMarkdownToken(element, child));
+    container.appendChild(element);
 }
 
 function isImageUrl(url) {
