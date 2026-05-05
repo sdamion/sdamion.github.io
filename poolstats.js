@@ -1,7 +1,12 @@
 document.addEventListener("DOMContentLoaded", function () {
-    const poolInfoUrl = "https://www.tdsp.online/api/adastat/pool-info";
-    const epochInfoUrl = "https://www.tdsp.online/api/adastat/epoch-info";
-    const isLocalPreview = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+    const localhostPreviewHosts = new Set(['localhost', '127.0.0.1']);
+    const tdspLocalHosts = new Set(['tdsp.online', 'www.tdsp.online', 'api.tdsp.online']);
+    const apiBaseUrl = tdspLocalHosts.has(window.location.hostname)
+        ? `${window.location.origin}/api/adastat`
+        : "https://www.tdsp.online/api/adastat";
+    const poolInfoUrl = `${apiBaseUrl}/pool-info`;
+    const epochInfoUrl = `${apiBaseUrl}/epoch-info`;
+    const isLocalPreview = localhostPreviewHosts.has(window.location.hostname);
 
     function formatAda(value) {
         return (value / 1_000_000).toLocaleString() + " ADA";

@@ -1,4 +1,7 @@
-const DASHBOARD_API_URL = 'https://api.tdsp.online/api/dashboard';
+const TDSP_LOCAL_HOSTNAMES = new Set(['tdsp.online', 'www.tdsp.online', 'api.tdsp.online']);
+const DASHBOARD_API_URL = TDSP_LOCAL_HOSTNAMES.has(window.location.hostname)
+    ? `${window.location.origin}/api/dashboard`
+    : 'https://api.tdsp.online/api/dashboard';
 const ACTIVE_REFRESH_INTERVAL_MS = 60 * 1000;
 const EPOCH_DURATION_SECONDS = 432000;
 const APPROVAL_GRACE_PERIOD_SECONDS = 300;
