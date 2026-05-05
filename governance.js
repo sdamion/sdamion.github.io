@@ -1,7 +1,5 @@
-const TDSP_LOCAL_HOSTNAMES = new Set(['tdsp.online', 'www.tdsp.online', 'api.tdsp.online']);
-const DASHBOARD_API_URL = TDSP_LOCAL_HOSTNAMES.has(window.location.hostname)
-    ? `${window.location.origin}/api/dashboard`
-    : 'https://api.tdsp.online/api/dashboard';
+const DASHBOARD_API_URL = 'https://api.tdsp.online/api/dashboard';
+const LOCAL_DASHBOARD_PROXY_PATH = '/__dashboard_proxy__';
 const ACTIVE_REFRESH_INTERVAL_MS = 60 * 1000;
 const EPOCH_DURATION_SECONDS = 432000;
 const APPROVAL_GRACE_PERIOD_SECONDS = 300;
@@ -109,7 +107,20 @@ function scheduleActiveRefresh() {
 }
 
 async function fetchGovernanceDashboardPayload() {
-    return fetchJson(DASHBOARD_API_URL);
+    if (!shouldUseLocalDashboardProxy()) {
+        return fetchJson(DASHBOARD_API_URL);
+    }
+
+    try {
+        return await fetchJson(LOCAL_DASHBOARD_PROXY_PATH);
+    } catch {
+        return fetchJson(DASHBOARD_API_URL);
+    }
+}
+
+function shouldUseLocalDashboardProxy() {
+    const host = window.location.hostname;
+    return host === '127.0.0.1' || host === 'localhost';
 }
 
 function getDashboardEpoch(payload) {
