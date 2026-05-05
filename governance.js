@@ -38,10 +38,11 @@ async function loadGovernanceActions() {
     const groups = {
         active: document.getElementById('governance-active'),
         approved: document.getElementById('governance-approved'),
-        rejected: document.getElementById('governance-rejected')
+        rejected: document.getElementById('governance-rejected'),
+        info: document.getElementById('governance-info')
     };
 
-    if (!groups.active || !groups.approved || !groups.rejected) return;
+    if (!groups.active || !groups.approved || !groups.rejected || !groups.info) return;
 
     try {
         const dashboardPayload = await fetchGovernanceDashboardPayload();
@@ -55,6 +56,7 @@ async function loadGovernanceActions() {
         renderGovernanceGroup(groups.active, grouped.active, 'No active actions found.');
         renderGovernanceGroup(groups.approved, grouped.approved, 'No approved actions found.');
         renderGovernanceGroup(groups.rejected, grouped.rejected, 'No rejected actions found.');
+        renderGovernanceGroup(groups.info, grouped.info, 'No info actions found.');
         updateGovernanceCounts(grouped);
         lastActiveRenderSignature = getGovernanceGroupSignature(grouped.active);
         updateEpochDisplayFromDashboardPayload(dashboardPayload);
@@ -74,9 +76,10 @@ async function refreshActiveGovernanceGroup() {
     const groups = {
         active: document.getElementById('governance-active'),
         approved: document.getElementById('governance-approved'),
-        rejected: document.getElementById('governance-rejected')
+        rejected: document.getElementById('governance-rejected'),
+        info: document.getElementById('governance-info')
     };
-    if (!groups.active || !groups.approved || !groups.rejected) return;
+    if (!groups.active || !groups.approved || !groups.rejected || !groups.info) return;
 
     const dashboardPayload = await fetchGovernanceDashboardPayload().catch(() => null);
     if (!dashboardPayload) return;
@@ -92,6 +95,7 @@ async function refreshActiveGovernanceGroup() {
     renderGovernanceGroup(groups.active, grouped.active, 'No active actions found.');
     renderGovernanceGroup(groups.approved, grouped.approved, 'No approved actions found.');
     renderGovernanceGroup(groups.rejected, grouped.rejected, 'No rejected actions found.');
+    renderGovernanceGroup(groups.info, grouped.info, 'No info actions found.');
     updateGovernanceCounts(grouped);
     lastActiveRenderSignature = nextSignature;
 }
@@ -408,7 +412,7 @@ function groupGovernanceProposals(proposals) {
     const groups = proposals.reduce((grouped, proposal) => {
         grouped[getGovernanceStatus(proposal)].push(proposal);
         return grouped;
-    }, { active: [], approved: [], rejected: [] });
+    }, { active: [], approved: [], rejected: [], info: [] });
 
     groups.active.sort((a, b) => {
         const aTime = Number(a.block_time) || 0;
@@ -460,6 +464,7 @@ function usesPoolVoting(proposal) {
 }
 
 function getGovernanceStatus(proposal) {
+    if (proposal?.proposal_type === 'InfoAction') return 'info';
     if (meetsGovernanceApprovalThreshold(proposal)) return 'approved';
     if (proposal.dropped_epoch !== null || proposal.expired_epoch !== null) return 'rejected';
     if (proposal.ratified_epoch !== null || proposal.enacted_epoch !== null) return 'approved';
@@ -795,6 +800,7 @@ function updateGovernanceCounts(groups) {
     setText('gov-active-count', getCollectionLength(groups.active));
     setText('gov-approved-count', getCollectionLength(groups.approved));
     setText('gov-rejected-count', getCollectionLength(groups.rejected));
+    setText('gov-info-count', getCollectionLength(groups.info));
 }
 
 function getCollectionLength(collection) {
