@@ -950,6 +950,7 @@ function renderNoVotesList(container, votes, headingLabel = 'DRep votes') {
 function mapBreakdownKeyToVote(key) {
     if (key === 'yes') return 'yes';
     if (key === 'no') return 'no';
+    if (key === 'abstain') return 'abstain';
     return null;
 }
 
@@ -977,6 +978,12 @@ function getDrepStakeBreakdown(summary) {
             value: noVotePower,
             votePowerPercentage: getDirectVotePowerPercentage(noVotePower),
             color: '#f87171'
+        },
+        {
+            key: 'abstain',
+            label: 'DRep abstain votes',
+            value: Number(summary.drep_active_abstain_vote_power) || 0,
+            color: '#60a5fa'
         },
         {
             key: 'always-abstain',
@@ -1427,8 +1434,7 @@ function formatVotePercentages(percentages, label = null) {
     const prefix = label ? `${label} ` : '';
     return [
         `${prefix}Yes ${formatPercentage(percentages.yes)}`,
-        `No ${formatPercentage(percentages.no)}`,
-        `Abstain ${formatPercentage(percentages.abstain)}`
+        `No ${formatPercentage(percentages.no)}`
     ].join(' | ');
 }
 
