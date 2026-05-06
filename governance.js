@@ -893,9 +893,13 @@ function createVoteLegendItem(item, drepVotes, detailsPanel) {
 }
 
 function formatVoteLegendDetail(item, drepVotes) {
+    if (item.key === 'yes' || item.key === 'no') {
+        return formatPercentage(item.votePowerPercentage);
+    }
+
     const votePercentage = getDrepVoteCountPercentage(item.key, drepVotes);
     if (votePercentage !== null) return formatPercentage(votePercentage);
-    return 'No direct votes';
+    return formatCompactAdaFromLovelace(item.value);
 }
 
 function renderDrepDetailsPanel(container, item, drepVotes) {
@@ -946,31 +950,33 @@ function renderNoVotesList(container, votes, headingLabel = 'DRep votes') {
 function mapBreakdownKeyToVote(key) {
     if (key === 'yes') return 'yes';
     if (key === 'no') return 'no';
-    return 'abstain';
+    return null;
 }
 
 function getDrepStakeBreakdown(summary) {
     if (!summary) return [];
 
+    const yesVotePower = Number(summary.drep_yes_vote_power) || 0;
+    const noVotePower = Number(summary.drep_no_vote_power) || 0;
+    const directVotePowerTotal = yesVotePower + noVotePower;
+    const getDirectVotePowerPercentage = value => (
+        directVotePowerTotal > 0 ? (value / directVotePowerTotal) * 100 : 0
+    );
+
     const items = [
         {
             key: 'yes',
             label: 'DRep yes stake',
-            value: Number(summary.drep_yes_vote_power) || 0,
+            value: yesVotePower,
+            votePowerPercentage: getDirectVotePowerPercentage(yesVotePower),
             color: '#34d399'
         },
         {
             key: 'no',
             label: 'DRep no stake',
-            value: Number(summary.drep_no_vote_power) || 0,
+            value: noVotePower,
+            votePowerPercentage: getDirectVotePowerPercentage(noVotePower),
             color: '#f87171'
-        },
-        {
-            key: 'abstain',
-            label: 'DRep abstain votes',
-            value: Number(summary.drep_active_abstain_vote_power) || 0,
-            count: Number(summary.drep_abstain_votes_cast) || 0,
-            color: '#60a5fa'
         },
         {
             key: 'always-abstain',
@@ -986,7 +992,7 @@ function getDrepStakeBreakdown(summary) {
         }
     ];
 
-    return items.filter(item => item.value > 0 || item.key === 'abstain');
+    return items.filter(item => item.value > 0);
 }
 
 function getPieChartSegments(items) {
