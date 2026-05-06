@@ -1094,15 +1094,6 @@ function addVoteSummaryRows(container, summary, source) {
         addDetailRow(container, 'SPO abstain votes', summary.pool_abstain_votes_cast);
         return;
     }
-
-    addDetailRow(container, 'DRep yes votes', summary.drep_yes_votes_cast);
-    addDetailRow(container, 'DRep yes stake', formatCompactAdaFromLovelace(summary.drep_yes_vote_power));
-    addDetailRow(container, 'DRep no votes', summary.drep_no_votes_cast);
-    addDetailRow(container, 'DRep no stake', formatCompactAdaFromLovelace(summary.drep_no_vote_power));
-    addDetailRow(container, 'DRep abstain votes', summary.drep_abstain_votes_cast);
-    addDetailRow(container, 'DRep abstain stake', formatCompactAdaFromLovelace(summary.drep_active_abstain_vote_power));
-    addDetailRow(container, 'DRep always abstain stake', formatCompactAdaFromLovelace(summary.drep_always_abstain_vote_power));
-    addDetailRow(container, 'DRep always no-confidence stake', formatCompactAdaFromLovelace(summary.drep_always_no_confidence_vote_power));
 }
 
 function cleanGovernanceText(text) {
