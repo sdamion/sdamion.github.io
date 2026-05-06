@@ -894,11 +894,28 @@ function createVoteLegendItem(item, drepVotes, detailsPanel) {
 
 function formatVoteLegendDetail(item, drepVotes) {
     if (item.key === 'yes' || item.key === 'no') {
-        return formatPercentage(item.votePowerPercentage);
+        return [
+            `${item.count ?? 0} votes`,
+            formatCompactAdaFromLovelace(item.value),
+            formatPercentage(item.votePowerPercentage)
+        ].join(' • ');
+    }
+
+    if (item.key === 'abstain') {
+        return [
+            `${item.count ?? 0} votes`,
+            formatCompactAdaFromLovelace(item.value)
+        ].join(' • ');
     }
 
     const votePercentage = getDrepVoteCountPercentage(item.key, drepVotes);
-    if (votePercentage !== null) return formatPercentage(votePercentage);
+    if (votePercentage !== null) {
+        return [
+            `${item.count ?? 0} votes`,
+            formatCompactAdaFromLovelace(item.value),
+            formatPercentage(votePercentage)
+        ].join(' • ');
+    }
     return formatCompactAdaFromLovelace(item.value);
 }
 
@@ -969,6 +986,7 @@ function getDrepStakeBreakdown(summary) {
             key: 'yes',
             label: 'DRep yes stake',
             value: yesVotePower,
+            count: Number(summary.drep_yes_votes_cast) || 0,
             votePowerPercentage: getDirectVotePowerPercentage(yesVotePower),
             color: '#34d399'
         },
@@ -976,13 +994,15 @@ function getDrepStakeBreakdown(summary) {
             key: 'no',
             label: 'DRep no stake',
             value: noVotePower,
+            count: Number(summary.drep_no_votes_cast) || 0,
             votePowerPercentage: getDirectVotePowerPercentage(noVotePower),
             color: '#f87171'
         },
         {
             key: 'abstain',
-            label: 'DRep abstain votes',
+            label: 'DRep abstain stake',
             value: Number(summary.drep_active_abstain_vote_power) || 0,
+            count: Number(summary.drep_abstain_votes_cast) || 0,
             color: '#60a5fa'
         },
         {
