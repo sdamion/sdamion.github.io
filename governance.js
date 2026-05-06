@@ -857,17 +857,19 @@ function createVoteLegendItem(item, drepVotes, detailsPanel) {
         element.setAttribute('aria-expanded', 'false');
         element.addEventListener('click', () => {
             const isSameGroup = detailsPanel.dataset.activeGroup === item.key;
-            const shouldOpen = detailsPanel.hidden || !isSameGroup;
+            const isOpen = !detailsPanel.hidden;
+            const shouldClose = isOpen && isSameGroup;
 
-            if (shouldOpen) {
-                renderDrepDetailsPanel(detailsPanel, item, drepVotes);
+            if (shouldClose) {
+                hideDrepDetailsPanel(detailsPanel);
             } else {
-                detailsPanel.hidden = true;
-                detailsPanel.dataset.activeGroup = '';
+                renderDrepDetailsPanel(detailsPanel, item, drepVotes);
             }
 
-            document.querySelectorAll('.governance-vote-legend-item.is-clickable').forEach(button => {
-                button.setAttribute('aria-expanded', String(shouldOpen && button.dataset.voteGroup === item.key));
+            const section = element.closest('.governance-vote-chart');
+            section?.querySelectorAll('.governance-vote-legend-item.is-clickable').forEach(button => {
+                const expanded = !detailsPanel.hidden && button.dataset.voteGroup === detailsPanel.dataset.activeGroup;
+                button.setAttribute('aria-expanded', String(expanded));
             });
         });
     }
@@ -939,6 +941,12 @@ function renderDrepDetailsPanel(container, item, drepVotes) {
 
     const votes = drepVotes.filter(vote => String(vote?.vote || '').toLowerCase() === mapBreakdownKeyToVote(item.key));
     renderNoVotesList(container, votes, item.label);
+}
+
+function hideDrepDetailsPanel(container) {
+    container.textContent = '';
+    container.hidden = true;
+    container.dataset.activeGroup = '';
 }
 
 function renderNoVotesList(container, votes, headingLabel = 'DRep votes') {
