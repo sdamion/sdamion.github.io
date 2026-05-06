@@ -10,6 +10,7 @@ let governanceRefreshTimer = null;
 let lastActiveRenderSignature = '';
 let governanceState = null;
 const proposalVotesCache = new Map();
+const drepMetadataCache = new Map();
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initGovernance);
@@ -962,14 +963,76 @@ function renderNoVotesList(container, votes, headingLabel = 'DRep votes') {
 
         const id = document.createElement('span');
         id.className = 'governance-no-vote-id';
-        id.textContent = vote?.voter_id || vote?.voterId || vote?.voter_hex || 'Unknown DRep';
+        id.textContent = getDrepDisplayName(vote);
 
         row.appendChild(id);
         list.appendChild(row);
+
+        resolveDrepDisplayName(vote, id).catch(() => {});
     });
 
     container.appendChild(title);
     container.appendChild(list);
+}
+
+function getDrepDisplayName(vote) {
+    return vote?.resolvedDrepName
+        || vote?.voter_id
+        || vote?.voterId
+        || vote?.voter_hex
+        || 'Unknown DRep';
+}
+
+async function resolveDrepDisplayName(vote, target) {
+    const metadataUrl = normalizeMetadataUrl(vote?.meta_url || vote?.metaUrl);
+    if (!metadataUrl) return;
+
+    const cacheKey = `${vote?.voter_id || vote?.voterId || vote?.voter_hex || metadataUrl}:${metadataUrl}`;
+    if (!drepMetadataCache.has(cacheKey)) {
+        drepMetadataCache.set(cacheKey, fetchDrepMetadataName(metadataUrl));
+    }
+
+    const name = await drepMetadataCache.get(cacheKey).catch(() => null);
+    if (!name || !target?.isConnected) return;
+
+    vote.resolvedDrepName = name;
+    target.textContent = `${name} (${vote?.voter_id || vote?.voterId || vote?.voter_hex || ''})`.trim();
+}
+
+async function fetchDrepMetadataName(url) {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    const payload = await response.json();
+    return extractDrepMetadataName(payload);
+}
+
+function extractDrepMetadataName(payload) {
+    if (!payload || typeof payload !== 'object') return null;
+
+    const authorNames = Array.isArray(payload.authors)
+        ? payload.authors.map(author => author?.name).filter(Boolean)
+        : [];
+    if (authorNames.length) return authorNames[0];
+
+    const body = payload.body || {};
+    return body.name
+        || body.title
+        || payload.name
+        || payload.title
+        || null;
+}
+
+function normalizeMetadataUrl(url) {
+    if (!url || typeof url !== 'string') return '';
+    const trimmed = url.trim();
+    if (!trimmed) return '';
+
+    if (trimmed.startsWith('ipfs://')) {
+        return `https://ipfs.io/ipfs/${trimmed.slice('ipfs://'.length)}`;
+    }
+
+    return trimmed;
 }
 
 function mapBreakdownKeyToVote(key) {
