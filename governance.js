@@ -1,5 +1,7 @@
-const DASHBOARD_API_URL = 'https://api.tdsp.online/api/dashboard';
-const PROPOSAL_VOTES_API_BASE_URL = 'https://api.tdsp.online/api/proposal';
+const API_DATA_BASE_URL = 'https://api.tdsp.online/app/data';
+const DASHBOARD_API_URL = `${API_DATA_BASE_URL}/dashboard.json`;
+const DREP_METADATA_API_URL = `${API_DATA_BASE_URL}/drep-metadata.json`;
+const DREP_INFO_API_URL = `${API_DATA_BASE_URL}/drep-info.json`;
 const LOCAL_DASHBOARD_PROXY_PATH = '/__dashboard_proxy__';
 const LOCAL_PROPOSAL_VOTES_PROXY_PATH = '/__proposal_votes_proxy__';
 const ACTIVE_REFRESH_INTERVAL_MS = 60 * 1000;
@@ -11,6 +13,7 @@ let lastActiveRenderSignature = '';
 let governanceState = null;
 const proposalVotesCache = new Map();
 const drepMetadataCache = new Map();
+let drepDirectoryPromise = null;
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initGovernance);
@@ -133,7 +136,7 @@ function getProposalVotesApiUrl(proposalId) {
         return `${LOCAL_PROPOSAL_VOTES_PROXY_PATH}?${params.toString()}`;
     }
 
-    return `${PROPOSAL_VOTES_API_BASE_URL}/${encodeURIComponent(proposalId)}/votes`;
+    return `${API_DATA_BASE_URL}/votes/${encodeURIComponent(proposalId)}.json`;
 }
 
 function getDashboardEpoch(payload) {
@@ -419,7 +422,6 @@ function pickFirstNumber(...values) {
 function normalizePercentageNumber(value) {
     const number = Number(value);
     if (!Number.isFinite(number)) return NaN;
-    if (number >= 0 && number <= 1) return number * 100;
     return number;
 }
 
@@ -977,6 +979,9 @@ function renderNoVotesList(container, votes, headingLabel = 'DRep votes') {
 
 function getDrepDisplayName(vote) {
     return vote?.resolvedDrepName
+        || vote?.drep_name
+        || vote?.drepName
+        || vote?.name
         || vote?.voter_id
         || vote?.voterId
         || vote?.voter_hex
@@ -984,19 +989,146 @@ function getDrepDisplayName(vote) {
 }
 
 async function resolveDrepDisplayName(vote, target) {
-    const metadataUrl = normalizeMetadataUrl(vote?.meta_url || vote?.metaUrl);
-    if (!metadataUrl) return;
-
-    const cacheKey = `${vote?.voter_id || vote?.voterId || vote?.voter_hex || metadataUrl}:${metadataUrl}`;
-    if (!drepMetadataCache.has(cacheKey)) {
-        drepMetadataCache.set(cacheKey, fetchDrepMetadataName(metadataUrl));
-    }
-
-    const name = await drepMetadataCache.get(cacheKey).catch(() => null);
+    const name = await resolveDrepNameFromApi(vote);
     if (!name || !target?.isConnected) return;
 
     vote.resolvedDrepName = name;
     target.textContent = `${name} (${vote?.voter_id || vote?.voterId || vote?.voter_hex || ''})`.trim();
+}
+
+async function resolveDrepNameFromApi(vote) {
+    const directName = vote?.resolvedDrepName || vote?.drep_name || vote?.drepName || vote?.name;
+    if (directName) return directName;
+
+    const lookupId = normalizeDrepIdentifier(
+        vote?.voter_id
+        || vote?.voterId
+        || vote?.voter_hex
+        || vote?.drep_id
+        || vote?.drepId
+        || vote?.id
+    );
+
+    if (lookupId) {
+        const directory = await loadDrepDirectory().catch(() => null);
+        const directoryName = directory?.get(lookupId) || directory?.get(shortenDrepIdentifier(lookupId)) || null;
+        if (directoryName) return directoryName;
+    }
+
+    const metadataUrl = normalizeMetadataUrl(vote?.meta_url || vote?.metaUrl);
+    if (!metadataUrl) return null;
+
+    const cacheKey = `${lookupId || metadataUrl}:${metadataUrl}`;
+    if (!drepMetadataCache.has(cacheKey)) {
+        drepMetadataCache.set(cacheKey, fetchDrepMetadataName(metadataUrl));
+    }
+
+    return drepMetadataCache.get(cacheKey).catch(() => null);
+}
+
+async function loadDrepDirectory() {
+    if (!drepDirectoryPromise) {
+        drepDirectoryPromise = fetchDrepDirectory();
+    }
+    return drepDirectoryPromise;
+}
+
+async function fetchDrepDirectory() {
+    const [metadataPayload, infoPayload] = await Promise.allSettled([
+        fetchJson(DREP_METADATA_API_URL),
+        fetchJson(DREP_INFO_API_URL)
+    ]);
+
+    const directory = new Map();
+    if (metadataPayload.status === 'fulfilled') {
+        addDrepDirectoryEntries(directory, metadataPayload.value);
+    }
+    if (infoPayload.status === 'fulfilled') {
+        addDrepDirectoryEntries(directory, infoPayload.value);
+    }
+
+    return directory;
+}
+
+function addDrepDirectoryEntries(directory, payload) {
+    const entries = unwrapDrepEntries(payload);
+    entries.forEach(entry => {
+        const name = extractDrepNameFromEntry(entry);
+        if (!name) return;
+
+        getDrepEntryIdentifiers(entry).forEach(identifier => {
+            directory.set(identifier, name);
+            const shortened = shortenDrepIdentifier(identifier);
+            if (shortened) directory.set(shortened, name);
+        });
+    });
+}
+
+function unwrapDrepEntries(payload) {
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.data)) return payload.data;
+    if (Array.isArray(payload?.dreps)) return payload.dreps;
+    if (Array.isArray(payload?.items)) return payload.items;
+    if (payload && typeof payload === 'object') return Object.values(payload).filter(Boolean);
+    return [];
+}
+
+function extractDrepNameFromEntry(entry) {
+    if (!entry || typeof entry !== 'object') return null;
+
+    const authorNames = Array.isArray(entry.authors)
+        ? entry.authors.map(author => author?.name).filter(Boolean)
+        : [];
+    if (authorNames.length) return authorNames[0];
+
+    const body = entry.body || entry.metadata?.body || entry.meta_json?.body || {};
+    return body.name
+        || body.title
+        || entry.name
+        || entry.title
+        || entry.given_name
+        || entry.display_name
+        || entry.displayName
+        || entry.metadata?.name
+        || entry.metadata?.title
+        || null;
+}
+
+function getDrepEntryIdentifiers(entry) {
+    return [
+        entry?.voter_id,
+        entry?.voterId,
+        entry?.voter_hex,
+        entry?.drep_id,
+        entry?.drepId,
+        entry?.id,
+        entry?.hex,
+        entry?.credential,
+        entry?.view,
+        entry?.bech32,
+        entry?.drep_hash,
+        entry?.drepHash,
+        entry?.drep?.id,
+        entry?.drep?.view,
+        entry?.drep?.hex,
+        entry?.drep?.bech32,
+        entry?.metadata?.voter_id,
+        entry?.metadata?.voterId,
+        entry?.metadata?.drep_id
+    ]
+        .map(normalizeDrepIdentifier)
+        .filter(Boolean);
+}
+
+function normalizeDrepIdentifier(value) {
+    if (value === null || value === undefined) return '';
+    return String(value).trim().toLowerCase();
+}
+
+function shortenDrepIdentifier(value) {
+    const normalized = normalizeDrepIdentifier(value);
+    if (!normalized) return '';
+    return normalized.startsWith('drep1') ? normalized.slice(5) : normalized;
 }
 
 async function fetchDrepMetadataName(url) {
