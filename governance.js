@@ -1,5 +1,6 @@
+const DASHBOARD_API_URL = 'https://api.tdsp.online/api/dashboard';
+const PROPOSAL_VOTES_API_BASE_URL = 'https://api.tdsp.online/api/proposal';
 const API_DATA_BASE_URL = 'https://api.tdsp.online/app/data';
-const DASHBOARD_API_URL = `${API_DATA_BASE_URL}/dashboard.json`;
 const DREP_METADATA_API_URL = `${API_DATA_BASE_URL}/drep-metadata.json`;
 const DREP_INFO_API_URL = `${API_DATA_BASE_URL}/drep-info.json`;
 const LOCAL_DASHBOARD_PROXY_PATH = '/__dashboard_proxy__';
@@ -136,7 +137,7 @@ function getProposalVotesApiUrl(proposalId) {
         return `${LOCAL_PROPOSAL_VOTES_PROXY_PATH}?${params.toString()}`;
     }
 
-    return `${API_DATA_BASE_URL}/votes/${encodeURIComponent(proposalId)}.json`;
+    return `${PROPOSAL_VOTES_API_BASE_URL}/${encodeURIComponent(proposalId)}/votes`;
 }
 
 function getDashboardEpoch(payload) {
