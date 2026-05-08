@@ -1152,14 +1152,28 @@ function renderNoVotesList(container, votes, headingLabel = 'DRep votes') {
         const row = document.createElement('div');
         row.className = 'governance-no-vote-row';
 
+        const copy = document.createElement('div');
+        copy.className = 'governance-no-vote-copy';
+
+        const name = document.createElement('strong');
+        name.className = 'governance-no-vote-name';
+        name.textContent = getDrepPrimaryDisplayName(vote);
+
         const id = document.createElement('span');
         id.className = 'governance-no-vote-id';
-        id.textContent = getDrepDisplayName(vote);
+        id.textContent = getDrepVoteIdentifier(vote) || 'Unknown DRep';
 
-        row.appendChild(id);
+        const power = document.createElement('span');
+        power.className = 'governance-no-vote-power';
+        power.textContent = getDrepVotePowerLabel(vote);
+
+        copy.appendChild(name);
+        copy.appendChild(id);
+        if (power.textContent) copy.appendChild(power);
+        row.appendChild(copy);
         list.appendChild(row);
 
-        resolveDrepDisplayName(vote, id).catch(() => {});
+        resolveDrepDisplayName(vote, name).catch(() => {});
     });
 
     container.appendChild(title);
@@ -1177,12 +1191,21 @@ function getDrepDisplayName(vote) {
     return resolvedName || identifier || 'Unknown DRep';
 }
 
+function getDrepPrimaryDisplayName(vote) {
+    return vote?.resolvedDrepName
+        || vote?.drep_name
+        || vote?.drepName
+        || vote?.name
+        || getDrepVoteIdentifier(vote)
+        || 'Unknown DRep';
+}
+
 async function resolveDrepDisplayName(vote, target) {
     const name = await resolveDrepNameFromApi(vote);
     if (!name || !target?.isConnected) return;
 
     vote.resolvedDrepName = name;
-    target.textContent = getDrepDisplayName(vote);
+    target.textContent = getDrepPrimaryDisplayName(vote);
 }
 
 function getDrepVoteIdentifier(vote) {
@@ -1193,6 +1216,17 @@ function getDrepVoteIdentifier(vote) {
         || vote?.voter_hex
         || vote?.id
         || '';
+}
+
+function getDrepVotePowerLabel(vote) {
+    const value = vote?.amount
+        ?? vote?.vote_power
+        ?? vote?.voting_power
+        ?? vote?.stake
+        ?? vote?.lovelace;
+
+    if (value === null || value === undefined || value === '') return '';
+    return `Voting power: ${formatCompactAdaFromLovelace(value)}`;
 }
 
 async function resolveDrepNameFromApi(vote) {
@@ -1512,9 +1546,31 @@ function getDrepVotes(payload) {
     if (Array.isArray(dreps)) return dreps;
     if (!dreps || typeof dreps !== 'object') return [];
 
+    const drepInfo = payload?.drep_info && typeof payload.drep_info === 'object'
+        ? payload.drep_info
+        : {};
+
     return ['yes', 'no', 'abstain', 'unknown'].flatMap(key => {
         const bucket = dreps[key];
-        return Array.isArray(bucket) ? bucket : [];
+        if (!Array.isArray(bucket)) return [];
+
+        return bucket.map(vote => {
+            const info = drepInfo[vote?.voter_id]
+                || drepInfo[vote?.drep_id]
+                || drepInfo[vote?.voter_hex]
+                || drepInfo[vote?.hex]
+                || null;
+
+            if (!info) return vote;
+
+            return {
+                ...info,
+                ...vote,
+                amount: vote?.amount ?? info?.amount ?? '',
+                drep_id: vote?.drep_id || info?.drep_id || vote?.voter_id || '',
+                voter_hex: vote?.voter_hex || info?.hex || ''
+            };
+        });
     });
 }
 
