@@ -1213,12 +1213,50 @@ p {
 }
 
 @media (max-width: 720px) {
+    .governance-overlay {
+        padding: 12px;
+    }
+
+    .governance-dialog {
+        padding: 20px 16px;
+    }
+
+    .governance-dialog h2,
+    .governance-dialog .small-text,
+    .governance-vote-chart > strong {
+        text-align: center;
+    }
+
     .governance-vote-chart-layout {
         grid-template-columns: 1fr;
+        justify-items: center;
     }
 
     .governance-pie-chart {
         margin-inline: auto;
+    }
+
+    .governance-vote-legend {
+        width: 100%;
+        justify-items: center;
+    }
+
+    .governance-vote-legend-item {
+        width: min(100%, 420px);
+        text-align: left;
+    }
+
+    .governance-no-votes {
+        justify-items: center;
+        text-align: center;
+    }
+
+    .governance-no-votes-list {
+        width: 100%;
+    }
+
+    .governance-no-vote-row {
+        text-align: center;
     }
 }
 
