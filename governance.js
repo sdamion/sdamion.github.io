@@ -978,10 +978,12 @@ function renderNoVotesList(container, votes, headingLabel = 'DRep votes') {
 }
 
 function getDrepDisplayName(vote) {
-    return vote?.resolvedDrepName
+    const resolvedName = vote?.resolvedDrepName
         || vote?.drep_name
         || vote?.drepName
-        || vote?.name
+        || vote?.name;
+
+    return resolvedName
         || vote?.voter_id
         || vote?.voterId
         || vote?.voter_hex
@@ -993,7 +995,7 @@ async function resolveDrepDisplayName(vote, target) {
     if (!name || !target?.isConnected) return;
 
     vote.resolvedDrepName = name;
-    target.textContent = `${name} (${vote?.voter_id || vote?.voterId || vote?.voter_hex || ''})`.trim();
+    target.textContent = name;
 }
 
 async function resolveDrepNameFromApi(vote) {
