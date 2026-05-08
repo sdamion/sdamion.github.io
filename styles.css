@@ -855,6 +855,7 @@ p {
     display: grid;
     gap: 10px;
     margin-top: 12px;
+    min-width: 0;
 }
 
 .governance-detail-row {
@@ -889,6 +890,7 @@ p {
     color: var(--muted);
     font-size: 0.9rem;
     line-height: 1.55;
+    min-width: 0;
 }
 
 .governance-markdown > * + * {
@@ -1144,6 +1146,7 @@ p {
     font-size: 0.78rem;
     line-height: 1.45;
     white-space: pre-wrap;
+    overflow-wrap: anywhere;
 }
 
 .governance-overlay {
@@ -1161,6 +1164,7 @@ p {
     width: min(980px, 100%);
     max-height: min(84vh, 900px);
     overflow-y: auto;
+    overflow-x: hidden;
     padding: 28px;
     border: 1px solid var(--line);
     border-radius: 8px;
@@ -1176,17 +1180,47 @@ p {
 
 @media (max-width: 720px) {
     .governance-overlay {
-        padding: 12px;
+        padding: 8px;
     }
 
     .governance-dialog {
-        padding: 20px 16px;
+        width: 100%;
+        max-height: calc(100dvh - 16px);
+        padding: 18px 14px 16px;
+        border-radius: 16px;
+        overscroll-behavior: contain;
     }
 
     .governance-dialog h2,
     .governance-dialog .small-text,
     .governance-vote-chart > strong {
         text-align: center;
+    }
+
+    .governance-dialog h2 {
+        max-width: 100%;
+        font-size: clamp(1.4rem, 7vw, 2rem);
+        line-height: 1.1;
+        overflow-wrap: anywhere;
+    }
+
+    .governance-dialog .small-text {
+        margin: 0 0 4px;
+        line-height: 1.45;
+    }
+
+    .governance-type {
+        display: block;
+        text-align: center;
+        margin-top: 8px;
+    }
+
+    .governance-detail-content {
+        gap: 12px;
+    }
+
+    .governance-vote-details {
+        padding: 14px;
     }
 
     .governance-vote-chart-layout {
@@ -1219,6 +1253,55 @@ p {
 
     .governance-no-vote-row {
         text-align: center;
+    }
+
+    .governance-close {
+        position: static;
+        float: none;
+        display: block;
+        margin-left: auto;
+        margin-bottom: 10px;
+    }
+
+    .governance-detail-row,
+    .governance-markdown-section {
+        gap: 6px;
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--overlay-surface-muted);
+    }
+
+    .governance-markdown,
+    .governance-detail-row span,
+    .governance-detail-row a {
+        font-size: 0.84rem;
+        line-height: 1.5;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
+    .governance-json {
+        max-height: 220px;
+        font-size: 0.72rem;
+        padding: 10px;
+    }
+
+    .governance-detail-image,
+    .governance-json {
+        width: 100%;
+    }
+
+    .governance-markdown-table {
+        display: block;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        white-space: nowrap;
+    }
+
+    .governance-markdown-table th,
+    .governance-markdown-table td {
+        min-width: 120px;
     }
 }
 

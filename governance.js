@@ -1,8 +1,8 @@
 const DASHBOARD_API_URL = 'https://api.tdsp.online/api/dashboard';
 const PROPOSAL_VOTES_API_BASE_URL = 'https://api.tdsp.online/api/proposal';
-const API_DATA_BASE_URL = 'https://api.tdsp.online/app/data';
-const DREP_METADATA_API_URL = `${API_DATA_BASE_URL}/drep-metadata.json`;
-const DREP_INFO_API_URL = `${API_DATA_BASE_URL}/drep-info.json`;
+const DREP_METADATA_API_URL = 'https://api.tdsp.online/api/dreps/metadata';
+const DREP_INFO_API_URL = 'https://api.tdsp.online/api/dreps/info';
+const DREP_DETAIL_API_BASE_URL = 'https://api.tdsp.online/api/drep';
 const LOCAL_DASHBOARD_PROXY_PATH = '/__dashboard_proxy__';
 const LOCAL_PROPOSAL_VOTES_PROXY_PATH = '/__proposal_votes_proxy__';
 const ACTIVE_REFRESH_INTERVAL_MS = 60 * 1000;
@@ -611,28 +611,35 @@ function openGovernanceOverlay(proposal) {
     addVoteDetailsState(voteDetailsContainer, 'Loading vote details...');
     content.appendChild(voteDetailsContainer);
 
+    const embeddedImages = extractGovernanceImageCandidates(proposal);
+    const hasEmbeddedImages = embeddedImages.length > 0;
+
     addDetailRow(content, 'Action ID', proposal.proposal_id);
     addDetailRow(content, 'Transaction', proposal.proposal_tx_hash);
-    addDetailRow(content, 'Type', formatProposalType(proposal.proposal_type));
-    addDetailRow(content, 'Proposed epoch', proposal.proposed_epoch);
-    addDetailRow(content, 'Expiration epoch', proposal.expiration);
-    addDetailRow(content, 'Ratified epoch', proposal.ratified_epoch);
-    addDetailRow(content, 'Enacted epoch', proposal.enacted_epoch);
-    addDetailRow(content, 'Expired epoch', proposal.expired_epoch);
-    addDetailRow(content, 'Dropped epoch', proposal.dropped_epoch);
-    if (shouldShowVotePercentages(proposal)) {
-        addDetailRow(content, `${proposal.voteDisplay?.label || 'Vote'} percentages`, formatVotePercentages(proposal.votePercentages, proposal.voteDisplay?.label));
+
+    if (!hasEmbeddedImages) {
+        addDetailRow(content, 'Type', formatProposalType(proposal.proposal_type));
+        addDetailRow(content, 'Proposed epoch', proposal.proposed_epoch);
+        addDetailRow(content, 'Expiration epoch', proposal.expiration);
+        addDetailRow(content, 'Ratified epoch', proposal.ratified_epoch);
+        addDetailRow(content, 'Enacted epoch', proposal.enacted_epoch);
+        addDetailRow(content, 'Expired epoch', proposal.expired_epoch);
+        addDetailRow(content, 'Dropped epoch', proposal.dropped_epoch);
+        if (shouldShowVotePercentages(proposal)) {
+            addDetailRow(content, `${proposal.voteDisplay?.label || 'Vote'} percentages`, formatVotePercentages(proposal.votePercentages, proposal.voteDisplay?.label));
+        }
+        addDetailRow(content, 'Deposit', formatLovelace(proposal.deposit));
+        addDetailRow(content, 'Return address', proposal.return_address);
+        addDetailRow(content, 'Metadata URL', proposal.meta_url);
     }
-    addDetailRow(content, 'Deposit', formatLovelace(proposal.deposit));
-    addDetailRow(content, 'Return address', proposal.return_address);
-    addDetailRow(content, 'Metadata URL', proposal.meta_url);
 
     const body = proposal.meta_json?.body || proposal.meta_json || {};
     addMarkdownDetailSection(content, 'Abstract', body.abstract);
     addMarkdownDetailSection(content, 'Motivation', body.motivation);
     addMarkdownDetailSection(content, 'Rationale', body.rationale);
+    addEmbeddedGovernanceImages(content, proposal, embeddedImages);
 
-    if (proposal.proposal_description) {
+    if (proposal.proposal_description && !hasEmbeddedImages) {
         const raw = document.createElement('pre');
         raw.className = 'governance-json';
         raw.textContent = JSON.stringify(proposal.proposal_description, null, 2);
@@ -689,7 +696,7 @@ function addDetailRow(container, label, value) {
 
 function addMarkdownDetailSection(container, label, value) {
     if (value === null || value === undefined || value === '') return;
-    const cleanValue = cleanGovernanceText(String(value));
+    const cleanValue = sanitizeGovernanceMarkdown(cleanGovernanceText(String(value)));
     if (!cleanValue) return;
 
     const section = document.createElement('section');
@@ -705,6 +712,187 @@ function addMarkdownDetailSection(container, label, value) {
     section.appendChild(heading);
     section.appendChild(body);
     container.appendChild(section);
+}
+
+function addEmbeddedGovernanceImages(container, proposal, candidates = extractGovernanceImageCandidates(proposal)) {
+    if (!candidates.length) return;
+
+    const section = document.createElement('section');
+    section.className = 'governance-markdown-section';
+
+    const heading = document.createElement('strong');
+    heading.textContent = candidates.length === 1 ? 'Image' : 'Images';
+    section.appendChild(heading);
+
+    candidates.forEach(candidate => {
+        const imageLink = document.createElement('a');
+        imageLink.href = candidate.src;
+        imageLink.target = '_blank';
+        imageLink.rel = 'noopener noreferrer';
+
+        const image = document.createElement('img');
+        image.className = 'governance-detail-image';
+        image.src = candidate.src;
+        image.alt = candidate.alt || 'Governance action image';
+        image.loading = 'lazy';
+
+        imageLink.appendChild(image);
+        section.appendChild(imageLink);
+    });
+
+    container.appendChild(section);
+}
+
+function extractGovernanceImageCandidates(proposal) {
+    const results = [];
+    const seen = new Set();
+    const sources = [
+        proposal?.meta_json,
+        proposal?.meta_json?.body,
+        proposal?.proposal_description
+    ];
+
+    sources.forEach(source => collectGovernanceImageCandidates(source, results, seen));
+    return results;
+}
+
+function collectGovernanceImageCandidates(value, results, seen, keyHint = '') {
+    if (value === null || value === undefined) return;
+
+    if (typeof value === 'string') {
+        extractGovernanceImageCandidatesFromString(value, keyHint).forEach(candidate => {
+            if (!seen.has(candidate.src)) {
+                seen.add(candidate.src);
+                results.push(candidate);
+            }
+        });
+        return;
+    }
+
+    if (Array.isArray(value)) {
+        value.forEach(entry => collectGovernanceImageCandidates(entry, results, seen, keyHint));
+        return;
+    }
+
+    if (typeof value !== 'object') return;
+
+    Object.entries(value).forEach(([key, entry]) => {
+        const nestedHint = [keyHint, key].filter(Boolean).join('.');
+        collectGovernanceImageCandidates(entry, results, seen, nestedHint);
+    });
+}
+
+function extractGovernanceImageCandidatesFromString(value, keyHint = '') {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+
+    const candidates = [];
+    const seen = new Set();
+    const addCandidate = candidate => {
+        if (!candidate || seen.has(candidate.src)) return;
+        seen.add(candidate.src);
+        candidates.push(candidate);
+    };
+
+    const directCandidate = normalizeGovernanceImageCandidate(trimmed, keyHint);
+    if (directCandidate) addCandidate(directCandidate);
+
+    const markdownMatches = trimmed.matchAll(/!\[([^\]]*)\]\(([^)\s]+)\)/g);
+    for (const match of markdownMatches) {
+        const src = normalizeImageSource(match[2], keyHint || match[1]);
+        if (src) addCandidate({ src, alt: match[1] || 'Governance action image' });
+    }
+
+    const htmlMatches = trimmed.matchAll(/<img\b[^>]*src=["']([^"']+)["'][^>]*?(?:alt=["']([^"']*)["'])?[^>]*>/gi);
+    for (const match of htmlMatches) {
+        const src = normalizeImageSource(match[1], keyHint || match[2]);
+        if (src) addCandidate({ src, alt: match[2] || 'Governance action image' });
+    }
+
+    const dataImageMatches = trimmed.matchAll(/data:image\/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=\s]+/gi);
+    for (const match of dataImageMatches) {
+        const src = normalizeImageSource(match[0], keyHint);
+        if (src) addCandidate({ src, alt: 'Governance action image' });
+    }
+
+    const urlMatches = trimmed.matchAll(/(?:https?:\/\/|ipfs:\/\/)[^\s<>"')\]]+/gi);
+    for (const match of urlMatches) {
+        const src = normalizeImageSource(match[0], keyHint);
+        if (src) addCandidate({ src, alt: 'Governance action image' });
+    }
+
+    const parsedJson = parseEmbeddedJson(trimmed);
+    if (parsedJson) {
+        collectGovernanceImageCandidates(parsedJson, candidates, seen, keyHint);
+    }
+
+    return candidates;
+}
+
+function normalizeGovernanceImageCandidate(value, keyHint = '') {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+
+    const markdownMatch = trimmed.match(/^!\[([^\]]*)\]\(([^)\s]+)\)$/);
+    if (markdownMatch) {
+        const src = normalizeImageSource(markdownMatch[2], keyHint);
+        return src ? { src, alt: markdownMatch[1] || 'Governance action image' } : null;
+    }
+
+    const src = normalizeImageSource(trimmed, keyHint);
+    return src ? { src, alt: 'Governance action image' } : null;
+}
+
+function normalizeImageSource(value, keyHint = '') {
+    if (!value) return '';
+
+    const normalizedKeyHint = String(keyHint).toLowerCase();
+
+    if (value.startsWith('data:image/')) {
+        return value;
+    }
+
+    if (/^<svg[\s>]/i.test(value)) {
+        return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(value)}`;
+    }
+
+    const normalizedUrl = normalizeMetadataUrl(value);
+    if (/^(https?:\/\/|ipfs:\/\/)/i.test(value)) {
+        return isRenderableImageUrl(normalizedUrl, normalizedKeyHint) ? normalizedUrl : '';
+    }
+
+    if (looksLikeBase64Image(value, normalizedKeyHint)) {
+        return `data:image/png;base64,${value.replace(/\s+/g, '')}`;
+    }
+
+    return '';
+}
+
+function looksLikeBase64Image(value, keyHint = '') {
+    const compact = value.replace(/\s+/g, '');
+    if (compact.length < 120) return false;
+    if (!/^[A-Za-z0-9+/=]+$/.test(compact)) return false;
+
+    const imageHintPattern = /(image|img|logo|icon|picture|photo|banner|thumbnail|media|qr|svg)/i;
+    if (imageHintPattern.test(keyHint)) return true;
+
+    return /^(iVBORw0KGgo|\/9j\/|R0lGOD|UklGR|PHN2Zy)/.test(compact);
+}
+
+function parseEmbeddedJson(value) {
+    if (!value || value.length < 2) return null;
+
+    const startsLikeJson = (
+        (value.startsWith('{') && value.endsWith('}'))
+        || (value.startsWith('[') && value.endsWith(']'))
+    );
+    if (!startsLikeJson) return null;
+
+    try {
+        return JSON.parse(value);
+    } catch {
+        return null;
+    }
 }
 
 function addVoteDetailsState(container, message) {
@@ -983,12 +1171,10 @@ function getDrepDisplayName(vote) {
         || vote?.drep_name
         || vote?.drepName
         || vote?.name;
+    const identifier = getDrepVoteIdentifier(vote);
 
-    return resolvedName
-        || vote?.voter_id
-        || vote?.voterId
-        || vote?.voter_hex
-        || 'Unknown DRep';
+    if (resolvedName && identifier) return `${resolvedName} | ${identifier}`;
+    return resolvedName || identifier || 'Unknown DRep';
 }
 
 async function resolveDrepDisplayName(vote, target) {
@@ -996,7 +1182,17 @@ async function resolveDrepDisplayName(vote, target) {
     if (!name || !target?.isConnected) return;
 
     vote.resolvedDrepName = name;
-    target.textContent = name;
+    target.textContent = getDrepDisplayName(vote);
+}
+
+function getDrepVoteIdentifier(vote) {
+    return vote?.voter_id
+        || vote?.voterId
+        || vote?.drep_id
+        || vote?.drepId
+        || vote?.voter_hex
+        || vote?.id
+        || '';
 }
 
 async function resolveDrepNameFromApi(vote) {
@@ -1004,15 +1200,13 @@ async function resolveDrepNameFromApi(vote) {
     if (directName) return directName;
 
     const lookupId = normalizeDrepIdentifier(
-        vote?.voter_id
-        || vote?.voterId
-        || vote?.voter_hex
-        || vote?.drep_id
-        || vote?.drepId
-        || vote?.id
+        getDrepVoteIdentifier(vote)
     );
 
     if (lookupId) {
+        const detailName = await fetchDrepNameById(lookupId).catch(() => null);
+        if (detailName) return detailName;
+
         const directory = await loadDrepDirectory().catch(() => null);
         const directoryName = directory?.get(lookupId) || directory?.get(shortenDrepIdentifier(lookupId)) || null;
         if (directoryName) return directoryName;
@@ -1053,6 +1247,22 @@ async function fetchDrepDirectory() {
     return directory;
 }
 
+async function fetchDrepNameById(drepId) {
+    const normalizedId = normalizeDrepIdentifier(drepId);
+    if (!normalizedId) return null;
+
+    const cacheKey = `detail:${normalizedId}`;
+    if (!drepMetadataCache.has(cacheKey)) {
+        drepMetadataCache.set(cacheKey, fetchJson(`${DREP_DETAIL_API_BASE_URL}/${encodeURIComponent(normalizedId)}`)
+            .then(payload => {
+                const entry = Array.isArray(payload?.data) ? payload.data[0] : payload?.data || payload;
+                return extractDrepNameFromEntry(entry);
+            }));
+    }
+
+    return drepMetadataCache.get(cacheKey).catch(() => null);
+}
+
 function addDrepDirectoryEntries(directory, payload) {
     const entries = unwrapDrepEntries(payload);
     entries.forEach(entry => {
@@ -1084,17 +1294,30 @@ function extractDrepNameFromEntry(entry) {
         : [];
     if (authorNames.length) return authorNames[0];
 
-    const body = entry.body || entry.metadata?.body || entry.meta_json?.body || {};
-    return body.name
-        || body.title
-        || entry.name
-        || entry.title
-        || entry.given_name
-        || entry.display_name
-        || entry.displayName
-        || entry.metadata?.name
-        || entry.metadata?.title
-        || null;
+    const metadata = entry.metadata || {};
+    const metaJson = entry.meta_json || metadata.meta_json || {};
+    const body = entry.body || metadata.body || metaJson.body || {};
+
+    return firstNonEmptyText(
+        body.dRepName,
+        body.drepName,
+        body.givenName,
+        body.given_name,
+        body.name,
+        body.title,
+        entry.name,
+        entry.title,
+        entry.given_name,
+        entry.givenName,
+        entry.display_name,
+        entry.displayName,
+        metadata.name,
+        metadata.title,
+        metadata.givenName,
+        metadata.given_name,
+        metaJson.name,
+        metaJson.title
+    );
 }
 
 function getDrepEntryIdentifiers(entry) {
@@ -1151,11 +1374,41 @@ function extractDrepMetadataName(payload) {
     if (authorNames.length) return authorNames[0];
 
     const body = payload.body || {};
-    return body.name
-        || body.title
-        || payload.name
-        || payload.title
-        || null;
+    return firstNonEmptyText(
+        body.dRepName,
+        body.drepName,
+        body.givenName,
+        body.given_name,
+        body.name,
+        body.title,
+        payload.name,
+        payload.title,
+        payload.givenName,
+        payload.given_name
+    );
+}
+
+function firstNonEmptyText(...values) {
+    for (const value of values) {
+        const text = extractTextValue(value);
+        if (text) return text;
+    }
+    return null;
+}
+
+function extractTextValue(value) {
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'string') return value.trim();
+    if (typeof value !== 'object') return String(value).trim();
+
+    return (
+        extractTextValue(value['@value'])
+        || extractTextValue(value.value)
+        || extractTextValue(value.text)
+        || extractTextValue(value.label)
+        || extractTextValue(value.name)
+        || ''
+    );
 }
 
 function normalizeMetadataUrl(url) {
@@ -1308,8 +1561,26 @@ function cleanGovernanceText(text) {
         .trim();
 }
 
+function sanitizeGovernanceMarkdown(text) {
+    return text
+        .split('\n')
+        .filter(line => {
+            const trimmed = line.trim();
+            if (!trimmed) return true;
+
+            if (/^\[[^\]]+\]:\s*<?data:image\/[a-z0-9.+-]+;base64,/i.test(trimmed)) return false;
+            if (/^<?data:image\/[a-z0-9.+-]+;base64,/i.test(trimmed)) return false;
+            if (/^!\[[^\]]*\]\(data:image\/[a-z0-9.+-]+;base64,[^)]+\)$/i.test(trimmed)) return false;
+
+            return true;
+        })
+        .join('\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+}
+
 function appendRichText(container, text) {
-    const urlPattern = /(https?:\/\/[^\s<>"')\]]+)/g;
+    const urlPattern = /((?:https?:\/\/|ipfs:\/\/)[^\s<>"')\]]+)/g;
     let lastIndex = 0;
 
     text.replace(urlPattern, (url, _match, offset) => {
@@ -1320,15 +1591,16 @@ function appendRichText(container, text) {
         const cleanUrl = url.replace(/[.,;:!?]+$/, '');
         const trailing = url.slice(cleanUrl.length);
 
-        if (isImageUrl(cleanUrl)) {
+        const imageSrc = normalizeImageSource(cleanUrl);
+        if (imageSrc) {
             const imageLink = document.createElement('a');
-            imageLink.href = cleanUrl;
+            imageLink.href = imageSrc;
             imageLink.target = '_blank';
             imageLink.rel = 'noopener noreferrer';
 
             const image = document.createElement('img');
             image.className = 'governance-detail-image';
-            image.src = cleanUrl;
+            image.src = imageSrc;
             image.alt = 'Governance action image';
             image.loading = 'lazy';
 
@@ -1522,7 +1794,14 @@ function tokenizeMarkdownInline(text) {
     while (index < text.length) {
         const remaining = text.slice(index);
 
-        let match = remaining.match(/^\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/);
+        let match = remaining.match(/^!\[([^\]]*)\]\(([^)\s]+)\)/);
+        if (match) {
+            tokens.push({ type: 'image', alt: match[1], src: match[2] });
+            index += match[0].length;
+            continue;
+        }
+
+        match = remaining.match(/^\[([^\]]+)\]\((https?:\/\/[^)\s]+|ipfs:\/\/[^)\s]+)\)/);
         if (match) {
             tokens.push({ type: 'link', label: match[1], href: match[2] });
             index += match[0].length;
@@ -1550,14 +1829,14 @@ function tokenizeMarkdownInline(text) {
             continue;
         }
 
-        match = remaining.match(/^(https?:\/\/[^\s<>"')\]]+)/);
+        match = remaining.match(/^((?:https?:\/\/|ipfs:\/\/)[^\s<>"')\]]+)/);
         if (match) {
             tokens.push({ type: 'link', label: match[1], href: match[1] });
             index += match[0].length;
             continue;
         }
 
-        const nextSpecial = remaining.search(/(\[|`|\*\*|\*|https?:\/\/)/);
+        const nextSpecial = remaining.search(/(!?\[|`|\*\*|\*|https?:\/\/|ipfs:\/\/)/);
         if (nextSpecial === -1) {
             tokens.push({ type: 'text', text: remaining });
             break;
@@ -1590,11 +1869,34 @@ function appendMarkdownToken(container, token) {
 
     if (token.type === 'link') {
         const link = document.createElement('a');
-        link.href = token.href;
+        link.href = normalizeMetadataUrl(token.href);
         link.target = '_blank';
         link.rel = 'noopener noreferrer';
         link.textContent = token.label;
         container.appendChild(link);
+        return;
+    }
+
+    if (token.type === 'image') {
+        const imageSrc = normalizeImageSource(token.src, token.alt);
+        if (!imageSrc) {
+            container.appendChild(document.createTextNode(token.alt || token.src));
+            return;
+        }
+
+        const imageLink = document.createElement('a');
+        imageLink.href = imageSrc;
+        imageLink.target = '_blank';
+        imageLink.rel = 'noopener noreferrer';
+
+        const image = document.createElement('img');
+        image.className = 'governance-detail-image';
+        image.src = imageSrc;
+        image.alt = token.alt || 'Governance action image';
+        image.loading = 'lazy';
+
+        imageLink.appendChild(image);
+        container.appendChild(imageLink);
         return;
     }
 
@@ -1605,6 +1907,11 @@ function appendMarkdownToken(container, token) {
 
 function isImageUrl(url) {
     return /\.(png|jpe?g|gif|webp|avif|svg)(\?.*)?$/i.test(url);
+}
+
+function isRenderableImageUrl(url, keyHint = '') {
+    if (isImageUrl(url)) return true;
+    return /(image|img|logo|icon|picture|photo|banner|thumbnail|media|qr|svg)/i.test(keyHint);
 }
 
 function getProposalTitle(proposal) {
