@@ -9,6 +9,7 @@ const TOKEN_IDS = {
 };
 
 const IS_LOCAL_PREVIEW = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+const THEME_STORAGE_KEY = 'tdsp-theme';
 
 // Fetch and display ADA, IAG, STRCH, XER, and COPI prices asynchronously
 async function fetchPrices() {
@@ -61,6 +62,7 @@ function goToDetails() {
 // Fetch prices on page load and set up auto-update
 // Initialize UI behaviors and price fetching when DOM is ready
 document.addEventListener("DOMContentLoaded", () => {
+    initThemeToggle();
     fetchPrices();
     setInterval(fetchPrices, 60000); // Auto-update every 60 seconds
     initUI();
@@ -73,6 +75,47 @@ document.addEventListener('tdsp:content-loaded', () => {
 function initUI() {
     setupRevealOnScroll();
     setupHeaderVisibility();
+}
+
+function initThemeToggle() {
+    const toggle = document.getElementById('theme-toggle');
+    if (!toggle) return;
+
+    applyStoredTheme();
+    syncThemeToggle(toggle);
+
+    toggle.addEventListener('click', () => {
+        const currentTheme = getPreferredTheme();
+        const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+        document.documentElement.dataset.theme = nextTheme;
+        syncThemeToggle(toggle);
+    });
+}
+
+function applyStoredTheme() {
+    const storedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+    if (storedTheme === 'light' || storedTheme === 'dark') {
+        document.documentElement.dataset.theme = storedTheme;
+        return;
+    }
+
+    delete document.documentElement.dataset.theme;
+}
+
+function getPreferredTheme() {
+    const explicitTheme = document.documentElement.dataset.theme;
+    if (explicitTheme === 'light' || explicitTheme === 'dark') return explicitTheme;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+function syncThemeToggle(toggle) {
+    const nextTheme = getPreferredTheme() === 'dark' ? 'light' : 'dark';
+    const label = toggle.querySelector('.theme-toggle-label');
+    if (label) {
+        label.textContent = nextTheme === 'dark' ? 'Dark mode' : 'Light mode';
+    }
+    toggle.setAttribute('aria-label', `Switch to ${nextTheme} mode`);
 }
 
 function setupRevealOnScroll() {
