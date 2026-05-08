@@ -1159,6 +1159,10 @@ function renderNoVotesList(container, votes, headingLabel = 'DRep votes') {
     votes.forEach(vote => {
         const row = document.createElement('div');
         row.className = 'governance-no-vote-row';
+        const normalizedVote = String(vote?.vote || '').toLowerCase();
+        if (normalizedVote === 'yes') row.classList.add('is-yes');
+        if (normalizedVote === 'no') row.classList.add('is-no');
+        if (normalizedVote === 'abstain') row.classList.add('is-abstain');
 
         const copy = document.createElement('div');
         copy.className = 'governance-no-vote-copy';

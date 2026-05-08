@@ -1158,6 +1158,18 @@ p {
     overflow-wrap: anywhere;
 }
 
+.governance-no-vote-row.is-yes .governance-no-vote-power {
+    color: #34d399;
+}
+
+.governance-no-vote-row.is-no .governance-no-vote-power {
+    color: #f87171;
+}
+
+.governance-no-vote-row.is-abstain .governance-no-vote-power {
+    color: #60a5fa;
+}
+
 .governance-detail-image {
     display: block;
     width: min(100%, 720px);
