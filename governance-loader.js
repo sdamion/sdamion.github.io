@@ -23,7 +23,7 @@
 
     function loadGovernanceScript() {
         const script = document.createElement('script');
-        script.src = 'governance.js';
+        script.src = `governance.js?v=${Date.now()}`;
         script.defer = true;
         document.body.appendChild(script);
     }

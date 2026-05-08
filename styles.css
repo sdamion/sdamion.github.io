@@ -1111,6 +1111,16 @@ p {
     overflow-y: auto;
 }
 
+.governance-no-votes-expanded {
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+
+.governance-no-votes-expanded .governance-no-votes-list {
+    max-height: min(70vh, 760px);
+}
+
 .governance-no-vote-row {
     padding: 10px 12px;
     border: 1px solid var(--line);
@@ -1183,6 +1193,10 @@ p {
     background: rgba(0, 0, 0, 0.72);
 }
 
+.governance-drep-overlay {
+    z-index: 3100;
+}
+
 .governance-dialog {
     position: relative;
     width: min(980px, 100%);
@@ -1194,6 +1208,18 @@ p {
     border-radius: 8px;
     background: var(--overlay-surface);
     box-shadow: var(--overlay-shadow);
+}
+
+.governance-drep-dialog {
+    width: min(920px, 100%);
+    max-height: min(88vh, 960px);
+}
+
+.governance-drep-title {
+    margin: 8px 0 16px;
+    color: var(--text);
+    font-size: clamp(1.2rem, 3vw, 1.6rem);
+    line-height: 1.2;
 }
 
 .governance-dialog h2 {
@@ -1273,6 +1299,10 @@ p {
 
     .governance-no-votes-list {
         width: 100%;
+    }
+
+    .governance-no-votes-expanded .governance-no-votes-list {
+        max-height: min(62vh, 560px);
     }
 
     .governance-no-vote-row {

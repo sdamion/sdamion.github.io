@@ -10,6 +10,8 @@ const TOKEN_IDS = {
 
 const IS_LOCAL_PREVIEW = ['localhost', '127.0.0.1'].includes(window.location.hostname);
 const THEME_STORAGE_KEY = 'tdsp-theme';
+const COINGECKO_PRICE_URL = IS_LOCAL_PREVIEW ? '/__coingecko_price_proxy__' : COINGECKO_API_URL;
+const GECKOTERMINAL_PRICE_URL = IS_LOCAL_PREVIEW ? '/__geckoterminal_price_proxy__' : GECKOTERMINAL_API_URL;
 
 // Fetch and display ADA, IAG, STRCH, XER, and COPI prices asynchronously
 async function fetchPrices() {
@@ -17,19 +19,12 @@ async function fetchPrices() {
     const iagEl = document.getElementById('iag-price');
     const strchEl = document.getElementById('strch-price');
 
-    if (IS_LOCAL_PREVIEW) {
-        if (adaEl) adaEl.textContent = 'Live online';
-        if (iagEl) iagEl.textContent = 'Live online';
-        if (strchEl) strchEl.textContent = 'Live online';
-        return;
-    }
-
     const [coingeckoResult, geckoterminalResult] = await Promise.allSettled([
-        fetch(COINGECKO_API_URL).then(response => {
+        fetch(COINGECKO_PRICE_URL).then(response => {
             if (!response.ok) throw new Error(`CoinGecko HTTP Error: ${response.status}`);
             return response.json();
         }),
-        fetch(GECKOTERMINAL_API_URL).then(response => {
+        fetch(GECKOTERMINAL_PRICE_URL).then(response => {
             if (!response.ok) throw new Error(`GeckoTerminal HTTP Error: ${response.status}`);
             return response.json();
         })
