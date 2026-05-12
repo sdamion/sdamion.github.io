@@ -8,13 +8,6 @@ const LOCAL_PROPOSAL_VOTES_PROXY_PATH = '/__proposal_votes_proxy__';
 const LOCAL_DREP_DIRECTORY_PROXY_PATH = '/__drep_directory_proxy__';
 const LOCAL_DREP_DETAIL_PROXY_PATH = '/__drep_detail_proxy__';
 const LOCAL_METADATA_PROXY_PATH = '/__metadata_proxy__';
-const SAME_ORIGIN_API_HOSTS = new Set([
-    'www.thedutchstakepool.com',
-    'thedutchstakepool.com',
-    'www.tdsp.online',
-    'tdsp.online',
-    'api.tdsp.online'
-]);
 const ACTIVE_REFRESH_INTERVAL_MS = 60 * 1000;
 const EPOCH_DURATION_SECONDS = 432000;
 const APPROVAL_GRACE_PERIOD_SECONDS = 300;
@@ -125,10 +118,6 @@ function scheduleActiveRefresh() {
 }
 
 async function fetchGovernanceDashboardPayload() {
-    if (shouldUseSameOriginApi()) {
-        return fetchJson(`${window.location.origin}/api/dashboard`);
-    }
-
     if (!shouldUseLocalDashboardProxy()) {
         return fetchJson(DASHBOARD_API_URL);
     }
@@ -145,18 +134,10 @@ function shouldUseLocalDashboardProxy() {
     return host === '127.0.0.1' || host === 'localhost';
 }
 
-function shouldUseSameOriginApi() {
-    return SAME_ORIGIN_API_HOSTS.has(window.location.hostname);
-}
-
 function getProposalVotesApiUrl(proposalId) {
     if (shouldUseLocalDashboardProxy()) {
         const params = new URLSearchParams({ proposalId });
         return `${LOCAL_PROPOSAL_VOTES_PROXY_PATH}?${params.toString()}`;
-    }
-
-    if (shouldUseSameOriginApi()) {
-        return `${window.location.origin}/api/proposal/${encodeURIComponent(proposalId)}/votes`;
     }
 
     return `${PROPOSAL_VOTES_API_BASE_URL}/${encodeURIComponent(proposalId)}/votes`;
@@ -1492,18 +1473,12 @@ function getDrepMetadataApiUrl() {
     if (shouldUseLocalDashboardProxy()) {
         return `${LOCAL_DREP_DIRECTORY_PROXY_PATH}?type=metadata`;
     }
-    if (shouldUseSameOriginApi()) {
-        return `${window.location.origin}/api/dreps/metadata`;
-    }
     return DREP_METADATA_API_URL;
 }
 
 function getDrepInfoApiUrl() {
     if (shouldUseLocalDashboardProxy()) {
         return `${LOCAL_DREP_DIRECTORY_PROXY_PATH}?type=info`;
-    }
-    if (shouldUseSameOriginApi()) {
-        return `${window.location.origin}/api/dreps/info`;
     }
     return DREP_INFO_API_URL;
 }
@@ -1512,9 +1487,6 @@ function getDrepDetailApiUrl(drepId) {
     if (shouldUseLocalDashboardProxy()) {
         const params = new URLSearchParams({ drepId });
         return `${LOCAL_DREP_DETAIL_PROXY_PATH}?${params.toString()}`;
-    }
-    if (shouldUseSameOriginApi()) {
-        return `${window.location.origin}/api/drep/${encodeURIComponent(drepId)}`;
     }
     return `${DREP_DETAIL_API_BASE_URL}/${encodeURIComponent(drepId)}`;
 }
