@@ -1,7 +1,13 @@
 document.addEventListener("DOMContentLoaded", function () {
     const localhostPreviewHosts = new Set(['localhost', '127.0.0.1']);
-    const tdspLocalHosts = new Set(['tdsp.online', 'www.tdsp.online', 'api.tdsp.online']);
-    const apiBaseUrl = tdspLocalHosts.has(window.location.hostname)
+    const sameOriginApiHosts = new Set([
+        'www.thedutchstakepool.com',
+        'thedutchstakepool.com',
+        'tdsp.online',
+        'www.tdsp.online',
+        'api.tdsp.online'
+    ]);
+    const apiBaseUrl = sameOriginApiHosts.has(window.location.hostname)
         ? `${window.location.origin}/api/adastat`
         : "https://www.tdsp.online/api/adastat";
     const poolInfoUrl = `${apiBaseUrl}/pool-info`;
