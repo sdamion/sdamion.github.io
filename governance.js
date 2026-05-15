@@ -613,16 +613,49 @@ function updateTreasuryBudgetBar() {
     const activeAskTotal = getActiveTreasuryProposalAskTotal();
     const afterTotalSpend = remaining - activeAskTotal;
 
-    setText('gov-budget-limit', `Net change limit ${formatCompactAdaFromLovelace(TREASURY_NET_CHANGE_LIMIT_LOVELACE, { fixedFractionDigits: 2 })}`);
-    setText('gov-budget-used', `Used this year ${formatCompactAdaFromLovelace(usedThisYear, { fixedFractionDigits: 2 })}`);
-    setText('gov-budget-remaining', `To be allocated ${formatCompactAdaFromLovelace(remaining, { fixedFractionDigits: 2 })}`);
-    setText('gov-budget-after-spend', `After total spend ${formatCompactAdaFromLovelace(Math.abs(afterTotalSpend), { fixedFractionDigits: 2 })}`);
+    setBudgetBarItem('gov-budget-limit', 'Net change limit', formatCompactAdaFromLovelace(TREASURY_NET_CHANGE_LIMIT_LOVELACE, { fixedFractionDigits: 2 }));
+    setBudgetBarItem('gov-budget-used', 'Used this year', formatCompactAdaFromLovelace(usedThisYear, { fixedFractionDigits: 2 }));
+    setBudgetBarItem(
+        'gov-budget-remaining',
+        'To be allocated',
+        formatCompactAdaFromLovelace(remaining, { fixedFractionDigits: 2 }),
+        false,
+        getBudgetAmountTone(remaining)
+    );
+    setBudgetBarItem(
+        'gov-budget-after-spend',
+        'After total spend',
+        `${afterTotalSpend < 0 ? '-' : ''}${formatCompactAdaFromLovelace(Math.abs(afterTotalSpend), { fixedFractionDigits: 2 })}`,
+        afterTotalSpend < 0,
+        getBudgetAmountTone(afterTotalSpend)
+    );
+}
 
-    const afterSpendElement = document.getElementById('gov-budget-after-spend');
-    if (afterSpendElement) {
-        afterSpendElement.classList.toggle('is-negative', afterTotalSpend < 0);
-        afterSpendElement.textContent = `After total spend ${afterTotalSpend < 0 ? '-' : ''}${formatCompactAdaFromLovelace(Math.abs(afterTotalSpend), { fixedFractionDigits: 2 })}`;
-    }
+function setBudgetBarItem(id, label, amount, isNegative = false, amountTone = '') {
+    const element = document.getElementById(id);
+    if (!element) return;
+
+    element.textContent = '';
+    element.classList.toggle('is-negative', isNegative);
+
+    const labelSpan = document.createElement('span');
+    labelSpan.className = 'governance-budget-label';
+    labelSpan.textContent = label;
+
+    const amountSpan = document.createElement('span');
+    amountSpan.className = 'governance-budget-amount';
+    if (amountTone) amountSpan.classList.add(`is-${amountTone}`);
+    amountSpan.textContent = amount;
+
+    element.appendChild(labelSpan);
+    element.appendChild(amountSpan);
+}
+
+function getBudgetAmountTone(value) {
+    const ratio = Number(value) / TREASURY_NET_CHANGE_LIMIT_LOVELACE;
+    if (!Number.isFinite(ratio) || ratio < 0.25) return 'red';
+    if (ratio < 0.5) return 'orange';
+    return 'green';
 }
 
 function getTreasuryBudgetUsedThisYear() {

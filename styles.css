@@ -880,17 +880,38 @@ p {
     flex-wrap: wrap;
     gap: 12px;
     margin: 10px 0 18px;
-    color: var(--accent-strong);
     font-size: 0.92rem;
     font-weight: 700;
 }
 
 .governance-budget-bar span {
-    color: inherit;
-    font-weight: inherit;
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: baseline;
 }
 
-.governance-budget-bar span.is-negative {
+.governance-budget-label {
+    color: var(--muted);
+}
+
+.governance-budget-amount {
+    color: var(--accent-strong);
+}
+
+.governance-budget-amount.is-green {
+    color: var(--accent-strong);
+}
+
+.governance-budget-amount.is-orange {
+    color: #fbbf24;
+}
+
+.governance-budget-amount.is-red {
+    color: #f87171;
+}
+
+.governance-budget-bar span.is-negative .governance-budget-amount {
     color: #f87171;
 }
 
