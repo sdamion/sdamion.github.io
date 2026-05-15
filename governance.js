@@ -18,6 +18,7 @@ let governanceState = null;
 const proposalVotesCache = new Map();
 const drepMetadataCache = new Map();
 let drepDirectoryPromise = null;
+let drepStatsPromise = null;
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initGovernance);
@@ -66,7 +67,7 @@ async function loadGovernanceActions() {
         renderGovernanceGroup(groups.approved, grouped.approved, 'No approved actions found.');
         renderGovernanceGroup(groups.rejected, grouped.rejected, 'No rejected actions found.');
         renderGovernanceGroup(groups.info, grouped.info, 'No info actions found.');
-        updateGovernanceCounts(grouped);
+        await updateGovernanceCounts(grouped);
         lastActiveRenderSignature = getGovernanceGroupSignature(grouped.active);
         updateEpochDisplayFromDashboardPayload(dashboardPayload);
         scheduleActiveRefresh();
@@ -105,7 +106,7 @@ async function refreshActiveGovernanceGroup() {
     renderGovernanceGroup(groups.approved, grouped.approved, 'No approved actions found.');
     renderGovernanceGroup(groups.rejected, grouped.rejected, 'No rejected actions found.');
     renderGovernanceGroup(groups.info, grouped.info, 'No info actions found.');
-    updateGovernanceCounts(grouped);
+    await updateGovernanceCounts(grouped);
     lastActiveRenderSignature = nextSignature;
 }
 
@@ -338,6 +339,8 @@ function normalizeVotingSummary(summary) {
         drep_yes_votes_cast: pickFirstNumber(summary.drep_yes_votes_cast, summary.drep?.yes_votes_cast, summary.drep_yes_votes),
         drep_no_votes_cast: pickFirstNumber(summary.drep_no_votes_cast, summary.drep?.no_votes_cast, summary.drep_no_votes),
         drep_abstain_votes_cast: pickFirstNumber(summary.drep_abstain_votes_cast, summary.drep?.abstain_votes_cast, summary.drep_abstain_votes),
+        drep_active_yes_vote_power: pickFirstNumber(summary.drep_active_yes_vote_power, summary.drep?.active_yes_vote_power, summary.drep_yes_vote_power, summary.drep?.yes_vote_power, summary.drep_yes_stake),
+        drep_active_no_vote_power: pickFirstNumber(summary.drep_active_no_vote_power, summary.drep?.active_no_vote_power, summary.drep_no_vote_power, summary.drep?.no_vote_power, summary.drep_no_stake),
         drep_yes_vote_power: pickFirstNumber(summary.drep_yes_vote_power, summary.drep?.yes_vote_power, summary.drep_yes_stake),
         drep_no_vote_power: pickFirstNumber(summary.drep_no_vote_power, summary.drep?.no_vote_power, summary.drep_no_stake),
         drep_active_abstain_vote_power: pickFirstNumber(summary.drep_active_abstain_vote_power, summary.drep?.active_abstain_vote_power, summary.drep_abstain_vote_power, summary.drep?.abstain_vote_power),
@@ -994,7 +997,7 @@ function createDrepVoteChartSection(breakdown, drepVotes) {
     const total = breakdown.reduce((sum, item) => sum + item.value, 0);
     const center = document.createElement('div');
     center.className = 'governance-pie-chart-center';
-    center.innerHTML = `<span>ADA represented</span><strong>${formatCompactAdaFromLovelace(total)}</strong>`;
+    center.innerHTML = `<span>ADA represented</span><strong>${formatCompactAdaFromLovelace(total, { fixedFractionDigits: 2 })}</strong>`;
     chart.appendChild(center);
 
     segments.forEach(segment => {
@@ -1050,19 +1053,12 @@ function createVoteLegendItem(item, drepVotes) {
 }
 
 function formatVoteLegendDetail(item, drepVotes) {
-    if (item.key === 'yes' || item.key === 'no') {
+    if (item.key === 'yes' || item.key === 'no' || item.key === 'abstain') {
         return [
             `${item.count ?? 0} votes`,
             formatCompactAdaFromLovelace(item.value),
-            formatPercentage(item.votePowerPercentage)
-        ].join(' • ');
-    }
-
-    if (item.key === 'abstain') {
-        return [
-            `${item.count ?? 0} votes`,
-            formatCompactAdaFromLovelace(item.value)
-        ].join(' • ');
+            Number.isFinite(item.votePowerPercentage) ? formatPercentage(item.votePowerPercentage) : null
+        ].filter(Boolean).join(' • ');
     }
 
     const votePercentage = getDrepVoteCountPercentage(item.key, drepVotes);
@@ -1156,7 +1152,9 @@ function renderNoVotesList(container, votes, headingLabel = 'DRep votes') {
     const list = document.createElement('div');
     list.className = 'governance-no-votes-list';
 
-    votes.forEach(vote => {
+    const sortedVotes = [...votes].sort((left, right) => getDrepVotePowerValue(right) - getDrepVotePowerValue(left));
+
+    sortedVotes.forEach(vote => {
         const row = document.createElement('div');
         row.className = 'governance-no-vote-row';
         const normalizedVote = String(vote?.vote || '').toLowerCase();
@@ -1231,14 +1229,20 @@ function getDrepVoteIdentifier(vote) {
 }
 
 function getDrepVotePowerLabel(vote) {
+    const value = getDrepVotePowerValue(vote);
+    if (!value) return '';
+    return `Voting power: ${formatCompactAdaFromLovelace(value)}`;
+}
+
+function getDrepVotePowerValue(vote) {
     const value = vote?.amount
         ?? vote?.vote_power
         ?? vote?.voting_power
         ?? vote?.stake
         ?? vote?.lovelace;
 
-    if (value === null || value === undefined || value === '') return '';
-    return `Voting power: ${formatCompactAdaFromLovelace(value)}`;
+    const numericValue = Number(value);
+    return Number.isFinite(numericValue) ? numericValue : 0;
 }
 
 async function resolveDrepNameFromApi(vote) {
@@ -1509,8 +1513,10 @@ function mapBreakdownKeyToVote(key) {
 function getDrepStakeBreakdown(summary) {
     if (!summary) return [];
 
-    const yesVotePower = Number(summary.drep_yes_vote_power) || 0;
-    const noVotePower = Number(summary.drep_no_vote_power) || 0;
+    const yesVotePower = Number(summary.drep_active_yes_vote_power) || Number(summary.drep_yes_vote_power) || 0;
+    const noVotePower = Number(summary.drep_active_no_vote_power) || Number(summary.drep_no_vote_power) || 0;
+    const explicitYesPercentage = Number(summary.drep_yes_pct);
+    const explicitNoPercentage = Number(summary.drep_no_pct);
     const directVotePowerTotal = yesVotePower + noVotePower;
     const getDirectVotePowerPercentage = value => (
         directVotePowerTotal > 0 ? (value / directVotePowerTotal) * 100 : 0
@@ -1522,7 +1528,9 @@ function getDrepStakeBreakdown(summary) {
             label: 'DRep yes stake',
             value: yesVotePower,
             count: Number(summary.drep_yes_votes_cast) || 0,
-            votePowerPercentage: getDirectVotePowerPercentage(yesVotePower),
+            votePowerPercentage: Number.isFinite(explicitYesPercentage)
+                ? explicitYesPercentage
+                : getDirectVotePowerPercentage(yesVotePower),
             color: '#34d399'
         },
         {
@@ -1530,7 +1538,9 @@ function getDrepStakeBreakdown(summary) {
             label: 'DRep no stake',
             value: noVotePower,
             count: Number(summary.drep_no_votes_cast) || 0,
-            votePowerPercentage: getDirectVotePowerPercentage(noVotePower),
+            votePowerPercentage: Number.isFinite(explicitNoPercentage)
+                ? explicitNoPercentage
+                : getDirectVotePowerPercentage(noVotePower),
             color: '#f87171'
         },
         {
@@ -2074,11 +2084,132 @@ function getGovernanceGroupSignature(proposals) {
     })));
 }
 
-function updateGovernanceCounts(groups) {
+async function updateGovernanceCounts(groups) {
     setText('gov-active-count', getCollectionLength(groups.active));
     setText('gov-approved-count', getCollectionLength(groups.approved));
     setText('gov-rejected-count', getCollectionLength(groups.rejected));
     setText('gov-info-count', getCollectionLength(groups.info));
+
+    try {
+        const drepStats = await getDrepStats(groups);
+        setText('gov-drep-count', drepStats.count.toLocaleString('en-US'));
+        const usedPowerLabel = formatCompactAdaFromLovelace(drepStats.usedPower, { fixedFractionDigits: 2 }).replace(/ ADA$/, '');
+        const unusedPowerLabel = formatCompactAdaFromLovelace(drepStats.unusedPower, { fixedFractionDigits: 2 }).replace(/ ADA$/, '');
+        setText('gov-drep-power-split', `${usedPowerLabel} / ${unusedPowerLabel}`);
+    } catch {
+        setText('gov-drep-count', '0');
+        setText('gov-drep-power-split', '0 / 0');
+    }
+}
+
+async function getDrepStats(groups) {
+    if (!drepStatsPromise) {
+        drepStatsPromise = fetchDrepStats();
+    }
+
+    const baseStats = await drepStatsPromise;
+    const totalAda = getGovernanceTotalAda(governanceState, groups);
+    const usedPower = baseStats.totalPower;
+
+    return {
+        count: baseStats.count,
+        totalPower: baseStats.totalPower,
+        totalAda,
+        usedPower,
+        unusedPower: Math.max(totalAda - usedPower, 0)
+    };
+}
+
+async function fetchDrepStats() {
+    const payload = await fetchJson(getDrepInfoApiUrl());
+    const entries = unwrapDrepEntries(payload);
+    const uniqueDreps = new Map();
+
+    entries.forEach(entry => {
+        const identifiers = getDrepEntryIdentifiers(entry);
+        const primaryIdentifier = identifiers[0];
+        if (!primaryIdentifier || uniqueDreps.has(primaryIdentifier)) return;
+
+        uniqueDreps.set(primaryIdentifier, getDrepEntryVotingPower(entry));
+    });
+
+    let totalPower = 0;
+    uniqueDreps.forEach(value => {
+        totalPower += value;
+    });
+
+    return {
+        count: uniqueDreps.size,
+        totalPower
+    };
+}
+
+function getDrepEntryVotingPower(entry) {
+    const value = entry?.amount
+        ?? entry?.voting_power
+        ?? entry?.vote_power
+        ?? entry?.stake
+        ?? entry?.lovelace;
+
+    const numericValue = Number(value);
+    return Number.isFinite(numericValue) ? numericValue : 0;
+}
+
+function getGovernanceTotalAda(payload, groups) {
+    const directCandidates = [
+        payload?.total_ada,
+        payload?.totalAda,
+        payload?.total_lovelace,
+        payload?.totalLovelace,
+        payload?.circulating_supply,
+        payload?.circulatingSupply,
+        payload?.supply?.total_ada,
+        payload?.supply?.totalAda,
+        payload?.supply?.circulating_supply,
+        payload?.supply?.circulatingSupply,
+        payload?.stats?.total_ada,
+        payload?.stats?.totalAda,
+        payload?.stats?.circulating_supply,
+        payload?.stats?.circulatingSupply,
+        payload?.tip?.total_ada,
+        payload?.tip?.totalAda,
+        payload?.tip?.circulating_supply,
+        payload?.tip?.circulatingSupply
+    ];
+
+    const directValue = directCandidates.map(Number).find(Number.isFinite);
+    if (Number.isFinite(directValue) && directValue > 0) return directValue;
+
+    const activeProposals = Array.isArray(groups?.active) ? groups.active : [];
+    const proposalValue = activeProposals.reduce((maxValue, proposal) => {
+        const summary = proposal?.voteSummary;
+        if (!summary) return maxValue;
+
+        const representedPower = (
+            (Number(summary.drep_yes_vote_power) || 0)
+            + (Number(summary.drep_no_vote_power) || 0)
+            + (Number(summary.drep_active_abstain_vote_power) || 0)
+            + (Number(summary.drep_always_abstain_vote_power) || 0)
+            + (Number(summary.drep_always_no_confidence_vote_power) || 0)
+        );
+
+        const extraCandidates = [
+            summary?.total_ada,
+            summary?.totalAda,
+            summary?.total_lovelace,
+            summary?.totalLovelace,
+            summary?.circulating_supply,
+            summary?.circulatingSupply,
+            summary?.total_vote_power,
+            summary?.totalVotePower,
+            representedPower
+        ];
+
+        const candidateValue = extraCandidates.map(Number).find(Number.isFinite);
+        return Number.isFinite(candidateValue) ? Math.max(maxValue, candidateValue) : maxValue;
+    }, 0);
+
+    return proposalValue;
 }
 
 function getCollectionLength(collection) {
@@ -2099,23 +2230,43 @@ function formatProposalType(type) {
 function formatLovelace(value) {
     const lovelace = Number(value);
     if (!Number.isFinite(lovelace)) return value;
-    return `${(lovelace / 1_000_000).toLocaleString()} ADA`;
+    return `${(lovelace / 1_000_000).toLocaleString('en-US')} ADA`;
 }
 
 function formatPercentage(value) {
     const number = Number(value);
     if (!Number.isFinite(number)) return value;
     const rounded = Math.round(number * 100) / 100;
-    return `${rounded.toLocaleString()}%`;
+    return `${rounded.toLocaleString('en-US')}%`;
 }
 
-function formatCompactAdaFromLovelace(value) {
+function formatCompactAdaFromLovelace(value, options = {}) {
     const lovelace = Number(value);
     if (!Number.isFinite(lovelace)) return value;
 
     const ada = lovelace / 1_000_000;
-    return `${new Intl.NumberFormat(undefined, {
-        notation: 'compact',
-        maximumFractionDigits: 2
-    }).format(ada)} ADA`;
+    const absAda = Math.abs(ada);
+    const fixedFractionDigits = Number.isInteger(options.fixedFractionDigits) ? options.fixedFractionDigits : null;
+    const compactUnits = [
+        { value: 1_000_000_000_000, suffix: 'T' },
+        { value: 1_000_000_000, suffix: 'B' },
+        { value: 1_000_000, suffix: 'M' },
+        { value: 1_000, suffix: 'K' }
+    ];
+
+    for (const unit of compactUnits) {
+        if (absAda >= unit.value) {
+            const compactValue = ada / unit.value;
+            const digits = fixedFractionDigits ?? (Math.abs(compactValue) >= 100 ? 0 : Math.abs(compactValue) >= 10 ? 1 : 2);
+            const formattedValue = fixedFractionDigits === null
+                ? compactValue.toFixed(digits).replace(/\.0+$|(\.\d*[1-9])0+$/, '$1')
+                : compactValue.toFixed(digits);
+            return `${formattedValue}${unit.suffix} ADA`;
+        }
+    }
+
+    return `${ada.toLocaleString('en-US', {
+        minimumFractionDigits: fixedFractionDigits ?? 0,
+        maximumFractionDigits: fixedFractionDigits ?? 2
+    })} ADA`;
 }

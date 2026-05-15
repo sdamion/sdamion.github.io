@@ -713,9 +713,11 @@ p {
 /* Governance Overview */
 .governance-summary {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(150px, 1fr));
     gap: 14px;
     margin: 28px 0 24px;
+    overflow-x: auto;
+    padding-bottom: 4px;
 }
 
 .governance-page {
@@ -727,10 +729,10 @@ p {
     font-size: clamp(2.5rem, 6vw, 4.8rem);
 }
 
-.governance-summary div {
+.governance-summary > div {
     display: grid;
     gap: 4px;
-    padding: 16px;
+    padding: 14px;
     border: 1px solid var(--line);
     border-radius: 8px;
     background: var(--governance-card-bg);
@@ -745,6 +747,38 @@ p {
 .governance-summary span {
     color: var(--muted);
     font-size: 0.9rem;
+}
+
+.governance-summary-box-wide {
+    align-content: center;
+    gap: 8px;
+}
+
+.governance-summary-box-title {
+    color: var(--text) !important;
+    font-size: 1rem !important;
+    font-weight: 700;
+}
+
+.governance-summary-metric {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.governance-summary-box-wide .governance-summary-metric + .governance-summary-metric {
+    padding-top: 6px;
+    border-top: 1px solid var(--line);
+}
+
+.governance-summary-metric strong {
+    font-size: 1.35rem;
+    line-height: 1.15;
+}
+
+.governance-summary-metric span {
+    font-size: 0.85rem;
 }
 
 .governance-group {
@@ -1605,9 +1639,12 @@ html[data-theme="dark"] input {
         grid-template-columns: 1fr;
     }
 
-    .governance-summary,
     .governance-columns {
         grid-template-columns: 1fr;
+    }
+
+    .governance-summary {
+        grid-template-columns: repeat(6, minmax(150px, 1fr));
     }
 
     .governance-list {
