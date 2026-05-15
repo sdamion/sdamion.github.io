@@ -749,6 +749,12 @@ p {
     font-size: 0.9rem;
 }
 
+.governance-summary-subvalue {
+    margin-top: 2px;
+    font-size: 0.76rem !important;
+    font-weight: 600;
+}
+
 .governance-summary-box-wide {
     align-content: center;
     gap: 8px;
@@ -859,6 +865,43 @@ p {
     color: var(--accent-strong);
     font-size: 0.78rem;
     font-weight: 700;
+}
+
+.governance-card-detail {
+    display: block;
+    margin-top: 6px;
+    color: var(--muted);
+    font-size: 0.76rem;
+    font-weight: 600;
+}
+
+.governance-budget-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 10px 0 18px;
+    color: var(--accent-strong);
+    font-size: 0.92rem;
+    font-weight: 700;
+}
+
+.governance-budget-bar span {
+    color: inherit;
+    font-weight: inherit;
+}
+
+.governance-budget-bar span.is-negative {
+    color: #f87171;
+}
+
+.governance-budget-meta {
+    display: grid;
+    gap: 4px;
+    margin-top: 10px;
+}
+
+.governance-budget-detail {
+    margin-top: 0;
 }
 
 .governance-votes {

@@ -11,6 +11,10 @@ const LOCAL_METADATA_PROXY_PATH = '/__metadata_proxy__';
 const ACTIVE_REFRESH_INTERVAL_MS = 60 * 1000;
 const EPOCH_DURATION_SECONDS = 432000;
 const APPROVAL_GRACE_PERIOD_SECONDS = 300;
+const TREASURY_NET_CHANGE_LIMIT_ADA = 350_000_000;
+const TREASURY_NET_CHANGE_LIMIT_LOVELACE = TREASURY_NET_CHANGE_LIMIT_ADA * 1_000_000;
+const TREASURY_BUDGET_YEAR_START_EPOCH = 604;
+const TREASURY_BUDGET_YEAR_EPOCHS = 73;
 
 let governanceRefreshTimer = null;
 let lastActiveRenderSignature = '';
@@ -563,15 +567,205 @@ function createGovernanceCard(proposal) {
     expiration.className = 'governance-expiration';
     expiration.textContent = getExpirationText(proposal);
 
+    const metadataItems = getActiveGovernanceCardMetadata(proposal);
     const votes = document.createElement('span');
     votes.className = `governance-votes ${getVoteColorClass(proposal.votePercentages, proposal.voteDisplay?.source)}`;
     votes.textContent = formatVotePercentages(proposal.votePercentages, proposal.voteDisplay?.label);
 
     card.appendChild(title);
     card.appendChild(expiration);
+    metadataItems.forEach(item => {
+        const detail = document.createElement('span');
+        detail.className = 'governance-card-detail';
+        detail.textContent = `${item.label} ${item.value}`;
+        card.appendChild(detail);
+    });
     if (shouldShowVotePercentages(proposal) && votes.textContent) card.appendChild(votes);
 
     return card;
+}
+
+function getTreasuryBudgetMetadata(proposal) {
+    if (proposal?.proposal_type !== 'TreasuryWithdrawals') return [];
+
+    const usedThisYear = getTreasuryBudgetUsedThisYear();
+    const remaining = Math.max(TREASURY_NET_CHANGE_LIMIT_LOVELACE - usedThisYear, 0);
+
+    return [
+        {
+            label: 'Net change limit',
+            value: formatCompactAdaFromLovelace(TREASURY_NET_CHANGE_LIMIT_LOVELACE, { fixedFractionDigits: 2 })
+        },
+        {
+            label: 'Used this year',
+            value: formatCompactAdaFromLovelace(usedThisYear, { fixedFractionDigits: 2 })
+        },
+        {
+            label: 'To be allocated',
+            value: formatCompactAdaFromLovelace(remaining, { fixedFractionDigits: 2 })
+        }
+    ];
+}
+
+function updateTreasuryBudgetBar() {
+    const usedThisYear = getTreasuryBudgetUsedThisYear();
+    const remaining = Math.max(TREASURY_NET_CHANGE_LIMIT_LOVELACE - usedThisYear, 0);
+    const activeAskTotal = getActiveTreasuryProposalAskTotal();
+    const afterTotalSpend = remaining - activeAskTotal;
+
+    setText('gov-budget-limit', `Net change limit ${formatCompactAdaFromLovelace(TREASURY_NET_CHANGE_LIMIT_LOVELACE, { fixedFractionDigits: 2 })}`);
+    setText('gov-budget-used', `Used this year ${formatCompactAdaFromLovelace(usedThisYear, { fixedFractionDigits: 2 })}`);
+    setText('gov-budget-remaining', `To be allocated ${formatCompactAdaFromLovelace(remaining, { fixedFractionDigits: 2 })}`);
+    setText('gov-budget-after-spend', `After total spend ${formatCompactAdaFromLovelace(Math.abs(afterTotalSpend), { fixedFractionDigits: 2 })}`);
+
+    const afterSpendElement = document.getElementById('gov-budget-after-spend');
+    if (afterSpendElement) {
+        afterSpendElement.classList.toggle('is-negative', afterTotalSpend < 0);
+        afterSpendElement.textContent = `After total spend ${afterTotalSpend < 0 ? '-' : ''}${formatCompactAdaFromLovelace(Math.abs(afterTotalSpend), { fixedFractionDigits: 2 })}`;
+    }
+}
+
+function getTreasuryBudgetUsedThisYear() {
+    const proposals = Array.isArray(governanceState?.proposals)
+        ? getGovernanceProposalsFromDashboardPayload(governanceState)
+        : [];
+    const yearEndEpoch = TREASURY_BUDGET_YEAR_START_EPOCH + TREASURY_BUDGET_YEAR_EPOCHS;
+
+    return proposals.reduce((sum, proposal) => {
+        if (proposal?.proposal_type !== 'TreasuryWithdrawals') return sum;
+        if (getGovernanceStatus(proposal) !== 'approved') return sum;
+
+        const proposedEpoch = Number(proposal?.proposed_epoch);
+        if (!Number.isFinite(proposedEpoch)) return sum;
+        if (proposedEpoch < TREASURY_BUDGET_YEAR_START_EPOCH || proposedEpoch >= yearEndEpoch) return sum;
+
+        return sum + getProposalTotalAskLovelace(proposal);
+    }, 0);
+}
+
+function getActiveTreasuryProposalAskTotal() {
+    const proposals = Array.isArray(governanceState?.proposals)
+        ? getGovernanceProposalsFromDashboardPayload(governanceState)
+        : [];
+
+    return proposals.reduce((sum, proposal) => {
+        if (proposal?.proposal_type !== 'TreasuryWithdrawals') return sum;
+        if (getGovernanceStatus(proposal) !== 'active') return sum;
+        return sum + getProposalTotalAskLovelace(proposal);
+    }, 0);
+}
+
+function getActiveGovernanceCardMetadata(proposal) {
+    const items = [];
+    const totalAsk = getProposalTotalAskLovelace(proposal);
+    if (Number.isFinite(totalAsk) && totalAsk > 0) {
+        items.push({
+            label: 'Total ask',
+            value: formatCompactAdaFromLovelace(totalAsk, { fixedFractionDigits: 2 })
+        });
+    }
+
+    const netChangeLimit = getProposalNetChangeLimit(proposal);
+    if (netChangeLimit) {
+        items.push({
+            label: 'Net change limit',
+            value: netChangeLimit
+        });
+    }
+
+    return items;
+}
+
+function getProposalTotalAskLovelace(proposal) {
+    const withdrawalAmounts = Array.isArray(proposal?.withdrawal)
+        ? proposal.withdrawal
+            .map(entry => Number(entry?.amount))
+            .filter(Number.isFinite)
+        : [];
+    if (withdrawalAmounts.length) {
+        return withdrawalAmounts.reduce((sum, value) => sum + value, 0);
+    }
+
+    const rewardValues = proposal?.meta_json?.body?.onChain?.gov_action?.rewards;
+    if (Array.isArray(rewardValues) && rewardValues.length) {
+        return rewardValues
+            .map(entry => Number(entry?.value))
+            .filter(Number.isFinite)
+            .reduce((sum, value) => sum + value, 0);
+    }
+
+    const contents = proposal?.proposal_description?.contents;
+    if (Array.isArray(contents)) {
+        let total = 0;
+        collectNumericWithdrawalAmounts(contents, value => {
+            total += value;
+        });
+        if (total > 0) return total;
+    }
+
+    return 0;
+}
+
+function collectNumericWithdrawalAmounts(value, onAmount) {
+    if (Array.isArray(value)) {
+        value.forEach(entry => collectNumericWithdrawalAmounts(entry, onAmount));
+        return;
+    }
+
+    if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+        onAmount(value);
+        return;
+    }
+
+    if (!value || typeof value !== 'object') return;
+
+    if (value.amount !== undefined) {
+        const amount = Number(value.amount);
+        if (Number.isFinite(amount) && amount > 0) onAmount(amount);
+    }
+}
+
+function getProposalNetChangeLimit(proposal) {
+    const rawValue = findValueByNormalizedKey(proposal?.param_proposal, 'netchangelimit')
+        ?? findValueByNormalizedKey(proposal?.meta_json?.body?.onChain, 'netchangelimit')
+        ?? findValueByNormalizedKey(proposal?.proposal_description, 'netchangelimit')
+        ?? findValueByNormalizedKey(proposal?.meta_json, 'netchangelimit');
+
+    return formatGovernanceMetaValue(rawValue);
+}
+
+function findValueByNormalizedKey(value, targetKey) {
+    if (!value || typeof value !== 'object') return null;
+
+    if (Array.isArray(value)) {
+        for (const entry of value) {
+            const match = findValueByNormalizedKey(entry, targetKey);
+            if (match !== null && match !== undefined) return match;
+        }
+        return null;
+    }
+
+    for (const [key, entryValue] of Object.entries(value)) {
+        const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (normalizedKey === targetKey) return entryValue;
+        if (entryValue && typeof entryValue === 'object') {
+            const nestedMatch = findValueByNormalizedKey(entryValue, targetKey);
+            if (nestedMatch !== null && nestedMatch !== undefined) return nestedMatch;
+        }
+    }
+
+    return null;
+}
+
+function formatGovernanceMetaValue(value) {
+    if (value === null || value === undefined || value === '') return '';
+    if (typeof value === 'number' && Number.isFinite(value)) {
+        return Number.isInteger(value)
+            ? value.toLocaleString('en-US')
+            : value.toLocaleString('en-US', { maximumFractionDigits: 6 });
+    }
+    if (typeof value === 'string') return value.trim();
+    return '';
 }
 
 function openGovernanceOverlay(proposal) {
@@ -2089,6 +2283,9 @@ async function updateGovernanceCounts(groups) {
     setText('gov-approved-count', getCollectionLength(groups.approved));
     setText('gov-rejected-count', getCollectionLength(groups.rejected));
     setText('gov-info-count', getCollectionLength(groups.info));
+    setText('gov-active-ask', formatGovernanceAskSummary(groups.active));
+    setText('gov-approved-ask', formatGovernanceAskSummary(groups.approved));
+    setText('gov-rejected-ask', formatGovernanceAskSummary(groups.rejected));
 
     try {
         const drepStats = await getDrepStats(groups);
@@ -2100,6 +2297,17 @@ async function updateGovernanceCounts(groups) {
         setText('gov-drep-count', '0');
         setText('gov-drep-power-split', '0 / 0');
     }
+
+    updateTreasuryBudgetBar();
+}
+
+function formatGovernanceAskSummary(proposals) {
+    const totalAsk = Array.isArray(proposals)
+        ? proposals.reduce((sum, proposal) => sum + getProposalTotalAskLovelace(proposal), 0)
+        : 0;
+
+    if (!totalAsk) return 'Total ask 0';
+    return `Total ask ${formatCompactAdaFromLovelace(totalAsk, { fixedFractionDigits: 2 })}`;
 }
 
 async function getDrepStats(groups) {

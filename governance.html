@@ -3,11 +3,29 @@
         <p class="eyebrow">Cardano governance</p>
         <h2>Governance Actions</h2>
         <p>Grouped by Treasury Withdrawals and Info Actions.</p>
+        <div class="governance-budget-bar">
+            <span id="gov-budget-limit">Net change limit 350.00M ADA</span>
+            <span id="gov-budget-used">Used this year 0 ADA</span>
+            <span id="gov-budget-remaining">To be allocated 350.00M ADA</span>
+            <span id="gov-budget-after-spend">After total spend 350.00M ADA</span>
+        </div>
 
         <div class="governance-summary" id="governance-summary">
-            <div><strong id="gov-active-count">0</strong><span>Active</span></div>
-            <div><strong id="gov-approved-count">0</strong><span>Approved</span></div>
-            <div><strong id="gov-rejected-count">0</strong><span>Rejected</span></div>
+            <div>
+                <strong id="gov-active-count">0</strong>
+                <span>Active</span>
+                <span class="governance-summary-subvalue" id="gov-active-ask">Total ask 0</span>
+            </div>
+            <div>
+                <strong id="gov-approved-count">0</strong>
+                <span>Approved</span>
+                <span class="governance-summary-subvalue" id="gov-approved-ask">Total ask 0</span>
+            </div>
+            <div>
+                <strong id="gov-rejected-count">0</strong>
+                <span>Rejected</span>
+                <span class="governance-summary-subvalue" id="gov-rejected-ask">Total ask 0</span>
+            </div>
             <div><strong id="gov-info-count">0</strong><span>Info Actions</span></div>
             <div>
                 <strong id="gov-drep-count">0</strong>
