@@ -45,33 +45,39 @@
 
     <!-- Preload Logo -->
     <link rel="preload" href="tdsp_logo.webp" as="image">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=20260524-epoch-right">
 
-    <script src="index.js" defer></script>
+    <script src="index.js?v=20260524-theme-emoji" defer></script>
 </head>
 <body>
     <header class="site-header" id="site-header">
         <div class="header-inner">
-            <nav class="nav" aria-label="Main navigation">
-                <a class="nav-link" href="#home">Home</a>
-                <a class="nav-link" href="#about">About</a>
-                <a class="nav-link" href="#pool">SPO Stats</a>
-                <a class="nav-link" href="#starch">Starch</a>
-                <a class="nav-link" href="#governance">Governance <span id="menu-epoch" class="menu-epoch">Epoch ...</span></a>
-            </nav>
-            <div class="header-links" aria-label="External links">
-                <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch to dark mode">
-                    <span class="theme-toggle-label">Dark mode</span>
-                </button>
-                <a href="https://blockfrost.grafana.net/public-dashboards/8d618eda298d472a996ca3473ab36177" target="_blank" rel="noopener noreferrer" aria-label="Blockfrost Dashboard">
-                    <img src="Icebreaker_logo.webp" alt="">
-                </a>
-                <a href="https://twitter.com/DamionDutch" target="_blank" rel="noopener noreferrer" aria-label="X">
-                    <img src="X-logo_ico.webp" alt="">
-                </a>
-                <a href="https://tool.jamonbread.io/delegate/pool1ksye6zwlzaytspldngc3966aj79zkjvmkykydu2txay75c0krfp" target="_blank" rel="noopener noreferrer" aria-label="Delegate Now">
-                    <img src="stakebutton_ico.webp" alt="">
-                </a>
+            <div class="menu-bar">
+                <nav class="menu-bar__nav nav" aria-label="Main navigation">
+                    <a class="nav-link nav-home-link" href="#home">Home</a>
+                    <a class="nav-link" href="#about">About</a>
+                    <a class="nav-link" href="#pool">SPO Stats</a>
+                    <a class="nav-link" href="#starch">Starch</a>
+                    <a class="nav-link" href="#governance">Governance</a>
+                </nav>
+                <div class="menu-bar__side">
+                    <div class="menu-bar__actions header-links" aria-label="External links">
+                        <a href="https://blockfrost.grafana.net/public-dashboards/8d618eda298d472a996ca3473ab36177" target="_blank" rel="noopener noreferrer" aria-label="Blockfrost Dashboard">
+                            <img src="Icebreaker_logo.webp" alt="">
+                        </a>
+                        <a href="https://twitter.com/DamionDutch" target="_blank" rel="noopener noreferrer" aria-label="X">
+                            <img src="X-logo_ico.webp" alt="">
+                        </a>
+                        <a href="https://tool.jamonbread.io/delegate/pool1ksye6zwlzaytspldngc3966aj79zkjvmkykydu2txay75c0krfp" target="_blank" rel="noopener noreferrer" aria-label="Delegate Now">
+                            <img src="stakebutton_ico.webp" alt="">
+                        </a>
+                        <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch to dark mode">
+                            <span class="theme-toggle-icon theme-toggle-icon--moon" aria-hidden="true">🌙</span>
+                            <span class="theme-toggle-icon theme-toggle-icon--sun" aria-hidden="true">☀️</span>
+                        </button>
+                    </div>
+                    <span id="menu-epoch" class="menu-epoch nav-status" aria-live="polite">Epoch ...</span>
+                </div>
             </div>
         </div>
     </header>

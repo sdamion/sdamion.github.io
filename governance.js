@@ -10,6 +10,7 @@ const LOCAL_DREP_DETAIL_PROXY_PATH = '/__drep_detail_proxy__';
 const LOCAL_METADATA_PROXY_PATH = '/__metadata_proxy__';
 const ACTIVE_REFRESH_INTERVAL_MS = 60 * 1000;
 const EPOCH_DURATION_SECONDS = 432000;
+const CARDANO_MAINNET_EPOCH_ZERO_MS = Date.parse('2017-09-23T21:44:51Z');
 const APPROVAL_GRACE_PERIOD_SECONDS = 300;
 const TREASURY_NET_CHANGE_LIMIT_ADA = 350_000_000;
 const TREASURY_NET_CHANGE_LIMIT_LOVELACE = TREASURY_NET_CHANGE_LIMIT_ADA * 1_000_000;
@@ -17,6 +18,9 @@ const TREASURY_BUDGET_YEAR_START_EPOCH = 604;
 const TREASURY_BUDGET_YEAR_EPOCHS = 73;
 
 let governanceRefreshTimer = null;
+let epochCountdownTimer = null;
+let epochEndsAtMs = null;
+let currentEpochNumber = null;
 let lastActiveRenderSignature = '';
 let governanceState = null;
 const proposalVotesCache = new Map();
@@ -31,8 +35,38 @@ if (document.readyState === 'loading') {
 }
 
 function initGovernance() {
+    removeDrepPowerSplitCard();
+    ensureEpochCountdownCard();
     loadCurrentEpoch();
     loadGovernanceActions();
+}
+
+function removeDrepPowerSplitCard() {
+    const powerSplit = document.getElementById('gov-drep-power-split');
+    const card = powerSplit?.closest('.governance-summary-box');
+    if (card) card.remove();
+}
+
+function ensureEpochCountdownCard() {
+    if (document.getElementById('menu-epoch')) return;
+    if (document.getElementById('gov-epoch-countdown')) return;
+
+    const epochElement = document.getElementById('menu-epoch');
+    if (epochElement?.parentElement) return;
+
+    const summary = document.getElementById('governance-summary');
+    if (!summary) return;
+    const card = document.createElement('div');
+    const value = document.createElement('strong');
+    const label = document.createElement('span');
+
+    value.id = 'gov-epoch-countdown';
+    value.textContent = '--';
+    label.textContent = 'Epoch ends in';
+
+    card.appendChild(value);
+    card.appendChild(label);
+    summary.appendChild(card);
 }
 
 async function loadCurrentEpoch() {
@@ -42,9 +76,12 @@ async function loadCurrentEpoch() {
     try {
         const dashboardPayload = governanceState || await fetchGovernanceDashboardPayload();
         const epoch = getDashboardEpoch(dashboardPayload);
-        epochElement.textContent = Number.isFinite(epoch) ? `Epoch ${epoch}` : '';
+        currentEpochNumber = Number.isFinite(epoch) ? epoch : null;
+        updateEpochCountdownDisplay(null);
+        updateEpochCountdownFromDashboardPayload(dashboardPayload);
     } catch (error) {
-        epochElement.textContent = '';
+        currentEpochNumber = null;
+        updateEpochCountdownDisplay(null);
     }
 }
 
@@ -71,6 +108,7 @@ async function loadGovernanceActions() {
         renderGovernanceGroup(groups.approved, grouped.approved, 'No approved actions found.');
         renderGovernanceGroup(groups.rejected, grouped.rejected, 'No rejected actions found.');
         renderGovernanceGroup(groups.info, grouped.info, 'No info actions found.');
+        refreshActiveGovernanceCardVotes(grouped.active);
         await updateGovernanceCounts(grouped);
         lastActiveRenderSignature = getGovernanceGroupSignature(grouped.active);
         updateEpochDisplayFromDashboardPayload(dashboardPayload);
@@ -110,6 +148,7 @@ async function refreshActiveGovernanceGroup() {
     renderGovernanceGroup(groups.approved, grouped.approved, 'No approved actions found.');
     renderGovernanceGroup(groups.rejected, grouped.rejected, 'No rejected actions found.');
     renderGovernanceGroup(groups.info, grouped.info, 'No info actions found.');
+    refreshActiveGovernanceCardVotes(grouped.active);
     await updateGovernanceCounts(grouped);
     lastActiveRenderSignature = nextSignature;
 }
@@ -123,15 +162,10 @@ function scheduleActiveRefresh() {
 }
 
 async function fetchGovernanceDashboardPayload() {
-    if (!shouldUseLocalDashboardProxy()) {
-        return fetchJson(DASHBOARD_API_URL);
+    if (shouldUseLocalDashboardProxy()) {
+        return fetchJson(LOCAL_DASHBOARD_PROXY_PATH);
     }
-
-    try {
-        return await fetchJson(LOCAL_DASHBOARD_PROXY_PATH);
-    } catch {
-        return fetchJson(DASHBOARD_API_URL);
-    }
+    return fetchJson(DASHBOARD_API_URL);
 }
 
 function shouldUseLocalDashboardProxy() {
@@ -175,10 +209,75 @@ function getDashboardTip(payload = governanceState) {
 
 function updateEpochDisplayFromDashboardPayload(payload) {
     const epochElement = document.getElementById('menu-epoch');
-    if (!epochElement) return;
+    const epoch = getDashboardEpoch(payload);
+    currentEpochNumber = Number.isFinite(epoch) ? epoch : null;
+    if (epochElement) updateEpochCountdownDisplay(null);
+    updateEpochCountdownFromDashboardPayload(payload);
+}
+
+function updateEpochCountdownFromDashboardPayload(payload) {
+    const tip = getDashboardTip(payload);
+    const epochSlot = Number(tip?.epoch_slot ?? tip?.slot_in_epoch ?? tip?.slotInEpoch);
+    if (Number.isFinite(epochSlot)) {
+        const remainingSeconds = Math.max(EPOCH_DURATION_SECONDS - epochSlot, 0);
+        epochEndsAtMs = Date.now() + (remainingSeconds * 1000);
+        updateEpochCountdownDisplay(remainingSeconds);
+        startEpochCountdownTimer();
+        return;
+    }
 
     const epoch = getDashboardEpoch(payload);
-    epochElement.textContent = Number.isFinite(epoch) ? `Epoch ${epoch}` : '';
+    if (!Number.isFinite(epoch)) {
+        updateEpochCountdownDisplay(null);
+        return;
+    }
+
+    epochEndsAtMs = CARDANO_MAINNET_EPOCH_ZERO_MS + ((epoch + 1) * EPOCH_DURATION_SECONDS * 1000);
+    const remainingSeconds = Math.max(Math.ceil((epochEndsAtMs - Date.now()) / 1000), 0);
+    updateEpochCountdownDisplay(remainingSeconds);
+    startEpochCountdownTimer();
+}
+
+function startEpochCountdownTimer() {
+    if (epochCountdownTimer !== null) return;
+
+    epochCountdownTimer = window.setInterval(() => {
+        if (!Number.isFinite(epochEndsAtMs)) {
+            updateEpochCountdownDisplay(null);
+            return;
+        }
+        const remainingSeconds = Math.max(Math.ceil((epochEndsAtMs - Date.now()) / 1000), 0);
+        updateEpochCountdownDisplay(remainingSeconds);
+    }, 1000);
+}
+
+function updateEpochCountdownDisplay(remainingSeconds) {
+    const menuEpochElement = document.getElementById('menu-epoch');
+    if (menuEpochElement) {
+        const epochText = Number.isFinite(currentEpochNumber) ? `Epoch ${currentEpochNumber}` : 'Epoch ...';
+        menuEpochElement.textContent = Number.isFinite(remainingSeconds)
+            ? `${epochText} ${formatEpochCountdown(remainingSeconds)} left`
+            : epochText;
+        return;
+    }
+
+    const countdownElement = document.getElementById('gov-epoch-countdown');
+    if (!countdownElement) return;
+    countdownElement.textContent = Number.isFinite(remainingSeconds)
+        ? formatEpochCountdown(remainingSeconds)
+        : '--';
+}
+
+function formatEpochCountdown(totalSeconds) {
+    const seconds = Math.max(Math.floor(totalSeconds), 0);
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const remainingSeconds = seconds % 60;
+    return [
+        String(hours).padStart(2, '0'),
+        String(minutes).padStart(2, '0'),
+        String(remainingSeconds).padStart(2, '0')
+    ].join(':');
 }
 
 async function fetchJson(url) {
@@ -534,7 +633,7 @@ function hasPassedExpirationGracePeriod(proposal) {
 }
 
 function shouldShowVotePercentages(proposal) {
-    return Boolean(proposal?.votePercentages);
+    return Boolean(proposal?.proposal_id);
 }
 
 function renderGovernanceGroup(container, proposals, emptyMessage) {
@@ -557,6 +656,7 @@ function createGovernanceCard(proposal) {
     const card = document.createElement('button');
     card.className = 'governance-card';
     card.type = 'button';
+    card.dataset.proposalId = proposal.proposal_id;
     card.addEventListener('click', () => openGovernanceOverlay(proposal));
 
     const title = document.createElement('span');
@@ -569,8 +669,8 @@ function createGovernanceCard(proposal) {
 
     const metadataItems = getActiveGovernanceCardMetadata(proposal);
     const votes = document.createElement('span');
-    votes.className = `governance-votes ${getVoteColorClass(proposal.votePercentages, proposal.voteDisplay?.source)}`;
-    votes.textContent = formatVotePercentages(proposal.votePercentages, proposal.voteDisplay?.label);
+    votes.className = 'governance-votes vote-neutral';
+    votes.textContent = 'Open for live votes';
 
     card.appendChild(title);
     card.appendChild(expiration);
@@ -580,9 +680,24 @@ function createGovernanceCard(proposal) {
         detail.textContent = `${item.label} ${item.value}`;
         card.appendChild(detail);
     });
-    if (shouldShowVotePercentages(proposal) && votes.textContent) card.appendChild(votes);
+    if (shouldShowVotePercentages(proposal)) card.appendChild(votes);
 
     return card;
+}
+
+function refreshActiveGovernanceCardVotes(proposals) {
+    if (!Array.isArray(proposals)) return;
+
+    proposals
+        .filter(proposal => proposal?.proposal_id)
+        .forEach(proposal => {
+            fetchProposalVotesPayload(proposal.proposal_id)
+                .then(payload => {
+                    const detailProposal = mergeProposalVoteDetails(proposal, payload);
+                    updateGovernanceCardVotes(proposal.proposal_id, detailProposal);
+                })
+                .catch(() => {});
+        });
 }
 
 function getTreasuryBudgetMetadata(proposal) {
@@ -1122,6 +1237,7 @@ async function loadProposalVoteDetails(proposal, container) {
     if (!container.isConnected || container.dataset.proposalId !== proposal.proposal_id) return;
 
     const detailProposal = mergeProposalVoteDetails(proposal, payload);
+    updateGovernanceCardVotes(proposal.proposal_id, detailProposal);
     renderVoteDetailsPanel(container, detailProposal, payload);
 
     if (!container.childNodes.length) {
@@ -1145,7 +1261,7 @@ async function fetchProposalVotesPayload(proposalId) {
 
 function mergeProposalVoteDetails(proposal, payload) {
     const detail = extractProposalVoteDetail(payload, proposal.proposal_id);
-    if (!detail) return proposal;
+    if (!detail && !payload?.votes?.dreps) return proposal;
 
     const summary = normalizeVotingSummary(
         detail?.voting_summary
@@ -1153,16 +1269,82 @@ function mergeProposalVoteDetails(proposal, payload) {
         || detail?.summary
         || detail?.vote_percentages
         || detail?.votePercentages
+        || getVotingSummaryFromProposalVotesPayload(payload)
         || detail
     );
 
     const nextProposal = {
         ...proposal,
+        hasLiveVotePercentages: Boolean(payload?.votes?.dreps),
         voteSummary: hasStructuredVoteSummary(summary) ? summary : proposal.voteSummary
     };
     nextProposal.voteDisplay = getVoteDisplayFromProposalSummary(nextProposal.voteSummary, nextProposal) || proposal.voteDisplay;
     nextProposal.votePercentages = nextProposal.voteDisplay?.percentages || proposal.votePercentages;
     return nextProposal;
+}
+
+function updateGovernanceCardVotes(proposalId, proposal) {
+    if (!proposalId || !proposal?.votePercentages) return;
+
+    const card = document.querySelector(`.governance-card[data-proposal-id="${CSS.escape(proposalId)}"]`);
+    const votes = card?.querySelector('.governance-votes');
+    if (!votes) return;
+
+    votes.className = `governance-votes ${getVoteColorClass(proposal.votePercentages, proposal.voteDisplay?.source)}`;
+    votes.textContent = formatVotePercentages(proposal.votePercentages, proposal.voteDisplay?.label);
+}
+
+function getVotingSummaryFromProposalVotesPayload(payload) {
+    const dreps = payload?.votes?.dreps;
+    if (!dreps || typeof dreps !== 'object') return null;
+
+    const drepInfo = payload?.drep_info && typeof payload.drep_info === 'object'
+        ? payload.drep_info
+        : {};
+    const getBucket = key => Array.isArray(dreps[key]) ? dreps[key] : [];
+    const getVotePower = vote => {
+        const info = drepInfo[vote?.voter_id]
+            || drepInfo[vote?.drep_id]
+            || drepInfo[vote?.voter_hex]
+            || drepInfo[vote?.hex]
+            || null;
+        const value = vote?.amount
+            ?? vote?.vote_power
+            ?? vote?.voting_power
+            ?? vote?.stake
+            ?? vote?.lovelace
+            ?? info?.amount
+            ?? info?.vote_power
+            ?? info?.voting_power
+            ?? info?.stake
+            ?? info?.lovelace;
+        const numericValue = Number(value);
+        return Number.isFinite(numericValue) ? numericValue : 0;
+    };
+
+    const yesVotes = getBucket('yes');
+    const noVotes = getBucket('no');
+    const abstainVotes = getBucket('abstain');
+    const yesPower = yesVotes.reduce((sum, vote) => sum + getVotePower(vote), 0);
+    const noPower = noVotes.reduce((sum, vote) => sum + getVotePower(vote), 0);
+    const abstainPower = abstainVotes.reduce((sum, vote) => sum + getVotePower(vote), 0);
+    const yesNoPower = yesPower + noPower;
+    const totalPower = yesPower + noPower + abstainPower;
+    const percentageBase = yesNoPower > 0 ? yesNoPower : totalPower;
+
+    return {
+        drep_yes_votes_cast: yesVotes.length,
+        drep_no_votes_cast: noVotes.length,
+        drep_abstain_votes_cast: abstainVotes.length,
+        drep_active_yes_vote_power: yesPower,
+        drep_yes_vote_power: yesPower,
+        drep_active_no_vote_power: noPower,
+        drep_no_vote_power: noPower,
+        drep_active_abstain_vote_power: abstainPower,
+        drep_yes_pct: percentageBase > 0 ? (yesPower / percentageBase) * 100 : 0,
+        drep_no_pct: percentageBase > 0 ? (noPower / percentageBase) * 100 : 0,
+        drep_abstain_pct: percentageBase > 0 ? (abstainPower / percentageBase) * 100 : 0
+    };
 }
 
 function extractProposalVoteDetail(payload, proposalId) {

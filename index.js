@@ -106,10 +106,7 @@ function getPreferredTheme() {
 
 function syncThemeToggle(toggle) {
     const nextTheme = getPreferredTheme() === 'dark' ? 'light' : 'dark';
-    const label = toggle.querySelector('.theme-toggle-label');
-    if (label) {
-        label.textContent = nextTheme === 'dark' ? 'Dark mode' : 'Light mode';
-    }
+    toggle.dataset.nextTheme = nextTheme;
     toggle.setAttribute('aria-label', `Switch to ${nextTheme} mode`);
 }
 
