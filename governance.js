@@ -73,16 +73,7 @@ async function loadCurrentEpoch() {
     const epochElement = document.getElementById('menu-epoch');
     if (!epochElement) return;
 
-    try {
-        const dashboardPayload = governanceState || await fetchGovernanceDashboardPayload();
-        const epoch = getDashboardEpoch(dashboardPayload);
-        currentEpochNumber = Number.isFinite(epoch) ? epoch : null;
-        updateEpochCountdownDisplay(null);
-        updateEpochCountdownFromDashboardPayload(dashboardPayload);
-    } catch (error) {
-        currentEpochNumber = null;
-        updateEpochCountdownDisplay(null);
-    }
+    updateEpochCountdownFromMainnetClock();
 }
 
 async function loadGovernanceActions() {
@@ -208,34 +199,29 @@ function getDashboardTip(payload = governanceState) {
 }
 
 function updateEpochDisplayFromDashboardPayload(payload) {
-    const epochElement = document.getElementById('menu-epoch');
-    const epoch = getDashboardEpoch(payload);
-    currentEpochNumber = Number.isFinite(epoch) ? epoch : null;
-    if (epochElement) updateEpochCountdownDisplay(null);
-    updateEpochCountdownFromDashboardPayload(payload);
+    updateEpochCountdownFromMainnetClock();
 }
 
 function updateEpochCountdownFromDashboardPayload(payload) {
-    const tip = getDashboardTip(payload);
-    const epochSlot = Number(tip?.epoch_slot ?? tip?.slot_in_epoch ?? tip?.slotInEpoch);
-    if (Number.isFinite(epochSlot)) {
-        const remainingSeconds = Math.max(EPOCH_DURATION_SECONDS - epochSlot, 0);
-        epochEndsAtMs = Date.now() + (remainingSeconds * 1000);
-        updateEpochCountdownDisplay(remainingSeconds);
-        startEpochCountdownTimer();
-        return;
-    }
+    updateEpochCountdownFromMainnetClock();
+}
 
-    const epoch = getDashboardEpoch(payload);
-    if (!Number.isFinite(epoch)) {
-        updateEpochCountdownDisplay(null);
-        return;
-    }
-
-    epochEndsAtMs = CARDANO_MAINNET_EPOCH_ZERO_MS + ((epoch + 1) * EPOCH_DURATION_SECONDS * 1000);
+function updateEpochCountdownFromMainnetClock() {
+    const clockEpoch = getClockEpochSnapshot();
+    currentEpochNumber = clockEpoch.epoch;
+    epochEndsAtMs = clockEpoch.endsAtMs;
     const remainingSeconds = Math.max(Math.ceil((epochEndsAtMs - Date.now()) / 1000), 0);
     updateEpochCountdownDisplay(remainingSeconds);
     startEpochCountdownTimer();
+}
+
+function getClockEpochSnapshot(nowMs = Date.now()) {
+    const epochDurationMs = EPOCH_DURATION_SECONDS * 1000;
+    const elapsedEpochs = Math.max(Math.floor((nowMs - CARDANO_MAINNET_EPOCH_ZERO_MS) / epochDurationMs), 0);
+    return {
+        epoch: elapsedEpochs,
+        endsAtMs: CARDANO_MAINNET_EPOCH_ZERO_MS + ((elapsedEpochs + 1) * epochDurationMs)
+    };
 }
 
 function startEpochCountdownTimer() {
@@ -247,8 +233,27 @@ function startEpochCountdownTimer() {
             return;
         }
         const remainingSeconds = Math.max(Math.ceil((epochEndsAtMs - Date.now()) / 1000), 0);
+        if (remainingSeconds <= 0) {
+            rollEpochCountdownForward();
+            return;
+        }
         updateEpochCountdownDisplay(remainingSeconds);
     }, 1000);
+}
+
+function rollEpochCountdownForward() {
+    if (!Number.isFinite(epochEndsAtMs)) {
+        updateEpochCountdownDisplay(null);
+        return;
+    }
+
+    const epochDurationMs = EPOCH_DURATION_SECONDS * 1000;
+    const elapsedEpochs = Math.max(Math.floor((Date.now() - epochEndsAtMs) / epochDurationMs) + 1, 1);
+    epochEndsAtMs += elapsedEpochs * epochDurationMs;
+    if (Number.isFinite(currentEpochNumber)) currentEpochNumber += elapsedEpochs;
+
+    const remainingSeconds = Math.max(Math.ceil((epochEndsAtMs - Date.now()) / 1000), 0);
+    updateEpochCountdownDisplay(remainingSeconds);
 }
 
 function updateEpochCountdownDisplay(remainingSeconds) {
@@ -620,9 +625,9 @@ function hasPassedExpirationGracePeriod(proposal) {
     const expirationEpoch = Number(proposal?.expiration);
     if (!Number.isFinite(expirationEpoch)) return false;
 
-    const tip = getDashboardTip();
-    const currentEpoch = Number(tip?.epoch_no);
-    const currentEpochSlot = Number(tip?.epoch_slot);
+    const clockEpoch = getClockEpochSnapshot();
+    const currentEpoch = clockEpoch.epoch;
+    const currentEpochSlot = Math.floor((Date.now() - CARDANO_MAINNET_EPOCH_ZERO_MS) / 1000) % EPOCH_DURATION_SECONDS;
 
     if (!Number.isFinite(currentEpoch) || !Number.isFinite(currentEpochSlot)) return false;
     if (currentEpoch < expirationEpoch) return false;
@@ -669,8 +674,14 @@ function createGovernanceCard(proposal) {
 
     const metadataItems = getActiveGovernanceCardMetadata(proposal);
     const votes = document.createElement('span');
-    votes.className = 'governance-votes vote-neutral';
-    votes.textContent = 'Open for live votes';
+    const governanceStatus = getGovernanceStatus(proposal);
+    if (governanceStatus === 'active' || !proposal.votePercentages) {
+        votes.className = 'governance-votes vote-neutral';
+        votes.textContent = 'Open for live votes';
+    } else {
+        votes.className = `governance-votes ${getVoteColorClass(proposal.votePercentages, proposal.voteDisplay?.source)}`;
+        votes.textContent = formatVotePercentages(proposal.votePercentages, proposal.voteDisplay?.label);
+    }
 
     card.appendChild(title);
     card.appendChild(expiration);
@@ -2472,7 +2483,7 @@ function getVoteColorClass(percentages, source = 'drep') {
 function formatVotePercentages(percentages, label = null) {
     if (!percentages) return '';
 
-    const prefix = label ? `${label} ` : '';
+    const prefix = label ? `${label} stake ` : '';
     return [
         `${prefix}Yes ${formatPercentage(percentages.yes)}`,
         `No ${formatPercentage(percentages.no)}`

@@ -13,9 +13,9 @@ const TDSP_API_HOST = process.env.TDSP_API_HOST || '';
 
 const proxyRoutes = {
   '/__coingecko_price_proxy__': () =>
-    'https://api.coingecko.com/api/v3/simple/price?ids=cardano&vs_currencies=usd',
+    'https://api.coingecko.com/api/v3/simple/price?ids=cardano,hyperliquid&vs_currencies=usd',
   '/__geckoterminal_price_proxy__': () =>
-    'https://api.geckoterminal.com/api/v2/simple/networks/cardano/token_price/3d77d63dfa6033be98021417e08e3368cc80e67f8d7afa196aaa0b3953746172636820546f6b656e,5d16cc1a177b5d9ba9cfa9793b07e60f1fb70fea1f8aef064415d114494147,6d06570ddd778ec7c0cca09d381eca194e90c8cffa7582879735dbde584552,b6a7467ea1deb012808ef4e87b5ff371e85f7142d7b356a40d9b42a0436f726e75636f70696173205b76696120436861696e506f72742e696f5d',
+    'https://api.geckoterminal.com/api/v2/simple/networks/cardano/token_price/3d77d63dfa6033be98021417e08e3368cc80e67f8d7afa196aaa0b3953746172636820546f6b656e,6d06570ddd778ec7c0cca09d381eca194e90c8cffa7582879735dbde584552,b6a7467ea1deb012808ef4e87b5ff371e85f7142d7b356a40d9b42a0436f726e75636f70696173205b76696120436861696e506f72742e696f5d',
   '/__dashboard_proxy__': () =>
     `${TDSP_API_ORIGIN}/api/dashboard`,
   '/__proposal_votes_proxy__': url => {

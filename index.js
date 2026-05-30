@@ -1,11 +1,10 @@
 // API URLs
-const COINGECKO_API_URL = 'https://api.coingecko.com/api/v3/simple/price?ids=cardano&vs_currencies=usd';
-const GECKOTERMINAL_API_URL = 'https://api.geckoterminal.com/api/v2/simple/networks/cardano/token_price/3d77d63dfa6033be98021417e08e3368cc80e67f8d7afa196aaa0b3953746172636820546f6b656e,5d16cc1a177b5d9ba9cfa9793b07e60f1fb70fea1f8aef064415d114494147,6d06570ddd778ec7c0cca09d381eca194e90c8cffa7582879735dbde584552,b6a7467ea1deb012808ef4e87b5ff371e85f7142d7b356a40d9b42a0436f726e75636f70696173205b76696120436861696e506f72742e696f5d';
+const COINGECKO_API_URL = 'https://api.coingecko.com/api/v3/simple/price?ids=cardano,hyperliquid&vs_currencies=usd';
+const GECKOTERMINAL_API_URL = 'https://api.geckoterminal.com/api/v2/simple/networks/cardano/token_price/3d77d63dfa6033be98021417e08e3368cc80e67f8d7afa196aaa0b3953746172636820546f6b656e,6d06570ddd778ec7c0cca09d381eca194e90c8cffa7582879735dbde584552,b6a7467ea1deb012808ef4e87b5ff371e85f7142d7b356a40d9b42a0436f726e75636f70696173205b76696120436861696e506f72742e696f5d';
 
 // Token IDs from GeckoTerminal
 const TOKEN_IDS = {
     STRCH: "3d77d63dfa6033be98021417e08e3368cc80e67f8d7afa196aaa0b3953746172636820546f6b656e",
-    IAG: "5d16cc1a177b5d9ba9cfa9793b07e60f1fb70fea1f8aef064415d114494147",
 };
 
 const IS_LOCAL_PREVIEW = ['localhost', '127.0.0.1'].includes(window.location.hostname);
@@ -13,10 +12,10 @@ const THEME_STORAGE_KEY = 'tdsp-theme';
 const COINGECKO_PRICE_URL = IS_LOCAL_PREVIEW ? '/__coingecko_price_proxy__' : COINGECKO_API_URL;
 const GECKOTERMINAL_PRICE_URL = IS_LOCAL_PREVIEW ? '/__geckoterminal_price_proxy__' : GECKOTERMINAL_API_URL;
 
-// Fetch and display ADA, IAG, STRCH, XER, and COPI prices asynchronously
+// Fetch and display ADA, HYPE, and STRCH prices asynchronously
 async function fetchPrices() {
     const adaEl = document.getElementById('ada-price');
-    const iagEl = document.getElementById('iag-price');
+    const hypeEl = document.getElementById('hype-price');
     const strchEl = document.getElementById('strch-price');
 
     const [coingeckoResult, geckoterminalResult] = await Promise.allSettled([
@@ -32,19 +31,19 @@ async function fetchPrices() {
 
     if (coingeckoResult.status === 'fulfilled') {
         const adaPrice = coingeckoResult.value.cardano?.usd?.toFixed(2);
+        const hypePrice = coingeckoResult.value.hyperliquid?.usd?.toFixed(2);
         if (adaEl) adaEl.textContent = adaPrice ? `$${adaPrice}` : 'N/A';
-    } else if (adaEl) {
-        adaEl.textContent = 'N/A';
+        if (hypeEl) hypeEl.textContent = hypePrice ? `$${hypePrice}` : 'N/A';
+    } else {
+        if (adaEl) adaEl.textContent = 'N/A';
+        if (hypeEl) hypeEl.textContent = 'N/A';
     }
 
     if (geckoterminalResult.status === 'fulfilled') {
         const tokenPrices = geckoterminalResult.value?.data?.attributes?.token_prices || {};
-        const iagPrice = parseFloat(tokenPrices[TOKEN_IDS.IAG]);
         const strchPrice = parseFloat(tokenPrices[TOKEN_IDS.STRCH]);
-        if (iagEl) iagEl.textContent = Number.isFinite(iagPrice) ? `$${iagPrice.toFixed(6)}` : 'N/A';
         if (strchEl) strchEl.textContent = Number.isFinite(strchPrice) ? `$${strchPrice.toFixed(12)}` : 'N/A';
     } else {
-        if (iagEl) iagEl.textContent = 'N/A';
         if (strchEl) strchEl.textContent = 'N/A';
     }
 }

@@ -167,40 +167,6 @@ a[aria-label]:hover::after {
     justify-content: center;
   }
 
-.infrastructure {
-    width: min(100%, 900px);
-    margin: 24px auto 0;
-}
-
-.infrastructure h3 {
-    font-size: 1.5rem;
-    margin-bottom: 16px;
-}
-
-.infrastructure-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 16px;
-}
-
-.infrastructure-card {
-    border: 1px solid rgba(0, 0, 0, 0.22);
-    border-radius: 8px;
-    padding: 18px;
-    text-align: left;
-}
-
-.infrastructure-card h4 {
-    margin-bottom: 10px;
-    font-size: 1rem;
-}
-
-.infrastructure-card ul {
-    padding-left: 20px;
-    line-height: 1.6;
-}
-  
-
 /* Modal Helpers */
 .iframe-modal {
     display: none;
@@ -677,45 +643,6 @@ p {
 .price-panel b {
     color: var(--text);
     font-size: 1rem;
-}
-
-.infrastructure-grid {
-    margin-top: 28px;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.infrastructure-card {
-    background: var(--panel-surface);
-    border-color: var(--line);
-    box-shadow: 0 10px 24px rgba(22, 22, 22, 0.05);
-}
-
-.infrastructure-card h3,
-.infrastructure-card h4 {
-    color: var(--text);
-}
-
-.pool-banner {
-    display: inline-flex;
-    align-items: center;
-    min-height: 42px;
-    margin: 0 0 16px;
-    padding: 0 14px;
-    border: 1px solid rgba(20, 184, 166, 0.28);
-    border-radius: 8px;
-    background: rgba(20, 184, 166, 0.10);
-    color: var(--text);
-    font-weight: 700;
-    animation: pool-banner-blink 1.4s ease-in-out infinite;
-}
-
-@keyframes pool-banner-blink {
-    0%, 100% {
-        opacity: 1;
-    }
-    50% {
-        opacity: 0.45;
-    }
 }
 
 .table-shell {
@@ -1731,8 +1658,7 @@ html[data-theme="dark"] input {
         min-height: auto;
     }
 
-    .hero-grid,
-    .infrastructure-grid {
+    .hero-grid {
         grid-template-columns: 1fr;
         gap: 28px;
     }

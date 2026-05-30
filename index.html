@@ -45,9 +45,9 @@
 
     <!-- Preload Logo -->
     <link rel="preload" href="tdsp_logo.webp" as="image">
-    <link rel="stylesheet" href="styles.css?v=20260524-epoch-right">
+    <link rel="stylesheet" href="styles.css?v=20260526-remove-pool-stats">
 
-    <script src="index.js?v=20260524-theme-emoji" defer></script>
+    <script src="index.js?v=20260526-hype-ticker" defer></script>
 </head>
 <body>
     <header class="site-header" id="site-header">
@@ -55,21 +55,13 @@
             <div class="menu-bar">
                 <nav class="menu-bar__nav nav" aria-label="Main navigation">
                     <a class="nav-link nav-home-link" href="#home">Home</a>
-                    <a class="nav-link" href="#about">About</a>
-                    <a class="nav-link" href="#pool">SPO Stats</a>
                     <a class="nav-link" href="#starch">Starch</a>
                     <a class="nav-link" href="#governance">Governance</a>
                 </nav>
                 <div class="menu-bar__side">
                     <div class="menu-bar__actions header-links" aria-label="External links">
-                        <a href="https://blockfrost.grafana.net/public-dashboards/8d618eda298d472a996ca3473ab36177" target="_blank" rel="noopener noreferrer" aria-label="Blockfrost Dashboard">
-                            <img src="Icebreaker_logo.webp" alt="">
-                        </a>
                         <a href="https://twitter.com/DamionDutch" target="_blank" rel="noopener noreferrer" aria-label="X">
                             <img src="X-logo_ico.webp" alt="">
-                        </a>
-                        <a href="https://tool.jamonbread.io/delegate/pool1ksye6zwlzaytspldngc3966aj79zkjvmkykydu2txay75c0krfp" target="_blank" rel="noopener noreferrer" aria-label="Delegate Now">
-                            <img src="stakebutton_ico.webp" alt="">
                         </a>
                         <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch to dark mode">
                             <span class="theme-toggle-icon theme-toggle-icon--moon" aria-hidden="true">🌙</span>
@@ -89,72 +81,16 @@
                     <p class="eyebrow">Bare-metal Cardano stake pool</p>
                     <h1>The Dutch Stake Pool</h1>
                     <p class="lead">Reliable low-fee staking, node operations, and Cardano ecosystem support from the Netherlands.</p>
-                    <div class="hero-actions">
-                        <a class="button primary-button" href="#pool">View Pool</a>
-                        <a class="button ghost-button" href="https://tool.jamonbread.io/delegate/pool1ksye6zwlzaytspldngc3966aj79zkjvmkykydu2txay75c0krfp" target="_blank" rel="noopener noreferrer">Delegate Now</a>
-                    </div>
                 </div>
                 <div class="hero-media">
                     <img class="hero-logo" src="tdsp_logo.webp" alt="The Dutch Stake Pool Logo" loading="eager">
                     <div class="price-panel">
                         <strong>Live Prices</strong>
                         <span>ADA <b id="ada-price">Loading...</b></span>
-                        <span>IAG <b id="iag-price">Loading...</b></span>
+                        <span>HYPE <b id="hype-price">Loading...</b></span>
                         <span>STRCH <b id="strch-price">Loading...</b></span>
                     </div>
                 </div>
-            </div>
-        </section>
-
-        <section class="section" id="about">
-            <div class="section-inner">
-                <p class="eyebrow">Operator</p>
-                <h2>Built for resilient infrastructure</h2>
-                <p>With 20 years of experience as an IT consultant and DevOps engineer, TDSP focuses on reliable bare-metal infrastructure and practical blockchain operations.</p>
-                <p>In Cardano governance, Damion is active as a DRep and has served as a delegate at the Cardano Constitutional Convention.</p>
-                <div class="infrastructure-grid">
-                    <div class="infrastructure-card">
-                        <h3>Blockproducer</h3>
-                        <ul>
-                            <li>Intel NUC I5</li>
-                            <li>8 threads</li>
-                            <li>40GB memory</li>
-                            <li>500GB NVME</li>
-                        </ul>
-                    </div>
-                    <div class="infrastructure-card">
-                        <h3>Relay Node 1</h3>
-                        <ul>
-                            <li>Intel NUC I3</li>
-                            <li>6 threads</li>
-                            <li>32GB memory</li>
-                            <li>1TB NVME</li>
-                        </ul>
-                    </div>
-                    <div class="infrastructure-card">
-                        <h3>Relay Node 2</h3>
-                        <ul>
-                            <li>Intel NUC I5</li>
-                            <li>8 threads</li>
-                            <li>32GB memory</li>
-                            <li>500GB NVME</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section class="section section-muted" id="pool">
-            <div class="section-inner">
-                <p class="eyebrow">Stake pool</p>
-                <h2>SPO Stats</h2>
-                <div class="pool-banner" role="status">Nodes are under construction, we are back.</div>
-                <div class="table-shell">
-                    <table id="data-table">
-                        <tr></tr>
-                    </table>
-                </div>
-                <p class="small-text">Source: <a href="https://adastat.net/pools/b4099d09df1748b807ed9a3112eb5d978a2b499bb12c46f14b3749ea" target="_blank" rel="noopener noreferrer" aria-label="ADASTAT">ADASTAT</a></p>
             </div>
         </section>
 
@@ -199,7 +135,6 @@
     </footer>
 
     <script src="chart.js"></script>
-    <script src="poolstats.js"></script>
     <script src="starch.js" defer></script>
     <script src="governance-loader.js" defer></script>
 </body>
