@@ -12,9 +12,9 @@
                 Array.from(doc.body.childNodes).forEach(node => container.appendChild(node));
             }
 
-            // Load links.js after HTML is injected
+            // Load stake.js after HTML is injected
             const script = document.createElement('script');
-            script.src = 'links.js';
+            script.src = 'stake.js';
             script.defer = true;
             document.body.appendChild(script);
         })

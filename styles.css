@@ -204,6 +204,79 @@ a[aria-label]:hover::after {
     cursor: pointer;
 }
 
+.wallet-modal-content {
+    height: auto;
+    max-height: 80vh;
+    padding: 32px 24px 24px;
+    overflow-y: auto;
+    text-align: left;
+    color: #1f2624;
+}
+
+.wallet-modal-content h2 {
+    margin: 0 0 8px;
+    font-size: 1.35rem;
+}
+
+.wallet-pool-id {
+    font-size: 0.85rem;
+    color: #4b5563;
+    word-break: break-all;
+    margin: 0 0 20px;
+}
+
+.wallet-pool-id code {
+    background: rgba(15, 118, 110, 0.08);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.wallet-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.wallet-list button.wallet-option {
+    position: static;
+    top: auto;
+    right: auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    background: #f3f4f6;
+    color: #1f2624;
+    padding: 10px 14px;
+    text-align: left;
+    justify-content: flex-start;
+    z-index: auto;
+}
+
+.wallet-list button.wallet-option:hover {
+    background: #e5e7eb;
+    transform: none;
+}
+
+.wallet-option img {
+    width: 28px;
+    max-width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    flex: 0 0 auto;
+}
+
+.wallet-status {
+    margin-top: 16px;
+    font-size: 0.9rem;
+    color: #374151;
+}
+
+.wallet-status a {
+    color: #0f766e;
+    font-weight: 600;
+}
+
 /* Base Interactive Elements */
 button {
     transition: all 0.3s ease;
@@ -479,6 +552,15 @@ html[data-theme="dark"] .theme-toggle:not([data-next-theme]) .theme-toggle-icon-
     max-width: 30px;
     height: 30px;
     object-fit: contain;
+}
+
+.menu-bar__actions a.stake-now-button {
+    width: auto;
+    height: 42px;
+    padding: 0 18px;
+    white-space: nowrap;
+    color: var(--accent-strong);
+    font-weight: 700;
 }
 
 /* Section Layout */

@@ -12,11 +12,11 @@ header("Content-Security-Policy:
     default-src 'self';
     base-uri 'self';
     object-src 'none'; 
-    script-src 'self' 'nonce-$nonce' https://cdn.jsdelivr.net;
+    script-src 'self' 'nonce-$nonce' https://cdn.jsdelivr.net https://esm.sh;
     style-src 'self' 'nonce-$nonce' https://fonts.googleapis.com;
-    connect-src 'self' https://api.coingecko.com https://api.geckoterminal.com https://api.starch.one https://tdsp.online/api https://www.tdsp.online/api https://api.tdsp.online;
+    connect-src 'self' https://api.coingecko.com https://api.geckoterminal.com https://api.starch.one https://tdsp.online/api https://www.tdsp.online/api https://api.tdsp.online https://api.koios.rest https://cardano-mainnet.blockfrost.io https://esm.sh;
     font-src 'self' https://fonts.gstatic.com;
-    frame-src 'self' https://tool.jamonbread.io https://xerberus.io https://blockfrost.io https://twitter.com/DamionDutch;  /* ✅ Allow staking iframe */
+    frame-src 'self' https://xerberus.io https://blockfrost.io https://twitter.com/DamionDutch;
     form-action 'self';
     require-trusted-types-for 'script';
     frame-ancestors 'none';
