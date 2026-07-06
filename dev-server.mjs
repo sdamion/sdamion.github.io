@@ -6,6 +6,7 @@ import { createReadStream } from 'node:fs';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 
 const PORT = Number(process.env.PORT || 8000);
+const HOST = process.env.HOST || '127.0.0.1';
 const ROOT = resolve(import.meta.dirname);
 const UPSTREAM_TIMEOUT_MS = Number(process.env.UPSTREAM_TIMEOUT_MS || 5_000);
 const TDSP_API_ORIGIN = (process.env.TDSP_API_ORIGIN || 'https://api.tdsp.online').replace(/\/+$/, '');
@@ -24,6 +25,12 @@ const proxyRoutes = {
       ? `${TDSP_API_ORIGIN}/api/proposal/${encodeURIComponent(proposalId)}/votes`
       : null;
   },
+  '/__account_info_proxy__': url => {
+    const rewardAddress = url.searchParams.get('rewardAddress');
+    return rewardAddress
+      ? `${TDSP_API_ORIGIN}/api/account/${encodeURIComponent(rewardAddress)}/info`
+      : null;
+  },
   '/__drep_directory_proxy__': url => {
     const type = url.searchParams.get('type');
     if (type === 'metadata') return `${TDSP_API_ORIGIN}/api/dreps/metadata`;
@@ -38,7 +45,7 @@ const proxyRoutes = {
   },
   '/__metadata_proxy__': url => {
     const metadataUrl = url.searchParams.get('url');
-    return metadataUrl && /^https?:\/\//i.test(metadataUrl) ? metadataUrl : null;
+    return isAllowedMetadataUrl(metadataUrl) ? metadataUrl : null;
   }
 };
 
@@ -56,6 +63,36 @@ const contentTypes = {
 function sendJson(res, status, payload) {
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8' });
   res.end(JSON.stringify(payload));
+}
+
+function isAllowedMetadataUrl(value) {
+  if (!value) return false;
+
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'https:') return false;
+    if (isPrivateOrLocalHost(url.hostname)) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function isPrivateOrLocalHost(hostname) {
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, '');
+  if (host === 'localhost' || host.endsWith('.localhost')) return true;
+  if (host === '::1' || host === '0:0:0:0:0:0:0:1') return true;
+
+  const ipv4 = host.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
+  if (!ipv4) return false;
+
+  const [a, b] = ipv4.slice(1).map(Number);
+  return a === 10 ||
+    a === 127 ||
+    a === 0 ||
+    (a === 169 && b === 254) ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168);
 }
 
 async function proxyRequest(target, res) {
@@ -171,8 +208,8 @@ const server = createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, '::', () => {
-  console.log(`TDSP local dev server running at http://localhost:${PORT}/`);
+server.listen(PORT, HOST, () => {
+  console.log(`TDSP local dev server running at http://${HOST}:${PORT}/`);
   console.log(`TDSP API origin: ${TDSP_API_ORIGIN}`);
   if (TDSP_API_HOST) console.log(`TDSP API host header/SNI: ${TDSP_API_HOST}`);
 });

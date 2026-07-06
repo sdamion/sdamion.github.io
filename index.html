@@ -6,6 +6,7 @@
     <meta name="description" content="Dutch Bare-Metal, low-fee stake pool for Staking $ADA and $IAG. Find a reliable DRep here.">
     <meta name="keywords" content="Cardano, ADA, IAG, staking, DRep, Dutch stake pool">
     <meta name="author" content="The Dutch Stake Pool">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://esm.sh; style-src 'self' https://fonts.googleapis.com; connect-src 'self' https://api.coingecko.com https://api.geckoterminal.com https://api.starch.one https://api.tdsp.online https://api.koios.rest https://cardano-mainnet.blockfrost.io https://esm.sh https://ipfs.io; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; frame-src 'self'; form-action 'self'">
 
     <!-- Open Graph Meta Tags -->
     <meta property="og:title" content="The Dutch Stake Pool | Reliable Cardano Staking">
@@ -60,7 +61,7 @@
                 </nav>
                 <div class="menu-bar__side">
                     <div class="menu-bar__actions header-links" aria-label="External links">
-                        <a href="#" class="stake-now-button" onclick="openStakeModal(event)" aria-label="Delegate Now">Stake Now</a>
+                        <a href="#" class="stake-now-button" data-stake-open aria-label="Delegate Now">Stake Now</a>
                         <a href="https://twitter.com/DamionDutch" target="_blank" rel="noopener noreferrer" aria-label="X">
                             <img src="X-logo_ico.webp" alt="">
                         </a>
@@ -136,10 +137,8 @@
     </footer>
 
     <div id="stakenow" class="iframe-modal" aria-hidden="true">
-        <div class="iframe-content wallet-modal-content" role="dialog" aria-modal="true" aria-labelledby="stakenow-title">
-            <button onclick="closeStakeModal()">Close</button>
-            <h2 id="stakenow-title">Delegate to The Dutch Stake Pool</h2>
-            <p class="wallet-pool-id">Pool ID: <code>pool1zfd0gl76h3f0ammgp4gu0qvt99qcqkn5a895wv0q779d6p9dz5u</code></p>
+        <div class="iframe-content wallet-modal-content" role="dialog" aria-modal="true" aria-label="Choose a Cardano wallet">
+            <button class="wallet-modal-close" data-stake-close aria-label="Close">Close</button>
             <div id="wallet-list" class="wallet-list"></div>
             <p id="wallet-status" class="wallet-status" role="status" aria-live="polite"></p>
         </div>

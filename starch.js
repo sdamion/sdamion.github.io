@@ -31,7 +31,7 @@ function displayError(message) {
     if (errorMessage) {
         errorMessage.textContent = '';
         const p = document.createElement('p');
-        p.style.color = 'red';
+        p.className = 'error-text';
         p.textContent = `❌ ${message}`;
         errorMessage.appendChild(p);
     }
@@ -155,8 +155,8 @@ function updateUI(minersData, teamBalance = 0, totalWeeklyBlocks = 0) {
             const a = document.createElement('a');
             a.href = `https://starch.one/miner/${miner_id}`;
             a.target = '_blank';
-            a.style.textDecoration = 'none';
-            a.style.color = '#007BFF';
+            a.rel = 'noopener noreferrer';
+            a.className = 'miner-link';
             a.textContent = miner_id;
             tdLink.appendChild(a);
             const tdRank = document.createElement('td'); tdRank.textContent = String(rank);

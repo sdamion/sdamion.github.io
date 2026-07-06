@@ -1,12 +1,11 @@
 const POOL_ID = 'pool1zfd0gl76h3f0ammgp4gu0qvt99qcqkn5a895wv0q779d6p9dz5u';
-const KOIOS_MAINNET_URL = 'https://api.koios.rest/api/v1';
-// Free-tier bearer token from koios.rest (10x the public rate limit). Leave empty for public tier.
-const KOIOS_API_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZGRyIjoic3Rha2UxdXh5dGhsZGM0bm14NDV0dm53c3F1NGg1cHlqZDk0dWR5dG02ZjB0Z25yNDR2ZWNqZDh2ZWwiLCJleHAiOjE4MTQ1NTE0NjksInRpZXIiOjEsInByb2pJRCI6Ind3dy50aGVkdXRjaHN0YWtlcG9vbC5jb20ifQ.kERzawinm9Ja2GzRztbTfbN4JPAJp8zV27GzgXnzMuE';
 const BLOCKFROST_MAINNET_URL = 'https://cardano-mainnet.blockfrost.io/api/v0';
 // Optional second data source to ride out Koios rate limits.
 // A mainnet project id from blockfrost.io — free tier is fine. Leave empty to use Koios only.
 const BLOCKFROST_PROJECT_ID = '';
 const MESH_CDN_URL = 'https://esm.sh/@meshsdk/core@1.9.1?bundle-deps';
+const STAKE_STATUS_API_BASE_URL = 'https://api.tdsp.online/api/account';
+const LOCAL_STAKE_STATUS_PROXY_PATH = '/__account_info_proxy__';
 
 let meshLibPromise = null;
 function loadMeshLib() {
@@ -22,7 +21,9 @@ function getModal() {
 
 function setStatus(message) {
     const statusEl = document.getElementById('wallet-status');
-    if (statusEl) statusEl.textContent = message || '';
+    if (!statusEl) return;
+    statusEl.textContent = message || '';
+    statusEl.hidden = !message;
 }
 
 function renderWalletList(wallets) {
@@ -65,26 +66,26 @@ async function populateWalletList() {
     }
 }
 
-async function fetchStakeStatusKoios(rewardAddress, useToken) {
-    // Koios answers CORS preflights with Access-Control-Allow-Headers: *, which per the
-    // Fetch spec does not cover Authorization. Chrome still tolerates it (with a warning),
-    // so the tokened call is attempted first and the public tier is the spec-safe fallback.
-    const headers = { 'Content-Type': 'application/json' };
-    if (useToken && KOIOS_API_TOKEN) headers.Authorization = `Bearer ${KOIOS_API_TOKEN}`;
-    const response = await fetch(`${KOIOS_MAINNET_URL}/account_info`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ _stake_addresses: [rewardAddress] })
-    });
+function shouldUseLocalStakeStatusProxy() {
+    return ['127.0.0.1', 'localhost'].includes(window.location.hostname);
+}
+
+function getStakeStatusApiUrl(rewardAddress) {
+    if (shouldUseLocalStakeStatusProxy()) {
+        const params = new URLSearchParams({ rewardAddress });
+        return `${LOCAL_STAKE_STATUS_PROXY_PATH}?${params.toString()}`;
+    }
+
+    return `${STAKE_STATUS_API_BASE_URL}/${encodeURIComponent(rewardAddress)}/info`;
+}
+
+async function fetchStakeStatusProxy(rewardAddress) {
+    const response = await fetch(getStakeStatusApiUrl(rewardAddress));
     if (!response.ok) {
-        throw new Error(`Koios returned ${response.status}`);
+        throw new Error(`Stake status API returned ${response.status}`);
     }
-    const rows = await response.json();
-    if (!rows.length) {
-        // No on-chain history at all for this stake address -> genuinely unregistered.
-        return { active: false, poolId: undefined };
-    }
-    return { active: rows[0].status === 'registered', poolId: rows[0].delegated_pool };
+    const data = await response.json();
+    return { active: data.active === true, poolId: data.poolId || undefined };
 }
 
 async function fetchStakeStatusBlockfrost(rewardAddress) {
@@ -103,22 +104,28 @@ async function fetchStakeStatusBlockfrost(rewardAddress) {
 }
 
 async function fetchStakeStatus(rewardAddress) {
-    const sources = [];
-    if (KOIOS_API_TOKEN) sources.push(addr => fetchStakeStatusKoios(addr, true));
-    sources.push(addr => fetchStakeStatusKoios(addr, false));
+    const sources = [fetchStakeStatusProxy];
     if (BLOCKFROST_PROJECT_ID) sources.push(fetchStakeStatusBlockfrost);
+    const errors = [];
 
     for (let round = 1; round <= 2; round++) {
         for (const source of sources) {
             try {
-                return await source(rewardAddress);
+                return { ...(await source(rewardAddress)), verified: true };
             } catch (error) {
                 console.warn('Stake status source failed', error);
+                errors.push(error);
             }
         }
         if (round === 1) await new Promise(resolve => setTimeout(resolve, 1500));
     }
-    throw new Error('Could not verify stake registration status. The network may be busy — please wait a moment and try again.');
+
+    return {
+        active: true,
+        poolId: undefined,
+        verified: false,
+        detail: errors.map(error => error?.message).filter(Boolean).join('; ')
+    };
 }
 
 async function delegateWithWallet(walletId) {
@@ -142,12 +149,14 @@ async function delegateWithWallet(walletId) {
         const rewardAddress = rewardAddresses[0];
         const accountInfo = await fetchStakeStatus(rewardAddress);
 
-        if (accountInfo.active && accountInfo.poolId === POOL_ID) {
+        if (accountInfo.verified && accountInfo.active && accountInfo.poolId === POOL_ID) {
             setStatus('This wallet is already delegating to The Dutch Stake Pool.');
             return;
         }
 
-        setStatus('Building the delegation transaction...');
+        setStatus(accountInfo.verified
+            ? 'Building the delegation transaction...'
+            : 'Could not verify current delegation because the public API is busy. Building the delegation transaction anyway...');
         const utxos = await wallet.getUtxos();
         const changeAddress = await wallet.getChangeAddress();
         const poolIdHash = deserializePoolId(POOL_ID);
@@ -195,6 +204,8 @@ function openStakeModal(event) {
     modal.setAttribute('tabindex', '-1');
     modal.focus();
     modal._triggerElement = event ? event.currentTarget : null;
+    const listEl = document.getElementById('wallet-list');
+    if (listEl) listEl.textContent = '';
     populateWalletList();
 }
 
@@ -209,8 +220,26 @@ function closeStakeModal() {
     modal._triggerElement = null;
 }
 
+function bindStakeControls(root = document) {
+    root.querySelectorAll('[data-stake-open]').forEach(button => {
+        if (button.dataset.stakeBound === 'true') return;
+        button.dataset.stakeBound = 'true';
+        button.addEventListener('click', openStakeModal);
+    });
+
+    root.querySelectorAll('[data-stake-close]').forEach(button => {
+        if (button.dataset.stakeBound === 'true') return;
+        button.dataset.stakeBound = 'true';
+        button.addEventListener('click', closeStakeModal);
+    });
+}
+
 window.openStakeModal = openStakeModal;
 window.closeStakeModal = closeStakeModal;
+
+bindStakeControls();
+document.addEventListener('DOMContentLoaded', () => bindStakeControls());
+document.addEventListener('tdsp:content-loaded', () => bindStakeControls());
 
 document.addEventListener('keydown', event => {
     const modal = getModal();

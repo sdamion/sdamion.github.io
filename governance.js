@@ -1820,7 +1820,10 @@ function shortenDrepIdentifier(value) {
 }
 
 async function fetchDrepMetadataName(url) {
-    const response = await fetch(getDrepMetadataFetchUrl(url));
+    const fetchUrl = getDrepMetadataFetchUrl(url);
+    if (!fetchUrl) throw new Error('Unsupported DRep metadata URL');
+
+    const response = await fetch(fetchUrl);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
     const payload = await response.json();
@@ -1908,11 +1911,26 @@ function getDrepDetailApiUrl(drepId) {
 }
 
 function getDrepMetadataFetchUrl(url) {
+    const normalizedUrl = normalizeMetadataUrl(url);
+    if (!isAllowedBrowserMetadataUrl(normalizedUrl)) return '';
+
     if (shouldUseLocalDashboardProxy()) {
-        const params = new URLSearchParams({ url });
+        const params = new URLSearchParams({ url: normalizedUrl });
         return `${LOCAL_METADATA_PROXY_PATH}?${params.toString()}`;
     }
-    return url;
+    return normalizedUrl;
+}
+
+function isAllowedBrowserMetadataUrl(url) {
+    if (!url) return false;
+
+    try {
+        const parsed = new URL(url);
+        if (parsed.protocol !== 'https:') return false;
+        return parsed.hostname === 'ipfs.io';
+    } catch {
+        return false;
+    }
 }
 
 function mapBreakdownKeyToVote(key) {

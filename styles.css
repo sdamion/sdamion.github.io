@@ -65,6 +65,15 @@ h2 {
     font-size: 14px;
 }
 
+.error-text {
+    color: #c62828;
+}
+
+.miner-link {
+    color: #007bff;
+    text-decoration: none;
+}
+
 p {
     font-size: 1.2rem;
     margin-bottom: 20px;
@@ -173,62 +182,27 @@ a[aria-label]:hover::after {
     position: fixed;
     top: 0; left: 0;
     width: 100vw; height: 100vh;
-    background-color: rgba(0,0,0,0.8);
+    padding: 24px;
+    background-color: rgba(17, 24, 22, 0.72);
+    backdrop-filter: blur(10px);
     z-index: 9999;
 }
 .iframe-content {
     position: relative;
-    width: 90%;
-    max-width: 900px;
-    height: 80vh;
-    margin: 5vh auto;
-    background: #fff;
-    border-radius: 10px;
-    overflow: hidden;
-}
-.iframe-content iframe {
-    width: 100%;
-    height: 100%;
-    border: none;
-}
-.iframe-content button {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background: red;
-    color: white;
-    border: none;
-    padding: 5px 10px;
-    border-radius: 5px;
-    z-index: 10;
-    cursor: pointer;
+    width: min(100%, 360px);
+    margin: min(16vh, 120px) auto 0;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
 }
 
 .wallet-modal-content {
     height: auto;
-    max-height: 80vh;
-    padding: 32px 24px 24px;
+    max-height: calc(100vh - 48px);
+    padding: 16px;
     overflow-y: auto;
-    text-align: left;
-    color: #1f2624;
-}
-
-.wallet-modal-content h2 {
-    margin: 0 0 8px;
-    font-size: 1.35rem;
-}
-
-.wallet-pool-id {
-    font-size: 0.85rem;
-    color: #4b5563;
-    word-break: break-all;
-    margin: 0 0 20px;
-}
-
-.wallet-pool-id code {
-    background: rgba(15, 118, 110, 0.08);
-    padding: 2px 6px;
-    border-radius: 4px;
+    color: var(--text);
 }
 
 .wallet-list {
@@ -239,22 +213,25 @@ a[aria-label]:hover::after {
 
 .wallet-list button.wallet-option {
     position: static;
-    top: auto;
-    right: auto;
     display: flex;
     align-items: center;
     gap: 12px;
     width: 100%;
-    background: #f3f4f6;
-    color: #1f2624;
-    padding: 10px 14px;
-    text-align: left;
+    min-height: 52px;
+    background: var(--control-surface);
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px 12px;
     justify-content: flex-start;
-    z-index: auto;
+    text-align: left;
+    font: inherit;
+    font-weight: 700;
+    box-shadow: none;
 }
 
 .wallet-list button.wallet-option:hover {
-    background: #e5e7eb;
+    background: var(--control-hover-surface);
     transform: none;
 }
 
@@ -267,14 +244,32 @@ a[aria-label]:hover::after {
 }
 
 .wallet-status {
-    margin-top: 16px;
+    margin: 10px 0 0;
     font-size: 0.9rem;
-    color: #374151;
+    color: var(--text-muted);
 }
 
 .wallet-status a {
-    color: #0f766e;
+    color: var(--accent-strong);
     font-weight: 600;
+}
+
+.wallet-modal-close {
+    display: block;
+    width: 100%;
+    min-height: 42px;
+    margin-bottom: 10px;
+    background: var(--surface-muted);
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    font: inherit;
+    font-weight: 700;
+}
+
+.wallet-modal-close:hover {
+    background: var(--control-hover-surface);
+    transform: none;
 }
 
 /* Base Interactive Elements */

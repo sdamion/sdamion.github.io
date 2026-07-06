@@ -14,7 +14,7 @@ header("Content-Security-Policy:
     object-src 'none'; 
     script-src 'self' 'nonce-$nonce' https://cdn.jsdelivr.net https://esm.sh;
     style-src 'self' 'nonce-$nonce' https://fonts.googleapis.com;
-    connect-src 'self' https://api.coingecko.com https://api.geckoterminal.com https://api.starch.one https://tdsp.online/api https://www.tdsp.online/api https://api.tdsp.online https://api.koios.rest https://cardano-mainnet.blockfrost.io https://esm.sh;
+    connect-src 'self' https://api.coingecko.com https://api.geckoterminal.com https://api.starch.one https://tdsp.online/api https://www.tdsp.online/api https://api.tdsp.online https://api.koios.rest https://cardano-mainnet.blockfrost.io https://esm.sh https://ipfs.io;
     font-src 'self' https://fonts.gstatic.com;
     frame-src 'self' https://xerberus.io https://blockfrost.io https://twitter.com/DamionDutch;
     form-action 'self';
