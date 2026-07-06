@@ -535,6 +535,7 @@ function pickFirstNumber(...values) {
 }
 
 function normalizePercentageNumber(value) {
+    if (value === null || value === undefined || value === '') return NaN;
     const number = Number(value);
     if (!Number.isFinite(number)) return NaN;
     return number;
@@ -587,9 +588,9 @@ function getVoteDisplayFromProposalSummary(summary, proposal) {
 }
 
 function getPercentagesFromSummary(summary, prefix) {
-    const yes = Number(summary[`${prefix}_yes_pct`]);
-    const no = Number(summary[`${prefix}_no_pct`]);
-    const explicitAbstain = Number(summary[`${prefix}_abstain_pct`]);
+    const yes = normalizePercentageNumber(summary[`${prefix}_yes_pct`]);
+    const no = normalizePercentageNumber(summary[`${prefix}_no_pct`]);
+    const explicitAbstain = normalizePercentageNumber(summary[`${prefix}_abstain_pct`]);
     const abstain = Number.isFinite(explicitAbstain) ? explicitAbstain : Math.max(0, 100 - yes - no);
 
     if (![yes, no, abstain].every(Number.isFinite)) return null;
@@ -1274,15 +1275,18 @@ function mergeProposalVoteDetails(proposal, payload) {
     const detail = extractProposalVoteDetail(payload, proposal.proposal_id);
     if (!detail && !payload?.votes?.dreps) return proposal;
 
-    const summary = normalizeVotingSummary(
+    const detailSummary = normalizeVotingSummary(
         detail?.voting_summary
         || detail?.vote_summary
         || detail?.summary
         || detail?.vote_percentages
         || detail?.votePercentages
-        || getVotingSummaryFromProposalVotesPayload(payload)
         || detail
     );
+    const voteListSummary = getVotingSummaryFromProposalVotesPayload(payload);
+    const summary = hasStructuredVoteSummary(detailSummary)
+        ? detailSummary
+        : proposal.voteSummary || voteListSummary;
 
     const nextProposal = {
         ...proposal,
@@ -1473,23 +1477,11 @@ function createVoteLegendItem(item, drepVotes) {
 }
 
 function formatVoteLegendDetail(item, drepVotes) {
-    if (item.key === 'yes' || item.key === 'no' || item.key === 'abstain') {
-        return [
-            `${item.count ?? 0} votes`,
-            formatCompactAdaFromLovelace(item.value),
-            Number.isFinite(item.votePowerPercentage) ? formatPercentage(item.votePowerPercentage) : null
-        ].filter(Boolean).join(' • ');
-    }
-
-    const votePercentage = getDrepVoteCountPercentage(item.key, drepVotes);
-    if (votePercentage !== null) {
-        return [
-            `${item.count ?? 0} votes`,
-            formatCompactAdaFromLovelace(item.value),
-            formatPercentage(votePercentage)
-        ].join(' • ');
-    }
-    return formatCompactAdaFromLovelace(item.value);
+    return [
+        Number.isFinite(item.count) ? `${item.count} votes` : null,
+        formatCompactAdaFromLovelace(item.value),
+        Number.isFinite(item.votePowerPercentage) ? formatPercentage(item.votePowerPercentage) : null
+    ].filter(Boolean).join(' • ');
 }
 
 function renderDrepDetailsPanel(container, item, drepVotes) {
@@ -1933,14 +1925,14 @@ function mapBreakdownKeyToVote(key) {
 function getDrepStakeBreakdown(summary) {
     if (!summary) return [];
 
-    const yesVotePower = Number(summary.drep_active_yes_vote_power) || Number(summary.drep_yes_vote_power) || 0;
-    const noVotePower = Number(summary.drep_active_no_vote_power) || Number(summary.drep_no_vote_power) || 0;
-    const explicitYesPercentage = Number(summary.drep_yes_pct);
-    const explicitNoPercentage = Number(summary.drep_no_pct);
-    const directVotePowerTotal = yesVotePower + noVotePower;
-    const getDirectVotePowerPercentage = value => (
-        directVotePowerTotal > 0 ? (value / directVotePowerTotal) * 100 : 0
-    );
+    const yesVotePower = pickFirstNumber(
+        summary.drep_active_yes_vote_power,
+        summary.drep_yes_vote_power
+    ) ?? 0;
+    const noVotePower = pickFirstNumber(
+        summary.drep_active_no_vote_power,
+        summary.drep_no_vote_power
+    ) ?? 0;
 
     const items = [
         {
@@ -1948,9 +1940,6 @@ function getDrepStakeBreakdown(summary) {
             label: 'DRep yes stake',
             value: yesVotePower,
             count: Number(summary.drep_yes_votes_cast) || 0,
-            votePowerPercentage: Number.isFinite(explicitYesPercentage)
-                ? explicitYesPercentage
-                : getDirectVotePowerPercentage(yesVotePower),
             color: '#34d399'
         },
         {
@@ -1958,9 +1947,6 @@ function getDrepStakeBreakdown(summary) {
             label: 'DRep no stake',
             value: noVotePower,
             count: Number(summary.drep_no_votes_cast) || 0,
-            votePowerPercentage: Number.isFinite(explicitNoPercentage)
-                ? explicitNoPercentage
-                : getDirectVotePowerPercentage(noVotePower),
             color: '#f87171'
         },
         {
@@ -1984,7 +1970,15 @@ function getDrepStakeBreakdown(summary) {
         }
     ];
 
-    return items.filter(item => item.value > 0);
+    const representedPower = items.reduce((sum, item) => sum + item.value, 0);
+    return items
+        .filter(item => item.value > 0)
+        .map(item => ({
+            ...item,
+            votePowerPercentage: representedPower > 0
+                ? (item.value / representedPower) * 100
+                : 0
+        }));
 }
 
 function getPieChartSegments(items) {
