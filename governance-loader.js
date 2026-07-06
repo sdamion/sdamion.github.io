@@ -13,9 +13,13 @@
             const section = doc.querySelector('#governance');
             if (!section) throw new Error('Missing governance section');
 
-            container.replaceWith(document.importNode(section, true));
+            const loadedSection = document.importNode(section, true);
+            container.replaceWith(loadedSection);
             loadGovernanceScript();
             document.dispatchEvent(new CustomEvent('tdsp:content-loaded'));
+            if (window.location.hash === '#governance') {
+                requestAnimationFrame(() => loadedSection.scrollIntoView());
+            }
         } catch (error) {
             container.textContent = 'Governance content could not be loaded.';
         }
