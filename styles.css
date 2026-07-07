@@ -722,6 +722,72 @@ p {
     font-size: 1rem;
 }
 
+.pool-summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+    margin: 28px 0 18px;
+}
+
+.pool-summary > div,
+.pool-relay {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--governance-card-bg);
+}
+
+.pool-summary > div {
+    padding: 18px;
+}
+
+.pool-summary strong {
+    display: block;
+    color: var(--accent-strong);
+    font-size: 1.45rem;
+    line-height: 1.15;
+}
+
+.pool-summary span {
+    display: block;
+    margin-top: 6px;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.pool-relays {
+    display: grid;
+    gap: 10px;
+}
+
+.pool-relay {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+}
+
+.pool-relay-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 64px;
+    min-height: 30px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 800;
+}
+
+.pool-relay--up .pool-relay-status {
+    background: rgba(20, 184, 166, 0.14);
+    color: #0f766e;
+}
+
+.pool-relay--down .pool-relay-status {
+    background: rgba(220, 38, 38, 0.12);
+    color: #b91c1c;
+}
+
 .table-shell {
     width: 100%;
     margin-top: 24px;
@@ -1750,6 +1816,10 @@ html[data-theme="dark"] input {
 
     .price-panel {
         grid-template-columns: 1fr;
+    }
+
+    .pool-summary {
+        grid-template-columns: 1fr 1fr;
     }
 
     .governance-columns {

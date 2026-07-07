@@ -11,6 +11,7 @@ const IS_LOCAL_PREVIEW = ['localhost', '127.0.0.1'].includes(window.location.hos
 const THEME_STORAGE_KEY = 'tdsp-theme';
 const COINGECKO_PRICE_URL = IS_LOCAL_PREVIEW ? '/__coingecko_price_proxy__' : COINGECKO_API_URL;
 const GECKOTERMINAL_PRICE_URL = IS_LOCAL_PREVIEW ? '/__geckoterminal_price_proxy__' : GECKOTERMINAL_API_URL;
+const POOL_API_URL = IS_LOCAL_PREVIEW ? '/__pool_proxy__' : 'https://api.tdsp.online/api/pool';
 
 // Fetch and display ADA, HYPE, and STRCH prices asynchronously
 async function fetchPrices() {
@@ -58,7 +59,9 @@ function goToDetails() {
 document.addEventListener("DOMContentLoaded", () => {
     initThemeToggle();
     fetchPrices();
+    fetchPoolStatus();
     setInterval(fetchPrices, 60000); // Auto-update every 60 seconds
+    setInterval(fetchPoolStatus, 300000);
     initUI();
 });
 
@@ -69,6 +72,85 @@ document.addEventListener('tdsp:content-loaded', () => {
 function initUI() {
     setupRevealOnScroll();
     setupHeaderVisibility();
+}
+
+async function fetchPoolStatus() {
+    const summaryEl = document.getElementById('pool-summary');
+    const relaysEl = document.getElementById('pool-relays');
+
+    if (!summaryEl || !relaysEl) return;
+
+    try {
+        const response = await fetch(POOL_API_URL);
+        if (!response.ok) throw new Error(`Pool API HTTP Error: ${response.status}`);
+        renderPoolStatus(await response.json());
+    } catch (error) {
+        relaysEl.textContent = '';
+        const message = document.createElement('p');
+        message.className = 'small-text';
+        message.textContent = 'Pool data could not be loaded.';
+        relaysEl.appendChild(message);
+    }
+}
+
+function renderPoolStatus(pool) {
+    setText('pool-delegators', formatInteger(pool?.delegator_count));
+    setText('pool-live-stake', formatAdaFromLovelace(pool?.live_stake_lovelace));
+    setText('pool-active-stake', formatAdaFromLovelace(pool?.active_stake_lovelace));
+
+    const relays = Array.isArray(pool?.relays) ? pool.relays : [];
+    const upCount = relays.filter(relay => relay.up === true).length;
+    setText('pool-relays-up', relays.length ? `${upCount}/${relays.length}` : 'N/A');
+    setText('pool-last-updated', formatTimestamp(pool?.updated_at));
+
+    const relaysEl = document.getElementById('pool-relays');
+    if (!relaysEl) return;
+
+    relaysEl.textContent = '';
+    if (!relays.length) {
+        const message = document.createElement('p');
+        message.className = 'small-text';
+        message.textContent = 'No relay data available.';
+        relaysEl.appendChild(message);
+        return;
+    }
+
+    relays.forEach(relay => {
+        const row = document.createElement('div');
+        row.className = `pool-relay pool-relay--${relay.up ? 'up' : 'down'}`;
+
+        const status = document.createElement('span');
+        status.className = 'pool-relay-status';
+        status.textContent = relay.up ? 'Up' : 'Down';
+
+        const host = document.createElement('strong');
+        host.textContent = `${relay.host || 'unknown'}:${relay.port || '?'}`;
+
+        row.append(status, host);
+        relaysEl.appendChild(row);
+    });
+}
+
+function setText(id, value) {
+    const element = document.getElementById(id);
+    if (element) element.textContent = value;
+}
+
+function formatInteger(value) {
+    const number = Number(value);
+    return Number.isFinite(number) ? new Intl.NumberFormat('en-US').format(number) : 'N/A';
+}
+
+function formatAdaFromLovelace(value) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return 'N/A';
+    return `${new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(number / 1_000_000)} ADA`;
+}
+
+function formatTimestamp(value) {
+    if (!value) return 'Never';
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? 'Never' : date.toLocaleString();
 }
 
 function initThemeToggle() {
