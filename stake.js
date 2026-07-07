@@ -1,4 +1,6 @@
 const POOL_ID = 'pool1zfd0gl76h3f0ammgp4gu0qvt99qcqkn5a895wv0q779d6p9dz5u';
+const POOL_ID_HEX = '125af47fdabc52feef680d51c7818b2941805a74e9cb4731e0f78add';
+const TARGET_POOL_IDS = new Set([POOL_ID, POOL_ID_HEX]);
 const BLOCKFROST_MAINNET_URL = 'https://cardano-mainnet.blockfrost.io/api/v0';
 // Optional second data source to ride out Koios rate limits.
 // A mainnet project id from blockfrost.io — free tier is fine. Leave empty to use Koios only.
@@ -29,7 +31,7 @@ function setStatus(message) {
 function renderWalletList(wallets) {
     const listEl = document.getElementById('wallet-list');
     if (!listEl) return;
-    listEl.innerHTML = '';
+    listEl.replaceChildren();
 
     if (!wallets.length) {
         setStatus('No Cardano wallet extension detected. Install a CIP-30 wallet (Eternl, Lace, Nami, Typhon, Flint, Yoroi, Vespr...) and reopen this dialog.');
@@ -121,11 +123,15 @@ async function fetchStakeStatus(rewardAddress) {
     }
 
     return {
-        active: true,
+        active: false,
         poolId: undefined,
         verified: false,
         detail: errors.map(error => error?.message).filter(Boolean).join('; ')
     };
+}
+
+function isTargetPoolId(poolId) {
+    return TARGET_POOL_IDS.has(String(poolId || '').trim().toLowerCase());
 }
 
 async function delegateWithWallet(walletId) {
@@ -147,16 +153,28 @@ async function delegateWithWallet(walletId) {
         const provider = new KoiosProvider('api');
         const rewardAddresses = await wallet.getRewardAddresses();
         const rewardAddress = rewardAddresses[0];
+        if (!rewardAddress) {
+            setStatus('No stake address was found in this wallet. No transaction was built.');
+            return;
+        }
         const accountInfo = await fetchStakeStatus(rewardAddress);
 
-        if (accountInfo.verified && accountInfo.active && accountInfo.poolId === POOL_ID) {
+        if (!accountInfo.verified) {
+            setStatus('Could not verify current delegation status. No transaction was built, so no ADA will be spent. Please try again in a moment.');
+            return;
+        }
+
+        if (accountInfo.active && isTargetPoolId(accountInfo.poolId)) {
             setStatus('This wallet is already delegating to The Dutch Stake Pool.');
             return;
         }
 
-        setStatus(accountInfo.verified
-            ? 'Building the delegation transaction...'
-            : 'Could not verify current delegation because the public API is busy. Building the delegation transaction anyway...');
+        if (accountInfo.active && !accountInfo.poolId) {
+            setStatus('This wallet is already registered, but the current pool could not be confirmed. No transaction was built.');
+            return;
+        }
+
+        setStatus('Building the delegation transaction...');
         const utxos = await wallet.getUtxos();
         const changeAddress = await wallet.getChangeAddress();
         const poolIdHash = deserializePoolId(POOL_ID);

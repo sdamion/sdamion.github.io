@@ -179,8 +179,7 @@ function populateTeamSelector() {
     const teamSelector = document.getElementById('teamSelector');
     if (!teamSelector) return;
 
-    teamSelector.innerHTML = '';
-    while (teamSelector.firstChild) teamSelector.removeChild(teamSelector.firstChild);
+    teamSelector.replaceChildren();
     Object.entries(teams).forEach(([teamId, teamName]) => {
         const opt = document.createElement('option');
         opt.value = teamId;

@@ -1074,6 +1074,7 @@ function addEmbeddedGovernanceImages(container, proposal, candidates = extractGo
         image.src = candidate.src;
         image.alt = candidate.alt || 'Governance action image';
         image.loading = 'lazy';
+        image.referrerPolicy = 'no-referrer';
 
         imageLink.appendChild(image);
         section.appendChild(imageLink);
@@ -1421,7 +1422,11 @@ function createDrepVoteChartSection(breakdown, drepVotes) {
     const total = breakdown.reduce((sum, item) => sum + item.value, 0);
     const center = document.createElement('div');
     center.className = 'governance-pie-chart-center';
-    center.innerHTML = `<span>ADA represented</span><strong>${formatCompactAdaFromLovelace(total, { fixedFractionDigits: 2 })}</strong>`;
+    const centerLabel = document.createElement('span');
+    centerLabel.textContent = 'ADA represented';
+    const centerValue = document.createElement('strong');
+    centerValue.textContent = formatCompactAdaFromLovelace(total, { fixedFractionDigits: 2 });
+    center.append(centerLabel, centerValue);
     chart.appendChild(center);
 
     segments.forEach(segment => {
@@ -2143,6 +2148,7 @@ function appendRichText(container, text) {
             image.src = imageSrc;
             image.alt = 'Governance action image';
             image.loading = 'lazy';
+            image.referrerPolicy = 'no-referrer';
 
             imageLink.appendChild(image);
             container.appendChild(imageLink);
@@ -2151,6 +2157,7 @@ function appendRichText(container, text) {
             link.href = cleanUrl;
             link.target = '_blank';
             link.rel = 'noopener noreferrer';
+            link.referrerPolicy = 'no-referrer';
             link.textContent = cleanUrl;
             container.appendChild(link);
         }
@@ -2412,6 +2419,7 @@ function appendMarkdownToken(container, token) {
         link.href = normalizeMetadataUrl(token.href);
         link.target = '_blank';
         link.rel = 'noopener noreferrer';
+        link.referrerPolicy = 'no-referrer';
         link.textContent = token.label;
         container.appendChild(link);
         return;
@@ -2434,6 +2442,7 @@ function appendMarkdownToken(container, token) {
         image.src = imageSrc;
         image.alt = token.alt || 'Governance action image';
         image.loading = 'lazy';
+        image.referrerPolicy = 'no-referrer';
 
         imageLink.appendChild(image);
         container.appendChild(imageLink);

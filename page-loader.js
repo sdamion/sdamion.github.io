@@ -36,8 +36,10 @@
 
             // Load external scripts found in fetched doc (safe: only external src)
             Array.from(doc.querySelectorAll('script[src]')).forEach(s => {
+                const src = s.getAttribute('src');
+                if (!src || /^https?:\/\//i.test(src) || src.startsWith('//')) return;
                 const script = document.createElement('script');
-                script.src = s.getAttribute('src');
+                script.src = src;
                 script.defer = true;
                 if (nonce) script.setAttribute('nonce', nonce);
                 document.body.appendChild(script);
