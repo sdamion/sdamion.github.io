@@ -21,6 +21,19 @@ function getModal() {
     return document.getElementById('stakenow');
 }
 
+function setWalletStep(step) {
+    const warningEl = document.getElementById('stake-warning');
+    const listEl = document.getElementById('wallet-list');
+    const isWarning = step === 'warning';
+
+    if (warningEl) warningEl.hidden = !isWarning;
+    if (listEl) {
+        listEl.hidden = isWarning;
+        if (isWarning) listEl.replaceChildren();
+    }
+    if (isWarning) setStatus('');
+}
+
 function setStatus(message) {
     const statusEl = document.getElementById('wallet-status');
     if (!statusEl) return;
@@ -34,7 +47,7 @@ function renderWalletList(wallets) {
     listEl.replaceChildren();
 
     if (!wallets.length) {
-        setStatus('No Cardano wallet extension detected. Install a CIP-30 wallet (Eternl, Lace, Nami, Typhon, Flint, Yoroi, Vespr...) and reopen this dialog.');
+        setStatus('No Cardano wallet extension detected. Install a CIP-30 wallet (Eternl, Lace, Vespr...) and reopen this dialog.');
         return;
     }
 
@@ -222,9 +235,7 @@ function openStakeModal(event) {
     modal.setAttribute('tabindex', '-1');
     modal.focus();
     modal._triggerElement = event ? event.currentTarget : null;
-    const listEl = document.getElementById('wallet-list');
-    if (listEl) listEl.textContent = '';
-    populateWalletList();
+    setWalletStep('warning');
 }
 
 function closeStakeModal() {
@@ -249,6 +260,15 @@ function bindStakeControls(root = document) {
         if (button.dataset.stakeBound === 'true') return;
         button.dataset.stakeBound = 'true';
         button.addEventListener('click', closeStakeModal);
+    });
+
+    root.querySelectorAll('[data-stake-continue]').forEach(button => {
+        if (button.dataset.stakeBound === 'true') return;
+        button.dataset.stakeBound = 'true';
+        button.addEventListener('click', () => {
+            setWalletStep('wallets');
+            populateWalletList();
+        });
     });
 }
 

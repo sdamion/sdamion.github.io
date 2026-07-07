@@ -211,6 +211,46 @@ a[aria-label]:hover::after {
     gap: 8px;
 }
 
+.stake-warning {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 10px;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--governance-card-bg);
+}
+
+.stake-warning[hidden] {
+    display: none;
+}
+
+.stake-warning strong {
+    color: var(--accent-strong);
+    font-size: 1rem;
+}
+
+.stake-warning p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.stake-continue-button {
+    min-height: 42px;
+    background: var(--accent);
+    color: #fff;
+    border: 0;
+    border-radius: 8px;
+    font: inherit;
+    font-weight: 800;
+}
+
+.stake-continue-button:hover {
+    background: var(--accent-strong);
+    transform: none;
+}
+
 .wallet-list button.wallet-option {
     position: static;
     display: flex;
