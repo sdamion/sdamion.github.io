@@ -115,7 +115,7 @@ function renderPoolStatus(pool) {
         return;
     }
 
-    relays.forEach(relay => {
+    relays.forEach((relay, index) => {
         const row = document.createElement('div');
         row.className = `pool-relay pool-relay--${relay.up ? 'up' : 'down'}`;
 
@@ -124,7 +124,7 @@ function renderPoolStatus(pool) {
         status.textContent = relay.up ? 'Up' : 'Down';
 
         const host = document.createElement('strong');
-        host.textContent = `${relay.host || 'unknown'}:${relay.port || '?'}`;
+        host.textContent = `Relay ${index + 1}`;
 
         row.append(status, host);
         relaysEl.appendChild(row);
