@@ -1903,7 +1903,7 @@ html[data-theme="dark"] input {
     }
 
     .hero {
-        padding-top: 0;
+        padding-top: 28px;
     }
 
     .hero-copy,
