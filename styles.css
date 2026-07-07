@@ -1837,11 +1837,33 @@ html[data-theme="dark"] input {
 
 @media (max-width: 700px) {
     body {
-        padding-top: 124px;
+        padding-top: 96px;
     }
 
     html {
-        scroll-padding-top: 124px;
+        scroll-padding-top: 96px;
+    }
+
+    .menu-bar {
+        gap: 4px;
+        min-height: 96px;
+    }
+
+    .menu-bar__side {
+        padding-top: 0;
+        gap: 4px;
+    }
+
+    .nav-status {
+        padding-bottom: 2px;
+    }
+
+    .section {
+        padding-block: 48px;
+    }
+
+    .hero {
+        padding-top: 28px;
     }
 
     .hero-copy,
