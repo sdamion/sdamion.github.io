@@ -60,6 +60,7 @@ function goToDetails() {
 // Initialize UI behaviors and price fetching when DOM is ready
 document.addEventListener("DOMContentLoaded", () => {
     initThemeToggle();
+    initPoolCopyButtons();
     fetchPrices();
     fetchPoolStatus();
     fetchLeaderSchedule();
@@ -111,59 +112,14 @@ async function fetchLeaderSchedule() {
 }
 
 function renderLeaderSchedule(schedule) {
-    const scheduleEl = document.getElementById('leader-schedule');
-    if (!scheduleEl) return;
-
     const leadership = Array.isArray(schedule?.leadership) ? schedule.leadership : [];
-    scheduleEl.replaceChildren();
-
-    const title = document.createElement('strong');
-    title.textContent = 'Leadership Schedule';
-
-    const meta = document.createElement('p');
-    meta.className = 'small-text';
-    meta.textContent = `Epoch ${formatInteger(schedule?.epoch)} · ${formatInteger(schedule?.slotCount ?? leadership.length)} slot${Number(schedule?.slotCount ?? leadership.length) === 1 ? '' : 's'}`;
-
-    const generated = document.createElement('p');
-    generated.className = 'small-text';
-    generated.textContent = `Generated: ${formatTimestamp(schedule?.generatedAt)}`;
-
-    scheduleEl.append(title, meta, generated);
-
-    if (!leadership.length) {
-        const empty = document.createElement('p');
-        empty.className = 'small-text';
-        empty.textContent = 'No leader slots scheduled for this epoch.';
-        scheduleEl.appendChild(empty);
-        return;
-    }
-
-    const list = document.createElement('div');
-    list.className = 'leader-schedule-list';
-    leadership.slice(0, 5).forEach((slot, index) => {
-        const row = document.createElement('div');
-        row.className = 'leader-schedule-row';
-        const label = document.createElement('span');
-        label.textContent = `Slot ${index + 1}`;
-        const value = document.createElement('strong');
-        value.textContent = formatLeaderSlot(slot);
-        row.append(label, value);
-        list.appendChild(row);
-    });
-    scheduleEl.appendChild(list);
+    setText('leader-schedule-count', formatInteger(schedule?.slotCount ?? leadership.length));
+    setText('leader-schedule-meta', `Possible blocks · Epoch ${formatInteger(schedule?.epoch)}`);
 }
 
 function renderLeaderScheduleError() {
-    const scheduleEl = document.getElementById('leader-schedule');
-    if (!scheduleEl) return;
-
-    scheduleEl.replaceChildren();
-    const title = document.createElement('strong');
-    title.textContent = 'Leadership Schedule';
-    const message = document.createElement('p');
-    message.className = 'small-text';
-    message.textContent = 'Leadership schedule could not be loaded.';
-    scheduleEl.append(title, message);
+    setText('leader-schedule-count', 'N/A');
+    setText('leader-schedule-meta', 'Possible blocks · Epoch N/A');
 }
 
 function renderPoolStatus(pool) {
@@ -230,6 +186,50 @@ function renderPoolStatus(pool) {
     });
 }
 
+function initPoolCopyButtons() {
+    document.querySelectorAll('[data-copy-target]').forEach(button => {
+        button.addEventListener('click', async () => {
+            const target = document.getElementById(button.dataset.copyTarget);
+            const value = target?.textContent?.trim();
+            if (!value || value === '...' || value === 'N/A') return;
+
+            const originalLabel = button.textContent;
+            const originalAriaLabel = button.getAttribute('aria-label') || '';
+            try {
+                await copyText(value);
+                button.textContent = 'Copied';
+                button.setAttribute('aria-label', `Copied ${value}`);
+                setTimeout(() => {
+                    button.textContent = originalLabel;
+                    button.setAttribute('aria-label', originalAriaLabel);
+                }, 1400);
+            } catch (error) {
+                button.textContent = 'Copy failed';
+                setTimeout(() => {
+                    button.textContent = originalLabel;
+                }, 1400);
+            }
+        });
+    });
+}
+
+async function copyText(value) {
+    if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(value);
+        return;
+    }
+
+    const textArea = document.createElement('textarea');
+    textArea.value = value;
+    textArea.setAttribute('readonly', '');
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-9999px';
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand('copy');
+    textArea.remove();
+}
+
 function notifyRelayMaintenance(downRelays) {
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
 
@@ -245,21 +245,6 @@ function notifyRelayMaintenance(downRelays) {
         body: `${newDownRelays.map(item => item.label).join(', ')} down for maintenance.`,
         tag: 'tdsp-relay-maintenance'
     });
-}
-
-function formatLeaderSlot(slot) {
-    if (slot === null || slot === undefined) return 'Unknown';
-    if (typeof slot !== 'object') return String(slot);
-
-    const time = slot.time || slot.slotTime || slot.slot_time || slot.date || slot.datetime;
-    const slotNo = slot.slot || slot.slotNo || slot.slot_no || slot.absoluteSlot || slot.absolute_slot;
-    const epochSlot = slot.epochSlot || slot.epoch_slot;
-
-    return [
-        time ? formatTimestamp(time) : '',
-        slotNo ? `slot ${formatInteger(slotNo)}` : '',
-        epochSlot ? `epoch slot ${formatInteger(epochSlot)}` : ''
-    ].filter(Boolean).join(' · ') || JSON.stringify(slot);
 }
 
 function setText(id, value) {

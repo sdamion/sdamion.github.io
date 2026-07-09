@@ -764,9 +764,9 @@ p {
 
 .pool-summary {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 14px;
-    margin: 28px 0 18px;
+    margin: 18px 0;
 }
 
 .pool-summary > div,
@@ -778,6 +778,7 @@ p {
 
 .pool-summary > div {
     padding: 18px;
+    min-width: 0;
 }
 
 .pool-summary strong {
@@ -794,59 +795,70 @@ p {
     font-size: 0.9rem;
 }
 
-.pool-meta {
-    display: grid;
-    gap: 8px;
-    margin: 0 0 18px;
-    color: var(--text-muted);
-    font-size: 0.92rem;
+.pool-ticker-tile {
+    position: relative;
+    padding-right: 54px;
 }
 
-.pool-meta span {
+.pool-id-line {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
     min-width: 0;
-    overflow-wrap: anywhere;
-}
-
-.pool-meta strong {
-    color: var(--text);
-    font-weight: 800;
-}
-
-.leader-schedule {
-    display: grid;
-    gap: 8px;
-    margin: 0 0 18px;
-    padding: 14px;
+    margin: 0;
+    padding: 10px 54px 10px 12px;
     border: 1px solid var(--line);
     border-radius: 8px;
     background: var(--governance-card-bg);
-}
-
-.leader-schedule > strong {
-    color: var(--accent-strong);
-    font-size: 1rem;
-}
-
-.leader-schedule p {
-    margin: 0;
-}
-
-.leader-schedule-list {
-    display: grid;
-    gap: 8px;
-}
-
-.leader-schedule-row {
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
     color: var(--text-muted);
-    overflow-wrap: anywhere;
+    font-size: 0.9rem;
 }
 
-.leader-schedule-row strong {
+.pool-id-line > span {
+    flex: 0 0 auto;
+    font-weight: 700;
+}
+
+.pool-id-line > strong {
+    min-width: 0;
+    overflow: hidden;
     color: var(--text);
-    text-align: right;
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pool-copy-icon-button {
+    position: absolute;
+    right: 8px;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: var(--button-surface);
+    color: var(--text);
+    font-size: 0.9rem;
+    line-height: 1;
+}
+
+.pool-copy-icon-button:hover {
+    background: var(--surface);
+    transform: none;
+}
+
+.pool-ticker-tile .pool-copy-icon-button {
+    top: 12px;
+}
+
+.pool-id-copy-button {
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.pool-id-copy-button:hover {
+    transform: translateY(-50%);
 }
 
 .pool-relays {

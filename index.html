@@ -102,7 +102,17 @@
             <div class="section-inner">
                 <p class="eyebrow">Stake pool</p>
                 <h2>SPO Status</h2>
+                <div class="pool-id-line">
+                    <span>Pool ID</span>
+                    <strong id="pool-id">...</strong>
+                    <button class="pool-copy-icon-button pool-id-copy-button" type="button" data-copy-target="pool-id" aria-label="Copy stake pool ID" title="Copy pool ID">⧉</button>
+                </div>
                 <div class="pool-summary" id="pool-summary" aria-live="polite">
+                    <div class="pool-ticker-tile">
+                        <strong id="pool-ticker">...</strong>
+                        <span>Ticker</span>
+                        <button class="pool-copy-icon-button" type="button" data-copy-target="pool-ticker" aria-label="Copy stake pool ticker" title="Copy ticker">⧉</button>
+                    </div>
                     <div>
                         <strong id="pool-delegators">...</strong>
                         <span>Delegators</span>
@@ -119,14 +129,10 @@
                         <strong id="pool-relays-up">...</strong>
                         <span>Relays up</span>
                     </div>
-                </div>
-                <div class="pool-meta" aria-live="polite">
-                    <span>Ticker <strong id="pool-ticker">...</strong></span>
-                    <span>Pool ID <strong id="pool-id">...</strong></span>
-                </div>
-                <div class="leader-schedule" id="leader-schedule" aria-live="polite">
-                    <strong>Leadership Schedule</strong>
-                    <p class="small-text">Loading leadership schedule...</p>
+                    <div id="leader-schedule" aria-live="polite">
+                        <strong id="leader-schedule-count">...</strong>
+                        <span id="leader-schedule-meta">Possible blocks · Epoch ...</span>
+                    </div>
                 </div>
                 <div class="pool-relays" id="pool-relays">
                     <p class="small-text">Loading relay status...</p>
