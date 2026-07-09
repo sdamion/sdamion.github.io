@@ -12,6 +12,7 @@ const THEME_STORAGE_KEY = 'tdsp-theme';
 const COINGECKO_PRICE_URL = IS_LOCAL_PREVIEW ? '/__coingecko_price_proxy__' : COINGECKO_API_URL;
 const GECKOTERMINAL_PRICE_URL = IS_LOCAL_PREVIEW ? '/__geckoterminal_price_proxy__' : GECKOTERMINAL_API_URL;
 const POOL_API_URL = IS_LOCAL_PREVIEW ? '/__pool_proxy__' : 'https://api.tdsp.online/api/pool';
+const LEADER_SCHEDULE_API_URL = IS_LOCAL_PREVIEW ? '/__leader_schedule_proxy__' : 'https://api.tdsp.online/api/leader-schedule';
 const notifiedRelayMaintenance = new Set();
 
 // Fetch and display ADA, HYPE, and STRCH prices asynchronously
@@ -61,8 +62,10 @@ document.addEventListener("DOMContentLoaded", () => {
     initThemeToggle();
     fetchPrices();
     fetchPoolStatus();
+    fetchLeaderSchedule();
     setInterval(fetchPrices, 60000); // Auto-update every 60 seconds
     setInterval(fetchPoolStatus, 300000);
+    setInterval(fetchLeaderSchedule, 300000);
     initUI();
 });
 
@@ -94,10 +97,81 @@ async function fetchPoolStatus() {
     }
 }
 
+async function fetchLeaderSchedule() {
+    const scheduleEl = document.getElementById('leader-schedule');
+    if (!scheduleEl) return;
+
+    try {
+        const response = await fetch(LEADER_SCHEDULE_API_URL);
+        if (!response.ok) throw new Error(`Leader schedule HTTP Error: ${response.status}`);
+        renderLeaderSchedule(await response.json());
+    } catch (error) {
+        renderLeaderScheduleError();
+    }
+}
+
+function renderLeaderSchedule(schedule) {
+    const scheduleEl = document.getElementById('leader-schedule');
+    if (!scheduleEl) return;
+
+    const leadership = Array.isArray(schedule?.leadership) ? schedule.leadership : [];
+    scheduleEl.replaceChildren();
+
+    const title = document.createElement('strong');
+    title.textContent = 'Leadership Schedule';
+
+    const meta = document.createElement('p');
+    meta.className = 'small-text';
+    meta.textContent = `Epoch ${formatInteger(schedule?.epoch)} · ${formatInteger(schedule?.slotCount ?? leadership.length)} slot${Number(schedule?.slotCount ?? leadership.length) === 1 ? '' : 's'}`;
+
+    const generated = document.createElement('p');
+    generated.className = 'small-text';
+    generated.textContent = `Generated: ${formatTimestamp(schedule?.generatedAt)}`;
+
+    scheduleEl.append(title, meta, generated);
+
+    if (!leadership.length) {
+        const empty = document.createElement('p');
+        empty.className = 'small-text';
+        empty.textContent = 'No leader slots scheduled for this epoch.';
+        scheduleEl.appendChild(empty);
+        return;
+    }
+
+    const list = document.createElement('div');
+    list.className = 'leader-schedule-list';
+    leadership.slice(0, 5).forEach((slot, index) => {
+        const row = document.createElement('div');
+        row.className = 'leader-schedule-row';
+        const label = document.createElement('span');
+        label.textContent = `Slot ${index + 1}`;
+        const value = document.createElement('strong');
+        value.textContent = formatLeaderSlot(slot);
+        row.append(label, value);
+        list.appendChild(row);
+    });
+    scheduleEl.appendChild(list);
+}
+
+function renderLeaderScheduleError() {
+    const scheduleEl = document.getElementById('leader-schedule');
+    if (!scheduleEl) return;
+
+    scheduleEl.replaceChildren();
+    const title = document.createElement('strong');
+    title.textContent = 'Leadership Schedule';
+    const message = document.createElement('p');
+    message.className = 'small-text';
+    message.textContent = 'Leadership schedule could not be loaded.';
+    scheduleEl.append(title, message);
+}
+
 function renderPoolStatus(pool) {
     setText('pool-delegators', formatInteger(pool?.delegator_count));
     setText('pool-live-stake', formatAdaFromLovelace(pool?.live_stake_lovelace));
     setText('pool-active-stake', formatAdaFromLovelace(pool?.active_stake_lovelace));
+    setText('pool-ticker', pool?.ticker || 'N/A');
+    setText('pool-id', pool?.pool_id || 'N/A');
 
     const relays = Array.isArray(pool?.relays) ? pool.relays : [];
     const upCount = relays.filter(relay => relay.up === true).length;
@@ -171,6 +245,21 @@ function notifyRelayMaintenance(downRelays) {
         body: `${newDownRelays.map(item => item.label).join(', ')} down for maintenance.`,
         tag: 'tdsp-relay-maintenance'
     });
+}
+
+function formatLeaderSlot(slot) {
+    if (slot === null || slot === undefined) return 'Unknown';
+    if (typeof slot !== 'object') return String(slot);
+
+    const time = slot.time || slot.slotTime || slot.slot_time || slot.date || slot.datetime;
+    const slotNo = slot.slot || slot.slotNo || slot.slot_no || slot.absoluteSlot || slot.absolute_slot;
+    const epochSlot = slot.epochSlot || slot.epoch_slot;
+
+    return [
+        time ? formatTimestamp(time) : '',
+        slotNo ? `slot ${formatInteger(slotNo)}` : '',
+        epochSlot ? `epoch slot ${formatInteger(epochSlot)}` : ''
+    ].filter(Boolean).join(' · ') || JSON.stringify(slot);
 }
 
 function setText(id, value) {
