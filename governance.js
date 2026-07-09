@@ -723,7 +723,7 @@ function createGovernanceCard(proposal) {
         votes.textContent = 'Open for live votes';
     } else {
         votes.className = `governance-votes ${getVoteColorClass(proposal.votePercentages, proposal.voteDisplay?.source)}`;
-        votes.textContent = formatVotePercentages(proposal.votePercentages, proposal.voteDisplay?.label);
+        votes.textContent = formatVotePercentages(proposal.votePercentages, proposal.voteDisplay?.label, proposal.voteSummary, proposal.voteDisplay?.source);
     }
 
     card.appendChild(title);
@@ -1349,7 +1349,7 @@ function updateGovernanceCardVotes(proposalId, proposal) {
     if (!votes) return;
 
     votes.className = `governance-votes ${getVoteColorClass(proposal.votePercentages, proposal.voteDisplay?.source)}`;
-    votes.textContent = formatVotePercentages(proposal.votePercentages, proposal.voteDisplay?.label);
+    votes.textContent = formatVotePercentages(proposal.votePercentages, proposal.voteDisplay?.label, proposal.voteSummary, proposal.voteDisplay?.source);
 }
 
 function getVotingSummaryFromProposalVotesPayload(payload) {
@@ -1464,7 +1464,7 @@ function createDrepVoteChartSection(breakdown, drepVotes) {
     const center = document.createElement('div');
     center.className = 'governance-pie-chart-center';
     const centerLabel = document.createElement('span');
-    centerLabel.textContent = breakdown.some(item => item.unit === 'votes') ? 'Votes counted' : 'ADA represented';
+    centerLabel.textContent = breakdown.some(item => item.unit === 'votes') ? 'Votes counted' : 'Total voting power';
     const centerValue = document.createElement('strong');
     centerValue.textContent = breakdown.some(item => item.unit === 'votes')
         ? formatInteger(total)
@@ -1627,21 +1627,26 @@ function renderNoVotesList(container, votes, headingLabel = 'DRep votes') {
         const copy = document.createElement('div');
         copy.className = 'governance-no-vote-copy';
 
+        const nameLine = document.createElement('div');
+        nameLine.className = 'governance-no-vote-name-line';
+
         const name = document.createElement('strong');
         name.className = 'governance-no-vote-name';
         name.textContent = getDrepPrimaryDisplayName(vote);
-
-        const id = document.createElement('span');
-        id.className = 'governance-no-vote-id';
-        id.textContent = getDrepVoteIdentifier(vote) || 'Unknown DRep';
 
         const power = document.createElement('span');
         power.className = 'governance-no-vote-power';
         power.textContent = getDrepVotePowerLabel(vote);
 
-        copy.appendChild(name);
+        nameLine.appendChild(name);
+        if (power.textContent) nameLine.appendChild(power);
+
+        const id = document.createElement('span');
+        id.className = 'governance-no-vote-id';
+        id.textContent = getDrepVoteIdentifier(vote) || 'Unknown DRep';
+
+        copy.appendChild(nameLine);
         copy.appendChild(id);
-        if (power.textContent) copy.appendChild(power);
         row.appendChild(copy);
         list.appendChild(row);
 
@@ -2009,21 +2014,21 @@ function getDrepStakeBreakdown(summary) {
     const items = [
         {
             key: 'yes',
-            label: 'DRep yes stake',
+            label: 'Yes ADA',
             value: yesVotePower,
             count: yesVoteCount,
             color: '#34d399'
         },
         {
             key: 'no',
-            label: 'DRep no stake',
+            label: 'No ADA',
             value: noVotePower,
             count: noVoteCount,
             color: '#f87171'
         },
         {
             key: 'abstain',
-            label: 'DRep abstain stake',
+            label: 'Abstain ADA',
             value: 0,
             displayValue: abstainVotePower,
             count: abstainVoteCount,
@@ -2542,14 +2547,34 @@ function getVoteColorClass(percentages, source = 'drep') {
     return 'vote-red';
 }
 
-function formatVotePercentages(percentages, label = null) {
+function formatVotePercentages(percentages, label = null, summary = null, source = null) {
     if (!percentages) return '';
 
-    const prefix = label ? `${label} stake ` : '';
-    return [
-        `${prefix}Yes ${formatPercentage(percentages.yes)}`,
+    const parts = [
+        `Yes ${formatPercentage(percentages.yes)}`,
         `No ${formatPercentage(percentages.no)}`
-    ].join(' | ');
+    ];
+    const votingPower = formatDrepVotingPower(summary, source);
+    if (votingPower) parts.push(votingPower);
+    return parts.join(' | ');
+}
+
+function formatDrepVotingPower(summary, source) {
+    if (source !== 'drep' || !summary) return '';
+
+    const yes = pickFirstNumber(
+        summary.drep_yes_vote_power,
+        summary.drep_active_yes_vote_power,
+        summary.drep_yes_stake
+    ) || 0;
+    const no = pickFirstNumber(
+        summary.drep_no_vote_power,
+        summary.drep_active_no_vote_power,
+        summary.drep_no_stake
+    ) || 0;
+    const total = yes + no;
+    if (total <= 0) return '';
+    return `Voting power ${formatCompactAdaFromLovelace(total)}`;
 }
 
 function getGovernanceGroupSignature(proposals) {
@@ -2578,12 +2603,10 @@ async function updateGovernanceCounts(groups) {
     try {
         const drepStats = await getDrepStats(groups);
         setText('gov-drep-count', drepStats.count.toLocaleString('en-US'));
-        const usedPowerLabel = formatCompactAdaFromLovelace(drepStats.usedPower, { fixedFractionDigits: 2 }).replace(/ ADA$/, '');
-        const unusedPowerLabel = formatCompactAdaFromLovelace(drepStats.unusedPower, { fixedFractionDigits: 2 }).replace(/ ADA$/, '');
-        setText('gov-drep-power-split', `${usedPowerLabel} / ${unusedPowerLabel}`);
+        setText('gov-drep-total-power', formatCompactAdaFromLovelace(drepStats.totalPower, { fixedFractionDigits: 2 }).replace(/ ADA$/, ''));
     } catch {
         setText('gov-drep-count', '0');
-        setText('gov-drep-power-split', '0 / 0');
+        setText('gov-drep-total-power', '0');
     }
 
     updateTreasuryBudgetBar();
@@ -2604,15 +2627,9 @@ async function getDrepStats(groups) {
     }
 
     const baseStats = await drepStatsPromise;
-    const totalAda = getGovernanceTotalAda(governanceState, groups);
-    const usedPower = baseStats.totalPower;
-
     return {
         count: baseStats.count,
-        totalPower: baseStats.totalPower,
-        totalAda,
-        usedPower,
-        unusedPower: Math.max(totalAda - usedPower, 0)
+        totalPower: baseStats.totalPower
     };
 }
 
@@ -2649,63 +2666,6 @@ function getDrepEntryVotingPower(entry) {
 
     const numericValue = Number(value);
     return Number.isFinite(numericValue) ? numericValue : 0;
-}
-
-function getGovernanceTotalAda(payload, groups) {
-    const directCandidates = [
-        payload?.total_ada,
-        payload?.totalAda,
-        payload?.total_lovelace,
-        payload?.totalLovelace,
-        payload?.circulating_supply,
-        payload?.circulatingSupply,
-        payload?.supply?.total_ada,
-        payload?.supply?.totalAda,
-        payload?.supply?.circulating_supply,
-        payload?.supply?.circulatingSupply,
-        payload?.stats?.total_ada,
-        payload?.stats?.totalAda,
-        payload?.stats?.circulating_supply,
-        payload?.stats?.circulatingSupply,
-        payload?.tip?.total_ada,
-        payload?.tip?.totalAda,
-        payload?.tip?.circulating_supply,
-        payload?.tip?.circulatingSupply
-    ];
-
-    const directValue = directCandidates.map(Number).find(Number.isFinite);
-    if (Number.isFinite(directValue) && directValue > 0) return directValue;
-
-    const activeProposals = Array.isArray(groups?.active) ? groups.active : [];
-    const proposalValue = activeProposals.reduce((maxValue, proposal) => {
-        const summary = proposal?.voteSummary;
-        if (!summary) return maxValue;
-
-        const representedPower = (
-            (Number(summary.drep_yes_vote_power) || 0)
-            + (Number(summary.drep_no_vote_power) || 0)
-            + (Number(summary.drep_active_abstain_vote_power) || 0)
-            + (Number(summary.drep_always_abstain_vote_power) || 0)
-            + (Number(summary.drep_always_no_confidence_vote_power) || 0)
-        );
-
-        const extraCandidates = [
-            summary?.total_ada,
-            summary?.totalAda,
-            summary?.total_lovelace,
-            summary?.totalLovelace,
-            summary?.circulating_supply,
-            summary?.circulatingSupply,
-            summary?.total_vote_power,
-            summary?.totalVotePower,
-            representedPower
-        ];
-
-        const candidateValue = extraCandidates.map(Number).find(Number.isFinite);
-        return Number.isFinite(candidateValue) ? Math.max(maxValue, candidateValue) : maxValue;
-    }, 0);
-
-    return proposalValue;
 }
 
 function getCollectionLength(collection) {
