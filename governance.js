@@ -459,7 +459,8 @@ function normalizeVotingSummary(summary) {
         pool_abstain_votes_cast: pickFirstNumber(summary.pool_abstain_votes_cast, summary.spo_abstain_votes_cast, summary.pool?.abstain_votes_cast, summary.pool_abstain_votes),
         pool_yes_vote_power: pickFirstNumber(summary.pool_yes_vote_power, summary.spo_yes_vote_power, summary.pool?.yes_vote_power, summary.pool_yes_stake),
         pool_no_vote_power: pickFirstNumber(summary.pool_no_vote_power, summary.spo_no_vote_power, summary.pool?.no_vote_power, summary.pool_no_stake),
-        pool_active_abstain_vote_power: pickFirstNumber(summary.pool_active_abstain_vote_power, summary.spo_active_abstain_vote_power, summary.pool?.active_abstain_vote_power)
+        pool_active_abstain_vote_power: pickFirstNumber(summary.pool_active_abstain_vote_power, summary.spo_active_abstain_vote_power, summary.pool?.active_abstain_vote_power),
+        pool_abstain_vote_power: pickFirstNumber(summary.pool_abstain_vote_power, summary.spo_abstain_vote_power, summary.pool?.abstain_vote_power, summary.pool_abstain_stake)
     };
 }
 
@@ -588,13 +589,54 @@ function getVoteDisplayFromProposalSummary(summary, proposal) {
 }
 
 function getPercentagesFromSummary(summary, prefix) {
+    const votePowerPercentages = getPercentagesFromVotePower(summary, prefix);
+    if (votePowerPercentages) return votePowerPercentages;
+
+    const voteCountPercentages = getPercentagesFromVoteCounts(summary, prefix);
+    if (voteCountPercentages) return voteCountPercentages;
+
     const yes = normalizePercentageNumber(summary[`${prefix}_yes_pct`]);
     const no = normalizePercentageNumber(summary[`${prefix}_no_pct`]);
-    const explicitAbstain = normalizePercentageNumber(summary[`${prefix}_abstain_pct`]);
-    const abstain = Number.isFinite(explicitAbstain) ? explicitAbstain : Math.max(0, 100 - yes - no);
+    if (![yes, no].every(Number.isFinite)) return null;
+    const total = yes + no;
+    if (total <= 0) return null;
+    return {
+        yes: (yes / total) * 100,
+        no: (no / total) * 100,
+        abstain: 0
+    };
+}
 
-    if (![yes, no, abstain].every(Number.isFinite)) return null;
-    return { yes, no, abstain };
+function getPercentagesFromVoteCounts(summary, prefix) {
+    const yes = Number(summary[`${prefix}_yes_votes_cast`]) || 0;
+    const no = Number(summary[`${prefix}_no_votes_cast`]) || 0;
+    const total = yes + no;
+    if (total <= 0) return null;
+    return {
+        yes: (yes / total) * 100,
+        no: (no / total) * 100,
+        abstain: 0
+    };
+}
+
+function getPercentagesFromVotePower(summary, prefix) {
+    const yes = pickFirstNumber(
+        summary[`${prefix}_yes_vote_power`],
+        summary[`${prefix}_active_yes_vote_power`],
+        summary[`${prefix}_yes_stake`]
+    ) || 0;
+    const no = pickFirstNumber(
+        summary[`${prefix}_no_vote_power`],
+        summary[`${prefix}_active_no_vote_power`],
+        summary[`${prefix}_no_stake`]
+    ) || 0;
+    const total = yes + no;
+    if (total <= 0) return null;
+    return {
+        yes: (yes / total) * 100,
+        no: (no / total) * 100,
+        abstain: 0
+    };
 }
 
 function usesPoolVoting(proposal) {
@@ -1345,8 +1387,7 @@ function getVotingSummaryFromProposalVotesPayload(payload) {
     const noPower = noVotes.reduce((sum, vote) => sum + getVotePower(vote), 0);
     const abstainPower = abstainVotes.reduce((sum, vote) => sum + getVotePower(vote), 0);
     const yesNoPower = yesPower + noPower;
-    const totalPower = yesPower + noPower + abstainPower;
-    const percentageBase = yesNoPower > 0 ? yesNoPower : totalPower;
+    const percentageBase = yesNoPower;
 
     return {
         drep_yes_votes_cast: yesVotes.length,
@@ -1359,7 +1400,7 @@ function getVotingSummaryFromProposalVotesPayload(payload) {
         drep_active_abstain_vote_power: abstainPower,
         drep_yes_pct: percentageBase > 0 ? (yesPower / percentageBase) * 100 : 0,
         drep_no_pct: percentageBase > 0 ? (noPower / percentageBase) * 100 : 0,
-        drep_abstain_pct: percentageBase > 0 ? (abstainPower / percentageBase) * 100 : 0
+        drep_abstain_pct: 0
     };
 }
 
@@ -1423,9 +1464,11 @@ function createDrepVoteChartSection(breakdown, drepVotes) {
     const center = document.createElement('div');
     center.className = 'governance-pie-chart-center';
     const centerLabel = document.createElement('span');
-    centerLabel.textContent = 'ADA represented';
+    centerLabel.textContent = breakdown.some(item => item.unit === 'votes') ? 'Votes counted' : 'ADA represented';
     const centerValue = document.createElement('strong');
-    centerValue.textContent = formatCompactAdaFromLovelace(total, { fixedFractionDigits: 2 });
+    centerValue.textContent = breakdown.some(item => item.unit === 'votes')
+        ? formatInteger(total)
+        : formatCompactAdaFromLovelace(total, { fixedFractionDigits: 2 });
     center.append(centerLabel, centerValue);
     chart.appendChild(center);
 
@@ -1484,8 +1527,10 @@ function createVoteLegendItem(item, drepVotes) {
 function formatVoteLegendDetail(item, drepVotes) {
     return [
         Number.isFinite(item.count) ? `${item.count} votes` : null,
-        formatCompactAdaFromLovelace(item.value),
-        Number.isFinite(item.votePowerPercentage) ? formatPercentage(item.votePowerPercentage) : null
+        formatCompactAdaFromLovelace(item.displayValue ?? item.value),
+        Number.isFinite(item.voteCountPercentage) ? formatPercentage(item.voteCountPercentage) : null,
+        Number.isFinite(item.votePowerPercentage) ? formatPercentage(item.votePowerPercentage) : null,
+        item.excludedFromPercentage ? 'not counted' : null
     ].filter(Boolean).join(' • ');
 }
 
@@ -1949,53 +1994,47 @@ function getDrepStakeBreakdown(summary) {
     if (!summary) return [];
 
     const yesVotePower = pickFirstNumber(
-        summary.drep_active_yes_vote_power,
-        summary.drep_yes_vote_power
+        summary.drep_yes_vote_power,
+        summary.drep_active_yes_vote_power
     ) ?? 0;
     const noVotePower = pickFirstNumber(
-        summary.drep_active_no_vote_power,
-        summary.drep_no_vote_power
+        summary.drep_no_vote_power,
+        summary.drep_active_no_vote_power
     ) ?? 0;
+    const abstainVotePower = Number(summary.drep_active_abstain_vote_power) || 0;
+    const yesVoteCount = Number(summary.drep_yes_votes_cast) || 0;
+    const noVoteCount = Number(summary.drep_no_votes_cast) || 0;
+    const abstainVoteCount = Number(summary.drep_abstain_votes_cast) || 0;
 
     const items = [
         {
             key: 'yes',
             label: 'DRep yes stake',
             value: yesVotePower,
-            count: Number(summary.drep_yes_votes_cast) || 0,
+            count: yesVoteCount,
             color: '#34d399'
         },
         {
             key: 'no',
             label: 'DRep no stake',
             value: noVotePower,
-            count: Number(summary.drep_no_votes_cast) || 0,
+            count: noVoteCount,
             color: '#f87171'
         },
         {
             key: 'abstain',
             label: 'DRep abstain stake',
-            value: Number(summary.drep_active_abstain_vote_power) || 0,
-            count: Number(summary.drep_abstain_votes_cast) || 0,
-            color: '#60a5fa'
-        },
-        {
-            key: 'always-abstain',
-            label: 'DRep always abstain stake',
-            value: Number(summary.drep_always_abstain_vote_power) || 0,
-            color: '#fbbf24'
-        },
-        {
-            key: 'always-no-confidence',
-            label: 'DRep always no-confidence stake',
-            value: Number(summary.drep_always_no_confidence_vote_power) || 0,
-            color: '#a78bfa'
+            value: 0,
+            displayValue: abstainVotePower,
+            count: abstainVoteCount,
+            color: '#60a5fa',
+            excludedFromPercentage: true
         }
     ];
 
     const representedPower = items.reduce((sum, item) => sum + item.value, 0);
     return items
-        .filter(item => item.value > 0)
+        .filter(item => item.value > 0 || item.excludedFromPercentage && (item.count > 0 || Number(item.displayValue) > 0))
         .map(item => ({
             ...item,
             votePowerPercentage: representedPower > 0
@@ -2077,7 +2116,9 @@ function getDrepVoteCountPercentage(key, drepVotes) {
 function createPieAmountLabel(segment) {
     const label = document.createElement('span');
     label.className = 'governance-pie-label';
-    label.textContent = formatCompactAdaFromLovelace(segment.value);
+    label.textContent = segment.unit === 'votes'
+        ? formatInteger(segment.value)
+        : formatCompactAdaFromLovelace(segment.value);
 
     const radians = ((segment.mid - 90) * Math.PI) / 180;
     const radius = segment.end - segment.start < 18 ? 57 : 48;
