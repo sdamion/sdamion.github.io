@@ -12,6 +12,7 @@ const THEME_STORAGE_KEY = 'tdsp-theme';
 const COINGECKO_PRICE_URL = IS_LOCAL_PREVIEW ? '/__coingecko_price_proxy__' : COINGECKO_API_URL;
 const GECKOTERMINAL_PRICE_URL = IS_LOCAL_PREVIEW ? '/__geckoterminal_price_proxy__' : GECKOTERMINAL_API_URL;
 const POOL_API_URL = IS_LOCAL_PREVIEW ? '/__pool_proxy__' : 'https://api.tdsp.online/api/pool';
+const notifiedRelayMaintenance = new Set();
 
 // Fetch and display ADA, HYPE, and STRCH prices asynchronously
 async function fetchPrices() {
@@ -115,19 +116,60 @@ function renderPoolStatus(pool) {
         return;
     }
 
+    const downRelays = relays
+        .map((relay, index) => ({ relay, label: `Relay ${index + 1}` }))
+        .filter(item => item.relay.up !== true);
+
+    if (downRelays.length) {
+        const notice = document.createElement('p');
+        notice.className = 'pool-maintenance-notice small-text';
+        notice.textContent = `${downRelays.map(item => item.label).join(', ')} down for maintenance.`;
+        relaysEl.appendChild(notice);
+        if ('Notification' in window && Notification.permission === 'default') {
+            const notificationButton = document.createElement('button');
+            notificationButton.className = 'pool-notification-button';
+            notificationButton.type = 'button';
+            notificationButton.textContent = 'Enable relay notifications';
+            notificationButton.addEventListener('click', async () => {
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') notifyRelayMaintenance(downRelays);
+                notificationButton.remove();
+            });
+            relaysEl.appendChild(notificationButton);
+        }
+        notifyRelayMaintenance(downRelays);
+    }
+
     relays.forEach((relay, index) => {
         const row = document.createElement('div');
         row.className = `pool-relay pool-relay--${relay.up ? 'up' : 'down'}`;
 
         const status = document.createElement('span');
         status.className = 'pool-relay-status';
-        status.textContent = relay.up ? 'Up' : 'Down';
+        status.textContent = relay.up ? 'Up' : 'Down (Maintenance)';
 
         const host = document.createElement('strong');
         host.textContent = `Relay ${index + 1}`;
 
         row.append(status, host);
         relaysEl.appendChild(row);
+    });
+}
+
+function notifyRelayMaintenance(downRelays) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+    const newDownRelays = downRelays.filter(({ label, relay }) => {
+        const id = `${label}:${relay.host || ''}:${relay.port || ''}`;
+        if (notifiedRelayMaintenance.has(id)) return false;
+        notifiedRelayMaintenance.add(id);
+        return true;
+    });
+    if (!newDownRelays.length) return;
+
+    new Notification('TDSP relay maintenance', {
+        body: `${newDownRelays.map(item => item.label).join(', ')} down for maintenance.`,
+        tag: 'tdsp-relay-maintenance'
     });
 }
 

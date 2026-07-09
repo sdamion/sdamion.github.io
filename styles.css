@@ -799,6 +799,30 @@ p {
     gap: 10px;
 }
 
+.pool-maintenance-notice {
+    margin: 0;
+    color: var(--gold);
+    font-weight: 700;
+}
+
+.pool-notification-button {
+    justify-self: start;
+    min-height: 34px;
+    padding: 0 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--control-surface);
+    color: var(--accent-strong);
+    font: inherit;
+    font-size: 0.84rem;
+    font-weight: 800;
+}
+
+.pool-notification-button:hover {
+    background: var(--control-hover-surface);
+    transform: none;
+}
+
 .pool-relay {
     display: flex;
     align-items: center;
