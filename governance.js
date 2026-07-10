@@ -3,12 +3,15 @@ const PROPOSAL_VOTES_API_BASE_URL = 'https://api.tdsp.online/api/proposal';
 const DREP_METADATA_API_URL = 'https://api.tdsp.online/api/dreps/metadata';
 const DREP_INFO_API_URL = 'https://api.tdsp.online/api/dreps/info';
 const DREP_DETAIL_API_BASE_URL = 'https://api.tdsp.online/api/drep';
+const HEALTH_API_URL = 'https://api.tdsp.online/health';
 const LOCAL_DASHBOARD_PROXY_PATH = '/__dashboard_proxy__';
+const LOCAL_HEALTH_PROXY_PATH = '/__health_proxy__';
 const LOCAL_PROPOSAL_VOTES_PROXY_PATH = '/__proposal_votes_proxy__';
 const LOCAL_DREP_DIRECTORY_PROXY_PATH = '/__drep_directory_proxy__';
 const LOCAL_DREP_DETAIL_PROXY_PATH = '/__drep_detail_proxy__';
 const LOCAL_METADATA_PROXY_PATH = '/__metadata_proxy__';
 const ACTIVE_REFRESH_INTERVAL_MS = 60 * 1000;
+const API_HEALTH_REFRESH_INTERVAL_MS = 60 * 1000;
 const EPOCH_DURATION_SECONDS = 432000;
 const CARDANO_MAINNET_EPOCH_ZERO_MS = Date.parse('2017-09-23T21:44:51Z');
 const APPROVAL_GRACE_PERIOD_SECONDS = 300;
@@ -18,6 +21,7 @@ const TREASURY_BUDGET_YEAR_START_EPOCH = 604;
 const TREASURY_BUDGET_YEAR_EPOCHS = 73;
 
 let governanceRefreshTimer = null;
+let apiHealthRefreshTimer = null;
 let epochCountdownTimer = null;
 let epochEndsAtMs = null;
 let currentEpochNumber = null;
@@ -37,6 +41,7 @@ if (document.readyState === 'loading') {
 function initGovernance() {
     removeDrepPowerSplitCard();
     ensureEpochCountdownCard();
+    startGovernanceApiHealthMonitor();
     loadCurrentEpoch();
     loadGovernanceActions();
 }
@@ -153,10 +158,55 @@ function scheduleActiveRefresh() {
 }
 
 async function fetchGovernanceDashboardPayload() {
-    if (shouldUseLocalDashboardProxy()) {
-        return fetchJson(LOCAL_DASHBOARD_PROXY_PATH);
+    return shouldUseLocalDashboardProxy()
+        ? fetchJson(LOCAL_DASHBOARD_PROXY_PATH)
+        : fetchJson(DASHBOARD_API_URL);
+}
+
+function startGovernanceApiHealthMonitor() {
+    refreshGovernanceApiHealthStatus();
+    if (apiHealthRefreshTimer !== null) return;
+
+    apiHealthRefreshTimer = window.setInterval(() => {
+        refreshGovernanceApiHealthStatus();
+    }, API_HEALTH_REFRESH_INTERVAL_MS);
+}
+
+async function refreshGovernanceApiHealthStatus() {
+    updateGovernanceApiStatus('checking');
+
+    try {
+        const payload = await fetchGovernanceApiHealthPayload();
+        updateGovernanceApiStatus(payload?.ok === true ? 'online' : 'offline', payload);
+    } catch (error) {
+        updateGovernanceApiStatus('offline');
     }
-    return fetchJson(DASHBOARD_API_URL);
+}
+
+function fetchGovernanceApiHealthPayload() {
+    return shouldUseLocalDashboardProxy()
+        ? fetchJson(LOCAL_HEALTH_PROXY_PATH)
+        : fetchJson(HEALTH_API_URL);
+}
+
+function updateGovernanceApiStatus(status, payload = null) {
+    const statusElement = document.getElementById('api-status');
+    if (!statusElement) return;
+
+    const labels = {
+        checking: 'API ...',
+        online: 'API online',
+        offline: 'API offline'
+    };
+
+    statusElement.textContent = labels[status] || labels.checking;
+    statusElement.title = payload?.service
+        ? `Health: ${payload.service}`
+        : labels[status] || labels.checking;
+    statusElement.dataset.apiService = payload?.service || '';
+    statusElement.classList.toggle('nav-api-status--checking', status === 'checking');
+    statusElement.classList.toggle('nav-api-status--online', status === 'online');
+    statusElement.classList.toggle('nav-api-status--offline', status === 'offline');
 }
 
 function shouldUseLocalDashboardProxy() {
