@@ -2014,14 +2014,14 @@ function getDrepStakeBreakdown(summary) {
     const items = [
         {
             key: 'yes',
-            label: 'Yes ADA',
+            label: 'Yes',
             value: yesVotePower,
             count: yesVoteCount,
             color: '#34d399'
         },
         {
             key: 'no',
-            label: 'No ADA',
+            label: 'No / Not voted',
             value: noVotePower,
             count: noVoteCount,
             color: '#f87171'
