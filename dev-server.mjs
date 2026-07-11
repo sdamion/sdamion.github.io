@@ -20,6 +20,8 @@ const proxyRoutes = {
     'https://api.geckoterminal.com/api/v2/simple/networks/cardano/token_price/3d77d63dfa6033be98021417e08e3368cc80e67f8d7afa196aaa0b3953746172636820546f6b656e,6d06570ddd778ec7c0cca09d381eca194e90c8cffa7582879735dbde584552,b6a7467ea1deb012808ef4e87b5ff371e85f7142d7b356a40d9b42a0436f726e75636f70696173205b76696120436861696e506f72742e696f5d',
   '/__dashboard_proxy__': () =>
     `${TDSP_API_ORIGIN}/api/dashboard`,
+  '/__committee_proxy__': () =>
+    `${TDSP_API_ORIGIN}/api/committee`,
   '/__health_proxy__': () =>
     `${TDSP_API_ORIGIN}/health`,
   '/__pool_proxy__': () =>

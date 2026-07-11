@@ -1055,6 +1055,19 @@ p {
     gap: 4px;
 }
 
+.governance-summary-clickable {
+    cursor: pointer;
+    transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.governance-summary-clickable:hover,
+.governance-summary-clickable:focus-visible {
+    border-color: var(--accent);
+    box-shadow: 0 14px 30px rgba(20, 184, 166, 0.12);
+    transform: translateY(-1px);
+    outline: none;
+}
+
 .governance-summary strong {
     color: var(--accent-strong);
     font-size: 1.45rem;
@@ -1686,6 +1699,53 @@ p {
     color: var(--text);
     font-size: clamp(1.2rem, 3vw, 1.6rem);
     line-height: 1.2;
+}
+
+.governance-cc-members {
+    display: grid;
+    gap: 10px;
+}
+
+.governance-cc-member {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 14px;
+    align-items: start;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--overlay-surface-muted);
+}
+
+.governance-cc-member > strong {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 999px;
+    background: var(--overlay-surface-strong);
+    color: var(--accent-strong);
+    font-size: 0.9rem;
+    line-height: 1;
+}
+
+.governance-cc-member-hash,
+.governance-cc-member-meta {
+    display: block;
+}
+
+.governance-cc-member-hash {
+    color: var(--text);
+    font-size: 0.9rem;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.governance-cc-member-meta {
+    margin-top: 4px;
+    color: var(--muted);
+    font-size: 0.9rem;
+    line-height: 1.35;
 }
 
 .governance-dialog h2 {
