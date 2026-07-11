@@ -727,6 +727,7 @@ p {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 10px;
     width: min(100%, 520px);
+    margin-bottom: 12px;
     padding: 16px;
     border: 1px solid var(--line);
     border-radius: 8px;
