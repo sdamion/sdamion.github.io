@@ -1935,6 +1935,11 @@ function openConstitutionalCommitteeActionsOverlay(member) {
     close.focus();
     document.addEventListener('keydown', handleConstitutionalCommitteeActionsOverlayKeydown);
 
+    if (hasConstitutionalCommitteeBackendActionStats(member)) {
+        renderConstitutionalCommitteeBackendActionStats(member, panel);
+        return;
+    }
+
     loadConstitutionalCommitteeActionVotes(member, panel).catch(() => {
         if (!panel.isConnected) return;
         panel.textContent = '';
@@ -2082,6 +2087,10 @@ function hasConstitutionalCommitteeBackendStats(members) {
     ));
 }
 
+function hasConstitutionalCommitteeBackendActionStats(member) {
+    return Array.isArray(member?.voteStats?.actions) && member.voteStats.actions.length > 0;
+}
+
 function updateConstitutionalCommitteeMemberSummaryStats(container, stats) {
     stats.forEach((item, index) => {
         const element = container.querySelector(`.governance-cc-member-stats[data-cc-member-index="${index}"]`);
@@ -2198,6 +2207,32 @@ function renderConstitutionalCommitteeActionShell(container, member) {
     proposals.forEach(proposal => {
         container.appendChild(createConstitutionalCommitteeGovernanceCard(proposal));
     });
+}
+
+function renderConstitutionalCommitteeBackendActionStats(member, container) {
+    const actionStatsById = new Map((member.voteStats?.actions || [])
+        .map(action => [String(action.proposalId || action.proposal_id || ''), action]));
+    const proposals = getGovernanceActionsForCommitteeMember(member);
+    const results = [];
+
+    proposals.forEach(proposal => {
+        const actionStats = actionStatsById.get(String(proposal.proposal_id || ''));
+        if (!actionStats) {
+            updateConstitutionalCommitteeActionCard(container, proposal, null, new Error('Not cached'));
+            return;
+        }
+
+        const vote = actionStats.voted
+            ? {
+                vote: actionStats.vote || actionStats.voteBucket || actionStats.vote_bucket,
+                voteBucket: actionStats.voteBucket || actionStats.vote_bucket
+            }
+            : null;
+        results.push({ proposal, vote, error: null });
+        updateConstitutionalCommitteeActionCard(container, proposal, vote, null);
+    });
+
+    updateConstitutionalCommitteeVoteChart(container, results);
 }
 
 function createConstitutionalCommitteeGovernanceCard(proposal) {
@@ -3580,8 +3615,24 @@ function normalizeConstitutionalCommitteeMemberVoteStats(stats) {
         votedPct: pickFirstNumber(stats.votedPct, stats.voted_pct),
         notVotedPct: pickFirstNumber(stats.notVotedPct, stats.not_voted_pct),
         cachedActions: pickFirstNumber(stats.cachedActions, stats.cached_actions),
-        totalActions: pickFirstNumber(stats.totalActions, stats.total_actions)
+        totalActions: pickFirstNumber(stats.totalActions, stats.total_actions),
+        actions: normalizeConstitutionalCommitteeMemberActionStats(stats.actions)
     };
+}
+
+function normalizeConstitutionalCommitteeMemberActionStats(actions) {
+    if (!Array.isArray(actions)) return [];
+
+    return actions
+        .map(action => ({
+            proposalId: action?.proposalId || action?.proposal_id || '',
+            voted: action?.voted === true,
+            vote: action?.vote || null,
+            voteBucket: action?.voteBucket || action?.vote_bucket || null,
+            applicable: action?.applicable !== false,
+            final: action?.final !== false
+        }))
+        .filter(action => action.proposalId);
 }
 
 function normalizeConstitutionalCommitteeMemberId(rawId, entry = null) {
