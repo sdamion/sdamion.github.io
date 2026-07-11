@@ -1484,8 +1484,9 @@ function renderVoteDetailsPanel(container, proposal, payload) {
     container.textContent = '';
 
     const summary = proposal?.voteSummary;
-    const drepBreakdown = getDrepStakeBreakdown(summary);
     const drepVotes = getDrepVotes(payload);
+    const notVotedDreps = getNotVotedDreps(payload, drepVotes);
+    const drepBreakdown = getDrepStakeBreakdown(summary, notVotedDreps);
 
     if (drepBreakdown.length) {
         container.appendChild(createDrepVoteChartSection(drepBreakdown, drepVotes));
@@ -1523,7 +1524,8 @@ function createDrepVoteChartSection(breakdown, drepVotes) {
     chart.appendChild(center);
 
     segments.forEach(segment => {
-        chart.appendChild(createPieAmountLabel(segment));
+        const label = createPieAmountLabel(segment);
+        if (label) chart.appendChild(label);
     });
     layout.appendChild(chart);
 
@@ -1541,7 +1543,7 @@ function createDrepVoteChartSection(breakdown, drepVotes) {
 }
 
 function createVoteLegendItem(item, drepVotes) {
-    const interactive = ['no', 'abstain', 'always-abstain', 'always-no-confidence', 'yes'].includes(item.key);
+    const interactive = ['no', 'not-voted', 'abstain', 'always-abstain', 'always-no-confidence', 'yes'].includes(item.key);
     const element = document.createElement(interactive ? 'button' : 'div');
     element.className = `governance-vote-legend-item${interactive ? ' is-clickable' : ''}`;
 
@@ -1588,6 +1590,11 @@ function renderDrepDetailsPanel(container, item, drepVotes) {
     container.textContent = '';
     container.hidden = false;
     container.dataset.activeGroup = item.key;
+
+    if (item.key === 'not-voted') {
+        renderNoVotesList(container, item.votes || [], item.label);
+        return;
+    }
 
     if (item.key === 'always-abstain' || item.key === 'always-no-confidence') {
         const title = document.createElement('strong');
@@ -1672,6 +1679,7 @@ function renderNoVotesList(container, votes, headingLabel = 'DRep votes') {
         const normalizedVote = String(vote?.vote || '').toLowerCase();
         if (normalizedVote === 'yes') row.classList.add('is-yes');
         if (normalizedVote === 'no') row.classList.add('is-no');
+        if (normalizedVote === 'not voted') row.classList.add('is-no');
         if (normalizedVote === 'abstain') row.classList.add('is-abstain');
 
         const copy = document.createElement('div');
@@ -2045,17 +2053,22 @@ function mapBreakdownKeyToVote(key) {
     return null;
 }
 
-function getDrepStakeBreakdown(summary) {
+function getDrepStakeBreakdown(summary, notVotedDreps = []) {
     if (!summary) return [];
 
     const yesVotePower = pickFirstNumber(
         summary.drep_yes_vote_power,
         summary.drep_active_yes_vote_power
     ) ?? 0;
-    const noVotePower = pickFirstNumber(
+    const noVotePowerTotal = pickFirstNumber(
         summary.drep_no_vote_power,
         summary.drep_active_no_vote_power
     ) ?? 0;
+    const activeNoVotePower = pickFirstNumber(
+        summary.drep_active_no_vote_power,
+        summary.drep_no_vote_power
+    ) ?? 0;
+    const notVotedPower = Math.max(0, noVotePowerTotal - activeNoVotePower);
     const abstainVotePower = Number(summary.drep_active_abstain_vote_power) || 0;
     const yesVoteCount = Number(summary.drep_yes_votes_cast) || 0;
     const noVoteCount = Number(summary.drep_no_votes_cast) || 0;
@@ -2071,10 +2084,18 @@ function getDrepStakeBreakdown(summary) {
         },
         {
             key: 'no',
-            label: 'No / Not voted',
-            value: noVotePower,
+            label: 'No',
+            value: activeNoVotePower,
             count: noVoteCount,
             color: '#f87171'
+        },
+        {
+            key: 'not-voted',
+            label: 'Not voted',
+            value: notVotedPower,
+            count: notVotedDreps.length,
+            votes: notVotedDreps,
+            color: '#fb7185'
         },
         {
             key: 'abstain',
@@ -2157,6 +2178,37 @@ function getDrepVotes(payload) {
     });
 }
 
+function getNotVotedDreps(payload, drepVotes) {
+    const drepInfo = payload?.drep_info && typeof payload.drep_info === 'object'
+        ? payload.drep_info
+        : {};
+    const votedIds = new Set(drepVotes.flatMap(vote => getDrepVoteIdentifierCandidates(vote)));
+
+    return Object.entries(drepInfo)
+        .filter(([identifier, info]) => !getDrepVoteIdentifierCandidates({ ...info, drep_id: identifier }).some(id => votedIds.has(id)))
+        .map(([identifier, info]) => ({
+            ...info,
+            vote: 'Not voted',
+            drep_id: info?.drep_id || identifier,
+            voter_id: info?.voter_id || info?.drep_id || identifier,
+            voter_hex: info?.voter_hex || info?.hex || ''
+        }));
+}
+
+function getDrepVoteIdentifierCandidates(vote) {
+    return [
+        vote?.voter_id,
+        vote?.voterId,
+        vote?.drep_id,
+        vote?.drepId,
+        vote?.voter_hex,
+        vote?.hex,
+        vote?.id
+    ]
+        .map(normalizeDrepIdentifier)
+        .filter(Boolean);
+}
+
 function getDrepVoteCountPercentage(key, drepVotes) {
     const voteKey = mapBreakdownKeyToVote(key);
     if (!voteKey) return null;
@@ -2169,11 +2221,11 @@ function getDrepVoteCountPercentage(key, drepVotes) {
 }
 
 function createPieAmountLabel(segment) {
+    if (!segment.value) return null;
+
     const label = document.createElement('span');
     label.className = 'governance-pie-label';
-    label.textContent = segment.unit === 'votes'
-        ? formatInteger(segment.value)
-        : formatCompactAdaFromLovelace(segment.value);
+    label.textContent = formatPercentage((segment.end - segment.start) / 360 * 100);
 
     const radians = ((segment.mid - 90) * Math.PI) / 180;
     const radius = segment.end - segment.start < 18 ? 57 : 48;
