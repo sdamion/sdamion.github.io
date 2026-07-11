@@ -72,6 +72,8 @@ h2 {
 .miner-link {
     color: #007bff;
     text-decoration: none;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 p {
@@ -2037,6 +2039,48 @@ html[data-theme="dark"] input {
         grid-template-columns: 1fr;
     }
 
+    .table-shell {
+        overflow-x: hidden;
+    }
+
+    .table-shell table {
+        table-layout: fixed;
+        min-width: 0;
+        font-size: 0.82rem;
+    }
+
+    .table-shell th,
+    .table-shell td {
+        padding: 8px 6px;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
+    .table-shell th:nth-child(1),
+    .table-shell td:nth-child(1) {
+        width: 8%;
+    }
+
+    .table-shell th:nth-child(2),
+    .table-shell td:nth-child(2) {
+        width: 38%;
+    }
+
+    .table-shell th:nth-child(3),
+    .table-shell td:nth-child(3) {
+        width: 15%;
+    }
+
+    .table-shell th:nth-child(4),
+    .table-shell td:nth-child(4) {
+        width: 18%;
+    }
+
+    .table-shell th:nth-child(5),
+    .table-shell td:nth-child(5) {
+        width: 21%;
+    }
+
     .pool-summary {
         grid-template-columns: 1fr 1fr;
     }
@@ -2128,6 +2172,17 @@ html[data-theme="dark"] input {
     .links a {
         width: 52px;
         height: 52px;
+    }
+
+    .table-shell table {
+        display: table;
+        width: 100%;
+        font-size: 0.68rem;
+    }
+
+    .table-shell th,
+    .table-shell td {
+        padding: 7px 4px;
     }
 
     .governance-summary {

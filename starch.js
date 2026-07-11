@@ -206,7 +206,7 @@ function addCustomTeamInput() {
                 selectedTeamId = customTeamId;
                 fetchMinerData();
             } else {
-                displayError("Invalid Team ID! Must be a 6-character HEX code.");
+                displayError("Invalid Company ID! Must be a 6-character HEX code.");
             }
         }
     });
