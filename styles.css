@@ -1041,6 +1041,11 @@ p {
     margin: 28px 0 24px;
 }
 
+.governance-committee-summary {
+    grid-template-columns: 1fr;
+    margin: 12px 0 18px;
+}
+
 .governance-page {
     align-items: flex-start;
     padding-top: 96px;
@@ -1717,6 +1722,19 @@ p {
     background: var(--overlay-surface-muted);
 }
 
+.governance-cc-member-clickable {
+    cursor: pointer;
+    transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.governance-cc-member-clickable:hover,
+.governance-cc-member-clickable:focus-visible {
+    border-color: var(--accent);
+    box-shadow: 0 12px 26px rgba(20, 184, 166, 0.12);
+    transform: translateY(-1px);
+    outline: none;
+}
+
 .governance-cc-member > strong {
     display: grid;
     place-items: center;
@@ -1743,6 +1761,174 @@ p {
 
 .governance-cc-member-meta {
     margin-top: 4px;
+    color: var(--muted);
+    font-size: 0.9rem;
+    line-height: 1.35;
+}
+
+.governance-cc-member-stats {
+    display: block;
+    margin-top: 6px;
+    color: var(--accent-strong);
+    font-size: 0.9rem;
+    font-weight: 700;
+    line-height: 1.35;
+}
+
+.governance-cc-member-stats-missing {
+    color: #fb7185;
+}
+
+.governance-cc-member-stats-separator {
+    color: var(--muted);
+}
+
+.governance-cc-actions {
+    display: grid;
+    gap: 10px;
+}
+
+.governance-cc-vote-chart {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 18px;
+    align-items: center;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--overlay-surface-muted);
+}
+
+.governance-cc-vote-donut {
+    display: grid;
+    place-items: center;
+    width: 136px;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: conic-gradient(
+        #34d399 0 var(--cc-voted-pct, 0%),
+        #fb7185 var(--cc-voted-pct, 0%) 100%
+    );
+}
+
+.governance-cc-vote-donut-center {
+    display: grid;
+    place-items: center;
+    width: 82px;
+    aspect-ratio: 1;
+    padding: 8px;
+    border-radius: 50%;
+    background: var(--overlay-surface);
+    text-align: center;
+}
+
+.governance-cc-vote-donut-center strong,
+.governance-cc-vote-donut-center span {
+    display: block;
+}
+
+.governance-cc-vote-donut-center strong {
+    color: var(--text);
+    font-size: 0.92rem;
+    line-height: 1.15;
+}
+
+.governance-cc-vote-donut-center span {
+    margin-top: 3px;
+    color: var(--muted);
+    font-size: 0.72rem;
+    line-height: 1.2;
+}
+
+.governance-cc-vote-legend {
+    display: grid;
+    gap: 8px;
+}
+
+.governance-cc-vote-legend-item {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    color: var(--text);
+    font-size: 0.9rem;
+    line-height: 1.35;
+}
+
+.governance-cc-vote-legend-item strong,
+.governance-cc-vote-legend-item span span {
+    display: block;
+}
+
+.governance-cc-vote-legend-item strong {
+    color: var(--text);
+    font-size: 0.95rem;
+    line-height: 1.2;
+}
+
+.governance-cc-vote-legend-item span span {
+    color: var(--muted);
+    font-size: 0.86rem;
+}
+
+.governance-cc-vote-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 999px;
+}
+
+.governance-cc-vote-dot--voted {
+    background: #34d399;
+}
+
+.governance-cc-vote-dot--missing {
+    background: #fb7185;
+}
+
+.governance-cc-action {
+    display: grid;
+    gap: 6px;
+    width: 100%;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--overlay-surface-muted);
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+}
+
+.governance-cc-action:hover,
+.governance-cc-action:focus-visible {
+    border-color: var(--accent);
+    outline: none;
+}
+
+.governance-cc-action--voted {
+    border-color: rgba(20, 184, 166, 0.48);
+    background: rgba(20, 184, 166, 0.12);
+}
+
+.governance-cc-action--missing {
+    border-color: rgba(220, 38, 38, 0.42);
+    background: rgba(220, 38, 38, 0.1);
+}
+
+.governance-cc-action--open {
+    border-color: var(--line);
+    background: var(--overlay-surface-muted);
+}
+
+.governance-cc-action--na {
+    border-color: var(--line);
+    background: var(--overlay-surface-muted);
+}
+
+.governance-cc-action strong {
+    font-size: 0.95rem;
+    line-height: 1.25;
+}
+
+.governance-cc-action span {
     color: var(--muted);
     font-size: 0.9rem;
     line-height: 1.35;
@@ -1797,6 +1983,11 @@ p {
 
     .governance-vote-details {
         padding: 14px;
+    }
+
+    .governance-cc-vote-chart {
+        grid-template-columns: 1fr;
+        justify-items: center;
     }
 
     .governance-vote-chart-layout {

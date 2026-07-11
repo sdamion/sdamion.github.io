@@ -31,6 +31,7 @@ let lastActiveRenderSignature = '';
 let governanceState = null;
 let committeeInfoState = null;
 const proposalVotesCache = new Map();
+const committeeMemberStatsCache = new Map();
 const drepMetadataCache = new Map();
 let drepDirectoryPromise = null;
 let drepStatsPromise = null;
@@ -1720,7 +1721,9 @@ function openConstitutionalCommitteeOverlay() {
     fetchCommitteeInfoPayload()
         .then(payload => {
             if (!panel.isConnected) return;
-            renderConstitutionalCommitteeMembers(panel, getConstitutionalCommitteeMembers(payload));
+            const fetchedMembers = getConstitutionalCommitteeMembers(payload);
+            if (getConstitutionalCommitteeMembersSignature(fetchedMembers) === getConstitutionalCommitteeMembersSignature(members)) return;
+            renderConstitutionalCommitteeMembers(panel, fetchedMembers);
         })
         .catch(() => {
             if (!panel.isConnected || members.length) return;
@@ -1729,13 +1732,19 @@ function openConstitutionalCommitteeOverlay() {
 }
 
 function closeConstitutionalCommitteeOverlay() {
+    closeConstitutionalCommitteeActionsOverlay();
     const overlay = document.getElementById('governance-cc-overlay');
     if (overlay) overlay.remove();
     document.removeEventListener('keydown', handleConstitutionalCommitteeOverlayKeydown);
 }
 
 function handleConstitutionalCommitteeOverlayKeydown(event) {
-    if (event.key === 'Escape') closeConstitutionalCommitteeOverlay();
+    if (event.key !== 'Escape') return;
+    if (document.getElementById('governance-cc-actions-overlay')) {
+        closeConstitutionalCommitteeActionsOverlay();
+        return;
+    }
+    closeConstitutionalCommitteeOverlay();
 }
 
 function renderConstitutionalCommitteeMembers(container, members, emptyMessage = null) {
@@ -1749,7 +1758,9 @@ function renderConstitutionalCommitteeMembers(container, members, emptyMessage =
         return;
     }
 
-    members.forEach((member, index) => {
+    const enrichedMembers = enrichConstitutionalCommitteeMembersWithSinceEpoch(members, governanceState);
+
+    enrichedMembers.forEach((member, index) => {
         const row = document.createElement('div');
         row.className = 'governance-cc-member';
 
@@ -1764,23 +1775,437 @@ function renderConstitutionalCommitteeMembers(container, members, emptyMessage =
         const meta = document.createElement('span');
         meta.className = 'governance-cc-member-meta';
         meta.textContent = [
-            member.status,
-            member.type,
             member.expiresEpoch ? `expires epoch ${member.expiresEpoch}` : ''
         ].filter(Boolean).join(' • ');
+        const stats = document.createElement('span');
+        stats.className = 'governance-cc-member-stats';
+        stats.dataset.ccMemberIndex = String(index);
+        stats.textContent = 'Voting stats loading...';
 
         copy.appendChild(hash);
-        if (member.hotId) {
-            const hot = document.createElement('span');
-            hot.className = 'governance-cc-member-meta';
-            hot.textContent = `Hot credential: ${member.hotId}`;
-            copy.appendChild(hot);
-        }
         copy.appendChild(meta);
+        copy.appendChild(stats);
         row.appendChild(number);
         row.appendChild(copy);
+        row.classList.add('governance-cc-member-clickable');
+        row.setAttribute('role', 'button');
+        row.tabIndex = 0;
+        row.setAttribute('aria-label', `Show governance actions for ${member.name || `CC Member ${index + 1}`}`);
+        row.addEventListener('click', () => openConstitutionalCommitteeActionsOverlay(member));
+        row.addEventListener('keydown', event => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault();
+            openConstitutionalCommitteeActionsOverlay(member);
+        });
         container.appendChild(row);
     });
+
+    loadConstitutionalCommitteeMemberSummaryStats(enrichedMembers, container).catch(() => {
+        container.querySelectorAll('.governance-cc-member-stats').forEach(element => {
+            element.textContent = 'Voting stats unavailable';
+        });
+    });
+}
+
+function openConstitutionalCommitteeActionsOverlay(member) {
+    closeConstitutionalCommitteeActionsOverlay();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'governance-overlay governance-drep-overlay';
+    overlay.id = 'governance-cc-actions-overlay';
+    overlay.addEventListener('click', event => {
+        if (event.target === overlay) closeConstitutionalCommitteeActionsOverlay();
+    });
+
+    const dialog = document.createElement('article');
+    dialog.className = 'governance-dialog governance-drep-dialog';
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.setAttribute('aria-labelledby', 'governance-cc-actions-title');
+
+    const close = document.createElement('button');
+    close.className = 'governance-close';
+    close.type = 'button';
+    close.setAttribute('aria-label', 'Close Constitutional Committee voting overview');
+    close.textContent = 'Close';
+    close.addEventListener('click', closeConstitutionalCommitteeActionsOverlay);
+
+    const title = document.createElement('h3');
+    title.id = 'governance-cc-actions-title';
+    title.className = 'governance-drep-title';
+    title.textContent = member.name || 'Constitutional Committee Member';
+
+    const panel = document.createElement('div');
+    panel.className = 'governance-cc-actions';
+    renderConstitutionalCommitteeActionLoading(panel, 0, getGovernanceActionsForCommitteeMember(member).length);
+
+    dialog.appendChild(close);
+    dialog.appendChild(title);
+    dialog.appendChild(panel);
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+    close.focus();
+    document.addEventListener('keydown', handleConstitutionalCommitteeActionsOverlayKeydown);
+
+    loadConstitutionalCommitteeActionVotes(member, panel).catch(() => {
+        if (!panel.isConnected) return;
+        panel.textContent = '';
+        const message = document.createElement('p');
+        message.className = 'small-text';
+        message.textContent = 'Governance action votes could not be loaded.';
+        panel.appendChild(message);
+    });
+}
+
+function closeConstitutionalCommitteeActionsOverlay() {
+    const overlay = document.getElementById('governance-cc-actions-overlay');
+    if (overlay) overlay.remove();
+    document.removeEventListener('keydown', handleConstitutionalCommitteeActionsOverlayKeydown);
+}
+
+function handleConstitutionalCommitteeActionsOverlayKeydown(event) {
+    if (event.key === 'Escape') closeConstitutionalCommitteeActionsOverlay();
+}
+
+function getGovernanceActionsForCommitteeOverview() {
+    return getGovernanceProposalsFromDashboardPayload(governanceState || {})
+        .sort((a, b) => (Number(b.block_time) || 0) - (Number(a.block_time) || 0));
+}
+
+function getGovernanceActionsForCommitteeMember(member) {
+    const sinceEpoch = Number(member?.sinceEpoch);
+    return getGovernanceActionsForCommitteeOverview()
+        .filter(proposal => isGovernanceActionInCommitteeMemberTerm(proposal, member));
+}
+
+function isGovernanceActionInCommitteeMemberTerm(proposal, member) {
+    const sinceEpoch = Number(member?.sinceEpoch);
+    if (!Number.isFinite(sinceEpoch)) return true;
+    const proposalEpoch = Number(proposal?.proposed_epoch);
+    return Number.isFinite(proposalEpoch) ? proposalEpoch >= sinceEpoch : true;
+}
+
+function renderConstitutionalCommitteeActionLoading(container, complete, total) {
+    container.textContent = '';
+    const message = document.createElement('p');
+    message.className = 'small-text';
+    message.textContent = total > 0
+        ? `Loading governance action votes ${complete}/${total}...`
+        : 'No governance actions found.';
+    container.appendChild(message);
+}
+
+async function loadConstitutionalCommitteeMemberSummaryStats(members, container) {
+    const proposals = getGovernanceActionsForCommitteeOverview()
+        .filter(isConstitutionalCommitteeVoteApplicable)
+        .filter(isExpiredGovernanceActionForCommitteeStats);
+    const cacheKey = getConstitutionalCommitteeMemberStatsCacheKey(members, proposals);
+
+    if (!proposals.length) {
+        updateConstitutionalCommitteeMemberSummaryStats(container, members.map(() => ({ voted: 0, total: 0 })));
+        return;
+    }
+
+    if (committeeMemberStatsCache.has(cacheKey)) {
+        const cachedStats = await committeeMemberStatsCache.get(cacheKey);
+        if (!container.isConnected) return;
+        updateConstitutionalCommitteeMemberSummaryStats(container, cachedStats);
+        return;
+    }
+
+    const statsPromise = calculateConstitutionalCommitteeMemberSummaryStats(members, proposals);
+    committeeMemberStatsCache.set(cacheKey, statsPromise);
+    const stats = await statsPromise;
+    committeeMemberStatsCache.set(cacheKey, stats);
+    if (!container.isConnected) return;
+    updateConstitutionalCommitteeMemberSummaryStats(container, stats);
+}
+
+async function calculateConstitutionalCommitteeMemberSummaryStats(members, proposals) {
+    const stats = members.map(() => ({ voted: 0, total: 0 }));
+    let nextIndex = 0;
+    const workerCount = Math.min(4, proposals.length);
+
+    async function worker() {
+        while (nextIndex < proposals.length) {
+            const proposal = proposals[nextIndex];
+            nextIndex += 1;
+            let payload = null;
+
+            try {
+                payload = await fetchProposalVotesPayload(proposal.proposal_id);
+            } catch {
+                payload = null;
+            }
+
+            members.forEach((member, memberIndex) => {
+                if (!isGovernanceActionInCommitteeMemberTerm(proposal, member)) return;
+                stats[memberIndex].total += 1;
+                if (payload && findConstitutionalCommitteeVoteForMember(payload, member)) {
+                    stats[memberIndex].voted += 1;
+                }
+            });
+        }
+    }
+
+    await Promise.all(Array.from({ length: workerCount }, () => worker()));
+    return stats;
+}
+
+function getConstitutionalCommitteeMemberStatsCacheKey(members, proposals) {
+    const memberKey = getConstitutionalCommitteeMembersSignature(members);
+    const proposalKey = proposals
+        .map(proposal => [
+            proposal?.proposal_id || '',
+            proposal?.expiration || '',
+            proposal?.expired_epoch || '',
+            proposal?.dropped_epoch || '',
+            proposal?.enacted_epoch || ''
+        ].join(':'))
+        .join('|');
+
+    return `${memberKey}::${proposalKey}`;
+}
+
+function getConstitutionalCommitteeMembersSignature(members) {
+    return (Array.isArray(members) ? members : [])
+        .map(member => [
+            member?.name || '',
+            member?.expiresEpoch || '',
+            member?.sinceEpoch || '',
+            Array.from(getConstitutionalCommitteeVoteCandidateIds(member)).join(',')
+        ].join(':'))
+        .join('|');
+}
+
+function updateConstitutionalCommitteeMemberSummaryStats(container, stats) {
+    stats.forEach((item, index) => {
+        const element = container.querySelector(`.governance-cc-member-stats[data-cc-member-index="${index}"]`);
+        if (!element) return;
+
+        if (!item.total) {
+            element.textContent = 'No expired actions yet';
+            return;
+        }
+
+        const votedPct = (item.voted / item.total) * 100;
+        const notVotedPct = ((item.total - item.voted) / item.total) * 100;
+        element.textContent = '';
+
+        const voted = document.createElement('span');
+        voted.textContent = `Voted ${formatPercentage(votedPct)}`;
+        const separator = document.createElement('span');
+        separator.className = 'governance-cc-member-stats-separator';
+        separator.textContent = ' • ';
+        const notVoted = document.createElement('span');
+        notVoted.className = 'governance-cc-member-stats-missing';
+        notVoted.textContent = `Not voted ${formatPercentage(notVotedPct)}`;
+
+        element.appendChild(voted);
+        element.appendChild(separator);
+        element.appendChild(notVoted);
+    });
+}
+
+async function loadConstitutionalCommitteeActionVotes(member, container) {
+    const proposals = getGovernanceActionsForCommitteeMember(member);
+    if (!proposals.length) {
+        renderConstitutionalCommitteeActionLoading(container, 0, 0);
+        return;
+    }
+
+    const results = new Array(proposals.length);
+    let nextIndex = 0;
+    let completed = 0;
+    const workerCount = Math.min(4, proposals.length);
+
+    async function worker() {
+        while (nextIndex < proposals.length) {
+            const index = nextIndex;
+            nextIndex += 1;
+            const proposal = proposals[index];
+            let vote = null;
+            let error = null;
+
+            try {
+                const payload = await fetchProposalVotesPayload(proposal.proposal_id);
+                vote = findConstitutionalCommitteeVoteForMember(payload, member);
+            } catch (err) {
+                error = err;
+            }
+
+            results[index] = { proposal, vote, error };
+            completed += 1;
+            if (container.isConnected && (completed === proposals.length || completed % 5 === 0)) {
+                renderConstitutionalCommitteeActionLoading(container, completed, proposals.length);
+            }
+        }
+    }
+
+    await Promise.all(Array.from({ length: workerCount }, () => worker()));
+    if (!container.isConnected) return;
+    renderConstitutionalCommitteeActionVotes(container, results.filter(Boolean));
+}
+
+function findConstitutionalCommitteeVoteForMember(payload, member) {
+    const candidates = getConstitutionalCommitteeVoteCandidateIds(member);
+    const committeeVotes = payload?.votes?.committee || {};
+
+    for (const bucket of ['yes', 'no', 'abstain', 'unknown']) {
+        const votes = Array.isArray(committeeVotes[bucket]) ? committeeVotes[bucket] : [];
+        const vote = votes.find(item => {
+            const voterIds = [item?.voter_id, item?.voter_hex, item?.cc_hot_id, item?.cc_hot_hex]
+                .map(normalizeCommitteeVoteIdentifier)
+                .filter(Boolean);
+            return voterIds.some(id => candidates.has(id));
+        });
+        if (vote) return { ...vote, voteBucket: bucket };
+    }
+
+    return null;
+}
+
+function getConstitutionalCommitteeVoteCandidateIds(member) {
+    return new Set([
+        member?.hotId,
+        member?.hotHex,
+        member?.id
+    ].map(normalizeCommitteeVoteIdentifier).filter(Boolean));
+}
+
+function normalizeCommitteeVoteIdentifier(value) {
+    return String(value || '').trim().toLowerCase();
+}
+
+function renderConstitutionalCommitteeActionVotes(container, results) {
+    container.textContent = '';
+    renderConstitutionalCommitteeVoteChart(container, results);
+
+    results.forEach(({ proposal, vote, error }) => {
+        const row = document.createElement('button');
+        row.type = 'button';
+        const isExpiredForStats = isExpiredGovernanceActionForCommitteeStats(proposal);
+        const isApplicable = isConstitutionalCommitteeVoteApplicable(proposal);
+        const statusClass = vote
+            ? 'governance-cc-action--voted'
+            : !isApplicable
+                ? 'governance-cc-action--na'
+                : isExpiredForStats
+                ? 'governance-cc-action--missing'
+                : 'governance-cc-action--open';
+        row.className = `governance-cc-action ${statusClass}`;
+        row.addEventListener('click', () => openGovernanceOverlay(proposal));
+
+        const title = document.createElement('strong');
+        title.textContent = getProposalTitle(proposal);
+
+        const meta = document.createElement('span');
+        meta.textContent = [
+            formatProposalType(proposal.proposal_type),
+            getProposalEpochText(proposal),
+            getProposalExpirationText(proposal),
+            !isApplicable ? 'not applicable' : vote ? `voted ${formatVoteChoice(vote.vote || vote.voteBucket)}` : error ? 'vote data unavailable' : 'not voted'
+        ].filter(Boolean).join(' • ');
+
+        row.appendChild(title);
+        row.appendChild(meta);
+        container.appendChild(row);
+    });
+}
+
+function renderConstitutionalCommitteeVoteChart(container, results) {
+    const eligibleResults = results.filter(result => (
+        isConstitutionalCommitteeVoteApplicable(result.proposal)
+        && isExpiredGovernanceActionForCommitteeStats(result.proposal)
+    ));
+    const voted = eligibleResults.filter(result => result.vote).length;
+    const total = eligibleResults.length;
+    const notVoted = Math.max(total - voted, 0);
+    const votedPct = total > 0 ? (voted / total) * 100 : 0;
+    const notVotedPct = total > 0 ? (notVoted / total) * 100 : 0;
+
+    const chart = document.createElement('div');
+    chart.className = 'governance-cc-vote-chart';
+
+    const donut = document.createElement('div');
+    donut.className = 'governance-cc-vote-donut';
+    donut.style.setProperty('--cc-voted-pct', `${votedPct}%`);
+
+    const center = document.createElement('div');
+    center.className = 'governance-cc-vote-donut-center';
+    const count = document.createElement('strong');
+    count.textContent = `${formatPercentage(votedPct)} voted`;
+    const label = document.createElement('span');
+    label.textContent = `${voted} of ${total} expired actions`;
+    center.appendChild(count);
+    center.appendChild(label);
+    donut.appendChild(center);
+
+    const legend = document.createElement('div');
+    legend.className = 'governance-cc-vote-legend';
+    legend.appendChild(createConstitutionalCommitteeVoteLegendItem('Voted', voted, votedPct, 'voted'));
+    legend.appendChild(createConstitutionalCommitteeVoteLegendItem('Not voted', notVoted, notVotedPct, 'missing'));
+
+    chart.appendChild(donut);
+    chart.appendChild(legend);
+    container.appendChild(chart);
+}
+
+function isConstitutionalCommitteeVoteApplicable(proposal) {
+    return proposal?.proposal_type !== 'NewCommittee'
+        && proposal?.proposal_description?.tag !== 'UpdateCommittee';
+}
+
+function isExpiredGovernanceActionForCommitteeStats(proposal) {
+    if (!proposal) return false;
+    if (proposal.expired_epoch !== null || proposal.dropped_epoch !== null) return true;
+    if (proposal.enacted_epoch !== null || proposal.ratified_epoch !== null) return true;
+
+    const expirationEpoch = Number(proposal.expiration);
+    if (!Number.isFinite(expirationEpoch)) return false;
+
+    const clockEpoch = getClockEpochSnapshot();
+    const currentEpoch = Number(clockEpoch?.epoch);
+    return Number.isFinite(currentEpoch) && currentEpoch > expirationEpoch;
+}
+
+function createConstitutionalCommitteeVoteLegendItem(label, count, percentage, status) {
+    const item = document.createElement('div');
+    item.className = 'governance-cc-vote-legend-item';
+
+    const dot = document.createElement('span');
+    dot.className = `governance-cc-vote-dot governance-cc-vote-dot--${status}`;
+
+    const copy = document.createElement('span');
+    const value = document.createElement('strong');
+    value.textContent = `${label} ${formatPercentage(percentage)}`;
+    const detail = document.createElement('span');
+    detail.textContent = `${count} actions`;
+
+    copy.appendChild(value);
+    copy.appendChild(detail);
+
+    item.appendChild(dot);
+    item.appendChild(copy);
+    return item;
+}
+
+function getProposalEpochText(proposal) {
+    const epoch = Number(proposal?.proposed_epoch);
+    return Number.isFinite(epoch) ? `epoch ${epoch}` : '';
+}
+
+function getProposalExpirationText(proposal) {
+    const expiration = Number(proposal?.expiration);
+    return Number.isFinite(expiration) ? `expires ${expiration}` : '';
+}
+
+function formatVoteChoice(value) {
+    const normalized = String(value || '').toLowerCase();
+    if (normalized.includes('yes')) return 'Yes';
+    if (normalized.includes('no')) return 'No';
+    if (normalized.includes('abstain')) return 'Abstain';
+    return 'Unknown';
 }
 
 function hideDrepDetailsPanel(container) {
@@ -2808,10 +3233,16 @@ async function updateGovernanceCounts(groups) {
     setText('gov-active-ask', formatGovernanceAskSummary(groups.active));
     setText('gov-approved-ask', formatGovernanceAskSummary(groups.approved));
     setText('gov-rejected-ask', formatGovernanceAskSummary(groups.rejected));
-    const committeePayload = await fetchCommitteeInfoPayload().catch(() => null);
     setText('gov-committee-count', formatGovernanceCount(
-        getConstitutionalCommitteeMemberCount(committeePayload || governanceState, groups)
+        getConstitutionalCommitteeMemberCount(governanceState, groups)
     ));
+    fetchCommitteeInfoPayload()
+        .then(payload => {
+            setText('gov-committee-count', formatGovernanceCount(
+                getConstitutionalCommitteeMemberCount(payload || governanceState, groups)
+            ));
+        })
+        .catch(() => {});
 
     try {
         const drepStats = await getDrepStats(groups);
@@ -2830,6 +3261,7 @@ function getConstitutionalCommitteeMemberCount(payload, groups = null) {
     if (members.length) return members.length;
 
     const explicitCount = pickFirstNumber(
+        payload?.active_member_count,
         payload?.committee_member_count,
         payload?.constitutional_committee_member_count,
         payload?.constitutionalCommitteeMemberCount,
@@ -2889,7 +3321,10 @@ function unwrapConstitutionalCommitteeMembers(payload) {
 
     for (const source of memberSources) {
         if (!Array.isArray(source)) continue;
-        const members = source.map(normalizeConstitutionalCommitteeMember).filter(Boolean);
+        const members = source
+            .map(normalizeConstitutionalCommitteeMember)
+            .filter(Boolean)
+            .filter(isActiveConstitutionalCommitteeMember);
         if (members.length) return dedupeConstitutionalCommitteeMembers(members);
     }
 
@@ -2965,6 +3400,7 @@ function normalizeConstitutionalCommitteeMember(entry) {
         id,
         name: entry.name || null,
         hotId: entry.cc_hot_id || entry.cc_hot_hex || null,
+        hotHex: entry.cc_hot_hex || null,
         status: entry.status || null,
         type,
         expiresEpoch: pickFirstNumber(entry.expiresEpoch, entry.expiration_epoch, entry.epoch, entry.expires_epoch),
@@ -2991,6 +3427,112 @@ function getConstitutionalCommitteeMemberType(id, entry = null) {
 
 function dedupeConstitutionalCommitteeMembers(members) {
     return Array.from(new Map(members.map(member => [member.id, member])).values());
+}
+
+function isActiveConstitutionalCommitteeMember(member) {
+    return String(member?.status || '').toLowerCase() !== 'resigned';
+}
+
+function enrichConstitutionalCommitteeMembersWithSinceEpoch(members, payload = governanceState) {
+    const sinceEpochByKey = getConstitutionalCommitteeSinceEpochMap(payload);
+    return members.map(member => ({
+        ...member,
+        sinceEpoch: pickFirstNumber(
+            member.sinceEpoch,
+            member.since_epoch,
+            sinceEpochByKey.get(normalizeCommitteeMemberLookupKey(member.id)),
+            sinceEpochByKey.get(normalizeCommitteeMemberLookupKey(member.hotId)),
+            sinceEpochByKey.get(normalizeCommitteeMemberLookupKey(member.hotHex)),
+            sinceEpochByKey.get(normalizeCommitteeMemberLookupKey(member.name))
+        )
+    }));
+}
+
+function getConstitutionalCommitteeSinceEpochMap(payload) {
+    const proposals = Array.isArray(payload?.proposals)
+        ? payload.proposals
+        : Array.isArray(payload?.data)
+            ? payload.data
+            : [];
+    const sinceEpochByKey = new Map();
+
+    proposals
+        .filter(proposal => proposal?.proposal_type === 'NewCommittee' || proposal?.proposal_description?.tag === 'UpdateCommittee')
+        .filter(proposal => proposal?.enacted_epoch !== null && proposal?.enacted_epoch !== undefined)
+        .sort((a, b) => Number(a.enacted_epoch) - Number(b.enacted_epoch))
+        .forEach(proposal => {
+            const enactedEpoch = Number(proposal.enacted_epoch);
+            if (!Number.isFinite(enactedEpoch)) return;
+
+            const contents = Array.isArray(proposal?.proposal_description?.contents)
+                ? proposal.proposal_description.contents
+                : [];
+            const added = contents[2] && typeof contents[2] === 'object' ? contents[2] : {};
+
+            Object.keys(added).forEach(rawId => {
+                const member = normalizeConstitutionalCommitteeMember({ id: rawId });
+                if (member?.id) setCommitteeSinceEpoch(sinceEpochByKey, member.id, enactedEpoch);
+            });
+
+            getCommitteeMemberRowsFromProposalMetadata(proposal).forEach(row => {
+                if (row.name) setCommitteeSinceEpoch(sinceEpochByKey, row.name, enactedEpoch);
+                row.credentials.forEach(credential => setCommitteeSinceEpoch(sinceEpochByKey, credential, enactedEpoch));
+            });
+        });
+
+    return sinceEpochByKey;
+}
+
+function getCommitteeMemberRowsFromProposalMetadata(proposal) {
+    const body = proposal?.meta_json?.body || {};
+    const text = [body.abstract, body.rationale, body.motivation].filter(Boolean).join('\n');
+
+    return String(text)
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line.includes('|'))
+        .map(line => line.replace(/^\|/, '').replace(/\|$/, '').split('|').map(cell => cell.replace(/\*\*/g, '').trim()))
+        .filter(row => row.length >= 2 && !row.every(isMarkdownSeparatorCell))
+        .map(row => {
+            const credentials = row.map(normalizeCommitteeMemberLookupKey).filter(Boolean);
+            const name = row.find(cell => {
+                const trimmed = cell.trim();
+                return trimmed
+                    && !normalizeCommitteeMemberLookupKey(trimmed)
+                    && !isMarkdownSeparatorCell(trimmed)
+                    && !/^\d+$/.test(trimmed)
+                    && !/^member$/i.test(trimmed);
+            }) || '';
+            return { name, credentials };
+        })
+        .filter(row => row.name || row.credentials.length);
+}
+
+function isMarkdownSeparatorCell(value) {
+    return /^:?-{2,}:?$/.test(String(value || '').trim());
+}
+
+function setCommitteeSinceEpoch(map, key, epoch) {
+    const normalized = normalizeCommitteeMemberLookupKey(key);
+    if (!normalized || map.has(normalized)) return;
+    map.set(normalized, epoch);
+}
+
+function normalizeCommitteeMemberLookupKey(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+
+    const bech32 = raw.match(/cc_(?:cold|hot)1[0-9a-z]+/i)?.[0];
+    if (bech32) return bech32.toLowerCase();
+
+    const hex = raw
+        .replace(/^script[-_]?hash[-_]?/i, '')
+        .replace(/^key[-_]?hash[-_]?/i, '')
+        .trim()
+        .toLowerCase();
+    if (/^[0-9a-f]{56,64}$/.test(hex)) return hex;
+
+    return raw.toLowerCase();
 }
 
 function inferCommitteeMemberCountFromSummary(summary) {
