@@ -1989,11 +1989,11 @@ function renderConstitutionalCommitteeActionLoading(container, complete, total) 
 }
 
 async function loadConstitutionalCommitteeMemberSummaryStats(members, container) {
-    if (hasConstitutionalCommitteeBackendStats(members)) {
-        updateConstitutionalCommitteeMemberSummaryStats(container, members.map(member => ({
-            voted: Number(member.voteStats?.voted) || 0,
-            total: Number(member.voteStats?.total) || 0
-        })));
+    if (hasConstitutionalCommitteeBackendActionStatsForMembers(members)) {
+        updateConstitutionalCommitteeMemberSummaryStats(
+            container,
+            members.map(getConstitutionalCommitteeBackendMemberSummaryStats)
+        );
         return;
     }
 
@@ -2089,6 +2089,28 @@ function hasConstitutionalCommitteeBackendStats(members) {
 
 function hasConstitutionalCommitteeBackendActionStats(member) {
     return Array.isArray(member?.voteStats?.actions) && member.voteStats.actions.length > 0;
+}
+
+function hasConstitutionalCommitteeBackendActionStatsForMembers(members) {
+    return Array.isArray(members) && members.length > 0 && members.every(hasConstitutionalCommitteeBackendActionStats);
+}
+
+function getConstitutionalCommitteeBackendMemberSummaryStats(member) {
+    const actionStatsById = new Map((member.voteStats?.actions || [])
+        .map(action => [String(action.proposalId || action.proposal_id || ''), action]));
+    const proposals = getGovernanceActionsForCommitteeMember(member)
+        .filter(isConstitutionalCommitteeVoteApplicable)
+        .filter(isExpiredGovernanceActionForCommitteeStats);
+    const stats = { voted: 0, total: 0 };
+
+    proposals.forEach(proposal => {
+        const actionStats = actionStatsById.get(String(proposal.proposal_id || ''));
+        if (!actionStats) return;
+        stats.total += 1;
+        if (actionStats.voted) stats.voted += 1;
+    });
+
+    return stats;
 }
 
 function updateConstitutionalCommitteeMemberSummaryStats(container, stats) {
@@ -2256,7 +2278,7 @@ function updateConstitutionalCommitteeActionCardPending(container, proposal) {
 function createConstitutionalCommitteeGovernanceCard(proposal) {
     const card = createGovernanceCard(proposal, {
         onClick: () => {
-            closeConstitutionalCommitteeActionsOverlay();
+            closeConstitutionalCommitteeOverlay();
             openGovernanceOverlay(proposal);
         }
     });
