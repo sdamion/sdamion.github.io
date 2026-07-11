@@ -746,6 +746,7 @@ p {
 .price-panel span {
     display: grid;
     gap: 4px;
+    min-width: 0;
     color: var(--muted);
     font-size: 0.88rem;
     font-weight: 700;
@@ -753,10 +754,12 @@ p {
 }
 
 .price-panel b {
+    min-width: 0;
     color: var(--text);
     font-size: 0.88rem;
     font-weight: 700;
     line-height: 1.15;
+    overflow-wrap: anywhere;
 }
 
 .pool-summary,
@@ -2325,6 +2328,11 @@ html[data-theme="dark"] input {
     .hero-media {
         width: calc(100vw - 32px);
         max-width: calc(100vw - 32px);
+    }
+
+    .price-panel {
+        gap: 8px;
+        padding: 14px 12px;
     }
 
     h1 {

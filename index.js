@@ -34,9 +34,13 @@ async function fetchPrices() {
 
     if (coingeckoResult.status === 'fulfilled') {
         const adaPrice = coingeckoResult.value.cardano?.usd?.toFixed(2);
-        const btcPrice = coingeckoResult.value.bitcoin?.usd?.toFixed(2);
+        const btcPrice = coingeckoResult.value.bitcoin?.usd;
         if (adaEl) adaEl.textContent = adaPrice ? `$${adaPrice}` : 'N/A';
-        if (btcEl) btcEl.textContent = btcPrice ? `$${btcPrice}` : 'N/A';
+        if (btcEl) {
+            btcEl.textContent = Number.isFinite(btcPrice)
+                ? `$${new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(btcPrice)}`
+                : 'N/A';
+        }
     } else {
         if (adaEl) adaEl.textContent = 'N/A';
         if (btcEl) btcEl.textContent = 'N/A';
