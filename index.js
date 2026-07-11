@@ -1,5 +1,5 @@
 // API URLs
-const COINGECKO_API_URL = 'https://api.coingecko.com/api/v3/simple/price?ids=cardano,hyperliquid&vs_currencies=usd';
+const COINGECKO_API_URL = 'https://api.coingecko.com/api/v3/simple/price?ids=cardano,bitcoin&vs_currencies=usd';
 const GECKOTERMINAL_API_URL = 'https://api.geckoterminal.com/api/v2/simple/networks/cardano/token_price/3d77d63dfa6033be98021417e08e3368cc80e67f8d7afa196aaa0b3953746172636820546f6b656e,6d06570ddd778ec7c0cca09d381eca194e90c8cffa7582879735dbde584552,b6a7467ea1deb012808ef4e87b5ff371e85f7142d7b356a40d9b42a0436f726e75636f70696173205b76696120436861696e506f72742e696f5d';
 
 // Token IDs from GeckoTerminal
@@ -15,10 +15,10 @@ const POOL_API_URL = IS_LOCAL_PREVIEW ? '/__pool_proxy__' : 'https://api.tdsp.on
 const LEADER_SCHEDULE_API_URL = IS_LOCAL_PREVIEW ? '/__leader_schedule_proxy__' : 'https://api.tdsp.online/api/leader-schedule';
 const notifiedRelayMaintenance = new Set();
 
-// Fetch and display ADA, HYPE, and STRCH prices asynchronously
+// Fetch and display ADA, BTC, and STRCH prices asynchronously
 async function fetchPrices() {
     const adaEl = document.getElementById('ada-price');
-    const hypeEl = document.getElementById('hype-price');
+    const btcEl = document.getElementById('btc-price');
     const strchEl = document.getElementById('strch-price');
 
     const [coingeckoResult, geckoterminalResult] = await Promise.allSettled([
@@ -34,12 +34,12 @@ async function fetchPrices() {
 
     if (coingeckoResult.status === 'fulfilled') {
         const adaPrice = coingeckoResult.value.cardano?.usd?.toFixed(2);
-        const hypePrice = coingeckoResult.value.hyperliquid?.usd?.toFixed(2);
+        const btcPrice = coingeckoResult.value.bitcoin?.usd?.toFixed(2);
         if (adaEl) adaEl.textContent = adaPrice ? `$${adaPrice}` : 'N/A';
-        if (hypeEl) hypeEl.textContent = hypePrice ? `$${hypePrice}` : 'N/A';
+        if (btcEl) btcEl.textContent = btcPrice ? `$${btcPrice}` : 'N/A';
     } else {
         if (adaEl) adaEl.textContent = 'N/A';
-        if (hypeEl) hypeEl.textContent = 'N/A';
+        if (btcEl) btcEl.textContent = 'N/A';
     }
 
     if (geckoterminalResult.status === 'fulfilled') {
