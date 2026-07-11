@@ -104,7 +104,6 @@ async function loadGovernanceActions() {
         renderGovernanceGroup(groups.approved, grouped.approved, 'No approved actions found.');
         renderGovernanceGroup(groups.rejected, grouped.rejected, 'No rejected actions found.');
         renderGovernanceGroup(groups.info, grouped.info, 'No info actions found.');
-        refreshActiveGovernanceCardVotes(grouped.active);
         await updateGovernanceCounts(grouped);
         lastActiveRenderSignature = getGovernanceGroupSignature(grouped.active);
         updateEpochDisplayFromDashboardPayload(dashboardPayload);
@@ -144,7 +143,6 @@ async function refreshActiveGovernanceGroup() {
     renderGovernanceGroup(groups.approved, grouped.approved, 'No approved actions found.');
     renderGovernanceGroup(groups.rejected, grouped.rejected, 'No rejected actions found.');
     renderGovernanceGroup(groups.info, grouped.info, 'No info actions found.');
-    refreshActiveGovernanceCardVotes(grouped.active);
     await updateGovernanceCounts(grouped);
     lastActiveRenderSignature = nextSignature;
 }
@@ -767,8 +765,7 @@ function createGovernanceCard(proposal) {
 
     const metadataItems = getActiveGovernanceCardMetadata(proposal);
     const votes = document.createElement('span');
-    const governanceStatus = getGovernanceStatus(proposal);
-    if (governanceStatus === 'active' || !proposal.votePercentages) {
+    if (!proposal.votePercentages) {
         votes.className = 'governance-votes vote-neutral';
         votes.textContent = 'Open for live votes';
     } else {
@@ -787,21 +784,6 @@ function createGovernanceCard(proposal) {
     if (shouldShowVotePercentages(proposal)) card.appendChild(votes);
 
     return card;
-}
-
-function refreshActiveGovernanceCardVotes(proposals) {
-    if (!Array.isArray(proposals)) return;
-
-    proposals
-        .filter(proposal => proposal?.proposal_id)
-        .forEach(proposal => {
-            fetchProposalVotesPayload(proposal.proposal_id)
-                .then(payload => {
-                    const detailProposal = mergeProposalVoteDetails(proposal, payload);
-                    updateGovernanceCardVotes(proposal.proposal_id, detailProposal);
-                })
-                .catch(() => {});
-        });
 }
 
 function getTreasuryBudgetMetadata(proposal) {
@@ -1708,7 +1690,7 @@ function renderNoVotesList(container, votes, headingLabel = 'DRep votes') {
         row.appendChild(copy);
         list.appendChild(row);
 
-        resolveDrepDisplayName(vote, name).catch(() => {});
+        resolveDrepDisplayName(vote, name, { skipDetailLookup: true }).catch(() => {});
     });
 
     container.appendChild(title);
@@ -1735,8 +1717,8 @@ function getDrepPrimaryDisplayName(vote) {
         || 'Unknown DRep';
 }
 
-async function resolveDrepDisplayName(vote, target) {
-    const name = await resolveDrepNameFromApi(vote);
+async function resolveDrepDisplayName(vote, target, options = {}) {
+    const name = await resolveDrepNameFromApi(vote, options);
     if (!name || !target?.isConnected) return;
 
     vote.resolvedDrepName = name;
@@ -1770,7 +1752,7 @@ function getDrepVotePowerValue(vote) {
     return Number.isFinite(numericValue) ? numericValue : 0;
 }
 
-async function resolveDrepNameFromApi(vote) {
+async function resolveDrepNameFromApi(vote, options = {}) {
     const directName = vote?.resolvedDrepName || vote?.drep_name || vote?.drepName || vote?.name;
     if (directName) return directName;
 
@@ -1779,12 +1761,14 @@ async function resolveDrepNameFromApi(vote) {
     );
 
     if (lookupId) {
-        const detailName = await fetchDrepNameById(lookupId).catch(() => null);
-        if (detailName) return detailName;
-
         const directory = await loadDrepDirectory().catch(() => null);
         const directoryName = directory?.get(lookupId) || directory?.get(shortenDrepIdentifier(lookupId)) || null;
         if (directoryName) return directoryName;
+
+        if (!options.skipDetailLookup) {
+            const detailName = await fetchDrepNameById(lookupId).catch(() => null);
+            if (detailName) return detailName;
+        }
     }
 
     const metadataUrl = normalizeMetadataUrl(vote?.meta_url || vote?.metaUrl);
@@ -2654,29 +2638,9 @@ function formatVotePercentages(percentages, label = null, summary = null, source
 
     const parts = [
         `Yes ${formatPercentage(percentages.yes)}`,
-        `No ${formatPercentage(percentages.no)}`
+        `No - Not Voted ${formatPercentage(percentages.no)}`
     ];
-    const votingPower = formatDrepVotingPower(summary, source);
-    if (votingPower) parts.push(votingPower);
     return parts.join(' | ');
-}
-
-function formatDrepVotingPower(summary, source) {
-    if (source !== 'drep' || !summary) return '';
-
-    const yes = pickFirstNumber(
-        summary.drep_yes_vote_power,
-        summary.drep_active_yes_vote_power,
-        summary.drep_yes_stake
-    ) || 0;
-    const no = pickFirstNumber(
-        summary.drep_no_vote_power,
-        summary.drep_active_no_vote_power,
-        summary.drep_no_stake
-    ) || 0;
-    const total = yes + no;
-    if (total <= 0) return '';
-    return `Voting power ${formatCompactAdaFromLovelace(total)}`;
 }
 
 function getGovernanceGroupSignature(proposals) {
