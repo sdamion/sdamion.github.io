@@ -1759,7 +1759,7 @@ function renderConstitutionalCommitteeMembers(container, members, emptyMessage =
         const copy = document.createElement('div');
         const hash = document.createElement('span');
         hash.className = 'governance-cc-member-hash';
-        hash.textContent = member.id;
+        hash.textContent = member.name || `CC Member ${index + 1}`;
 
         const meta = document.createElement('span');
         meta.className = 'governance-cc-member-meta';
@@ -2963,6 +2963,7 @@ function normalizeConstitutionalCommitteeMember(entry) {
 
     return {
         id,
+        name: entry.name || null,
         hotId: entry.cc_hot_id || entry.cc_hot_hex || null,
         status: entry.status || null,
         type,
