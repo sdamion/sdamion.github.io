@@ -1884,25 +1884,6 @@ p {
     background: #fb7185;
 }
 
-.governance-cc-action {
-    display: grid;
-    gap: 6px;
-    width: 100%;
-    padding: 14px;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    background: var(--overlay-surface-muted);
-    color: var(--text);
-    text-align: left;
-    cursor: pointer;
-}
-
-.governance-cc-action:hover,
-.governance-cc-action:focus-visible {
-    border-color: var(--accent);
-    outline: none;
-}
-
 .governance-cc-action--voted {
     border-color: rgba(20, 184, 166, 0.48);
     background: rgba(20, 184, 166, 0.12);
@@ -1921,17 +1902,6 @@ p {
 .governance-cc-action--na {
     border-color: var(--line);
     background: var(--overlay-surface-muted);
-}
-
-.governance-cc-action strong {
-    font-size: 0.95rem;
-    line-height: 1.25;
-}
-
-.governance-cc-action span {
-    color: var(--muted);
-    font-size: 0.9rem;
-    line-height: 1.35;
 }
 
 .governance-dialog h2 {

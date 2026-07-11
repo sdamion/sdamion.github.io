@@ -29,6 +29,7 @@ let epochEndsAtMs = null;
 let currentEpochNumber = null;
 let lastActiveRenderSignature = '';
 let governanceState = null;
+let governanceGroupsState = null;
 let committeeInfoState = null;
 const proposalVotesCache = new Map();
 const committeeMemberStatsCache = new Map();
@@ -46,6 +47,7 @@ if (document.readyState === 'loading') {
 function initGovernance() {
     removeDrepPowerSplitCard();
     ensureEpochCountdownCard();
+    setupGovernanceSummaryActionCards();
     setupConstitutionalCommitteeCard();
     startGovernanceApiHealthMonitor();
     loadCurrentEpoch();
@@ -61,6 +63,26 @@ function setupConstitutionalCommitteeCard() {
         if (event.key !== 'Enter' && event.key !== ' ') return;
         event.preventDefault();
         openConstitutionalCommitteeOverlay();
+    });
+}
+
+function setupGovernanceSummaryActionCards() {
+    [
+        { id: 'gov-active-card', groupKey: 'active', title: 'Active Governance Actions', emptyMessage: 'No active actions found.' },
+        { id: 'gov-approved-card', groupKey: 'approved', title: 'Approved Governance Actions', emptyMessage: 'No approved actions found.' },
+        { id: 'gov-rejected-card', groupKey: 'rejected', title: 'Rejected Governance Actions', emptyMessage: 'No rejected actions found.' },
+        { id: 'gov-info-card', groupKey: 'info', title: 'Info Actions', emptyMessage: 'No info actions found.' }
+    ].forEach(config => {
+        const card = document.getElementById(config.id);
+        if (!card) return;
+
+        const open = () => openGovernanceActionGroupOverlay(config.groupKey, config.title, config.emptyMessage);
+        card.addEventListener('click', open);
+        card.addEventListener('keydown', event => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault();
+            open();
+        });
     });
 }
 
@@ -107,8 +129,6 @@ async function loadGovernanceActions() {
         info: document.getElementById('governance-info')
     };
 
-    if (!groups.active || !groups.approved || !groups.rejected || !groups.info) return;
-
     try {
         const dashboardPayload = await fetchGovernanceDashboardPayload();
         governanceState = dashboardPayload;
@@ -117,17 +137,19 @@ async function loadGovernanceActions() {
             throw new Error('No governance proposals found in dashboard payload');
         }
         const grouped = groupGovernanceProposals(proposals);
+        governanceGroupsState = grouped;
 
-        renderGovernanceGroup(groups.active, grouped.active, 'No active actions found.');
-        renderGovernanceGroup(groups.approved, grouped.approved, 'No approved actions found.');
-        renderGovernanceGroup(groups.rejected, grouped.rejected, 'No rejected actions found.');
-        renderGovernanceGroup(groups.info, grouped.info, 'No info actions found.');
+        renderGovernanceGroupIfPresent(groups.active, grouped.active, 'No active actions found.');
+        renderGovernanceGroupIfPresent(groups.approved, grouped.approved, 'No approved actions found.');
+        renderGovernanceGroupIfPresent(groups.rejected, grouped.rejected, 'No rejected actions found.');
+        renderGovernanceGroupIfPresent(groups.info, grouped.info, 'No info actions found.');
         await updateGovernanceCounts(grouped);
         lastActiveRenderSignature = getGovernanceGroupSignature(grouped.active);
         updateEpochDisplayFromDashboardPayload(dashboardPayload);
         scheduleActiveRefresh();
     } catch (error) {
         Object.values(groups).forEach(group => {
+            if (!group) return;
             group.textContent = '';
             const message = document.createElement('p');
             message.className = 'small-text';
@@ -144,7 +166,6 @@ async function refreshActiveGovernanceGroup() {
         rejected: document.getElementById('governance-rejected'),
         info: document.getElementById('governance-info')
     };
-    if (!groups.active || !groups.approved || !groups.rejected || !groups.info) return;
 
     const dashboardPayload = await fetchGovernanceDashboardPayload().catch(() => null);
     if (!dashboardPayload) return;
@@ -153,14 +174,15 @@ async function refreshActiveGovernanceGroup() {
     const proposals = getGovernanceProposalsFromDashboardPayload(dashboardPayload);
     const grouped = groupGovernanceProposals(proposals);
     const activeProposals = grouped.active;
+    governanceGroupsState = grouped;
 
     const nextSignature = getGovernanceGroupSignature(activeProposals);
     if (nextSignature === lastActiveRenderSignature) return;
 
-    renderGovernanceGroup(groups.active, grouped.active, 'No active actions found.');
-    renderGovernanceGroup(groups.approved, grouped.approved, 'No approved actions found.');
-    renderGovernanceGroup(groups.rejected, grouped.rejected, 'No rejected actions found.');
-    renderGovernanceGroup(groups.info, grouped.info, 'No info actions found.');
+    renderGovernanceGroupIfPresent(groups.active, grouped.active, 'No active actions found.');
+    renderGovernanceGroupIfPresent(groups.approved, grouped.approved, 'No approved actions found.');
+    renderGovernanceGroupIfPresent(groups.rejected, grouped.rejected, 'No rejected actions found.');
+    renderGovernanceGroupIfPresent(groups.info, grouped.info, 'No info actions found.');
     await updateGovernanceCounts(grouped);
     lastActiveRenderSignature = nextSignature;
 }
@@ -786,12 +808,21 @@ function renderGovernanceGroup(container, proposals, emptyMessage) {
     });
 }
 
-function createGovernanceCard(proposal) {
+function renderGovernanceGroupIfPresent(container, proposals, emptyMessage) {
+    if (!container) return;
+    renderGovernanceGroup(container, proposals, emptyMessage);
+}
+
+function createGovernanceCard(proposal, options = {}) {
     const card = document.createElement('button');
     card.className = 'governance-card';
     card.type = 'button';
     card.dataset.proposalId = proposal.proposal_id;
-    card.addEventListener('click', () => openGovernanceOverlay(proposal));
+    const handleClick = options.onClick || (() => {
+        closeGovernanceActionGroupOverlay();
+        openGovernanceOverlay(proposal);
+    });
+    card.addEventListener('click', handleClick);
 
     const title = document.createElement('span');
     title.className = 'governance-title';
@@ -822,6 +853,60 @@ function createGovernanceCard(proposal) {
     if (shouldShowVotePercentages(proposal)) card.appendChild(votes);
 
     return card;
+}
+
+function openGovernanceActionGroupOverlay(groupKey, titleText, emptyMessage) {
+    closeGovernanceActionGroupOverlay();
+
+    const proposals = governanceGroupsState?.[groupKey]
+        || groupGovernanceProposals(getGovernanceProposalsFromDashboardPayload(governanceState || {}))[groupKey]
+        || [];
+    const overlay = document.createElement('div');
+    overlay.className = 'governance-overlay governance-drep-overlay';
+    overlay.id = 'governance-action-group-overlay';
+    overlay.addEventListener('click', event => {
+        if (event.target === overlay) closeGovernanceActionGroupOverlay();
+    });
+
+    const dialog = document.createElement('article');
+    dialog.className = 'governance-dialog governance-drep-dialog';
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.setAttribute('aria-labelledby', 'governance-action-group-title');
+
+    const close = document.createElement('button');
+    close.className = 'governance-close';
+    close.type = 'button';
+    close.setAttribute('aria-label', `Close ${titleText}`);
+    close.textContent = 'Close';
+    close.addEventListener('click', closeGovernanceActionGroupOverlay);
+
+    const title = document.createElement('h3');
+    title.id = 'governance-action-group-title';
+    title.className = 'governance-drep-title';
+    title.textContent = titleText;
+
+    const panel = document.createElement('div');
+    panel.className = 'governance-list governance-action-group-list';
+    renderGovernanceGroup(panel, proposals, emptyMessage);
+
+    dialog.appendChild(close);
+    dialog.appendChild(title);
+    dialog.appendChild(panel);
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+    close.focus();
+    document.addEventListener('keydown', handleGovernanceActionGroupOverlayKeydown);
+}
+
+function closeGovernanceActionGroupOverlay() {
+    const overlay = document.getElementById('governance-action-group-overlay');
+    if (overlay) overlay.remove();
+    document.removeEventListener('keydown', handleGovernanceActionGroupOverlayKeydown);
+}
+
+function handleGovernanceActionGroupOverlayKeydown(event) {
+    if (event.key === 'Escape') closeGovernanceActionGroupOverlay();
 }
 
 function getTreasuryBudgetMetadata(proposal) {
@@ -1722,7 +1807,10 @@ function openConstitutionalCommitteeOverlay() {
         .then(payload => {
             if (!panel.isConnected) return;
             const fetchedMembers = getConstitutionalCommitteeMembers(payload);
-            if (getConstitutionalCommitteeMembersSignature(fetchedMembers) === getConstitutionalCommitteeMembersSignature(members)) return;
+            if (
+                getConstitutionalCommitteeMembersSignature(fetchedMembers) === getConstitutionalCommitteeMembersSignature(members)
+                && hasConstitutionalCommitteeBackendStats(members)
+            ) return;
             renderConstitutionalCommitteeMembers(panel, fetchedMembers);
         })
         .catch(() => {
@@ -1837,7 +1925,7 @@ function openConstitutionalCommitteeActionsOverlay(member) {
 
     const panel = document.createElement('div');
     panel.className = 'governance-cc-actions';
-    renderConstitutionalCommitteeActionLoading(panel, 0, getGovernanceActionsForCommitteeMember(member).length);
+    renderConstitutionalCommitteeActionShell(panel, member);
 
     dialog.appendChild(close);
     dialog.appendChild(title);
@@ -1896,6 +1984,14 @@ function renderConstitutionalCommitteeActionLoading(container, complete, total) 
 }
 
 async function loadConstitutionalCommitteeMemberSummaryStats(members, container) {
+    if (hasConstitutionalCommitteeBackendStats(members)) {
+        updateConstitutionalCommitteeMemberSummaryStats(container, members.map(member => ({
+            voted: Number(member.voteStats?.voted) || 0,
+            total: Number(member.voteStats?.total) || 0
+        })));
+        return;
+    }
+
     const proposals = getGovernanceActionsForCommitteeOverview()
         .filter(isConstitutionalCommitteeVoteApplicable)
         .filter(isExpiredGovernanceActionForCommitteeStats);
@@ -1978,6 +2074,14 @@ function getConstitutionalCommitteeMembersSignature(members) {
         .join('|');
 }
 
+function hasConstitutionalCommitteeBackendStats(members) {
+    return Array.isArray(members) && members.length > 0 && members.every(member => (
+        member?.voteStats
+        && Number.isFinite(Number(member.voteStats.total))
+        && Number.isFinite(Number(member.voteStats.voted))
+    ));
+}
+
 function updateConstitutionalCommitteeMemberSummaryStats(container, stats) {
     stats.forEach((item, index) => {
         const element = container.querySelector(`.governance-cc-member-stats[data-cc-member-index="${index}"]`);
@@ -2036,15 +2140,15 @@ async function loadConstitutionalCommitteeActionVotes(member, container) {
 
             results[index] = { proposal, vote, error };
             completed += 1;
-            if (container.isConnected && (completed === proposals.length || completed % 5 === 0)) {
-                renderConstitutionalCommitteeActionLoading(container, completed, proposals.length);
+            if (container.isConnected) {
+                updateConstitutionalCommitteeActionCard(container, proposal, vote, error);
             }
         }
     }
 
     await Promise.all(Array.from({ length: workerCount }, () => worker()));
     if (!container.isConnected) return;
-    renderConstitutionalCommitteeActionVotes(container, results.filter(Boolean));
+    updateConstitutionalCommitteeVoteChart(container, results.filter(Boolean));
 }
 
 function findConstitutionalCommitteeVoteForMember(payload, member) {
@@ -2077,43 +2181,110 @@ function normalizeCommitteeVoteIdentifier(value) {
     return String(value || '').trim().toLowerCase();
 }
 
-function renderConstitutionalCommitteeActionVotes(container, results) {
+function renderConstitutionalCommitteeActionShell(container, member) {
+    const proposals = getGovernanceActionsForCommitteeMember(member);
     container.textContent = '';
-    renderConstitutionalCommitteeVoteChart(container, results);
 
-    results.forEach(({ proposal, vote, error }) => {
-        const row = document.createElement('button');
-        row.type = 'button';
-        const isExpiredForStats = isExpiredGovernanceActionForCommitteeStats(proposal);
-        const isApplicable = isConstitutionalCommitteeVoteApplicable(proposal);
-        const statusClass = vote
-            ? 'governance-cc-action--voted'
-            : !isApplicable
-                ? 'governance-cc-action--na'
-                : isExpiredForStats
-                ? 'governance-cc-action--missing'
-                : 'governance-cc-action--open';
-        row.className = `governance-cc-action ${statusClass}`;
-        row.addEventListener('click', () => openGovernanceOverlay(proposal));
+    if (!proposals.length) {
+        renderConstitutionalCommitteeActionLoading(container, 0, 0);
+        return;
+    }
 
-        const title = document.createElement('strong');
-        title.textContent = getProposalTitle(proposal);
+    const chartSlot = document.createElement('div');
+    chartSlot.dataset.ccVoteChart = 'true';
+    renderConstitutionalCommitteeVoteChartContent(chartSlot, [], true);
+    container.appendChild(chartSlot);
 
-        const meta = document.createElement('span');
-        meta.textContent = [
-            formatProposalType(proposal.proposal_type),
-            getProposalEpochText(proposal),
-            getProposalExpirationText(proposal),
-            !isApplicable ? 'not applicable' : vote ? `voted ${formatVoteChoice(vote.vote || vote.voteBucket)}` : error ? 'vote data unavailable' : 'not voted'
-        ].filter(Boolean).join(' • ');
-
-        row.appendChild(title);
-        row.appendChild(meta);
-        container.appendChild(row);
+    proposals.forEach(proposal => {
+        container.appendChild(createConstitutionalCommitteeGovernanceCard(proposal));
     });
 }
 
-function renderConstitutionalCommitteeVoteChart(container, results) {
+function createConstitutionalCommitteeGovernanceCard(proposal) {
+    const card = createGovernanceCard(proposal, {
+        onClick: () => {
+            closeConstitutionalCommitteeActionsOverlay();
+            openGovernanceOverlay(proposal);
+        }
+    });
+    card.dataset.ccProposalId = proposal.proposal_id || '';
+
+    const status = document.createElement('span');
+    status.className = 'governance-votes vote-neutral';
+    status.dataset.ccVoteStatus = 'true';
+    status.textContent = getInitialConstitutionalCommitteeActionStatus(proposal);
+    card.appendChild(status);
+
+    return card;
+}
+
+function getInitialConstitutionalCommitteeActionStatus(proposal) {
+    if (!isConstitutionalCommitteeVoteApplicable(proposal)) return 'CC vote not applicable';
+    return 'Checking CC vote...';
+}
+
+function updateConstitutionalCommitteeActionCard(container, proposal, vote, error) {
+    const card = findConstitutionalCommitteeActionCard(container, proposal?.proposal_id);
+    if (!card) return;
+
+    const isExpiredForStats = isExpiredGovernanceActionForCommitteeStats(proposal);
+    const isApplicable = isConstitutionalCommitteeVoteApplicable(proposal);
+    const status = card.querySelector('[data-cc-vote-status="true"]');
+    if (!status) return;
+
+    card.classList.remove(
+        'governance-cc-action--voted',
+        'governance-cc-action--missing',
+        'governance-cc-action--open',
+        'governance-cc-action--na'
+    );
+
+    if (!isApplicable) {
+        card.classList.add('governance-cc-action--na');
+        status.className = 'governance-votes vote-neutral';
+        status.textContent = 'CC vote not applicable';
+        return;
+    }
+
+    if (vote) {
+        card.classList.add('governance-cc-action--voted');
+        status.className = 'governance-votes vote-green';
+        status.textContent = `CC voted ${formatVoteChoice(vote.vote || vote.voteBucket)}`;
+        return;
+    }
+
+    if (error) {
+        card.classList.add('governance-cc-action--open');
+        status.className = 'governance-votes vote-neutral';
+        status.textContent = 'CC vote data unavailable';
+        return;
+    }
+
+    if (isExpiredForStats) {
+        card.classList.add('governance-cc-action--missing');
+        status.className = 'governance-votes vote-red';
+        status.textContent = 'CC not voted';
+        return;
+    }
+
+    card.classList.add('governance-cc-action--open');
+    status.className = 'governance-votes vote-neutral';
+    status.textContent = 'CC not voted yet';
+}
+
+function findConstitutionalCommitteeActionCard(container, proposalId) {
+    return Array.from(container.querySelectorAll('[data-cc-proposal-id]'))
+        .find(card => card.dataset.ccProposalId === String(proposalId || '')) || null;
+}
+
+function updateConstitutionalCommitteeVoteChart(container, results) {
+    const chartSlot = container.querySelector('[data-cc-vote-chart="true"]');
+    if (!chartSlot) return;
+    renderConstitutionalCommitteeVoteChartContent(chartSlot, results);
+}
+
+function renderConstitutionalCommitteeVoteChartContent(container, results, isLoading = false) {
+    container.textContent = '';
     const eligibleResults = results.filter(result => (
         isConstitutionalCommitteeVoteApplicable(result.proposal)
         && isExpiredGovernanceActionForCommitteeStats(result.proposal)
@@ -2134,9 +2305,9 @@ function renderConstitutionalCommitteeVoteChart(container, results) {
     const center = document.createElement('div');
     center.className = 'governance-cc-vote-donut-center';
     const count = document.createElement('strong');
-    count.textContent = `${formatPercentage(votedPct)} voted`;
+    count.textContent = isLoading ? 'Loading' : `${formatPercentage(votedPct)} voted`;
     const label = document.createElement('span');
-    label.textContent = `${voted} of ${total} expired actions`;
+    label.textContent = isLoading ? 'CC vote status' : `${voted} of ${total} expired actions`;
     center.appendChild(count);
     center.appendChild(label);
     donut.appendChild(center);
@@ -2188,16 +2359,6 @@ function createConstitutionalCommitteeVoteLegendItem(label, count, percentage, s
     item.appendChild(dot);
     item.appendChild(copy);
     return item;
-}
-
-function getProposalEpochText(proposal) {
-    const epoch = Number(proposal?.proposed_epoch);
-    return Number.isFinite(epoch) ? `epoch ${epoch}` : '';
-}
-
-function getProposalExpirationText(proposal) {
-    const expiration = Number(proposal?.expiration);
-    return Number.isFinite(expiration) ? `expires ${expiration}` : '';
 }
 
 function formatVoteChoice(value) {
@@ -3404,7 +3565,22 @@ function normalizeConstitutionalCommitteeMember(entry) {
         status: entry.status || null,
         type,
         expiresEpoch: pickFirstNumber(entry.expiresEpoch, entry.expiration_epoch, entry.epoch, entry.expires_epoch),
-        hasScript: entry.cc_cold_has_script ?? entry.cc_hot_has_script ?? null
+        hasScript: entry.cc_cold_has_script ?? entry.cc_hot_has_script ?? null,
+        voteStats: normalizeConstitutionalCommitteeMemberVoteStats(entry.voteStats || entry.vote_stats)
+    };
+}
+
+function normalizeConstitutionalCommitteeMemberVoteStats(stats) {
+    if (!stats || typeof stats !== 'object') return null;
+
+    return {
+        voted: pickFirstNumber(stats.voted, stats.voted_count),
+        notVoted: pickFirstNumber(stats.notVoted, stats.not_voted, stats.not_voted_count),
+        total: pickFirstNumber(stats.total, stats.total_actions),
+        votedPct: pickFirstNumber(stats.votedPct, stats.voted_pct),
+        notVotedPct: pickFirstNumber(stats.notVotedPct, stats.not_voted_pct),
+        cachedActions: pickFirstNumber(stats.cachedActions, stats.cached_actions),
+        totalActions: pickFirstNumber(stats.totalActions, stats.total_actions)
     };
 }
 
