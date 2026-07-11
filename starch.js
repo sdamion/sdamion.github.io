@@ -139,12 +139,8 @@ function updateUI(minersData, teamBalance = 0, totalWeeklyBlocks = 0) {
     const minerTableBody = document.getElementById('minerTableBody');
 
     if (teamNameElement) teamNameElement.innerText = teams[selectedTeamId] || selectedTeamId;
-    if (balanceDisplay) {
-        balanceDisplay.textContent = '';
-        const textNode = document.createTextNode(`Company Balance: ${formatBalance(teamBalance)}`);
-        balanceDisplay.appendChild(textNode);
-    }
-    if (weeklyBlocksDisplay) weeklyBlocksDisplay.innerText = `Weekly Blocks: ${totalWeeklyBlocks}`;
+    if (balanceDisplay) balanceDisplay.textContent = formatBalance(teamBalance);
+    if (weeklyBlocksDisplay) weeklyBlocksDisplay.textContent = String(totalWeeklyBlocks);
 
     if (minerTableBody) {
         while (minerTableBody.firstChild) minerTableBody.removeChild(minerTableBody.firstChild);

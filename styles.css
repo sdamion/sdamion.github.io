@@ -62,7 +62,9 @@ h2 {
 }
 
 .small-text {
-    font-size: 14px;
+    color: var(--muted);
+    font-size: 0.9rem;
+    line-height: 1.45;
 }
 
 .error-text {
@@ -108,7 +110,7 @@ table {
     border-collapse: collapse;
     width: auto;
     background-color: inherit;
-    font-size: 1.2rem;
+    font-size: 0.9rem;
     color: inherit;
     margin:0 auto;
 }
@@ -127,11 +129,11 @@ th {
 
 .online {
     color: rgb(155, 89, 182);
-    font-weight: bold;
+    font-weight: 700;
 }
 .offline {
     color: red;
-    font-weight: bold;
+    font-weight: 700;
 }
 
 /* Legacy Link Grid */
@@ -804,28 +806,44 @@ p {
 
 .price-panel strong {
     grid-column: 1 / -1;
+    color: var(--accent-strong);
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.15;
 }
 
 .price-panel span {
     display: grid;
     gap: 4px;
     color: var(--muted);
-    font-size: 0.82rem;
+    font-size: 0.9rem;
+    line-height: 1.35;
 }
 
 .price-panel b {
     color: var(--text);
     font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.15;
 }
 
-.pool-summary {
+.pool-summary,
+.starch-summary {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 14px;
     margin: 18px 0;
 }
 
+.pool-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.starch-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .pool-summary > div,
+.starch-summary > div,
 .pool-relay,
 .governance-summary > div {
     border: 1px solid var(--line);
@@ -834,19 +852,23 @@ p {
 }
 
 .pool-summary > div,
+.starch-summary > div,
 .governance-summary > div {
     padding: 18px;
     min-width: 0;
 }
 
-.pool-summary strong {
+.pool-summary strong,
+.starch-summary strong {
     display: block;
     color: var(--accent-strong);
     font-size: 1.45rem;
+    font-weight: 700;
     line-height: 1.15;
 }
 
-.pool-summary span {
+.pool-summary span,
+.starch-summary span {
     display: block;
     margin-top: 6px;
     color: var(--muted);
@@ -990,7 +1012,7 @@ p {
 .table-shell table {
     width: 100%;
     min-width: 560px;
-    font-size: 1rem;
+    font-size: 0.9rem;
 }
 
 .table-shell th,
@@ -1001,6 +1023,8 @@ p {
 
 .table-shell th {
     background: rgba(15, 118, 110, 0.08);
+    color: var(--text);
+    font-weight: 700;
 }
 
 #minerChart {
@@ -1033,25 +1057,26 @@ p {
 
 .governance-summary strong {
     color: var(--accent-strong);
-    font-size: 2rem;
-    line-height: 1;
+    font-size: 1.45rem;
+    line-height: 1.15;
 }
 
 .governance-summary span {
     color: var(--muted);
     font-size: 0.9rem;
+    line-height: 1.35;
 }
 
 .governance-summary-unit {
-    margin-top: -2px;
-    font-size: 0.76rem !important;
+    margin-top: 0;
+    font-size: 0.9rem !important;
     font-weight: 700;
-    letter-spacing: 0.08em;
+    letter-spacing: 0;
 }
 
 .governance-summary-subvalue {
-    margin-top: 2px;
-    font-size: 0.76rem !important;
+    margin-top: 6px;
+    font-size: 0.9rem !important;
     font-weight: 600;
 }
 
@@ -1061,8 +1086,8 @@ p {
 }
 
 .governance-summary-box-title {
-    color: var(--text) !important;
-    font-size: 1rem !important;
+    color: var(--muted) !important;
+    font-size: 0.9rem !important;
     font-weight: 700;
 }
 
@@ -1079,12 +1104,12 @@ p {
 }
 
 .governance-summary-metric strong {
-    font-size: 1.35rem;
+    font-size: 1.45rem;
     line-height: 1.15;
 }
 
 .governance-summary-metric span {
-    font-size: 0.85rem;
+    font-size: 0.9rem;
 }
 
 .governance-group {
@@ -1166,7 +1191,7 @@ p {
     display: block;
     margin-top: 8px;
     color: var(--accent-strong);
-    font-size: 0.78rem;
+    font-size: 0.9rem;
     font-weight: 700;
 }
 
@@ -1174,7 +1199,7 @@ p {
     display: block;
     margin-top: 6px;
     color: var(--muted);
-    font-size: 0.76rem;
+    font-size: 0.9rem;
     font-weight: 600;
 }
 
@@ -1487,12 +1512,12 @@ p {
 
 .governance-vote-legend-copy strong {
     color: var(--text);
-    font-size: 0.84rem;
+    font-size: 0.9rem;
 }
 
 .governance-vote-legend-copy span {
     color: var(--muted);
-    font-size: 0.82rem;
+    font-size: 0.9rem;
     overflow-wrap: anywhere;
 }
 
@@ -1821,6 +1846,13 @@ p {
     margin: 16px 0;
 }
 
+.control-row label {
+    color: var(--muted);
+    font-size: 0.9rem;
+    font-weight: 700;
+    line-height: 1.35;
+}
+
 select,
 input {
     min-height: 42px;
@@ -1829,7 +1861,14 @@ input {
     background: var(--field-surface);
     color: var(--text);
     padding: 0 12px;
-    font: inherit;
+    font-family: inherit;
+    font-size: 0.9rem;
+    font-weight: 500;
+    line-height: 1.35;
+}
+
+select {
+    font-weight: 700;
 }
 
 #links-container {
@@ -2081,7 +2120,8 @@ html[data-theme="dark"] input {
         width: 21%;
     }
 
-    .pool-summary {
+    .pool-summary,
+    .starch-summary {
         grid-template-columns: 1fr 1fr;
     }
 
@@ -2185,6 +2225,7 @@ html[data-theme="dark"] input {
         padding: 7px 4px;
     }
 
+    .starch-summary,
     .governance-summary {
         grid-template-columns: 1fr;
     }

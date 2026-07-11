@@ -146,15 +146,22 @@
             <div class="section-inner">
                 <p class="eyebrow">Mining</p>
                 <h2>Starch Stats</h2>
+                <div class="control-row">
+                    <select id="teamSelector"></select>
+                    <input id="customTeamId" type="text" placeholder="Enter Company ID">
+                </div>
+                <div class="starch-summary">
+                    <div>
+                        <strong id="teamBalance">Loading...</strong>
+                        <span>Company Balance</span>
+                    </div>
+                    <div>
+                        <strong id="weeklyBlocks">Loading...</strong>
+                        <span>Weekly Blocks</span>
+                    </div>
+                </div>
                 <div id="totalBalanceRow"></div>
                 <canvas id="minerChart"></canvas>
-                <div class="control-row">
-                    <label for="teamSelector">Company</label>
-                    <select id="teamSelector"></select>
-                    <input id="customTeamId" type="text" placeholder="Company ID">
-                </div>
-                <p id="teamBalance"></p>
-                <p id="weeklyBlocks"></p>
                 <div class="table-shell">
                     <table id="minersTable">
                         <thead>
