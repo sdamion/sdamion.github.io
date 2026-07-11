@@ -2218,7 +2218,7 @@ function renderConstitutionalCommitteeBackendActionStats(member, container) {
     proposals.forEach(proposal => {
         const actionStats = actionStatsById.get(String(proposal.proposal_id || ''));
         if (!actionStats) {
-            updateConstitutionalCommitteeActionCard(container, proposal, null, new Error('Not cached'));
+            updateConstitutionalCommitteeActionCardPending(container, proposal);
             return;
         }
 
@@ -2233,6 +2233,24 @@ function renderConstitutionalCommitteeBackendActionStats(member, container) {
     });
 
     updateConstitutionalCommitteeVoteChart(container, results);
+}
+
+function updateConstitutionalCommitteeActionCardPending(container, proposal) {
+    const card = findConstitutionalCommitteeActionCard(container, proposal?.proposal_id);
+    if (!card) return;
+
+    const status = card.querySelector('[data-cc-vote-status="true"]');
+    if (!status) return;
+
+    card.classList.remove(
+        'governance-cc-action--voted',
+        'governance-cc-action--missing',
+        'governance-cc-action--open',
+        'governance-cc-action--na'
+    );
+    card.classList.add('governance-cc-action--open');
+    status.className = 'governance-votes vote-neutral';
+    status.textContent = 'CC vote cache pending';
 }
 
 function createConstitutionalCommitteeGovernanceCard(proposal) {
