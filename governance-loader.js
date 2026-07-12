@@ -27,7 +27,7 @@
 
     function loadGovernanceScript() {
         const script = document.createElement('script');
-        script.src = `governance.js?v=${Date.now()}`;
+        script.src = 'governance.js?v=20260712-drep-votes';
         script.defer = true;
         document.body.appendChild(script);
     }

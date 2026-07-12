@@ -4,16 +4,13 @@ const PROPOSAL_VOTES_API_BASE_URL = 'https://api.tdsp.online/api/proposal';
 const DREP_METADATA_API_URL = 'https://api.tdsp.online/api/dreps/metadata';
 const DREP_INFO_API_URL = 'https://api.tdsp.online/api/dreps/info';
 const DREP_DETAIL_API_BASE_URL = 'https://api.tdsp.online/api/drep';
-const HEALTH_API_URL = 'https://api.tdsp.online/health';
 const LOCAL_DASHBOARD_PROXY_PATH = '/__dashboard_proxy__';
 const LOCAL_COMMITTEE_PROXY_PATH = '/__committee_proxy__';
-const LOCAL_HEALTH_PROXY_PATH = '/__health_proxy__';
 const LOCAL_PROPOSAL_VOTES_PROXY_PATH = '/__proposal_votes_proxy__';
 const LOCAL_DREP_DIRECTORY_PROXY_PATH = '/__drep_directory_proxy__';
 const LOCAL_DREP_DETAIL_PROXY_PATH = '/__drep_detail_proxy__';
 const LOCAL_METADATA_PROXY_PATH = '/__metadata_proxy__';
-const ACTIVE_REFRESH_INTERVAL_MS = 60 * 1000;
-const API_HEALTH_REFRESH_INTERVAL_MS = 60 * 1000;
+const ACTIVE_REFRESH_INTERVAL_MS = 15 * 60 * 1000;
 const EPOCH_DURATION_SECONDS = 432000;
 const CARDANO_MAINNET_EPOCH_ZERO_MS = Date.parse('2017-09-23T21:44:51Z');
 const APPROVAL_GRACE_PERIOD_SECONDS = 300;
@@ -23,7 +20,6 @@ const TREASURY_BUDGET_YEAR_START_EPOCH = 604;
 const TREASURY_BUDGET_YEAR_EPOCHS = 73;
 
 let governanceRefreshTimer = null;
-let apiHealthRefreshTimer = null;
 let epochCountdownTimer = null;
 let epochEndsAtMs = null;
 let currentEpochNumber = null;
@@ -31,10 +27,12 @@ let lastActiveRenderSignature = '';
 let governanceState = null;
 let governanceGroupsState = null;
 let committeeInfoState = null;
+let governanceOverlayReturnFocus = null;
 const proposalVotesCache = new Map();
 const committeeMemberStatsCache = new Map();
 const drepMetadataCache = new Map();
 let drepDirectoryPromise = null;
+let drepInfoPromise = null;
 let drepStatsPromise = null;
 let committeeInfoPromise = null;
 
@@ -49,9 +47,21 @@ function initGovernance() {
     ensureEpochCountdownCard();
     setupGovernanceSummaryActionCards();
     setupConstitutionalCommitteeCard();
-    startGovernanceApiHealthMonitor();
+    setupDrepDirectoryCard();
     loadCurrentEpoch();
     loadGovernanceActions();
+}
+
+function setupDrepDirectoryCard() {
+    const card = document.getElementById('gov-drep-card');
+    if (!card) return;
+
+    card.addEventListener('click', openDrepDirectoryOverlay);
+    card.addEventListener('keydown', event => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        openDrepDirectoryOverlay();
+    });
 }
 
 function setupConstitutionalCommitteeCard() {
@@ -191,6 +201,7 @@ function scheduleActiveRefresh() {
     if (governanceRefreshTimer !== null) return;
 
     governanceRefreshTimer = window.setInterval(() => {
+        if (document.visibilityState !== 'visible') return;
         refreshActiveGovernanceGroup().catch(() => {});
     }, ACTIVE_REFRESH_INTERVAL_MS);
 }
@@ -199,52 +210,6 @@ async function fetchGovernanceDashboardPayload() {
     return shouldUseLocalDashboardProxy()
         ? fetchJson(LOCAL_DASHBOARD_PROXY_PATH)
         : fetchJson(DASHBOARD_API_URL);
-}
-
-function startGovernanceApiHealthMonitor() {
-    refreshGovernanceApiHealthStatus();
-    if (apiHealthRefreshTimer !== null) return;
-
-    apiHealthRefreshTimer = window.setInterval(() => {
-        refreshGovernanceApiHealthStatus();
-    }, API_HEALTH_REFRESH_INTERVAL_MS);
-}
-
-async function refreshGovernanceApiHealthStatus() {
-    updateGovernanceApiStatus('checking');
-
-    try {
-        const payload = await fetchGovernanceApiHealthPayload();
-        updateGovernanceApiStatus(payload?.ok === true ? 'online' : 'offline', payload);
-    } catch (error) {
-        updateGovernanceApiStatus('offline');
-    }
-}
-
-function fetchGovernanceApiHealthPayload() {
-    return shouldUseLocalDashboardProxy()
-        ? fetchJson(LOCAL_HEALTH_PROXY_PATH)
-        : fetchJson(HEALTH_API_URL);
-}
-
-function updateGovernanceApiStatus(status, payload = null) {
-    const statusElement = document.getElementById('api-status');
-    if (!statusElement) return;
-
-    const labels = {
-        checking: 'API ...',
-        online: 'API online',
-        offline: 'API offline'
-    };
-
-    statusElement.textContent = labels[status] || labels.checking;
-    statusElement.title = payload?.service
-        ? `Health: ${payload.service}`
-        : labels[status] || labels.checking;
-    statusElement.dataset.apiService = payload?.service || '';
-    statusElement.classList.toggle('nav-api-status--checking', status === 'checking');
-    statusElement.classList.toggle('nav-api-status--online', status === 'online');
-    statusElement.classList.toggle('nav-api-status--offline', status === 'offline');
 }
 
 function shouldUseLocalDashboardProxy() {
@@ -1125,11 +1090,12 @@ function formatGovernanceMetaValue(value) {
     return '';
 }
 
-function openGovernanceOverlay(proposal) {
+function openGovernanceOverlay(proposal, options = {}) {
     closeGovernanceOverlay();
+    governanceOverlayReturnFocus = options.returnFocus || null;
 
     const overlay = document.createElement('div');
-    overlay.className = 'governance-overlay';
+    overlay.className = 'governance-overlay governance-action-detail-overlay';
     overlay.id = 'governance-overlay';
     overlay.addEventListener('click', event => {
         if (event.target === overlay) closeGovernanceOverlay();
@@ -1200,6 +1166,9 @@ function closeGovernanceOverlay() {
     const overlay = document.getElementById('governance-overlay');
     if (overlay) overlay.remove();
     document.removeEventListener('keydown', handleGovernanceOverlayKeydown);
+    const returnFocus = governanceOverlayReturnFocus;
+    governanceOverlayReturnFocus = null;
+    if (returnFocus?.isConnected) returnFocus.focus();
 }
 
 function handleGovernanceOverlayKeydown(event) {
@@ -1763,6 +1732,256 @@ function closeDrepVotesOverlay() {
     if (overlay) overlay.remove();
 }
 
+function openDrepDirectoryOverlay() {
+    closeDrepDirectoryOverlay();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'governance-overlay governance-drep-overlay';
+    overlay.id = 'governance-drep-directory-overlay';
+    overlay.addEventListener('click', event => {
+        if (event.target === overlay) closeDrepDirectoryOverlay();
+    });
+
+    const dialog = document.createElement('article');
+    dialog.className = 'governance-dialog governance-drep-dialog';
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.setAttribute('aria-labelledby', 'governance-drep-directory-title');
+
+    const close = document.createElement('button');
+    close.className = 'governance-close';
+    close.type = 'button';
+    close.setAttribute('aria-label', 'Close DRep directory');
+    close.textContent = 'Close';
+    close.addEventListener('click', closeDrepDirectoryOverlay);
+
+    const title = document.createElement('h3');
+    title.id = 'governance-drep-directory-title';
+    title.className = 'governance-drep-title';
+    title.textContent = 'DReps';
+
+    const panel = document.createElement('div');
+    panel.className = 'governance-drep-directory-list';
+    const loading = document.createElement('p');
+    loading.className = 'small-text';
+    loading.textContent = 'Loading DRep data...';
+    panel.appendChild(loading);
+
+    dialog.appendChild(close);
+    dialog.appendChild(title);
+    dialog.appendChild(panel);
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+    close.focus();
+    document.addEventListener('keydown', handleDrepDirectoryOverlayKeydown);
+
+    loadDrepDirectoryOverlay(panel).catch(() => {
+        if (!panel.isConnected) return;
+        panel.textContent = '';
+        const message = document.createElement('p');
+        message.className = 'small-text';
+        message.textContent = 'DRep data could not be loaded.';
+        panel.appendChild(message);
+    });
+}
+
+function closeDrepDirectoryOverlay() {
+    closeDrepActionHistoryOverlay();
+    const overlay = document.getElementById('governance-drep-directory-overlay');
+    if (overlay) overlay.remove();
+    document.removeEventListener('keydown', handleDrepDirectoryOverlayKeydown);
+}
+
+function handleDrepDirectoryOverlayKeydown(event) {
+    if (event.key !== 'Escape') return;
+    if (document.getElementById('governance-overlay')) return;
+    if (document.getElementById('governance-drep-actions-overlay')) {
+        closeDrepActionHistoryOverlay();
+        return;
+    }
+    closeDrepDirectoryOverlay();
+}
+
+async function loadDrepDirectoryOverlay(container) {
+    const [infoPayload, directory] = await Promise.all([
+        fetchDrepInfoPayload(),
+        loadDrepDirectory()
+    ]);
+    if (!container.isConnected) return;
+
+    const uniqueDreps = new Map();
+    unwrapDrepEntries(infoPayload).forEach(entry => {
+        const identifiers = getDrepEntryIdentifiers(entry);
+        const primaryIdentifier = identifiers[0];
+        if (!primaryIdentifier || uniqueDreps.has(primaryIdentifier)) return;
+        const name = identifiers
+            .map(identifier => directory.get(identifier) || directory.get(shortenDrepIdentifier(identifier)))
+            .find(Boolean) || extractDrepNameFromEntry(entry) || primaryIdentifier;
+        uniqueDreps.set(primaryIdentifier, {
+            id: primaryIdentifier,
+            name,
+            votingPower: getDrepEntryVotingPower(entry),
+            active: entry?.active === true
+        });
+    });
+
+    const dreps = Array.from(uniqueDreps.values())
+        .sort((left, right) => right.votingPower - left.votingPower || left.name.localeCompare(right.name));
+    renderDrepDirectory(container, dreps);
+}
+
+function renderDrepDirectory(container, dreps) {
+    container.textContent = '';
+    if (!dreps.length) {
+        const message = document.createElement('p');
+        message.className = 'small-text';
+        message.textContent = 'No DRep data available.';
+        container.appendChild(message);
+        return;
+    }
+
+    dreps.forEach((drep, index) => {
+        const row = document.createElement('div');
+        row.className = 'governance-cc-member';
+
+        const number = document.createElement('strong');
+        number.textContent = String(index + 1);
+
+        const copy = document.createElement('div');
+        const name = document.createElement('span');
+        name.className = 'governance-cc-member-hash';
+        name.textContent = drep.name;
+
+        const power = document.createElement('span');
+        power.className = 'governance-cc-member-stats';
+        power.textContent = `Voting power: ${formatCompactAdaFromLovelace(drep.votingPower)}`;
+
+        const status = document.createElement('span');
+        status.className = 'governance-cc-member-meta';
+        status.textContent = drep.active ? 'Active' : 'Inactive';
+
+        const id = document.createElement('span');
+        id.className = 'governance-cc-member-meta';
+        id.textContent = drep.id;
+
+        copy.appendChild(name);
+        copy.appendChild(power);
+        copy.appendChild(status);
+        copy.appendChild(id);
+        row.appendChild(number);
+        row.appendChild(copy);
+        row.classList.add('governance-cc-member-clickable');
+        row.setAttribute('role', 'button');
+        row.tabIndex = 0;
+        row.setAttribute('aria-label', `Show votes by ${drep.name}`);
+        row.addEventListener('click', () => openDrepActionHistoryOverlay(drep));
+        row.addEventListener('keydown', event => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault();
+            openDrepActionHistoryOverlay(drep);
+        });
+        container.appendChild(row);
+    });
+}
+
+function openDrepActionHistoryOverlay(drep) {
+    closeDrepActionHistoryOverlay();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'governance-overlay governance-action-detail-overlay';
+    overlay.id = 'governance-drep-actions-overlay';
+    overlay.addEventListener('click', event => {
+        if (event.target === overlay) closeDrepActionHistoryOverlay();
+    });
+
+    const dialog = document.createElement('article');
+    dialog.className = 'governance-dialog governance-drep-dialog';
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.setAttribute('aria-labelledby', 'governance-drep-actions-title');
+
+    const close = document.createElement('button');
+    close.className = 'governance-close';
+    close.type = 'button';
+    close.setAttribute('aria-label', `Close votes by ${drep.name}`);
+    close.textContent = 'Close';
+    close.addEventListener('click', closeDrepActionHistoryOverlay);
+
+    const title = document.createElement('h3');
+    title.id = 'governance-drep-actions-title';
+    title.className = 'governance-drep-title';
+    title.textContent = drep.name;
+
+    const panel = document.createElement('div');
+    panel.className = 'governance-list governance-action-group-list';
+    const loading = document.createElement('p');
+    loading.className = 'small-text';
+    loading.textContent = 'Loading DRep votes...';
+    panel.appendChild(loading);
+
+    dialog.appendChild(close);
+    dialog.appendChild(title);
+    dialog.appendChild(panel);
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+    close.focus();
+    document.addEventListener('keydown', handleDrepActionHistoryOverlayKeydown);
+
+    fetchJson(getDrepDetailApiUrl(drep.id))
+        .then(payload => renderDrepActionHistory(panel, payload?.vote_stats?.actions || []))
+        .catch(() => {
+            if (!panel.isConnected) return;
+            panel.textContent = '';
+            const message = document.createElement('p');
+            message.className = 'small-text';
+            message.textContent = 'DRep votes could not be loaded.';
+            panel.appendChild(message);
+        });
+}
+
+function closeDrepActionHistoryOverlay() {
+    const overlay = document.getElementById('governance-drep-actions-overlay');
+    if (overlay) overlay.remove();
+    document.removeEventListener('keydown', handleDrepActionHistoryOverlayKeydown);
+}
+
+function handleDrepActionHistoryOverlayKeydown(event) {
+    if (event.key !== 'Escape') return;
+    if (document.getElementById('governance-overlay')) return;
+    closeDrepActionHistoryOverlay();
+}
+
+function renderDrepActionHistory(container, actions) {
+    if (!container.isConnected) return;
+    container.textContent = '';
+    const proposalsById = new Map(getGovernanceActionsForCommitteeOverview()
+        .map(proposal => [String(proposal.proposal_id || ''), proposal]));
+    const rows = (Array.isArray(actions) ? actions : [])
+        .map(action => ({ action, proposal: proposalsById.get(String(action?.proposal_id || '')) }))
+        .filter(row => row.proposal)
+        .sort((left, right) => (Number(right.proposal.block_time) || 0) - (Number(left.proposal.block_time) || 0));
+
+    if (!rows.length) {
+        const message = document.createElement('p');
+        message.className = 'small-text';
+        message.textContent = 'No cached governance votes found for this DRep.';
+        container.appendChild(message);
+        return;
+    }
+
+    rows.forEach(({ action, proposal }) => {
+        const card = createGovernanceCard(proposal, {
+            onClick: event => openGovernanceOverlay(proposal, { returnFocus: event.currentTarget })
+        });
+        const vote = document.createElement('span');
+        const voteChoice = formatVoteChoice(action?.vote || action?.vote_bucket);
+        vote.className = `governance-votes ${voteChoice === 'Yes' ? 'vote-green' : voteChoice === 'No' ? 'vote-red' : 'vote-neutral'}`;
+        vote.textContent = `DRep voted ${voteChoice}`;
+        card.appendChild(vote);
+        container.appendChild(card);
+    });
+}
+
 function openConstitutionalCommitteeOverlay() {
     closeConstitutionalCommitteeOverlay();
 
@@ -1828,6 +2047,7 @@ function closeConstitutionalCommitteeOverlay() {
 
 function handleConstitutionalCommitteeOverlayKeydown(event) {
     if (event.key !== 'Escape') return;
+    if (document.getElementById('governance-overlay')) return;
     if (document.getElementById('governance-cc-actions-overlay')) {
         closeConstitutionalCommitteeActionsOverlay();
         return;
@@ -1957,7 +2177,9 @@ function closeConstitutionalCommitteeActionsOverlay() {
 }
 
 function handleConstitutionalCommitteeActionsOverlayKeydown(event) {
-    if (event.key === 'Escape') closeConstitutionalCommitteeActionsOverlay();
+    if (event.key !== 'Escape') return;
+    if (document.getElementById('governance-overlay')) return;
+    closeConstitutionalCommitteeActionsOverlay();
 }
 
 function getGovernanceActionsForCommitteeOverview() {
@@ -2277,9 +2499,8 @@ function updateConstitutionalCommitteeActionCardPending(container, proposal) {
 
 function createConstitutionalCommitteeGovernanceCard(proposal) {
     const card = createGovernanceCard(proposal, {
-        onClick: () => {
-            closeConstitutionalCommitteeOverlay();
-            openGovernanceOverlay(proposal);
+        onClick: event => {
+            openGovernanceOverlay(proposal, { returnFocus: event.currentTarget });
         }
     });
     card.dataset.ccProposalId = proposal.proposal_id || '';
@@ -2596,7 +2817,7 @@ async function loadDrepDirectory() {
 async function fetchDrepDirectory() {
     const [metadataPayload, infoPayload] = await Promise.allSettled([
         fetchJson(getDrepMetadataApiUrl()),
-        fetchJson(getDrepInfoApiUrl())
+        fetchDrepInfoPayload()
     ]);
 
     const directory = new Map();
@@ -2608,6 +2829,16 @@ async function fetchDrepDirectory() {
     }
 
     return directory;
+}
+
+function fetchDrepInfoPayload() {
+    if (!drepInfoPromise) {
+        drepInfoPromise = fetchJson(getDrepInfoApiUrl()).catch(error => {
+            drepInfoPromise = null;
+            throw error;
+        });
+    }
+    return drepInfoPromise;
 }
 
 async function fetchDrepNameById(drepId) {
@@ -3847,7 +4078,7 @@ async function getDrepStats(groups) {
 }
 
 async function fetchDrepStats() {
-    const payload = await fetchJson(getDrepInfoApiUrl());
+    const payload = await fetchDrepInfoPayload();
     const entries = unwrapDrepEntries(payload);
     const uniqueDreps = new Map();
 

@@ -14,6 +14,7 @@ const GECKOTERMINAL_PRICE_URL = IS_LOCAL_PREVIEW ? '/__geckoterminal_price_proxy
 const POOL_API_URL = IS_LOCAL_PREVIEW ? '/__pool_proxy__' : 'https://api.tdsp.online/api/pool';
 const LEADER_SCHEDULE_API_URL = IS_LOCAL_PREVIEW ? '/__leader_schedule_proxy__' : 'https://api.tdsp.online/api/leader-schedule';
 const notifiedRelayMaintenance = new Set();
+let headerVisibilityObserver = null;
 
 // Fetch and display ADA, BTC, and STRCH prices asynchronously
 async function fetchPrices() {
@@ -174,20 +175,6 @@ function renderPoolStatus(pool) {
         notifyRelayMaintenance(downRelays);
     }
 
-    relays.forEach((relay, index) => {
-        const row = document.createElement('div');
-        row.className = `pool-relay pool-relay--${relay.up ? 'up' : 'down'}`;
-
-        const status = document.createElement('span');
-        status.className = 'pool-relay-status';
-        status.textContent = relay.up ? 'Up' : 'Down (Maintenance)';
-
-        const host = document.createElement('strong');
-        host.textContent = `Relay ${index + 1}`;
-
-        row.append(status, host);
-        relaysEl.appendChild(row);
-    });
 }
 
 function initPoolCopyButtons() {
@@ -345,7 +332,9 @@ function setupHeaderVisibility() {
 
     if (!navLinks.length || !sections.length) return;
 
-    const observer = new IntersectionObserver((entries) => {
+    if (headerVisibilityObserver) headerVisibilityObserver.disconnect();
+
+    headerVisibilityObserver = new IntersectionObserver((entries) => {
         const visible = entries
             .filter(entry => entry.isIntersecting)
             .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
@@ -360,7 +349,7 @@ function setupHeaderVisibility() {
         threshold: [0.1, 0.25, 0.5]
     });
 
-    sections.forEach(section => observer.observe(section));
+    sections.forEach(section => headerVisibilityObserver.observe(section));
 
     navLinks.forEach(link => {
         if (link.dataset.navBound === 'true') return;

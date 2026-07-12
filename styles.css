@@ -779,7 +779,6 @@ p {
 
 .pool-summary > div,
 .starch-summary > div,
-.pool-relay,
 .governance-summary > div {
     border: 1px solid var(--line);
     border-radius: 8px;
@@ -903,35 +902,6 @@ p {
 .pool-notification-button:hover {
     background: var(--control-hover-surface);
     transform: none;
-}
-
-.pool-relay {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 12px 14px;
-}
-
-.pool-relay-status {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 64px;
-    min-height: 30px;
-    border-radius: 999px;
-    font-size: 0.8rem;
-    font-weight: 800;
-}
-
-.pool-relay--up .pool-relay-status {
-    background: rgba(20, 184, 166, 0.14);
-    color: #0f766e;
-}
-
-.pool-relay--down .pool-relay-status {
-    background: rgba(220, 38, 38, 0.12);
-    color: #b91c1c;
 }
 
 .table-shell {
@@ -1591,6 +1561,10 @@ p {
     z-index: 3100;
 }
 
+.governance-action-detail-overlay {
+    z-index: 3200;
+}
+
 .governance-dialog {
     position: relative;
     width: min(980px, 100%);
@@ -1636,7 +1610,8 @@ p {
     line-height: 1.2;
 }
 
-.governance-cc-members {
+.governance-cc-members,
+.governance-drep-directory-list {
     display: grid;
     gap: 10px;
 }
