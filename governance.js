@@ -50,6 +50,7 @@ function initGovernance() {
     setupDrepDirectoryCard();
     loadCurrentEpoch();
     loadGovernanceActions();
+    loadDrepDirectory().catch(() => {});
 }
 
 function setupDrepDirectoryCard() {
@@ -1840,6 +1841,7 @@ function renderDrepDirectory(container, dreps) {
         return;
     }
 
+    const fragment = document.createDocumentFragment();
     dreps.forEach((drep, index) => {
         const row = document.createElement('div');
         row.className = 'governance-cc-member';
@@ -1857,8 +1859,9 @@ function renderDrepDirectory(container, dreps) {
         power.textContent = `Voting power: ${formatCompactAdaFromLovelace(drep.votingPower)}`;
 
         const status = document.createElement('span');
-        status.className = 'governance-cc-member-meta';
+        status.className = 'governance-cc-member-meta governance-drep-member-status';
         status.textContent = drep.active ? 'Active' : 'Inactive';
+        row.classList.add(drep.active ? 'governance-drep-member--active' : 'governance-drep-member--inactive');
 
         const id = document.createElement('span');
         id.className = 'governance-cc-member-meta';
@@ -1880,8 +1883,9 @@ function renderDrepDirectory(container, dreps) {
             event.preventDefault();
             openDrepActionHistoryOverlay(drep);
         });
-        container.appendChild(row);
+        fragment.appendChild(row);
     });
+    container.appendChild(fragment);
 }
 
 function openDrepActionHistoryOverlay(drep) {
@@ -3697,9 +3701,9 @@ async function updateGovernanceCounts(groups) {
     setText('gov-approved-count', getCollectionLength(groups.approved));
     setText('gov-rejected-count', getCollectionLength(groups.rejected));
     setText('gov-info-count', getCollectionLength(groups.info));
-    setText('gov-active-ask', formatGovernanceAskSummary(groups.active));
-    setText('gov-approved-ask', formatGovernanceAskSummary(groups.approved));
-    setText('gov-rejected-ask', formatGovernanceAskSummary(groups.rejected));
+    setText('gov-active-ask', formatGovernanceAskAmount(groups.active));
+    setText('gov-approved-ask', formatGovernanceAskAmount(groups.approved));
+    setText('gov-rejected-ask', formatGovernanceAskAmount(groups.rejected));
     setText('gov-committee-count', formatGovernanceCount(
         getConstitutionalCommitteeMemberCount(governanceState, groups)
     ));
@@ -3711,16 +3715,41 @@ async function updateGovernanceCounts(groups) {
         })
         .catch(() => {});
 
+    const cachedDrepStats = getDashboardDrepStats(governanceState);
+    if (cachedDrepStats) renderDrepSummaryStats(cachedDrepStats);
+
     try {
         const drepStats = await getDrepStats(groups);
-        setText('gov-drep-count', drepStats.count.toLocaleString('en-US'));
-        setText('gov-drep-total-power', formatCompactAdaFromLovelace(drepStats.totalPower, { fixedFractionDigits: 2 }).replace(/ ADA$/, ''));
+        renderDrepSummaryStats(drepStats);
     } catch {
-        setText('gov-drep-count', '0');
-        setText('gov-drep-total-power', '0');
+        if (!cachedDrepStats) {
+            setText('gov-drep-count', '0');
+            setText('gov-drep-active-count', 'A0');
+            setText('gov-drep-inactive-count', 'IA0');
+            setText('gov-drep-total-power', 'VPower 0 ADA');
+        }
     }
 
     updateTreasuryBudgetBar();
+}
+
+function getDashboardDrepStats(payload) {
+    const summary = payload?.drep_summary || payload?.drepSummary;
+    if (!summary) return null;
+
+    const count = Number(summary.total_count ?? summary.totalCount ?? summary.count);
+    const activeCount = Number(summary.active_count ?? summary.activeCount);
+    const inactiveCount = Number(summary.inactive_count ?? summary.inactiveCount);
+    const totalPower = Number(summary.total_voting_power ?? summary.totalVotingPower ?? summary.total_power);
+    if (![count, activeCount, inactiveCount, totalPower].every(Number.isFinite)) return null;
+    return { count, activeCount, inactiveCount, totalPower };
+}
+
+function renderDrepSummaryStats(stats) {
+    setText('gov-drep-count', stats.count.toLocaleString('en-US'));
+    setText('gov-drep-active-count', `A${stats.activeCount.toLocaleString('en-US')}`);
+    setText('gov-drep-inactive-count', `IA${stats.inactiveCount.toLocaleString('en-US')}`);
+    setText('gov-drep-total-power', `VPower ${formatCompactAdaFromLovelace(stats.totalPower, { fixedFractionDigits: 2 })}`);
 }
 
 function getConstitutionalCommitteeMemberCount(payload, groups = null) {
@@ -4056,13 +4085,14 @@ function formatGovernanceCount(count) {
     return Number.isFinite(count) && count > 0 ? Math.round(count).toLocaleString('en-US') : '0';
 }
 
-function formatGovernanceAskSummary(proposals) {
+function formatGovernanceAskAmount(proposals) {
     const totalAsk = Array.isArray(proposals)
         ? proposals.reduce((sum, proposal) => sum + getProposalTotalAskLovelace(proposal), 0)
         : 0;
 
-    if (!totalAsk) return 'Total ask 0';
-    return `Total ask ${formatCompactAdaFromLovelace(totalAsk, { fixedFractionDigits: 2 })}`;
+    return totalAsk
+        ? formatCompactAdaFromLovelace(totalAsk, { fixedFractionDigits: 2 })
+        : '0 ADA';
 }
 
 async function getDrepStats(groups) {
@@ -4073,7 +4103,9 @@ async function getDrepStats(groups) {
     const baseStats = await drepStatsPromise;
     return {
         count: baseStats.count,
-        totalPower: baseStats.totalPower
+        totalPower: baseStats.totalPower,
+        activeCount: baseStats.activeCount,
+        inactiveCount: baseStats.inactiveCount
     };
 }
 
@@ -4087,17 +4119,24 @@ async function fetchDrepStats() {
         const primaryIdentifier = identifiers[0];
         if (!primaryIdentifier || uniqueDreps.has(primaryIdentifier)) return;
 
-        uniqueDreps.set(primaryIdentifier, getDrepEntryVotingPower(entry));
+        uniqueDreps.set(primaryIdentifier, {
+            votingPower: getDrepEntryVotingPower(entry),
+            active: entry?.active === true
+        });
     });
 
     let totalPower = 0;
+    let activeCount = 0;
     uniqueDreps.forEach(value => {
-        totalPower += value;
+        totalPower += value.votingPower;
+        if (value.active) activeCount += 1;
     });
 
     return {
         count: uniqueDreps.size,
-        totalPower
+        totalPower,
+        activeCount,
+        inactiveCount: uniqueDreps.size - activeCount
     };
 }
 

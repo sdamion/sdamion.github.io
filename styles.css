@@ -994,8 +994,30 @@ p {
 
 .governance-summary-subvalue {
     margin-top: 6px;
-    font-size: 0.9rem !important;
-    font-weight: 600;
+    font-size: 0.88rem !important;
+    font-weight: 700;
+    line-height: 1.15;
+}
+
+.governance-drep-count-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.governance-summary .governance-drep-count-state {
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.governance-summary .governance-drep-count-state--active {
+    color: #14b8a6;
+}
+
+.governance-summary .governance-drep-count-state--inactive {
+    color: #ef4444;
 }
 
 .governance-summary-box-wide {
@@ -1686,6 +1708,30 @@ p {
 
 .governance-cc-member-stats-separator {
     color: var(--muted);
+}
+
+.governance-drep-member--active {
+    border-color: rgba(20, 184, 166, 0.5);
+    background: rgba(20, 184, 166, 0.08);
+}
+
+.governance-drep-member--active > strong,
+.governance-drep-member--active .governance-cc-member-hash,
+.governance-drep-member--active .governance-drep-member-status {
+    color: #14b8a6;
+    font-weight: 700;
+}
+
+.governance-drep-member--inactive {
+    border-color: rgba(220, 38, 38, 0.5);
+    background: rgba(220, 38, 38, 0.08);
+}
+
+.governance-drep-member--inactive > strong,
+.governance-drep-member--inactive .governance-cc-member-hash,
+.governance-drep-member--inactive .governance-drep-member-status {
+    color: #ef4444;
+    font-weight: 700;
 }
 
 .governance-cc-actions {
