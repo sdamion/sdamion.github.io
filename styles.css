@@ -1484,14 +1484,41 @@ p {
     gap: 6px;
 }
 
+.governance-vote-legend--stacked {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+}
+
 .governance-vote-legend-text {
     color: var(--text);
     font-size: 0.9rem;
     font-weight: 700;
 }
 
+.governance-vote-legend-text.is-voted {
+    color: #34d399;
+}
+
 .governance-vote-legend-text.is-not-voted {
     color: #fb7185;
+}
+
+.governance-vote-legend-action {
+    appearance: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.governance-vote-legend-action:hover,
+.governance-vote-legend-action:focus-visible {
+    text-decoration: underline;
 }
 
 .governance-vote-legend-text.is-not-applicable {
@@ -1763,6 +1790,35 @@ p {
 
 .governance-drep-directory-list .governance-cc-member-stats {
     color: var(--text);
+}
+
+.governance-drep-member-copy {
+    min-width: 0;
+}
+
+.governance-drep-id-line {
+    position: relative;
+    min-width: 0;
+    margin-top: 4px;
+    padding-right: 36px;
+}
+
+.governance-drep-id {
+    min-width: 0;
+    margin-top: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.governance-drep-copy-button {
+    top: 50%;
+    right: 0;
+    transform: translateY(-50%);
+}
+
+.governance-drep-copy-button:hover {
+    transform: translateY(-50%);
 }
 
 .governance-drep-member--active .governance-drep-member-status {

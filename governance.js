@@ -28,6 +28,7 @@ let governanceState = null;
 let governanceGroupsState = null;
 let committeeInfoState = null;
 let governanceOverlayReturnFocus = null;
+let governanceStatusActionsReturnFocus = null;
 const proposalVotesCache = new Map();
 const committeeMemberStatsCache = new Map();
 const drepMetadataCache = new Map();
@@ -893,6 +894,61 @@ function closeGovernanceActionGroupOverlay() {
 function handleGovernanceActionGroupOverlayKeydown(event) {
     if (event.key !== 'Escape' || document.getElementById('governance-overlay')) return;
     closeGovernanceActionGroupOverlay();
+}
+
+function openGovernanceStatusActionsOverlay(titleText, proposals, returnFocus) {
+    closeGovernanceStatusActionsOverlay();
+    governanceStatusActionsReturnFocus = returnFocus || null;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'governance-overlay governance-action-detail-overlay';
+    overlay.id = 'governance-status-actions-overlay';
+    overlay.addEventListener('click', event => {
+        if (event.target === overlay) closeGovernanceStatusActionsOverlay();
+    });
+
+    const dialog = document.createElement('article');
+    dialog.className = 'governance-dialog governance-drep-dialog';
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.setAttribute('aria-labelledby', 'governance-status-actions-title');
+
+    const close = document.createElement('button');
+    close.className = 'governance-close';
+    close.type = 'button';
+    close.setAttribute('aria-label', `Close ${titleText}`);
+    close.textContent = 'Close';
+    close.addEventListener('click', closeGovernanceStatusActionsOverlay);
+
+    const title = document.createElement('h3');
+    title.id = 'governance-status-actions-title';
+    title.className = 'governance-drep-title';
+    title.textContent = titleText;
+
+    const panel = document.createElement('div');
+    panel.className = 'governance-list governance-action-group-list';
+    renderGovernanceGroup(panel, proposals, 'No governance actions found.');
+
+    appendGovernanceDialogHeader(dialog, title, close);
+    appendGovernanceDialogBody(dialog, panel);
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+    close.focus();
+    document.addEventListener('keydown', handleGovernanceStatusActionsOverlayKeydown);
+}
+
+function closeGovernanceStatusActionsOverlay() {
+    const overlay = document.getElementById('governance-status-actions-overlay');
+    if (overlay) overlay.remove();
+    document.removeEventListener('keydown', handleGovernanceStatusActionsOverlayKeydown);
+    const returnFocus = governanceStatusActionsReturnFocus;
+    governanceStatusActionsReturnFocus = null;
+    if (returnFocus?.isConnected) returnFocus.focus();
+}
+
+function handleGovernanceStatusActionsOverlayKeydown(event) {
+    if (event.key !== 'Escape' || document.getElementById('governance-overlay')) return;
+    closeGovernanceStatusActionsOverlay();
 }
 
 function getTreasuryBudgetMetadata(proposal) {
@@ -1866,6 +1922,7 @@ function renderDrepDirectory(container, dreps) {
         number.textContent = String(index + 1);
 
         const copy = document.createElement('div');
+        copy.className = 'governance-drep-member-copy';
         const name = document.createElement('span');
         name.className = 'governance-cc-member-hash';
         name.textContent = drep.name;
@@ -1879,14 +1936,21 @@ function renderDrepDirectory(container, dreps) {
         status.textContent = drep.active ? 'Active' : 'Inactive';
         row.classList.add(drep.active ? 'governance-drep-member--active' : 'governance-drep-member--inactive');
 
+        const idLine = document.createElement('div');
+        idLine.className = 'governance-drep-id-line';
+
         const id = document.createElement('span');
-        id.className = 'governance-cc-member-meta';
+        id.className = 'governance-cc-member-meta governance-drep-id';
         id.textContent = drep.id;
+
+        const copyId = createGovernanceCopyButton(drep.id, 'DRep ID');
+        idLine.appendChild(id);
+        idLine.appendChild(copyId);
 
         copy.appendChild(name);
         copy.appendChild(power);
         copy.appendChild(status);
-        copy.appendChild(id);
+        copy.appendChild(idLine);
         row.appendChild(number);
         row.appendChild(copy);
         row.classList.add('governance-cc-member-clickable');
@@ -1902,6 +1966,52 @@ function renderDrepDirectory(container, dreps) {
         fragment.appendChild(row);
     });
     container.appendChild(fragment);
+}
+
+function createGovernanceCopyButton(value, label) {
+    const button = document.createElement('button');
+    button.className = 'pool-copy-icon-button governance-drep-copy-button';
+    button.type = 'button';
+    button.textContent = '⧉';
+    button.setAttribute('aria-label', `Copy ${label}`);
+    button.title = `Copy ${label}`;
+    button.addEventListener('keydown', event => event.stopPropagation());
+    button.addEventListener('click', async event => {
+        event.stopPropagation();
+        const originalLabel = button.textContent;
+        const originalAriaLabel = button.getAttribute('aria-label') || '';
+
+        try {
+            await copyGovernanceText(value);
+            button.textContent = 'Copied';
+            button.setAttribute('aria-label', `Copied ${label}`);
+        } catch {
+            button.textContent = 'Copy failed';
+        }
+
+        setTimeout(() => {
+            button.textContent = originalLabel;
+            button.setAttribute('aria-label', originalAriaLabel);
+        }, 1400);
+    });
+    return button;
+}
+
+async function copyGovernanceText(value) {
+    if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(value);
+        return;
+    }
+
+    const textArea = document.createElement('textarea');
+    textArea.value = value;
+    textArea.setAttribute('readonly', '');
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-9999px';
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand('copy');
+    textArea.remove();
 }
 
 function openDrepActionHistoryOverlay(drep) {
@@ -1982,14 +2092,22 @@ function renderDrepActionHistory(container, payload) {
         .filter(proposal => isGovernanceActionApplicableToDrep(proposal, registrationTime))
         .map(proposal => ({ action: actionsById.get(String(proposal.proposal_id || '')) || null, proposal }))
         .sort((left, right) => (Number(right.proposal.block_time) || 0) - (Number(left.proposal.block_time) || 0));
-    const voted = rows.filter(row => row.action).length;
-    const notVoted = Math.max(rows.length - voted, 0);
-    const notApplicable = Math.max(proposals.length - rows.length, 0);
+    const closedRows = rows.filter(row => isExpiredGovernanceActionForCommitteeStats(row.proposal));
+    const voted = closedRows.filter(row => row.action).length;
+    const notVoted = Math.max(closedRows.length - voted, 0);
+    const active = Math.max(rows.length - closedRows.length, 0);
+    const notVotedProposals = closedRows.filter(row => !row.action).map(row => row.proposal);
+    const notApplicableProposals = proposals
+        .filter(proposal => !isGovernanceActionApplicableToDrep(proposal, registrationTime));
+    const notApplicable = notApplicableProposals.length;
 
     container.appendChild(createDrepActionHistoryChart({
         voted,
         notVoted,
+        active,
         notApplicable,
+        notVotedProposals,
+        notApplicableProposals,
         total: proposals.length
     }));
 
@@ -2007,8 +2125,17 @@ function renderDrepActionHistory(container, payload) {
         });
         const vote = document.createElement('span');
         const voteChoice = action ? formatVoteChoice(action?.vote || action?.vote_bucket) : null;
-        vote.className = `governance-votes ${voteChoice === 'Yes' ? 'vote-green' : voteChoice === 'No' || !voteChoice ? 'vote-red' : 'vote-neutral'}`;
-        vote.textContent = voteChoice ? `DRep voted ${voteChoice}` : 'DRep not voted';
+        const isClosed = isExpiredGovernanceActionForCommitteeStats(proposal);
+        vote.className = `governance-votes ${voteChoice === 'Yes'
+            ? 'vote-green'
+            : voteChoice === 'No' || (!voteChoice && isClosed)
+                ? 'vote-red'
+                : 'vote-neutral'}`;
+        vote.textContent = voteChoice
+            ? `DRep voted ${voteChoice}`
+            : isClosed
+                ? 'DRep not voted'
+                : 'DRep not voted yet';
         card.appendChild(vote);
         container.appendChild(card);
     });
@@ -2021,57 +2148,47 @@ function isGovernanceActionApplicableToDrep(proposal, registrationTime) {
 }
 
 function createDrepActionHistoryChart(stats) {
-    const { voted, notVoted, notApplicable, total } = stats;
-    const votedPct = total > 0 ? (voted / total) * 100 : 0;
-    const notVotedPct = total > 0 ? (notVoted / total) * 100 : 0;
-    const notApplicablePct = total > 0 ? (notApplicable / total) * 100 : 0;
-    const applicable = voted + notVoted;
+    const {
+        voted,
+        notVoted,
+        active,
+        notApplicable,
+        notVotedProposals,
+        notApplicableProposals,
+        total
+    } = stats;
+    const closedTotal = voted + notVoted;
+    const votedPct = closedTotal > 0 ? (voted / closedTotal) * 100 : 0;
+    const notVotedPct = closedTotal > 0 ? (notVoted / closedTotal) * 100 : 0;
+    const container = document.createElement('div');
+    container.className = 'governance-drep-history-chart';
 
-    const chart = document.createElement('section');
-    chart.className = 'governance-vote-chart governance-drep-history-chart';
-
-    const title = document.createElement('strong');
-    title.textContent = 'DRep vote overview';
-
-    const layout = document.createElement('div');
-    layout.className = 'governance-vote-chart-layout';
-
-    const donut = document.createElement('div');
-    donut.className = 'governance-pie-chart';
-    donut.style.background = `conic-gradient(
-        #34d399 0 ${votedPct}%,
-        #fb7185 ${votedPct}% ${votedPct + notVotedPct}%,
-        var(--line) ${votedPct + notVotedPct}% 100%
-    )`;
-
-    const center = document.createElement('div');
-    center.className = 'governance-pie-chart-center';
-    const label = document.createElement('span');
-    label.textContent = `${applicable} applicable / ${notApplicable} not applicable`;
-    const count = document.createElement('strong');
-    count.textContent = `${total} total`;
-    center.appendChild(label);
-    center.appendChild(count);
-    donut.appendChild(center);
-
-    const legend = document.createElement('div');
-    legend.className = 'governance-vote-legend governance-vote-legend--inline';
-    legend.appendChild(createDrepActionHistoryLegendItem('Voted', voted, votedPct, 'voted'));
-    legend.appendChild(createDrepActionHistoryLegendItem('Not Voted', notVoted, notVotedPct, 'missing'));
-    legend.appendChild(createDrepActionHistoryLegendItem('Not Applicable', notApplicable, notApplicablePct, 'neutral'));
-
-    layout.appendChild(donut);
-    layout.appendChild(legend);
-    chart.appendChild(title);
-    chart.appendChild(layout);
-    return chart;
-}
-
-function createDrepActionHistoryLegendItem(label, count, percentage, status) {
-    const item = document.createElement('span');
-    item.className = `governance-vote-legend-text${status === 'missing' ? ' is-not-voted' : status === 'neutral' ? ' is-not-applicable' : ''}`;
-    item.textContent = `${label} ${formatPercentage(percentage)} (${count} actions)`;
-    return item;
+    renderConstitutionalCommitteeVoteTotalsChart(container, {
+        voted,
+        notVoted,
+        total: closedTotal,
+        votedPct,
+        notVotedPct
+    }, {
+        title: 'Voting Stats',
+        totalLabel: `${total} total actions`,
+        stackLegend: true,
+        prependLegendItems: [`Active ${active}`],
+        onNotVotedClick: event => openGovernanceStatusActionsOverlay(
+            'DRep Not Voted',
+            notVotedProposals,
+            event.currentTarget
+        ),
+        extraLegendItems: [{
+            text: `Not Applicable ${notApplicable}`,
+            onClick: event => openGovernanceStatusActionsOverlay(
+                'DRep Not Applicable',
+                notApplicableProposals,
+                event.currentTarget
+            )
+        }]
+    });
+    return container;
 }
 
 function openConstitutionalCommitteeOverlay() {
@@ -2691,7 +2808,7 @@ function updateConstitutionalCommitteeActionCard(container, proposal, vote, erro
     }
 
     status.className = 'governance-votes vote-neutral';
-    status.textContent = 'CC not voted yet';
+    status.textContent = 'CC Member not voted yet';
 }
 
 function findConstitutionalCommitteeActionCard(container, proposalId) {
@@ -2716,6 +2833,14 @@ function renderConstitutionalCommitteeVoteChartContent(container, results, isLoa
     const votedPct = total > 0 ? (voted / total) * 100 : 0;
     const notVotedPct = total > 0 ? (notVoted / total) * 100 : 0;
     const proposalStats = getConstitutionalCommitteeMemberProposalStats(member);
+    const notVotedProposals = eligibleResults
+        .filter(result => !result.vote)
+        .map(result => result.proposal);
+    const notApplicableProposals = getGovernanceActionsForCommitteeOverview()
+        .filter(proposal => !(
+            isGovernanceActionInCommitteeMemberTerm(proposal, member)
+            && isConstitutionalCommitteeMemberVoteApplicable(proposal)
+        ));
 
     renderConstitutionalCommitteeVoteTotalsChart(container, {
         voted,
@@ -2725,12 +2850,25 @@ function renderConstitutionalCommitteeVoteChartContent(container, results, isLoa
         notVotedPct
     }, {
         isLoading,
-        title: 'CC vote overview',
+        title: 'Voting Stats',
         loadingLabel: 'CC vote status',
         totalLabel: `${proposalStats.total} total actions`,
+        stackLegend: true,
+        prependLegendItems: [`Active ${proposalStats.open}`],
+        onNotVotedClick: isLoading ? null : event => openGovernanceStatusActionsOverlay(
+            'CC Member Not Voted',
+            notVotedProposals,
+            event.currentTarget
+        ),
         extraLegendItems: [
-            `Open ${proposalStats.open}`,
-            `Not Applicable ${proposalStats.notApplicable}`
+            {
+                text: `Not Applicable ${proposalStats.notApplicable}`,
+                onClick: isLoading ? null : event => openGovernanceStatusActionsOverlay(
+                    'CC Member Not Applicable',
+                    notApplicableProposals,
+                    event.currentTarget
+                )
+            }
         ]
     });
 }
@@ -2783,17 +2921,39 @@ function renderConstitutionalCommitteeVoteTotalsChart(container, stats, options 
     donut.appendChild(center);
 
     const legend = document.createElement('div');
-    legend.className = 'governance-vote-legend governance-vote-legend--inline';
-    legend.appendChild(createConstitutionalCommitteeVoteLegendItem('Voted', voted, votedPct, 'voted'));
-    const separator = document.createElement('span');
-    separator.className = 'governance-vote-legend-separator';
-    separator.textContent = '-';
-    legend.appendChild(separator);
-    legend.appendChild(createConstitutionalCommitteeVoteLegendItem('Not Voted', notVoted, notVotedPct, 'missing'));
-    (options.extraLegendItems || []).forEach(itemText => {
+    legend.className = `governance-vote-legend ${options.stackLegend
+        ? 'governance-vote-legend--stacked'
+        : 'governance-vote-legend--inline'}`;
+    (options.prependLegendItems || []).forEach(itemText => {
         const extra = document.createElement('span');
-        extra.className = 'governance-vote-legend-text is-not-applicable';
+        extra.className = 'governance-vote-legend-text';
         extra.textContent = itemText;
+        legend.appendChild(extra);
+    });
+    legend.appendChild(createConstitutionalCommitteeVoteLegendItem('Voted', voted, votedPct, 'voted'));
+    if (!options.stackLegend) {
+        const separator = document.createElement('span');
+        separator.className = 'governance-vote-legend-separator';
+        separator.textContent = '-';
+        legend.appendChild(separator);
+    }
+    legend.appendChild(createConstitutionalCommitteeVoteLegendItem(
+        'Not Voted',
+        notVoted,
+        notVotedPct,
+        'missing',
+        options.onNotVotedClick
+    ));
+    (options.extraLegendItems || []).forEach(item => {
+        const itemConfig = typeof item === 'string' ? { text: item } : item;
+        const extra = document.createElement(itemConfig.onClick ? 'button' : 'span');
+        extra.className = 'governance-vote-legend-text is-not-applicable';
+        extra.textContent = itemConfig.text;
+        if (itemConfig.onClick) {
+            extra.classList.add('governance-vote-legend-action');
+            extra.type = 'button';
+            extra.addEventListener('click', itemConfig.onClick);
+        }
         legend.appendChild(extra);
     });
 
@@ -2828,10 +2988,15 @@ function isExpiredGovernanceActionForCommitteeStats(proposal) {
     return Number.isFinite(currentEpoch) && currentEpoch > expirationEpoch;
 }
 
-function createConstitutionalCommitteeVoteLegendItem(label, count, percentage, status) {
-    const item = document.createElement('span');
-    item.className = `governance-vote-legend-text${status === 'missing' ? ' is-not-voted' : ''}`;
+function createConstitutionalCommitteeVoteLegendItem(label, count, percentage, status, onClick = null) {
+    const item = document.createElement(onClick ? 'button' : 'span');
+    item.className = `governance-vote-legend-text${status === 'voted' ? ' is-voted' : status === 'missing' ? ' is-not-voted' : ''}`;
     item.textContent = `${label} ${formatPercentage(percentage)} (${count} actions)`;
+    if (onClick) {
+        item.classList.add('governance-vote-legend-action');
+        item.type = 'button';
+        item.addEventListener('click', onClick);
+    }
     return item;
 }
 
