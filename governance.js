@@ -2880,13 +2880,30 @@ function renderConstitutionalCommitteeQuorumChart(container, payload) {
         notVoted: 0,
         total: 0,
         closedTotal: 0,
+        notApplicable: 0,
         votedPct: 0,
-        notVotedPct: 0
+        notVotedPct: 0,
+        notVotedProposals: [],
+        notApplicableProposals: []
     }, {
         isLoading: !stats,
-        title: 'CC quorum overview',
+        title: 'Voting Stats',
         loadingLabel: 'CC quorum status',
-        totalLabel: stats ? `${stats.total} applicable / ${stats.notApplicable} not applicable` : ''
+        totalLabel: stats ? `${stats.total} applicable / ${stats.notApplicable} not applicable` : '',
+        stackLegend: true,
+        onNotVotedClick: stats ? event => openGovernanceStatusActionsOverlay(
+            'CC Not Voted',
+            stats.notVotedProposals,
+            event.currentTarget
+        ) : null,
+        extraLegendItems: [{
+            text: `Not Applicable ${stats?.notApplicable || 0}`,
+            onClick: stats ? event => openGovernanceStatusActionsOverlay(
+                'CC Not Applicable',
+                stats.notApplicableProposals,
+                event.currentTarget
+            ) : null
+        }]
     });
 }
 
@@ -4147,6 +4164,8 @@ function getConstitutionalCommitteeQuorumStats(payload) {
 
     let evaluatedActions = 0;
     let quorumActions = 0;
+    const notVotedProposals = [];
+    const evaluatedProposalIds = new Set();
     proposals.forEach(proposal => {
         const actionEpoch = getConstitutionalCommitteeVoteEpoch(proposal);
         const usesHistoricalSummary = Number.isFinite(currentCommitteeStartEpoch)
@@ -4158,20 +4177,27 @@ function getConstitutionalCommitteeQuorumStats(payload) {
         if (!participation) return;
 
         evaluatedActions += 1;
+        evaluatedProposalIds.add(proposal.proposal_id);
         if (participation.votes * quorumDenominator >= participation.members * quorumNumerator) {
             quorumActions += 1;
+        } else {
+            notVotedProposals.push(proposal);
         }
     });
 
     if (evaluatedActions <= 0) return null;
     const notVotedActions = evaluatedActions - quorumActions;
     const votedPct = (quorumActions / evaluatedActions) * 100;
+    const notApplicableProposals = closedProposals
+        .filter(proposal => !evaluatedProposalIds.has(proposal.proposal_id));
     return {
         voted: quorumActions,
         notVoted: notVotedActions,
         total: evaluatedActions,
         closedTotal: closedProposals.length,
         notApplicable: closedProposals.length - evaluatedActions,
+        notVotedProposals,
+        notApplicableProposals,
         votedPct,
         notVotedPct: 100 - votedPct
     };

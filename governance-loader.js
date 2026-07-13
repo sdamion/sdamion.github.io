@@ -4,7 +4,7 @@
         if (!container) return;
 
         try {
-            const response = await fetch('governance.html?v=20260713-drep-id-copy', { credentials: 'same-origin' });
+            const response = await fetch('governance.html?v=20260713-unified-cc-chart', { credentials: 'same-origin' });
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
             const html = await response.text();
@@ -27,7 +27,7 @@
 
     function loadGovernanceScript() {
         const script = document.createElement('script');
-        script.src = 'governance.js?v=20260713-drep-id-copy';
+        script.src = 'governance.js?v=20260713-unified-cc-chart';
         script.defer = true;
         document.body.appendChild(script);
     }
