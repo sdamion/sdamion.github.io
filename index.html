@@ -47,7 +47,7 @@
 
     <!-- Preload Logo -->
     <link rel="preload" href="tdsp_logo.webp" as="image">
-    <link rel="stylesheet" href="styles.css?v=20260713-overlay-header">
+    <link rel="stylesheet" href="styles.css?v=20260713-member-action-totals">
 
     <script src="index.js?v=20260712-site-fixes" defer></script>
 </head>
@@ -192,19 +192,21 @@
                 <strong class="wallet-dialog-title">Stake Now</strong>
                 <button class="wallet-modal-close" data-stake-close aria-label="Close">Close</button>
             </header>
-            <div id="stake-warning" class="stake-warning">
-                <strong>Check before signing</strong>
-                <p>Always review the transaction in your wallet before approving. Confirm it delegates to The Dutch Stake Pool and does not include anything unexpected.</p>
-                <button class="stake-continue-button" type="button" data-stake-continue>Continue</button>
+            <div class="overlay-dialog-body wallet-dialog-body">
+                <div id="stake-warning" class="stake-warning">
+                    <strong>Check before signing</strong>
+                    <p>Always review the transaction in your wallet before approving. Confirm it delegates to The Dutch Stake Pool and does not include anything unexpected.</p>
+                    <button class="stake-continue-button" type="button" data-stake-continue>Continue</button>
+                </div>
+                <div id="wallet-list" class="wallet-list"></div>
+                <p id="wallet-status" class="wallet-status" role="status" aria-live="polite"></p>
             </div>
-            <div id="wallet-list" class="wallet-list"></div>
-            <p id="wallet-status" class="wallet-status" role="status" aria-live="polite"></p>
         </div>
     </div>
 
     <script src="chart.js"></script>
     <script src="starch.js" defer></script>
-    <script src="governance-loader.js" defer></script>
+    <script src="governance-loader.js?v=20260713-member-action-totals" defer></script>
     <script src="stake.js" defer></script>
 </body>
 </html>

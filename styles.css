@@ -204,9 +204,13 @@ a[aria-label]:hover::after {
 .wallet-modal-content {
     height: auto;
     max-height: calc(100vh - 48px);
-    padding: 16px;
-    overflow-y: auto;
+    padding: 0;
+    overflow: hidden;
     color: var(--text);
+}
+
+.wallet-dialog-body {
+    padding: 16px;
 }
 
 .wallet-list {
@@ -1372,10 +1376,15 @@ p {
 .governance-pie-chart-center {
     position: absolute;
     inset: 50%;
-    display: grid;
-    place-items: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
     width: 54%;
     aspect-ratio: 1;
+    box-sizing: border-box;
+    padding: 10px;
     transform: translate(-50%, -50%);
     border-radius: 999px;
     background: var(--overlay-surface);
@@ -1386,11 +1395,14 @@ p {
 .governance-pie-chart-center span {
     color: var(--muted);
     font-size: 0.72rem;
+    line-height: 1.25;
 }
 
 .governance-pie-chart-center strong {
     color: var(--text);
-    font-size: 0.92rem;
+    font-size: 0.82rem;
+    line-height: 1.15;
+    white-space: nowrap;
 }
 
 .governance-pie-label {
@@ -1455,10 +1467,40 @@ p {
     font-size: 0.9rem;
 }
 
+.governance-vote-legend-item.is-not-voted .governance-vote-legend-copy strong {
+    color: #fb7185;
+}
+
 .governance-vote-legend-copy span {
     color: var(--muted);
     font-size: 0.9rem;
     overflow-wrap: anywhere;
+}
+
+.governance-vote-legend--inline {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.governance-vote-legend-text {
+    color: var(--text);
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.governance-vote-legend-text.is-not-voted {
+    color: #fb7185;
+}
+
+.governance-vote-legend-text.is-not-applicable {
+    color: var(--muted);
+}
+
+.governance-vote-legend-separator {
+    color: var(--muted);
+    font-weight: 700;
 }
 
 .governance-no-votes {
@@ -1593,11 +1635,12 @@ p {
 
 .governance-dialog {
     position: relative;
+    display: flex;
+    flex-direction: column;
     width: min(980px, 100%);
     max-height: min(84vh, 900px);
-    overflow-y: auto;
-    overflow-x: hidden;
-    padding: 28px;
+    overflow: hidden;
+    padding: 0;
     border: 1px solid var(--line);
     border-radius: 8px;
     background: var(--overlay-surface);
@@ -1710,29 +1753,23 @@ p {
     color: #fb7185;
 }
 
+.governance-cc-member-stats-not-applicable {
+    color: var(--muted);
+}
+
 .governance-cc-member-stats-separator {
     color: var(--muted);
 }
 
-.governance-drep-member--active {
-    border-color: rgba(20, 184, 166, 0.5);
-    background: rgba(20, 184, 166, 0.08);
+.governance-drep-directory-list .governance-cc-member-stats {
+    color: var(--text);
 }
 
-.governance-drep-member--active > strong,
-.governance-drep-member--active .governance-cc-member-hash,
 .governance-drep-member--active .governance-drep-member-status {
     color: #14b8a6;
     font-weight: 700;
 }
 
-.governance-drep-member--inactive {
-    border-color: rgba(220, 38, 38, 0.5);
-    background: rgba(220, 38, 38, 0.08);
-}
-
-.governance-drep-member--inactive > strong,
-.governance-drep-member--inactive .governance-cc-member-hash,
 .governance-drep-member--inactive .governance-drep-member-status {
     color: #ef4444;
     font-weight: 700;
@@ -1743,120 +1780,8 @@ p {
     gap: 10px;
 }
 
-.governance-cc-vote-chart {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    gap: 18px;
-    align-items: center;
-    padding: 14px;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    background: var(--overlay-surface-muted);
-}
-
-.governance-cc-vote-donut {
-    display: grid;
-    place-items: center;
-    width: 136px;
-    aspect-ratio: 1;
-    border-radius: 50%;
-    background: conic-gradient(
-        #34d399 0 var(--cc-voted-pct, 0%),
-        #fb7185 var(--cc-voted-pct, 0%) 100%
-    );
-}
-
-.governance-cc-vote-donut-center {
-    display: grid;
-    place-items: center;
-    width: 82px;
-    aspect-ratio: 1;
-    padding: 8px;
-    border-radius: 50%;
-    background: var(--overlay-surface);
-    text-align: center;
-}
-
-.governance-cc-vote-donut-center strong,
-.governance-cc-vote-donut-center span {
-    display: block;
-}
-
-.governance-cc-vote-donut-center strong {
-    color: var(--text);
-    font-size: 0.92rem;
-    line-height: 1.15;
-}
-
-.governance-cc-vote-donut-center span {
-    margin-top: 3px;
-    color: var(--muted);
-    font-size: 0.72rem;
-    line-height: 1.2;
-}
-
-.governance-cc-vote-legend {
-    display: grid;
-    gap: 8px;
-}
-
-.governance-cc-vote-legend-item {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    color: var(--text);
-    font-size: 0.9rem;
-    line-height: 1.35;
-}
-
-.governance-cc-vote-legend-item strong,
-.governance-cc-vote-legend-item span span {
-    display: block;
-}
-
-.governance-cc-vote-legend-item strong {
-    color: var(--text);
-    font-size: 0.95rem;
-    line-height: 1.2;
-}
-
-.governance-cc-vote-legend-item span span {
-    color: var(--muted);
-    font-size: 0.86rem;
-}
-
-.governance-cc-vote-dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 999px;
-}
-
-.governance-cc-vote-dot--voted {
-    background: #34d399;
-}
-
-.governance-cc-vote-dot--missing {
-    background: #fb7185;
-}
-
-.governance-cc-action--voted {
-    border-color: rgba(20, 184, 166, 0.48);
-    background: rgba(20, 184, 166, 0.12);
-}
-
-.governance-cc-action--missing {
-    border-color: rgba(220, 38, 38, 0.42);
-    background: rgba(220, 38, 38, 0.1);
-}
-
-.governance-cc-action--open {
-    border-color: var(--line);
-    background: var(--overlay-surface-muted);
-}
-
-.governance-cc-action--na {
-    border-color: var(--line);
-    background: var(--overlay-surface-muted);
+.governance-cc-quorum-chart {
+    margin-bottom: 16px;
 }
 
 .governance-dialog h2 {
@@ -1873,7 +1798,7 @@ p {
     .governance-dialog {
         width: 100%;
         max-height: calc(100dvh - 16px);
-        padding: 18px 14px 16px;
+        padding: 0;
         border-radius: 16px;
         overscroll-behavior: contain;
     }
@@ -1908,11 +1833,6 @@ p {
 
     .governance-vote-details {
         padding: 14px;
-    }
-
-    .governance-cc-vote-chart {
-        grid-template-columns: 1fr;
-        justify-items: center;
     }
 
     .governance-vote-chart-layout {
@@ -1994,18 +1914,33 @@ p {
 }
 
 .overlay-dialog-header {
-    position: sticky;
-    top: 0;
+    position: static;
     z-index: 5;
     display: flex;
-    width: calc(100% + 56px);
-    margin: -28px -28px 20px;
+    width: 100%;
+    margin: 0;
     padding: 16px 18px;
+    flex: 0 0 auto;
     align-items: center;
     justify-content: space-between;
     gap: 16px;
     border-bottom: 1px solid var(--line);
     background: var(--overlay-surface);
+}
+
+.overlay-dialog-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 20px 28px 28px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.overlay-dialog-body::-webkit-scrollbar {
+    width: 0;
+    height: 0;
 }
 
 .overlay-dialog-header-copy {
@@ -2039,8 +1974,8 @@ p {
 }
 
 .wallet-dialog-header {
-    width: calc(100% + 32px);
-    margin: -16px -16px 16px;
+    width: 100%;
+    margin: 0;
     padding: 12px 16px;
 }
 
@@ -2057,10 +1992,14 @@ p {
 
 @media (max-width: 720px) {
     .governance-dialog .overlay-dialog-header {
-        width: calc(100% + 28px);
-        margin: -18px -14px 16px;
+        width: 100%;
+        margin: 0;
         padding: 12px 14px;
         gap: 10px;
+    }
+
+    .governance-dialog .overlay-dialog-body {
+        padding: 16px 14px;
     }
 
     .overlay-dialog-header .governance-drep-title,

@@ -4,7 +4,7 @@
         if (!container) return;
 
         try {
-            const response = await fetch('governance.html', { credentials: 'same-origin' });
+            const response = await fetch('governance.html?v=20260713-member-action-totals', { credentials: 'same-origin' });
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
             const html = await response.text();
@@ -27,7 +27,7 @@
 
     function loadGovernanceScript() {
         const script = document.createElement('script');
-        script.src = 'governance.js?v=20260713-overlay-stack';
+        script.src = 'governance.js?v=20260713-member-action-totals';
         script.defer = true;
         document.body.appendChild(script);
     }
