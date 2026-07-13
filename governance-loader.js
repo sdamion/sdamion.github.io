@@ -27,7 +27,7 @@
 
     function loadGovernanceScript() {
         const script = document.createElement('script');
-        script.src = 'governance.js?v=20260712-fast-dreps';
+        script.src = 'governance.js?v=20260713-overlay-stack';
         script.defer = true;
         document.body.appendChild(script);
     }

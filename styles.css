@@ -1587,6 +1587,10 @@ p {
     z-index: 3200;
 }
 
+.governance-nested-overlay {
+    z-index: 3300;
+}
+
 .governance-dialog {
     position: relative;
     width: min(980px, 100%);
@@ -1947,14 +1951,6 @@ p {
         text-align: center;
     }
 
-    .governance-close {
-        position: static;
-        float: none;
-        display: block;
-        margin-left: auto;
-        margin-bottom: 10px;
-    }
-
     .governance-detail-row,
     .governance-markdown-section {
         gap: 6px;
@@ -1997,16 +1993,82 @@ p {
     }
 }
 
-.governance-close {
+.overlay-dialog-header {
     position: sticky;
     top: 0;
-    float: right;
+    z-index: 5;
+    display: flex;
+    width: calc(100% + 56px);
+    margin: -28px -28px 20px;
+    padding: 16px 18px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    border-bottom: 1px solid var(--line);
+    background: var(--overlay-surface);
+}
+
+.overlay-dialog-header-copy {
+    display: grid;
+    min-width: 0;
+    gap: 4px;
+}
+
+.overlay-dialog-header .governance-drep-title,
+.overlay-dialog-header h2 {
+    max-width: none;
+    margin: 0;
+    text-align: left;
+    overflow-wrap: anywhere;
+}
+
+.overlay-dialog-header .governance-type {
+    margin: 0;
+    text-align: left;
+}
+
+.governance-close {
+    position: static;
+    flex: 0 0 auto;
     min-height: 38px;
     padding: 0 12px;
     border: 1px solid var(--line);
     border-radius: 8px;
     background: var(--overlay-surface-strong);
     color: var(--text);
+}
+
+.wallet-dialog-header {
+    width: calc(100% + 32px);
+    margin: -16px -16px 16px;
+    padding: 12px 16px;
+}
+
+.wallet-dialog-title {
+    color: var(--text);
+    font-size: 1.05rem;
+}
+
+.wallet-dialog-header .wallet-modal-close {
+    width: auto;
+    margin: 0;
+    flex: 0 0 auto;
+}
+
+@media (max-width: 720px) {
+    .governance-dialog .overlay-dialog-header {
+        width: calc(100% + 28px);
+        margin: -18px -14px 16px;
+        padding: 12px 14px;
+        gap: 10px;
+    }
+
+    .overlay-dialog-header .governance-drep-title,
+    .overlay-dialog-header h2 {
+        font-size: clamp(1.2rem, 6vw, 1.65rem);
+        line-height: 1.15;
+        text-align: left;
+    }
 }
 
 /* Form Controls */

@@ -784,9 +784,8 @@ function createGovernanceCard(proposal, options = {}) {
     card.className = 'governance-card';
     card.type = 'button';
     card.dataset.proposalId = proposal.proposal_id;
-    const handleClick = options.onClick || (() => {
-        closeGovernanceActionGroupOverlay();
-        openGovernanceOverlay(proposal);
+    const handleClick = options.onClick || (event => {
+        openGovernanceOverlay(proposal, { returnFocus: event.currentTarget });
     });
     card.addEventListener('click', handleClick);
 
@@ -819,6 +818,20 @@ function createGovernanceCard(proposal, options = {}) {
     if (shouldShowVotePercentages(proposal)) card.appendChild(votes);
 
     return card;
+}
+
+function appendGovernanceDialogHeader(dialog, title, close, leadingNodes = []) {
+    const header = document.createElement('header');
+    header.className = 'overlay-dialog-header';
+
+    const copy = document.createElement('div');
+    copy.className = 'overlay-dialog-header-copy';
+    leadingNodes.forEach(node => copy.appendChild(node));
+    copy.appendChild(title);
+
+    header.appendChild(copy);
+    header.appendChild(close);
+    dialog.appendChild(header);
 }
 
 function openGovernanceActionGroupOverlay(groupKey, titleText, emptyMessage) {
@@ -856,8 +869,7 @@ function openGovernanceActionGroupOverlay(groupKey, titleText, emptyMessage) {
     panel.className = 'governance-list governance-action-group-list';
     renderGovernanceGroup(panel, proposals, emptyMessage);
 
-    dialog.appendChild(close);
-    dialog.appendChild(title);
+    appendGovernanceDialogHeader(dialog, title, close);
     dialog.appendChild(panel);
     overlay.appendChild(dialog);
     document.body.appendChild(overlay);
@@ -872,7 +884,8 @@ function closeGovernanceActionGroupOverlay() {
 }
 
 function handleGovernanceActionGroupOverlayKeydown(event) {
-    if (event.key === 'Escape') closeGovernanceActionGroupOverlay();
+    if (event.key !== 'Escape' || document.getElementById('governance-overlay')) return;
+    closeGovernanceActionGroupOverlay();
 }
 
 function getTreasuryBudgetMetadata(proposal) {
@@ -1146,9 +1159,7 @@ function openGovernanceOverlay(proposal, options = {}) {
     addMarkdownDetailSection(content, 'Rationale', body.rationale);
     addEmbeddedGovernanceImages(content, proposal, embeddedImages);
 
-    dialog.appendChild(close);
-    dialog.appendChild(type);
-    dialog.appendChild(title);
+    appendGovernanceDialogHeader(dialog, title, close, [type]);
     dialog.appendChild(meta);
     dialog.appendChild(content);
     overlay.appendChild(dialog);
@@ -1692,7 +1703,7 @@ function openDrepVotesOverlay(item, drepVotes) {
     closeDrepVotesOverlay();
 
     const overlay = document.createElement('div');
-    overlay.className = 'governance-overlay governance-drep-overlay';
+    overlay.className = 'governance-overlay governance-nested-overlay';
     overlay.id = 'governance-drep-overlay';
     overlay.addEventListener('click', event => {
         if (event.target === overlay) closeDrepVotesOverlay();
@@ -1720,8 +1731,7 @@ function openDrepVotesOverlay(item, drepVotes) {
     panel.className = 'governance-no-votes governance-no-votes-expanded';
     renderDrepDetailsPanel(panel, item, drepVotes);
 
-    dialog.appendChild(close);
-    dialog.appendChild(title);
+    appendGovernanceDialogHeader(dialog, title, close);
     dialog.appendChild(panel);
     overlay.appendChild(dialog);
     document.body.appendChild(overlay);
@@ -1768,8 +1778,7 @@ function openDrepDirectoryOverlay() {
     loading.textContent = 'Loading DRep data...';
     panel.appendChild(loading);
 
-    dialog.appendChild(close);
-    dialog.appendChild(title);
+    appendGovernanceDialogHeader(dialog, title, close);
     dialog.appendChild(panel);
     overlay.appendChild(dialog);
     document.body.appendChild(overlay);
@@ -1923,8 +1932,7 @@ function openDrepActionHistoryOverlay(drep) {
     loading.textContent = 'Loading DRep votes...';
     panel.appendChild(loading);
 
-    dialog.appendChild(close);
-    dialog.appendChild(title);
+    appendGovernanceDialogHeader(dialog, title, close);
     dialog.appendChild(panel);
     overlay.appendChild(dialog);
     document.body.appendChild(overlay);
@@ -2019,8 +2027,7 @@ function openConstitutionalCommitteeOverlay() {
     panel.className = 'governance-cc-members';
     renderConstitutionalCommitteeMembers(panel, members, members.length ? null : 'Loading Constitutional Committee members...');
 
-    dialog.appendChild(close);
-    dialog.appendChild(title);
+    appendGovernanceDialogHeader(dialog, title, close);
     dialog.appendChild(panel);
     overlay.appendChild(dialog);
     document.body.appendChild(overlay);
@@ -2151,8 +2158,7 @@ function openConstitutionalCommitteeActionsOverlay(member) {
     panel.className = 'governance-cc-actions';
     renderConstitutionalCommitteeActionShell(panel, member);
 
-    dialog.appendChild(close);
-    dialog.appendChild(title);
+    appendGovernanceDialogHeader(dialog, title, close);
     dialog.appendChild(panel);
     overlay.appendChild(dialog);
     document.body.appendChild(overlay);
