@@ -47,9 +47,9 @@
 
     <!-- Preload Logo -->
     <link rel="preload" href="tdsp_logo.webp" as="image">
-    <link rel="stylesheet" href="styles.css?v=20260714-header-counts">
+    <link rel="stylesheet" href="styles.css?v=20260715-delegator-list">
 
-    <script src="index.js?v=20260712-site-fixes" defer></script>
+    <script src="index.js?v=20260715-delegator-list" defer></script>
 </head>
 <body>
     <header class="site-header" id="site-header">
@@ -111,7 +111,7 @@
                         <span>Ticker</span>
                         <button class="pool-copy-icon-button" type="button" data-copy-target="pool-ticker" aria-label="Copy stake pool ticker" title="Copy ticker">⧉</button>
                     </div>
-                    <div>
+                    <div id="pool-delegators-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show pool delegators">
                         <strong id="pool-delegators">...</strong>
                         <span>Delegators</span>
                     </div>

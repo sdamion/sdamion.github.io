@@ -15,6 +15,7 @@ const POOL_API_URL = IS_LOCAL_PREVIEW ? '/__pool_proxy__' : 'https://api.tdsp.on
 const LEADER_SCHEDULE_API_URL = IS_LOCAL_PREVIEW ? '/__leader_schedule_proxy__' : 'https://api.tdsp.online/api/leader-schedule';
 const notifiedRelayMaintenance = new Set();
 let headerVisibilityObserver = null;
+let poolDelegators = [];
 
 // Fetch and display ADA, BTC, and STRCH prices asynchronously
 async function fetchPrices() {
@@ -66,6 +67,7 @@ function goToDetails() {
 document.addEventListener("DOMContentLoaded", () => {
     initThemeToggle();
     initPoolCopyButtons();
+    initPoolDelegatorsCard();
     fetchPrices();
     fetchPoolStatus();
     fetchLeaderSchedule();
@@ -128,6 +130,7 @@ function renderLeaderScheduleError() {
 }
 
 function renderPoolStatus(pool) {
+    poolDelegators = Array.isArray(pool?.delegators) ? [...pool.delegators] : [];
     setText('pool-delegators', formatInteger(pool?.delegator_count));
     setText('pool-live-stake', formatAdaFromLovelace(pool?.live_stake_lovelace));
     setText('pool-active-stake', formatAdaFromLovelace(pool?.active_stake_lovelace));
@@ -175,6 +178,181 @@ function renderPoolStatus(pool) {
         notifyRelayMaintenance(downRelays);
     }
 
+}
+
+function initPoolDelegatorsCard() {
+    const card = document.getElementById('pool-delegators-card');
+    if (!card || card.dataset.delegatorsBound === 'true') return;
+
+    card.dataset.delegatorsBound = 'true';
+    card.addEventListener('click', openPoolDelegatorsOverlay);
+    card.addEventListener('keydown', event => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        openPoolDelegatorsOverlay();
+    });
+}
+
+function openPoolDelegatorsOverlay() {
+    closePoolDelegatorsOverlay(false);
+
+    const returnFocus = document.getElementById('pool-delegators-card');
+    const overlay = document.createElement('div');
+    overlay.id = 'pool-delegators-overlay';
+    overlay.className = 'governance-overlay governance-menu-overlay governance-drep-overlay';
+    overlay.governanceReturnFocus = returnFocus;
+    overlay.governanceCloseOverlay = closePoolDelegatorsOverlay;
+    overlay.addEventListener('click', event => {
+        if (event.target === overlay) closePoolDelegatorsOverlay();
+    });
+
+    const dialog = document.createElement('article');
+    dialog.className = 'governance-dialog governance-drep-dialog';
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.setAttribute('aria-labelledby', 'pool-delegators-title');
+
+    const header = document.createElement('header');
+    header.className = 'overlay-dialog-header';
+
+    const headerCopy = document.createElement('div');
+    headerCopy.className = 'overlay-dialog-header-copy';
+
+    const title = document.createElement('h3');
+    title.id = 'pool-delegators-title';
+    title.className = 'governance-drep-title';
+    title.textContent = 'Pool Delegators';
+
+    const meta = document.createElement('span');
+    meta.className = 'governance-menu-header-meta';
+    meta.textContent = `${poolDelegators.length.toLocaleString('en-US')} delegators`;
+
+    const close = document.createElement('button');
+    close.className = 'governance-close';
+    close.type = 'button';
+    close.textContent = 'Close';
+    close.setAttribute('aria-label', 'Close pool delegators');
+    close.addEventListener('click', closePoolDelegatorsOverlay);
+
+    headerCopy.append(title, meta);
+    header.append(headerCopy, close);
+
+    const body = document.createElement('div');
+    body.className = 'overlay-dialog-body';
+    body.appendChild(createPoolDelegatorsList());
+
+    dialog.append(header, body);
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+    close.focus();
+}
+
+function closePoolDelegatorsOverlay(restoreFocus = true) {
+    const overlay = document.getElementById('pool-delegators-overlay');
+    const returnFocus = overlay?.governanceReturnFocus;
+    overlay?.remove();
+    if (restoreFocus && returnFocus?.isConnected) returnFocus.focus();
+}
+
+function createPoolDelegatorsList() {
+    const list = document.createElement('div');
+    list.className = 'pool-delegator-list';
+
+    if (!poolDelegators.length) {
+        const message = document.createElement('p');
+        message.className = 'small-text';
+        message.textContent = 'Delegator details are not available yet.';
+        list.appendChild(message);
+        return list;
+    }
+
+    const sortedDelegators = [...poolDelegators].sort((left, right) => {
+        const leftAmount = getDelegatorAmount(left);
+        const rightAmount = getDelegatorAmount(right);
+        return rightAmount > leftAmount ? 1 : rightAmount < leftAmount ? -1 : 0;
+    });
+
+    sortedDelegators.forEach((delegator, index) => {
+        const address = String(delegator?.stake_address || 'Unknown stake address');
+        const row = document.createElement('div');
+        row.className = 'pool-delegator-row governance-menu-card';
+
+        const rank = document.createElement('span');
+        rank.className = 'pool-delegator-rank';
+        rank.textContent = String(index + 1);
+
+        const content = document.createElement('div');
+        content.className = 'pool-delegator-content';
+
+        const addressLine = document.createElement('div');
+        addressLine.className = 'pool-delegator-address-line';
+
+        const addressText = document.createElement('strong');
+        addressText.className = 'pool-delegator-address';
+        addressText.textContent = shortenStakeAddress(address);
+        addressText.title = address;
+
+        const copy = document.createElement('button');
+        copy.className = 'pool-delegator-copy-button';
+        copy.type = 'button';
+        copy.textContent = '⧉';
+        copy.setAttribute('aria-label', `Copy stake address ${index + 1}`);
+        copy.addEventListener('click', async () => {
+            const original = copy.textContent;
+            try {
+                await copyText(address);
+                copy.textContent = 'Copied';
+            } catch (error) {
+                copy.textContent = 'Copy failed';
+            }
+            setTimeout(() => {
+                copy.textContent = original;
+            }, 1400);
+        });
+
+        const amount = document.createElement('span');
+        amount.className = 'pool-delegator-amount';
+        amount.textContent = formatDelegatorAda(getDelegatorAmount(delegator));
+
+        addressLine.append(addressText, copy);
+        content.append(addressLine, amount);
+
+        const epoch = Number(delegator?.active_epoch_no);
+        if (Number.isFinite(epoch)) {
+            const epochText = document.createElement('span');
+            epochText.className = 'pool-delegator-epoch';
+            epochText.textContent = `Active epoch ${epoch.toLocaleString('en-US')}`;
+            content.appendChild(epochText);
+        }
+
+        row.append(rank, content);
+        list.appendChild(row);
+    });
+
+    return list;
+}
+
+function getDelegatorAmount(delegator) {
+    try {
+        return BigInt(String(delegator?.amount_lovelace ?? delegator?.amount ?? '0'));
+    } catch (error) {
+        return 0n;
+    }
+}
+
+function formatDelegatorAda(lovelace) {
+    const wholeAda = lovelace / 1_000_000n;
+    const fraction = lovelace % 1_000_000n;
+    const value = `${wholeAda}.${fraction.toString().padStart(6, '0')}`;
+    return `${new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(Number(value))} ADA`;
+}
+
+function shortenStakeAddress(address) {
+    if (address.length <= 34) return address;
+    return `${address.slice(0, 20)}...${address.slice(-10)}`;
 }
 
 function initPoolCopyButtons() {
