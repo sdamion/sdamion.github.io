@@ -29,6 +29,7 @@ let governanceGroupsState = null;
 let committeeInfoState = null;
 let governanceOverlayReturnFocus = null;
 let governanceStatusActionsReturnFocus = null;
+let drepStatusListReturnFocus = null;
 const proposalVotesCache = new Map();
 const committeeMemberStatsCache = new Map();
 const drepMetadataCache = new Map();
@@ -1859,6 +1860,7 @@ function openDrepDirectoryOverlay() {
 }
 
 function closeDrepDirectoryOverlay() {
+    closeDrepStatusListOverlay();
     closeDrepActionHistoryOverlay();
     const overlay = document.getElementById('governance-drep-directory-overlay');
     if (overlay) overlay.remove();
@@ -1870,6 +1872,10 @@ function handleDrepDirectoryOverlayKeydown(event) {
     if (document.getElementById('governance-overlay')) return;
     if (document.getElementById('governance-drep-actions-overlay')) {
         closeDrepActionHistoryOverlay();
+        return;
+    }
+    if (document.getElementById('governance-drep-status-overlay')) {
+        closeDrepStatusListOverlay();
         return;
     }
     closeDrepDirectoryOverlay();
@@ -1903,7 +1909,7 @@ async function loadDrepDirectoryOverlay(container) {
     renderDrepDirectory(container, dreps);
 }
 
-function renderDrepDirectory(container, dreps) {
+function renderDrepDirectory(container, dreps, options = {}) {
     container.textContent = '';
     if (!dreps.length) {
         const message = document.createElement('p');
@@ -1911,6 +1917,10 @@ function renderDrepDirectory(container, dreps) {
         message.textContent = 'No DRep data available.';
         container.appendChild(message);
         return;
+    }
+
+    if (options.showChart !== false) {
+        container.appendChild(createDrepDirectoryStatusChart(dreps));
     }
 
     const fragment = document.createDocumentFragment();
@@ -1966,6 +1976,164 @@ function renderDrepDirectory(container, dreps) {
         fragment.appendChild(row);
     });
     container.appendChild(fragment);
+}
+
+function createDrepDirectoryStatusChart(dreps) {
+    const activeDreps = dreps.filter(drep => drep.active);
+    const inactiveDreps = dreps.filter(drep => !drep.active);
+    const groups = [
+        {
+            key: 'active',
+            label: 'Active',
+            color: '#34d399',
+            dreps: activeDreps,
+            value: activeDreps.reduce((sum, drep) => sum + drep.votingPower, 0)
+        },
+        {
+            key: 'inactive',
+            label: 'Inactive',
+            color: '#fb7185',
+            dreps: inactiveDreps,
+            value: inactiveDreps.reduce((sum, drep) => sum + drep.votingPower, 0)
+        }
+    ];
+    const totalPower = groups.reduce((sum, group) => sum + group.value, 0);
+    const segments = getPieChartSegments(groups);
+
+    const section = document.createElement('section');
+    section.className = 'governance-vote-chart governance-drep-status-chart';
+
+    const title = document.createElement('strong');
+    title.textContent = 'DRep Status';
+
+    const layout = document.createElement('div');
+    layout.className = 'governance-vote-chart-layout';
+
+    const chart = document.createElement('div');
+    chart.className = 'governance-pie-chart';
+    chart.style.background = buildPieChartGradient(segments);
+
+    const center = document.createElement('div');
+    center.className = 'governance-pie-chart-center';
+    const centerLabel = document.createElement('span');
+    centerLabel.textContent = 'Total voting power';
+    const centerValue = document.createElement('strong');
+    centerValue.textContent = formatCompactAdaFromLovelace(totalPower, { fixedFractionDigits: 2 });
+    center.append(centerLabel, centerValue);
+    chart.appendChild(center);
+
+    segments.forEach(segment => {
+        const label = createDrepDirectoryPowerLabel(segment);
+        if (label) chart.appendChild(label);
+    });
+
+    const legend = document.createElement('div');
+    legend.className = 'governance-vote-legend';
+    groups.forEach(group => {
+        legend.appendChild(createDrepDirectoryLegendItem(group, totalPower));
+    });
+
+    layout.appendChild(chart);
+    layout.appendChild(legend);
+    section.appendChild(title);
+    section.appendChild(layout);
+    return section;
+}
+
+function createDrepDirectoryPowerLabel(segment) {
+    if (!segment.value) return null;
+
+    const label = document.createElement('span');
+    label.className = 'governance-pie-label';
+    label.textContent = formatCompactAdaFromLovelace(segment.value);
+
+    const radians = ((segment.mid - 90) * Math.PI) / 180;
+    const radius = segment.end - segment.start < 18 ? 57 : 48;
+    label.style.left = `${50 + Math.cos(radians) * radius}%`;
+    label.style.top = `${50 + Math.sin(radians) * radius}%`;
+    return label;
+}
+
+function createDrepDirectoryLegendItem(group, totalPower) {
+    const button = document.createElement('button');
+    button.className = 'governance-vote-legend-item is-clickable';
+    button.type = 'button';
+    button.setAttribute('aria-haspopup', 'dialog');
+    button.addEventListener('click', event => {
+        openDrepStatusListOverlay(`${group.label} DReps`, group.dreps, event.currentTarget);
+    });
+
+    const swatch = document.createElement('span');
+    swatch.className = 'governance-vote-swatch';
+    swatch.style.backgroundColor = group.color;
+
+    const copy = document.createElement('span');
+    copy.className = 'governance-vote-legend-copy';
+    const label = document.createElement('strong');
+    label.textContent = group.label;
+    const value = document.createElement('span');
+    const percentage = totalPower > 0 ? (group.value / totalPower) * 100 : 0;
+    value.textContent = `${group.dreps.length.toLocaleString('en-US')} DReps • ${formatCompactAdaFromLovelace(group.value)} • ${formatPercentage(percentage)}`;
+    copy.append(label, value);
+    button.append(swatch, copy);
+    return button;
+}
+
+function openDrepStatusListOverlay(titleText, dreps, returnFocus) {
+    closeDrepStatusListOverlay();
+    drepStatusListReturnFocus = returnFocus || null;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'governance-overlay governance-action-detail-overlay';
+    overlay.id = 'governance-drep-status-overlay';
+    overlay.addEventListener('click', event => {
+        if (event.target === overlay) closeDrepStatusListOverlay();
+    });
+
+    const dialog = document.createElement('article');
+    dialog.className = 'governance-dialog governance-drep-dialog';
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.setAttribute('aria-labelledby', 'governance-drep-status-title');
+
+    const close = document.createElement('button');
+    close.className = 'governance-close';
+    close.type = 'button';
+    close.setAttribute('aria-label', `Close ${titleText}`);
+    close.textContent = 'Close';
+    close.addEventListener('click', closeDrepStatusListOverlay);
+
+    const title = document.createElement('h3');
+    title.id = 'governance-drep-status-title';
+    title.className = 'governance-drep-title';
+    title.textContent = titleText;
+
+    const panel = document.createElement('div');
+    panel.className = 'governance-drep-directory-list';
+    renderDrepDirectory(panel, dreps, { showChart: false });
+
+    appendGovernanceDialogHeader(dialog, title, close);
+    appendGovernanceDialogBody(dialog, panel);
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+    close.focus();
+    document.addEventListener('keydown', handleDrepStatusListOverlayKeydown);
+}
+
+function closeDrepStatusListOverlay() {
+    const overlay = document.getElementById('governance-drep-status-overlay');
+    if (overlay) overlay.remove();
+    document.removeEventListener('keydown', handleDrepStatusListOverlayKeydown);
+    const returnFocus = drepStatusListReturnFocus;
+    drepStatusListReturnFocus = null;
+    if (returnFocus?.isConnected) returnFocus.focus();
+}
+
+function handleDrepStatusListOverlayKeydown(event) {
+    if (event.key !== 'Escape') return;
+    if (document.getElementById('governance-overlay')) return;
+    if (document.getElementById('governance-drep-actions-overlay')) return;
+    closeDrepStatusListOverlay();
 }
 
 function createGovernanceCopyButton(value, label) {
