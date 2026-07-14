@@ -27,9 +27,6 @@ let lastActiveRenderSignature = '';
 let governanceState = null;
 let governanceGroupsState = null;
 let committeeInfoState = null;
-let governanceOverlayReturnFocus = null;
-let governanceStatusActionsReturnFocus = null;
-let drepStatusListReturnFocus = null;
 const proposalVotesCache = new Map();
 const committeeMemberStatsCache = new Map();
 const drepMetadataCache = new Map();
@@ -45,6 +42,7 @@ if (document.readyState === 'loading') {
 }
 
 function initGovernance() {
+    setupGovernanceMenuKeyboard();
     removeDrepPowerSplitCard();
     ensureEpochCountdownCard();
     setupGovernanceSummaryActionCards();
@@ -55,28 +53,28 @@ function initGovernance() {
     loadDrepDirectory().catch(() => {});
 }
 
+function setupGovernanceMenuKeyboard() {
+    document.removeEventListener('keydown', handleGovernanceMenuEscape);
+    document.addEventListener('keydown', handleGovernanceMenuEscape);
+}
+
+function handleGovernanceMenuEscape(event) {
+    if (event.key !== 'Escape') return;
+    const overlays = document.querySelectorAll('.governance-menu-overlay');
+    const topOverlay = overlays[overlays.length - 1];
+    if (typeof topOverlay?.governanceCloseOverlay === 'function') {
+        topOverlay.governanceCloseOverlay();
+    }
+}
+
 function setupDrepDirectoryCard() {
     const card = document.getElementById('gov-drep-card');
-    if (!card) return;
-
-    card.addEventListener('click', openDrepDirectoryOverlay);
-    card.addEventListener('keydown', event => {
-        if (event.key !== 'Enter' && event.key !== ' ') return;
-        event.preventDefault();
-        openDrepDirectoryOverlay();
-    });
+    bindGovernanceMenuTrigger(card, openDrepDirectoryOverlay);
 }
 
 function setupConstitutionalCommitteeCard() {
     const card = document.getElementById('gov-committee-card');
-    if (!card) return;
-
-    card.addEventListener('click', openConstitutionalCommitteeOverlay);
-    card.addEventListener('keydown', event => {
-        if (event.key !== 'Enter' && event.key !== ' ') return;
-        event.preventDefault();
-        openConstitutionalCommitteeOverlay();
-    });
+    bindGovernanceMenuTrigger(card, openConstitutionalCommitteeOverlay);
 }
 
 function setupGovernanceSummaryActionCards() {
@@ -87,15 +85,22 @@ function setupGovernanceSummaryActionCards() {
         { id: 'gov-info-card', groupKey: 'info', title: 'Info Actions', emptyMessage: 'No info actions found.' }
     ].forEach(config => {
         const card = document.getElementById(config.id);
-        if (!card) return;
-
         const open = () => openGovernanceActionGroupOverlay(config.groupKey, config.title, config.emptyMessage);
-        card.addEventListener('click', open);
-        card.addEventListener('keydown', event => {
-            if (event.key !== 'Enter' && event.key !== ' ') return;
-            event.preventDefault();
-            open();
-        });
+        bindGovernanceMenuTrigger(card, open);
+    });
+}
+
+function bindGovernanceMenuTrigger(element, openMenu) {
+    if (!element) return;
+    const activate = event => {
+        element.focus({ preventScroll: true });
+        openMenu(event);
+    };
+    element.addEventListener('click', activate);
+    element.addEventListener('keydown', event => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        activate(event);
     });
 }
 
@@ -783,7 +788,7 @@ function renderGovernanceGroupIfPresent(container, proposals, emptyMessage) {
 
 function createGovernanceCard(proposal, options = {}) {
     const card = document.createElement('button');
-    card.className = 'governance-card';
+    card.className = 'governance-card governance-menu-card';
     card.type = 'button';
     card.dataset.proposalId = proposal.proposal_id;
     const handleClick = options.onClick || (event => {
@@ -822,7 +827,7 @@ function createGovernanceCard(proposal, options = {}) {
     return card;
 }
 
-function appendGovernanceDialogHeader(dialog, title, close, leadingNodes = []) {
+function appendGovernanceDialogHeader(dialog, title, close, leadingNodes = [], meta = null) {
     const header = document.createElement('header');
     header.className = 'overlay-dialog-header';
 
@@ -830,6 +835,7 @@ function appendGovernanceDialogHeader(dialog, title, close, leadingNodes = []) {
     copy.className = 'overlay-dialog-header-copy';
     leadingNodes.forEach(node => copy.appendChild(node));
     copy.appendChild(title);
+    if (meta) copy.appendChild(meta);
 
     header.appendChild(copy);
     header.appendChild(close);
@@ -843,113 +849,124 @@ function appendGovernanceDialogBody(dialog, ...nodes) {
     dialog.appendChild(body);
 }
 
+function createGovernanceMenuOverlay(options) {
+    const {
+        id,
+        titleId,
+        titleText,
+        closeLabel,
+        closeOverlay,
+        bodyNodes = [],
+        leadingNodes = [],
+        overlayClass = 'governance-drep-overlay',
+        dialogClass = 'governance-drep-dialog',
+        titleTag = 'h3',
+        headerMeta = '',
+        returnFocus = document.activeElement
+    } = options;
+
+    const overlay = document.createElement('div');
+    overlay.className = `governance-overlay governance-menu-overlay ${overlayClass}`.trim();
+    overlay.id = id;
+    overlay.governanceReturnFocus = returnFocus;
+    overlay.governanceCloseOverlay = closeOverlay;
+    overlay.addEventListener('click', event => {
+        if (event.target === overlay) closeOverlay();
+    });
+
+    const dialog = document.createElement('article');
+    dialog.className = `governance-dialog ${dialogClass}`.trim();
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.setAttribute('aria-labelledby', titleId);
+
+    const close = document.createElement('button');
+    close.className = 'governance-close';
+    close.type = 'button';
+    close.setAttribute('aria-label', closeLabel);
+    close.textContent = 'Close';
+    close.addEventListener('click', closeOverlay);
+
+    const title = document.createElement(titleTag);
+    title.id = titleId;
+    if (titleTag !== 'h2') title.className = 'governance-drep-title';
+    title.textContent = titleText;
+
+    const meta = document.createElement('span');
+    meta.className = 'governance-menu-header-meta';
+    meta.dataset.governanceMenuHeaderMeta = 'true';
+    meta.textContent = headerMeta;
+
+    appendGovernanceDialogHeader(dialog, title, close, leadingNodes, meta);
+    appendGovernanceDialogBody(dialog, ...bodyNodes);
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+    close.focus();
+
+    return { overlay, dialog, close, title, meta };
+}
+
+function updateGovernanceMenuHeaderMeta(id, text) {
+    const meta = document.querySelector(
+        `#${id} [data-governance-menu-header-meta="true"]`
+    );
+    if (meta) meta.textContent = text;
+}
+
+function removeGovernanceMenuOverlay(id) {
+    const overlay = document.getElementById(id);
+    const returnFocus = overlay?.governanceReturnFocus;
+    if (overlay) overlay.remove();
+    if (returnFocus?.isConnected) returnFocus.focus();
+}
+
 function openGovernanceActionGroupOverlay(groupKey, titleText, emptyMessage) {
     closeGovernanceActionGroupOverlay();
 
     const proposals = governanceGroupsState?.[groupKey]
         || groupGovernanceProposals(getGovernanceProposalsFromDashboardPayload(governanceState || {}))[groupKey]
         || [];
-    const overlay = document.createElement('div');
-    overlay.className = 'governance-overlay governance-drep-overlay';
-    overlay.id = 'governance-action-group-overlay';
-    overlay.addEventListener('click', event => {
-        if (event.target === overlay) closeGovernanceActionGroupOverlay();
-    });
-
-    const dialog = document.createElement('article');
-    dialog.className = 'governance-dialog governance-drep-dialog';
-    dialog.setAttribute('role', 'dialog');
-    dialog.setAttribute('aria-modal', 'true');
-    dialog.setAttribute('aria-labelledby', 'governance-action-group-title');
-
-    const close = document.createElement('button');
-    close.className = 'governance-close';
-    close.type = 'button';
-    close.setAttribute('aria-label', `Close ${titleText}`);
-    close.textContent = 'Close';
-    close.addEventListener('click', closeGovernanceActionGroupOverlay);
-
-    const title = document.createElement('h3');
-    title.id = 'governance-action-group-title';
-    title.className = 'governance-drep-title';
-    title.textContent = titleText;
-
     const panel = document.createElement('div');
     panel.className = 'governance-list governance-action-group-list';
     renderGovernanceGroup(panel, proposals, emptyMessage);
 
-    appendGovernanceDialogHeader(dialog, title, close);
-    appendGovernanceDialogBody(dialog, panel);
-    overlay.appendChild(dialog);
-    document.body.appendChild(overlay);
-    close.focus();
-    document.addEventListener('keydown', handleGovernanceActionGroupOverlayKeydown);
+    createGovernanceMenuOverlay({
+        id: 'governance-action-group-overlay',
+        titleId: 'governance-action-group-title',
+        titleText,
+        closeLabel: `Close ${titleText}`,
+        closeOverlay: closeGovernanceActionGroupOverlay,
+        bodyNodes: [panel],
+        headerMeta: `${proposals.length.toLocaleString('en-US')} actions`
+    });
 }
 
 function closeGovernanceActionGroupOverlay() {
-    const overlay = document.getElementById('governance-action-group-overlay');
-    if (overlay) overlay.remove();
-    document.removeEventListener('keydown', handleGovernanceActionGroupOverlayKeydown);
-}
-
-function handleGovernanceActionGroupOverlayKeydown(event) {
-    if (event.key !== 'Escape' || document.getElementById('governance-overlay')) return;
-    closeGovernanceActionGroupOverlay();
+    removeGovernanceMenuOverlay('governance-action-group-overlay');
 }
 
 function openGovernanceStatusActionsOverlay(titleText, proposals, returnFocus) {
     closeGovernanceStatusActionsOverlay();
-    governanceStatusActionsReturnFocus = returnFocus || null;
-
-    const overlay = document.createElement('div');
-    overlay.className = 'governance-overlay governance-action-detail-overlay';
-    overlay.id = 'governance-status-actions-overlay';
-    overlay.addEventListener('click', event => {
-        if (event.target === overlay) closeGovernanceStatusActionsOverlay();
-    });
-
-    const dialog = document.createElement('article');
-    dialog.className = 'governance-dialog governance-drep-dialog';
-    dialog.setAttribute('role', 'dialog');
-    dialog.setAttribute('aria-modal', 'true');
-    dialog.setAttribute('aria-labelledby', 'governance-status-actions-title');
-
-    const close = document.createElement('button');
-    close.className = 'governance-close';
-    close.type = 'button';
-    close.setAttribute('aria-label', `Close ${titleText}`);
-    close.textContent = 'Close';
-    close.addEventListener('click', closeGovernanceStatusActionsOverlay);
-
-    const title = document.createElement('h3');
-    title.id = 'governance-status-actions-title';
-    title.className = 'governance-drep-title';
-    title.textContent = titleText;
 
     const panel = document.createElement('div');
     panel.className = 'governance-list governance-action-group-list';
     renderGovernanceGroup(panel, proposals, 'No governance actions found.');
 
-    appendGovernanceDialogHeader(dialog, title, close);
-    appendGovernanceDialogBody(dialog, panel);
-    overlay.appendChild(dialog);
-    document.body.appendChild(overlay);
-    close.focus();
-    document.addEventListener('keydown', handleGovernanceStatusActionsOverlayKeydown);
+    createGovernanceMenuOverlay({
+        id: 'governance-status-actions-overlay',
+        titleId: 'governance-status-actions-title',
+        titleText,
+        closeLabel: `Close ${titleText}`,
+        closeOverlay: closeGovernanceStatusActionsOverlay,
+        bodyNodes: [panel],
+        headerMeta: `${proposals.length.toLocaleString('en-US')} actions`,
+        overlayClass: 'governance-action-detail-overlay',
+        returnFocus
+    });
 }
 
 function closeGovernanceStatusActionsOverlay() {
-    const overlay = document.getElementById('governance-status-actions-overlay');
-    if (overlay) overlay.remove();
-    document.removeEventListener('keydown', handleGovernanceStatusActionsOverlayKeydown);
-    const returnFocus = governanceStatusActionsReturnFocus;
-    governanceStatusActionsReturnFocus = null;
-    if (returnFocus?.isConnected) returnFocus.focus();
-}
-
-function handleGovernanceStatusActionsOverlayKeydown(event) {
-    if (event.key !== 'Escape' || document.getElementById('governance-overlay')) return;
-    closeGovernanceStatusActionsOverlay();
+    removeGovernanceMenuOverlay('governance-status-actions-overlay');
 }
 
 function getTreasuryBudgetMetadata(proposal) {
@@ -1170,35 +1187,10 @@ function formatGovernanceMetaValue(value) {
 
 function openGovernanceOverlay(proposal, options = {}) {
     closeGovernanceOverlay();
-    governanceOverlayReturnFocus = options.returnFocus || null;
-
-    const overlay = document.createElement('div');
-    overlay.className = 'governance-overlay governance-action-detail-overlay';
-    overlay.id = 'governance-overlay';
-    overlay.addEventListener('click', event => {
-        if (event.target === overlay) closeGovernanceOverlay();
-    });
-
-    const dialog = document.createElement('article');
-    dialog.className = 'governance-dialog';
-    dialog.setAttribute('role', 'dialog');
-    dialog.setAttribute('aria-modal', 'true');
-    dialog.setAttribute('aria-labelledby', 'governance-dialog-title');
-
-    const close = document.createElement('button');
-    close.className = 'governance-close';
-    close.type = 'button';
-    close.setAttribute('aria-label', 'Close governance action');
-    close.textContent = 'Close';
-    close.addEventListener('click', closeGovernanceOverlay);
 
     const type = document.createElement('span');
     type.className = 'governance-type';
     type.textContent = formatProposalType(proposal.proposal_type);
-
-    const title = document.createElement('h2');
-    title.id = 'governance-dialog-title';
-    title.textContent = getProposalTitle(proposal);
 
     const meta = document.createElement('p');
     meta.className = 'small-text';
@@ -1223,13 +1215,19 @@ function openGovernanceOverlay(proposal, options = {}) {
     addMarkdownDetailSection(content, 'Rationale', body.rationale);
     addEmbeddedGovernanceImages(content, proposal, embeddedImages);
 
-    appendGovernanceDialogHeader(dialog, title, close, [type]);
-    appendGovernanceDialogBody(dialog, meta, content);
-    overlay.appendChild(dialog);
-    document.body.appendChild(overlay);
-
-    close.focus();
-    document.addEventListener('keydown', handleGovernanceOverlayKeydown);
+    createGovernanceMenuOverlay({
+        id: 'governance-overlay',
+        titleId: 'governance-dialog-title',
+        titleText: getProposalTitle(proposal),
+        closeLabel: 'Close governance action',
+        closeOverlay: closeGovernanceOverlay,
+        bodyNodes: [meta, content],
+        leadingNodes: [type],
+        headerMeta: '1 action',
+        overlayClass: 'governance-action-detail-overlay',
+        titleTag: 'h2',
+        returnFocus: options.returnFocus
+    });
     loadProposalVoteDetails(proposal, voteDetailsContainer).catch(() => {
         if (!voteDetailsContainer.isConnected) return;
         addVoteDetailsState(voteDetailsContainer, 'Vote details could not be loaded.');
@@ -1238,21 +1236,7 @@ function openGovernanceOverlay(proposal, options = {}) {
 
 function closeGovernanceOverlay() {
     closeDrepVotesOverlay();
-    const overlay = document.getElementById('governance-overlay');
-    if (overlay) overlay.remove();
-    document.removeEventListener('keydown', handleGovernanceOverlayKeydown);
-    const returnFocus = governanceOverlayReturnFocus;
-    governanceOverlayReturnFocus = null;
-    if (returnFocus?.isConnected) returnFocus.focus();
-}
-
-function handleGovernanceOverlayKeydown(event) {
-    if (event.key !== 'Escape') return;
-    if (document.getElementById('governance-drep-overlay')) {
-        closeDrepVotesOverlay();
-        return;
-    }
-    closeGovernanceOverlay();
+    removeGovernanceMenuOverlay('governance-overlay');
 }
 
 function addDetailRow(container, label, value) {
@@ -1693,33 +1677,42 @@ function createDrepVoteChartSection(breakdown, drepVotes) {
 
 function createVoteLegendItem(item, drepVotes) {
     const interactive = ['no', 'not-voted', 'abstain', 'always-abstain', 'always-no-confidence', 'yes'].includes(item.key);
-    const element = document.createElement(interactive ? 'button' : 'div');
-    element.className = `governance-vote-legend-item${interactive ? ' is-clickable' : ''}`;
-    if (item.key === 'not-voted') element.classList.add('is-not-voted');
-
+    const element = createGovernanceStatBox({
+        label: item.label,
+        detail: formatVoteLegendDetail(item, drepVotes),
+        color: item.color,
+        statusClass: item.key === 'not-voted' ? 'is-not-voted' : '',
+        onClick: interactive ? () => openDrepVotesOverlay(item, drepVotes) : null
+    });
     if (interactive) {
-        element.type = 'button';
         element.dataset.voteGroup = item.key;
+    }
+    return element;
+}
+
+function createGovernanceStatBox({ label, detail, color, statusClass = '', onClick = null }) {
+    const element = document.createElement(onClick ? 'button' : 'div');
+    element.className = `governance-vote-legend-item governance-stat-box${onClick ? ' is-clickable' : ''}${statusClass ? ` ${statusClass}` : ''}`;
+    if (onClick) {
+        element.type = 'button';
         element.setAttribute('aria-haspopup', 'dialog');
-        element.addEventListener('click', () => {
-            openDrepVotesOverlay(item, drepVotes);
-        });
+        element.addEventListener('click', onClick);
     }
 
     const swatch = document.createElement('span');
     swatch.className = 'governance-vote-swatch';
-    swatch.style.backgroundColor = item.color;
+    swatch.style.backgroundColor = color;
 
     const text = document.createElement('span');
     text.className = 'governance-vote-legend-copy';
 
-    const label = document.createElement('strong');
-    label.textContent = item.label;
+    const labelElement = document.createElement('strong');
+    labelElement.textContent = label;
 
     const value = document.createElement('span');
-    value.textContent = formatVoteLegendDetail(item, drepVotes);
+    value.textContent = detail;
 
-    text.appendChild(label);
+    text.appendChild(labelElement);
     text.appendChild(value);
     element.appendChild(swatch);
     element.appendChild(text);
@@ -1766,74 +1759,28 @@ function renderDrepDetailsPanel(container, item, drepVotes) {
 function openDrepVotesOverlay(item, drepVotes) {
     closeDrepVotesOverlay();
 
-    const overlay = document.createElement('div');
-    overlay.className = 'governance-overlay governance-nested-overlay';
-    overlay.id = 'governance-drep-overlay';
-    overlay.addEventListener('click', event => {
-        if (event.target === overlay) closeDrepVotesOverlay();
-    });
-
-    const dialog = document.createElement('article');
-    dialog.className = 'governance-dialog governance-drep-dialog';
-    dialog.setAttribute('role', 'dialog');
-    dialog.setAttribute('aria-modal', 'true');
-    dialog.setAttribute('aria-labelledby', 'governance-drep-title');
-
-    const close = document.createElement('button');
-    close.className = 'governance-close';
-    close.type = 'button';
-    close.setAttribute('aria-label', 'Close DRep list');
-    close.textContent = 'Close';
-    close.addEventListener('click', closeDrepVotesOverlay);
-
-    const title = document.createElement('h3');
-    title.id = 'governance-drep-title';
-    title.className = 'governance-drep-title';
-    title.textContent = item.label;
-
     const panel = document.createElement('div');
     panel.className = 'governance-no-votes governance-no-votes-expanded';
     renderDrepDetailsPanel(panel, item, drepVotes);
 
-    appendGovernanceDialogHeader(dialog, title, close);
-    appendGovernanceDialogBody(dialog, panel);
-    overlay.appendChild(dialog);
-    document.body.appendChild(overlay);
-    close.focus();
+    createGovernanceMenuOverlay({
+        id: 'governance-drep-overlay',
+        titleId: 'governance-drep-title',
+        titleText: item.label,
+        closeLabel: 'Close DRep list',
+        closeOverlay: closeDrepVotesOverlay,
+        bodyNodes: [panel],
+        headerMeta: `${Number.isFinite(Number(item.count)) ? Number(item.count).toLocaleString('en-US') : 0} entries`,
+        overlayClass: 'governance-nested-overlay'
+    });
 }
 
 function closeDrepVotesOverlay() {
-    const overlay = document.getElementById('governance-drep-overlay');
-    if (overlay) overlay.remove();
+    removeGovernanceMenuOverlay('governance-drep-overlay');
 }
 
 function openDrepDirectoryOverlay() {
     closeDrepDirectoryOverlay();
-
-    const overlay = document.createElement('div');
-    overlay.className = 'governance-overlay governance-drep-overlay';
-    overlay.id = 'governance-drep-directory-overlay';
-    overlay.addEventListener('click', event => {
-        if (event.target === overlay) closeDrepDirectoryOverlay();
-    });
-
-    const dialog = document.createElement('article');
-    dialog.className = 'governance-dialog governance-drep-dialog';
-    dialog.setAttribute('role', 'dialog');
-    dialog.setAttribute('aria-modal', 'true');
-    dialog.setAttribute('aria-labelledby', 'governance-drep-directory-title');
-
-    const close = document.createElement('button');
-    close.className = 'governance-close';
-    close.type = 'button';
-    close.setAttribute('aria-label', 'Close DRep directory');
-    close.textContent = 'Close';
-    close.addEventListener('click', closeDrepDirectoryOverlay);
-
-    const title = document.createElement('h3');
-    title.id = 'governance-drep-directory-title';
-    title.className = 'governance-drep-title';
-    title.textContent = 'DReps';
 
     const panel = document.createElement('div');
     panel.className = 'governance-drep-directory-list';
@@ -1842,12 +1789,15 @@ function openDrepDirectoryOverlay() {
     loading.textContent = 'Loading DRep data...';
     panel.appendChild(loading);
 
-    appendGovernanceDialogHeader(dialog, title, close);
-    appendGovernanceDialogBody(dialog, panel);
-    overlay.appendChild(dialog);
-    document.body.appendChild(overlay);
-    close.focus();
-    document.addEventListener('keydown', handleDrepDirectoryOverlayKeydown);
+    createGovernanceMenuOverlay({
+        id: 'governance-drep-directory-overlay',
+        titleId: 'governance-drep-directory-title',
+        titleText: 'DReps',
+        closeLabel: 'Close DRep directory',
+        closeOverlay: closeDrepDirectoryOverlay,
+        bodyNodes: [panel],
+        headerMeta: 'Loading DReps…'
+    });
 
     loadDrepDirectoryOverlay(panel).catch(() => {
         if (!panel.isConnected) return;
@@ -1862,23 +1812,7 @@ function openDrepDirectoryOverlay() {
 function closeDrepDirectoryOverlay() {
     closeDrepStatusListOverlay();
     closeDrepActionHistoryOverlay();
-    const overlay = document.getElementById('governance-drep-directory-overlay');
-    if (overlay) overlay.remove();
-    document.removeEventListener('keydown', handleDrepDirectoryOverlayKeydown);
-}
-
-function handleDrepDirectoryOverlayKeydown(event) {
-    if (event.key !== 'Escape') return;
-    if (document.getElementById('governance-overlay')) return;
-    if (document.getElementById('governance-drep-actions-overlay')) {
-        closeDrepActionHistoryOverlay();
-        return;
-    }
-    if (document.getElementById('governance-drep-status-overlay')) {
-        closeDrepStatusListOverlay();
-        return;
-    }
-    closeDrepDirectoryOverlay();
+    removeGovernanceMenuOverlay('governance-drep-directory-overlay');
 }
 
 async function loadDrepDirectoryOverlay(container) {
@@ -1906,6 +1840,10 @@ async function loadDrepDirectoryOverlay(container) {
 
     const dreps = Array.from(uniqueDreps.values())
         .sort((left, right) => right.votingPower - left.votingPower || left.name.localeCompare(right.name));
+    updateGovernanceMenuHeaderMeta(
+        'governance-drep-directory-overlay',
+        `${dreps.length.toLocaleString('en-US')} DReps`
+    );
     renderDrepDirectory(container, dreps);
 }
 
@@ -1926,7 +1864,7 @@ function renderDrepDirectory(container, dreps, options = {}) {
     const fragment = document.createDocumentFragment();
     dreps.forEach((drep, index) => {
         const row = document.createElement('div');
-        row.className = 'governance-cc-member';
+        row.className = 'governance-cc-member governance-menu-card';
 
         const number = document.createElement('strong');
         number.textContent = String(index + 1);
@@ -1967,12 +1905,7 @@ function renderDrepDirectory(container, dreps, options = {}) {
         row.setAttribute('role', 'button');
         row.tabIndex = 0;
         row.setAttribute('aria-label', `Show votes by ${drep.name}`);
-        row.addEventListener('click', () => openDrepActionHistoryOverlay(drep));
-        row.addEventListener('keydown', event => {
-            if (event.key !== 'Enter' && event.key !== ' ') return;
-            event.preventDefault();
-            openDrepActionHistoryOverlay(drep);
-        });
+        bindGovernanceMenuTrigger(row, () => openDrepActionHistoryOverlay(drep));
         fragment.appendChild(row);
     });
     container.appendChild(fragment);
@@ -2055,85 +1988,41 @@ function createDrepDirectoryPowerLabel(segment) {
 }
 
 function createDrepDirectoryLegendItem(group, totalPower) {
-    const button = document.createElement('button');
-    button.className = 'governance-vote-legend-item is-clickable';
-    button.type = 'button';
-    button.setAttribute('aria-haspopup', 'dialog');
-    button.addEventListener('click', event => {
-        openDrepStatusListOverlay(`${group.label} DReps`, group.dreps, event.currentTarget);
-    });
-
-    const swatch = document.createElement('span');
-    swatch.className = 'governance-vote-swatch';
-    swatch.style.backgroundColor = group.color;
-
-    const copy = document.createElement('span');
-    copy.className = 'governance-vote-legend-copy';
-    const label = document.createElement('strong');
-    label.textContent = group.label;
-    const value = document.createElement('span');
     const percentage = totalPower > 0 ? (group.value / totalPower) * 100 : 0;
-    value.textContent = `${group.dreps.length.toLocaleString('en-US')} DReps • ${formatCompactAdaFromLovelace(group.value)} • ${formatPercentage(percentage)}`;
-    copy.append(label, value);
-    button.append(swatch, copy);
-    return button;
+    return createGovernanceStatBox({
+        label: group.label,
+        detail: `${group.dreps.length.toLocaleString('en-US')} DReps • ${formatCompactAdaFromLovelace(group.value)} • ${formatPercentage(percentage)}`,
+        color: group.color,
+        onClick: event => openDrepStatusListOverlay(
+            `${group.label} DReps`,
+            group.dreps,
+            event.currentTarget
+        )
+    });
 }
 
 function openDrepStatusListOverlay(titleText, dreps, returnFocus) {
     closeDrepStatusListOverlay();
-    drepStatusListReturnFocus = returnFocus || null;
-
-    const overlay = document.createElement('div');
-    overlay.className = 'governance-overlay governance-action-detail-overlay';
-    overlay.id = 'governance-drep-status-overlay';
-    overlay.addEventListener('click', event => {
-        if (event.target === overlay) closeDrepStatusListOverlay();
-    });
-
-    const dialog = document.createElement('article');
-    dialog.className = 'governance-dialog governance-drep-dialog';
-    dialog.setAttribute('role', 'dialog');
-    dialog.setAttribute('aria-modal', 'true');
-    dialog.setAttribute('aria-labelledby', 'governance-drep-status-title');
-
-    const close = document.createElement('button');
-    close.className = 'governance-close';
-    close.type = 'button';
-    close.setAttribute('aria-label', `Close ${titleText}`);
-    close.textContent = 'Close';
-    close.addEventListener('click', closeDrepStatusListOverlay);
-
-    const title = document.createElement('h3');
-    title.id = 'governance-drep-status-title';
-    title.className = 'governance-drep-title';
-    title.textContent = titleText;
 
     const panel = document.createElement('div');
     panel.className = 'governance-drep-directory-list';
     renderDrepDirectory(panel, dreps, { showChart: false });
 
-    appendGovernanceDialogHeader(dialog, title, close);
-    appendGovernanceDialogBody(dialog, panel);
-    overlay.appendChild(dialog);
-    document.body.appendChild(overlay);
-    close.focus();
-    document.addEventListener('keydown', handleDrepStatusListOverlayKeydown);
+    createGovernanceMenuOverlay({
+        id: 'governance-drep-status-overlay',
+        titleId: 'governance-drep-status-title',
+        titleText,
+        closeLabel: `Close ${titleText}`,
+        closeOverlay: closeDrepStatusListOverlay,
+        bodyNodes: [panel],
+        headerMeta: `${dreps.length.toLocaleString('en-US')} DReps`,
+        overlayClass: 'governance-action-detail-overlay',
+        returnFocus
+    });
 }
 
 function closeDrepStatusListOverlay() {
-    const overlay = document.getElementById('governance-drep-status-overlay');
-    if (overlay) overlay.remove();
-    document.removeEventListener('keydown', handleDrepStatusListOverlayKeydown);
-    const returnFocus = drepStatusListReturnFocus;
-    drepStatusListReturnFocus = null;
-    if (returnFocus?.isConnected) returnFocus.focus();
-}
-
-function handleDrepStatusListOverlayKeydown(event) {
-    if (event.key !== 'Escape') return;
-    if (document.getElementById('governance-overlay')) return;
-    if (document.getElementById('governance-drep-actions-overlay')) return;
-    closeDrepStatusListOverlay();
+    removeGovernanceMenuOverlay('governance-drep-status-overlay');
 }
 
 function createGovernanceCopyButton(value, label) {
@@ -2185,31 +2074,6 @@ async function copyGovernanceText(value) {
 function openDrepActionHistoryOverlay(drep) {
     closeDrepActionHistoryOverlay();
 
-    const overlay = document.createElement('div');
-    overlay.className = 'governance-overlay governance-action-detail-overlay';
-    overlay.id = 'governance-drep-actions-overlay';
-    overlay.addEventListener('click', event => {
-        if (event.target === overlay) closeDrepActionHistoryOverlay();
-    });
-
-    const dialog = document.createElement('article');
-    dialog.className = 'governance-dialog governance-drep-dialog';
-    dialog.setAttribute('role', 'dialog');
-    dialog.setAttribute('aria-modal', 'true');
-    dialog.setAttribute('aria-labelledby', 'governance-drep-actions-title');
-
-    const close = document.createElement('button');
-    close.className = 'governance-close';
-    close.type = 'button';
-    close.setAttribute('aria-label', `Close votes by ${drep.name}`);
-    close.textContent = 'Close';
-    close.addEventListener('click', closeDrepActionHistoryOverlay);
-
-    const title = document.createElement('h3');
-    title.id = 'governance-drep-actions-title';
-    title.className = 'governance-drep-title';
-    title.textContent = drep.name;
-
     const panel = document.createElement('div');
     panel.className = 'governance-list governance-action-group-list';
     const loading = document.createElement('p');
@@ -2217,12 +2081,16 @@ function openDrepActionHistoryOverlay(drep) {
     loading.textContent = 'Loading DRep votes...';
     panel.appendChild(loading);
 
-    appendGovernanceDialogHeader(dialog, title, close);
-    appendGovernanceDialogBody(dialog, panel);
-    overlay.appendChild(dialog);
-    document.body.appendChild(overlay);
-    close.focus();
-    document.addEventListener('keydown', handleDrepActionHistoryOverlayKeydown);
+    createGovernanceMenuOverlay({
+        id: 'governance-drep-actions-overlay',
+        titleId: 'governance-drep-actions-title',
+        titleText: drep.name,
+        closeLabel: `Close votes by ${drep.name}`,
+        closeOverlay: closeDrepActionHistoryOverlay,
+        bodyNodes: [panel],
+        headerMeta: 'Loading actions…',
+        overlayClass: 'governance-action-detail-overlay'
+    });
 
     fetchJson(getDrepDetailApiUrl(drep.id))
         .then(payload => renderDrepActionHistory(panel, payload))
@@ -2237,15 +2105,7 @@ function openDrepActionHistoryOverlay(drep) {
 }
 
 function closeDrepActionHistoryOverlay() {
-    const overlay = document.getElementById('governance-drep-actions-overlay');
-    if (overlay) overlay.remove();
-    document.removeEventListener('keydown', handleDrepActionHistoryOverlayKeydown);
-}
-
-function handleDrepActionHistoryOverlayKeydown(event) {
-    if (event.key !== 'Escape') return;
-    if (document.getElementById('governance-overlay')) return;
-    closeDrepActionHistoryOverlay();
+    removeGovernanceMenuOverlay('governance-drep-actions-overlay');
 }
 
 function renderDrepActionHistory(container, payload) {
@@ -2260,11 +2120,19 @@ function renderDrepActionHistory(container, payload) {
         .filter(proposal => isGovernanceActionApplicableToDrep(proposal, registrationTime))
         .map(proposal => ({ action: actionsById.get(String(proposal.proposal_id || '')) || null, proposal }))
         .sort((left, right) => (Number(right.proposal.block_time) || 0) - (Number(left.proposal.block_time) || 0));
+    updateGovernanceMenuHeaderMeta(
+        'governance-drep-actions-overlay',
+        `${rows.length.toLocaleString('en-US')} actions`
+    );
     const closedRows = rows.filter(row => isExpiredGovernanceActionForCommitteeStats(row.proposal));
     const voted = closedRows.filter(row => row.action).length;
     const notVoted = Math.max(closedRows.length - voted, 0);
     const active = Math.max(rows.length - closedRows.length, 0);
     const notVotedProposals = closedRows.filter(row => !row.action).map(row => row.proposal);
+    const votedProposals = closedRows.filter(row => row.action).map(row => row.proposal);
+    const activeProposals = rows
+        .filter(row => !isExpiredGovernanceActionForCommitteeStats(row.proposal))
+        .map(row => row.proposal);
     const notApplicableProposals = proposals
         .filter(proposal => !isGovernanceActionApplicableToDrep(proposal, registrationTime));
     const notApplicable = notApplicableProposals.length;
@@ -2274,7 +2142,9 @@ function renderDrepActionHistory(container, payload) {
         notVoted,
         active,
         notApplicable,
+        votedProposals,
         notVotedProposals,
+        activeProposals,
         notApplicableProposals,
         total: proposals.length
     }));
@@ -2321,7 +2191,9 @@ function createDrepActionHistoryChart(stats) {
         notVoted,
         active,
         notApplicable,
+        votedProposals,
         notVotedProposals,
+        activeProposals,
         notApplicableProposals,
         total
     } = stats;
@@ -2341,14 +2213,30 @@ function createDrepActionHistoryChart(stats) {
         title: 'Voting Stats',
         totalLabel: `${total} total actions`,
         stackLegend: true,
-        prependLegendItems: [`Active ${active}`],
+        prependLegendItems: [{
+            label: 'Active',
+            detail: `${active} actions`,
+            color: '#60a5fa',
+            onClick: event => openGovernanceStatusActionsOverlay(
+                'DRep Active',
+                activeProposals,
+                event.currentTarget
+            )
+        }],
+        onVotedClick: event => openGovernanceStatusActionsOverlay(
+            'DRep Voted',
+            votedProposals,
+            event.currentTarget
+        ),
         onNotVotedClick: event => openGovernanceStatusActionsOverlay(
             'DRep Not Voted',
             notVotedProposals,
             event.currentTarget
         ),
         extraLegendItems: [{
-            text: `Not Applicable ${notApplicable}`,
+            label: 'Not Applicable',
+            detail: `${notApplicable} actions`,
+            color: '#94a3b8',
             onClick: event => openGovernanceStatusActionsOverlay(
                 'DRep Not Applicable',
                 notApplicableProposals,
@@ -2363,31 +2251,6 @@ function openConstitutionalCommitteeOverlay() {
     closeConstitutionalCommitteeOverlay();
 
     const members = getConstitutionalCommitteeMembers(committeeInfoState || governanceState);
-    const overlay = document.createElement('div');
-    overlay.className = 'governance-overlay governance-drep-overlay';
-    overlay.id = 'governance-cc-overlay';
-    overlay.addEventListener('click', event => {
-        if (event.target === overlay) closeConstitutionalCommitteeOverlay();
-    });
-
-    const dialog = document.createElement('article');
-    dialog.className = 'governance-dialog governance-drep-dialog';
-    dialog.setAttribute('role', 'dialog');
-    dialog.setAttribute('aria-modal', 'true');
-    dialog.setAttribute('aria-labelledby', 'governance-cc-title');
-
-    const close = document.createElement('button');
-    close.className = 'governance-close';
-    close.type = 'button';
-    close.setAttribute('aria-label', 'Close Constitutional Committee members');
-    close.textContent = 'Close';
-    close.addEventListener('click', closeConstitutionalCommitteeOverlay);
-
-    const title = document.createElement('h3');
-    title.id = 'governance-cc-title';
-    title.className = 'governance-drep-title';
-    title.textContent = 'Constitutional Committee Members';
-
     const panel = document.createElement('div');
     panel.className = 'governance-cc-members';
     renderConstitutionalCommitteeMembers(panel, members, members.length ? null : 'Loading Constitutional Committee members...');
@@ -2397,17 +2260,24 @@ function openConstitutionalCommitteeOverlay() {
     chartPanel.dataset.ccQuorumChart = 'true';
     renderConstitutionalCommitteeQuorumChart(chartPanel, committeeInfoState || governanceState);
 
-    appendGovernanceDialogHeader(dialog, title, close);
-    appendGovernanceDialogBody(dialog, chartPanel, panel);
-    overlay.appendChild(dialog);
-    document.body.appendChild(overlay);
-    close.focus();
-    document.addEventListener('keydown', handleConstitutionalCommitteeOverlayKeydown);
+    createGovernanceMenuOverlay({
+        id: 'governance-cc-overlay',
+        titleId: 'governance-cc-title',
+        titleText: 'Constitutional Committee Members',
+        closeLabel: 'Close Constitutional Committee members',
+        closeOverlay: closeConstitutionalCommitteeOverlay,
+        bodyNodes: [chartPanel, panel],
+        headerMeta: `${members.length.toLocaleString('en-US')} members`
+    });
     fetchCommitteeInfoPayload()
         .then(payload => {
             if (!panel.isConnected) return;
             renderConstitutionalCommitteeQuorumChart(chartPanel, payload);
             const fetchedMembers = getConstitutionalCommitteeMembers(payload);
+            updateGovernanceMenuHeaderMeta(
+                'governance-cc-overlay',
+                `${fetchedMembers.length.toLocaleString('en-US')} members`
+            );
             if (
                 getConstitutionalCommitteeMembersSignature(fetchedMembers) === getConstitutionalCommitteeMembersSignature(members)
                 && hasConstitutionalCommitteeBackendStats(members)
@@ -2422,19 +2292,7 @@ function openConstitutionalCommitteeOverlay() {
 
 function closeConstitutionalCommitteeOverlay() {
     closeConstitutionalCommitteeActionsOverlay();
-    const overlay = document.getElementById('governance-cc-overlay');
-    if (overlay) overlay.remove();
-    document.removeEventListener('keydown', handleConstitutionalCommitteeOverlayKeydown);
-}
-
-function handleConstitutionalCommitteeOverlayKeydown(event) {
-    if (event.key !== 'Escape') return;
-    if (document.getElementById('governance-overlay')) return;
-    if (document.getElementById('governance-cc-actions-overlay')) {
-        closeConstitutionalCommitteeActionsOverlay();
-        return;
-    }
-    closeConstitutionalCommitteeOverlay();
+    removeGovernanceMenuOverlay('governance-cc-overlay');
 }
 
 function renderConstitutionalCommitteeMembers(container, members, emptyMessage = null) {
@@ -2452,7 +2310,7 @@ function renderConstitutionalCommitteeMembers(container, members, emptyMessage =
 
     enrichedMembers.forEach((member, index) => {
         const row = document.createElement('div');
-        row.className = 'governance-cc-member';
+        row.className = 'governance-cc-member governance-menu-card';
 
         const number = document.createElement('strong');
         number.textContent = String(index + 1);
@@ -2481,12 +2339,7 @@ function renderConstitutionalCommitteeMembers(container, members, emptyMessage =
         row.setAttribute('role', 'button');
         row.tabIndex = 0;
         row.setAttribute('aria-label', `Show governance actions for ${member.name || `CC Member ${index + 1}`}`);
-        row.addEventListener('click', () => openConstitutionalCommitteeActionsOverlay(member));
-        row.addEventListener('keydown', event => {
-            if (event.key !== 'Enter' && event.key !== ' ') return;
-            event.preventDefault();
-            openConstitutionalCommitteeActionsOverlay(member);
-        });
+        bindGovernanceMenuTrigger(row, () => openConstitutionalCommitteeActionsOverlay(member));
         container.appendChild(row);
     });
 
@@ -2500,41 +2353,19 @@ function renderConstitutionalCommitteeMembers(container, members, emptyMessage =
 function openConstitutionalCommitteeActionsOverlay(member) {
     closeConstitutionalCommitteeActionsOverlay();
 
-    const overlay = document.createElement('div');
-    overlay.className = 'governance-overlay governance-drep-overlay';
-    overlay.id = 'governance-cc-actions-overlay';
-    overlay.addEventListener('click', event => {
-        if (event.target === overlay) closeConstitutionalCommitteeActionsOverlay();
-    });
-
-    const dialog = document.createElement('article');
-    dialog.className = 'governance-dialog governance-drep-dialog';
-    dialog.setAttribute('role', 'dialog');
-    dialog.setAttribute('aria-modal', 'true');
-    dialog.setAttribute('aria-labelledby', 'governance-cc-actions-title');
-
-    const close = document.createElement('button');
-    close.className = 'governance-close';
-    close.type = 'button';
-    close.setAttribute('aria-label', 'Close Constitutional Committee voting overview');
-    close.textContent = 'Close';
-    close.addEventListener('click', closeConstitutionalCommitteeActionsOverlay);
-
-    const title = document.createElement('h3');
-    title.id = 'governance-cc-actions-title';
-    title.className = 'governance-drep-title';
-    title.textContent = member.name || 'Constitutional Committee Member';
-
     const panel = document.createElement('div');
     panel.className = 'governance-cc-actions';
     renderConstitutionalCommitteeActionShell(panel, member);
 
-    appendGovernanceDialogHeader(dialog, title, close);
-    appendGovernanceDialogBody(dialog, panel);
-    overlay.appendChild(dialog);
-    document.body.appendChild(overlay);
-    close.focus();
-    document.addEventListener('keydown', handleConstitutionalCommitteeActionsOverlayKeydown);
+    createGovernanceMenuOverlay({
+        id: 'governance-cc-actions-overlay',
+        titleId: 'governance-cc-actions-title',
+        titleText: member.name || 'Constitutional Committee Member',
+        closeLabel: 'Close Constitutional Committee voting overview',
+        closeOverlay: closeConstitutionalCommitteeActionsOverlay,
+        bodyNodes: [panel],
+        headerMeta: `${getGovernanceActionsForCommitteeMember(member).length.toLocaleString('en-US')} actions`
+    });
 
     if (hasConstitutionalCommitteeBackendActionStats(member)) {
         renderConstitutionalCommitteeBackendActionStats(member, panel);
@@ -2552,15 +2383,7 @@ function openConstitutionalCommitteeActionsOverlay(member) {
 }
 
 function closeConstitutionalCommitteeActionsOverlay() {
-    const overlay = document.getElementById('governance-cc-actions-overlay');
-    if (overlay) overlay.remove();
-    document.removeEventListener('keydown', handleConstitutionalCommitteeActionsOverlayKeydown);
-}
-
-function handleConstitutionalCommitteeActionsOverlayKeydown(event) {
-    if (event.key !== 'Escape') return;
-    if (document.getElementById('governance-overlay')) return;
-    closeConstitutionalCommitteeActionsOverlay();
+    removeGovernanceMenuOverlay('governance-cc-actions-overlay');
 }
 
 function getGovernanceActionsForCommitteeOverview() {
@@ -2585,11 +2408,8 @@ function isGovernanceActionInCommitteeMemberTerm(proposal, member) {
 }
 
 function getConstitutionalCommitteeMemberProposalStats(member) {
-    const proposals = getGovernanceActionsForCommitteeOverview();
-    const applicable = proposals.filter(proposal => (
-        isGovernanceActionInCommitteeMemberTerm(proposal, member)
-        && isConstitutionalCommitteeMemberVoteApplicable(proposal)
-    ));
+    const proposals = getGovernanceActionsForCommitteeMember(member);
+    const applicable = proposals.filter(isConstitutionalCommitteeMemberVoteApplicable);
     const closed = applicable.filter(isExpiredGovernanceActionForCommitteeStats);
 
     return {
@@ -3001,14 +2821,18 @@ function renderConstitutionalCommitteeVoteChartContent(container, results, isLoa
     const votedPct = total > 0 ? (voted / total) * 100 : 0;
     const notVotedPct = total > 0 ? (notVoted / total) * 100 : 0;
     const proposalStats = getConstitutionalCommitteeMemberProposalStats(member);
+    const votedProposals = eligibleResults
+        .filter(result => result.vote)
+        .map(result => result.proposal);
     const notVotedProposals = eligibleResults
         .filter(result => !result.vote)
         .map(result => result.proposal);
+    const activeProposals = getGovernanceActionsForCommitteeMember(member)
+        .filter(isConstitutionalCommitteeMemberVoteApplicable)
+        .filter(proposal => !isExpiredGovernanceActionForCommitteeStats(proposal));
     const notApplicableProposals = getGovernanceActionsForCommitteeOverview()
-        .filter(proposal => !(
-            isGovernanceActionInCommitteeMemberTerm(proposal, member)
-            && isConstitutionalCommitteeMemberVoteApplicable(proposal)
-        ));
+        .filter(proposal => isGovernanceActionInCommitteeMemberTerm(proposal, member))
+        .filter(proposal => !isConstitutionalCommitteeMemberVoteApplicable(proposal));
 
     renderConstitutionalCommitteeVoteTotalsChart(container, {
         voted,
@@ -3022,7 +2846,21 @@ function renderConstitutionalCommitteeVoteChartContent(container, results, isLoa
         loadingLabel: 'CC vote status',
         totalLabel: `${proposalStats.total} total actions`,
         stackLegend: true,
-        prependLegendItems: [`Active ${proposalStats.open}`],
+        prependLegendItems: [{
+            label: 'Active',
+            detail: `${proposalStats.open} actions`,
+            color: '#60a5fa',
+            onClick: isLoading ? null : event => openGovernanceStatusActionsOverlay(
+                'CC Member Active',
+                activeProposals,
+                event.currentTarget
+            )
+        }],
+        onVotedClick: isLoading ? null : event => openGovernanceStatusActionsOverlay(
+            'CC Member Voted',
+            votedProposals,
+            event.currentTarget
+        ),
         onNotVotedClick: isLoading ? null : event => openGovernanceStatusActionsOverlay(
             'CC Member Not Voted',
             notVotedProposals,
@@ -3030,7 +2868,9 @@ function renderConstitutionalCommitteeVoteChartContent(container, results, isLoa
         ),
         extraLegendItems: [
             {
-                text: `Not Applicable ${proposalStats.notApplicable}`,
+                label: 'Not Applicable',
+                detail: `${proposalStats.notApplicable} actions`,
+                color: '#94a3b8',
                 onClick: isLoading ? null : event => openGovernanceStatusActionsOverlay(
                     'CC Member Not Applicable',
                     notApplicableProposals,
@@ -3051,6 +2891,7 @@ function renderConstitutionalCommitteeQuorumChart(container, payload) {
         notApplicable: 0,
         votedPct: 0,
         notVotedPct: 0,
+        votedProposals: [],
         notVotedProposals: [],
         notApplicableProposals: []
     }, {
@@ -3059,13 +2900,20 @@ function renderConstitutionalCommitteeQuorumChart(container, payload) {
         loadingLabel: 'CC quorum status',
         totalLabel: stats ? `${stats.total} applicable / ${stats.notApplicable} not applicable` : '',
         stackLegend: true,
+        onVotedClick: stats ? event => openGovernanceStatusActionsOverlay(
+            'CC Voted',
+            stats.votedProposals,
+            event.currentTarget
+        ) : null,
         onNotVotedClick: stats ? event => openGovernanceStatusActionsOverlay(
             'CC Not Voted',
             stats.notVotedProposals,
             event.currentTarget
         ) : null,
         extraLegendItems: [{
-            text: `Not Applicable ${stats?.notApplicable || 0}`,
+            label: 'Not Applicable',
+            detail: `${stats?.notApplicable || 0} actions`,
+            color: '#94a3b8',
             onClick: stats ? event => openGovernanceStatusActionsOverlay(
                 'CC Not Applicable',
                 stats.notApplicableProposals,
@@ -3109,19 +2957,21 @@ function renderConstitutionalCommitteeVoteTotalsChart(container, stats, options 
     legend.className = `governance-vote-legend ${options.stackLegend
         ? 'governance-vote-legend--stacked'
         : 'governance-vote-legend--inline'}`;
-    (options.prependLegendItems || []).forEach(itemText => {
-        const extra = document.createElement('span');
-        extra.className = 'governance-vote-legend-text';
-        extra.textContent = itemText;
-        legend.appendChild(extra);
+    (options.prependLegendItems || []).forEach(item => {
+        legend.appendChild(createGovernanceStatBox({
+            label: item.label,
+            detail: item.detail,
+            color: item.color,
+            onClick: item.onClick
+        }));
     });
-    legend.appendChild(createConstitutionalCommitteeVoteLegendItem('Voted', voted, votedPct, 'voted'));
-    if (!options.stackLegend) {
-        const separator = document.createElement('span');
-        separator.className = 'governance-vote-legend-separator';
-        separator.textContent = '-';
-        legend.appendChild(separator);
-    }
+    legend.appendChild(createConstitutionalCommitteeVoteLegendItem(
+        'Voted',
+        voted,
+        votedPct,
+        'voted',
+        options.onVotedClick
+    ));
     legend.appendChild(createConstitutionalCommitteeVoteLegendItem(
         'Not Voted',
         notVoted,
@@ -3130,16 +2980,13 @@ function renderConstitutionalCommitteeVoteTotalsChart(container, stats, options 
         options.onNotVotedClick
     ));
     (options.extraLegendItems || []).forEach(item => {
-        const itemConfig = typeof item === 'string' ? { text: item } : item;
-        const extra = document.createElement(itemConfig.onClick ? 'button' : 'span');
-        extra.className = 'governance-vote-legend-text is-not-applicable';
-        extra.textContent = itemConfig.text;
-        if (itemConfig.onClick) {
-            extra.classList.add('governance-vote-legend-action');
-            extra.type = 'button';
-            extra.addEventListener('click', itemConfig.onClick);
-        }
-        legend.appendChild(extra);
+        legend.appendChild(createGovernanceStatBox({
+            label: item.label,
+            detail: item.detail,
+            color: item.color,
+            statusClass: 'is-not-applicable',
+            onClick: item.onClick
+        }));
     });
 
     layout.appendChild(donut);
@@ -3174,15 +3021,13 @@ function isExpiredGovernanceActionForCommitteeStats(proposal) {
 }
 
 function createConstitutionalCommitteeVoteLegendItem(label, count, percentage, status, onClick = null) {
-    const item = document.createElement(onClick ? 'button' : 'span');
-    item.className = `governance-vote-legend-text${status === 'voted' ? ' is-voted' : status === 'missing' ? ' is-not-voted' : ''}`;
-    item.textContent = `${label} ${formatPercentage(percentage)} (${count} actions)`;
-    if (onClick) {
-        item.classList.add('governance-vote-legend-action');
-        item.type = 'button';
-        item.addEventListener('click', onClick);
-    }
-    return item;
+    return createGovernanceStatBox({
+        label,
+        detail: `${formatPercentage(percentage)} • ${count} actions`,
+        color: status === 'voted' ? '#34d399' : '#fb7185',
+        statusClass: status === 'voted' ? 'is-voted' : 'is-not-voted',
+        onClick
+    });
 }
 
 function formatVoteChoice(value) {
@@ -4225,6 +4070,7 @@ async function updateGovernanceCounts(groups) {
     setText('gov-approved-count', getCollectionLength(groups.approved));
     setText('gov-rejected-count', getCollectionLength(groups.rejected));
     setText('gov-info-count', getCollectionLength(groups.info));
+    setText('gov-info-last-action', formatLatestInfoActionEpoch(groups.info));
     setText('gov-active-ask', formatGovernanceAskAmount(groups.active));
     setText('gov-approved-ask', formatGovernanceAskAmount(groups.approved));
     setText('gov-rejected-ask', formatGovernanceAskAmount(groups.rejected));
@@ -4249,13 +4095,19 @@ async function updateGovernanceCounts(groups) {
     } catch {
         if (!cachedDrepStats) {
             setText('gov-drep-count', '0');
-            setText('gov-drep-active-count', 'A0');
-            setText('gov-drep-inactive-count', 'IA0');
             setText('gov-drep-total-power', 'VPower 0 ADA');
         }
     }
 
     updateTreasuryBudgetBar();
+}
+
+function formatLatestInfoActionEpoch(proposals) {
+    const epochs = (Array.isArray(proposals) ? proposals : [])
+        .map(proposal => Number(proposal?.proposed_epoch))
+        .filter(Number.isFinite);
+    if (!epochs.length) return 'Last action epoch --';
+    return `Last action epoch ${Math.max(...epochs)}`;
 }
 
 function getDashboardDrepStats(payload) {
@@ -4272,8 +4124,6 @@ function getDashboardDrepStats(payload) {
 
 function renderDrepSummaryStats(stats) {
     setText('gov-drep-count', stats.count.toLocaleString('en-US'));
-    setText('gov-drep-active-count', `A${stats.activeCount.toLocaleString('en-US')}`);
-    setText('gov-drep-inactive-count', `IA${stats.inactiveCount.toLocaleString('en-US')}`);
     setText('gov-drep-total-power', `VPower ${formatCompactAdaFromLovelace(stats.totalPower, { fixedFractionDigits: 2 })}`);
 }
 
@@ -4332,6 +4182,7 @@ function getConstitutionalCommitteeQuorumStats(payload) {
 
     let evaluatedActions = 0;
     let quorumActions = 0;
+    const votedProposals = [];
     const notVotedProposals = [];
     const evaluatedProposalIds = new Set();
     proposals.forEach(proposal => {
@@ -4348,6 +4199,7 @@ function getConstitutionalCommitteeQuorumStats(payload) {
         evaluatedProposalIds.add(proposal.proposal_id);
         if (participation.votes * quorumDenominator >= participation.members * quorumNumerator) {
             quorumActions += 1;
+            votedProposals.push(proposal);
         } else {
             notVotedProposals.push(proposal);
         }
@@ -4364,6 +4216,7 @@ function getConstitutionalCommitteeQuorumStats(payload) {
         total: evaluatedActions,
         closedTotal: closedProposals.length,
         notApplicable: closedProposals.length - evaluatedActions,
+        votedProposals,
         notVotedProposals,
         notApplicableProposals,
         votedPct,

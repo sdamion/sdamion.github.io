@@ -4,7 +4,7 @@
         if (!container) return;
 
         try {
-            const response = await fetch('governance.html?v=20260714-drep-status-chart', { credentials: 'same-origin' });
+            const response = await fetch('governance.html?v=20260714-header-counts', { credentials: 'same-origin' });
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
             const html = await response.text();
@@ -27,7 +27,7 @@
 
     function loadGovernanceScript() {
         const script = document.createElement('script');
-        script.src = 'governance.js?v=20260714-drep-status-chart';
+        script.src = 'governance.js?v=20260714-header-counts';
         script.defer = true;
         document.body.appendChild(script);
     }
