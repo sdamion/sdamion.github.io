@@ -274,6 +274,7 @@ function createPoolDelegatorsList() {
 
     sortedDelegators.forEach((delegator, index) => {
         const address = String(delegator?.stake_address || 'Unknown stake address');
+        const adaHandle = String(delegator?.ada_handle || '').trim();
         const row = document.createElement('div');
         row.className = 'pool-delegator-row governance-menu-card';
 
@@ -288,19 +289,22 @@ function createPoolDelegatorsList() {
         addressLine.className = 'pool-delegator-address-line';
 
         const addressText = document.createElement('strong');
-        addressText.className = 'pool-delegator-address';
-        addressText.textContent = shortenStakeAddress(address);
+        addressText.className = `pool-delegator-address${adaHandle ? ' pool-delegator-handle' : ''}`;
+        addressText.textContent = adaHandle || shortenStakeAddress(address);
         addressText.title = address;
 
         const copy = document.createElement('button');
         copy.className = 'pool-delegator-copy-button';
         copy.type = 'button';
         copy.textContent = '⧉';
+        copy.dataset.copyValue = address;
         copy.setAttribute('aria-label', `Copy stake address ${index + 1}`);
         copy.addEventListener('click', async () => {
             const original = copy.textContent;
+            const fullAddress = copy.dataset.copyValue;
             try {
-                await copyText(address);
+                if (!fullAddress) throw new Error('Missing stake address');
+                await copyText(fullAddress);
                 copy.textContent = 'Copied';
             } catch (error) {
                 copy.textContent = 'Copy failed';
