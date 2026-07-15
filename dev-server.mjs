@@ -28,6 +28,12 @@ const proxyRoutes = {
     `${TDSP_API_ORIGIN}/api/pool`,
   '/__leader_schedule_proxy__': () =>
     LEADER_SCHEDULE_URL,
+  '/__starch_proxy__': url => {
+    const teamId = String(url.searchParams.get('teamId') || '').toUpperCase();
+    return /^[0-9A-F]{6}$/.test(teamId)
+      ? `${TDSP_API_ORIGIN}/api/starch/${encodeURIComponent(teamId)}`
+      : null;
+  },
   '/__proposal_votes_proxy__': url => {
     const proposalId = url.searchParams.get('proposalId');
     return proposalId

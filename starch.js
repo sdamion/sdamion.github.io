@@ -1,13 +1,15 @@
-const baseUrl = 'https://api.starch.one';
+const STARCH_IS_LOCAL_PREVIEW = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+const STARCH_API_BASE_URL = STARCH_IS_LOCAL_PREVIEW
+    ? '/__starch_proxy__'
+    : 'https://api.tdsp.online/api/starch';
 const teams = {
     'B0ADAD': '50% Company',
     '868C0C': 'TDSP02',
     '1B83BB': 'StarchWhale'
 };
 let selectedTeamId = Object.keys(teams)[0];
-const CACHE_EXPIRATION = 2 * 60 * 1000; // 2 minutes
 let minerChartInstance = null;
-const RETRY_LIMIT = 3;
+const RETRY_LIMIT = 1;
 
 // Fetch JSON with retry logic
 async function fetchJson(url, attempts = 0) {
@@ -37,99 +39,51 @@ function displayError(message) {
     }
 }
 
-async function getMinersByTeam(teamId) {
-    const response = await fetchJson(`${baseUrl}/teams/${teamId}/members`);
-    return response?.members?.slice(0, 200) || [];
-}
-
-async function getTeamBalance(teamId) {
-    const response = await fetchJson(`${baseUrl}/teams/${teamId}/account`);
-    return response?.balance ?? 0;
-}
-
-async function getWeeklyLeaderboard() {
-    const response = await fetchJson(`${baseUrl}/leaderboard/week`);
-    return response?.miners ?? [];
-}
-
-async function getMinerBalance(minerId) {
-    const response = await fetchJson(`${baseUrl}/miners/${minerId}/account`);
-    return response?.balance ?? 0;
+function clearError() {
+    const errorMessage = document.getElementById('errorMessage');
+    if (errorMessage) errorMessage.textContent = '';
 }
 
 const formatBalance = (balance) => 
     new Intl.NumberFormat('en-US', { style: 'decimal', minimumFractionDigits: 3, maximumFractionDigits: 3 }).format(balance / 1_000_000) + 'M';
 
-function loadCache() {
-    const cachedData = localStorage.getItem(selectedTeamId);
-    if (cachedData) {
-        const { timestamp, data } = JSON.parse(cachedData);
-        if (Date.now() - timestamp < CACHE_EXPIRATION) {
-            return data;
-        }
+function getStarchSummaryUrl(teamId) {
+    if (STARCH_IS_LOCAL_PREVIEW) {
+        return `${STARCH_API_BASE_URL}?teamId=${encodeURIComponent(teamId)}`;
     }
-    return null;
-}
-
-function saveCache(data) {
-    localStorage.setItem(selectedTeamId, JSON.stringify({ timestamp: Date.now(), data }));
+    return `${STARCH_API_BASE_URL}/${encodeURIComponent(teamId)}`;
 }
 
 async function fetchMinerData() {
-    const cachedData = loadCache();
-    if (cachedData) {
-        console.log("✅ Using cached data");
-        const teamBalance = await getTeamBalance(selectedTeamId);
-        const totalWeeklyBlocks = cachedData.reduce((sum, miner) => sum + miner.weeklyBlocks, 0);
-        updateUI(cachedData, teamBalance, totalWeeklyBlocks);
-        return;
-    }
-
     try {
-        const [miners, leaderboardData] = await Promise.all([
-            getMinersByTeam(selectedTeamId),
-            getWeeklyLeaderboard()
-        ]);
+        const summary = await fetchJson(getStarchSummaryUrl(selectedTeamId));
+        if (!summary) return;
+        clearError();
 
-        if (!miners.length) {
-            const teamBalance = await getTeamBalance(selectedTeamId);
-            updateUI([], teamBalance, 0);
-            return;
-        }
-
-        const leaderboardMap = new Map(
-            leaderboardData.map(({ miner_id, rank, balance, blocks }) => 
-                [miner_id, { rank, balance, blocks }]
-            )
-        );
-
-        // Fetch balances in parallel for all miners
-        const minerBalances = await Promise.all(miners.map(miner_id => getMinerBalance(miner_id)));
-
-        // Process miner data
-        const minersData = miners.map((miner_id, index) => ({
-            miner_id,
-            rank: leaderboardMap.get(miner_id)?.rank ?? 'N/A',
-            balance: Number(minerBalances[index]) || 0,
-            weeklyBlocks: leaderboardMap.get(miner_id)?.blocks ?? 0
+        const minersData = (Array.isArray(summary.miners) ? summary.miners : []).map(miner => ({
+            miner_id: miner.miner_id,
+            rank: miner.rank ?? 'N/A',
+            balance: Number(miner.balance) || 0,
+            weeklyBlocks: Number(miner.weekly_blocks) || 0
         }));
-
-        // Sort by rank (lowest first)
-        minersData.sort((a, b) => {
-            const rankA = isNaN(a.rank) ? Infinity : Number(a.rank);
-            const rankB = isNaN(b.rank) ? Infinity : Number(b.rank);
-            return rankA - rankB;
-        });
-
-        const teamBalance = await getTeamBalance(selectedTeamId);
-        const totalWeeklyBlocks = minersData.reduce((sum, miner) => sum + miner.weeklyBlocks, 0);
-
-        saveCache(minersData);
-        updateUI(minersData, teamBalance, totalWeeklyBlocks);
+        updateUI(
+            minersData,
+            Number(summary.team_balance) || 0,
+            Number(summary.weekly_blocks) || 0
+        );
+        updateStarchTimestamp(summary.updated_at, summary.stale === true);
     } catch (error) {
         console.error(`🚨 Error processing data for team ${selectedTeamId}:`, error);
         displayError("Unexpected error occurred while fetching miner data.");
     }
+}
+
+function updateStarchTimestamp(value, stale) {
+    const element = document.getElementById('last-updated');
+    if (!element) return;
+    const date = value ? new Date(value) : null;
+    const formatted = date && !Number.isNaN(date.getTime()) ? date.toLocaleString() : 'Never';
+    element.textContent = stale ? `${formatted} (cached)` : formatted;
 }
 
 function updateUI(minersData, teamBalance = 0, totalWeeklyBlocks = 0) {
