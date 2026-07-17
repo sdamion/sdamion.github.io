@@ -28,6 +28,8 @@ const proxyRoutes = {
     `${TDSP_API_ORIGIN}/api/pool`,
   '/__mithril_proxy__': () =>
     `${TDSP_API_ORIGIN}/api/mithril`,
+  '/__icebreaker_proxy__': () =>
+    `${TDSP_API_ORIGIN}/api/icebreaker`,
   '/__leader_schedule_proxy__': () =>
     LEADER_SCHEDULE_URL,
   '/__starch_proxy__': url => {
@@ -68,6 +70,7 @@ const contentTypes = {
   '.json': 'application/json; charset=utf-8',
   '.jsonld': 'application/ld+json; charset=utf-8',
   '.png': 'image/png',
+  '.svg': 'image/svg+xml; charset=utf-8',
   '.webp': 'image/webp'
 };
 

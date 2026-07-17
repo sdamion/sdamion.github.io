@@ -13,6 +13,7 @@ const COINGECKO_PRICE_URL = IS_LOCAL_PREVIEW ? '/__coingecko_price_proxy__' : CO
 const GECKOTERMINAL_PRICE_URL = IS_LOCAL_PREVIEW ? '/__geckoterminal_price_proxy__' : GECKOTERMINAL_API_URL;
 const POOL_API_URL = IS_LOCAL_PREVIEW ? '/__pool_proxy__' : 'https://api.tdsp.online/api/pool';
 const MITHRIL_API_URL = IS_LOCAL_PREVIEW ? '/__mithril_proxy__' : 'https://api.tdsp.online/api/mithril';
+const ICEBREAKER_API_URL = IS_LOCAL_PREVIEW ? '/__icebreaker_proxy__' : 'https://api.tdsp.online/api/icebreaker';
 const LEADER_SCHEDULE_API_URL = IS_LOCAL_PREVIEW ? '/__leader_schedule_proxy__' : 'https://api.tdsp.online/api/leader-schedule';
 const notifiedRelayMaintenance = new Set();
 let headerVisibilityObserver = null;
@@ -75,10 +76,12 @@ document.addEventListener("DOMContentLoaded", () => {
     fetchPrices();
     fetchPoolStatus();
     fetchMithrilStatus();
+    fetchIcebreakerStatus();
     fetchLeaderSchedule();
     setInterval(fetchPrices, 60000); // Auto-update every 60 seconds
     setInterval(fetchPoolStatus, 300000);
     setInterval(fetchMithrilStatus, 300000);
+    setInterval(fetchIcebreakerStatus, 300000);
     setInterval(fetchLeaderSchedule, 300000);
     initUI();
 });
@@ -132,6 +135,26 @@ function renderMithrilStatus(payload) {
 
 function setMithrilCardStatus(label, active) {
     const status = document.getElementById('pool-mithril-status');
+    if (!status) return;
+
+    status.textContent = label;
+    status.classList.toggle('is-active', active === true);
+    status.classList.toggle('is-inactive', active === false);
+}
+
+async function fetchIcebreakerStatus() {
+    try {
+        const response = await fetch(ICEBREAKER_API_URL);
+        if (!response.ok) throw new Error(`Icebreaker API HTTP Error: ${response.status}`);
+        const payload = await response.json();
+        setIcebreakerCardStatus(payload?.status || (payload?.active ? 'Up' : 'Down'), payload?.active);
+    } catch (error) {
+        setIcebreakerCardStatus('N/A', null);
+    }
+}
+
+function setIcebreakerCardStatus(label, active) {
+    const status = document.getElementById('pool-icebreaker-status');
     if (!status) return;
 
     status.textContent = label;

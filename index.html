@@ -47,9 +47,9 @@
 
     <!-- Preload Logo -->
     <link rel="preload" href="tdsp_logo.webp" as="image">
-    <link rel="stylesheet" href="styles.css?v=20260717-mithril-signers">
+    <link rel="stylesheet" href="styles.css?v=20260717-icebreaker-status">
 
-    <script src="index.js?v=20260717-mithril-signers" defer></script>
+    <script src="index.js?v=20260717-icebreaker-status" defer></script>
 </head>
 <body>
     <header class="site-header" id="site-header">
@@ -129,7 +129,11 @@
                     </div>
                     <div id="pool-mithril-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show active Mithril signers">
                         <strong id="pool-mithril-status">...</strong>
-                        <span>Mithril</span>
+                        <span class="pool-provider-label"><img class="pool-provider-icon pool-provider-icon--monochrome" src="mithril-logo.svg" alt="">Mithril</span>
+                    </div>
+                    <div id="pool-icebreaker-card" aria-live="polite">
+                        <strong id="pool-icebreaker-status">...</strong>
+                        <span class="pool-provider-label"><img class="pool-provider-icon" src="Icebreaker_logo.webp" alt="">Icebreaker 53</span>
                     </div>
                     <div id="leader-schedule" aria-live="polite">
                         <strong id="leader-schedule-count">...</strong>

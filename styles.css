@@ -824,6 +824,37 @@ p {
     color: #f87171;
 }
 
+#pool-icebreaker-status.is-active {
+    color: #34d399;
+}
+
+#pool-icebreaker-status.is-inactive {
+    color: #f87171;
+}
+
+.pool-summary .pool-provider-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.pool-provider-icon {
+    width: 20px;
+    height: 20px;
+    flex: 0 0 auto;
+    object-fit: contain;
+}
+
+html[data-theme="dark"] .pool-provider-icon--monochrome {
+    filter: invert(1);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .pool-provider-icon--monochrome {
+        filter: invert(1);
+    }
+}
+
 .pool-delegator-list {
     display: grid;
     gap: 12px;
