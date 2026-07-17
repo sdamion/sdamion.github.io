@@ -43,11 +43,6 @@ async function fetchPrices() {
     }
 }
 
-// Navigate to details page
-function goToDetails() {
-    window.location.href = "details.html";
-}
-
 // Fetch prices on page load and set up auto-update
 // Initialize UI behaviors and price fetching when DOM is ready
 document.addEventListener("DOMContentLoaded", () => {
@@ -841,7 +836,7 @@ function setupRevealOnScroll() {
         });
     }, { threshold: 0.12, root: null, rootMargin: '0px 0px -10% 0px' });
 
-    const targets = Array.from(document.querySelectorAll('.section, .hero-logo, .link-grid, h2, p'));
+    const targets = Array.from(document.querySelectorAll('.section, .hero-logo, h2, p'));
     targets.forEach(el => {
         if (el.dataset.revealObserved === 'true') return;
         el.dataset.revealObserved = 'true';

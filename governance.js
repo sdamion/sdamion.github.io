@@ -235,36 +235,7 @@ function getProposalVotesApiUrl(proposalId) {
     return `${PROPOSAL_VOTES_API_BASE_URL}/${encodeURIComponent(proposalId)}/votes`;
 }
 
-function getDashboardEpoch(payload) {
-    const firstItem = Array.isArray(payload?.data) ? payload.data[0] : null;
-    const firstProposal = Array.isArray(payload?.proposals) ? payload.proposals[0] : null;
-    const candidates = [
-        payload?.epoch,
-        payload?.epoch_no,
-        payload?.current_epoch,
-        payload?.tip?.[0]?.epoch_no,
-        firstProposal?.voting_summary?.epoch_no,
-        firstProposal?.vote_summary?.epoch_no,
-        firstProposal?.proposed_epoch,
-        firstItem?.voting_summary?.epoch_no,
-        firstItem?.vote_summary?.epoch_no,
-        firstItem?.proposal?.proposed_epoch,
-        firstItem?.proposed_epoch
-    ];
-
-    return candidates.map(Number).find(Number.isFinite) ?? null;
-}
-
-function getDashboardTip(payload = governanceState) {
-    if (Array.isArray(payload?.tip) && payload.tip.length) return payload.tip[0];
-    return payload?.tip || null;
-}
-
 function updateEpochDisplayFromDashboardPayload(payload) {
-    updateEpochCountdownFromMainnetClock();
-}
-
-function updateEpochCountdownFromDashboardPayload(payload) {
     updateEpochCountdownFromMainnetClock();
 }
 
@@ -968,28 +939,6 @@ function openGovernanceStatusActionsOverlay(titleText, proposals, returnFocus) {
 
 function closeGovernanceStatusActionsOverlay() {
     removeGovernanceMenuOverlay('governance-status-actions-overlay');
-}
-
-function getTreasuryBudgetMetadata(proposal) {
-    if (proposal?.proposal_type !== 'TreasuryWithdrawals') return [];
-
-    const usedThisYear = getTreasuryBudgetUsedThisYear();
-    const remaining = Math.max(TREASURY_NET_CHANGE_LIMIT_LOVELACE - usedThisYear, 0);
-
-    return [
-        {
-            label: 'Net change limit',
-            value: formatCompactAdaFromLovelace(TREASURY_NET_CHANGE_LIMIT_LOVELACE, { fixedFractionDigits: 2 })
-        },
-        {
-            label: 'Used this year',
-            value: formatCompactAdaFromLovelace(usedThisYear, { fixedFractionDigits: 2 })
-        },
-        {
-            label: 'To be allocated',
-            value: formatCompactAdaFromLovelace(remaining, { fixedFractionDigits: 2 })
-        }
-    ];
 }
 
 function updateTreasuryBudgetBar() {
@@ -3266,12 +3215,6 @@ function formatVoteChoice(value) {
     return 'Unknown';
 }
 
-function hideDrepDetailsPanel(container) {
-    container.textContent = '';
-    container.hidden = true;
-    container.dataset.activeGroup = '';
-}
-
 function renderNoVotesList(container, votes, headingLabel = 'DRep votes') {
     const title = document.createElement('strong');
     title.textContent = `${headingLabel} (${votes.length})`;
@@ -3321,17 +3264,6 @@ function renderNoVotesList(container, votes, headingLabel = 'DRep votes') {
 
     container.appendChild(title);
     container.appendChild(list);
-}
-
-function getDrepDisplayName(vote) {
-    const resolvedName = vote?.resolvedDrepName
-        || vote?.drep_name
-        || vote?.drepName
-        || vote?.name;
-    const identifier = getDrepVoteIdentifier(vote);
-
-    if (resolvedName && identifier) return `${resolvedName} | ${identifier}`;
-    return resolvedName || identifier || 'Unknown DRep';
 }
 
 function getDrepPrimaryDisplayName(vote) {
@@ -3856,17 +3788,6 @@ function getDrepVoteIdentifierCandidates(vote) {
     ]
         .map(normalizeDrepIdentifier)
         .filter(Boolean);
-}
-
-function getDrepVoteCountPercentage(key, drepVotes) {
-    const voteKey = mapBreakdownKeyToVote(key);
-    if (!voteKey) return null;
-
-    const totalVotes = drepVotes.length;
-    if (!totalVotes) return 0;
-
-    const matchingVotes = drepVotes.filter(vote => String(vote?.vote || '').toLowerCase() === voteKey).length;
-    return (matchingVotes / totalVotes) * 100;
 }
 
 function createPieAmountLabel(segment) {
@@ -4907,12 +4828,6 @@ function formatProposalType(type) {
     return String(type || 'Governance')
         .replace(/([a-z])([A-Z])/g, '$1 $2')
         .replace(/_/g, ' ');
-}
-
-function formatLovelace(value) {
-    const lovelace = Number(value);
-    if (!Number.isFinite(lovelace)) return value;
-    return `${(lovelace / 1_000_000).toLocaleString('en-US')} ADA`;
 }
 
 function formatPercentage(value) {

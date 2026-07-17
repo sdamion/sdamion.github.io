@@ -229,9 +229,6 @@ function bindStakeControls(root = document) {
     });
 }
 
-window.openStakeModal = openStakeModal;
-window.closeStakeModal = closeStakeModal;
-
 bindStakeControls();
 document.addEventListener('DOMContentLoaded', () => bindStakeControls());
 document.addEventListener('tdsp:content-loaded', () => bindStakeControls());
