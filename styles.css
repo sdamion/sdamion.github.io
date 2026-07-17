@@ -816,19 +816,15 @@ p {
     cursor: pointer;
 }
 
-#pool-mithril-status.is-active {
+.pool-status-value.is-active {
     color: #34d399;
 }
 
-#pool-mithril-status.is-inactive {
-    color: #f87171;
+.pool-status-value.is-warning {
+    color: #f59e0b;
 }
 
-#pool-icebreaker-status.is-active {
-    color: #34d399;
-}
-
-#pool-icebreaker-status.is-inactive {
+.pool-status-value.is-inactive {
     color: #f87171;
 }
 
@@ -838,11 +834,22 @@ p {
     gap: 7px;
 }
 
+.pool-summary .pool-provider-label > .pool-provider-label-text {
+    display: inline;
+    margin-top: 0;
+    color: inherit;
+    font-size: inherit;
+}
+
 .pool-provider-icon {
     width: 20px;
     height: 20px;
     flex: 0 0 auto;
     object-fit: contain;
+}
+
+.pool-relay-icon {
+    color: var(--muted);
 }
 
 html[data-theme="dark"] .pool-provider-icon--monochrome {
@@ -940,11 +947,6 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     font-weight: 700;
 }
 
-.pool-ticker-tile {
-    position: relative;
-    padding-right: 54px;
-}
-
 .pool-id-line {
     position: relative;
     display: flex;
@@ -991,10 +993,6 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 .pool-copy-icon-button:hover {
     background: var(--surface);
     transform: none;
-}
-
-.pool-ticker-tile .pool-copy-icon-button {
-    top: 12px;
 }
 
 .pool-id-copy-button {

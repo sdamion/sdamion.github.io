@@ -39,7 +39,7 @@ async function fetchPrices() {
     ]);
 
     if (coingeckoResult.status === 'fulfilled') {
-        const adaPrice = coingeckoResult.value.cardano?.usd?.toFixed(2);
+        const adaPrice = coingeckoResult.value.cardano?.usd?.toFixed(3);
         const btcPrice = coingeckoResult.value.bitcoin?.usd;
         if (adaEl) adaEl.textContent = adaPrice ? `$${adaPrice}` : 'N/A';
         if (btcEl) {
@@ -106,6 +106,7 @@ async function fetchPoolStatus() {
         if (!response.ok) throw new Error(`Pool API HTTP Error: ${response.status}`);
         renderPoolStatus(await response.json());
     } catch (error) {
+        setRelayCardStatus(null, null);
         relaysEl.textContent = '';
         const message = document.createElement('p');
         message.className = 'small-text';
@@ -147,7 +148,8 @@ async function fetchIcebreakerStatus() {
         const response = await fetch(ICEBREAKER_API_URL);
         if (!response.ok) throw new Error(`Icebreaker API HTTP Error: ${response.status}`);
         const payload = await response.json();
-        setIcebreakerCardStatus(payload?.status || (payload?.active ? 'Up' : 'Down'), payload?.active);
+        const active = payload?.active;
+        setIcebreakerCardStatus(active === true ? 'Active' : active === false ? 'Inactive' : 'N/A', active);
     } catch (error) {
         setIcebreakerCardStatus('N/A', null);
     }
@@ -190,13 +192,11 @@ function renderPoolStatus(pool) {
     poolDelegators = Array.isArray(pool?.delegators) ? [...pool.delegators] : [];
     setText('pool-delegators', formatInteger(pool?.delegator_count));
     setText('pool-live-stake', formatAdaFromLovelace(pool?.live_stake_lovelace));
-    setText('pool-active-stake', formatAdaFromLovelace(pool?.active_stake_lovelace));
-    setText('pool-ticker', pool?.ticker || 'N/A');
     setText('pool-id', pool?.pool_id || 'N/A');
 
     const relays = Array.isArray(pool?.relays) ? pool.relays : [];
     const upCount = relays.filter(relay => relay.up === true).length;
-    setText('pool-relays-up', relays.length ? `${upCount}/${relays.length}` : 'N/A');
+    setRelayCardStatus(relays.length ? upCount : null, relays.length || null);
     setText('pool-last-updated', formatTimestamp(pool?.updated_at));
 
     const relaysEl = document.getElementById('pool-relays');
@@ -235,6 +235,20 @@ function renderPoolStatus(pool) {
         notifyRelayMaintenance(downRelays);
     }
 
+}
+
+function setRelayCardStatus(activeCount, relayCount) {
+    const status = document.getElementById('pool-relays-up');
+    const meta = document.getElementById('pool-relays-meta');
+    if (!status || !meta) return;
+
+    status.textContent = activeCount === null ? 'N/A' : activeCount > 0 ? 'Active' : 'Inactive';
+    meta.textContent = activeCount === null || relayCount === null
+        ? 'Relay N/A'
+        : `Relay ${activeCount}/${relayCount}`;
+    status.classList.toggle('is-active', activeCount !== null && activeCount >= 2);
+    status.classList.toggle('is-warning', activeCount === 1);
+    status.classList.toggle('is-inactive', activeCount === 0);
 }
 
 function initPoolDelegatorsCard() {

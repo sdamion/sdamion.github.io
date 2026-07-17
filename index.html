@@ -47,9 +47,9 @@
 
     <!-- Preload Logo -->
     <link rel="preload" href="tdsp_logo.webp" as="image">
-    <link rel="stylesheet" href="styles.css?v=20260717-icebreaker-status">
+    <link rel="stylesheet" href="styles.css?v=20260717-relay-icon">
 
-    <script src="index.js?v=20260717-icebreaker-status" defer></script>
+    <script src="index.js?v=20260717-ada-three-decimals" defer></script>
 </head>
 <body>
     <header class="site-header" id="site-header">
@@ -106,11 +106,6 @@
                     <button class="pool-copy-icon-button pool-id-copy-button" type="button" data-copy-target="pool-id" aria-label="Copy stake pool ID" title="Copy pool ID">⧉</button>
                 </div>
                 <div class="pool-summary" id="pool-summary" aria-live="polite">
-                    <div class="pool-ticker-tile">
-                        <strong id="pool-ticker">...</strong>
-                        <span>Ticker</span>
-                        <button class="pool-copy-icon-button" type="button" data-copy-target="pool-ticker" aria-label="Copy stake pool ticker" title="Copy ticker">⧉</button>
-                    </div>
                     <div id="pool-delegators-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show pool delegators">
                         <strong id="pool-delegators">...</strong>
                         <span>Delegators</span>
@@ -119,25 +114,28 @@
                         <strong id="pool-live-stake">...</strong>
                         <span>Live stake</span>
                     </div>
-                    <div>
-                        <strong id="pool-active-stake">...</strong>
-                        <span>Active stake</span>
-                    </div>
-                    <div>
-                        <strong id="pool-relays-up">...</strong>
-                        <span>Relays up</span>
-                    </div>
-                    <div id="pool-mithril-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show active Mithril signers">
-                        <strong id="pool-mithril-status">...</strong>
-                        <span class="pool-provider-label"><img class="pool-provider-icon pool-provider-icon--monochrome" src="mithril-logo.svg" alt="">Mithril</span>
-                    </div>
-                    <div id="pool-icebreaker-card" aria-live="polite">
-                        <strong id="pool-icebreaker-status">...</strong>
-                        <span class="pool-provider-label"><img class="pool-provider-icon" src="Icebreaker_logo.webp" alt="">Icebreaker 53</span>
-                    </div>
                     <div id="leader-schedule" aria-live="polite">
                         <strong id="leader-schedule-count">...</strong>
                         <span id="leader-schedule-meta">Possible blocks · Epoch ...</span>
+                    </div>
+                    <div>
+                        <strong id="pool-relays-up" class="pool-status-value">...</strong>
+                        <span class="pool-provider-label">
+                            <svg class="pool-provider-icon pool-relay-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <rect width="20" height="8" x="2" y="2" rx="2"></rect>
+                                <rect width="20" height="8" x="2" y="14" rx="2"></rect>
+                                <path d="M6 6h.01M6 18h.01"></path>
+                            </svg>
+                            <span id="pool-relays-meta" class="pool-provider-label-text">Relay ...</span>
+                        </span>
+                    </div>
+                    <div id="pool-mithril-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show active Mithril signers">
+                        <strong id="pool-mithril-status" class="pool-status-value">...</strong>
+                        <span class="pool-provider-label"><img class="pool-provider-icon pool-provider-icon--monochrome" src="mithril-logo.svg" alt="">Mithril</span>
+                    </div>
+                    <div id="pool-icebreaker-card" aria-live="polite">
+                        <strong id="pool-icebreaker-status" class="pool-status-value">...</strong>
+                        <span class="pool-provider-label"><img class="pool-provider-icon" src="Icebreaker_logo.webp" alt="">Icebreaker 53</span>
                     </div>
                 </div>
                 <div class="pool-relays" id="pool-relays">
