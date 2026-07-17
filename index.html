@@ -108,15 +108,33 @@
                 <div class="pool-summary" id="pool-summary" aria-live="polite">
                     <div id="pool-delegators-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show pool delegators">
                         <strong id="pool-delegators">...</strong>
-                        <span>Delegators</span>
+                        <span class="pool-provider-label">
+                            <svg class="pool-provider-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="9" cy="7" r="4"></circle>
+                                <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"></path>
+                            </svg>
+                            <span class="pool-provider-label-text">Delegators</span>
+                        </span>
                     </div>
                     <div>
                         <strong id="pool-live-stake">...</strong>
-                        <span>Live stake</span>
+                        <span class="pool-provider-label">
+                            <img class="pool-provider-icon" src="cardano_logo_ico.webp" alt="">
+                            <span class="pool-provider-label-text">Live stake</span>
+                        </span>
                     </div>
                     <div id="leader-schedule" aria-live="polite">
                         <strong id="leader-schedule-count">...</strong>
-                        <span id="leader-schedule-meta">Possible blocks · Epoch ...</span>
+                        <span class="pool-provider-label">
+                            <svg class="pool-provider-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="m21 8-9 5-9-5"></path>
+                                <path d="m3 8 9-5 9 5v8l-9 5-9-5Z"></path>
+                                <path d="m12 13 9-5"></path>
+                                <path d="M12 13v8"></path>
+                            </svg>
+                            <span id="leader-schedule-meta" class="pool-provider-label-text">Possible blocks · Epoch ...</span>
+                        </span>
                     </div>
                     <div>
                         <strong id="pool-relays-up" class="pool-status-value">...</strong>
@@ -139,7 +157,7 @@
                     </div>
                     <div id="pool-starch-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show other Starch pools">
                         <strong id="pool-starch-status" class="pool-status-value">...</strong>
-                        <span>Starch Pool</span>
+                        <span class="pool-provider-label"><img class="pool-provider-icon" src="starchCompanyLogo.webp" alt="">Starch Pool</span>
                     </div>
                 </div>
                 <div class="pool-relays" id="pool-relays">
