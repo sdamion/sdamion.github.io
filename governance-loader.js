@@ -27,7 +27,7 @@
 
     function loadGovernanceScript() {
         const script = document.createElement('script');
-        script.src = 'governance.js?v=20260714-header-counts';
+        script.src = 'governance.js?v=20260717-spo-details';
         script.defer = true;
         document.body.appendChild(script);
     }

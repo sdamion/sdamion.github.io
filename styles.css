@@ -2021,8 +2021,29 @@ p {
 
 .overlay-dialog-header-copy {
     display: grid;
+    flex: 1 1 auto;
     min-width: 0;
     gap: 4px;
+}
+
+.governance-action-header-context {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.governance-action-header-epoch {
+    min-width: 0;
+    margin: 0;
+    color: var(--accent-strong);
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1.2;
+    text-align: right;
+    text-transform: uppercase;
 }
 
 .governance-menu-header-meta {
@@ -2095,6 +2116,12 @@ p {
         line-height: 1.15;
         text-align: left;
     }
+
+    .governance-action-header-context {
+        align-items: flex-start;
+        gap: 10px;
+    }
+
 }
 
 /* Form Controls */

@@ -1093,6 +1093,12 @@ function getActiveGovernanceCardMetadata(proposal) {
     return items;
 }
 
+function getGovernanceActionHeaderMeta(proposal) {
+    const totalAsk = getProposalTotalAskLovelace(proposal);
+    if (!Number.isFinite(totalAsk) || totalAsk <= 0) return '';
+    return `Total ask ${formatCompactAdaFromLovelace(totalAsk, { fixedFractionDigits: 2 })}`;
+}
+
 function getProposalTotalAskLovelace(proposal) {
     const withdrawalAmounts = Array.isArray(proposal?.withdrawal)
         ? proposal.withdrawal
@@ -1188,13 +1194,17 @@ function formatGovernanceMetaValue(value) {
 function openGovernanceOverlay(proposal, options = {}) {
     closeGovernanceOverlay();
 
+    const headerContext = document.createElement('div');
+    headerContext.className = 'governance-action-header-context';
+
     const type = document.createElement('span');
     type.className = 'governance-type';
     type.textContent = formatProposalType(proposal.proposal_type);
 
     const meta = document.createElement('p');
-    meta.className = 'small-text';
+    meta.className = 'governance-action-header-epoch';
     meta.textContent = getProposalMeta(proposal);
+    headerContext.append(type, meta);
 
     const content = document.createElement('div');
     content.className = 'governance-detail-content';
@@ -1221,9 +1231,9 @@ function openGovernanceOverlay(proposal, options = {}) {
         titleText: getProposalTitle(proposal),
         closeLabel: 'Close governance action',
         closeOverlay: closeGovernanceOverlay,
-        bodyNodes: [meta, content],
-        leadingNodes: [type],
-        headerMeta: '1 action',
+        bodyNodes: [content],
+        leadingNodes: [headerContext],
+        headerMeta: getGovernanceActionHeaderMeta(proposal),
         overlayClass: 'governance-action-detail-overlay',
         titleTag: 'h2',
         returnFocus: options.returnFocus
@@ -1236,6 +1246,7 @@ function openGovernanceOverlay(proposal, options = {}) {
 
 function closeGovernanceOverlay() {
     closeDrepVotesOverlay();
+    closeSpoVotesOverlay();
     removeGovernanceMenuOverlay('governance-overlay');
 }
 
@@ -1625,7 +1636,215 @@ function renderVoteDetailsPanel(container, proposal, payload) {
         container.appendChild(createDrepVoteChartSection(drepBreakdown, drepVotes));
     }
 
-    addVoteSummaryRows(container, summary, proposal.voteDisplay?.source);
+    const spoVoteSection = createSpoVoteSummarySection(summary, getSpoVotes(payload));
+    if (spoVoteSection) {
+        container.appendChild(spoVoteSection);
+    }
+}
+
+function createSpoVoteSummarySection(summary, spoVotes = []) {
+    if (!summary) return null;
+
+    const yesPower = Number(summary.pool_yes_vote_power) || 0;
+    const noPower = Number(summary.pool_no_vote_power) || 0;
+    const abstainPower = Number(
+        summary.pool_active_abstain_vote_power
+        ?? summary.pool_abstain_vote_power
+    ) || 0;
+    const hasSpoVoteList = spoVotes.length > 0;
+    const votesByChoice = {
+        yes: spoVotes.filter(vote => String(vote?.vote || '').toLowerCase() === 'yes'),
+        no: spoVotes.filter(vote => String(vote?.vote || '').toLowerCase() === 'no'),
+        abstain: spoVotes.filter(vote => String(vote?.vote || '').toLowerCase() === 'abstain')
+    };
+    const yesCount = hasSpoVoteList ? votesByChoice.yes.length : Number(summary.pool_yes_votes_cast) || 0;
+    const noCount = hasSpoVoteList ? votesByChoice.no.length : Number(summary.pool_no_votes_cast) || 0;
+    const abstainCount = hasSpoVoteList ? votesByChoice.abstain.length : Number(summary.pool_abstain_votes_cast) || 0;
+
+    if (!(yesPower || noPower || abstainPower || yesCount || noCount || abstainCount)) {
+        return null;
+    }
+
+    const countedPower = yesPower + noPower;
+    const countedVotes = yesCount + noCount;
+    const items = [
+        {
+            key: 'yes',
+            label: 'Yes',
+            color: '#34d399',
+            count: yesCount,
+            value: yesPower,
+            votes: votesByChoice.yes,
+            votePowerPercentage: countedPower > 0
+                ? (yesPower / countedPower) * 100
+                : countedVotes > 0 ? (yesCount / countedVotes) * 100 : null
+        },
+        {
+            key: 'no',
+            label: 'No',
+            color: '#f87171',
+            count: noCount,
+            value: noPower,
+            votes: votesByChoice.no,
+            votePowerPercentage: countedPower > 0
+                ? (noPower / countedPower) * 100
+                : countedVotes > 0 ? (noCount / countedVotes) * 100 : null
+        },
+        {
+            key: 'abstain',
+            label: 'Abstain',
+            color: '#60a5fa',
+            count: abstainCount,
+            value: 0,
+            displayValue: abstainPower,
+            votes: votesByChoice.abstain,
+            excludedFromPercentage: true
+        }
+    ];
+
+    const section = document.createElement('section');
+    section.className = 'governance-vote-chart governance-spo-vote-summary';
+
+    const title = document.createElement('strong');
+    title.textContent = 'SPO vote overview';
+
+    const layout = document.createElement('div');
+    layout.className = 'governance-vote-chart-layout';
+
+    const chartItems = countedPower > 0
+        ? items
+        : items.map(item => ({
+            ...item,
+            value: item.excludedFromPercentage ? 0 : item.count,
+            unit: 'votes'
+        }));
+    layout.appendChild(createVotePieChart(chartItems));
+
+    const legend = document.createElement('div');
+    legend.className = 'governance-vote-legend';
+    items.forEach(item => {
+        legend.appendChild(createGovernanceStatBox({
+            label: item.label,
+            detail: formatVoteLegendDetail(item, []),
+            color: item.color,
+            onClick: event => openSpoVotesOverlay(item, event.currentTarget)
+        }));
+    });
+
+    layout.appendChild(legend);
+    section.append(title, layout);
+    return section;
+}
+
+function openSpoVotesOverlay(item, returnFocus) {
+    closeSpoVotesOverlay();
+
+    const votes = Array.isArray(item?.votes) ? item.votes : [];
+    const panel = document.createElement('div');
+    panel.className = 'governance-drep-directory-list';
+    renderSpoVotesList(panel, votes, item.label);
+
+    createGovernanceMenuOverlay({
+        id: 'governance-spo-votes-overlay',
+        titleId: 'governance-spo-votes-title',
+        titleText: `SPO ${item.label} votes`,
+        closeLabel: `Close SPO ${item.label} votes`,
+        closeOverlay: closeSpoVotesOverlay,
+        bodyNodes: [panel],
+        headerMeta: `${votes.length.toLocaleString('en-US')} SPOs`,
+        overlayClass: 'governance-nested-overlay',
+        returnFocus
+    });
+}
+
+function closeSpoVotesOverlay() {
+    removeGovernanceMenuOverlay('governance-spo-votes-overlay');
+}
+
+function renderSpoVotesList(container, votes, voteLabel) {
+    if (!votes.length) {
+        const message = document.createElement('p');
+        message.className = 'small-text';
+        message.textContent = `No SPO ${voteLabel.toLowerCase()} votes found.`;
+        container.appendChild(message);
+        return;
+    }
+
+    const sortedVotes = [...votes].sort((left, right) => (
+        getSpoVoteIdentifier(left).localeCompare(getSpoVoteIdentifier(right))
+    ));
+
+    const fragment = document.createDocumentFragment();
+    sortedVotes.forEach((vote, index) => {
+        const poolId = getSpoVoteIdentifier(vote);
+        const row = document.createElement('div');
+        row.className = 'governance-cc-member governance-menu-card';
+
+        const number = document.createElement('strong');
+        number.textContent = String(index + 1);
+
+        const copy = document.createElement('div');
+        copy.className = 'governance-drep-member-copy';
+
+        const name = document.createElement('span');
+        name.className = 'governance-cc-member-hash';
+        name.textContent = getSpoVoteDisplayName(vote);
+
+        const choice = document.createElement('span');
+        choice.className = 'governance-cc-member-meta';
+        choice.textContent = `Voted ${formatVoteChoice(vote?.vote)}`;
+
+        const poolDetails = document.createElement('span');
+        poolDetails.className = 'governance-cc-member-stats';
+        poolDetails.textContent = getSpoVoteDetails(vote);
+
+        const idLine = document.createElement('div');
+        idLine.className = 'governance-drep-id-line';
+
+        const id = document.createElement('span');
+        id.className = 'governance-cc-member-meta governance-drep-id';
+        id.textContent = poolId || 'Unknown pool';
+
+        idLine.appendChild(id);
+        if (poolId) idLine.appendChild(createGovernanceCopyButton(poolId, 'pool ID'));
+
+        copy.append(name, choice);
+        if (poolDetails.textContent) copy.appendChild(poolDetails);
+        copy.appendChild(idLine);
+        row.append(number, copy);
+        fragment.appendChild(row);
+    });
+
+    container.appendChild(fragment);
+}
+
+function getSpoVoteDisplayName(vote) {
+    const ticker = firstNonEmptyText(vote?.ticker, vote?.pool_ticker, vote?.poolTicker);
+    const name = firstNonEmptyText(vote?.pool_name, vote?.poolName, vote?.name);
+    if (ticker && name) return `${ticker} - ${name}`;
+    return ticker || name || 'Stake Pool Operator';
+}
+
+function getSpoVoteDetails(vote) {
+    const status = firstNonEmptyText(vote?.pool_status, vote?.poolStatus);
+    const activeStake = Number(vote?.active_stake ?? vote?.activeStake);
+    return [
+        status ? `Status: ${status}` : null,
+        Number.isFinite(activeStake) && activeStake > 0
+            ? `Active stake: ${formatCompactAdaFromLovelace(activeStake)}`
+            : null
+    ].filter(Boolean).join(' • ');
+}
+
+function getSpoVoteIdentifier(vote) {
+    return firstNonEmptyText(
+        vote?.voter_id,
+        vote?.voterId,
+        vote?.pool_id,
+        vote?.poolId,
+        vote?.voter_hex,
+        vote?.id
+    );
 }
 
 function createDrepVoteChartSection(breakdown, drepVotes) {
@@ -1639,28 +1858,7 @@ function createDrepVoteChartSection(breakdown, drepVotes) {
     const layout = document.createElement('div');
     layout.className = 'governance-vote-chart-layout';
 
-    const chart = document.createElement('div');
-    chart.className = 'governance-pie-chart';
-    const segments = getPieChartSegments(breakdown);
-    chart.style.background = buildPieChartGradient(segments);
-
-    const total = breakdown.reduce((sum, item) => sum + item.value, 0);
-    const center = document.createElement('div');
-    center.className = 'governance-pie-chart-center';
-    const centerLabel = document.createElement('span');
-    centerLabel.textContent = breakdown.some(item => item.unit === 'votes') ? 'Votes counted' : 'Total voting power';
-    const centerValue = document.createElement('strong');
-    centerValue.textContent = breakdown.some(item => item.unit === 'votes')
-        ? formatInteger(total)
-        : formatCompactAdaFromLovelace(total, { fixedFractionDigits: 2 });
-    center.append(centerLabel, centerValue);
-    chart.appendChild(center);
-
-    segments.forEach(segment => {
-        const label = createPieAmountLabel(segment);
-        if (label) chart.appendChild(label);
-    });
-    layout.appendChild(chart);
+    layout.appendChild(createVotePieChart(breakdown));
 
     const legend = document.createElement('div');
     legend.className = 'governance-vote-legend';
@@ -1673,6 +1871,36 @@ function createDrepVoteChartSection(breakdown, drepVotes) {
     section.appendChild(layout);
 
     return section;
+}
+
+function createVotePieChart(breakdown) {
+    const chart = document.createElement('div');
+    chart.className = 'governance-pie-chart';
+    const segments = getPieChartSegments(breakdown);
+    chart.style.background = buildPieChartGradient(segments);
+
+    const total = breakdown.reduce((sum, item) => sum + item.value, 0);
+    const usesVoteCounts = breakdown.some(item => item.unit === 'votes');
+    const center = document.createElement('div');
+    center.className = 'governance-pie-chart-center';
+
+    const centerLabel = document.createElement('span');
+    centerLabel.textContent = usesVoteCounts ? 'Votes counted' : 'Total voting power';
+
+    const centerValue = document.createElement('strong');
+    centerValue.textContent = usesVoteCounts
+        ? formatInteger(total)
+        : formatCompactAdaFromLovelace(total, { fixedFractionDigits: 2 });
+
+    center.append(centerLabel, centerValue);
+    chart.appendChild(center);
+
+    segments.forEach(segment => {
+        const label = createPieAmountLabel(segment);
+        if (label) chart.appendChild(label);
+    });
+
+    return chart;
 }
 
 function createVoteLegendItem(item, drepVotes) {
@@ -3570,6 +3798,34 @@ function getDrepVotes(payload) {
     });
 }
 
+function getSpoVotes(payload) {
+    const spos = payload?.votes?.spos
+        ?? payload?.votes?.spo
+        ?? payload?.votes?.pools;
+    const spoInfo = payload?.spo_info && typeof payload.spo_info === 'object'
+        ? payload.spo_info
+        : {};
+    const enrichVote = vote => {
+        const identifier = getSpoVoteIdentifier(vote);
+        return {
+            ...(spoInfo[identifier] || {}),
+            ...vote
+        };
+    };
+
+    if (Array.isArray(spos)) return spos.map(enrichVote);
+    if (!spos || typeof spos !== 'object') return [];
+
+    return ['yes', 'no', 'abstain', 'unknown'].flatMap(key => {
+        const bucket = spos[key];
+        if (!Array.isArray(bucket)) return [];
+        return bucket.map(vote => enrichVote({
+            ...vote,
+            vote: vote?.vote || key
+        }));
+    });
+}
+
 function getNotVotedDreps(payload, drepVotes) {
     const drepInfo = payload?.drep_info && typeof payload.drep_info === 'object'
         ? payload.drep_info
@@ -3627,17 +3883,6 @@ function createPieAmountLabel(segment) {
     label.style.left = `${x}%`;
     label.style.top = `${y}%`;
     return label;
-}
-
-function addVoteSummaryRows(container, summary, source) {
-    if (!summary) return;
-
-    if (source === 'pool') {
-        addDetailRow(container, 'SPO yes votes', summary.pool_yes_votes_cast);
-        addDetailRow(container, 'SPO no votes', summary.pool_no_votes_cast);
-        addDetailRow(container, 'SPO abstain votes', summary.pool_abstain_votes_cast);
-        return;
-    }
 }
 
 function cleanGovernanceText(text) {
@@ -4016,7 +4261,7 @@ function getProposalMeta(proposal) {
     if (proposal.ratified_epoch !== null) parts.push(`ratified ${proposal.ratified_epoch}`);
     if (proposal.expired_epoch !== null) parts.push(`expired ${proposal.expired_epoch}`);
     if (proposal.dropped_epoch !== null) parts.push(`dropped ${proposal.dropped_epoch}`);
-    return parts.join(' / ');
+    return parts.join(' - ');
 }
 
 function getExpirationText(proposal) {
