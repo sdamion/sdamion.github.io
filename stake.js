@@ -1,11 +1,8 @@
 const POOL_ID = 'pool1zfd0gl76h3f0ammgp4gu0qvt99qcqkn5a895wv0q779d6p9dz5u';
 const POOL_ID_HEX = '125af47fdabc52feef680d51c7818b2941805a74e9cb4731e0f78add';
 const TARGET_POOL_IDS = new Set([POOL_ID, POOL_ID_HEX]);
-const BLOCKFROST_MAINNET_URL = 'https://cardano-mainnet.blockfrost.io/api/v0';
-// Optional second data source to ride out Koios rate limits.
-// A mainnet project id from blockfrost.io — free tier is fine. Leave empty to use Koios only.
-const BLOCKFROST_PROJECT_ID = '';
 const MESH_CDN_URL = 'https://esm.sh/@meshsdk/core@1.9.1?bundle-deps';
+const IS_LOCAL_STAKE_PREVIEW = ['localhost', '127.0.0.1'].includes(window.location.hostname);
 
 let meshLibPromise = null;
 function loadMeshLib() {
@@ -79,39 +76,21 @@ async function populateWalletList() {
     }
 }
 
-async function fetchStakeStatusKoios(provider, rewardAddress) {
-    const data = await provider.fetchAccountInfo(rewardAddress);
-    return { active: data.active === true, poolId: data.poolId || undefined };
-}
-
-async function fetchStakeStatusBlockfrost(rewardAddress) {
-    const response = await fetch(`${BLOCKFROST_MAINNET_URL}/accounts/${rewardAddress}`, {
-        headers: { project_id: BLOCKFROST_PROJECT_ID }
-    });
-    if (response.status === 404) {
-        // Blockfrost 404 on accounts/ = stake address never seen on chain -> unregistered.
-        return { active: false, poolId: undefined };
-    }
-    if (!response.ok) {
-        throw new Error(`Blockfrost returned ${response.status}`);
-    }
-    const data = await response.json();
-    return { active: data.active === true, poolId: data.pool_id || undefined };
-}
-
-async function fetchStakeStatus(rewardAddress, provider) {
-    const sources = [address => fetchStakeStatusKoios(provider, address)];
-    if (BLOCKFROST_PROJECT_ID) sources.push(fetchStakeStatusBlockfrost);
+async function fetchStakeStatus(rewardAddress) {
+    const url = IS_LOCAL_STAKE_PREVIEW
+        ? `/__stake_status_proxy__?stakeAddress=${encodeURIComponent(rewardAddress)}`
+        : `https://api.tdsp.online/api/stake-status/${encodeURIComponent(rewardAddress)}`;
     const errors = [];
 
     for (let round = 1; round <= 2; round++) {
-        for (const source of sources) {
-            try {
-                return { ...(await source(rewardAddress)), verified: true };
-            } catch (error) {
-                console.warn('Stake status source failed', error);
-                errors.push(error);
-            }
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`Stake status API returned ${response.status}`);
+            const data = await response.json();
+            return { active: data.active === true, poolId: data.pool_id || undefined, verified: true };
+        } catch (error) {
+            console.warn('Stake status request failed', error);
+            errors.push(error);
         }
         if (round === 1) await new Promise(resolve => setTimeout(resolve, 1500));
     }
@@ -130,7 +109,7 @@ function isTargetPoolId(poolId) {
 
 async function delegateWithWallet(walletId) {
     try {
-        const { BrowserWallet, MeshTxBuilder, KoiosProvider, deserializePoolId } = await loadMeshLib();
+        const { BrowserWallet, MeshTxBuilder, deserializePoolId } = await loadMeshLib();
 
         setStatus('Connecting to wallet...');
         const wallet = await BrowserWallet.enable(walletId);
@@ -142,16 +121,13 @@ async function delegateWithWallet(walletId) {
         }
 
         setStatus('Checking current delegation status...');
-        // Network-name form without a token: sends no Authorization header, so it cannot
-        // trip the CORS wildcard restriction. Tx building only needs a few public-tier calls.
-        const provider = new KoiosProvider('api');
         const rewardAddresses = await wallet.getRewardAddresses();
         const rewardAddress = rewardAddresses[0];
         if (!rewardAddress) {
             setStatus('No stake address was found in this wallet. No transaction was built.');
             return;
         }
-        const accountInfo = await fetchStakeStatus(rewardAddress, provider);
+        const accountInfo = await fetchStakeStatus(rewardAddress);
 
         if (!accountInfo.verified) {
             setStatus('Could not verify current delegation status. No transaction was built, so no ADA will be spent. Please try again in a moment.');
@@ -173,7 +149,7 @@ async function delegateWithWallet(walletId) {
         const changeAddress = await wallet.getChangeAddress();
         const poolIdHash = deserializePoolId(POOL_ID);
 
-        const txBuilder = new MeshTxBuilder({ fetcher: provider, submitter: provider, verbose: false });
+        const txBuilder = new MeshTxBuilder({ verbose: false });
         if (!accountInfo.active) {
             txBuilder.registerStakeCertificate(rewardAddress);
         }

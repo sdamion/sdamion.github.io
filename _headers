@@ -1,5 +1,5 @@
 /*
-  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://esm.sh; style-src 'self' https://fonts.googleapis.com; connect-src 'self' https://api.coingecko.com https://api.geckoterminal.com https://api.starch.one https://api.tdsp.online https://api.koios.rest https://cardano-mainnet.blockfrost.io https://esm.sh https://ipfs.io; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; frame-src 'self'; frame-ancestors 'none'; form-action 'self'
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://esm.sh; style-src 'self' https://fonts.googleapis.com; connect-src 'self' https://api.tdsp.online https://esm.sh; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; frame-src 'self'; frame-ancestors 'none'; form-action 'self'
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin

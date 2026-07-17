@@ -1,16 +1,6 @@
-// API URLs
-const COINGECKO_API_URL = 'https://api.coingecko.com/api/v3/simple/price?ids=cardano,bitcoin&vs_currencies=usd';
-const GECKOTERMINAL_API_URL = 'https://api.geckoterminal.com/api/v2/simple/networks/cardano/token_price/3d77d63dfa6033be98021417e08e3368cc80e67f8d7afa196aaa0b3953746172636820546f6b656e,6d06570ddd778ec7c0cca09d381eca194e90c8cffa7582879735dbde584552,b6a7467ea1deb012808ef4e87b5ff371e85f7142d7b356a40d9b42a0436f726e75636f70696173205b76696120436861696e506f72742e696f5d';
-
-// Token IDs from GeckoTerminal
-const TOKEN_IDS = {
-    STRCH: "3d77d63dfa6033be98021417e08e3368cc80e67f8d7afa196aaa0b3953746172636820546f6b656e",
-};
-
 const IS_LOCAL_PREVIEW = ['localhost', '127.0.0.1'].includes(window.location.hostname);
 const THEME_STORAGE_KEY = 'tdsp-theme';
-const COINGECKO_PRICE_URL = IS_LOCAL_PREVIEW ? '/__coingecko_price_proxy__' : COINGECKO_API_URL;
-const GECKOTERMINAL_PRICE_URL = IS_LOCAL_PREVIEW ? '/__geckoterminal_price_proxy__' : GECKOTERMINAL_API_URL;
+const PRICE_API_URL = IS_LOCAL_PREVIEW ? '/__prices_proxy__' : 'https://api.tdsp.online/api/prices';
 const POOL_API_URL = IS_LOCAL_PREVIEW ? '/__pool_proxy__' : 'https://api.tdsp.online/api/pool';
 const MITHRIL_API_URL = IS_LOCAL_PREVIEW ? '/__mithril_proxy__' : 'https://api.tdsp.online/api/mithril';
 const ICEBREAKER_API_URL = IS_LOCAL_PREVIEW ? '/__icebreaker_proxy__' : 'https://api.tdsp.online/api/icebreaker';
@@ -27,36 +17,25 @@ async function fetchPrices() {
     const btcEl = document.getElementById('btc-price');
     const strchEl = document.getElementById('strch-price');
 
-    const [coingeckoResult, geckoterminalResult] = await Promise.allSettled([
-        fetch(COINGECKO_PRICE_URL).then(response => {
-            if (!response.ok) throw new Error(`CoinGecko HTTP Error: ${response.status}`);
-            return response.json();
-        }),
-        fetch(GECKOTERMINAL_PRICE_URL).then(response => {
-            if (!response.ok) throw new Error(`GeckoTerminal HTTP Error: ${response.status}`);
-            return response.json();
-        })
-    ]);
+    try {
+        const response = await fetch(PRICE_API_URL);
+        if (!response.ok) throw new Error(`Price API HTTP Error: ${response.status}`);
+        const prices = await response.json();
+        const adaPrice = Number(prices.ada_usd);
+        const btcPrice = Number(prices.btc_usd);
+        const strchPrice = Number(prices.strch_usd);
 
-    if (coingeckoResult.status === 'fulfilled') {
-        const adaPrice = coingeckoResult.value.cardano?.usd?.toFixed(3);
-        const btcPrice = coingeckoResult.value.bitcoin?.usd;
-        if (adaEl) adaEl.textContent = adaPrice ? `$${adaPrice}` : 'N/A';
+        if (adaEl) adaEl.textContent = Number.isFinite(adaPrice) ? `$${adaPrice.toFixed(3)}` : 'N/A';
         if (btcEl) {
             btcEl.textContent = Number.isFinite(btcPrice)
                 ? `$${new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(btcPrice)}`
                 : 'N/A';
         }
-    } else {
+        if (strchEl) strchEl.textContent = Number.isFinite(strchPrice) ? `$${strchPrice.toFixed(12)}` : 'N/A';
+    } catch (error) {
+        console.error('Price data could not be loaded', error);
         if (adaEl) adaEl.textContent = 'N/A';
         if (btcEl) btcEl.textContent = 'N/A';
-    }
-
-    if (geckoterminalResult.status === 'fulfilled') {
-        const tokenPrices = geckoterminalResult.value?.data?.attributes?.token_prices || {};
-        const strchPrice = parseFloat(tokenPrices[TOKEN_IDS.STRCH]);
-        if (strchEl) strchEl.textContent = Number.isFinite(strchPrice) ? `$${strchPrice.toFixed(12)}` : 'N/A';
-    } else {
         if (strchEl) strchEl.textContent = 'N/A';
     }
 }

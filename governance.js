@@ -4,6 +4,7 @@ const PROPOSAL_VOTES_API_BASE_URL = 'https://api.tdsp.online/api/proposal';
 const DREP_METADATA_API_URL = 'https://api.tdsp.online/api/dreps/metadata';
 const DREP_INFO_API_URL = 'https://api.tdsp.online/api/dreps/info';
 const DREP_DETAIL_API_BASE_URL = 'https://api.tdsp.online/api/drep';
+const REMOTE_METADATA_API_URL = 'https://api.tdsp.online/api/metadata';
 const LOCAL_DASHBOARD_PROXY_PATH = '/__dashboard_proxy__';
 const LOCAL_COMMITTEE_PROXY_PATH = '/__committee_proxy__';
 const LOCAL_PROPOSAL_VOTES_PROXY_PATH = '/__proposal_votes_proxy__';
@@ -3650,7 +3651,8 @@ function getDrepMetadataFetchUrl(url) {
         const params = new URLSearchParams({ url: normalizedUrl });
         return `${LOCAL_METADATA_PROXY_PATH}?${params.toString()}`;
     }
-    return normalizedUrl;
+    const params = new URLSearchParams({ url: normalizedUrl });
+    return `${REMOTE_METADATA_API_URL}?${params.toString()}`;
 }
 
 function isAllowedBrowserMetadataUrl(url) {

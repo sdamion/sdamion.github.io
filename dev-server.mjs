@@ -14,10 +14,8 @@ const TDSP_API_HOST = process.env.TDSP_API_HOST || '';
 const LEADER_SCHEDULE_URL = process.env.LEADER_SCHEDULE_URL || `${TDSP_API_ORIGIN}/api/leader-schedule`;
 
 const proxyRoutes = {
-  '/__coingecko_price_proxy__': () =>
-    'https://api.coingecko.com/api/v3/simple/price?ids=cardano,bitcoin&vs_currencies=usd',
-  '/__geckoterminal_price_proxy__': () =>
-    'https://api.geckoterminal.com/api/v2/simple/networks/cardano/token_price/3d77d63dfa6033be98021417e08e3368cc80e67f8d7afa196aaa0b3953746172636820546f6b656e,6d06570ddd778ec7c0cca09d381eca194e90c8cffa7582879735dbde584552,b6a7467ea1deb012808ef4e87b5ff371e85f7142d7b356a40d9b42a0436f726e75636f70696173205b76696120436861696e506f72742e696f5d',
+  '/__prices_proxy__': () =>
+    `${TDSP_API_ORIGIN}/api/prices`,
   '/__dashboard_proxy__': () =>
     `${TDSP_API_ORIGIN}/api/dashboard`,
   '/__committee_proxy__': () =>
@@ -32,6 +30,12 @@ const proxyRoutes = {
     `${TDSP_API_ORIGIN}/api/icebreaker`,
   '/__leader_schedule_proxy__': () =>
     LEADER_SCHEDULE_URL,
+  '/__stake_status_proxy__': url => {
+    const stakeAddress = String(url.searchParams.get('stakeAddress') || '').toLowerCase();
+    return /^stake1[0-9a-z]{20,120}$/.test(stakeAddress)
+      ? `${TDSP_API_ORIGIN}/api/stake-status/${encodeURIComponent(stakeAddress)}`
+      : null;
+  },
   '/__starch_proxy__': url => {
     const teamId = String(url.searchParams.get('teamId') || '').toUpperCase();
     return /^[0-9A-F]{6}$/.test(teamId)
@@ -58,7 +62,9 @@ const proxyRoutes = {
   },
   '/__metadata_proxy__': url => {
     const metadataUrl = url.searchParams.get('url');
-    return isAllowedMetadataUrl(metadataUrl) ? metadataUrl : null;
+    return isAllowedMetadataUrl(metadataUrl)
+      ? `${TDSP_API_ORIGIN}/api/metadata?url=${encodeURIComponent(metadataUrl)}`
+      : null;
   }
 };
 
