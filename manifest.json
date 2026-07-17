@@ -1,7 +1,7 @@
 {
     "name": "The Dutch Stake Pool",
     "short_name": "TDSP",
-    "description": "Reliable Cardano staking and DRep services for $ADA and $IAG.",
+    "description": "Reliable Cardano Stake Pool, Starch Pool, Realfi Pool",
     "start_url": "/index.html",
     "scope": "/",
     "display": "standalone",
