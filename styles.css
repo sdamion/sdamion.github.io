@@ -816,6 +816,14 @@ p {
     cursor: pointer;
 }
 
+#pool-mithril-status.is-active {
+    color: #34d399;
+}
+
+#pool-mithril-status.is-inactive {
+    color: #f87171;
+}
+
 .pool-delegator-list {
     display: grid;
     gap: 12px;

@@ -26,6 +26,8 @@ const proxyRoutes = {
     `${TDSP_API_ORIGIN}/health`,
   '/__pool_proxy__': () =>
     `${TDSP_API_ORIGIN}/api/pool`,
+  '/__mithril_proxy__': () =>
+    `${TDSP_API_ORIGIN}/api/mithril`,
   '/__leader_schedule_proxy__': () =>
     LEADER_SCHEDULE_URL,
   '/__starch_proxy__': url => {

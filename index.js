@@ -12,10 +12,13 @@ const THEME_STORAGE_KEY = 'tdsp-theme';
 const COINGECKO_PRICE_URL = IS_LOCAL_PREVIEW ? '/__coingecko_price_proxy__' : COINGECKO_API_URL;
 const GECKOTERMINAL_PRICE_URL = IS_LOCAL_PREVIEW ? '/__geckoterminal_price_proxy__' : GECKOTERMINAL_API_URL;
 const POOL_API_URL = IS_LOCAL_PREVIEW ? '/__pool_proxy__' : 'https://api.tdsp.online/api/pool';
+const MITHRIL_API_URL = IS_LOCAL_PREVIEW ? '/__mithril_proxy__' : 'https://api.tdsp.online/api/mithril';
 const LEADER_SCHEDULE_API_URL = IS_LOCAL_PREVIEW ? '/__leader_schedule_proxy__' : 'https://api.tdsp.online/api/leader-schedule';
 const notifiedRelayMaintenance = new Set();
 let headerVisibilityObserver = null;
 let poolDelegators = [];
+let mithrilSigners = [];
+let mithrilStatus = null;
 
 // Fetch and display ADA, BTC, and STRCH prices asynchronously
 async function fetchPrices() {
@@ -68,11 +71,14 @@ document.addEventListener("DOMContentLoaded", () => {
     initThemeToggle();
     initPoolCopyButtons();
     initPoolDelegatorsCard();
+    initMithrilCard();
     fetchPrices();
     fetchPoolStatus();
+    fetchMithrilStatus();
     fetchLeaderSchedule();
     setInterval(fetchPrices, 60000); // Auto-update every 60 seconds
     setInterval(fetchPoolStatus, 300000);
+    setInterval(fetchMithrilStatus, 300000);
     setInterval(fetchLeaderSchedule, 300000);
     initUI();
 });
@@ -103,6 +109,34 @@ async function fetchPoolStatus() {
         message.textContent = 'Pool data could not be loaded.';
         relaysEl.appendChild(message);
     }
+}
+
+async function fetchMithrilStatus() {
+    try {
+        const response = await fetch(MITHRIL_API_URL);
+        if (!response.ok) throw new Error(`Mithril API HTTP Error: ${response.status}`);
+        renderMithrilStatus(await response.json());
+    } catch (error) {
+        mithrilStatus = null;
+        mithrilSigners = [];
+        setMithrilCardStatus('N/A', null);
+    }
+}
+
+function renderMithrilStatus(payload) {
+    mithrilStatus = payload;
+    mithrilSigners = Array.isArray(payload?.signers) ? [...payload.signers] : [];
+    const active = payload?.tdsp?.active === true;
+    setMithrilCardStatus(active ? 'Active' : 'Inactive', active);
+}
+
+function setMithrilCardStatus(label, active) {
+    const status = document.getElementById('pool-mithril-status');
+    if (!status) return;
+
+    status.textContent = label;
+    status.classList.toggle('is-active', active === true);
+    status.classList.toggle('is-inactive', active === false);
 }
 
 async function fetchLeaderSchedule() {
@@ -252,6 +286,159 @@ function closePoolDelegatorsOverlay(restoreFocus = true) {
     const returnFocus = overlay?.governanceReturnFocus;
     overlay?.remove();
     if (restoreFocus && returnFocus?.isConnected) returnFocus.focus();
+}
+
+function initMithrilCard() {
+    const card = document.getElementById('pool-mithril-card');
+    if (!card || card.dataset.mithrilBound === 'true') return;
+
+    card.dataset.mithrilBound = 'true';
+    card.addEventListener('click', openMithrilSignersOverlay);
+    card.addEventListener('keydown', event => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        openMithrilSignersOverlay();
+    });
+}
+
+function openMithrilSignersOverlay() {
+    closeMithrilSignersOverlay(false);
+
+    const returnFocus = document.getElementById('pool-mithril-card');
+    const overlay = document.createElement('div');
+    overlay.id = 'pool-mithril-overlay';
+    overlay.className = 'governance-overlay governance-menu-overlay governance-drep-overlay';
+    overlay.governanceReturnFocus = returnFocus;
+    overlay.governanceCloseOverlay = closeMithrilSignersOverlay;
+    overlay.addEventListener('click', event => {
+        if (event.target === overlay) closeMithrilSignersOverlay();
+    });
+
+    const dialog = document.createElement('article');
+    dialog.className = 'governance-dialog governance-drep-dialog';
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.setAttribute('aria-labelledby', 'pool-mithril-title');
+
+    const header = document.createElement('header');
+    header.className = 'overlay-dialog-header';
+
+    const headerCopy = document.createElement('div');
+    headerCopy.className = 'overlay-dialog-header-copy';
+
+    const title = document.createElement('h3');
+    title.id = 'pool-mithril-title';
+    title.className = 'governance-drep-title';
+    title.textContent = 'Active Mithril Signers';
+
+    const meta = document.createElement('span');
+    meta.className = 'governance-menu-header-meta';
+    const signingEpoch = Number(mithrilStatus?.signing_at_epoch);
+    meta.textContent = `${mithrilSigners.length.toLocaleString('en-US')} signers${Number.isFinite(signingEpoch) ? ` · Signing epoch ${signingEpoch.toLocaleString('en-US')}` : ''}`;
+
+    const close = document.createElement('button');
+    close.className = 'governance-close';
+    close.type = 'button';
+    close.textContent = 'Close';
+    close.setAttribute('aria-label', 'Close active Mithril signers');
+    close.addEventListener('click', closeMithrilSignersOverlay);
+
+    headerCopy.append(title, meta);
+    header.append(headerCopy, close);
+
+    const body = document.createElement('div');
+    body.className = 'overlay-dialog-body';
+    body.appendChild(createMithrilSignersList());
+
+    dialog.append(header, body);
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+    close.focus();
+}
+
+function closeMithrilSignersOverlay(restoreFocus = true) {
+    const overlay = document.getElementById('pool-mithril-overlay');
+    const returnFocus = overlay?.governanceReturnFocus;
+    overlay?.remove();
+    if (restoreFocus && returnFocus?.isConnected) returnFocus.focus();
+}
+
+function createMithrilSignersList() {
+    const list = document.createElement('div');
+    list.className = 'pool-delegator-list';
+
+    if (!mithrilSigners.length) {
+        const message = document.createElement('p');
+        message.className = 'small-text';
+        message.textContent = 'Active Mithril signer data is not available yet.';
+        list.appendChild(message);
+        return list;
+    }
+
+    mithrilSigners.forEach((signer, index) => {
+        const poolId = String(signer?.pool_id || '');
+        const row = document.createElement('div');
+        row.className = 'pool-delegator-row governance-menu-card';
+
+        const rank = document.createElement('span');
+        rank.className = 'pool-delegator-rank';
+        rank.textContent = String(index + 1);
+
+        const content = document.createElement('div');
+        content.className = 'pool-delegator-content';
+
+        const name = document.createElement('strong');
+        name.className = 'pool-delegator-handle';
+        name.textContent = signer?.display_name || signer?.name || 'No Name';
+
+        const idLine = document.createElement('div');
+        idLine.className = 'pool-delegator-address-line';
+
+        const id = document.createElement('span');
+        id.className = 'pool-delegator-address';
+        id.textContent = poolId ? shortenStakeAddress(poolId) : 'Unknown pool';
+        id.title = poolId;
+        idLine.appendChild(id);
+
+        if (poolId) {
+            const copy = document.createElement('button');
+            copy.className = 'pool-delegator-copy-button';
+            copy.type = 'button';
+            copy.textContent = '⧉';
+            copy.setAttribute('aria-label', `Copy Mithril signer pool ID ${index + 1}`);
+            copy.addEventListener('click', async () => {
+                const original = copy.textContent;
+                try {
+                    await copyText(poolId);
+                    copy.textContent = 'Copied';
+                } catch (error) {
+                    copy.textContent = 'Copy failed';
+                }
+                setTimeout(() => {
+                    copy.textContent = original;
+                }, 1400);
+            });
+            idLine.appendChild(copy);
+        }
+
+        const stake = document.createElement('span');
+        stake.className = 'pool-delegator-amount';
+        stake.textContent = formatDelegatorAda(getMithrilSignerStake(signer));
+
+        content.append(name, idLine, stake);
+        row.append(rank, content);
+        list.appendChild(row);
+    });
+
+    return list;
+}
+
+function getMithrilSignerStake(signer) {
+    try {
+        return BigInt(String(signer?.stake_lovelace ?? '0'));
+    } catch (error) {
+        return 0n;
+    }
 }
 
 function createPoolDelegatorsList() {

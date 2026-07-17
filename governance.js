@@ -1820,9 +1820,8 @@ function renderSpoVotesList(container, votes, voteLabel) {
 
 function getSpoVoteDisplayName(vote) {
     const ticker = firstNonEmptyText(vote?.ticker, vote?.pool_ticker, vote?.poolTicker);
-    const name = firstNonEmptyText(vote?.pool_name, vote?.poolName, vote?.name);
-    if (ticker && name) return `${ticker} - ${name}`;
-    return ticker || name || 'Stake Pool Operator';
+    const name = firstNonEmptyText(vote?.pool_name, vote?.poolName, vote?.name) || 'No Name';
+    return ticker ? `${ticker} - ${name}` : name;
 }
 
 function getSpoVoteDetails(vote) {
