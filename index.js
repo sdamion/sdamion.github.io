@@ -4,12 +4,15 @@ const PRICE_API_URL = IS_LOCAL_PREVIEW ? '/__prices_proxy__' : 'https://api.tdsp
 const POOL_API_URL = IS_LOCAL_PREVIEW ? '/__pool_proxy__' : 'https://api.tdsp.online/api/pool';
 const MITHRIL_API_URL = IS_LOCAL_PREVIEW ? '/__mithril_proxy__' : 'https://api.tdsp.online/api/mithril';
 const ICEBREAKER_API_URL = IS_LOCAL_PREVIEW ? '/__icebreaker_proxy__' : 'https://api.tdsp.online/api/icebreaker';
+const STARCH_POOL_API_URL = IS_LOCAL_PREVIEW ? '/__starch_pools_proxy__' : 'https://api.tdsp.online/api/starch/pools';
 const LEADER_SCHEDULE_API_URL = IS_LOCAL_PREVIEW ? '/__leader_schedule_proxy__' : 'https://api.tdsp.online/api/leader-schedule';
 const notifiedRelayMaintenance = new Set();
 let headerVisibilityObserver = null;
 let poolDelegators = [];
 let mithrilSigners = [];
 let mithrilStatus = null;
+let starchPools = [];
+let starchPoolStatus = null;
 
 // Fetch and display ADA, BTC, and STRCH prices asynchronously
 async function fetchPrices() {
@@ -52,15 +55,18 @@ document.addEventListener("DOMContentLoaded", () => {
     initPoolCopyButtons();
     initPoolDelegatorsCard();
     initMithrilCard();
+    initStarchPoolCard();
     fetchPrices();
     fetchPoolStatus();
     fetchMithrilStatus();
     fetchIcebreakerStatus();
+    fetchStarchPoolStatus();
     fetchLeaderSchedule();
     setInterval(fetchPrices, 60000); // Auto-update every 60 seconds
     setInterval(fetchPoolStatus, 300000);
     setInterval(fetchMithrilStatus, 300000);
     setInterval(fetchIcebreakerStatus, 300000);
+    setInterval(fetchStarchPoolStatus, 300000);
     setInterval(fetchLeaderSchedule, 300000);
     initUI();
 });
@@ -136,6 +142,35 @@ async function fetchIcebreakerStatus() {
 
 function setIcebreakerCardStatus(label, active) {
     const status = document.getElementById('pool-icebreaker-status');
+    if (!status) return;
+
+    status.textContent = label;
+    status.classList.toggle('is-active', active === true);
+    status.classList.toggle('is-inactive', active === false);
+}
+
+async function fetchStarchPoolStatus() {
+    try {
+        const response = await fetch(STARCH_POOL_API_URL);
+        if (!response.ok) throw new Error(`Starch pool API HTTP Error: ${response.status}`);
+        renderStarchPoolStatus(await response.json());
+    } catch (error) {
+        starchPoolStatus = null;
+        starchPools = [];
+        setStarchPoolCardStatus('N/A', null);
+    }
+}
+
+function renderStarchPoolStatus(payload) {
+    starchPoolStatus = payload;
+    starchPools = (Array.isArray(payload?.pools) ? payload.pools : [])
+        .filter(pool => String(pool?.ticker || '').toLowerCase() !== 'tdsp');
+    const active = payload?.tdsp?.active === true || Number(payload?.tdsp?.status) === 1;
+    setStarchPoolCardStatus(active ? 'Active' : 'Inactive', active);
+}
+
+function setStarchPoolCardStatus(label, active) {
+    const status = document.getElementById('pool-starch-status');
     if (!status) return;
 
     status.textContent = label;
@@ -377,6 +412,120 @@ function closeMithrilSignersOverlay(restoreFocus = true) {
     const returnFocus = overlay?.governanceReturnFocus;
     overlay?.remove();
     if (restoreFocus && returnFocus?.isConnected) returnFocus.focus();
+}
+
+function initStarchPoolCard() {
+    const card = document.getElementById('pool-starch-card');
+    if (!card || card.dataset.starchPoolBound === 'true') return;
+
+    card.dataset.starchPoolBound = 'true';
+    card.addEventListener('click', openStarchPoolsOverlay);
+    card.addEventListener('keydown', event => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        openStarchPoolsOverlay();
+    });
+}
+
+function openStarchPoolsOverlay() {
+    closeStarchPoolsOverlay(false);
+
+    const returnFocus = document.getElementById('pool-starch-card');
+    const overlay = document.createElement('div');
+    overlay.id = 'pool-starch-overlay';
+    overlay.className = 'governance-overlay governance-menu-overlay governance-drep-overlay';
+    overlay.governanceReturnFocus = returnFocus;
+    overlay.governanceCloseOverlay = closeStarchPoolsOverlay;
+    overlay.addEventListener('click', event => {
+        if (event.target === overlay) closeStarchPoolsOverlay();
+    });
+
+    const dialog = document.createElement('article');
+    dialog.className = 'governance-dialog governance-drep-dialog';
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.setAttribute('aria-labelledby', 'pool-starch-title');
+
+    const header = document.createElement('header');
+    header.className = 'overlay-dialog-header';
+
+    const headerCopy = document.createElement('div');
+    headerCopy.className = 'overlay-dialog-header-copy';
+
+    const title = document.createElement('h3');
+    title.id = 'pool-starch-title';
+    title.className = 'governance-drep-title';
+    title.textContent = 'Other Starch Pools';
+
+    const meta = document.createElement('span');
+    meta.className = 'governance-menu-header-meta';
+    const epoch = Number(starchPoolStatus?.epoch);
+    meta.textContent = `${starchPools.length.toLocaleString('en-US')} pools${Number.isFinite(epoch) ? ` · Epoch ${epoch.toLocaleString('en-US')}` : ''}`;
+
+    const close = document.createElement('button');
+    close.className = 'governance-close';
+    close.type = 'button';
+    close.textContent = 'Close';
+    close.setAttribute('aria-label', 'Close other Starch pools');
+    close.addEventListener('click', closeStarchPoolsOverlay);
+
+    headerCopy.append(title, meta);
+    header.append(headerCopy, close);
+
+    const body = document.createElement('div');
+    body.className = 'overlay-dialog-body';
+    body.appendChild(createStarchPoolsList());
+
+    dialog.append(header, body);
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+    close.focus();
+}
+
+function closeStarchPoolsOverlay(restoreFocus = true) {
+    const overlay = document.getElementById('pool-starch-overlay');
+    const returnFocus = overlay?.governanceReturnFocus;
+    overlay?.remove();
+    if (restoreFocus && returnFocus?.isConnected) returnFocus.focus();
+}
+
+function createStarchPoolsList() {
+    const list = document.createElement('div');
+    list.className = 'pool-delegator-list';
+
+    if (!starchPools.length) {
+        const message = document.createElement('p');
+        message.className = 'small-text';
+        message.textContent = 'Starch pool data is not available yet.';
+        list.appendChild(message);
+        return list;
+    }
+
+    starchPools.forEach((pool, index) => {
+        const row = document.createElement('div');
+        row.className = 'pool-delegator-row governance-menu-card';
+
+        const rank = document.createElement('span');
+        rank.className = 'pool-delegator-rank';
+        rank.textContent = String(index + 1);
+
+        const content = document.createElement('div');
+        content.className = 'pool-delegator-content';
+
+        const name = document.createElement('strong');
+        name.className = 'pool-delegator-handle';
+        name.textContent = pool?.name || 'No Name';
+
+        const ticker = document.createElement('span');
+        ticker.className = 'pool-delegator-address';
+        ticker.textContent = String(pool?.ticker || '').toUpperCase() || 'N/A';
+
+        content.append(name, ticker);
+        row.append(rank, content);
+        list.appendChild(row);
+    });
+
+    return list;
 }
 
 function createMithrilSignersList() {

@@ -12,6 +12,7 @@ const UPSTREAM_TIMEOUT_MS = Number(process.env.UPSTREAM_TIMEOUT_MS || 5_000);
 const TDSP_API_ORIGIN = (process.env.TDSP_API_ORIGIN || 'https://api.tdsp.online').replace(/\/+$/, '');
 const TDSP_API_HOST = process.env.TDSP_API_HOST || '';
 const LEADER_SCHEDULE_URL = process.env.LEADER_SCHEDULE_URL || `${TDSP_API_ORIGIN}/api/leader-schedule`;
+const STARCH_POOL_URL = process.env.STARCH_POOL_URL || `${TDSP_API_ORIGIN}/api/starch/pools`;
 
 const proxyRoutes = {
   '/__prices_proxy__': () =>
@@ -42,6 +43,8 @@ const proxyRoutes = {
       ? `${TDSP_API_ORIGIN}/api/starch/${encodeURIComponent(teamId)}`
       : null;
   },
+  '/__starch_pools_proxy__': () =>
+    STARCH_POOL_URL,
   '/__proposal_votes_proxy__': url => {
     const proposalId = url.searchParams.get('proposalId');
     return proposalId
