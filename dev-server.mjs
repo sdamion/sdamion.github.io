@@ -40,12 +40,6 @@ const proxyRoutes = {
       ? `${TDSP_API_ORIGIN}/api/proposal/${encodeURIComponent(proposalId)}/votes`
       : null;
   },
-  '/__account_info_proxy__': url => {
-    const rewardAddress = url.searchParams.get('rewardAddress');
-    return rewardAddress
-      ? `${TDSP_API_ORIGIN}/api/account/${encodeURIComponent(rewardAddress)}/info`
-      : null;
-  },
   '/__drep_directory_proxy__': url => {
     const type = url.searchParams.get('type');
     if (type === 'metadata') return `${TDSP_API_ORIGIN}/api/dreps/metadata`;

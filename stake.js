@@ -6,8 +6,6 @@ const BLOCKFROST_MAINNET_URL = 'https://cardano-mainnet.blockfrost.io/api/v0';
 // A mainnet project id from blockfrost.io — free tier is fine. Leave empty to use Koios only.
 const BLOCKFROST_PROJECT_ID = '';
 const MESH_CDN_URL = 'https://esm.sh/@meshsdk/core@1.9.1?bundle-deps';
-const STAKE_STATUS_API_BASE_URL = 'https://api.tdsp.online/api/account';
-const LOCAL_STAKE_STATUS_PROXY_PATH = '/__account_info_proxy__';
 
 let meshLibPromise = null;
 function loadMeshLib() {
@@ -81,25 +79,8 @@ async function populateWalletList() {
     }
 }
 
-function shouldUseLocalStakeStatusProxy() {
-    return ['127.0.0.1', 'localhost'].includes(window.location.hostname);
-}
-
-function getStakeStatusApiUrl(rewardAddress) {
-    if (shouldUseLocalStakeStatusProxy()) {
-        const params = new URLSearchParams({ rewardAddress });
-        return `${LOCAL_STAKE_STATUS_PROXY_PATH}?${params.toString()}`;
-    }
-
-    return `${STAKE_STATUS_API_BASE_URL}/${encodeURIComponent(rewardAddress)}/info`;
-}
-
-async function fetchStakeStatusProxy(rewardAddress) {
-    const response = await fetch(getStakeStatusApiUrl(rewardAddress));
-    if (!response.ok) {
-        throw new Error(`Stake status API returned ${response.status}`);
-    }
-    const data = await response.json();
+async function fetchStakeStatusKoios(provider, rewardAddress) {
+    const data = await provider.fetchAccountInfo(rewardAddress);
     return { active: data.active === true, poolId: data.poolId || undefined };
 }
 
@@ -118,8 +99,8 @@ async function fetchStakeStatusBlockfrost(rewardAddress) {
     return { active: data.active === true, poolId: data.pool_id || undefined };
 }
 
-async function fetchStakeStatus(rewardAddress) {
-    const sources = [fetchStakeStatusProxy];
+async function fetchStakeStatus(rewardAddress, provider) {
+    const sources = [address => fetchStakeStatusKoios(provider, address)];
     if (BLOCKFROST_PROJECT_ID) sources.push(fetchStakeStatusBlockfrost);
     const errors = [];
 
@@ -170,7 +151,7 @@ async function delegateWithWallet(walletId) {
             setStatus('No stake address was found in this wallet. No transaction was built.');
             return;
         }
-        const accountInfo = await fetchStakeStatus(rewardAddress);
+        const accountInfo = await fetchStakeStatus(rewardAddress, provider);
 
         if (!accountInfo.verified) {
             setStatus('Could not verify current delegation status. No transaction was built, so no ADA will be spent. Please try again in a moment.');
