@@ -1255,6 +1255,24 @@ function groupGovernanceProposals(proposals) {
     }, { active: [], approved: [], rejected: [], info: [] });
 
     groups.active.sort((a, b) => {
+        const aPercentage = normalizePercentageNumber(a?.votePercentages?.yes);
+        const bPercentage = normalizePercentageNumber(b?.votePercentages?.yes);
+        const aHasPercentage = Number.isFinite(aPercentage);
+        const bHasPercentage = Number.isFinite(bPercentage);
+        if (aHasPercentage !== bHasPercentage) return aHasPercentage ? -1 : 1;
+        if (aHasPercentage && aPercentage !== bPercentage) return bPercentage - aPercentage;
+
+        const aExpiration = a?.expiration === null || a?.expiration === undefined
+            ? NaN
+            : Number(a.expiration);
+        const bExpiration = b?.expiration === null || b?.expiration === undefined
+            ? NaN
+            : Number(b.expiration);
+        const aHasExpiration = Number.isFinite(aExpiration);
+        const bHasExpiration = Number.isFinite(bExpiration);
+        if (aHasExpiration !== bHasExpiration) return aHasExpiration ? -1 : 1;
+        if (aHasExpiration && aExpiration !== bExpiration) return aExpiration - bExpiration;
+
         const aTime = Number(a.block_time) || 0;
         const bTime = Number(b.block_time) || 0;
         return aTime - bTime;
@@ -1568,7 +1586,7 @@ function closeGovernanceActionGroupOverlay() {
     removeGovernanceMenuOverlay('governance-action-group-overlay');
 }
 
-function openGovernanceStatusActionsOverlay(titleText, proposals, returnFocus) {
+function openGovernanceStatusActionsOverlay(titleText, proposals, returnFocus, statusText = '') {
     closeGovernanceStatusActionsOverlay();
 
     const panel = document.createElement('div');
@@ -1579,10 +1597,10 @@ function openGovernanceStatusActionsOverlay(titleText, proposals, returnFocus) {
         id: 'governance-status-actions-overlay',
         titleId: 'governance-status-actions-title',
         titleText,
-        closeLabel: `Close ${titleText}`,
+        closeLabel: `Close ${titleText}${statusText ? ` ${statusText}` : ''}`,
         closeOverlay: closeGovernanceStatusActionsOverlay,
         bodyNodes: [panel],
-        headerMeta: `${proposals.length.toLocaleString('en-US')} actions`,
+        headerMeta: `${statusText ? `${statusText} • ` : ''}${proposals.length.toLocaleString('en-US')} actions`,
         overlayClass: 'governance-action-detail-overlay',
         returnFocus
     });
@@ -2870,7 +2888,7 @@ function openDrepActionHistoryOverlay(drep, returnFocus = null) {
     });
 
     fetchJson(getDrepDetailApiUrl(drep.id))
-        .then(payload => renderDrepActionHistory(panel, payload))
+        .then(payload => renderDrepActionHistory(panel, payload, drep))
         .catch(() => {
             if (!panel.isConnected) return;
             panel.textContent = '';
@@ -2885,7 +2903,7 @@ function closeDrepActionHistoryOverlay() {
     removeGovernanceMenuOverlay('governance-drep-actions-overlay');
 }
 
-function renderDrepActionHistory(container, payload) {
+function renderDrepActionHistory(container, payload, drep) {
     if (!container.isConnected) return;
     container.textContent = '';
     const voteStats = payload?.vote_stats || {};
@@ -2915,6 +2933,7 @@ function renderDrepActionHistory(container, payload) {
     const notApplicable = notApplicableProposals.length;
 
     container.appendChild(createDrepActionHistoryChart({
+        drepName: drep?.name || 'DRep',
         voted,
         notVoted,
         active,
@@ -2964,6 +2983,7 @@ function isGovernanceActionApplicableToDrep(proposal, registrationTime) {
 
 function createDrepActionHistoryChart(stats) {
     const {
+        drepName,
         voted,
         notVoted,
         active,
@@ -2995,29 +3015,33 @@ function createDrepActionHistoryChart(stats) {
             detail: `${active} actions`,
             color: '#60a5fa',
             onClick: event => openGovernanceStatusActionsOverlay(
-                'DRep Active',
+                drepName,
                 activeProposals,
-                event.currentTarget
+                event.currentTarget,
+                'Active'
             )
         }],
         onVotedClick: event => openGovernanceStatusActionsOverlay(
-            'DRep Voted',
+            drepName,
             votedProposals,
-            event.currentTarget
+            event.currentTarget,
+            'Voted'
         ),
         onNotVotedClick: event => openGovernanceStatusActionsOverlay(
-            'DRep Not Voted',
+            drepName,
             notVotedProposals,
-            event.currentTarget
+            event.currentTarget,
+            'Not Voted'
         ),
         extraLegendItems: [{
             label: 'Not Applicable',
             detail: `${notApplicable} actions`,
             color: '#94a3b8',
             onClick: event => openGovernanceStatusActionsOverlay(
-                'DRep Not Applicable',
+                drepName,
                 notApplicableProposals,
-                event.currentTarget
+                event.currentTarget,
+                'Not Applicable'
             )
         }]
     });
@@ -3588,6 +3612,7 @@ function updateConstitutionalCommitteeVoteChart(container, results, member) {
 }
 
 function renderConstitutionalCommitteeVoteChartContent(container, results, isLoading = false, member = null) {
+    const memberName = member?.name || 'CC Member';
     const eligibleResults = results.filter(result => (
         isConstitutionalCommitteeMemberVoteApplicable(result.proposal)
         && isExpiredGovernanceActionForCommitteeStats(result.proposal)
@@ -3628,20 +3653,23 @@ function renderConstitutionalCommitteeVoteChartContent(container, results, isLoa
             detail: `${proposalStats.open} actions`,
             color: '#60a5fa',
             onClick: isLoading ? null : event => openGovernanceStatusActionsOverlay(
-                'CC Member Active',
+                memberName,
                 activeProposals,
-                event.currentTarget
+                event.currentTarget,
+                'Active'
             )
         }],
         onVotedClick: isLoading ? null : event => openGovernanceStatusActionsOverlay(
-            'CC Member Voted',
+            memberName,
             votedProposals,
-            event.currentTarget
+            event.currentTarget,
+            'Voted'
         ),
         onNotVotedClick: isLoading ? null : event => openGovernanceStatusActionsOverlay(
-            'CC Member Not Voted',
+            memberName,
             notVotedProposals,
-            event.currentTarget
+            event.currentTarget,
+            'Not Voted'
         ),
         extraLegendItems: [
             {
@@ -3649,9 +3677,10 @@ function renderConstitutionalCommitteeVoteChartContent(container, results, isLoa
                 detail: `${proposalStats.notApplicable} actions`,
                 color: '#94a3b8',
                 onClick: isLoading ? null : event => openGovernanceStatusActionsOverlay(
-                    'CC Member Not Applicable',
+                    memberName,
                     notApplicableProposals,
-                    event.currentTarget
+                    event.currentTarget,
+                    'Not Applicable'
                 )
             }
         ]
