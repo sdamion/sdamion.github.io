@@ -726,13 +726,18 @@ function setupConstitutionalCommitteeCard() {
 
 function setupGovernanceSummaryActionCards() {
     [
-        { id: 'gov-active-card', groupKey: 'active', title: 'Active Governance Actions', emptyMessage: 'No active actions found.' },
-        { id: 'gov-approved-card', groupKey: 'approved', title: 'Approved Governance Actions', emptyMessage: 'No approved actions found.' },
-        { id: 'gov-rejected-card', groupKey: 'rejected', title: 'Rejected Governance Actions', emptyMessage: 'No rejected actions found.' },
-        { id: 'gov-info-card', groupKey: 'info', title: 'Info Actions', emptyMessage: 'No info actions found.' }
+        { id: 'gov-active-card', groupKey: 'active', title: 'Active Governance Actions', tileTitle: 'Active', emptyMessage: 'No active actions found.' },
+        { id: 'gov-approved-card', groupKey: 'approved', title: 'Approved Governance Actions', tileTitle: 'Approved', emptyMessage: 'No approved actions found.' },
+        { id: 'gov-rejected-card', groupKey: 'rejected', title: 'Rejected Governance Actions', tileTitle: 'Rejected', emptyMessage: 'No rejected actions found.' },
+        { id: 'gov-info-card', groupKey: 'info', title: 'Info Actions', tileTitle: 'Info Actions', emptyMessage: 'No info actions found.' }
     ].forEach(config => {
         const card = document.getElementById(config.id);
-        const open = () => openGovernanceActionGroupOverlay(config.groupKey, config.title, config.emptyMessage);
+        const open = () => openGovernanceActionGroupOverlay(
+            config.groupKey,
+            config.title,
+            config.emptyMessage,
+            config.tileTitle
+        );
         bindGovernanceMenuTrigger(card, open);
     });
 }
@@ -1484,7 +1489,7 @@ function createGovernanceCard(proposal, options = {}) {
     return card;
 }
 
-function appendGovernanceDialogHeader(dialog, title, close, leadingNodes = [], meta = null) {
+function appendGovernanceDialogHeader(dialog, title, close, leadingNodes = [], meta = null, back = null) {
     const header = document.createElement('header');
     header.className = 'overlay-dialog-header';
 
@@ -1494,8 +1499,13 @@ function appendGovernanceDialogHeader(dialog, title, close, leadingNodes = [], m
     copy.appendChild(title);
     if (meta) copy.appendChild(meta);
 
+    const actions = document.createElement('div');
+    actions.className = 'overlay-dialog-header-actions';
+    if (back) actions.appendChild(back);
+    actions.appendChild(close);
+
     header.appendChild(copy);
-    header.appendChild(close);
+    header.appendChild(actions);
     dialog.appendChild(header);
 }
 
@@ -1519,9 +1529,11 @@ function createGovernanceMenuOverlay(options) {
         dialogClass = 'governance-drep-dialog',
         titleTag = 'h3',
         headerMeta = '',
-        returnFocus = document.activeElement
+        returnFocus = document.activeElement,
+        rootTitle = titleText
     } = options;
 
+    const previousTopOverlay = getTopGovernanceMenuOverlay();
     governanceOverlaySequence += 1;
     const instanceId = `${id}-${governanceOverlaySequence}`;
     const overlay = document.createElement('div');
@@ -1531,6 +1543,8 @@ function createGovernanceMenuOverlay(options) {
     overlay.style.zIndex = String(getNextGovernanceOverlayZIndex());
     overlay.governanceReturnFocus = returnFocus;
     overlay.governanceCloseOverlay = closeOverlay;
+    overlay.governanceRootOverlay = previousTopOverlay?.governanceRootOverlay || overlay;
+    overlay.governanceRootTitle = previousTopOverlay?.governanceRootTitle || rootTitle;
     overlay.addEventListener('click', event => {
         if (event.target === overlay) closeOverlay();
     });
@@ -1548,6 +1562,13 @@ function createGovernanceMenuOverlay(options) {
     close.textContent = 'Close';
     close.addEventListener('click', closeOverlay);
 
+    const back = document.createElement('button');
+    back.className = 'governance-back-to-root';
+    back.type = 'button';
+    back.textContent = `Back to ${overlay.governanceRootTitle}`;
+    back.setAttribute('aria-label', `Back to ${overlay.governanceRootTitle}`);
+    back.addEventListener('click', () => returnToGovernanceRootOverlay(overlay));
+
     const title = document.createElement(titleTag);
     title.id = `${titleId}-${governanceOverlaySequence}`;
     if (titleTag !== 'h2') title.className = 'governance-drep-title';
@@ -1558,7 +1579,7 @@ function createGovernanceMenuOverlay(options) {
     meta.dataset.governanceMenuHeaderMeta = 'true';
     meta.textContent = headerMeta;
 
-    appendGovernanceDialogHeader(dialog, title, close, leadingNodes, meta);
+    appendGovernanceDialogHeader(dialog, title, close, leadingNodes, meta, back);
     appendGovernanceDialogBody(dialog, ...bodyNodes);
     overlay.appendChild(dialog);
     document.body.appendChild(overlay);
@@ -1585,11 +1606,42 @@ function removeGovernanceMenuOverlay(id) {
     if (returnFocus?.isConnected) returnFocus.focus();
 }
 
-function getTopGovernanceMenuOverlay(id) {
-    const overlays = document.querySelectorAll(
-        `.governance-menu-overlay[data-governance-overlay-id="${CSS.escape(id)}"]`
-    );
-    return overlays[overlays.length - 1] || null;
+function getTopGovernanceMenuOverlay(id = '') {
+    const selector = id
+        ? `.governance-menu-overlay[data-governance-overlay-id="${CSS.escape(id)}"]`
+        : '.governance-menu-overlay';
+    const overlays = Array.from(document.querySelectorAll(selector));
+    return overlays.reduce((top, overlay) => {
+        if (!top) return overlay;
+        const overlayZIndex = Number.parseInt(getComputedStyle(overlay).zIndex, 10) || 0;
+        const topZIndex = Number.parseInt(getComputedStyle(top).zIndex, 10) || 0;
+        return overlayZIndex >= topZIndex ? overlay : top;
+    }, null);
+}
+
+function returnToGovernanceRootOverlay(sourceOverlay) {
+    const rootOverlay = sourceOverlay?.governanceRootOverlay;
+    if (!rootOverlay?.isConnected) return;
+
+    if (sourceOverlay === rootOverlay) {
+        const closeRootOverlay = rootOverlay.governanceCloseOverlay;
+        if (typeof closeRootOverlay === 'function') closeRootOverlay();
+        if (rootOverlay.isConnected) rootOverlay.remove();
+        syncGovernanceMenuOverlayAccessibility();
+        return;
+    }
+
+    let topOverlay = getTopGovernanceMenuOverlay();
+    while (topOverlay && topOverlay !== rootOverlay) {
+        const closeOverlay = topOverlay.governanceCloseOverlay;
+        if (typeof closeOverlay === 'function') closeOverlay();
+        if (topOverlay.isConnected) topOverlay.remove();
+        topOverlay = getTopGovernanceMenuOverlay();
+    }
+
+    syncGovernanceMenuOverlayAccessibility();
+    const rootClose = rootOverlay.querySelector('.governance-close');
+    if (rootClose) rootClose.focus();
 }
 
 function getNextGovernanceOverlayZIndex() {
@@ -1620,7 +1672,7 @@ function syncGovernanceMenuOverlayAccessibility() {
     if (topDialog) topDialog.setAttribute('aria-modal', 'true');
 }
 
-function openGovernanceActionGroupOverlay(groupKey, titleText, emptyMessage) {
+function openGovernanceActionGroupOverlay(groupKey, titleText, emptyMessage, rootTitle = titleText) {
     const proposals = governanceGroupsState?.[groupKey]
         || groupGovernanceProposals(getGovernanceProposalsFromDashboardPayload(governanceState || {}))[groupKey]
         || [];
@@ -1635,7 +1687,8 @@ function openGovernanceActionGroupOverlay(groupKey, titleText, emptyMessage) {
         closeLabel: `Close ${titleText}`,
         closeOverlay: closeGovernanceActionGroupOverlay,
         bodyNodes: [panel],
-        headerMeta: `${proposals.length.toLocaleString('en-US')} actions`
+        headerMeta: `${proposals.length.toLocaleString('en-US')} actions`,
+        rootTitle
     });
 }
 
@@ -3172,7 +3225,8 @@ function openConstitutionalCommitteeOverlay() {
         closeLabel: 'Close Constitutional Committee members',
         closeOverlay: closeConstitutionalCommitteeOverlay,
         bodyNodes: [chartPanel, panel],
-        headerMeta: `${members.length.toLocaleString('en-US')} members`
+        headerMeta: `${members.length.toLocaleString('en-US')} members`,
+        rootTitle: 'CC Members'
     });
     fetchCommitteeInfoPayload()
         .then(payload => {

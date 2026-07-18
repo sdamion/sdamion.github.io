@@ -284,6 +284,7 @@ function openPoolDelegatorsOverlay() {
         closeLabel: 'Close pool delegators',
         closeOverlay: closePoolDelegatorsOverlay,
         returnFocus: document.getElementById('pool-delegators-card'),
+        rootTitle: 'Delegators',
         bodyNode: createPoolDelegatorsList()
     });
 }
@@ -317,6 +318,7 @@ function openMithrilSignersOverlay() {
         closeLabel: 'Close active Mithril signers',
         closeOverlay: closeMithrilSignersOverlay,
         returnFocus: document.getElementById('pool-mithril-card'),
+        rootTitle: 'Mithril',
         bodyNode: createMithrilSignersList()
     });
 }
@@ -350,6 +352,7 @@ function openStarchPoolsOverlay() {
         closeLabel: 'Close other Starch pools',
         closeOverlay: closeStarchPoolsOverlay,
         returnFocus: document.getElementById('pool-starch-card'),
+        rootTitle: 'Starch Pool',
         bodyNode: createStarchPoolsList()
     });
 }
@@ -358,7 +361,7 @@ function closeStarchPoolsOverlay(restoreFocus = true) {
     closePoolMenuOverlay('pool-starch-overlay', restoreFocus);
 }
 
-function createPoolMenuOverlay({ id, titleId, titleText, headerMeta, closeLabel, closeOverlay, returnFocus, bodyNode }) {
+function createPoolMenuOverlay({ id, titleId, titleText, headerMeta, closeLabel, closeOverlay, returnFocus, rootTitle, bodyNode }) {
     const overlay = document.createElement('div');
     overlay.id = id;
     overlay.className = 'governance-overlay governance-menu-overlay governance-drep-overlay';
@@ -397,8 +400,19 @@ function createPoolMenuOverlay({ id, titleId, titleText, headerMeta, closeLabel,
     close.setAttribute('aria-label', closeLabel);
     close.addEventListener('click', closeOverlay);
 
+    const back = document.createElement('button');
+    back.className = 'governance-back-to-root';
+    back.type = 'button';
+    back.textContent = `Back to ${rootTitle || titleText}`;
+    back.setAttribute('aria-label', `Back to ${rootTitle || titleText}`);
+    back.addEventListener('click', closeOverlay);
+
+    const headerActions = document.createElement('div');
+    headerActions.className = 'overlay-dialog-header-actions';
+    headerActions.append(back, close);
+
     headerCopy.append(title, meta);
-    header.append(headerCopy, close);
+    header.append(headerCopy, headerActions);
 
     const body = document.createElement('div');
     body.className = 'overlay-dialog-body';

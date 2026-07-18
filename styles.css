@@ -1915,6 +1915,13 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     gap: 4px;
 }
 
+.overlay-dialog-header-actions {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 8px;
+}
+
 .governance-action-header-context {
     display: flex;
     width: 100%;
@@ -1959,7 +1966,8 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     text-align: left;
 }
 
-.governance-close {
+.governance-close,
+.governance-back-to-root {
     position: static;
     flex: 0 0 auto;
     min-height: 38px;
@@ -1968,6 +1976,11 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     border-radius: 8px;
     background: var(--overlay-surface-strong);
     color: var(--text);
+}
+
+.governance-back-to-root {
+    color: var(--accent-strong);
+    font-weight: 700;
 }
 
 .wallet-dialog-header {
@@ -1993,6 +2006,18 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
         margin: 0;
         padding: 12px 14px;
         gap: 10px;
+    }
+
+    .overlay-dialog-header-actions {
+        align-self: flex-start;
+    }
+
+    .governance-back-to-root {
+        max-width: 150px;
+        min-height: 34px;
+        padding: 0 10px;
+        font-size: 0.72rem;
+        line-height: 1.15;
     }
 
     .governance-dialog .overlay-dialog-body {
