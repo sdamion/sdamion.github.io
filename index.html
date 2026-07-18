@@ -47,7 +47,7 @@
 
     <!-- Preload Logo -->
     <link rel="preload" href="tdsp_logo.webp" as="image">
-    <link rel="stylesheet" href="styles.css?v=20260717-relay-icon">
+    <link rel="stylesheet" href="styles.css?v=20260718-enacted-treasury-withdrawals">
 
     <script src="index.js?v=20260717-starch-pools" defer></script>
 </head>
@@ -151,14 +151,18 @@
                         <strong id="pool-mithril-status" class="pool-status-value">...</strong>
                         <span class="pool-provider-label"><img class="pool-provider-icon pool-provider-icon--monochrome" src="mithril-logo.svg" alt="">Mithril</span>
                     </div>
-                    <div id="pool-icebreaker-card" aria-live="polite">
+                    <a id="pool-icebreaker-card" class="pool-summary-link governance-menu-card" href="https://blog.blockfrost.io/icebreakers/" target="_blank" rel="noopener noreferrer" aria-label="Open Blockfrost Icebreakers">
                         <strong id="pool-icebreaker-status" class="pool-status-value">...</strong>
                         <span class="pool-provider-label"><img class="pool-provider-icon" src="Icebreaker_logo.webp" alt="">Icebreaker 53</span>
-                    </div>
+                    </a>
                     <div id="pool-starch-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show other Starch pools">
                         <strong id="pool-starch-status" class="pool-status-value">...</strong>
                         <span class="pool-provider-label"><img class="pool-provider-icon" src="starchCompanyLogo.webp" alt="">Starch Pool</span>
                     </div>
+                    <a id="pool-realfi-card" class="pool-summary-link governance-menu-card" href="https://realfi.co/" target="_blank" rel="noopener noreferrer" aria-label="Open Realfi SPO">
+                        <strong class="pool-status-value">Active</strong>
+                        <span class="pool-provider-label"><img class="pool-provider-icon" src="realfi-logo.svg" alt="">Realfi SPO</span>
+                    </a>
                 </div>
                 <div class="pool-relays" id="pool-relays">
                     <p class="small-text">Loading relay status...</p>
@@ -211,7 +215,6 @@
             <div class="section-inner">
                 <p class="eyebrow">Cardano governance</p>
                 <h2>Governance Actions</h2>
-                <p>Grouped by Treasury Withdrawals and Info Actions.</p>
                 <div class="governance-budget-bar">
                     <span id="gov-budget-limit"></span>
                     <span id="gov-budget-used"></span>
@@ -220,6 +223,11 @@
                 </div>
 
                 <div class="governance-summary" id="governance-summary">
+                    <div id="gov-treasury-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show Cardano treasury data">
+                        <strong id="gov-treasury-amount">-- ADA</strong>
+                        <span>Cardano Treasury</span>
+                        <span class="governance-summary-subvalue" id="gov-treasury-epoch">Epoch --</span>
+                    </div>
                     <div id="gov-committee-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show Constitutional Committee members">
                         <strong id="gov-committee-count">0</strong>
                         <span>CC Members</span>
@@ -282,7 +290,7 @@
 
     <script src="chart.js"></script>
     <script src="starch.js?v=20260715-backend-cache" defer></script>
-    <script src="governance.js?v=20260717-spo-no-name" defer></script>
+    <script src="governance.js?v=20260718-enacted-treasury-withdrawals" defer></script>
     <script src="stake.js?v=20260717-backend-api-only" defer></script>
 </body>
 </html>
