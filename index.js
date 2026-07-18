@@ -362,7 +362,7 @@ function createPoolMenuOverlay({ id, titleId, titleText, headerMeta, closeLabel,
     const overlay = document.createElement('div');
     overlay.id = id;
     overlay.className = 'governance-overlay governance-menu-overlay governance-drep-overlay';
-    overlay.style.zIndex = String(3000 + ((document.querySelectorAll('.governance-menu-overlay').length + 1) * 100));
+    overlay.style.zIndex = String(getNextPoolOverlayZIndex());
     overlay.governanceReturnFocus = returnFocus;
     overlay.governanceCloseOverlay = closeOverlay;
     overlay.addEventListener('click', event => {
@@ -407,13 +407,28 @@ function createPoolMenuOverlay({ id, titleId, titleText, headerMeta, closeLabel,
     dialog.append(header, body);
     overlay.appendChild(dialog);
     document.body.appendChild(overlay);
+    if (typeof syncGovernanceMenuOverlayAccessibility === 'function') {
+        syncGovernanceMenuOverlayAccessibility();
+    }
     close.focus();
+}
+
+function getNextPoolOverlayZIndex() {
+    const currentHighest = Array.from(document.querySelectorAll('.governance-menu-overlay'))
+        .reduce((highest, overlay) => {
+            const zIndex = Number.parseInt(getComputedStyle(overlay).zIndex, 10);
+            return Number.isFinite(zIndex) ? Math.max(highest, zIndex) : highest;
+        }, 3000);
+    return currentHighest + 100;
 }
 
 function closePoolMenuOverlay(id, restoreFocus = true) {
     const overlay = document.getElementById(id);
     const returnFocus = overlay?.governanceReturnFocus;
     overlay?.remove();
+    if (typeof syncGovernanceMenuOverlayAccessibility === 'function') {
+        syncGovernanceMenuOverlayAccessibility();
+    }
     if (restoreFocus && returnFocus?.isConnected) returnFocus.focus();
 }
 
