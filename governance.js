@@ -1954,7 +1954,15 @@ async function loadProposalDetails(proposal) {
         const request = fetchJson(getProposalDetailApiUrl(proposalId))
             .then(payload => {
                 const rawProposal = payload?.proposal || payload;
-                if (!rawProposal || getProposalId(rawProposal) !== proposalId) {
+                const responseProposalId = rawProposal?.proposal_id
+                    || rawProposal?.id
+                    || rawProposal?.gov_action_id
+                    || rawProposal?.action_id
+                    || '';
+                if (
+                    !rawProposal
+                    || String(responseProposalId).toLowerCase() !== String(proposalId).toLowerCase()
+                ) {
                     throw new Error('Proposal detail response is invalid');
                 }
                 const normalized = normalizeGovernanceProposal(
