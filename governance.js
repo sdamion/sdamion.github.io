@@ -21,6 +21,23 @@ const TREASURY_NET_CHANGE_LIMIT_ADA = 350_000_000;
 const TREASURY_NET_CHANGE_LIMIT_LOVELACE = TREASURY_NET_CHANGE_LIMIT_ADA * 1_000_000;
 const TREASURY_BUDGET_YEAR_START_EPOCH = 604;
 const TREASURY_BUDGET_YEAR_EPOCHS = 73;
+const TREASURY_RECIPIENT_ADMINISTRATORS = Object.freeze({
+    stake17xzc8pt7fgf0lc0x7eq6z7z6puhsxmzktna7dluahrj6g6ghh5qjr: 'Intersect Treasury Reserve Smart Contract',
+    stake17x3n2krrld46qms4f4hzqqxzjgaf59u3fecvl6eh8scmaacjqmvjw: 'Harmonic Laboratories',
+    stake1790c5a0h3qwkxquehkdg746ccaa3hdfzgp7ckx6wzdpp7lq6ysdg0: 'Blink Labs',
+    stake17x2x5cv4nlwptph8kxvnyw93pp2sp54dk54dpfp2ax7fkggaj3ty4: 'Stablecoin DeFi Liquidity Interim Committee',
+    stake1u99m2kxsvdwlulg4l6qwjrpvayzrzwk0fugnvu3uklfqtws257z0g: 'Orion Fund / Arouet Holdings',
+    stake17xnev6rc25xwz8kg4qae8lq6dcg964z00py5gqgxd387pncv8fq8g: 'Amaru - Matthias Benkort',
+    stake17xd74ehu0l4d5mx0sfz4fd0r5jvw4v2jqkkfyjxrlwvnkhccrqj9l: 'Amaru - Arnaud Bailly',
+    stake17xrh74lqhhxgzelfsn0wq5kcm4e5dmluprlcpg5mq30p5yqhgk7k8: 'Amaru - Pi Lanningham',
+    stake17xrqac8khkprtpp2jz90mpkujjwye8dt6a9sjewrvjudx9ggg4u5y: 'Amaru - Damien Czapla',
+    stake178jztxzwynajcp4dva5gy9udmmnwg7ueffvf4c7hpjqhc7gtj5nzz: 'Amaru 2025 contingency multisig',
+    stake1790mk0jjjhppr36ethwj8kewpgyrxyc7q6qucl4gqru96dqh6k4q9: 'Amaru core development - Matthias Benkort',
+    stake179r8gmryz5wrwvlxm6g4s4u9ssdz656z95hwjnk9rgamedqpl4qd7: 'Amaru operations - Damien Czapla',
+    stake17yezq8wpaqnssdjvd3p220uf7e6nzjae44w6yu625y965rg8en39a: 'Amaru network testing - Paolo Veronelli',
+    stake178a5gxtm0ynzw80f80rsps3a5dwem43swsekpnctd0wuwxs0hc220: 'Amaru middleware - Pi Lanningham',
+    stake178ndhlcfy30t38z0tql64fpg8ply93r37xrgvdagfpsz5nsttyvhp: 'Amaru 2026 contingency multisig'
+});
 
 let governanceRefreshTimer = null;
 let epochCountdownTimer = null;
@@ -39,6 +56,7 @@ let drepStatsPromise = null;
 let committeeInfoPromise = null;
 let treasuryPromise = null;
 let treasuryState = null;
+let treasuryHistoryChart = null;
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initGovernance);
@@ -72,7 +90,15 @@ async function loadTreasuryData() {
     if (!Number.isFinite(treasuryLovelace)) throw new Error('Treasury amount is unavailable');
 
     setText('gov-treasury-amount', formatCompactAdaFromLovelace(treasuryLovelace, { fixedFractionDigits: 2 }));
-    setText('gov-treasury-epoch', `Epoch ${getTreasuryEpoch(payload) ?? '--'}`);
+    const latestIncome = getTreasuryIncomeLovelace(payload);
+    const latestEpoch = getTreasuryEpoch(payload);
+    setText('gov-treasury-epoch', `Treasury Epoch ${latestEpoch ?? '--'}`);
+    setText(
+        'gov-treasury-income',
+        Number.isFinite(latestIncome)
+            ? `Income ${formatCompactAdaFromLovelace(latestIncome, { fixedFractionDigits: 2 })}`
+            : 'Income -- ADA'
+    );
 }
 
 function fetchTreasuryPayload() {
@@ -103,7 +129,7 @@ async function openTreasuryOverlay() {
         closeLabel: 'Close Cardano treasury',
         closeOverlay: closeTreasuryOverlay,
         bodyNodes: [content],
-        headerMeta: treasuryState ? `Epoch ${getTreasuryEpoch(treasuryState) ?? '--'}` : 'Loading...'
+        headerMeta: treasuryState ? getTreasuryHeaderAmount(treasuryState) : 'Loading...'
     });
 
     try {
@@ -113,7 +139,7 @@ async function openTreasuryOverlay() {
         renderTreasuryDetails(content, payload);
         updateGovernanceMenuHeaderMeta(
             'governance-treasury-overlay',
-            `Epoch ${getTreasuryEpoch(payload) ?? '--'}`
+            getTreasuryHeaderAmount(payload)
         );
     } catch {
         if (!content.isConnected) return;
@@ -126,23 +152,22 @@ async function openTreasuryOverlay() {
 }
 
 function closeTreasuryOverlay() {
+    closeTreasuryEpochActionsOverlay();
+    if (treasuryHistoryChart) {
+        treasuryHistoryChart.destroy();
+        treasuryHistoryChart = null;
+    }
     removeGovernanceMenuOverlay('governance-treasury-overlay');
 }
 
 function renderTreasuryDetails(container, payload) {
     container.textContent = '';
-    const totals = payload?.totals || payload?.latest || payload || {};
-    const treasuryLovelace = getTreasuryLovelace(payload);
-
-    addDetailRow(container, 'Cardano Treasury', formatFullAdaFromLovelace(treasuryLovelace));
-    addDetailRow(container, 'Epoch', getTreasuryEpoch(payload));
-    addDetailRow(container, 'Circulating supply', formatFullAdaFromLovelace(totals.circulation));
-    addDetailRow(container, 'Reserves', formatFullAdaFromLovelace(totals.reserves));
-    addDetailRow(container, 'Rewards', formatFullAdaFromLovelace(totals.reward));
-    addDetailRow(container, 'Total supply', formatFullAdaFromLovelace(totals.supply));
     addDetailRow(container, 'Updated', formatTreasuryTimestamp(payload?.updated_at));
 
     const treasuryWithdrawals = getTreasuryWithdrawals(payload);
+    const chart = createTreasuryHistoryChart(payload, treasuryWithdrawals);
+    if (chart) container.appendChild(chart);
+
     const heading = document.createElement('strong');
     heading.textContent = `Treasury withdrawals (${treasuryWithdrawals.length.toLocaleString('en-US')})`;
     container.appendChild(heading);
@@ -163,9 +188,298 @@ function renderTreasuryDetails(container, payload) {
     container.appendChild(list);
 }
 
+function createTreasuryHistoryChart(payload, withdrawals) {
+    if (typeof Chart !== 'function' || !withdrawals.length) return null;
+
+    const withdrawalsByEpoch = new Map();
+    withdrawals.forEach(withdrawal => {
+        const epoch = Number(withdrawal?.enacted_epoch);
+        const amount = Number(withdrawal?.amount_lovelace);
+        if (!Number.isFinite(epoch) || !Number.isFinite(amount) || amount <= 0) return;
+        withdrawalsByEpoch.set(epoch, (withdrawalsByEpoch.get(epoch) || 0) + amount);
+    });
+
+    const withdrawalEpochs = [...withdrawalsByEpoch.keys()].sort((left, right) => left - right);
+    const currentTreasury = getTreasuryLovelace(payload);
+    if (!withdrawalEpochs.length || !Number.isFinite(currentTreasury)) return null;
+
+    const treasuryByEpoch = new Map(
+        (Array.isArray(payload?.treasury_history) ? payload.treasury_history : [])
+            .map(item => [Number(item?.epoch_no), Number(item?.treasury)])
+            .filter(([epoch, treasury]) => Number.isFinite(epoch) && Number.isFinite(treasury))
+    );
+    const historyEpochs = [...treasuryByEpoch.keys()];
+    const payloadEpoch = getTreasuryEpoch(payload);
+    const lastEpoch = Math.max(
+        withdrawalEpochs[withdrawalEpochs.length - 1],
+        Number.isFinite(payloadEpoch) ? payloadEpoch : withdrawalEpochs[0],
+        historyEpochs.length ? Math.max(...historyEpochs) : withdrawalEpochs[0]
+    );
+    const firstEpoch = Math.max(withdrawalEpochs[0] - 1, lastEpoch - 49);
+    const epochs = Array.from(
+        { length: lastEpoch - firstEpoch + 1 },
+        (_, index) => firstEpoch + index
+    );
+    const withdrawalAmounts = epochs.map(epoch => withdrawalsByEpoch.get(epoch) || 0);
+    const treasuryIncomeAmounts = epochs.map((epoch, index) => {
+        const epochTreasury = treasuryByEpoch.get(epoch);
+        const previousTreasury = treasuryByEpoch.get(epoch - 1);
+        if (!Number.isFinite(epochTreasury) || !Number.isFinite(previousTreasury)) return 0;
+        return Math.max(0, epochTreasury - previousTreasury + withdrawalAmounts[index]);
+    });
+    let treasuryValues = epochs.map(epoch => treasuryByEpoch.get(epoch) ?? null);
+    if (!treasuryValues.some(Number.isFinite)) {
+        let reconstructedTreasury = currentTreasury
+            + withdrawalAmounts.reduce((sum, amount) => sum + amount, 0);
+        treasuryValues = withdrawalAmounts.map((amount, index) => {
+            if (index > 0) reconstructedTreasury -= amount;
+            return reconstructedTreasury;
+        });
+    }
+
+    const section = document.createElement('section');
+    section.className = 'governance-treasury-history-chart governance-menu-card';
+
+    const title = document.createElement('strong');
+    title.textContent = 'Treasury withdrawal history';
+    section.appendChild(title);
+
+    const chartFrame = document.createElement('div');
+    chartFrame.className = 'governance-treasury-history-frame';
+    const canvas = document.createElement('canvas');
+    canvas.setAttribute('aria-label', 'Treasury income, withdrawals and treasury value per epoch');
+    canvas.setAttribute('role', 'img');
+    canvas.tabIndex = 0;
+    chartFrame.appendChild(canvas);
+    section.appendChild(chartFrame);
+
+    const styles = getComputedStyle(document.documentElement);
+    const textColor = styles.getPropertyValue('--text').trim() || '#f8fafc';
+    const mutedColor = styles.getPropertyValue('--muted').trim() || '#94a3b8';
+    const lineColor = styles.getPropertyValue('--line').trim() || 'rgba(148, 163, 184, 0.25)';
+    const chartContext = canvas.getContext('2d');
+    const withdrawalGradient = chartContext.createLinearGradient(0, 0, 0, 340);
+    withdrawalGradient.addColorStop(0, 'rgba(251, 113, 133, 0.94)');
+    withdrawalGradient.addColorStop(1, 'rgba(251, 113, 133, 0.34)');
+    const incomeGradient = chartContext.createLinearGradient(0, 0, 0, 340);
+    incomeGradient.addColorStop(0, 'rgba(94, 234, 212, 0.94)');
+    incomeGradient.addColorStop(1, 'rgba(20, 184, 166, 0.3)');
+
+    treasuryHistoryChart = new Chart(canvas, {
+        data: {
+            labels: epochs.map(epoch => `Epoch ${epoch}`),
+            datasets: [
+                {
+                    type: 'bar',
+                    label: 'Withdrawals',
+                    data: withdrawalAmounts,
+                    yAxisID: 'withdrawals',
+                    backgroundColor: withdrawalGradient,
+                    borderColor: '#fb7185',
+                    borderWidth: 0,
+                    borderRadius: 6,
+                    borderSkipped: false,
+                    categoryPercentage: 0.72,
+                    barPercentage: 0.88,
+                    order: 2,
+                    stack: 'treasuryFlows'
+                },
+                {
+                    type: 'bar',
+                    label: 'Treasury income',
+                    data: treasuryIncomeAmounts,
+                    yAxisID: 'withdrawals',
+                    backgroundColor: incomeGradient,
+                    borderColor: '#5eead4',
+                    borderWidth: 0,
+                    borderRadius: 6,
+                    borderSkipped: false,
+                    categoryPercentage: 0.72,
+                    barPercentage: 0.88,
+                    order: 2,
+                    stack: 'treasuryFlows'
+                },
+                {
+                    type: 'line',
+                    label: 'Treasury value',
+                    data: treasuryValues,
+                    yAxisID: 'treasury',
+                    borderColor: '#f6c667',
+                    backgroundColor: '#f6c667',
+                    borderWidth: 2.5,
+                    pointRadius: 0,
+                    pointHitRadius: 12,
+                    pointHoverRadius: 5,
+                    pointHoverBackgroundColor: '#f6c667',
+                    pointHoverBorderColor: textColor,
+                    pointHoverBorderWidth: 2,
+                    tension: 0.36,
+                    cubicInterpolationMode: 'monotone',
+                    order: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: {
+                duration: 650,
+                easing: 'easeOutQuart'
+            },
+            interaction: { mode: 'index', intersect: false },
+            onClick: (event, elements) => {
+                const withdrawalBar = elements.find(element => (
+                    element.datasetIndex === 0
+                    && (withdrawalsByEpoch.get(epochs[element.index]) || 0) > 0
+                ));
+                if (!withdrawalBar) return;
+                const epoch = epochs[withdrawalBar.index];
+                openTreasuryEpochActionsOverlay(epoch, withdrawals, canvas);
+            },
+            onHover: (event, elements) => {
+                const target = event?.native?.target;
+                if (!target?.style) return;
+                target.style.cursor = elements.some(element => (
+                    element.datasetIndex === 0
+                    && (withdrawalsByEpoch.get(epochs[element.index]) || 0) > 0
+                ))
+                    ? 'pointer'
+                    : 'default';
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    align: 'start',
+                    labels: {
+                        color: textColor,
+                        usePointStyle: true,
+                        pointStyle: 'rectRounded',
+                        boxWidth: 8,
+                        boxHeight: 8,
+                        padding: 18,
+                        font: { family: 'Poppins', size: 12, weight: '600' }
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(17, 24, 22, 0.96)',
+                    titleColor: '#f4f7f4',
+                    bodyColor: '#f4f7f4',
+                    borderColor: 'rgba(255, 255, 255, 0.14)',
+                    borderWidth: 1,
+                    cornerRadius: 8,
+                    padding: 12,
+                    displayColors: true,
+                    usePointStyle: true,
+                    callbacks: {
+                        label: context => `${context.dataset.label}: ${formatWholeAdaFromLovelace(context.raw)}`
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: {
+                        color: mutedColor,
+                        maxRotation: 0,
+                        minRotation: 0,
+                        autoSkip: true,
+                        maxTicksLimit: 10,
+                        font: { family: 'Poppins', size: 11 }
+                    },
+                    grid: { display: false },
+                    border: { display: false },
+                    stacked: true
+                },
+                withdrawals: {
+                    position: 'left',
+                    beginAtZero: true,
+                    ticks: {
+                        color: '#fb7185',
+                        callback: value => formatCompactAdaFromLovelace(value),
+                        font: { family: 'Poppins', size: 11 }
+                    },
+                    grid: { color: lineColor, borderDash: [4, 5] },
+                    border: { display: false },
+                    stacked: true
+                },
+                treasury: {
+                    position: 'right',
+                    ticks: {
+                        color: '#f6c667',
+                        callback: value => formatCompactAdaFromLovelace(value),
+                        font: { family: 'Poppins', size: 11 }
+                    },
+                    grid: { drawOnChartArea: false },
+                    border: { display: false }
+                }
+            }
+        }
+    });
+
+    return section;
+}
+
+function openTreasuryEpochActionsOverlay(epoch, withdrawals, returnFocus) {
+    closeTreasuryEpochActionsOverlay();
+
+    const epochWithdrawals = withdrawals.filter(withdrawal => Number(withdrawal?.enacted_epoch) === epoch);
+    const actionIds = [...new Set(epochWithdrawals.map(withdrawal => withdrawal?.action_id).filter(Boolean))];
+    const dashboardProposals = getGovernanceProposalsFromDashboardPayload(governanceState || {});
+    const proposalsById = new Map(dashboardProposals.map(proposal => [proposal.proposal_id, proposal]));
+    const withdrawalsByActionId = new Map();
+    epochWithdrawals.forEach(withdrawal => {
+        if (withdrawal?.action_id && !withdrawalsByActionId.has(withdrawal.action_id)) {
+            withdrawalsByActionId.set(withdrawal.action_id, withdrawal);
+        }
+    });
+
+    const proposals = actionIds.map(actionId => getTreasuryGovernanceProposal(
+        withdrawalsByActionId.get(actionId),
+        epoch,
+        proposalsById
+    ));
+
+    const panel = document.createElement('div');
+    panel.className = 'governance-list governance-action-group-list';
+    renderGovernanceGroup(panel, proposals, 'No governance actions found for this epoch.');
+
+    createGovernanceMenuOverlay({
+        id: 'governance-treasury-actions-overlay',
+        titleId: 'governance-treasury-actions-title',
+        titleText: `Treasury withdrawals - Epoch ${epoch}`,
+        closeLabel: `Close treasury withdrawals for epoch ${epoch}`,
+        closeOverlay: closeTreasuryEpochActionsOverlay,
+        bodyNodes: [panel],
+        headerMeta: `${proposals.length.toLocaleString('en-US')} actions`,
+        overlayClass: 'governance-action-detail-overlay',
+        returnFocus
+    });
+}
+
+function closeTreasuryEpochActionsOverlay() {
+    removeGovernanceMenuOverlay('governance-treasury-actions-overlay');
+}
+
+function getTreasuryGovernanceProposal(withdrawal, epoch = withdrawal?.enacted_epoch, proposalsById = null) {
+    const actionId = withdrawal?.action_id;
+    if (!actionId) return null;
+
+    const proposal = proposalsById?.get(actionId)
+        || getGovernanceProposalsFromDashboardPayload(governanceState || {})
+            .find(item => item.proposal_id === actionId);
+    if (proposal) return proposal;
+
+    return normalizeGovernanceProposal({
+        proposal_id: actionId,
+        proposal_type: 'TreasuryWithdrawals',
+        enacted_epoch: Number(epoch) || null,
+        meta_json: { body: { title: withdrawal?.title || 'Conway treasury withdrawal' } }
+    });
+}
+
 function getTreasuryWithdrawals(payload) {
     return (Array.isArray(payload?.treasury_withdrawals) ? payload.treasury_withdrawals : [])
         .map(withdrawal => ({
+            action_id: withdrawal?.action_id || null,
             title: withdrawal?.title || 'Conway treasury withdrawal',
             enacted_epoch: Number(withdrawal?.enacted_epoch) || null,
             amount_lovelace: String(withdrawal?.amount_lovelace || '0'),
@@ -175,8 +489,17 @@ function getTreasuryWithdrawals(payload) {
 }
 
 function createTreasuryWithdrawalCard(withdrawal) {
-    const card = document.createElement('div');
+    const proposal = getTreasuryGovernanceProposal(withdrawal);
+    const card = document.createElement(proposal ? 'button' : 'div');
     card.className = 'governance-card governance-menu-card governance-treasury-withdrawal-card';
+    if (proposal) {
+        card.type = 'button';
+        card.classList.add('governance-treasury-withdrawal-card--clickable');
+        card.addEventListener('click', event => {
+            event.stopPropagation();
+            openGovernanceOverlay(proposal, { returnFocus: event.currentTarget });
+        });
+    }
 
     const title = document.createElement('strong');
     title.className = 'governance-title';
@@ -195,6 +518,14 @@ function createTreasuryWithdrawalCard(withdrawal) {
 
     const address = String(withdrawal?.stake_address || '');
     if (address) {
+        const administrator = TREASURY_RECIPIENT_ADMINISTRATORS[address];
+        if (administrator) {
+            const administratorLine = document.createElement('span');
+            administratorLine.className = 'governance-card-detail';
+            administratorLine.textContent = `Administrator: ${administrator}`;
+            card.appendChild(administratorLine);
+        }
+
         const addressLine = document.createElement('span');
         addressLine.className = 'governance-card-detail governance-drep-id-line';
 
@@ -222,6 +553,40 @@ function getTreasuryEpoch(payload) {
     const value = payload?.epoch_no ?? payload?.totals?.epoch_no ?? payload?.latest?.epoch_no;
     const numericValue = Number(value);
     return Number.isFinite(numericValue) ? numericValue : null;
+}
+
+function getTreasuryIncomeLovelace(payload, epoch = getTreasuryEpoch(payload)) {
+    if (!Number.isFinite(epoch)) return NaN;
+
+    const treasuryByEpoch = new Map(
+        (Array.isArray(payload?.treasury_history) ? payload.treasury_history : [])
+            .map(item => [Number(item?.epoch_no), Number(item?.treasury)])
+            .filter(([historyEpoch, treasury]) => Number.isFinite(historyEpoch) && Number.isFinite(treasury))
+    );
+    const currentTreasury = treasuryByEpoch.get(epoch);
+    const previousTreasury = treasuryByEpoch.get(epoch - 1);
+    if (!Number.isFinite(currentTreasury) || !Number.isFinite(previousTreasury)) return NaN;
+
+    const withdrawals = getTreasuryWithdrawals(payload)
+        .filter(withdrawal => withdrawal.enacted_epoch === epoch)
+        .reduce((sum, withdrawal) => sum + Number(withdrawal.amount_lovelace), 0);
+    return Math.max(0, currentTreasury - previousTreasury + withdrawals);
+}
+
+function getTreasuryHeaderAmount(payload) {
+    const treasuryLovelace = getTreasuryLovelace(payload);
+    return Number.isFinite(treasuryLovelace)
+        ? formatWholeAdaFromLovelace(treasuryLovelace)
+        : '-- ADA';
+}
+
+function formatWholeAdaFromLovelace(value) {
+    const lovelace = Number(value);
+    if (!Number.isFinite(lovelace)) return '-- ADA';
+    return `${(lovelace / 1_000_000).toLocaleString('en-US', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+    })} ADA`;
 }
 
 function formatFullAdaFromLovelace(value) {
@@ -951,7 +1316,10 @@ function createGovernanceCard(proposal, options = {}) {
     const handleClick = options.onClick || (event => {
         openGovernanceOverlay(proposal, { returnFocus: event.currentTarget });
     });
-    card.addEventListener('click', handleClick);
+    card.addEventListener('click', event => {
+        event.stopPropagation();
+        handleClick(event);
+    });
 
     const title = document.createElement('span');
     title.className = 'governance-title';
@@ -2009,13 +2377,7 @@ function createDrepVoteChartSection(breakdown, drepVotes) {
 }
 
 function createVotePieChart(breakdown) {
-    const total = breakdown.reduce((sum, item) => sum + item.value, 0);
-    const usesVoteCounts = breakdown.some(item => item.unit === 'votes');
     return createUniversalPieChart(breakdown, {
-        centerLabel: usesVoteCounts ? 'Votes counted' : 'Total voting power',
-        centerValue: usesVoteCounts
-            ? formatInteger(total)
-            : formatCompactAdaFromLovelace(total, { fixedFractionDigits: 2 }),
         labelFormatter: segment => formatPercentage((segment.end - segment.start) / 360 * 100)
     });
 }
@@ -2288,8 +2650,6 @@ function createDrepDirectoryStatusChart(dreps) {
     layout.className = 'governance-vote-chart-layout';
 
     const chart = createUniversalPieChart(groups, {
-        centerLabel: 'Total voting power',
-        centerValue: formatCompactAdaFromLovelace(totalPower, { fixedFractionDigits: 2 }),
         labelFormatter: segment => formatCompactAdaFromLovelace(segment.value)
     });
 
@@ -3245,7 +3605,7 @@ function renderConstitutionalCommitteeQuorumChart(container, payload) {
 
 function renderConstitutionalCommitteeVoteTotalsChart(container, stats, options = {}) {
     container.textContent = '';
-    const { voted, notVoted, total, votedPct, notVotedPct } = stats;
+    const { voted, notVoted, votedPct, notVotedPct } = stats;
     const isLoading = options.isLoading === true;
 
     const chart = document.createElement('section');
@@ -3262,8 +3622,6 @@ function renderConstitutionalCommitteeVoteTotalsChart(container, stats, options 
         { key: 'not-voted', label: 'Not Voted', color: '#fb7185', value: notVoted }
     ], {
         isLoading,
-        centerLabel: isLoading ? options.loadingLabel || 'CC vote status' : options.totalLabel || `${voted} of ${total} actions`,
-        centerValue: isLoading ? 'Loading' : `${formatPercentage(votedPct)} voted`,
         showLabels: !isLoading,
         labelFormatter: segment => formatPercentage((segment.end - segment.start) / 360 * 100)
     });
@@ -3857,13 +4215,6 @@ function getPieChartSegments(items) {
     });
 }
 
-function buildPieChartGradient(items) {
-    const total = items.reduce((sum, item) => sum + item.value, 0);
-    if (!total) return 'conic-gradient(#334155 0deg 360deg)';
-
-    return `conic-gradient(${items.map(item => `${item.color} ${item.start}deg ${item.end}deg`).join(', ')})`;
-}
-
 function getDrepVotes(payload) {
     const dreps = payload?.votes?.dreps;
     if (Array.isArray(dreps)) return dreps;
@@ -3960,21 +4311,7 @@ function createUniversalPieChart(items, options = {}) {
     const chart = document.createElement('div');
     chart.className = 'governance-pie-chart';
     const segments = getPieChartSegments(items);
-    chart.style.background = options.isLoading === true
-        ? 'var(--line)'
-        : buildPieChartGradient(segments);
-
-    const center = document.createElement('div');
-    center.className = 'governance-pie-chart-center';
-
-    const centerLabel = document.createElement('span');
-    centerLabel.textContent = options.centerLabel || '';
-
-    const centerValue = document.createElement('strong');
-    centerValue.textContent = options.centerValue || '';
-
-    center.append(centerLabel, centerValue);
-    chart.appendChild(center);
+    chart.appendChild(createPieChartSvg(segments, chart, options));
 
     if (options.showLabels !== false) {
         segments.forEach(segment => {
@@ -3984,6 +4321,88 @@ function createUniversalPieChart(items, options = {}) {
     }
 
     return chart;
+}
+
+function createPieChartSvg(segments, chart, options = {}) {
+    const namespace = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(namespace, 'svg');
+    svg.classList.add('governance-pie-chart-svg');
+    svg.setAttribute('viewBox', '0 0 100 100');
+    svg.setAttribute('role', 'group');
+    svg.setAttribute('aria-label', 'Interactive pie chart');
+
+    const track = document.createElementNS(namespace, 'circle');
+    track.classList.add('governance-pie-chart-track');
+    track.setAttribute('cx', '50');
+    track.setAttribute('cy', '50');
+    track.setAttribute('r', '43');
+    svg.appendChild(track);
+
+    if (options.isLoading === true || !segments.length) return svg;
+
+    const circumference = 2 * Math.PI * 43;
+    segments.forEach((segment, index) => {
+        const span = segment.end - segment.start;
+        const interactiveSegment = createPieChartSector(segment, namespace);
+        interactiveSegment.classList.add('governance-pie-chart-sector');
+        interactiveSegment.style.fill = segment.color;
+        interactiveSegment.setAttribute('tabindex', '0');
+        interactiveSegment.setAttribute('role', 'img');
+        interactiveSegment.setAttribute(
+            'aria-label',
+            `${segment.label || `Segment ${index + 1}`}: ${formatPercentage(span / 360 * 100)}`
+        );
+
+        const arc = document.createElementNS(namespace, 'circle');
+        arc.classList.add('governance-pie-chart-arc');
+        arc.setAttribute('cx', '50');
+        arc.setAttribute('cy', '50');
+        arc.setAttribute('r', '43');
+        arc.setAttribute('transform', 'rotate(-90 50 50)');
+        arc.style.stroke = segment.color;
+        arc.style.color = segment.color;
+        arc.style.strokeDasharray = `${circumference * span / 360} ${circumference}`;
+        arc.style.strokeDashoffset = `${-circumference * segment.start / 360}`;
+
+        const showSegment = () => {
+            chart.classList.add('is-segment-active');
+            interactiveSegment.classList.add('is-active');
+            arc.classList.add('is-active');
+        };
+        const hideSegment = () => {
+            chart.classList.remove('is-segment-active');
+            interactiveSegment.classList.remove('is-active');
+            arc.classList.remove('is-active');
+        };
+        interactiveSegment.addEventListener('mouseenter', showSegment);
+        interactiveSegment.addEventListener('mouseleave', hideSegment);
+        interactiveSegment.addEventListener('focus', showSegment);
+        interactiveSegment.addEventListener('blur', hideSegment);
+
+        svg.append(interactiveSegment, arc);
+    });
+
+    return svg;
+}
+
+function createPieChartSector(segment, namespace) {
+    const span = Math.min(359.999, segment.end - segment.start);
+    const start = getPieChartPoint(segment.start, 47);
+    const end = getPieChartPoint(segment.start + span, 47);
+    const sector = document.createElementNS(namespace, 'path');
+    sector.setAttribute(
+        'd',
+        `M 50 50 L ${start.x} ${start.y} A 47 47 0 ${span > 180 ? 1 : 0} 1 ${end.x} ${end.y} Z`
+    );
+    return sector;
+}
+
+function getPieChartPoint(angle, radius) {
+    const radians = ((angle - 90) * Math.PI) / 180;
+    return {
+        x: 50 + Math.cos(radians) * radius,
+        y: 50 + Math.sin(radians) * radius
+    };
 }
 
 function createPieAmountLabel(segment, formatter = null) {
