@@ -1056,9 +1056,7 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 }
 
 .governance-treasury-history-chart {
-    display: grid;
-    gap: 12px;
-    padding: 16px;
+    margin-bottom: 6px;
 }
 
 .governance-treasury-history-frame {
@@ -1103,6 +1101,11 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     color: var(--muted);
     font-size: 0.9rem;
     font-weight: 600;
+}
+
+.governance-treasury-withdrawal-amount {
+    color: var(--accent-strong);
+    font-weight: 700;
 }
 
 .governance-budget-bar {
@@ -1303,6 +1306,16 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 .governance-vote-chart {
     display: grid;
     gap: 12px;
+}
+
+.governance-chart-panel {
+    width: 100%;
+    min-width: 0;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--overlay-surface-muted);
+    box-sizing: border-box;
 }
 
 .governance-vote-chart-layout {
@@ -1682,10 +1695,6 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 
 .governance-drep-status-chart {
     margin-bottom: 6px;
-    padding: 14px;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    background: var(--overlay-surface-muted);
 }
 
 .governance-drep-member-copy {

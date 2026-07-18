@@ -238,7 +238,7 @@ function createTreasuryHistoryChart(payload, withdrawals) {
     }
 
     const section = document.createElement('section');
-    section.className = 'governance-treasury-history-chart governance-menu-card';
+    section.className = 'governance-vote-chart governance-chart-panel governance-treasury-history-chart';
 
     const title = document.createElement('strong');
     title.textContent = 'Treasury withdrawal history';
@@ -507,7 +507,7 @@ function createTreasuryWithdrawalCard(withdrawal) {
     card.appendChild(title);
 
     const amount = document.createElement('span');
-    amount.className = 'governance-expiration';
+    amount.className = 'governance-card-detail governance-treasury-withdrawal-amount';
     amount.textContent = formatFullAdaFromLovelace(withdrawal?.amount_lovelace);
     card.appendChild(amount);
 
@@ -2641,7 +2641,7 @@ function createDrepDirectoryStatusChart(dreps) {
     const totalPower = groups.reduce((sum, group) => sum + group.value, 0);
 
     const section = document.createElement('section');
-    section.className = 'governance-vote-chart governance-drep-status-chart';
+    section.className = 'governance-vote-chart governance-chart-panel governance-drep-status-chart';
 
     const title = document.createElement('strong');
     title.textContent = 'DRep Status';
@@ -3609,7 +3609,7 @@ function renderConstitutionalCommitteeVoteTotalsChart(container, stats, options 
     const isLoading = options.isLoading === true;
 
     const chart = document.createElement('section');
-    chart.className = 'governance-vote-chart';
+    chart.className = 'governance-vote-chart governance-chart-panel';
 
     const title = document.createElement('strong');
     title.textContent = options.title || 'CC vote overview';
