@@ -396,15 +396,17 @@ function createPoolMenuOverlay({ id, titleId, titleText, headerMeta, closeLabel,
     const close = document.createElement('button');
     close.className = 'governance-close';
     close.type = 'button';
-    close.textContent = 'Close';
+    close.textContent = '<';
     close.setAttribute('aria-label', closeLabel);
+    close.title = closeLabel;
     close.addEventListener('click', closeOverlay);
 
     const back = document.createElement('button');
     back.className = 'governance-back-to-root';
     back.type = 'button';
-    back.textContent = `Back to ${rootTitle || titleText}`;
+    back.textContent = '<<';
     back.setAttribute('aria-label', `Back to ${rootTitle || titleText}`);
+    back.title = `Back to ${rootTitle || titleText}`;
     back.addEventListener('click', closeOverlay);
 
     const headerActions = document.createElement('div');

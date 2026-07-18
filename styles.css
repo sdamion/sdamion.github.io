@@ -1979,6 +1979,7 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 }
 
 .governance-back-to-root {
+    min-width: 42px;
     color: var(--accent-strong);
     font-weight: 700;
 }
@@ -2013,9 +2014,9 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     }
 
     .governance-back-to-root {
-        max-width: 150px;
+        width: 42px;
         min-height: 34px;
-        padding: 0 10px;
+        padding: 0 8px;
         font-size: 0.72rem;
         line-height: 1.15;
     }

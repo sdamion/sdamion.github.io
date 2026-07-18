@@ -1559,14 +1559,16 @@ function createGovernanceMenuOverlay(options) {
     close.className = 'governance-close';
     close.type = 'button';
     close.setAttribute('aria-label', closeLabel);
-    close.textContent = 'Close';
+    close.title = closeLabel;
+    close.textContent = '<';
     close.addEventListener('click', closeOverlay);
 
     const back = document.createElement('button');
     back.className = 'governance-back-to-root';
     back.type = 'button';
-    back.textContent = `Back to ${overlay.governanceRootTitle}`;
+    back.textContent = '<<';
     back.setAttribute('aria-label', `Back to ${overlay.governanceRootTitle}`);
+    back.title = `Back to ${overlay.governanceRootTitle}`;
     back.addEventListener('click', () => returnToGovernanceRootOverlay(overlay));
 
     const title = document.createElement(titleTag);
