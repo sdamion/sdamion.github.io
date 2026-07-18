@@ -257,6 +257,9 @@ function createTreasuryHistoryChart(payload, withdrawals) {
     const textColor = styles.getPropertyValue('--text').trim() || '#f8fafc';
     const mutedColor = styles.getPropertyValue('--muted').trim() || '#94a3b8';
     const lineColor = styles.getPropertyValue('--line').trim() || 'rgba(148, 163, 184, 0.25)';
+    const rootFontSize = Number.parseFloat(styles.fontSize) || 16;
+    const legendFontSize = rootFontSize * 0.9;
+    const axisFontSize = rootFontSize * 0.82;
     const chartContext = canvas.getContext('2d');
     const withdrawalGradient = chartContext.createLinearGradient(0, 0, 0, 340);
     withdrawalGradient.addColorStop(0, 'rgba(251, 113, 133, 0.94)');
@@ -357,7 +360,7 @@ function createTreasuryHistoryChart(payload, withdrawals) {
                         boxWidth: 8,
                         boxHeight: 8,
                         padding: 18,
-                        font: { family: 'Poppins', size: 12, weight: '600' }
+                        font: { family: 'Poppins', size: legendFontSize, weight: '600' }
                     }
                 },
                 tooltip: {
@@ -383,7 +386,7 @@ function createTreasuryHistoryChart(payload, withdrawals) {
                         minRotation: 0,
                         autoSkip: true,
                         maxTicksLimit: 10,
-                        font: { family: 'Poppins', size: 11 }
+                        font: { family: 'Poppins', size: axisFontSize }
                     },
                     grid: { display: false },
                     border: { display: false },
@@ -395,7 +398,7 @@ function createTreasuryHistoryChart(payload, withdrawals) {
                     ticks: {
                         color: '#fb7185',
                         callback: value => formatCompactAdaFromLovelace(value),
-                        font: { family: 'Poppins', size: 11 }
+                        font: { family: 'Poppins', size: axisFontSize }
                     },
                     grid: { color: lineColor, borderDash: [4, 5] },
                     border: { display: false },
@@ -406,7 +409,7 @@ function createTreasuryHistoryChart(payload, withdrawals) {
                     ticks: {
                         color: '#f6c667',
                         callback: value => formatCompactAdaFromLovelace(value),
-                        font: { family: 'Poppins', size: 11 }
+                        font: { family: 'Poppins', size: axisFontSize }
                     },
                     grid: { drawOnChartArea: false },
                     border: { display: false }
@@ -531,13 +534,19 @@ function createTreasuryWithdrawalCard(withdrawal) {
 
         const addressText = document.createElement('span');
         addressText.className = 'governance-drep-id';
-        addressText.textContent = address;
+        addressText.textContent = shortenGovernanceAddress(address);
         addressLine.appendChild(addressText);
         addressLine.appendChild(createGovernanceCopyButton(address, 'recipient address'));
         card.appendChild(addressLine);
     }
 
     return card;
+}
+
+function shortenGovernanceAddress(address) {
+    const value = String(address || '').trim();
+    if (value.length <= 34) return value;
+    return `${value.slice(0, 20)}...${value.slice(-10)}`;
 }
 
 function getTreasuryLovelace(payload) {
