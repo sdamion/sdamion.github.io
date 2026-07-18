@@ -1371,6 +1371,10 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     transition: opacity 160ms ease;
 }
 
+.governance-pie-chart-sector.is-clickable {
+    cursor: pointer;
+}
+
 .governance-pie-chart-sector:is(:hover, :focus, .is-active) {
     opacity: 0.92;
 }

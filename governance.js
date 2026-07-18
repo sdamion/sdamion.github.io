@@ -38,6 +38,11 @@ const TREASURY_RECIPIENT_ADMINISTRATORS = Object.freeze({
     stake178a5gxtm0ynzw80f80rsps3a5dwem43swsekpnctd0wuwxs0hc220: 'Amaru middleware - Pi Lanningham',
     stake178ndhlcfy30t38z0tql64fpg8ply93r37xrgvdagfpsz5nsttyvhp: 'Amaru 2026 contingency multisig'
 });
+const TREASURY_ADMINISTRATOR_COLORS = Object.freeze([
+    '#34d399', '#60a5fa', '#fbbf24', '#fb7185', '#2dd4bf',
+    '#f97316', '#a78bfa', '#22c55e', '#38bdf8', '#eab308',
+    '#f43f5e', '#14b8a6', '#818cf8', '#84cc16', '#f59e0b'
+]);
 
 let governanceRefreshTimer = null;
 let epochCountdownTimer = null;
@@ -153,6 +158,7 @@ async function openTreasuryOverlay() {
 
 function closeTreasuryOverlay() {
     closeTreasuryEpochActionsOverlay();
+    closeTreasuryAdministratorWithdrawalsOverlay();
     if (treasuryHistoryChart) {
         treasuryHistoryChart.destroy();
         treasuryHistoryChart = null;
@@ -168,10 +174,6 @@ function renderTreasuryDetails(container, payload) {
     const chart = createTreasuryHistoryChart(payload, treasuryWithdrawals);
     if (chart) container.appendChild(chart);
 
-    const heading = document.createElement('strong');
-    heading.textContent = `Treasury withdrawals (${treasuryWithdrawals.length.toLocaleString('en-US')})`;
-    container.appendChild(heading);
-
     if (!treasuryWithdrawals.length) {
         const empty = document.createElement('p');
         empty.className = 'small-text';
@@ -180,12 +182,98 @@ function renderTreasuryDetails(container, payload) {
         return;
     }
 
-    const list = document.createElement('div');
-    list.className = 'governance-list governance-action-group-list';
-    treasuryWithdrawals.forEach(withdrawal => {
-        list.appendChild(createTreasuryWithdrawalCard(withdrawal));
+    container.appendChild(createTreasuryAdministratorChart(treasuryWithdrawals));
+}
+
+function createTreasuryAdministratorChart(withdrawals) {
+    const groups = getTreasuryAdministratorGroups(withdrawals);
+    const total = groups.reduce((sum, group) => sum + group.value, 0);
+    const section = document.createElement('section');
+    section.className = 'governance-vote-chart governance-chart-panel';
+
+    const title = document.createElement('strong');
+    title.textContent = 'Withdrawals by administrator';
+
+    const layout = document.createElement('div');
+    layout.className = 'governance-vote-chart-layout';
+    layout.appendChild(createUniversalPieChart(groups, {
+        labelFormatter: segment => (
+            ((segment.end - segment.start) / 360) >= 0.02
+                ? formatCompactAdaFromLovelace(segment.value)
+                : ''
+        ),
+        onSegmentClick: (segment, returnFocus) => openTreasuryAdministratorWithdrawalsOverlay(segment, returnFocus)
+    }));
+
+    const legend = document.createElement('div');
+    legend.className = 'governance-vote-legend';
+    groups.forEach(group => {
+        const percentage = total > 0 ? (group.value / total) * 100 : 0;
+        legend.appendChild(createGovernanceStatBox({
+            label: group.label,
+            detail: `${group.withdrawals.length.toLocaleString('en-US')} withdrawals • ${formatCompactAdaFromLovelace(group.value)} • ${formatPercentage(percentage)}`,
+            color: group.color,
+            onClick: event => openTreasuryAdministratorWithdrawalsOverlay(group, event.currentTarget)
+        }));
     });
-    container.appendChild(list);
+
+    layout.appendChild(legend);
+    section.appendChild(title);
+    section.appendChild(layout);
+    return section;
+}
+
+function getTreasuryAdministratorGroups(withdrawals) {
+    const groups = new Map();
+    withdrawals.forEach(withdrawal => {
+        const address = String(withdrawal?.stake_address || '');
+        const recipientAdministrator = TREASURY_RECIPIENT_ADMINISTRATORS[address] || 'Unknown administrator';
+        const administrator = recipientAdministrator.startsWith('Amaru')
+            ? 'Amaru'
+            : recipientAdministrator;
+        const group = groups.get(administrator) || {
+            key: administrator,
+            label: administrator,
+            value: 0,
+            withdrawals: []
+        };
+        group.value += Number(withdrawal?.amount_lovelace) || 0;
+        group.withdrawals.push(withdrawal);
+        groups.set(administrator, group);
+    });
+
+    return [...groups.values()]
+        .sort((left, right) => right.value - left.value)
+        .map((group, index) => ({
+            ...group,
+            color: TREASURY_ADMINISTRATOR_COLORS[index % TREASURY_ADMINISTRATOR_COLORS.length]
+        }));
+}
+
+function openTreasuryAdministratorWithdrawalsOverlay(group, returnFocus) {
+    closeTreasuryAdministratorWithdrawalsOverlay();
+
+    const panel = document.createElement('div');
+    panel.className = 'governance-list governance-action-group-list';
+    group.withdrawals.forEach(withdrawal => {
+        panel.appendChild(createTreasuryWithdrawalCard(withdrawal));
+    });
+
+    createGovernanceMenuOverlay({
+        id: 'governance-treasury-administrator-overlay',
+        titleId: 'governance-treasury-administrator-title',
+        titleText: group.label,
+        closeLabel: `Close withdrawals for ${group.label}`,
+        closeOverlay: closeTreasuryAdministratorWithdrawalsOverlay,
+        bodyNodes: [panel],
+        headerMeta: `${group.withdrawals.length.toLocaleString('en-US')} withdrawals • ${formatCompactAdaFromLovelace(group.value)}`,
+        overlayClass: 'governance-action-detail-overlay',
+        returnFocus
+    });
+}
+
+function closeTreasuryAdministratorWithdrawalsOverlay() {
+    removeGovernanceMenuOverlay('governance-treasury-administrator-overlay');
 }
 
 function createTreasuryHistoryChart(payload, withdrawals) {
@@ -4356,11 +4444,23 @@ function createPieChartSvg(segments, chart, options = {}) {
         interactiveSegment.classList.add('governance-pie-chart-sector');
         interactiveSegment.style.fill = segment.color;
         interactiveSegment.setAttribute('tabindex', '0');
-        interactiveSegment.setAttribute('role', 'img');
+        const isClickable = typeof options.onSegmentClick === 'function';
+        interactiveSegment.setAttribute('role', isClickable ? 'button' : 'img');
         interactiveSegment.setAttribute(
             'aria-label',
-            `${segment.label || `Segment ${index + 1}`}: ${formatPercentage(span / 360 * 100)}`
+            `${segment.label || `Segment ${index + 1}`}: ${formatPercentage(span / 360 * 100)}${isClickable ? ', open details' : ''}`
         );
+        if (isClickable) {
+            interactiveSegment.classList.add('is-clickable');
+            interactiveSegment.addEventListener('click', event => {
+                options.onSegmentClick(segment, event.currentTarget);
+            });
+            interactiveSegment.addEventListener('keydown', event => {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+                options.onSegmentClick(segment, event.currentTarget);
+            });
+        }
 
         const arc = document.createElementNS(namespace, 'circle');
         arc.classList.add('governance-pie-chart-arc');
@@ -4417,11 +4517,14 @@ function getPieChartPoint(angle, radius) {
 function createPieAmountLabel(segment, formatter = null) {
     if (!segment.value) return null;
 
-    const label = document.createElement('span');
-    label.className = 'governance-pie-label';
-    label.textContent = typeof formatter === 'function'
+    const text = typeof formatter === 'function'
         ? formatter(segment)
         : formatPercentage((segment.end - segment.start) / 360 * 100);
+    if (!text) return null;
+
+    const label = document.createElement('span');
+    label.className = 'governance-pie-label';
+    label.textContent = text;
 
     const radians = ((segment.mid - 90) * Math.PI) / 180;
     positionPieLabel(label, radians, segment.end - segment.start);
