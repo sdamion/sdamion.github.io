@@ -276,62 +276,20 @@ function initPoolDelegatorsCard() {
 function openPoolDelegatorsOverlay() {
     closePoolDelegatorsOverlay(false);
 
-    const returnFocus = document.getElementById('pool-delegators-card');
-    const overlay = document.createElement('div');
-    overlay.id = 'pool-delegators-overlay';
-    overlay.className = 'governance-overlay governance-menu-overlay governance-drep-overlay';
-    overlay.governanceReturnFocus = returnFocus;
-    overlay.governanceCloseOverlay = closePoolDelegatorsOverlay;
-    overlay.addEventListener('click', event => {
-        if (event.target === overlay) closePoolDelegatorsOverlay();
+    createPoolMenuOverlay({
+        id: 'pool-delegators-overlay',
+        titleId: 'pool-delegators-title',
+        titleText: 'Pool Delegators',
+        headerMeta: `${poolDelegators.length.toLocaleString('en-US')} delegators`,
+        closeLabel: 'Close pool delegators',
+        closeOverlay: closePoolDelegatorsOverlay,
+        returnFocus: document.getElementById('pool-delegators-card'),
+        bodyNode: createPoolDelegatorsList()
     });
-
-    const dialog = document.createElement('article');
-    dialog.className = 'governance-dialog governance-drep-dialog';
-    dialog.setAttribute('role', 'dialog');
-    dialog.setAttribute('aria-modal', 'true');
-    dialog.setAttribute('aria-labelledby', 'pool-delegators-title');
-
-    const header = document.createElement('header');
-    header.className = 'overlay-dialog-header';
-
-    const headerCopy = document.createElement('div');
-    headerCopy.className = 'overlay-dialog-header-copy';
-
-    const title = document.createElement('h3');
-    title.id = 'pool-delegators-title';
-    title.className = 'governance-drep-title';
-    title.textContent = 'Pool Delegators';
-
-    const meta = document.createElement('span');
-    meta.className = 'governance-menu-header-meta';
-    meta.textContent = `${poolDelegators.length.toLocaleString('en-US')} delegators`;
-
-    const close = document.createElement('button');
-    close.className = 'governance-close';
-    close.type = 'button';
-    close.textContent = 'Close';
-    close.setAttribute('aria-label', 'Close pool delegators');
-    close.addEventListener('click', closePoolDelegatorsOverlay);
-
-    headerCopy.append(title, meta);
-    header.append(headerCopy, close);
-
-    const body = document.createElement('div');
-    body.className = 'overlay-dialog-body';
-    body.appendChild(createPoolDelegatorsList());
-
-    dialog.append(header, body);
-    overlay.appendChild(dialog);
-    document.body.appendChild(overlay);
-    close.focus();
 }
 
 function closePoolDelegatorsOverlay(restoreFocus = true) {
-    const overlay = document.getElementById('pool-delegators-overlay');
-    const returnFocus = overlay?.governanceReturnFocus;
-    overlay?.remove();
-    if (restoreFocus && returnFocus?.isConnected) returnFocus.focus();
+    closePoolMenuOverlay('pool-delegators-overlay', restoreFocus);
 }
 
 function initMithrilCard() {
@@ -350,63 +308,21 @@ function initMithrilCard() {
 function openMithrilSignersOverlay() {
     closeMithrilSignersOverlay(false);
 
-    const returnFocus = document.getElementById('pool-mithril-card');
-    const overlay = document.createElement('div');
-    overlay.id = 'pool-mithril-overlay';
-    overlay.className = 'governance-overlay governance-menu-overlay governance-drep-overlay';
-    overlay.governanceReturnFocus = returnFocus;
-    overlay.governanceCloseOverlay = closeMithrilSignersOverlay;
-    overlay.addEventListener('click', event => {
-        if (event.target === overlay) closeMithrilSignersOverlay();
-    });
-
-    const dialog = document.createElement('article');
-    dialog.className = 'governance-dialog governance-drep-dialog';
-    dialog.setAttribute('role', 'dialog');
-    dialog.setAttribute('aria-modal', 'true');
-    dialog.setAttribute('aria-labelledby', 'pool-mithril-title');
-
-    const header = document.createElement('header');
-    header.className = 'overlay-dialog-header';
-
-    const headerCopy = document.createElement('div');
-    headerCopy.className = 'overlay-dialog-header-copy';
-
-    const title = document.createElement('h3');
-    title.id = 'pool-mithril-title';
-    title.className = 'governance-drep-title';
-    title.textContent = 'Active Mithril Signers';
-
-    const meta = document.createElement('span');
-    meta.className = 'governance-menu-header-meta';
     const signingEpoch = Number(mithrilStatus?.signing_at_epoch);
-    meta.textContent = `${mithrilSigners.length.toLocaleString('en-US')} signers${Number.isFinite(signingEpoch) ? ` · Signing epoch ${signingEpoch.toLocaleString('en-US')}` : ''}`;
-
-    const close = document.createElement('button');
-    close.className = 'governance-close';
-    close.type = 'button';
-    close.textContent = 'Close';
-    close.setAttribute('aria-label', 'Close active Mithril signers');
-    close.addEventListener('click', closeMithrilSignersOverlay);
-
-    headerCopy.append(title, meta);
-    header.append(headerCopy, close);
-
-    const body = document.createElement('div');
-    body.className = 'overlay-dialog-body';
-    body.appendChild(createMithrilSignersList());
-
-    dialog.append(header, body);
-    overlay.appendChild(dialog);
-    document.body.appendChild(overlay);
-    close.focus();
+    createPoolMenuOverlay({
+        id: 'pool-mithril-overlay',
+        titleId: 'pool-mithril-title',
+        titleText: 'Active Mithril Signers',
+        headerMeta: `${mithrilSigners.length.toLocaleString('en-US')} signers${Number.isFinite(signingEpoch) ? ` · Signing epoch ${signingEpoch.toLocaleString('en-US')}` : ''}`,
+        closeLabel: 'Close active Mithril signers',
+        closeOverlay: closeMithrilSignersOverlay,
+        returnFocus: document.getElementById('pool-mithril-card'),
+        bodyNode: createMithrilSignersList()
+    });
 }
 
 function closeMithrilSignersOverlay(restoreFocus = true) {
-    const overlay = document.getElementById('pool-mithril-overlay');
-    const returnFocus = overlay?.governanceReturnFocus;
-    overlay?.remove();
-    if (restoreFocus && returnFocus?.isConnected) returnFocus.focus();
+    closePoolMenuOverlay('pool-mithril-overlay', restoreFocus);
 }
 
 function initStarchPoolCard() {
@@ -425,21 +341,39 @@ function initStarchPoolCard() {
 function openStarchPoolsOverlay() {
     closeStarchPoolsOverlay(false);
 
-    const returnFocus = document.getElementById('pool-starch-card');
+    const epoch = Number(starchPoolStatus?.epoch);
+    createPoolMenuOverlay({
+        id: 'pool-starch-overlay',
+        titleId: 'pool-starch-title',
+        titleText: 'Other Starch Pools',
+        headerMeta: `${starchPools.length.toLocaleString('en-US')} pools${Number.isFinite(epoch) ? ` · Epoch ${epoch.toLocaleString('en-US')}` : ''}`,
+        closeLabel: 'Close other Starch pools',
+        closeOverlay: closeStarchPoolsOverlay,
+        returnFocus: document.getElementById('pool-starch-card'),
+        bodyNode: createStarchPoolsList()
+    });
+}
+
+function closeStarchPoolsOverlay(restoreFocus = true) {
+    closePoolMenuOverlay('pool-starch-overlay', restoreFocus);
+}
+
+function createPoolMenuOverlay({ id, titleId, titleText, headerMeta, closeLabel, closeOverlay, returnFocus, bodyNode }) {
     const overlay = document.createElement('div');
-    overlay.id = 'pool-starch-overlay';
+    overlay.id = id;
     overlay.className = 'governance-overlay governance-menu-overlay governance-drep-overlay';
+    overlay.style.zIndex = String(3000 + ((document.querySelectorAll('.governance-menu-overlay').length + 1) * 100));
     overlay.governanceReturnFocus = returnFocus;
-    overlay.governanceCloseOverlay = closeStarchPoolsOverlay;
+    overlay.governanceCloseOverlay = closeOverlay;
     overlay.addEventListener('click', event => {
-        if (event.target === overlay) closeStarchPoolsOverlay();
+        if (event.target === overlay) closeOverlay();
     });
 
     const dialog = document.createElement('article');
     dialog.className = 'governance-dialog governance-drep-dialog';
     dialog.setAttribute('role', 'dialog');
     dialog.setAttribute('aria-modal', 'true');
-    dialog.setAttribute('aria-labelledby', 'pool-starch-title');
+    dialog.setAttribute('aria-labelledby', titleId);
 
     const header = document.createElement('header');
     header.className = 'overlay-dialog-header';
@@ -448,28 +382,27 @@ function openStarchPoolsOverlay() {
     headerCopy.className = 'overlay-dialog-header-copy';
 
     const title = document.createElement('h3');
-    title.id = 'pool-starch-title';
+    title.id = titleId;
     title.className = 'governance-drep-title';
-    title.textContent = 'Other Starch Pools';
+    title.textContent = titleText;
 
     const meta = document.createElement('span');
     meta.className = 'governance-menu-header-meta';
-    const epoch = Number(starchPoolStatus?.epoch);
-    meta.textContent = `${starchPools.length.toLocaleString('en-US')} pools${Number.isFinite(epoch) ? ` · Epoch ${epoch.toLocaleString('en-US')}` : ''}`;
+    meta.textContent = headerMeta;
 
     const close = document.createElement('button');
     close.className = 'governance-close';
     close.type = 'button';
     close.textContent = 'Close';
-    close.setAttribute('aria-label', 'Close other Starch pools');
-    close.addEventListener('click', closeStarchPoolsOverlay);
+    close.setAttribute('aria-label', closeLabel);
+    close.addEventListener('click', closeOverlay);
 
     headerCopy.append(title, meta);
     header.append(headerCopy, close);
 
     const body = document.createElement('div');
     body.className = 'overlay-dialog-body';
-    body.appendChild(createStarchPoolsList());
+    body.appendChild(bodyNode);
 
     dialog.append(header, body);
     overlay.appendChild(dialog);
@@ -477,8 +410,8 @@ function openStarchPoolsOverlay() {
     close.focus();
 }
 
-function closeStarchPoolsOverlay(restoreFocus = true) {
-    const overlay = document.getElementById('pool-starch-overlay');
+function closePoolMenuOverlay(id, restoreFocus = true) {
+    const overlay = document.getElementById(id);
     const returnFocus = overlay?.governanceReturnFocus;
     overlay?.remove();
     if (restoreFocus && returnFocus?.isConnected) returnFocus.focus();
@@ -497,27 +430,12 @@ function createStarchPoolsList() {
     }
 
     starchPools.forEach((pool, index) => {
-        const row = document.createElement('div');
-        row.className = 'pool-delegator-row governance-menu-card';
-
-        const rank = document.createElement('span');
-        rank.className = 'pool-delegator-rank';
-        rank.textContent = String(index + 1);
-
-        const content = document.createElement('div');
-        content.className = 'pool-delegator-content';
-
-        const name = document.createElement('strong');
-        name.className = 'pool-delegator-handle';
-        name.textContent = pool?.name || 'No Name';
-
-        const ticker = document.createElement('span');
-        ticker.className = 'pool-delegator-address';
-        ticker.textContent = String(pool?.ticker || '').toUpperCase() || 'N/A';
-
-        content.append(name, ticker);
-        row.append(rank, content);
-        list.appendChild(row);
+        list.appendChild(createPoolOverlayRow({
+            index,
+            title: pool?.name || 'No Name',
+            titleClassName: 'pool-delegator-handle',
+            details: [String(pool?.ticker || '').toUpperCase() || 'N/A']
+        }));
     });
 
     return list;
@@ -537,20 +455,6 @@ function createMithrilSignersList() {
 
     mithrilSigners.forEach((signer, index) => {
         const poolId = String(signer?.pool_id || '');
-        const row = document.createElement('div');
-        row.className = 'pool-delegator-row governance-menu-card';
-
-        const rank = document.createElement('span');
-        rank.className = 'pool-delegator-rank';
-        rank.textContent = String(index + 1);
-
-        const content = document.createElement('div');
-        content.className = 'pool-delegator-content';
-
-        const name = document.createElement('strong');
-        name.className = 'pool-delegator-handle';
-        name.textContent = signer?.display_name || signer?.name || 'No Name';
-
         const idLine = document.createElement('div');
         idLine.className = 'pool-delegator-address-line';
 
@@ -585,9 +489,12 @@ function createMithrilSignersList() {
         stake.className = 'pool-delegator-amount';
         stake.textContent = formatDelegatorAda(getMithrilSignerStake(signer));
 
-        content.append(name, idLine, stake);
-        row.append(rank, content);
-        list.appendChild(row);
+        list.appendChild(createPoolOverlayRow({
+            index,
+            title: signer?.display_name || signer?.name || 'No Name',
+            titleClassName: 'pool-delegator-handle',
+            details: [idLine, stake]
+        }));
     });
 
     return list;
@@ -622,16 +529,6 @@ function createPoolDelegatorsList() {
     sortedDelegators.forEach((delegator, index) => {
         const address = String(delegator?.stake_address || 'Unknown stake address');
         const adaHandle = String(delegator?.ada_handle || '').trim();
-        const row = document.createElement('div');
-        row.className = 'pool-delegator-row governance-menu-card';
-
-        const rank = document.createElement('span');
-        rank.className = 'pool-delegator-rank';
-        rank.textContent = String(index + 1);
-
-        const content = document.createElement('div');
-        content.className = 'pool-delegator-content';
-
         const addressLine = document.createElement('div');
         addressLine.className = 'pool-delegator-address-line';
 
@@ -666,21 +563,55 @@ function createPoolDelegatorsList() {
         amount.textContent = formatDelegatorAda(getDelegatorAmount(delegator));
 
         addressLine.append(addressText, copy);
-        content.append(addressLine, amount);
+        const details = [addressLine, amount];
 
         const epoch = Number(delegator?.active_epoch_no);
         if (Number.isFinite(epoch)) {
             const epochText = document.createElement('span');
             epochText.className = 'pool-delegator-epoch';
             epochText.textContent = `Active epoch ${epoch.toLocaleString('en-US')}`;
-            content.appendChild(epochText);
+            details.push(epochText);
         }
 
-        row.append(rank, content);
-        list.appendChild(row);
+        list.appendChild(createPoolOverlayRow({ index, details }));
     });
 
     return list;
+}
+
+function createPoolOverlayRow({ index, title = '', titleClassName = '', details = [] }) {
+    const row = document.createElement('div');
+    row.className = 'pool-delegator-row governance-menu-card';
+
+    const rank = document.createElement('span');
+    rank.className = 'pool-delegator-rank';
+    rank.textContent = String(index + 1);
+
+    const content = document.createElement('div');
+    content.className = 'pool-delegator-content';
+
+    if (title) {
+        const titleElement = document.createElement('strong');
+        titleElement.className = titleClassName || 'pool-delegator-address';
+        titleElement.textContent = title;
+        content.appendChild(titleElement);
+    }
+
+    details.forEach(detail => {
+        if (!detail) return;
+        if (detail instanceof Node) {
+            content.appendChild(detail);
+            return;
+        }
+
+        const text = document.createElement('span');
+        text.className = 'pool-delegator-address';
+        text.textContent = String(detail);
+        content.appendChild(text);
+    });
+
+    row.append(rank, content);
+    return row;
 }
 
 function getDelegatorAmount(delegator) {
