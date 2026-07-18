@@ -5,12 +5,14 @@ const DREP_METADATA_API_URL = 'https://api.tdsp.online/api/dreps/metadata';
 const DREP_INFO_API_URL = 'https://api.tdsp.online/api/dreps/info';
 const DREP_DETAIL_API_BASE_URL = 'https://api.tdsp.online/api/drep';
 const REMOTE_METADATA_API_URL = 'https://api.tdsp.online/api/metadata';
+const TREASURY_API_URL = 'https://api.tdsp.online/api/treasury';
 const LOCAL_DASHBOARD_PROXY_PATH = '/__dashboard_proxy__';
 const LOCAL_COMMITTEE_PROXY_PATH = '/__committee_proxy__';
 const LOCAL_PROPOSAL_VOTES_PROXY_PATH = '/__proposal_votes_proxy__';
 const LOCAL_DREP_DIRECTORY_PROXY_PATH = '/__drep_directory_proxy__';
 const LOCAL_DREP_DETAIL_PROXY_PATH = '/__drep_detail_proxy__';
 const LOCAL_METADATA_PROXY_PATH = '/__metadata_proxy__';
+const LOCAL_TREASURY_PROXY_PATH = '/__treasury_proxy__';
 const ACTIVE_REFRESH_INTERVAL_MS = 15 * 60 * 1000;
 const EPOCH_DURATION_SECONDS = 432000;
 const CARDANO_MAINNET_EPOCH_ZERO_MS = Date.parse('2017-09-23T21:44:51Z');
@@ -35,6 +37,8 @@ let drepDirectoryPromise = null;
 let drepInfoPromise = null;
 let drepStatsPromise = null;
 let committeeInfoPromise = null;
+let treasuryPromise = null;
+let treasuryState = null;
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initGovernance);
@@ -49,9 +53,190 @@ function initGovernance() {
     setupGovernanceSummaryActionCards();
     setupConstitutionalCommitteeCard();
     setupDrepDirectoryCard();
+    setupTreasuryCard();
     loadCurrentEpoch();
     loadGovernanceActions();
     loadDrepDirectory().catch(() => {});
+    loadTreasuryData().catch(() => {});
+}
+
+function setupTreasuryCard() {
+    const card = document.getElementById('gov-treasury-card');
+    bindGovernanceMenuTrigger(card, openTreasuryOverlay);
+}
+
+async function loadTreasuryData() {
+    const payload = await fetchTreasuryPayload();
+    treasuryState = payload;
+    const treasuryLovelace = getTreasuryLovelace(payload);
+    if (!Number.isFinite(treasuryLovelace)) throw new Error('Treasury amount is unavailable');
+
+    setText('gov-treasury-amount', formatCompactAdaFromLovelace(treasuryLovelace, { fixedFractionDigits: 2 }));
+    setText('gov-treasury-epoch', `Epoch ${getTreasuryEpoch(payload) ?? '--'}`);
+}
+
+function fetchTreasuryPayload() {
+    if (!treasuryPromise) {
+        const url = shouldUseLocalDashboardProxy() ? LOCAL_TREASURY_PROXY_PATH : TREASURY_API_URL;
+        treasuryPromise = fetchJson(url).catch(error => {
+            treasuryPromise = null;
+            throw error;
+        });
+    }
+    return treasuryPromise;
+}
+
+async function openTreasuryOverlay() {
+    closeTreasuryOverlay();
+
+    const content = document.createElement('div');
+    content.className = 'governance-detail-content';
+    const loading = document.createElement('p');
+    loading.className = 'small-text';
+    loading.textContent = 'Loading treasury data...';
+    content.appendChild(loading);
+
+    createGovernanceMenuOverlay({
+        id: 'governance-treasury-overlay',
+        titleId: 'governance-treasury-title',
+        titleText: 'Cardano Treasury',
+        closeLabel: 'Close Cardano treasury',
+        closeOverlay: closeTreasuryOverlay,
+        bodyNodes: [content],
+        headerMeta: treasuryState ? `Epoch ${getTreasuryEpoch(treasuryState) ?? '--'}` : 'Loading...'
+    });
+
+    try {
+        const payload = treasuryState || await fetchTreasuryPayload();
+        treasuryState = payload;
+        if (!content.isConnected) return;
+        renderTreasuryDetails(content, payload);
+        updateGovernanceMenuHeaderMeta(
+            'governance-treasury-overlay',
+            `Epoch ${getTreasuryEpoch(payload) ?? '--'}`
+        );
+    } catch {
+        if (!content.isConnected) return;
+        content.textContent = '';
+        const message = document.createElement('p');
+        message.className = 'small-text';
+        message.textContent = 'Treasury data could not be loaded.';
+        content.appendChild(message);
+    }
+}
+
+function closeTreasuryOverlay() {
+    removeGovernanceMenuOverlay('governance-treasury-overlay');
+}
+
+function renderTreasuryDetails(container, payload) {
+    container.textContent = '';
+    const totals = payload?.totals || payload?.latest || payload || {};
+    const treasuryLovelace = getTreasuryLovelace(payload);
+
+    addDetailRow(container, 'Cardano Treasury', formatFullAdaFromLovelace(treasuryLovelace));
+    addDetailRow(container, 'Epoch', getTreasuryEpoch(payload));
+    addDetailRow(container, 'Circulating supply', formatFullAdaFromLovelace(totals.circulation));
+    addDetailRow(container, 'Reserves', formatFullAdaFromLovelace(totals.reserves));
+    addDetailRow(container, 'Rewards', formatFullAdaFromLovelace(totals.reward));
+    addDetailRow(container, 'Total supply', formatFullAdaFromLovelace(totals.supply));
+    addDetailRow(container, 'Updated', formatTreasuryTimestamp(payload?.updated_at));
+
+    const treasuryWithdrawals = getTreasuryWithdrawals(payload);
+    const heading = document.createElement('strong');
+    heading.textContent = `Treasury withdrawals (${treasuryWithdrawals.length.toLocaleString('en-US')})`;
+    container.appendChild(heading);
+
+    if (!treasuryWithdrawals.length) {
+        const empty = document.createElement('p');
+        empty.className = 'small-text';
+        empty.textContent = 'No enacted treasury withdrawals available.';
+        container.appendChild(empty);
+        return;
+    }
+
+    const list = document.createElement('div');
+    list.className = 'governance-list governance-action-group-list';
+    treasuryWithdrawals.forEach(withdrawal => {
+        list.appendChild(createTreasuryWithdrawalCard(withdrawal));
+    });
+    container.appendChild(list);
+}
+
+function getTreasuryWithdrawals(payload) {
+    return (Array.isArray(payload?.treasury_withdrawals) ? payload.treasury_withdrawals : [])
+        .map(withdrawal => ({
+            title: withdrawal?.title || 'Conway treasury withdrawal',
+            enacted_epoch: Number(withdrawal?.enacted_epoch) || null,
+            amount_lovelace: String(withdrawal?.amount_lovelace || '0'),
+            stake_address: withdrawal?.stake_address || null
+        }))
+        .slice(0, 200);
+}
+
+function createTreasuryWithdrawalCard(withdrawal) {
+    const card = document.createElement('div');
+    card.className = 'governance-card governance-menu-card governance-treasury-withdrawal-card';
+
+    const title = document.createElement('strong');
+    title.className = 'governance-title';
+    title.textContent = cleanGovernanceText(withdrawal?.title || 'Conway treasury withdrawal');
+    card.appendChild(title);
+
+    const amount = document.createElement('span');
+    amount.className = 'governance-expiration';
+    amount.textContent = formatFullAdaFromLovelace(withdrawal?.amount_lovelace);
+    card.appendChild(amount);
+
+    const epoch = document.createElement('span');
+    epoch.className = 'governance-card-detail';
+    epoch.textContent = `Enacted epoch ${Number(withdrawal?.enacted_epoch) || '--'}`;
+    card.appendChild(epoch);
+
+    const address = String(withdrawal?.stake_address || '');
+    if (address) {
+        const addressLine = document.createElement('span');
+        addressLine.className = 'governance-card-detail governance-drep-id-line';
+
+        const addressText = document.createElement('span');
+        addressText.className = 'governance-drep-id';
+        addressText.textContent = address;
+        addressLine.appendChild(addressText);
+        addressLine.appendChild(createGovernanceCopyButton(address, 'recipient address'));
+        card.appendChild(addressLine);
+    }
+
+    return card;
+}
+
+function getTreasuryLovelace(payload) {
+    const value = payload?.treasury_lovelace
+        ?? payload?.totals?.treasury
+        ?? payload?.latest?.treasury
+        ?? payload?.treasury;
+    const numericValue = Number(value);
+    return Number.isFinite(numericValue) ? numericValue : NaN;
+}
+
+function getTreasuryEpoch(payload) {
+    const value = payload?.epoch_no ?? payload?.totals?.epoch_no ?? payload?.latest?.epoch_no;
+    const numericValue = Number(value);
+    return Number.isFinite(numericValue) ? numericValue : null;
+}
+
+function formatFullAdaFromLovelace(value) {
+    const lovelace = Number(value);
+    if (!Number.isFinite(lovelace)) return '';
+    return `${(lovelace / 1_000_000).toLocaleString('en-US', { maximumFractionDigits: 6 })} ADA`;
+}
+
+function formatTreasuryTimestamp(value) {
+    const timestamp = Date.parse(value || '');
+    if (!Number.isFinite(timestamp)) return '';
+    return new Date(timestamp).toLocaleString('en-GB', {
+        dateStyle: 'medium',
+        timeStyle: 'short'
+    });
 }
 
 function setupGovernanceMenuKeyboard() {
@@ -840,6 +1025,7 @@ function createGovernanceMenuOverlay(options) {
     const overlay = document.createElement('div');
     overlay.className = `governance-overlay governance-menu-overlay ${overlayClass}`.trim();
     overlay.id = id;
+    overlay.style.zIndex = String(3000 + ((document.querySelectorAll('.governance-menu-overlay').length + 1) * 100));
     overlay.governanceReturnFocus = returnFocus;
     overlay.governanceCloseOverlay = closeOverlay;
     overlay.addEventListener('click', event => {
@@ -947,18 +1133,18 @@ function updateTreasuryBudgetBar() {
     const activeAskTotal = getActiveTreasuryProposalAskTotal();
     const afterTotalSpend = remaining - activeAskTotal;
 
-    setBudgetBarItem('gov-budget-limit', 'Net change limit', formatCompactAdaFromLovelace(TREASURY_NET_CHANGE_LIMIT_LOVELACE, { fixedFractionDigits: 2 }));
-    setBudgetBarItem('gov-budget-used', 'Used this year', formatCompactAdaFromLovelace(usedThisYear, { fixedFractionDigits: 2 }));
+    setBudgetBarItem('gov-budget-limit', 'NCL', formatCompactAdaFromLovelace(TREASURY_NET_CHANGE_LIMIT_LOVELACE, { fixedFractionDigits: 2 }));
+    setBudgetBarItem('gov-budget-used', 'Spend', formatCompactAdaFromLovelace(usedThisYear, { fixedFractionDigits: 2 }));
     setBudgetBarItem(
         'gov-budget-remaining',
-        'To be allocated',
+        'Balance',
         formatCompactAdaFromLovelace(remaining, { fixedFractionDigits: 2 }),
         false,
         getBudgetAmountTone(remaining)
     );
     setBudgetBarItem(
         'gov-budget-after-spend',
-        'After total spend',
+        'Net',
         `${afterTotalSpend < 0 ? '-' : ''}${formatCompactAdaFromLovelace(Math.abs(afterTotalSpend), { fixedFractionDigits: 2 })}`,
         afterTotalSpend < 0,
         getBudgetAmountTone(afterTotalSpend)
@@ -1823,33 +2009,15 @@ function createDrepVoteChartSection(breakdown, drepVotes) {
 }
 
 function createVotePieChart(breakdown) {
-    const chart = document.createElement('div');
-    chart.className = 'governance-pie-chart';
-    const segments = getPieChartSegments(breakdown);
-    chart.style.background = buildPieChartGradient(segments);
-
     const total = breakdown.reduce((sum, item) => sum + item.value, 0);
     const usesVoteCounts = breakdown.some(item => item.unit === 'votes');
-    const center = document.createElement('div');
-    center.className = 'governance-pie-chart-center';
-
-    const centerLabel = document.createElement('span');
-    centerLabel.textContent = usesVoteCounts ? 'Votes counted' : 'Total voting power';
-
-    const centerValue = document.createElement('strong');
-    centerValue.textContent = usesVoteCounts
-        ? formatInteger(total)
-        : formatCompactAdaFromLovelace(total, { fixedFractionDigits: 2 });
-
-    center.append(centerLabel, centerValue);
-    chart.appendChild(center);
-
-    segments.forEach(segment => {
-        const label = createPieAmountLabel(segment);
-        if (label) chart.appendChild(label);
+    return createUniversalPieChart(breakdown, {
+        centerLabel: usesVoteCounts ? 'Votes counted' : 'Total voting power',
+        centerValue: usesVoteCounts
+            ? formatInteger(total)
+            : formatCompactAdaFromLovelace(total, { fixedFractionDigits: 2 }),
+        labelFormatter: segment => formatPercentage((segment.end - segment.start) / 360 * 100)
     });
-
-    return chart;
 }
 
 function createVoteLegendItem(item, drepVotes) {
@@ -1953,6 +2121,7 @@ function openDrepVotesOverlay(item, drepVotes) {
 }
 
 function closeDrepVotesOverlay() {
+    closeDrepActionHistoryOverlay();
     removeGovernanceMenuOverlay('governance-drep-overlay');
 }
 
@@ -2082,7 +2251,7 @@ function renderDrepDirectory(container, dreps, options = {}) {
         row.setAttribute('role', 'button');
         row.tabIndex = 0;
         row.setAttribute('aria-label', `Show votes by ${drep.name}`);
-        bindGovernanceMenuTrigger(row, () => openDrepActionHistoryOverlay(drep));
+        bindGovernanceMenuTrigger(row, event => openDrepActionHistoryOverlay(drep, event.currentTarget));
         fragment.appendChild(row);
     });
     container.appendChild(fragment);
@@ -2108,7 +2277,6 @@ function createDrepDirectoryStatusChart(dreps) {
         }
     ];
     const totalPower = groups.reduce((sum, group) => sum + group.value, 0);
-    const segments = getPieChartSegments(groups);
 
     const section = document.createElement('section');
     section.className = 'governance-vote-chart governance-drep-status-chart';
@@ -2119,22 +2287,10 @@ function createDrepDirectoryStatusChart(dreps) {
     const layout = document.createElement('div');
     layout.className = 'governance-vote-chart-layout';
 
-    const chart = document.createElement('div');
-    chart.className = 'governance-pie-chart';
-    chart.style.background = buildPieChartGradient(segments);
-
-    const center = document.createElement('div');
-    center.className = 'governance-pie-chart-center';
-    const centerLabel = document.createElement('span');
-    centerLabel.textContent = 'Total voting power';
-    const centerValue = document.createElement('strong');
-    centerValue.textContent = formatCompactAdaFromLovelace(totalPower, { fixedFractionDigits: 2 });
-    center.append(centerLabel, centerValue);
-    chart.appendChild(center);
-
-    segments.forEach(segment => {
-        const label = createDrepDirectoryPowerLabel(segment);
-        if (label) chart.appendChild(label);
+    const chart = createUniversalPieChart(groups, {
+        centerLabel: 'Total voting power',
+        centerValue: formatCompactAdaFromLovelace(totalPower, { fixedFractionDigits: 2 }),
+        labelFormatter: segment => formatCompactAdaFromLovelace(segment.value)
     });
 
     const legend = document.createElement('div');
@@ -2148,20 +2304,6 @@ function createDrepDirectoryStatusChart(dreps) {
     section.appendChild(title);
     section.appendChild(layout);
     return section;
-}
-
-function createDrepDirectoryPowerLabel(segment) {
-    if (!segment.value) return null;
-
-    const label = document.createElement('span');
-    label.className = 'governance-pie-label';
-    label.textContent = formatCompactAdaFromLovelace(segment.value);
-
-    const radians = ((segment.mid - 90) * Math.PI) / 180;
-    const radius = segment.end - segment.start < 18 ? 57 : 48;
-    label.style.left = `${50 + Math.cos(radians) * radius}%`;
-    label.style.top = `${50 + Math.sin(radians) * radius}%`;
-    return label;
 }
 
 function createDrepDirectoryLegendItem(group, totalPower) {
@@ -2248,7 +2390,7 @@ async function copyGovernanceText(value) {
     textArea.remove();
 }
 
-function openDrepActionHistoryOverlay(drep) {
+function openDrepActionHistoryOverlay(drep, returnFocus = null) {
     closeDrepActionHistoryOverlay();
 
     const panel = document.createElement('div');
@@ -2266,7 +2408,8 @@ function openDrepActionHistoryOverlay(drep) {
         closeOverlay: closeDrepActionHistoryOverlay,
         bodyNodes: [panel],
         headerMeta: 'Loading actions…',
-        overlayClass: 'governance-action-detail-overlay'
+        overlayClass: 'governance-action-detail-overlay',
+        returnFocus
     });
 
     fetchJson(getDrepDetailApiUrl(drep.id))
@@ -3114,21 +3257,16 @@ function renderConstitutionalCommitteeVoteTotalsChart(container, stats, options 
     const layout = document.createElement('div');
     layout.className = 'governance-vote-chart-layout';
 
-    const donut = document.createElement('div');
-    donut.className = 'governance-pie-chart';
-    donut.style.background = isLoading
-        ? 'var(--line)'
-        : `conic-gradient(#34d399 0 ${votedPct}%, #fb7185 ${votedPct}% 100%)`;
-
-    const center = document.createElement('div');
-    center.className = 'governance-pie-chart-center';
-    const count = document.createElement('strong');
-    count.textContent = isLoading ? 'Loading' : `${formatPercentage(votedPct)} voted`;
-    const label = document.createElement('span');
-    label.textContent = isLoading ? options.loadingLabel || 'CC vote status' : options.totalLabel || `${voted} of ${total} actions`;
-    center.appendChild(label);
-    center.appendChild(count);
-    donut.appendChild(center);
+    const donut = createUniversalPieChart([
+        { key: 'voted', label: 'Voted', color: '#34d399', value: voted },
+        { key: 'not-voted', label: 'Not Voted', color: '#fb7185', value: notVoted }
+    ], {
+        isLoading,
+        centerLabel: isLoading ? options.loadingLabel || 'CC vote status' : options.totalLabel || `${voted} of ${total} actions`,
+        centerValue: isLoading ? 'Loading' : `${formatPercentage(votedPct)} voted`,
+        showLabels: !isLoading,
+        labelFormatter: segment => formatPercentage((segment.end - segment.start) / 360 * 100)
+    });
 
     const legend = document.createElement('div');
     legend.className = `governance-vote-legend ${options.stackLegend
@@ -3225,38 +3363,7 @@ function renderNoVotesList(container, votes, headingLabel = 'DRep votes') {
     const sortedVotes = [...votes].sort((left, right) => getDrepVotePowerValue(right) - getDrepVotePowerValue(left));
 
     sortedVotes.forEach(vote => {
-        const row = document.createElement('div');
-        row.className = 'governance-no-vote-row';
-        const normalizedVote = String(vote?.vote || '').toLowerCase();
-        if (normalizedVote === 'yes') row.classList.add('is-yes');
-        if (normalizedVote === 'no') row.classList.add('is-no');
-        if (normalizedVote === 'not voted') row.classList.add('is-no');
-        if (normalizedVote === 'abstain') row.classList.add('is-abstain');
-
-        const copy = document.createElement('div');
-        copy.className = 'governance-no-vote-copy';
-
-        const nameLine = document.createElement('div');
-        nameLine.className = 'governance-no-vote-name-line';
-
-        const name = document.createElement('strong');
-        name.className = 'governance-no-vote-name';
-        name.textContent = getDrepPrimaryDisplayName(vote);
-
-        const power = document.createElement('span');
-        power.className = 'governance-no-vote-power';
-        power.textContent = getDrepVotePowerLabel(vote);
-
-        nameLine.appendChild(name);
-        if (power.textContent) nameLine.appendChild(power);
-
-        const id = document.createElement('span');
-        id.className = 'governance-no-vote-id';
-        id.textContent = getDrepVoteIdentifier(vote) || 'Unknown DRep';
-
-        copy.appendChild(nameLine);
-        copy.appendChild(id);
-        row.appendChild(copy);
+        const { row, name } = createDrepVoteRow(vote);
         list.appendChild(row);
 
         resolveDrepDisplayName(vote, name, { skipDetailLookup: true }).catch(() => {});
@@ -3264,6 +3371,65 @@ function renderNoVotesList(container, votes, headingLabel = 'DRep votes') {
 
     container.appendChild(title);
     container.appendChild(list);
+}
+
+function createDrepVoteRow(vote) {
+    const row = document.createElement('div');
+    row.className = 'governance-no-vote-row governance-menu-card';
+    const normalizedVote = String(vote?.vote || '').toLowerCase();
+    if (normalizedVote === 'yes') row.classList.add('is-yes');
+    if (normalizedVote === 'no') row.classList.add('is-no');
+    if (normalizedVote === 'not voted') row.classList.add('is-no');
+    if (normalizedVote === 'abstain') row.classList.add('is-abstain');
+
+    const copy = document.createElement('div');
+    copy.className = 'governance-no-vote-copy';
+
+    const nameLine = document.createElement('div');
+    nameLine.className = 'governance-no-vote-name-line';
+
+    const name = document.createElement('strong');
+    name.className = 'governance-no-vote-name';
+    name.textContent = getDrepPrimaryDisplayName(vote);
+
+    const power = document.createElement('span');
+    power.className = 'governance-no-vote-power';
+    power.textContent = getDrepVotePowerLabel(vote);
+
+    nameLine.appendChild(name);
+    if (power.textContent) nameLine.appendChild(power);
+
+    const id = document.createElement('span');
+    id.className = 'governance-no-vote-id';
+    id.textContent = getDrepVoteIdentifier(vote) || 'Unknown DRep';
+
+    copy.appendChild(nameLine);
+    copy.appendChild(id);
+    row.appendChild(copy);
+
+    const drep = getDrepFromVote(vote);
+    if (drep.id) {
+        row.classList.add('governance-cc-member-clickable');
+        row.setAttribute('role', 'button');
+        row.tabIndex = 0;
+        row.setAttribute('aria-label', `Show votes by ${drep.name}`);
+        bindGovernanceMenuTrigger(row, event => {
+            drep.name = getDrepPrimaryDisplayName(vote);
+            openDrepActionHistoryOverlay(drep, event.currentTarget);
+        });
+    }
+
+    return { row, name };
+}
+
+function getDrepFromVote(vote) {
+    const id = normalizeDrepIdentifier(getDrepVoteIdentifier(vote));
+    return {
+        id,
+        name: getDrepPrimaryDisplayName(vote),
+        votingPower: getDrepVotePowerValue(vote),
+        active: vote?.active === true || vote?.is_active === true
+    };
 }
 
 function getDrepPrimaryDisplayName(vote) {
@@ -3790,21 +3956,57 @@ function getDrepVoteIdentifierCandidates(vote) {
         .filter(Boolean);
 }
 
-function createPieAmountLabel(segment) {
+function createUniversalPieChart(items, options = {}) {
+    const chart = document.createElement('div');
+    chart.className = 'governance-pie-chart';
+    const segments = getPieChartSegments(items);
+    chart.style.background = options.isLoading === true
+        ? 'var(--line)'
+        : buildPieChartGradient(segments);
+
+    const center = document.createElement('div');
+    center.className = 'governance-pie-chart-center';
+
+    const centerLabel = document.createElement('span');
+    centerLabel.textContent = options.centerLabel || '';
+
+    const centerValue = document.createElement('strong');
+    centerValue.textContent = options.centerValue || '';
+
+    center.append(centerLabel, centerValue);
+    chart.appendChild(center);
+
+    if (options.showLabels !== false) {
+        segments.forEach(segment => {
+            const label = createPieAmountLabel(segment, options.labelFormatter);
+            if (label) chart.appendChild(label);
+        });
+    }
+
+    return chart;
+}
+
+function createPieAmountLabel(segment, formatter = null) {
     if (!segment.value) return null;
 
     const label = document.createElement('span');
     label.className = 'governance-pie-label';
-    label.textContent = formatPercentage((segment.end - segment.start) / 360 * 100);
+    label.textContent = typeof formatter === 'function'
+        ? formatter(segment)
+        : formatPercentage((segment.end - segment.start) / 360 * 100);
 
     const radians = ((segment.mid - 90) * Math.PI) / 180;
-    const radius = segment.end - segment.start < 18 ? 57 : 48;
-    const x = 50 + (Math.cos(radians) * radius);
-    const y = 50 + (Math.sin(radians) * radius);
+    positionPieLabel(label, radians, segment.end - segment.start);
+    return label;
+}
+
+function positionPieLabel(label, radians, segmentDegrees) {
+    const radius = segmentDegrees < 18 ? 38 : 32;
+    const x = Math.min(88, Math.max(12, 50 + (Math.cos(radians) * radius)));
+    const y = Math.min(88, Math.max(12, 50 + (Math.sin(radians) * radius)));
 
     label.style.left = `${x}%`;
     label.style.top = `${y}%`;
-    return label;
 }
 
 function cleanGovernanceText(text) {
