@@ -1,14 +1,18 @@
 const DASHBOARD_API_URL = 'https://api.tdsp.online/api/dashboard';
+const COMPACT_DASHBOARD_API_URL = 'https://api.tdsp.online/api/dashboard/compact';
 const COMMITTEE_INFO_API_URL = 'https://api.tdsp.online/api/committee';
 const PROPOSAL_VOTES_API_BASE_URL = 'https://api.tdsp.online/api/proposal';
+const PROPOSAL_DETAIL_API_BASE_URL = 'https://api.tdsp.online/api/proposal';
 const DREP_METADATA_API_URL = 'https://api.tdsp.online/api/dreps/metadata';
 const DREP_INFO_API_URL = 'https://api.tdsp.online/api/dreps/info';
 const DREP_DETAIL_API_BASE_URL = 'https://api.tdsp.online/api/drep';
 const REMOTE_METADATA_API_URL = 'https://api.tdsp.online/api/metadata';
 const TREASURY_API_URL = 'https://api.tdsp.online/api/treasury';
 const LOCAL_DASHBOARD_PROXY_PATH = '/__dashboard_proxy__';
+const LOCAL_COMPACT_DASHBOARD_PROXY_PATH = '/__dashboard_compact_proxy__';
 const LOCAL_COMMITTEE_PROXY_PATH = '/__committee_proxy__';
 const LOCAL_PROPOSAL_VOTES_PROXY_PATH = '/__proposal_votes_proxy__';
+const LOCAL_PROPOSAL_DETAIL_PROXY_PATH = '/__proposal_detail_proxy__';
 const LOCAL_DREP_DIRECTORY_PROXY_PATH = '/__drep_directory_proxy__';
 const LOCAL_DREP_DETAIL_PROXY_PATH = '/__drep_detail_proxy__';
 const LOCAL_METADATA_PROXY_PATH = '/__metadata_proxy__';
@@ -53,6 +57,7 @@ let governanceState = null;
 let governanceGroupsState = null;
 let committeeInfoState = null;
 const proposalVotesCache = new Map();
+const proposalDetailsCache = new Map();
 const committeeMemberStatsCache = new Map();
 const drepMetadataCache = new Map();
 let drepDirectoryPromise = null;
@@ -863,9 +868,18 @@ function scheduleActiveRefresh() {
 }
 
 async function fetchGovernanceDashboardPayload() {
-    return shouldUseLocalDashboardProxy()
-        ? fetchJson(LOCAL_DASHBOARD_PROXY_PATH)
-        : fetchJson(DASHBOARD_API_URL);
+    const compactUrl = shouldUseLocalDashboardProxy()
+        ? LOCAL_COMPACT_DASHBOARD_PROXY_PATH
+        : COMPACT_DASHBOARD_API_URL;
+    const fullUrl = shouldUseLocalDashboardProxy()
+        ? LOCAL_DASHBOARD_PROXY_PATH
+        : DASHBOARD_API_URL;
+
+    try {
+        return await fetchJson(compactUrl);
+    } catch {
+        return fetchJson(fullUrl);
+    }
 }
 
 function shouldUseLocalDashboardProxy() {
@@ -880,6 +894,15 @@ function getProposalVotesApiUrl(proposalId) {
     }
 
     return `${PROPOSAL_VOTES_API_BASE_URL}/${encodeURIComponent(proposalId)}/votes`;
+}
+
+function getProposalDetailApiUrl(proposalId) {
+    if (shouldUseLocalDashboardProxy()) {
+        const params = new URLSearchParams({ proposalId });
+        return `${LOCAL_PROPOSAL_DETAIL_PROXY_PATH}?${params.toString()}`;
+    }
+
+    return `${PROPOSAL_DETAIL_API_BASE_URL}/${encodeURIComponent(proposalId)}`;
 }
 
 function updateEpochDisplayFromDashboardPayload(payload) {
@@ -1833,16 +1856,13 @@ function openGovernanceOverlay(proposal, options = {}) {
     addVoteDetailsState(voteDetailsContainer, 'Loading vote details...');
     content.appendChild(voteDetailsContainer);
 
-    const embeddedImages = extractGovernanceImageCandidates(proposal);
-
-    addDetailRow(content, 'Action ID', proposal.proposal_id);
-    addDetailRow(content, 'Transaction', proposal.proposal_tx_hash);
-
-    const body = proposal.meta_json?.body || proposal.meta_json || {};
-    addMarkdownDetailSection(content, 'Abstract', body.abstract);
-    addMarkdownDetailSection(content, 'Motivation', body.motivation);
-    addMarkdownDetailSection(content, 'Rationale', body.rationale);
-    addEmbeddedGovernanceImages(content, proposal, embeddedImages);
+    const proposalDetailsContainer = document.createElement('div');
+    proposalDetailsContainer.className = 'governance-proposal-details';
+    proposalDetailsContainer.dataset.proposalDetailsId = proposal.proposal_id;
+    renderGovernanceProposalDetails(proposalDetailsContainer, proposal, {
+        isLoading: proposal.metadata_compact === true
+    });
+    content.appendChild(proposalDetailsContainer);
 
     createGovernanceMenuOverlay({
         id: 'governance-overlay',
@@ -1861,6 +1881,67 @@ function openGovernanceOverlay(proposal, options = {}) {
         if (!voteDetailsContainer.isConnected) return;
         addVoteDetailsState(voteDetailsContainer, 'Vote details could not be loaded.');
     });
+
+    if (proposal.metadata_compact === true) {
+        loadProposalDetails(proposal)
+            .then(detailProposal => {
+                if (!proposalDetailsContainer.isConnected) return;
+                renderGovernanceProposalDetails(proposalDetailsContainer, detailProposal);
+                const title = document.getElementById('governance-dialog-title');
+                if (title) title.textContent = getProposalTitle(detailProposal);
+            })
+            .catch(() => {
+                if (!proposalDetailsContainer.isConnected) return;
+                renderGovernanceProposalDetails(proposalDetailsContainer, proposal, { hasError: true });
+            });
+    }
+}
+
+function renderGovernanceProposalDetails(container, proposal, options = {}) {
+    container.textContent = '';
+    addDetailRow(container, 'Action ID', proposal.proposal_id);
+    addDetailRow(container, 'Transaction', proposal.proposal_tx_hash);
+
+    const body = proposal.meta_json?.body || proposal.meta_json || {};
+    addMarkdownDetailSection(container, 'Abstract', body.abstract);
+    addMarkdownDetailSection(container, 'Motivation', body.motivation);
+    addMarkdownDetailSection(container, 'Rationale', body.rationale);
+    addEmbeddedGovernanceImages(container, proposal);
+
+    if (options.isLoading || options.hasError) {
+        const message = document.createElement('p');
+        message.className = 'small-text';
+        message.textContent = options.hasError
+            ? 'Proposal details could not be loaded.'
+            : 'Loading proposal details...';
+        container.appendChild(message);
+    }
+}
+
+async function loadProposalDetails(proposal) {
+    const proposalId = proposal?.proposal_id;
+    if (!proposalId) return proposal;
+    if (!proposalDetailsCache.has(proposalId)) {
+        const request = fetchJson(getProposalDetailApiUrl(proposalId))
+            .then(payload => {
+                const rawProposal = payload?.proposal || payload;
+                if (!rawProposal || getProposalId(rawProposal) !== proposalId) {
+                    throw new Error('Proposal detail response is invalid');
+                }
+                const normalized = normalizeGovernanceProposal(
+                    rawProposal,
+                    rawProposal?.voting_summary || rawProposal?.vote_summary || null,
+                    rawProposal
+                );
+                return { ...proposal, ...normalized, metadata_compact: false };
+            })
+            .catch(error => {
+                proposalDetailsCache.delete(proposalId);
+                throw error;
+            });
+        proposalDetailsCache.set(proposalId, request);
+    }
+    return proposalDetailsCache.get(proposalId);
 }
 
 function closeGovernanceOverlay() {
