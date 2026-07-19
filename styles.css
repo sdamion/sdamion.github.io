@@ -855,6 +855,36 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     white-space: nowrap;
 }
 
+.starch-company-card {
+    cursor: pointer;
+}
+
+.starch-company-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+}
+
+.starch-company-stats > span {
+    color: var(--accent-strong);
+    font-size: 0.82rem;
+    font-weight: 800;
+}
+
+.starch-company-detail {
+    display: grid;
+    gap: 16px;
+}
+
+.starch-company-detail-summary {
+    margin: 0;
+}
+
+.starch-company-id-line .pool-delegator-copy-button {
+    flex: 0 0 auto;
+    margin-left: auto;
+}
+
 .pool-delegator-amount {
     color: var(--accent-strong);
     font-size: 1rem;
@@ -981,10 +1011,10 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     font-weight: 700;
 }
 
-#minerChart {
+.starch-company-chart {
     width: 100% !important;
     max-height: 360px;
-    margin: 24px 0;
+    margin: 8px 0;
 }
 
 /* Governance Overview */

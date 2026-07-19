@@ -47,7 +47,7 @@
 
     <!-- Preload Logo -->
     <link rel="preload" href="tdsp_logo.webp" as="image">
-    <link rel="stylesheet" href="styles.css?v=20260719-starch-directory">
+    <link rel="stylesheet" href="styles.css?v=20260719-company-overlay">
 
     <script src="index.js?v=20260718-overlay-arrows" defer></script>
 </head>
@@ -175,20 +175,7 @@
             <div class="section-inner">
                 <p class="eyebrow">Mining</p>
                 <h2>Starch Stats</h2>
-                <div class="control-row">
-                    <select id="teamSelector"></select>
-                    <input id="customTeamId" type="text" placeholder="Enter Company ID">
-                </div>
-                <div id="errorMessage" role="status" aria-live="polite"></div>
                 <div class="starch-summary">
-                    <div>
-                        <strong id="teamBalance">Loading...</strong>
-                        <span>Company Balance</span>
-                    </div>
-                    <div>
-                        <strong id="weeklyBlocks">Loading...</strong>
-                        <span>Weekly Blocks</span>
-                    </div>
                     <div id="starch-miners-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show Starch miners">
                         <strong id="starchMinerCount">Loading...</strong>
                         <span>Miners</span>
@@ -198,23 +185,6 @@
                         <span>Companies</span>
                     </div>
                 </div>
-                <div id="totalBalanceRow"></div>
-                <canvas id="minerChart"></canvas>
-                <div class="table-shell">
-                    <table id="minersTable">
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>Miner</th>
-                                <th>Rank</th>
-                                <th>Blocks</th>
-                                <th>$STRCH</th>
-                            </tr>
-                        </thead>
-                        <tbody id="minerTableBody"></tbody>
-                    </table>
-                </div>
-                <p class="refresh-time small-text">Last Updated: <span id="last-updated">Never</span></p>
                 <p class="small-text">Source: <a href="https://starch.one" target="_blank" rel="noopener noreferrer" aria-label="Starch.one">starch.one</a></p>
             </div>
         </section>
@@ -297,7 +267,7 @@
     </div>
 
     <script src="chart.js"></script>
-    <script src="starch.js?v=20260719-directory-tiles" defer></script>
+    <script src="starch.js?v=20260719-company-overlay" defer></script>
     <script src="governance.js?v=20260718-overlay-arrows" defer></script>
     <script src="stake.js?v=20260717-backend-api-only" defer></script>
 </body>

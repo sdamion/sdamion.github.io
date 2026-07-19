@@ -5,51 +5,16 @@ const STARCH_API_BASE_URL = STARCH_IS_LOCAL_PREVIEW
 const STARCH_DIRECTORY_URL = STARCH_IS_LOCAL_PREVIEW
     ? '/__starch_directory_proxy__'
     : 'https://api.tdsp.online/api/starch/directory';
-const teams = {
-    'B0ADAD': '50% Company',
-    '868C0C': 'TDSP02',
-    '1B83BB': 'StarchWhale'
-};
-let selectedTeamId = Object.keys(teams)[0];
-let minerChartInstance = null;
+
 let starchDirectory = { miners: [], companies: [] };
-const RETRY_LIMIT = 1;
+let minerChartInstance = null;
 
-// Fetch JSON with retry logic
-async function fetchJson(url, attempts = 0) {
-    try {
-        const response = await fetch(url);
-        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-        return await response.json();
-    } catch (error) {
-        console.error(`❌ Error fetching ${url}:`, error.message);
-        if (attempts < RETRY_LIMIT) {
-            console.log(`🔄 Retrying (${attempts + 1}/${RETRY_LIMIT})...`);
-            return fetchJson(url, attempts + 1);
-        }
-        displayError(`Failed to load data from ${url}`);
-        return null;
-    }
-}
-
-function displayError(message) {
-    const errorMessage = document.getElementById('errorMessage');
-    if (errorMessage) {
-        errorMessage.textContent = '';
-        const p = document.createElement('p');
-        p.className = 'error-text';
-        p.textContent = `❌ ${message}`;
-        errorMessage.appendChild(p);
-    }
-}
-
-function clearError() {
-    const errorMessage = document.getElementById('errorMessage');
-    if (errorMessage) errorMessage.textContent = '';
-}
-
-const formatBalance = (balance) => 
-    new Intl.NumberFormat('en-US', { style: 'decimal', minimumFractionDigits: 3, maximumFractionDigits: 3 }).format(balance / 1_000_000) + 'M';
+const formatBalance = balance =>
+    `${new Intl.NumberFormat('en-US', {
+        style: 'decimal',
+        minimumFractionDigits: 3,
+        maximumFractionDigits: 3
+    }).format((Number(balance) || 0) / 1_000_000)}M`;
 
 function getStarchSummaryUrl(teamId) {
     if (STARCH_IS_LOCAL_PREVIEW) {
@@ -70,7 +35,9 @@ async function fetchStarchDirectory() {
         updateStarchDirectoryTiles(payload);
     } catch (error) {
         console.error(`Starch directory failed: ${error.message}`);
-        updateStarchDirectoryTiles(null);
+        if (!starchDirectory.miners.length && !starchDirectory.companies.length) {
+            updateStarchDirectoryTiles(null);
+        }
     }
 }
 
@@ -112,11 +79,11 @@ function openStarchDirectoryOverlay(type, title, returnFocus) {
         closeOverlay: () => closePoolMenuOverlay(overlayId),
         returnFocus,
         rootTitle: title,
-        bodyNode: createStarchDirectoryList(records, title)
+        bodyNode: createStarchDirectoryList(records, type, title)
     });
 }
 
-function createStarchDirectoryList(records, label) {
+function createStarchDirectoryList(records, type, label) {
     const list = document.createElement('div');
     list.className = 'governance-drep-directory-list';
     if (!records.length) {
@@ -128,32 +95,248 @@ function createStarchDirectoryList(records, label) {
     }
 
     records.forEach((record, index) => {
-        const id = String(record?.id || '').trim();
-        const row = document.createElement('div');
-        row.className = 'pool-delegator-row governance-menu-card';
-
-        const rank = document.createElement('span');
-        rank.className = 'pool-delegator-rank';
-        rank.textContent = String(index + 1);
-
-        const content = document.createElement('div');
-        content.className = 'pool-delegator-content';
-        const name = document.createElement('strong');
-        name.className = 'pool-delegator-handle';
-        name.textContent = String(record?.name || 'No Name');
-
-        const idLine = document.createElement('div');
-        idLine.className = 'starch-directory-id-line';
-        const idText = document.createElement('span');
-        idText.textContent = id || 'N/A';
-        idLine.append(idText);
-        if (id) idLine.appendChild(createStarchCopyButton(id, `${label.slice(0, -1)} ID`));
-
-        content.append(name, idLine);
-        row.append(rank, content);
-        list.appendChild(row);
+        list.appendChild(createStarchDirectoryCard(record, index, type, label));
     });
     return list;
+}
+
+function createStarchDirectoryCard(record, index, type, label) {
+    const id = String(record?.id || '').trim();
+    const row = document.createElement('div');
+    row.className = 'pool-delegator-row governance-menu-card';
+
+    const rank = document.createElement('span');
+    rank.className = 'pool-delegator-rank';
+    rank.textContent = String(index + 1);
+
+    const content = document.createElement('div');
+    content.className = 'pool-delegator-content';
+    const name = document.createElement('strong');
+    name.className = 'pool-delegator-handle';
+    name.textContent = String(record?.name || 'No Name');
+    content.appendChild(name);
+
+    if (type === 'companies') {
+        row.classList.add('starch-company-card');
+        row.setAttribute('role', 'button');
+        row.tabIndex = 0;
+        row.setAttribute('aria-label', `Open ${name.textContent}`);
+        content.appendChild(createStarchCompanyStats(record));
+        const open = () => openStarchCompanyOverlay(record, row);
+        row.addEventListener('click', open);
+        row.addEventListener('keydown', event => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault();
+            open();
+        });
+    }
+
+    const idLine = document.createElement('div');
+    idLine.className = 'starch-directory-id-line';
+    const idText = document.createElement('span');
+    idText.textContent = id || 'N/A';
+    idLine.append(idText);
+    if (id) {
+        const singularLabel = type === 'companies' ? 'Company' : 'Miner';
+        idLine.appendChild(createStarchCopyButton(id, `${singularLabel} ID`));
+    }
+    content.appendChild(idLine);
+
+    row.append(rank, content);
+    return row;
+}
+
+function createStarchCompanyStats(company) {
+    const stats = document.createElement('div');
+    stats.className = 'starch-company-stats';
+    const balance = document.createElement('span');
+    const blocks = document.createElement('span');
+    if (company?.stats_resolved === true) {
+        balance.textContent = `Balance ${formatBalance(company.balance)} STRCH`;
+        blocks.textContent = `Weekly Blocks ${Number(company.weekly_blocks || 0).toLocaleString('en-US')}`;
+    } else {
+        balance.textContent = 'Balance loading...';
+        blocks.textContent = 'Weekly Blocks loading...';
+    }
+    stats.append(balance, blocks);
+    return stats;
+}
+
+async function openStarchCompanyOverlay(company, returnFocus) {
+    closeStarchCompanyOverlay(false);
+    const companyId = String(company?.id || '').trim().toUpperCase();
+    const content = document.createElement('div');
+    content.className = 'starch-company-detail';
+    const loading = document.createElement('p');
+    loading.className = 'small-text';
+    loading.textContent = 'Loading company miners...';
+    content.appendChild(loading);
+
+    createPoolMenuOverlay({
+        id: 'starch-company-detail-overlay',
+        titleId: 'starch-company-detail-title',
+        titleText: String(company?.name || 'No Name'),
+        headerMeta: companyId,
+        closeLabel: `Close ${String(company?.name || 'company')}`,
+        closeOverlay: closeStarchCompanyOverlay,
+        returnFocus,
+        rootTitle: 'Companies',
+        bodyNode: content
+    });
+
+    try {
+        const response = await fetch(getStarchSummaryUrl(companyId));
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const summary = await response.json();
+        if (!document.getElementById('starch-company-detail-overlay')) return;
+        renderStarchCompanyDetail(content, company, summary);
+    } catch (error) {
+        console.error(`Starch company ${companyId} failed: ${error.message}`);
+        if (!document.getElementById('starch-company-detail-overlay')) return;
+        content.replaceChildren();
+        const message = document.createElement('p');
+        message.className = 'governance-empty';
+        message.textContent = 'Company miner data could not be loaded.';
+        content.appendChild(message);
+    }
+}
+
+function closeStarchCompanyOverlay(restoreFocus = true) {
+    if (minerChartInstance) {
+        minerChartInstance.destroy();
+        minerChartInstance = null;
+    }
+    closePoolMenuOverlay('starch-company-detail-overlay', restoreFocus);
+}
+
+function renderStarchCompanyDetail(content, company, summary) {
+    const miners = (Array.isArray(summary?.miners) ? summary.miners : []).map(miner => ({
+        miner_id: String(miner?.miner_id || ''),
+        rank: Number.isFinite(Number(miner?.rank)) ? Number(miner.rank) : null,
+        balance: Number(miner?.balance) || 0,
+        weeklyBlocks: Number(miner?.weekly_blocks) || 0
+    }));
+    content.replaceChildren();
+
+    const summaryTiles = document.createElement('div');
+    summaryTiles.className = 'starch-summary starch-company-detail-summary';
+    summaryTiles.append(
+        createStarchStatTile(formatBalance(summary?.team_balance), 'Company Balance'),
+        createStarchStatTile(Number(summary?.weekly_blocks || 0).toLocaleString('en-US'), 'Weekly Blocks'),
+        createStarchStatTile(miners.length.toLocaleString('en-US'), 'Miners')
+    );
+
+    const idLine = document.createElement('div');
+    idLine.className = 'pool-id-line starch-company-id-line';
+    const idLabel = document.createElement('span');
+    idLabel.textContent = 'Company ID';
+    const idValue = document.createElement('strong');
+    idValue.textContent = String(company?.id || summary?.team_id || 'N/A');
+    idLine.append(idLabel, idValue);
+    if (company?.id) idLine.appendChild(createStarchCopyButton(company.id, 'Company ID'));
+
+    const canvas = document.createElement('canvas');
+    canvas.className = 'starch-company-chart';
+
+    const table = createStarchMinerTable(miners);
+    const timestamp = document.createElement('p');
+    timestamp.className = 'refresh-time small-text';
+    timestamp.textContent = `Last Updated: ${formatStarchTimestamp(summary?.updated_at, summary?.stale === true)}`;
+
+    content.append(summaryTiles, idLine, canvas, table, timestamp);
+    renderStarchCompanyChart(canvas, miners, String(company?.id || summary?.team_id || '000000'));
+}
+
+function createStarchStatTile(value, label) {
+    const tile = document.createElement('div');
+    const strong = document.createElement('strong');
+    strong.textContent = value;
+    const span = document.createElement('span');
+    span.textContent = label;
+    tile.append(strong, span);
+    return tile;
+}
+
+function createStarchMinerTable(miners) {
+    const shell = document.createElement('div');
+    shell.className = 'table-shell';
+    const table = document.createElement('table');
+    const head = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    ['#', 'Miner', 'Rank', 'Blocks', '$STRCH'].forEach(label => {
+        const th = document.createElement('th');
+        th.textContent = label;
+        headerRow.appendChild(th);
+    });
+    head.appendChild(headerRow);
+
+    const body = document.createElement('tbody');
+    miners.forEach((miner, index) => {
+        const row = document.createElement('tr');
+        const rankIndex = document.createElement('td');
+        rankIndex.textContent = String(index + 1);
+        const minerCell = document.createElement('td');
+        const link = document.createElement('a');
+        link.href = `https://starch.one/miner/${encodeURIComponent(miner.miner_id)}`;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.className = 'miner-link';
+        link.textContent = miner.miner_id;
+        minerCell.appendChild(link);
+        const rank = document.createElement('td');
+        rank.textContent = miner.rank == null ? 'N/A' : String(miner.rank);
+        const blocks = document.createElement('td');
+        blocks.textContent = String(miner.weeklyBlocks);
+        const balance = document.createElement('td');
+        balance.textContent = formatBalance(miner.balance);
+        row.append(rankIndex, minerCell, rank, blocks, balance);
+        body.appendChild(row);
+    });
+
+    table.append(head, body);
+    shell.appendChild(table);
+    return shell;
+}
+
+function renderStarchCompanyChart(canvas, miners, companyId) {
+    if (minerChartInstance) minerChartInstance.destroy();
+    const context = canvas.getContext('2d');
+    if (!miners.length) return;
+    const color = /^[0-9A-F]{6}$/i.test(companyId) ? `#${companyId}` : '#0f766e';
+    const hoverColor = shadeColor(color, -20);
+    const gradient = context.createLinearGradient(0, 0, 0, 360);
+    gradient.addColorStop(0, color);
+    gradient.addColorStop(1, hoverColor);
+
+    minerChartInstance = new Chart(context, {
+        type: 'bar',
+        data: {
+            labels: miners.map(miner => miner.miner_id),
+            datasets: [{
+                label: 'Mined Blocks (Week)',
+                data: miners.map(miner => miner.weeklyBlocks),
+                backgroundColor: gradient,
+                borderColor: color,
+                borderWidth: 2,
+                borderRadius: 5,
+                hoverBackgroundColor: hoverColor,
+                hoverBorderColor: color,
+                barThickness: 20
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: { legend: { display: true } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+}
+
+function formatStarchTimestamp(value, stale) {
+    const date = value ? new Date(value) : null;
+    const formatted = date && !Number.isNaN(date.getTime()) ? date.toLocaleString() : 'Never';
+    return stale ? `${formatted} (cached)` : formatted;
 }
 
 function createStarchCopyButton(value, label) {
@@ -192,189 +375,19 @@ async function copyStarchText(value) {
     textArea.remove();
 }
 
-async function fetchMinerData() {
-    try {
-        const summary = await fetchJson(getStarchSummaryUrl(selectedTeamId));
-        if (!summary) return;
-        clearError();
-
-        const minersData = (Array.isArray(summary.miners) ? summary.miners : []).map(miner => ({
-            miner_id: miner.miner_id,
-            rank: miner.rank ?? 'N/A',
-            balance: Number(miner.balance) || 0,
-            weeklyBlocks: Number(miner.weekly_blocks) || 0
-        }));
-        updateUI(
-            minersData,
-            Number(summary.team_balance) || 0,
-            Number(summary.weekly_blocks) || 0
-        );
-        updateStarchTimestamp(summary.updated_at, summary.stale === true);
-    } catch (error) {
-        console.error(`🚨 Error processing data for team ${selectedTeamId}:`, error);
-        displayError("Unexpected error occurred while fetching miner data.");
-    }
-}
-
-function updateStarchTimestamp(value, stale) {
-    const element = document.getElementById('last-updated');
-    if (!element) return;
-    const date = value ? new Date(value) : null;
-    const formatted = date && !Number.isNaN(date.getTime()) ? date.toLocaleString() : 'Never';
-    element.textContent = stale ? `${formatted} (cached)` : formatted;
-}
-
-function updateUI(minersData, teamBalance = 0, totalWeeklyBlocks = 0) {
-    const teamNameElement = document.getElementById('teamName');
-    const balanceDisplay = document.getElementById('teamBalance');
-    const weeklyBlocksDisplay = document.getElementById('weeklyBlocks');
-    const minerTableBody = document.getElementById('minerTableBody');
-
-    if (teamNameElement) teamNameElement.innerText = teams[selectedTeamId] || selectedTeamId;
-    if (balanceDisplay) balanceDisplay.textContent = formatBalance(teamBalance);
-    if (weeklyBlocksDisplay) weeklyBlocksDisplay.textContent = String(totalWeeklyBlocks);
-
-    if (minerTableBody) {
-        while (minerTableBody.firstChild) minerTableBody.removeChild(minerTableBody.firstChild);
-        minersData.forEach(({ miner_id, rank, balance, weeklyBlocks }, index) => {
-            const tr = document.createElement('tr');
-            const tdIndex = document.createElement('td'); tdIndex.textContent = String(index + 1);
-            const tdLink = document.createElement('td');
-            const a = document.createElement('a');
-            a.href = `https://starch.one/miner/${miner_id}`;
-            a.target = '_blank';
-            a.rel = 'noopener noreferrer';
-            a.className = 'miner-link';
-            a.textContent = miner_id;
-            tdLink.appendChild(a);
-            const tdRank = document.createElement('td'); tdRank.textContent = String(rank);
-            const tdWeekly = document.createElement('td'); tdWeekly.textContent = String(weeklyBlocks);
-            const tdBalance = document.createElement('td'); tdBalance.textContent = balance ? formatBalance(balance) : '0.000M';
-
-            tr.appendChild(tdIndex);
-            tr.appendChild(tdLink);
-            tr.appendChild(tdRank);
-            tr.appendChild(tdWeekly);
-            tr.appendChild(tdBalance);
-            minerTableBody.appendChild(tr);
-        });
-    }
-
-    renderChart(minersData);
-}
-
-function populateTeamSelector() {
-    const teamSelector = document.getElementById('teamSelector');
-    if (!teamSelector) return;
-
-    teamSelector.replaceChildren();
-    Object.entries(teams).forEach(([teamId, teamName]) => {
-        const opt = document.createElement('option');
-        opt.value = teamId;
-        opt.textContent = `${teamName} (${teamId})`;
-        teamSelector.appendChild(opt);
-    });
-    teamSelector.value = selectedTeamId;
-    teamSelector.addEventListener('change', (event) => {
-        selectedTeamId = event.target.value;
-        fetchMinerData();
-    });
-}
-
-function addCustomTeamInput() {
-    const customTeamInput = document.getElementById('customTeamId');
-    if (!customTeamInput) return;
-
-    customTeamInput.addEventListener('keypress', (event) => {
-        if (event.key === 'Enter' && customTeamInput.value.trim() !== '') {
-            const customTeamId = customTeamInput.value.trim().toUpperCase();
-
-            // Validate if it's a valid 6-character hex color code
-            if (/^[0-9A-F]{6}$/i.test(customTeamId)) {
-                selectedTeamId = customTeamId;
-                fetchMinerData();
-            } else {
-                displayError("Invalid Company ID! Must be a 6-character HEX code.");
-            }
-        }
-    });
-}
-
-
-function renderChart(minersData) {
-    const canvas = document.getElementById('minerChart');
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (minerChartInstance) minerChartInstance.destroy();
-
-    if (!minersData.length) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.font = '16px Arial';
-        ctx.textAlign = "center";
-        ctx.fillText('No Data Available', canvas.width / 2, canvas.height / 2);
-        return;
-    }
-
-    // Extract color from team ID and generate hover color (darker shade)
-    const baseColor = `#${selectedTeamId}`;
-    const hoverColor = shadeColor(baseColor, -20); // Darken color by 20%
-
-    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-    gradient.addColorStop(0, baseColor);
-    gradient.addColorStop(1, hoverColor);
-
-    minerChartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: minersData.map(({ miner_id }) => miner_id),
-            datasets: [{
-                label: 'Mined Blocks (Week)',
-                data: minersData.map(({ weeklyBlocks }) => weeklyBlocks),
-                backgroundColor: gradient,
-                borderColor: baseColor,
-                borderWidth: 2,
-                borderRadius: 5,
-                hoverBackgroundColor: hoverColor,
-                hoverBorderColor: baseColor,
-                barThickness: 20
-            }]
-        },
-        options: {
-            plugins: {
-                legend: { display: true }
-            },
-            scales: {
-                y: { beginAtZero: true }
-            },
-            animation: {
-                duration: 1000,
-                easing: 'easeInOutBounce'
-            }
-        }
-    });
-}
-
-// Helper function to darken or lighten a hex color
 function shadeColor(color, percent) {
-    let R = parseInt(color.substring(1, 3), 16);
-    let G = parseInt(color.substring(3, 5), 16);
-    let B = parseInt(color.substring(5, 7), 16);
-
-    R = Math.min(255, Math.max(0, R + percent * 2.55));
-    G = Math.min(255, Math.max(0, G + percent * 2.55));
-    B = Math.min(255, Math.max(0, B + percent * 2.55));
-
-    return `rgb(${Math.round(R)}, ${Math.round(G)}, ${Math.round(B)})`;
+    let red = parseInt(color.substring(1, 3), 16);
+    let green = parseInt(color.substring(3, 5), 16);
+    let blue = parseInt(color.substring(5, 7), 16);
+    red = Math.min(255, Math.max(0, red + percent * 2.55));
+    green = Math.min(255, Math.max(0, green + percent * 2.55));
+    blue = Math.min(255, Math.max(0, blue + percent * 2.55));
+    return `rgb(${Math.round(red)}, ${Math.round(green)}, ${Math.round(blue)})`;
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-    populateTeamSelector();
-    addCustomTeamInput();
+document.addEventListener('DOMContentLoaded', () => {
     bindStarchDirectoryTile('starch-miners-card', 'miners', 'Miners');
     bindStarchDirectoryTile('starch-companies-card', 'companies', 'Companies');
-    fetchMinerData();
     fetchStarchDirectory();
-    setInterval(fetchMinerData, 120000);
     setInterval(fetchStarchDirectory, 300000);
 });
