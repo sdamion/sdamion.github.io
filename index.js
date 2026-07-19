@@ -6,6 +6,20 @@ const MITHRIL_API_URL = IS_LOCAL_PREVIEW ? '/__mithril_proxy__' : 'https://api.t
 const ICEBREAKER_API_URL = IS_LOCAL_PREVIEW ? '/__icebreaker_proxy__' : 'https://api.tdsp.online/api/icebreaker';
 const STARCH_POOL_API_URL = IS_LOCAL_PREVIEW ? '/__starch_pools_proxy__' : 'https://api.tdsp.online/api/starch/pools';
 const LEADER_SCHEDULE_API_URL = IS_LOCAL_PREVIEW ? '/__leader_schedule_proxy__' : 'https://api.tdsp.online/api/leader-schedule';
+const STARCH_POOL_WEBSITES = Object.freeze({
+    '4free': 'https://x.com/4FREE_stakepool',
+    a3c: 'https://x.com/A3Cpool_Shawn',
+    bone: 'https://x.com/bone_pool',
+    drmz: 'https://x.com/drmz_web3',
+    earn: 'https://x.com/earncoinpool',
+    earncoin: 'https://x.com/earncoinpool',
+    earncoinpool: 'https://x.com/earncoinpool',
+    epc: 'https://x.com/earncoinpool',
+    epoch: 'https://x.com/EPOCHpool',
+    sagan: 'https://x.com/SaganPool',
+    tdsp: 'https://x.com/DamionDutch',
+    weed: 'https://x.com/CardanoWEED'
+});
 const notifiedRelayMaintenance = new Set();
 let headerVisibilityObserver = null;
 let poolDelegators = [];
@@ -46,6 +60,7 @@ async function fetchPrices() {
 // Fetch prices on page load and set up auto-update
 // Initialize UI behaviors and price fetching when DOM is ready
 document.addEventListener("DOMContentLoaded", () => {
+    initExternalLinkWarnings();
     initThemeToggle();
     initPoolCopyButtons();
     initPoolDelegatorsCard();
@@ -64,6 +79,151 @@ document.addEventListener("DOMContentLoaded", () => {
     setInterval(fetchStarchPoolStatus, 300000);
     setInterval(fetchLeaderSchedule, 300000);
     initUI();
+});
+
+let pendingExternalUrl = '';
+let externalLinkReturnFocus = null;
+
+function getExternalHttpUrl(value) {
+    try {
+        const url = new URL(value, window.location.href);
+        if (!['http:', 'https:'].includes(url.protocol)) return null;
+        return url.origin === window.location.origin ? null : url;
+    } catch {
+        return null;
+    }
+}
+
+function initExternalLinkWarnings() {
+    if (document.documentElement.dataset.externalLinksBound === 'true') return;
+    document.documentElement.dataset.externalLinksBound = 'true';
+    document.addEventListener('click', event => {
+        const link = event.target.closest?.('a[href]');
+        if (!link) return;
+        const url = getExternalHttpUrl(link.href);
+        if (!url) return;
+
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        openExternalSiteWarning(url.href, link);
+    }, true);
+}
+
+function getExternalSiteWarning() {
+    let overlay = document.getElementById('external-site-warning');
+    if (overlay) return overlay;
+
+    overlay = document.createElement('div');
+    overlay.id = 'external-site-warning';
+    overlay.className = 'external-site-warning';
+    overlay.hidden = true;
+    overlay.setAttribute('aria-hidden', 'true');
+
+    const dialog = document.createElement('article');
+    dialog.className = 'external-site-warning-dialog';
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.setAttribute('aria-labelledby', 'external-site-warning-title');
+    dialog.setAttribute('aria-describedby', 'external-site-warning-message');
+
+    const title = document.createElement('h2');
+    title.id = 'external-site-warning-title';
+    title.textContent = "You're opening an external site";
+
+    const message = document.createElement('p');
+    message.id = 'external-site-warning-message';
+    message.textContent = 'This link will open in a new tab.';
+
+    const host = document.createElement('strong');
+    host.className = 'external-site-warning-host';
+    host.dataset.externalSiteHost = 'true';
+
+    const urlRow = document.createElement('div');
+    urlRow.className = 'external-site-warning-url';
+
+    const copyUrl = document.createElement('button');
+    copyUrl.type = 'button';
+    copyUrl.className = 'external-site-warning-copy';
+    copyUrl.textContent = 'Copy';
+    copyUrl.setAttribute('aria-label', 'Copy external URL');
+    copyUrl.addEventListener('click', async () => {
+        if (!pendingExternalUrl) return;
+        try {
+            await copyText(pendingExternalUrl);
+            copyUrl.textContent = 'Copied';
+        } catch {
+            copyUrl.textContent = 'Copy failed';
+        }
+        setTimeout(() => {
+            copyUrl.textContent = 'Copy';
+        }, 1400);
+    });
+    urlRow.append(host, copyUrl);
+
+    const actions = document.createElement('div');
+    actions.className = 'external-site-warning-actions';
+
+    const cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.className = 'external-site-warning-cancel';
+    cancel.textContent = 'Cancel';
+    cancel.addEventListener('click', closeExternalSiteWarning);
+
+    const proceed = document.createElement('button');
+    proceed.type = 'button';
+    proceed.className = 'external-site-warning-continue';
+    proceed.textContent = 'Continue';
+    proceed.addEventListener('click', () => {
+        const url = pendingExternalUrl;
+        closeExternalSiteWarning(false);
+        if (!url) return;
+        const opened = window.open(url, '_blank', 'noopener,noreferrer');
+        if (opened) opened.opener = null;
+    });
+
+    actions.append(cancel, proceed);
+    dialog.append(title, message, urlRow, actions);
+    overlay.appendChild(dialog);
+    overlay.addEventListener('click', event => {
+        if (event.target === overlay) closeExternalSiteWarning();
+    });
+    document.body.appendChild(overlay);
+    return overlay;
+}
+
+function openExternalSiteWarning(value, returnFocus = document.activeElement) {
+    const url = getExternalHttpUrl(value);
+    if (!url) return false;
+
+    const overlay = getExternalSiteWarning();
+    const host = overlay.querySelector('[data-external-site-host]');
+    const copy = overlay.querySelector('.external-site-warning-copy');
+    if (host) host.textContent = url.href;
+    if (copy) copy.textContent = 'Copy';
+    pendingExternalUrl = url.href;
+    externalLinkReturnFocus = returnFocus;
+    overlay.hidden = false;
+    overlay.setAttribute('aria-hidden', 'false');
+    overlay.querySelector('.external-site-warning-cancel')?.focus();
+    return true;
+}
+
+function closeExternalSiteWarning(restoreFocus = true) {
+    const overlay = document.getElementById('external-site-warning');
+    if (!overlay) return;
+    overlay.hidden = true;
+    overlay.setAttribute('aria-hidden', 'true');
+    pendingExternalUrl = '';
+    if (restoreFocus && externalLinkReturnFocus?.isConnected) externalLinkReturnFocus.focus();
+    externalLinkReturnFocus = null;
+}
+
+document.addEventListener('keydown', event => {
+    const overlay = document.getElementById('external-site-warning');
+    if (event.key === 'Escape' && overlay && !overlay.hidden) {
+        event.preventDefault();
+        closeExternalSiteWarning();
+    }
 });
 
 document.addEventListener('tdsp:content-loaded', () => {
@@ -159,7 +319,17 @@ async function fetchStarchPoolStatus() {
 function renderStarchPoolStatus(payload) {
     starchPoolStatus = payload;
     starchPools = (Array.isArray(payload?.pools) ? payload.pools : [])
-        .filter(pool => String(pool?.ticker || '').toLowerCase() !== 'tdsp');
+        .sort((left, right) => {
+            const leftTicker = String(left?.ticker || '').toLowerCase();
+            const rightTicker = String(right?.ticker || '').toLowerCase();
+            if (leftTicker === 'tdsp') return -1;
+            if (rightTicker === 'tdsp') return 1;
+            return String(left?.name || leftTicker).localeCompare(
+                String(right?.name || rightTicker),
+                'en',
+                { sensitivity: 'base' }
+            );
+        });
     const active = payload?.tdsp?.active === true || Number(payload?.tdsp?.status) === 1;
     setStarchPoolCardStatus(active ? 'Active' : 'Inactive', active);
 }
@@ -328,31 +498,34 @@ function closeMithrilSignersOverlay(restoreFocus = true) {
 }
 
 function initStarchPoolCard() {
-    const card = document.getElementById('pool-starch-card');
-    if (!card || card.dataset.starchPoolBound === 'true') return;
+    ['pool-starch-status-card', 'starch-pools-card'].forEach(cardId => {
+        const card = document.getElementById(cardId);
+        if (!card || card.dataset.starchPoolBound === 'true') return;
 
-    card.dataset.starchPoolBound = 'true';
-    card.addEventListener('click', openStarchPoolsOverlay);
-    card.addEventListener('keydown', event => {
-        if (event.key !== 'Enter' && event.key !== ' ') return;
-        event.preventDefault();
-        openStarchPoolsOverlay();
+        const open = () => openStarchPoolsOverlay(card);
+        card.dataset.starchPoolBound = 'true';
+        card.addEventListener('click', open);
+        card.addEventListener('keydown', event => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault();
+            open();
+        });
     });
 }
 
-function openStarchPoolsOverlay() {
+function openStarchPoolsOverlay(returnFocus = document.activeElement) {
     closeStarchPoolsOverlay(false);
 
     const epoch = Number(starchPoolStatus?.epoch);
     createPoolMenuOverlay({
         id: 'pool-starch-overlay',
         titleId: 'pool-starch-title',
-        titleText: 'Other Starch Pools',
+        titleText: 'Starch Pools',
         headerMeta: `${starchPools.length.toLocaleString('en-US')} pools${Number.isFinite(epoch) ? ` · Epoch ${epoch.toLocaleString('en-US')}` : ''}`,
-        closeLabel: 'Close other Starch pools',
+        closeLabel: 'Close Starch pools',
         closeOverlay: closeStarchPoolsOverlay,
-        returnFocus: document.getElementById('pool-starch-card'),
-        rootTitle: 'Starch Pool',
+        returnFocus,
+        rootTitle: 'Starch Pools',
         bodyNode: createStarchPoolsList()
     });
 }
@@ -419,6 +592,7 @@ function createPoolMenuOverlay({ id, titleId, titleText, headerMeta, closeLabel,
     const body = document.createElement('div');
     body.className = 'overlay-dialog-body';
     body.appendChild(bodyNode);
+    installOverlaySearch(body);
 
     dialog.append(header, body);
     overlay.appendChild(dialog);
@@ -427,6 +601,87 @@ function createPoolMenuOverlay({ id, titleId, titleText, headerMeta, closeLabel,
         syncGovernanceMenuOverlayAccessibility();
     }
     close.focus();
+}
+
+function normalizeOverlaySearchText(value) {
+    return String(value || '')
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLocaleLowerCase();
+}
+
+function getOverlaySearchCards(body) {
+    return Array.from(body.querySelectorAll('.governance-menu-card'))
+        .filter(card => !card.parentElement?.closest('.governance-menu-card'));
+}
+
+function installOverlaySearch(body) {
+    if (!body || body.querySelector(':scope > .overlay-search-bar')) return;
+
+    const searchBar = document.createElement('div');
+    searchBar.className = 'overlay-search-bar';
+    searchBar.hidden = true;
+
+    const input = document.createElement('input');
+    input.className = 'overlay-search-input';
+    input.type = 'search';
+    input.placeholder = 'Search by name, ID, title or status';
+    input.setAttribute('aria-label', 'Search this overlay');
+    input.autocomplete = 'off';
+    input.autocapitalize = 'none';
+    input.spellcheck = false;
+
+    const count = document.createElement('span');
+    count.className = 'overlay-search-count';
+    count.setAttribute('aria-live', 'polite');
+
+    const empty = document.createElement('p');
+    empty.className = 'overlay-search-empty';
+    empty.textContent = 'No matching results.';
+    empty.hidden = true;
+
+    searchBar.append(input, count);
+    body.prepend(searchBar, empty);
+
+    const applySearch = () => {
+        const cards = getOverlaySearchCards(body);
+        const terms = normalizeOverlaySearchText(input.value).trim().split(/\s+/).filter(Boolean);
+        let visible = 0;
+
+        cards.forEach(card => {
+            const searchableText = normalizeOverlaySearchText(card.textContent);
+            const matches = terms.every(term => searchableText.includes(term));
+            card.hidden = !matches;
+            if (matches) visible += 1;
+        });
+
+        searchBar.hidden = cards.length < 2;
+        const countText = `${visible.toLocaleString('en-US')} / ${cards.length.toLocaleString('en-US')}`;
+        if (count.textContent !== countText) count.textContent = countText;
+        empty.hidden = cards.length < 2 || !terms.length || visible > 0;
+    };
+
+    input.addEventListener('input', applySearch);
+    input.addEventListener('keydown', event => {
+        if (event.key !== 'Escape' || !input.value) return;
+        event.preventDefault();
+        event.stopPropagation();
+        input.value = '';
+        applySearch();
+    });
+
+    let refreshQueued = false;
+    const observer = new MutationObserver(() => {
+        if (refreshQueued) return;
+        refreshQueued = true;
+        queueMicrotask(() => {
+            refreshQueued = false;
+            applySearch();
+        });
+    });
+    observer.observe(body, { childList: true, subtree: true });
+    body.overlaySearchObserver = observer;
+    applySearch();
 }
 
 function getNextPoolOverlayZIndex() {
@@ -461,15 +716,39 @@ function createStarchPoolsList() {
     }
 
     starchPools.forEach((pool, index) => {
-        list.appendChild(createPoolOverlayRow({
+        const row = createPoolOverlayRow({
             index,
             title: pool?.name || 'No Name',
             titleClassName: 'pool-delegator-handle',
             details: [String(pool?.ticker || '').toUpperCase() || 'N/A']
-        }));
+        });
+        const poolName = String(pool?.name || pool?.ticker || 'Starch pool');
+        const openWebsite = () => openExternalSiteWarning(getStarchPoolWebsite(pool), row);
+
+        row.classList.add('starch-pool-link-card');
+        row.tabIndex = 0;
+        row.setAttribute('role', 'link');
+        row.setAttribute('aria-label', `Open ${poolName} website`);
+        row.addEventListener('click', openWebsite);
+        row.addEventListener('keydown', event => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault();
+            openWebsite();
+        });
+        list.appendChild(row);
     });
 
     return list;
+}
+
+function getStarchPoolWebsite(pool) {
+    const suppliedWebsite = pool?.website || pool?.homepage || pool?.url;
+    if (getExternalHttpUrl(suppliedWebsite)) return suppliedWebsite;
+
+    const ticker = String(pool?.ticker || '').trim().toLowerCase();
+    const normalizedName = String(pool?.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (normalizedName.includes('earncoin')) return 'https://x.com/earncoinpool';
+    return STARCH_POOL_WEBSITES[ticker] || 'https://starch.one/';
 }
 
 function createMithrilSignersList() {

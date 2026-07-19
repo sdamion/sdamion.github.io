@@ -47,9 +47,9 @@
 
     <!-- Preload Logo -->
     <link rel="preload" href="tdsp_logo.webp" as="image">
-    <link rel="stylesheet" href="styles.css?v=20260719-company-overlay">
+    <link rel="stylesheet" href="styles.css?v=20260719-copy-external-url">
 
-    <script src="index.js?v=20260718-overlay-arrows" defer></script>
+    <script src="index.js?v=20260719-copy-external-url" defer></script>
 </head>
 <body>
     <header class="site-header" id="site-header">
@@ -155,7 +155,7 @@
                         <strong id="pool-icebreaker-status" class="pool-status-value">...</strong>
                         <span class="pool-provider-label"><img class="pool-provider-icon" src="Icebreaker_logo.webp" alt="">Icebreaker 53</span>
                     </a>
-                    <div id="pool-starch-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show other Starch pools">
+                    <div id="pool-starch-status-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show Starch pools">
                         <strong id="pool-starch-status" class="pool-status-value">...</strong>
                         <span class="pool-provider-label"><img class="pool-provider-icon" src="starchCompanyLogo.webp" alt="">Starch Pool</span>
                     </div>
@@ -176,13 +176,17 @@
                 <p class="eyebrow">Mining</p>
                 <h2>Starch Stats</h2>
                 <div class="starch-summary">
-                    <div id="starch-miners-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show Starch miners">
-                        <strong id="starchMinerCount">Loading...</strong>
-                        <span>Miners</span>
+                    <div id="starch-pools-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show Starch pools">
+                        <strong>Active</strong>
+                        <span>Starch Pools</span>
                     </div>
                     <div id="starch-companies-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show Starch companies">
                         <strong id="starchCompanyCount">Loading...</strong>
                         <span>Companies</span>
+                    </div>
+                    <div id="starch-miners-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show Starch miners">
+                        <strong id="starchMinerCount">Loading...</strong>
+                        <span>Miners</span>
                     </div>
                 </div>
                 <p class="small-text">Source: <a href="https://starch.one" target="_blank" rel="noopener noreferrer" aria-label="Starch.one">starch.one</a></p>
@@ -267,8 +271,8 @@
     </div>
 
     <script src="chart.js"></script>
-    <script src="starch.js?v=20260719-company-overlay" defer></script>
-    <script src="governance.js?v=20260718-overlay-arrows" defer></script>
+    <script src="starch.js?v=20260719-external-warning" defer></script>
+    <script src="governance.js?v=20260719-overlay-search" defer></script>
     <script src="stake.js?v=20260717-backend-api-only" defer></script>
 </body>
 </html>

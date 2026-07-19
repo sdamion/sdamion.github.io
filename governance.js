@@ -1514,6 +1514,7 @@ function appendGovernanceDialogBody(dialog, ...nodes) {
     body.className = 'overlay-dialog-body';
     nodes.forEach(node => body.appendChild(node));
     dialog.appendChild(body);
+    return body;
 }
 
 function createGovernanceMenuOverlay(options) {
@@ -1582,7 +1583,8 @@ function createGovernanceMenuOverlay(options) {
     meta.textContent = headerMeta;
 
     appendGovernanceDialogHeader(dialog, title, close, leadingNodes, meta, back);
-    appendGovernanceDialogBody(dialog, ...bodyNodes);
+    const body = appendGovernanceDialogBody(dialog, ...bodyNodes);
+    installOverlaySearch(body);
     overlay.appendChild(dialog);
     document.body.appendChild(overlay);
     syncGovernanceMenuOverlayAccessibility();

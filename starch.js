@@ -94,10 +94,42 @@ function createStarchDirectoryList(records, type, label) {
         return list;
     }
 
-    records.forEach((record, index) => {
+    sortStarchDirectoryRecords(records, type).forEach((record, index) => {
         list.appendChild(createStarchDirectoryCard(record, index, type, label));
     });
     return list;
+}
+
+function sortStarchDirectoryRecords(records, type) {
+    const sorted = [...records];
+    if (type !== 'companies') return sorted;
+
+    const tdspOrder = new Map([
+        ['B0ADAD', 0],
+        ['868C0C', 1]
+    ]);
+    return sorted.sort((left, right) => {
+        const leftId = String(left?.id || '').toUpperCase();
+        const rightId = String(right?.id || '').toUpperCase();
+        const leftTdsp = tdspOrder.get(leftId);
+        const rightTdsp = tdspOrder.get(rightId);
+        if (leftTdsp != null || rightTdsp != null) {
+            if (leftTdsp == null) return 1;
+            if (rightTdsp == null) return -1;
+            return leftTdsp - rightTdsp;
+        }
+
+        const leftHasBalance = Number(left?.balance) > 0;
+        const rightHasBalance = Number(right?.balance) > 0;
+        if (leftHasBalance !== rightHasBalance) return leftHasBalance ? -1 : 1;
+
+        const nameOrder = String(left?.name || 'No Name').localeCompare(
+            String(right?.name || 'No Name'),
+            'en',
+            { sensitivity: 'base', numeric: true }
+        );
+        return nameOrder || leftId.localeCompare(rightId);
+    });
 }
 
 function createStarchDirectoryCard(record, index, type, label) {
@@ -123,6 +155,20 @@ function createStarchDirectoryCard(record, index, type, label) {
         row.setAttribute('aria-label', `Open ${name.textContent}`);
         content.appendChild(createStarchCompanyStats(record));
         const open = () => openStarchCompanyOverlay(record, row);
+        row.addEventListener('click', open);
+        row.addEventListener('keydown', event => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault();
+            open();
+        });
+    } else if (type === 'miners' && id) {
+        row.classList.add('starch-miner-card');
+        row.setAttribute('role', 'link');
+        row.tabIndex = 0;
+        row.setAttribute('aria-label', `Open ${name.textContent} on Starch`);
+        const open = () => {
+            openExternalSiteWarning(`https://starch.one/miner/${encodeURIComponent(id)}`, row);
+        };
         row.addEventListener('click', open);
         row.addEventListener('keydown', event => {
             if (event.key !== 'Enter' && event.key !== ' ') return;
@@ -345,7 +391,9 @@ function createStarchCopyButton(value, label) {
     button.type = 'button';
     button.textContent = '⧉';
     button.setAttribute('aria-label', `Copy ${label}`);
+    button.addEventListener('keydown', event => event.stopPropagation());
     button.addEventListener('click', async event => {
+        event.preventDefault();
         event.stopPropagation();
         const original = button.textContent;
         try {
