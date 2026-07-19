@@ -2,6 +2,9 @@ const STARCH_IS_LOCAL_PREVIEW = ['localhost', '127.0.0.1'].includes(window.locat
 const STARCH_API_BASE_URL = STARCH_IS_LOCAL_PREVIEW
     ? '/__starch_proxy__'
     : 'https://api.tdsp.online/api/starch';
+const STARCH_DIRECTORY_URL = STARCH_IS_LOCAL_PREVIEW
+    ? '/__starch_directory_proxy__'
+    : 'https://api.tdsp.online/api/starch/directory';
 const teams = {
     'B0ADAD': '50% Company',
     '868C0C': 'TDSP02',
@@ -9,6 +12,7 @@ const teams = {
 };
 let selectedTeamId = Object.keys(teams)[0];
 let minerChartInstance = null;
+let starchDirectory = { miners: [], companies: [] };
 const RETRY_LIMIT = 1;
 
 // Fetch JSON with retry logic
@@ -52,6 +56,140 @@ function getStarchSummaryUrl(teamId) {
         return `${STARCH_API_BASE_URL}?teamId=${encodeURIComponent(teamId)}`;
     }
     return `${STARCH_API_BASE_URL}/${encodeURIComponent(teamId)}`;
+}
+
+async function fetchStarchDirectory() {
+    try {
+        const response = await fetch(STARCH_DIRECTORY_URL);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const payload = await response.json();
+        starchDirectory = {
+            miners: Array.isArray(payload?.miners) ? payload.miners : [],
+            companies: Array.isArray(payload?.companies) ? payload.companies : []
+        };
+        updateStarchDirectoryTiles(payload);
+    } catch (error) {
+        console.error(`Starch directory failed: ${error.message}`);
+        updateStarchDirectoryTiles(null);
+    }
+}
+
+function updateStarchDirectoryTiles(payload) {
+    const minerCount = document.getElementById('starchMinerCount');
+    const companyCount = document.getElementById('starchCompanyCount');
+    if (minerCount) {
+        const value = Number(payload?.miner_count);
+        minerCount.textContent = Number.isFinite(value) ? value.toLocaleString('en-US') : 'N/A';
+    }
+    if (companyCount) {
+        const value = Number(payload?.company_count);
+        companyCount.textContent = Number.isFinite(value) ? value.toLocaleString('en-US') : 'N/A';
+    }
+}
+
+function bindStarchDirectoryTile(cardId, type, title) {
+    const card = document.getElementById(cardId);
+    if (!card) return;
+    const open = () => openStarchDirectoryOverlay(type, title, card);
+    card.addEventListener('click', open);
+    card.addEventListener('keydown', event => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        open();
+    });
+}
+
+function openStarchDirectoryOverlay(type, title, returnFocus) {
+    const records = Array.isArray(starchDirectory[type]) ? starchDirectory[type] : [];
+    const overlayId = `starch-${type}-overlay`;
+    document.getElementById(overlayId)?.remove();
+    createPoolMenuOverlay({
+        id: overlayId,
+        titleId: `starch-${type}-title`,
+        titleText: title,
+        headerMeta: `${records.length.toLocaleString('en-US')} ${title.toLowerCase()}`,
+        closeLabel: `Close ${title}`,
+        closeOverlay: () => closePoolMenuOverlay(overlayId),
+        returnFocus,
+        rootTitle: title,
+        bodyNode: createStarchDirectoryList(records, title)
+    });
+}
+
+function createStarchDirectoryList(records, label) {
+    const list = document.createElement('div');
+    list.className = 'governance-drep-directory-list';
+    if (!records.length) {
+        const message = document.createElement('p');
+        message.className = 'governance-empty';
+        message.textContent = `${label} data is not available yet.`;
+        list.appendChild(message);
+        return list;
+    }
+
+    records.forEach((record, index) => {
+        const id = String(record?.id || '').trim();
+        const row = document.createElement('div');
+        row.className = 'pool-delegator-row governance-menu-card';
+
+        const rank = document.createElement('span');
+        rank.className = 'pool-delegator-rank';
+        rank.textContent = String(index + 1);
+
+        const content = document.createElement('div');
+        content.className = 'pool-delegator-content';
+        const name = document.createElement('strong');
+        name.className = 'pool-delegator-handle';
+        name.textContent = String(record?.name || 'No Name');
+
+        const idLine = document.createElement('div');
+        idLine.className = 'starch-directory-id-line';
+        const idText = document.createElement('span');
+        idText.textContent = id || 'N/A';
+        idLine.append(idText);
+        if (id) idLine.appendChild(createStarchCopyButton(id, `${label.slice(0, -1)} ID`));
+
+        content.append(name, idLine);
+        row.append(rank, content);
+        list.appendChild(row);
+    });
+    return list;
+}
+
+function createStarchCopyButton(value, label) {
+    const button = document.createElement('button');
+    button.className = 'pool-delegator-copy-button';
+    button.type = 'button';
+    button.textContent = '⧉';
+    button.setAttribute('aria-label', `Copy ${label}`);
+    button.addEventListener('click', async event => {
+        event.stopPropagation();
+        const original = button.textContent;
+        try {
+            await copyStarchText(value);
+            button.textContent = 'Copied';
+        } catch {
+            button.textContent = 'Copy failed';
+        }
+        setTimeout(() => { button.textContent = original; }, 1400);
+    });
+    return button;
+}
+
+async function copyStarchText(value) {
+    if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(value);
+        return;
+    }
+    const textArea = document.createElement('textarea');
+    textArea.value = value;
+    textArea.setAttribute('readonly', '');
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-9999px';
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand('copy');
+    textArea.remove();
 }
 
 async function fetchMinerData() {
@@ -233,6 +371,10 @@ function shadeColor(color, percent) {
 document.addEventListener("DOMContentLoaded", () => {
     populateTeamSelector();
     addCustomTeamInput();
+    bindStarchDirectoryTile('starch-miners-card', 'miners', 'Miners');
+    bindStarchDirectoryTile('starch-companies-card', 'companies', 'Companies');
     fetchMinerData();
+    fetchStarchDirectory();
     setInterval(fetchMinerData, 120000);
+    setInterval(fetchStarchDirectory, 300000);
 });
