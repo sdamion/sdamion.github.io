@@ -2490,24 +2490,30 @@ select {
 
 @media (max-width: 700px) {
     body {
-        padding-bottom: 38px;
+        padding-bottom: 34px;
     }
 
     .crypto-news-ticker {
-        min-height: 38px;
+        min-height: 34px;
     }
 
     .crypto-news-label {
-        padding: 0 10px;
-        font-size: 0.72rem;
+        padding: 0 8px;
+        font-size: 0.66rem;
     }
 
     .crypto-news-message {
-        min-height: 38px;
+        min-height: 34px;
+        font-size: 0.68rem;
+    }
+
+    .crypto-news-group {
+        gap: 28px;
+        padding-right: 28px;
     }
 
     .crypto-news-item {
-        font-size: 0.74rem;
+        font-size: 0.66rem;
     }
 }
 

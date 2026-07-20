@@ -88,6 +88,15 @@ function createNewsGroup(items, duplicate = false) {
     return group;
 }
 
+function updateCryptoNewsTickerSpeed() {
+    const track = document.getElementById('crypto-news-track');
+    const group = track?.querySelector('.crypto-news-group:not([aria-hidden="true"])');
+    if (!track || !group) return;
+
+    const durationSeconds = Math.max(14, Math.min(38, group.scrollWidth / 950));
+    track.style.setProperty('--crypto-news-duration', `${durationSeconds.toFixed(2)}s`);
+}
+
 async function fetchCryptoNews() {
     const track = document.getElementById('crypto-news-track');
     if (!track) return;
@@ -101,9 +110,8 @@ async function fetchCryptoNews() {
 
         cryptoNewsItems = items;
         track.replaceChildren(createNewsGroup(items), createNewsGroup(items, true));
-        const characterCount = items.reduce((total, item) => total + String(item?.title || '').length, 0);
-        track.style.setProperty('--crypto-news-duration', `${Math.max(14, Math.min(38, characterCount * 0.04))}s`);
         track.classList.add('is-scrolling');
+        requestAnimationFrame(updateCryptoNewsTickerSpeed);
     } catch (error) {
         console.error('Crypto news could not be loaded', error);
         const message = document.createElement('span');
@@ -146,6 +154,7 @@ function initCryptoNewsTicker() {
     if (!button || button.dataset.newsBound === 'true') return;
     button.dataset.newsBound = 'true';
     button.addEventListener('click', () => openCryptoNewsOverlay(button));
+    window.addEventListener('resize', updateCryptoNewsTickerSpeed, { passive: true });
 }
 
 function openCryptoNewsOverlay(returnFocus = document.activeElement) {
