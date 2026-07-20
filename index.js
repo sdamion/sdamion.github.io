@@ -1,6 +1,8 @@
 const IS_LOCAL_PREVIEW = ['localhost', '127.0.0.1'].includes(window.location.hostname);
 const THEME_STORAGE_KEY = 'tdsp-theme';
+const OVERLAY_SORT_STORAGE_KEY = 'tdsp-overlay-sort';
 const PRICE_API_URL = IS_LOCAL_PREVIEW ? '/__prices_proxy__' : 'https://api.tdsp.online/api/prices';
+const NEWS_API_URL = IS_LOCAL_PREVIEW ? '/__news_proxy__' : 'https://api.tdsp.online/api/news';
 const POOL_API_URL = IS_LOCAL_PREVIEW ? '/__pool_proxy__' : 'https://api.tdsp.online/api/pool';
 const MITHRIL_API_URL = IS_LOCAL_PREVIEW ? '/__mithril_proxy__' : 'https://api.tdsp.online/api/mithril';
 const ICEBREAKER_API_URL = IS_LOCAL_PREVIEW ? '/__icebreaker_proxy__' : 'https://api.tdsp.online/api/icebreaker';
@@ -27,6 +29,7 @@ let mithrilSigners = [];
 let mithrilStatus = null;
 let starchPools = [];
 let starchPoolStatus = null;
+let cryptoNewsItems = [];
 
 // Fetch and display ADA, BTC, and STRCH prices asynchronously
 async function fetchPrices() {
@@ -57,6 +60,60 @@ async function fetchPrices() {
     }
 }
 
+function createNewsGroup(items, duplicate = false) {
+    const group = document.createElement('div');
+    group.className = 'crypto-news-group';
+    if (duplicate) group.setAttribute('aria-hidden', 'true');
+
+    items.forEach(item => {
+        const url = getExternalHttpUrl(item?.url);
+        const title = String(item?.title || '').trim();
+        if (!url || !title) return;
+
+        const link = document.createElement('a');
+        link.className = 'crypto-news-item';
+        link.href = url.href;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        if (duplicate) link.tabIndex = -1;
+
+        const source = document.createElement('strong');
+        source.textContent = String(item?.source || 'Cardano News').trim();
+        const headline = document.createElement('span');
+        headline.textContent = title;
+        link.append(source, document.createTextNode(' · '), headline);
+        group.append(link);
+    });
+
+    return group;
+}
+
+async function fetchCryptoNews() {
+    const track = document.getElementById('crypto-news-track');
+    if (!track) return;
+
+    try {
+        const response = await fetch(NEWS_API_URL);
+        if (!response.ok) throw new Error(`News API HTTP Error: ${response.status}`);
+        const payload = await response.json();
+        const items = Array.isArray(payload?.items) ? payload.items.slice(0, 30) : [];
+        if (!items.length) throw new Error('News API returned no Cardano headlines');
+
+        cryptoNewsItems = items;
+        track.replaceChildren(createNewsGroup(items), createNewsGroup(items, true));
+        const characterCount = items.reduce((total, item) => total + String(item?.title || '').length, 0);
+        track.style.setProperty('--crypto-news-duration', `${Math.max(14, Math.min(38, characterCount * 0.04))}s`);
+        track.classList.add('is-scrolling');
+    } catch (error) {
+        console.error('Crypto news could not be loaded', error);
+        const message = document.createElement('span');
+        message.className = 'crypto-news-message';
+        message.textContent = 'Cardano news temporarily unavailable';
+        track.replaceChildren(message);
+        track.classList.remove('is-scrolling');
+    }
+}
+
 // Fetch prices on page load and set up auto-update
 // Initialize UI behaviors and price fetching when DOM is ready
 document.addEventListener("DOMContentLoaded", () => {
@@ -66,13 +123,16 @@ document.addEventListener("DOMContentLoaded", () => {
     initPoolDelegatorsCard();
     initMithrilCard();
     initStarchPoolCard();
+    initCryptoNewsTicker();
     fetchPrices();
+    fetchCryptoNews();
     fetchPoolStatus();
     fetchMithrilStatus();
     fetchIcebreakerStatus();
     fetchStarchPoolStatus();
     fetchLeaderSchedule();
     setInterval(fetchPrices, 60000); // Auto-update every 60 seconds
+    setInterval(fetchCryptoNews, 300000);
     setInterval(fetchPoolStatus, 300000);
     setInterval(fetchMithrilStatus, 300000);
     setInterval(fetchIcebreakerStatus, 300000);
@@ -80,6 +140,77 @@ document.addEventListener("DOMContentLoaded", () => {
     setInterval(fetchLeaderSchedule, 300000);
     initUI();
 });
+
+function initCryptoNewsTicker() {
+    const button = document.getElementById('crypto-news-open');
+    if (!button || button.dataset.newsBound === 'true') return;
+    button.dataset.newsBound = 'true';
+    button.addEventListener('click', () => openCryptoNewsOverlay(button));
+}
+
+function openCryptoNewsOverlay(returnFocus = document.activeElement) {
+    closeCryptoNewsOverlay(false);
+    createPoolMenuOverlay({
+        id: 'crypto-news-overlay',
+        titleId: 'crypto-news-title',
+        titleText: 'Crypto News',
+        headerMeta: `${cryptoNewsItems.length.toLocaleString('en-US')} articles`,
+        closeLabel: 'Close Crypto News',
+        closeOverlay: closeCryptoNewsOverlay,
+        returnFocus,
+        rootTitle: 'Crypto News',
+        bodyNode: createCryptoNewsList()
+    });
+}
+
+function closeCryptoNewsOverlay(restoreFocus = true) {
+    closePoolMenuOverlay('crypto-news-overlay', restoreFocus);
+}
+
+function createCryptoNewsList() {
+    const list = document.createElement('div');
+    list.className = 'pool-delegator-list crypto-news-list';
+
+    if (!cryptoNewsItems.length) {
+        const message = document.createElement('p');
+        message.className = 'small-text';
+        message.textContent = 'Crypto news is not available yet.';
+        list.appendChild(message);
+        return list;
+    }
+
+    cryptoNewsItems.forEach((item, index) => {
+        const publishedAt = Date.parse(item?.published_at || '');
+        const dateText = Number.isFinite(publishedAt)
+            ? new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium' }).format(publishedAt)
+            : '';
+        const row = createPoolOverlayRow({
+            index,
+            title: String(item?.title || 'Untitled Cardano news'),
+            titleClassName: 'crypto-news-list-title',
+            details: [
+                [String(item?.source || 'Cardano News'), dateText].filter(Boolean).join(' · ')
+            ]
+        });
+        const url = getExternalHttpUrl(item?.url);
+        if (Number.isFinite(publishedAt)) row.dataset.sortDate = String(publishedAt);
+        if (url) {
+            row.tabIndex = 0;
+            row.setAttribute('role', 'link');
+            row.setAttribute('aria-label', `Open news article: ${item.title}`);
+            const openArticle = () => openExternalSiteWarning(url.href, row);
+            row.addEventListener('click', openArticle);
+            row.addEventListener('keydown', event => {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+                openArticle();
+            });
+        }
+        list.appendChild(row);
+    });
+
+    return list;
+}
 
 let pendingExternalUrl = '';
 let externalLinkReturnFocus = null;
@@ -615,6 +746,130 @@ function getOverlaySearchCards(body) {
         .filter(card => !card.parentElement?.closest('.governance-menu-card'));
 }
 
+function getOverlaySortSignature(options) {
+    return options.map(option => option.value).join('|');
+}
+
+function getStoredOverlaySort(options = []) {
+    try {
+        const stored = localStorage.getItem(OVERLAY_SORT_STORAGE_KEY) || '';
+        if (!stored.startsWith('{')) return stored;
+        const preferences = JSON.parse(stored);
+        return preferences?.[getOverlaySortSignature(options)] || '';
+    } catch {
+        return '';
+    }
+}
+
+function storeOverlaySort(options, value) {
+    try {
+        const stored = localStorage.getItem(OVERLAY_SORT_STORAGE_KEY) || '';
+        let preferences = {};
+        if (stored.startsWith('{')) {
+            try {
+                preferences = JSON.parse(stored) || {};
+            } catch {}
+        }
+        preferences[getOverlaySortSignature(options)] = value;
+        localStorage.setItem(OVERLAY_SORT_STORAGE_KEY, JSON.stringify(preferences));
+    } catch {}
+}
+
+const OVERLAY_SORT_DEFINITIONS = Object.freeze([
+    { value: 'newest', label: 'Newest', key: 'sortDate', direction: -1, type: 'number' },
+    { value: 'oldest', label: 'Oldest', key: 'sortDate', direction: 1, type: 'number' },
+    { value: 'ask-desc', label: 'Most ask', key: 'sortAsk', direction: -1, type: 'number' },
+    { value: 'ask-asc', label: 'Less ask', key: 'sortAsk', direction: 1, type: 'number' },
+    { value: 'amount-desc', label: 'Highest amount', key: 'sortAmount', direction: -1, type: 'number' },
+    { value: 'amount-asc', label: 'Lowest amount', key: 'sortAmount', direction: 1, type: 'number' },
+    { value: 'power-desc', label: 'Most power', key: 'sortPower', direction: -1, type: 'number' },
+    { value: 'power-asc', label: 'Least power', key: 'sortPower', direction: 1, type: 'number' },
+    { value: 'balance-desc', label: 'Highest balance', key: 'sortBalance', direction: -1, type: 'number' },
+    { value: 'balance-asc', label: 'Lowest balance', key: 'sortBalance', direction: 1, type: 'number' },
+    { value: 'blocks-desc', label: 'Most blocks', key: 'sortBlocks', direction: -1, type: 'number' },
+    { value: 'blocks-asc', label: 'Least blocks', key: 'sortBlocks', direction: 1, type: 'number' },
+    { value: 'epoch-desc', label: 'Latest epoch', key: 'sortEpoch', direction: -1, type: 'number' },
+    { value: 'epoch-asc', label: 'Earliest epoch', key: 'sortEpoch', direction: 1, type: 'number' },
+    { value: 'active-first', label: 'Active first', key: 'sortStatus', direction: -1, type: 'number' },
+    { value: 'inactive-first', label: 'Inactive first', key: 'sortStatus', direction: 1, type: 'number' },
+    { value: 'name-asc', label: 'Name A-Z', key: 'sortName', direction: 1, type: 'text' },
+    { value: 'name-desc', label: 'Name Z-A', key: 'sortName', direction: -1, type: 'text' }
+]);
+
+function getOverlayCardSortName(card) {
+    const preferred = card.querySelector([
+        '.governance-title',
+        '.crypto-news-list-title',
+        '.pool-delegator-handle',
+        '.governance-cc-member-hash',
+        '.governance-no-vote-name'
+    ].join(','));
+    return normalizeOverlaySearchText(preferred?.textContent || card.textContent).trim();
+}
+
+function getRelevantOverlaySortOptions(cards) {
+    cards.forEach(card => {
+        if (!card.dataset.sortName) card.dataset.sortName = getOverlayCardSortName(card);
+    });
+    return OVERLAY_SORT_DEFINITIONS.filter(definition => {
+        const values = new Set(cards
+            .map(card => String(card.dataset[definition.key] || ''))
+            .filter(Boolean));
+        return values.size > 1;
+    });
+}
+
+function getOverlayCardSortNumber(card, key) {
+    const value = Number(card?.dataset?.[key]);
+    return Number.isFinite(value) ? value : null;
+}
+
+function sortOverlayCards(body, cards, mode) {
+    if (!cards.length) return;
+    if (!Number.isFinite(body.overlaySortSequence)) body.overlaySortSequence = 0;
+
+    cards.forEach(card => {
+        if (card.dataset.overlaySortIndex !== undefined) return;
+        card.dataset.overlaySortIndex = String(body.overlaySortSequence);
+        body.overlaySortSequence += 1;
+    });
+
+    const cardsByParent = new Map();
+    cards.forEach(card => {
+        const siblings = cardsByParent.get(card.parentElement) || [];
+        siblings.push(card);
+        cardsByParent.set(card.parentElement, siblings);
+    });
+
+    const definition = OVERLAY_SORT_DEFINITIONS.find(item => item.value === mode);
+    if (!definition) return;
+    cardsByParent.forEach((siblings, parent) => {
+        const sorted = [...siblings].sort((left, right) => {
+            if (definition.type === 'text') {
+                const result = String(left.dataset[definition.key] || '').localeCompare(
+                    String(right.dataset[definition.key] || ''),
+                    'en',
+                    { sensitivity: 'base', numeric: true }
+                );
+                return result * definition.direction
+                    || Number(left.dataset.overlaySortIndex) - Number(right.dataset.overlaySortIndex);
+            }
+
+            const leftValue = getOverlayCardSortNumber(left, definition.key);
+            const rightValue = getOverlayCardSortNumber(right, definition.key);
+            const leftHasValue = leftValue !== null;
+            const rightHasValue = rightValue !== null;
+
+            if (leftHasValue !== rightHasValue) return leftHasValue ? -1 : 1;
+            if (leftHasValue && leftValue !== rightValue) return (leftValue - rightValue) * definition.direction;
+            return Number(left.dataset.overlaySortIndex) - Number(right.dataset.overlaySortIndex);
+        });
+
+        if (siblings.every((card, index) => card === sorted[index])) return;
+        sorted.forEach(card => parent.appendChild(card));
+    });
+}
+
 function installOverlaySearch(body) {
     if (!body || body.querySelector(':scope > .overlay-search-bar')) return;
 
@@ -631,6 +886,23 @@ function installOverlaySearch(body) {
     input.autocapitalize = 'none';
     input.spellcheck = false;
 
+    const sort = document.createElement('select');
+    sort.className = 'overlay-sort-select';
+    sort.setAttribute('aria-label', 'Sort overlay results');
+    const initialCards = getOverlaySearchCards(body);
+    const sortOptions = getRelevantOverlaySortOptions(initialCards);
+    sortOptions.forEach(({ value, label }) => {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = label;
+        sort.appendChild(option);
+    });
+    const storedSort = getStoredOverlaySort(sortOptions);
+    sort.value = sortOptions.some(option => option.value === storedSort)
+        ? storedSort
+        : sortOptions[0]?.value || '';
+    sort.hidden = sortOptions.length < 2;
+
     const count = document.createElement('span');
     count.className = 'overlay-search-count';
     count.setAttribute('aria-live', 'polite');
@@ -640,11 +912,27 @@ function installOverlaySearch(body) {
     empty.textContent = 'No matching results.';
     empty.hidden = true;
 
-    searchBar.append(input, count);
+    searchBar.append(input, sort, count);
     body.prepend(searchBar, empty);
 
     const applySearch = () => {
         const cards = getOverlaySearchCards(body);
+        const relevantOptions = getRelevantOverlaySortOptions(cards);
+        const currentOptionValues = Array.from(sort.options, option => option.value).join('|');
+        if (currentOptionValues !== getOverlaySortSignature(relevantOptions)) {
+            const selected = sort.value || getStoredOverlaySort(relevantOptions);
+            sort.replaceChildren(...relevantOptions.map(({ value, label }) => {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = label;
+                return option;
+            }));
+            sort.value = relevantOptions.some(option => option.value === selected)
+                ? selected
+                : relevantOptions[0]?.value || '';
+        }
+        sort.hidden = relevantOptions.length < 2;
+        sortOverlayCards(body, cards, sort.value);
         const terms = normalizeOverlaySearchText(input.value).trim().split(/\s+/).filter(Boolean);
         let visible = 0;
 
@@ -667,6 +955,10 @@ function installOverlaySearch(body) {
         event.preventDefault();
         event.stopPropagation();
         input.value = '';
+        applySearch();
+    });
+    sort.addEventListener('change', () => {
+        storeOverlaySort(getRelevantOverlaySortOptions(getOverlaySearchCards(body)), sort.value);
         applySearch();
     });
 
@@ -799,12 +1091,14 @@ function createMithrilSignersList() {
         stake.className = 'pool-delegator-amount';
         stake.textContent = formatDelegatorAda(getMithrilSignerStake(signer));
 
-        list.appendChild(createPoolOverlayRow({
+        const row = createPoolOverlayRow({
             index,
             title: signer?.display_name || signer?.name || 'No Name',
             titleClassName: 'pool-delegator-handle',
             details: [idLine, stake]
-        }));
+        });
+        row.dataset.sortAmount = getMithrilSignerStake(signer).toString();
+        list.appendChild(row);
     });
 
     return list;
@@ -883,7 +1177,11 @@ function createPoolDelegatorsList() {
             details.push(epochText);
         }
 
-        list.appendChild(createPoolOverlayRow({ index, details }));
+        const row = createPoolOverlayRow({ index, details });
+        row.dataset.sortName = normalizeOverlaySearchText(adaHandle || address);
+        row.dataset.sortAmount = getDelegatorAmount(delegator).toString();
+        if (Number.isFinite(epoch)) row.dataset.sortEpoch = String(epoch);
+        list.appendChild(row);
     });
 
     return list;

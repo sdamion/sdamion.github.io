@@ -582,6 +582,10 @@ function createTreasuryWithdrawalCard(withdrawal) {
     const proposal = getTreasuryGovernanceProposal(withdrawal);
     const card = document.createElement(proposal ? 'button' : 'div');
     card.className = 'governance-card governance-menu-card governance-treasury-withdrawal-card';
+    card.dataset.sortAmount = String(withdrawal?.amount_lovelace || '0');
+    if (Number.isFinite(Number(withdrawal?.enacted_epoch))) {
+        card.dataset.sortEpoch = String(Number(withdrawal.enacted_epoch));
+    }
     if (proposal) {
         card.type = 'button';
         card.classList.add('governance-treasury-withdrawal-card--clickable');
@@ -726,10 +730,10 @@ function setupConstitutionalCommitteeCard() {
 
 function setupGovernanceSummaryActionCards() {
     [
-        { id: 'gov-active-card', groupKey: 'active', title: 'Active Governance Actions', tileTitle: 'Active', emptyMessage: 'No active actions found.' },
-        { id: 'gov-approved-card', groupKey: 'approved', title: 'Approved Governance Actions', tileTitle: 'Approved', emptyMessage: 'No approved actions found.' },
-        { id: 'gov-rejected-card', groupKey: 'rejected', title: 'Rejected Governance Actions', tileTitle: 'Rejected', emptyMessage: 'No rejected actions found.' },
-        { id: 'gov-info-card', groupKey: 'info', title: 'Info Actions', tileTitle: 'Info Actions', emptyMessage: 'No info actions found.' }
+        { id: 'gov-active-card', groupKey: 'active', title: 'Active Governance Actions', tileTitle: 'Governance Actions', emptyMessage: 'No active actions found.' },
+        { id: 'gov-approved-card', groupKey: 'approved', title: 'Approved Governance Actions', tileTitle: 'Approved Actions', emptyMessage: 'No approved actions found.' },
+        { id: 'gov-rejected-card', groupKey: 'rejected', title: 'Rejected Governance Actions', tileTitle: 'Rejected Actions', emptyMessage: 'No rejected actions found.' },
+        { id: 'gov-info-card', groupKey: 'info', title: 'Active Info Actions', tileTitle: 'Info Actions', emptyMessage: 'No active info actions found.' }
     ].forEach(config => {
         const card = document.getElementById(config.id);
         const open = () => openGovernanceActionGroupOverlay(
@@ -1385,10 +1389,10 @@ function usesPoolVoting(proposal) {
 }
 
 function getGovernanceStatus(proposal) {
-    if (proposal?.proposal_type === 'InfoAction') return 'info';
     if (meetsGovernanceApprovalThreshold(proposal)) return 'approved';
     if (proposal.dropped_epoch !== null || proposal.expired_epoch !== null) return 'rejected';
     if (proposal.ratified_epoch !== null || proposal.enacted_epoch !== null) return 'approved';
+    if (proposal?.proposal_type === 'InfoAction') return 'info';
     return 'active';
 }
 
@@ -1450,6 +1454,17 @@ function createGovernanceCard(proposal, options = {}) {
     card.className = 'governance-card governance-menu-card';
     card.type = 'button';
     card.dataset.proposalId = proposal.proposal_id;
+    const sortDate = Number(proposal?.block_time);
+    const fallbackSortDate = Number(proposal?.proposed_epoch);
+    const totalAsk = getProposalTotalAskLovelace(proposal);
+    if (Number.isFinite(sortDate) && sortDate > 0) {
+        card.dataset.sortDate = String(sortDate);
+    } else if (Number.isFinite(fallbackSortDate)) {
+        card.dataset.sortDate = String(fallbackSortDate);
+    }
+    if (Number.isFinite(totalAsk) && totalAsk > 0) {
+        card.dataset.sortAsk = String(totalAsk);
+    }
     const handleClick = options.onClick || (event => {
         openGovernanceOverlay(proposal, { returnFocus: event.currentTarget });
     });
@@ -1677,9 +1692,12 @@ function syncGovernanceMenuOverlayAccessibility() {
 }
 
 function openGovernanceActionGroupOverlay(groupKey, titleText, emptyMessage, rootTitle = titleText) {
-    const proposals = governanceGroupsState?.[groupKey]
+    const groupedProposals = governanceGroupsState?.[groupKey]
         || groupGovernanceProposals(getGovernanceProposalsFromDashboardPayload(governanceState || {}))[groupKey]
         || [];
+    const proposals = groupKey === 'info'
+        ? getActiveInfoActions(groupedProposals)
+        : groupedProposals;
     const panel = document.createElement('div');
     panel.className = 'governance-list governance-action-group-list';
     renderGovernanceGroup(panel, proposals, emptyMessage);
@@ -2854,6 +2872,9 @@ function renderDrepDirectory(container, dreps, options = {}) {
     dreps.forEach((drep, index) => {
         const row = document.createElement('div');
         row.className = 'governance-cc-member governance-menu-card';
+        row.dataset.sortName = normalizeOverlaySearchText(drep.name);
+        row.dataset.sortPower = String(Number(drep.votingPower) || 0);
+        row.dataset.sortStatus = drep.active ? '1' : '0';
 
         const number = document.createElement('strong');
         number.textContent = String(index + 1);
@@ -3274,6 +3295,10 @@ function renderConstitutionalCommitteeMembers(container, members, emptyMessage =
     enrichedMembers.forEach((member, index) => {
         const row = document.createElement('div');
         row.className = 'governance-cc-member governance-menu-card';
+        row.dataset.sortName = normalizeOverlaySearchText(member.name || `CC Member ${index + 1}`);
+        if (Number.isFinite(Number(member.expiresEpoch))) {
+            row.dataset.sortEpoch = String(Number(member.expiresEpoch));
+        }
 
         const number = document.createElement('strong');
         number.textContent = String(index + 1);
@@ -4021,6 +4046,7 @@ function renderNoVotesList(container, votes, headingLabel = 'DRep votes') {
 function createDrepVoteRow(vote) {
     const row = document.createElement('div');
     row.className = 'governance-no-vote-row governance-menu-card';
+    row.dataset.sortPower = String(getDrepVotePowerValue(vote));
     const normalizedVote = String(vote?.vote || '').toLowerCase();
     if (normalizedVote === 'yes') row.classList.add('is-yes');
     if (normalizedVote === 'no') row.classList.add('is-no');
@@ -5159,7 +5185,7 @@ async function updateGovernanceCounts(groups) {
     setText('gov-active-count', getCollectionLength(groups.active));
     setText('gov-approved-count', getCollectionLength(groups.approved));
     setText('gov-rejected-count', getCollectionLength(groups.rejected));
-    setText('gov-info-count', getCollectionLength(groups.info));
+    setText('gov-info-count', getCollectionLength(getActiveInfoActions(groups.info)));
     setText('gov-info-last-action', formatLatestInfoActionEpoch(groups.info));
     setText('gov-active-ask', formatGovernanceAskAmount(groups.active));
     setText('gov-approved-ask', formatGovernanceAskAmount(groups.approved));
@@ -5190,6 +5216,25 @@ async function updateGovernanceCounts(groups) {
     }
 
     updateTreasuryBudgetBar();
+}
+
+function getActiveInfoActions(proposals) {
+    const clockEpoch = Number(getClockEpochSnapshot()?.epoch);
+
+    return (Array.isArray(proposals) ? proposals : []).filter(proposal => {
+        if (proposal?.proposal_type !== 'InfoAction') return false;
+        if (
+            proposal?.ratified_epoch != null
+            || proposal?.enacted_epoch != null
+            || proposal?.expired_epoch != null
+            || proposal?.dropped_epoch != null
+        ) return false;
+
+        const expirationEpoch = Number(proposal?.expiration);
+        return !Number.isFinite(expirationEpoch)
+            || !Number.isFinite(clockEpoch)
+            || clockEpoch <= expirationEpoch;
+    });
 }
 
 function formatLatestInfoActionEpoch(proposals) {

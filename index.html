@@ -47,9 +47,9 @@
 
     <!-- Preload Logo -->
     <link rel="preload" href="tdsp_logo.webp" as="image">
-    <link rel="stylesheet" href="styles.css?v=20260719-copy-external-url">
+    <link rel="stylesheet" href="styles.css?v=20260721-crypto-news-fast">
 
-    <script src="index.js?v=20260719-copy-external-url" defer></script>
+    <script src="index.js?v=20260721-relevant-sorting" defer></script>
 </head>
 <body>
     <header class="site-header" id="site-header">
@@ -195,8 +195,8 @@
 
         <section class="section governance-page" id="governance">
             <div class="section-inner">
-                <p class="eyebrow">Cardano governance</p>
-                <h2>Governance Actions</h2>
+                <p class="eyebrow">Governance</p>
+                <h2>Cardano Governance</h2>
                 <div class="governance-budget-bar">
                     <span id="gov-budget-limit"></span>
                     <span id="gov-budget-used"></span>
@@ -210,35 +210,35 @@
                         <span id="gov-treasury-epoch">Treasury Epoch --</span>
                         <span class="governance-summary-subvalue" id="gov-treasury-income">Income -- ADA</span>
                     </div>
-                    <div id="gov-committee-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show Constitutional Committee members">
-                        <strong id="gov-committee-count">0</strong>
-                        <span>CC Members</span>
-                        <span class="governance-summary-subvalue" id="gov-committee-voted">Voted --%</span>
-                    </div>
                     <div id="gov-active-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show active governance actions">
                         <strong id="gov-active-count">0</strong>
-                        <span>Active</span>
+                        <span>Governance Actions</span>
                         <span class="governance-summary-subvalue" id="gov-active-ask">0 ADA</span>
-                    </div>
-                    <div id="gov-approved-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show approved governance actions">
-                        <strong id="gov-approved-count">0</strong>
-                        <span>Approved</span>
-                        <span class="governance-summary-subvalue" id="gov-approved-ask">0 ADA</span>
-                    </div>
-                    <div id="gov-rejected-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show rejected governance actions">
-                        <strong id="gov-rejected-count">0</strong>
-                        <span>Rejected</span>
-                        <span class="governance-summary-subvalue" id="gov-rejected-ask">0 ADA</span>
                     </div>
                     <div id="gov-info-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show info governance actions">
                         <strong id="gov-info-count">0</strong>
                         <span>Info Actions</span>
                         <span class="governance-summary-subvalue" id="gov-info-last-action">Last action epoch --</span>
                     </div>
+                    <div id="gov-approved-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show approved governance actions">
+                        <strong id="gov-approved-count">0</strong>
+                        <span>Approved Actions</span>
+                        <span class="governance-summary-subvalue" id="gov-approved-ask">0 ADA</span>
+                    </div>
+                    <div id="gov-rejected-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show rejected governance actions">
+                        <strong id="gov-rejected-count">0</strong>
+                        <span>Rejected Actions</span>
+                        <span class="governance-summary-subvalue" id="gov-rejected-ask">0 ADA</span>
+                    </div>
                     <div id="gov-drep-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show DRep directory">
                         <strong id="gov-drep-count">0</strong>
                         <span>DReps</span>
                         <span class="governance-summary-subvalue" id="gov-drep-total-power">VPower 0 ADA</span>
+                    </div>
+                    <div id="gov-committee-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show Constitutional Committee members">
+                        <strong id="gov-committee-count">0</strong>
+                        <span>CC Members</span>
+                        <span class="governance-summary-subvalue" id="gov-committee-voted">Voted --%</span>
                     </div>
                 </div>
 
@@ -251,6 +251,15 @@
     <footer class="site-footer">
         &copy; 2026 The Dutch Stake Pool. All rights reserved.
     </footer>
+
+    <aside id="crypto-news-ticker" class="crypto-news-ticker" aria-label="Crypto News">
+        <button id="crypto-news-open" class="crypto-news-label" type="button" aria-label="Show all Crypto News">Crypto News</button>
+        <div class="crypto-news-viewport">
+            <div id="crypto-news-track" class="crypto-news-track" aria-live="off">
+                <span class="crypto-news-message">Loading Cardano news...</span>
+            </div>
+        </div>
+    </aside>
 
     <div id="stakenow" class="iframe-modal" aria-hidden="true">
         <div class="iframe-content wallet-modal-content" role="dialog" aria-modal="true" aria-label="Choose a Cardano wallet">
@@ -271,8 +280,8 @@
     </div>
 
     <script src="chart.js"></script>
-    <script src="starch.js?v=20260719-external-warning" defer></script>
-    <script src="governance.js?v=20260719-overlay-search" defer></script>
+    <script src="starch.js?v=20260721-relevant-sorting" defer></script>
+    <script src="governance.js?v=20260721-relevant-sorting" defer></script>
     <script src="stake.js?v=20260717-backend-api-only" defer></script>
 </body>
 </html>

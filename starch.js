@@ -146,6 +146,11 @@ function createStarchDirectoryCard(record, index, type, label) {
     const name = document.createElement('strong');
     name.className = 'pool-delegator-handle';
     name.textContent = String(record?.name || 'No Name');
+    row.dataset.sortName = normalizeOverlaySearchText(name.textContent);
+    if (type === 'companies' && record?.stats_resolved === true) {
+        row.dataset.sortBalance = String(Number(record?.balance) || 0);
+        row.dataset.sortBlocks = String(Number(record?.weekly_blocks) || 0);
+    }
     content.appendChild(name);
 
     if (type === 'companies') {

@@ -377,6 +377,7 @@ body {
         var(--page-bg);
     color: var(--text);
     padding-top: 72px;
+    padding-bottom: 42px;
 }
 
 html {
@@ -1963,7 +1964,8 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     position: sticky;
     top: 0;
     z-index: 4;
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(180px, 1fr) auto auto;
     align-items: center;
     gap: 10px;
     margin: 0 0 16px;
@@ -1980,7 +1982,6 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 }
 
 .overlay-search-input {
-    flex: 1 1 auto;
     min-width: 0;
     height: 38px;
     padding: 0 12px;
@@ -1992,6 +1993,24 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     font: inherit;
     font-size: 0.9rem;
     font-weight: 700;
+}
+
+.overlay-sort-select {
+    min-width: 116px;
+    height: 38px;
+    padding: 0 28px 0 10px;
+    border: 0;
+    border-radius: 6px;
+    outline: 0;
+    background: var(--control-surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 800;
+}
+
+.overlay-sort-select:focus {
+    box-shadow: 0 0 0 2px var(--accent);
 }
 
 .overlay-search-input:focus {
@@ -2249,13 +2268,21 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     }
 
     .overlay-search-bar {
+        grid-template-columns: minmax(0, 1fr) auto;
         margin-bottom: 12px;
         padding: 6px;
     }
 
     .overlay-search-input {
+        grid-column: 1 / -1;
         height: 36px;
         font-size: 0.82rem;
+    }
+
+    .overlay-sort-select {
+        min-width: 0;
+        width: 100%;
+        height: 36px;
     }
 
     .external-site-warning-dialog {
@@ -2319,6 +2346,169 @@ select {
 .site-footer {
     background: var(--surface);
     color: var(--muted);
+}
+
+/* Fixed Cardano news ticker */
+.crypto-news-ticker {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1200;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    min-height: 42px;
+    overflow: hidden;
+    border-top: 1px solid var(--line);
+    background: var(--header-bg);
+    color: var(--text);
+    box-shadow: 0 -8px 24px rgba(22, 22, 22, 0.08);
+    backdrop-filter: blur(16px);
+}
+
+.crypto-news-label {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    border-right: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--accent-strong);
+    font-size: 0.82rem;
+    font-weight: 700;
+    white-space: nowrap;
+    border-top: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 0;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.crypto-news-label:hover,
+.crypto-news-label:focus-visible {
+    background: var(--control-hover-surface);
+    outline: none;
+}
+
+.crypto-news-viewport {
+    display: flex;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.crypto-news-track {
+    display: flex;
+    align-items: center;
+    width: max-content;
+    min-width: 100%;
+    white-space: nowrap;
+    will-change: transform;
+}
+
+.crypto-news-track.is-scrolling {
+    animation: crypto-news-scroll-ltr var(--crypto-news-duration, 30s) linear infinite;
+}
+
+.crypto-news-ticker:hover .crypto-news-track,
+.crypto-news-ticker:focus-within .crypto-news-track {
+    animation-play-state: paused;
+}
+
+.crypto-news-group {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 36px;
+    padding: 0 36px 0 0;
+}
+
+.crypto-news-item {
+    color: var(--text);
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-decoration: none;
+}
+
+.crypto-news-item strong {
+    color: var(--accent-strong);
+    font-weight: 700;
+}
+
+.crypto-news-item:hover,
+.crypto-news-item:focus-visible {
+    color: var(--accent-strong);
+    outline: none;
+}
+
+.crypto-news-list-title {
+    color: var(--text);
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1.35;
+}
+
+.crypto-news-list .governance-menu-card {
+    cursor: pointer;
+}
+
+.crypto-news-message {
+    display: flex;
+    align-items: center;
+    min-height: 42px;
+    padding: 0 16px;
+    color: var(--muted);
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+@keyframes crypto-news-scroll-ltr {
+    from { transform: translateX(-50%); }
+    to { transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .crypto-news-viewport {
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+
+    .crypto-news-viewport::-webkit-scrollbar {
+        display: none;
+    }
+
+    .crypto-news-track.is-scrolling {
+        animation: none;
+        transform: none;
+    }
+
+    .crypto-news-group[aria-hidden="true"] {
+        display: none;
+    }
+}
+
+@media (max-width: 700px) {
+    body {
+        padding-bottom: 38px;
+    }
+
+    .crypto-news-ticker {
+        min-height: 38px;
+    }
+
+    .crypto-news-label {
+        padding: 0 10px;
+        font-size: 0.72rem;
+    }
+
+    .crypto-news-message {
+        min-height: 38px;
+    }
+
+    .crypto-news-item {
+        font-size: 0.74rem;
+    }
 }
 
 /* Automatic Dark Theme */
