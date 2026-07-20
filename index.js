@@ -93,10 +93,10 @@ async function fetchCryptoNews() {
     if (!track) return;
 
     try {
-        const response = await fetch(NEWS_API_URL);
+        const response = await fetch(NEWS_API_URL, { cache: 'no-store' });
         if (!response.ok) throw new Error(`News API HTTP Error: ${response.status}`);
         const payload = await response.json();
-        const items = Array.isArray(payload?.items) ? payload.items.slice(0, 30) : [];
+        const items = Array.isArray(payload?.items) ? payload.items.slice(0, 60) : [];
         if (!items.length) throw new Error('News API returned no Cardano headlines');
 
         cryptoNewsItems = items;
