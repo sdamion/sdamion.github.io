@@ -47,9 +47,9 @@
 
     <!-- Preload Logo -->
     <link rel="preload" href="tdsp_logo.webp" as="image">
-    <link rel="stylesheet" href="styles.css?v=20260721-price-sparklines">
+    <link rel="stylesheet" href="styles.css?v=20260721-price-trends">
 
-    <script src="index.js?v=20260721-faster-prices" defer></script>
+    <script src="index.js?v=20260721-price-trends" defer></script>
 </head>
 <body>
     <header class="site-header" id="site-header">
@@ -81,25 +81,25 @@
             <div class="section-inner hero-grid">
                 <div class="price-section">
                     <div class="price-panel pool-summary">
-                        <div>
+                        <div class="pool-summary-clickable" data-price-key="btc_usd" data-price-ticker="BTC" role="button" tabindex="0" aria-label="Show BTC 24 hour price history">
                             <strong id="btc-price">Loading...</strong>
                             <span class="pool-provider-label"><img class="pool-provider-icon" src="bitcoin-logo.png" alt=""><span class="pool-provider-label-text">BTC</span></span>
-                            <svg class="price-sparkline" data-price-key="btc_usd" viewBox="0 0 100 36" preserveAspectRatio="none" role="img" aria-label="BTC price over the last hour"><polyline points=""></polyline></svg>
+                            <svg class="price-sparkline" data-price-key="btc_usd" viewBox="0 0 100 36" preserveAspectRatio="none" role="img" aria-label="BTC price over the last 24 hours"><polyline points=""></polyline></svg>
                         </div>
-                        <div>
+                        <div class="pool-summary-clickable" data-price-key="ada_usd" data-price-ticker="ADA" role="button" tabindex="0" aria-label="Show ADA 24 hour price history">
                             <strong id="ada-price">Loading...</strong>
                             <span class="pool-provider-label"><img class="pool-provider-icon" src="cardano_logo_ico.webp" alt=""><span class="pool-provider-label-text">ADA</span></span>
-                            <svg class="price-sparkline" data-price-key="ada_usd" viewBox="0 0 100 36" preserveAspectRatio="none" role="img" aria-label="ADA price over the last hour"><polyline points=""></polyline></svg>
+                            <svg class="price-sparkline" data-price-key="ada_usd" viewBox="0 0 100 36" preserveAspectRatio="none" role="img" aria-label="ADA price over the last 24 hours"><polyline points=""></polyline></svg>
                         </div>
-                        <div>
+                        <div class="pool-summary-clickable" data-price-key="strch_usd" data-price-ticker="STRCH" role="button" tabindex="0" aria-label="Show STRCH 24 hour price history">
                             <strong id="strch-price">Loading...</strong>
                             <span class="pool-provider-label"><img class="pool-provider-icon" src="starchCompanyLogo.webp" alt=""><span class="pool-provider-label-text">STRCH</span></span>
-                            <svg class="price-sparkline" data-price-key="strch_usd" viewBox="0 0 100 36" preserveAspectRatio="none" role="img" aria-label="STRCH price over the last hour"><polyline points=""></polyline></svg>
+                            <svg class="price-sparkline" data-price-key="strch_usd" viewBox="0 0 100 36" preserveAspectRatio="none" role="img" aria-label="STRCH price over the last 24 hours"><polyline points=""></polyline></svg>
                         </div>
-                        <div>
+                        <div class="pool-summary-clickable" data-price-key="night_usd" data-price-ticker="NIGHT" role="button" tabindex="0" aria-label="Show NIGHT 24 hour price history">
                             <strong id="night-price">Loading...</strong>
                             <span class="pool-provider-label"><img class="pool-provider-icon" src="midnight-logo.png" alt=""><span class="pool-provider-label-text">NIGHT</span></span>
-                            <svg class="price-sparkline" data-price-key="night_usd" viewBox="0 0 100 36" preserveAspectRatio="none" role="img" aria-label="NIGHT price over the last hour"><polyline points=""></polyline></svg>
+                            <svg class="price-sparkline" data-price-key="night_usd" viewBox="0 0 100 36" preserveAspectRatio="none" role="img" aria-label="NIGHT price over the last 24 hours"><polyline points=""></polyline></svg>
                         </div>
                     </div>
                 </div>

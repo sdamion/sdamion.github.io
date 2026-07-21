@@ -30,9 +30,23 @@ let mithrilStatus = null;
 let starchPools = [];
 let starchPoolStatus = null;
 let cryptoNewsItems = [];
+let latestPricePayload = null;
+let priceHistoryChart = null;
+
+function parsePriceValue(value) {
+    return value === null || value === undefined || value === '' ? NaN : Number(value);
+}
+
+function getPriceTrendClass(samples) {
+    if (!Array.isArray(samples) || samples.length < 2) return '';
+    const first = Number(samples[0]?.value);
+    const last = Number(samples.at(-1)?.value);
+    if (!Number.isFinite(first) || !Number.isFinite(last) || first === last) return '';
+    return last > first ? 'is-price-up' : 'is-price-down';
+}
 
 function renderPriceSparklines(history) {
-    const cutoff = Date.now() - 3600000;
+    const cutoff = Date.now() - 86400000;
     const entries = (Array.isArray(history) ? history : [])
         .map(entry => ({ ...entry, time: Date.parse(entry?.timestamp || '') }))
         .filter(entry => Number.isFinite(entry.time) && entry.time >= cutoff)
@@ -44,8 +58,16 @@ function renderPriceSparklines(history) {
         if (!key || !line) return;
 
         const samples = entries
-            .map(entry => ({ time: entry.time, value: Number(entry[key]) }))
+            .map(entry => ({ time: entry.time, value: parsePriceValue(entry[key]) }))
             .filter(sample => Number.isFinite(sample.value));
+        const trendClass = getPriceTrendClass(samples);
+        const price = svg.closest('[data-price-key]')?.querySelector(':scope > strong');
+        svg.classList.remove('is-price-up', 'is-price-down');
+        price?.classList.remove('is-price-up', 'is-price-down');
+        if (trendClass) {
+            svg.classList.add(trendClass);
+            price?.classList.add(trendClass);
+        }
         if (!samples.length) {
             line.setAttribute('points', '');
             return;
@@ -80,10 +102,11 @@ async function fetchPrices() {
         const response = await fetch(PRICE_API_URL, { cache: 'no-store' });
         if (!response.ok) throw new Error(`Price API HTTP Error: ${response.status}`);
         const prices = await response.json();
-        const adaPrice = Number(prices.ada_usd);
-        const btcPrice = Number(prices.btc_usd);
-        const nightPrice = Number(prices.night_usd);
-        const strchPrice = Number(prices.strch_usd);
+        latestPricePayload = prices;
+        const adaPrice = parsePriceValue(prices.ada_usd);
+        const btcPrice = parsePriceValue(prices.btc_usd);
+        const nightPrice = parsePriceValue(prices.night_usd);
+        const strchPrice = parsePriceValue(prices.strch_usd);
 
         if (adaEl) adaEl.textContent = Number.isFinite(adaPrice) ? `$${adaPrice.toFixed(3)}` : 'N/A';
         if (btcEl) {
@@ -100,7 +123,152 @@ async function fetchPrices() {
         if (btcEl) btcEl.textContent = 'N/A';
         if (nightEl) nightEl.textContent = 'N/A';
         if (strchEl) strchEl.textContent = 'N/A';
+        renderPriceSparklines([]);
     }
+}
+
+function getPriceHistorySamples(key) {
+    const cutoff = Date.now() - 86400000;
+    return (Array.isArray(latestPricePayload?.history) ? latestPricePayload.history : [])
+        .map(entry => ({ time: Date.parse(entry?.timestamp || ''), value: parsePriceValue(entry?.[key]) }))
+        .filter(sample => Number.isFinite(sample.time) && sample.time >= cutoff && Number.isFinite(sample.value))
+        .sort((left, right) => left.time - right.time);
+}
+
+function initPriceHistoryTiles() {
+    document.querySelectorAll('.price-panel > [data-price-key]').forEach(tile => {
+        if (tile.dataset.priceHistoryBound === 'true') return;
+        const open = () => openPriceHistoryOverlay(tile);
+        tile.dataset.priceHistoryBound = 'true';
+        tile.addEventListener('click', open);
+        tile.addEventListener('keydown', event => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault();
+            open();
+        });
+    });
+}
+
+function openPriceHistoryOverlay(tile) {
+    closePriceHistoryOverlay(false);
+
+    const key = tile?.dataset.priceKey || '';
+    const ticker = tile?.dataset.priceTicker || 'Token';
+    const samples = getPriceHistorySamples(key);
+    const body = document.createElement('section');
+    body.className = 'governance-chart-panel price-history-chart-panel';
+
+    const current = document.createElement('strong');
+    current.className = 'price-history-current';
+    current.textContent = tile?.querySelector(':scope > strong')?.textContent || 'N/A';
+    const trendClass = getPriceTrendClass(samples);
+    if (trendClass) current.classList.add(trendClass);
+    body.appendChild(current);
+
+    let canvas = null;
+    if (samples.length) {
+        const frame = document.createElement('div');
+        frame.className = 'price-history-chart-frame';
+        canvas = document.createElement('canvas');
+        canvas.setAttribute('role', 'img');
+        canvas.setAttribute('aria-label', `${ticker} price over the last 24 hours`);
+        frame.appendChild(canvas);
+        body.appendChild(frame);
+    } else {
+        const message = document.createElement('p');
+        message.className = 'small-text';
+        message.textContent = 'Price history is still being collected.';
+        body.appendChild(message);
+    }
+
+    createPoolMenuOverlay({
+        id: 'price-history-overlay',
+        titleId: 'price-history-title',
+        titleText: `${ticker} Price`,
+        headerMeta: `24 hours · ${samples.length.toLocaleString('en-US')} points`,
+        closeLabel: `Close ${ticker} price history`,
+        closeOverlay: closePriceHistoryOverlay,
+        returnFocus: tile,
+        rootTitle: `${ticker} Price`,
+        bodyNode: body
+    });
+
+    if (canvas) requestAnimationFrame(() => renderPriceHistoryChart(canvas, samples, ticker, trendClass));
+}
+
+function renderPriceHistoryChart(canvas, samples, ticker, trendClass = '') {
+    if (typeof Chart !== 'function' || !canvas?.isConnected || !samples.length) return;
+    if (priceHistoryChart) priceHistoryChart.destroy();
+
+    const styles = getComputedStyle(document.documentElement);
+    const mutedColor = styles.getPropertyValue('--muted').trim() || '#94a3b8';
+    const lineColor = styles.getPropertyValue('--line').trim() || 'rgba(148, 163, 184, 0.25)';
+    const accentColor = styles.getPropertyValue('--accent-strong').trim() || '#2dd4bf';
+    const trendColor = trendClass === 'is-price-up'
+        ? '#34d399'
+        : trendClass === 'is-price-down' ? '#f87171' : accentColor;
+    const trendFill = trendClass === 'is-price-up'
+        ? 'rgba(52, 211, 153, 0.12)'
+        : trendClass === 'is-price-down' ? 'rgba(248, 113, 113, 0.12)' : 'rgba(45, 212, 191, 0.12)';
+    const formatValue = value => {
+        const number = Number(value);
+        if (!Number.isFinite(number)) return 'N/A';
+        if (number !== 0 && Math.abs(number) < 0.000001) return `$${number.toFixed(12)}`;
+        return `$${number.toLocaleString('en-US', { maximumSignificantDigits: 6 })}`;
+    };
+    const timeFormatter = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' });
+
+    priceHistoryChart = new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels: samples.map(sample => timeFormatter.format(sample.time)),
+            datasets: [{
+                label: ticker,
+                data: samples.map(sample => sample.value),
+                borderColor: trendColor,
+                backgroundColor: trendFill,
+                borderWidth: 2.5,
+                pointRadius: 0,
+                pointHitRadius: 10,
+                pointHoverRadius: 4,
+                tension: 0.32,
+                cubicInterpolationMode: 'monotone',
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 500, easing: 'easeOutQuart' },
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: context => `${ticker} ${formatValue(context.parsed.y)}`
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: { color: mutedColor, maxTicksLimit: 8, maxRotation: 0 },
+                    grid: { color: lineColor }
+                },
+                y: {
+                    ticks: { color: mutedColor, callback: formatValue },
+                    grid: { color: lineColor }
+                }
+            }
+        }
+    });
+}
+
+function closePriceHistoryOverlay(restoreFocus = true) {
+    if (priceHistoryChart) {
+        priceHistoryChart.destroy();
+        priceHistoryChart = null;
+    }
+    closePoolMenuOverlay('price-history-overlay', restoreFocus);
 }
 
 function createNewsGroup(items, duplicate = false) {
@@ -178,6 +346,7 @@ document.addEventListener("DOMContentLoaded", () => {
     initPoolDelegatorsCard();
     initMithrilCard();
     initStarchPoolCard();
+    initPriceHistoryTiles();
     initCryptoNewsTicker();
     fetchPrices();
     fetchCryptoNews();

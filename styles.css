@@ -714,6 +714,38 @@ p {
     vector-effect: non-scaling-stroke;
 }
 
+.price-panel strong.is-price-up,
+.price-history-current.is-price-up {
+    color: #34d399;
+}
+
+.price-panel strong.is-price-down,
+.price-history-current.is-price-down {
+    color: #f87171;
+}
+
+.price-sparkline.is-price-up polyline {
+    stroke: #34d399;
+}
+
+.price-sparkline.is-price-down polyline {
+    stroke: #f87171;
+}
+
+.price-history-current {
+    display: block;
+    margin-bottom: 14px;
+    color: var(--text);
+    font-size: 1.45rem;
+}
+
+.price-history-chart-frame {
+    position: relative;
+    width: 100%;
+    height: 360px;
+    min-width: 0;
+}
+
 .pool-summary-clickable {
     cursor: pointer;
 }
@@ -2734,6 +2766,10 @@ html[data-theme="dark"] input {
 
     .price-sparkline {
         width: 54px;
+    }
+
+    .price-history-chart-frame {
+        height: 280px;
     }
 
     .governance-list {
