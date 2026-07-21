@@ -47,9 +47,9 @@
 
     <!-- Preload Logo -->
     <link rel="preload" href="tdsp_logo.webp" as="image">
-    <link rel="stylesheet" href="styles.css?v=20260721-night-price">
+    <link rel="stylesheet" href="styles.css?v=20260721-price-sparklines">
 
-    <script src="index.js?v=20260721-night-price" defer></script>
+    <script src="index.js?v=20260721-faster-prices" defer></script>
 </head>
 <body>
     <header class="site-header" id="site-header">
@@ -79,14 +79,31 @@
     <main id="main-content">
         <section class="section hero" id="home">
             <div class="section-inner hero-grid">
-                <div class="hero-copy">
-                    <div class="price-panel">
-                        <strong>Live Prices</strong>
-                        <span>BTC <b id="btc-price">Loading...</b></span>
-                        <span>ADA <b id="ada-price">Loading...</b></span>
-                        <span>STRCH <b id="strch-price">Loading...</b></span>
-                        <span>NIGHT <b id="night-price">Loading...</b></span>
+                <div class="price-section">
+                    <div class="price-panel pool-summary">
+                        <div>
+                            <strong id="btc-price">Loading...</strong>
+                            <span class="pool-provider-label"><img class="pool-provider-icon" src="bitcoin-logo.png" alt=""><span class="pool-provider-label-text">BTC</span></span>
+                            <svg class="price-sparkline" data-price-key="btc_usd" viewBox="0 0 100 36" preserveAspectRatio="none" role="img" aria-label="BTC price over the last hour"><polyline points=""></polyline></svg>
+                        </div>
+                        <div>
+                            <strong id="ada-price">Loading...</strong>
+                            <span class="pool-provider-label"><img class="pool-provider-icon" src="cardano_logo_ico.webp" alt=""><span class="pool-provider-label-text">ADA</span></span>
+                            <svg class="price-sparkline" data-price-key="ada_usd" viewBox="0 0 100 36" preserveAspectRatio="none" role="img" aria-label="ADA price over the last hour"><polyline points=""></polyline></svg>
+                        </div>
+                        <div>
+                            <strong id="strch-price">Loading...</strong>
+                            <span class="pool-provider-label"><img class="pool-provider-icon" src="starchCompanyLogo.webp" alt=""><span class="pool-provider-label-text">STRCH</span></span>
+                            <svg class="price-sparkline" data-price-key="strch_usd" viewBox="0 0 100 36" preserveAspectRatio="none" role="img" aria-label="STRCH price over the last hour"><polyline points=""></polyline></svg>
+                        </div>
+                        <div>
+                            <strong id="night-price">Loading...</strong>
+                            <span class="pool-provider-label"><img class="pool-provider-icon" src="midnight-logo.png" alt=""><span class="pool-provider-label-text">NIGHT</span></span>
+                            <svg class="price-sparkline" data-price-key="night_usd" viewBox="0 0 100 36" preserveAspectRatio="none" role="img" aria-label="NIGHT price over the last hour"><polyline points=""></polyline></svg>
+                        </div>
                     </div>
+                </div>
+                <div class="hero-copy">
                     <p class="eyebrow">Bare-metal Cardano stake pool</p>
                     <h1>The Dutch Stake Pool</h1>
                     <p class="lead">Reliable low-fee staking, node operations, and Cardano ecosystem support from the Netherlands.</p>

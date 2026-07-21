@@ -550,7 +550,8 @@ html[data-theme="dark"] .theme-toggle:not([data-next-theme]) .theme-toggle-icon-
 .hero-grid {
     display: grid;
     grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
-    gap: 56px;
+    column-gap: 56px;
+    row-gap: 28px;
     align-items: center;
 }
 
@@ -625,44 +626,9 @@ p {
     filter: drop-shadow(0 26px 28px rgba(22, 22, 22, 0.14));
 }
 
-.price-panel {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 10px;
-    width: min(100%, 520px);
-    margin-bottom: 12px;
-    padding: 16px;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    background: var(--panel-surface);
-    box-shadow: var(--shadow);
-}
-
-.price-panel strong {
+.price-section {
     grid-column: 1 / -1;
-    color: var(--accent-strong);
-    font-size: 1rem;
-    font-weight: 700;
-    line-height: 1.15;
-}
-
-.price-panel span {
-    display: grid;
-    gap: 4px;
-    min-width: 0;
-    color: var(--muted);
-    font-size: 0.88rem;
-    font-weight: 700;
-    line-height: 1.35;
-}
-
-.price-panel b {
-    min-width: 0;
-    color: var(--text);
-    font-size: 0.88rem;
-    font-weight: 700;
-    line-height: 1.15;
-    overflow-wrap: anywhere;
+    width: 100%;
 }
 
 .pool-summary,
@@ -714,6 +680,38 @@ p {
     margin-top: 6px;
     color: var(--muted);
     font-size: 0.9rem;
+}
+
+.pool-summary.price-panel {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin: 0;
+}
+
+.price-panel > div {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 72px;
+    align-items: center;
+    column-gap: 12px;
+}
+
+.price-panel > div > strong,
+.price-panel > div > span {
+    grid-column: 1;
+}
+
+.price-sparkline {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    width: 72px;
+    height: 36px;
+    overflow: visible;
+}
+
+.price-sparkline polyline {
+    fill: none;
+    stroke: var(--accent-strong);
+    stroke-width: 2;
+    vector-effect: non-scaling-stroke;
 }
 
 .pool-summary-clickable {
@@ -2725,6 +2723,19 @@ html[data-theme="dark"] input {
         grid-template-columns: 1fr 1fr;
     }
 
+    .pool-summary.price-panel {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .price-panel > div {
+        grid-template-columns: minmax(0, 1fr) 54px;
+        column-gap: 8px;
+    }
+
+    .price-sparkline {
+        width: 54px;
+    }
+
     .governance-list {
         max-height: none;
     }
@@ -2793,12 +2804,6 @@ html[data-theme="dark"] input {
     .hero-media {
         width: calc(100vw - 32px);
         max-width: calc(100vw - 32px);
-    }
-
-    .price-panel {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 8px;
-        padding: 14px 12px;
     }
 
     h1 {

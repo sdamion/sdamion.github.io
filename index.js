@@ -31,6 +31,44 @@ let starchPools = [];
 let starchPoolStatus = null;
 let cryptoNewsItems = [];
 
+function renderPriceSparklines(history) {
+    const cutoff = Date.now() - 3600000;
+    const entries = (Array.isArray(history) ? history : [])
+        .map(entry => ({ ...entry, time: Date.parse(entry?.timestamp || '') }))
+        .filter(entry => Number.isFinite(entry.time) && entry.time >= cutoff)
+        .sort((left, right) => left.time - right.time);
+
+    document.querySelectorAll('.price-sparkline').forEach(svg => {
+        const key = svg.dataset.priceKey;
+        const line = svg.querySelector('polyline');
+        if (!key || !line) return;
+
+        const samples = entries
+            .map(entry => ({ time: entry.time, value: Number(entry[key]) }))
+            .filter(sample => Number.isFinite(sample.value));
+        if (!samples.length) {
+            line.setAttribute('points', '');
+            return;
+        }
+
+        const values = samples.map(sample => sample.value);
+        const minimum = Math.min(...values);
+        const maximum = Math.max(...values);
+        const spread = maximum - minimum;
+        const startTime = samples[0].time;
+        const endTime = samples.at(-1).time;
+        const timeSpan = Math.max(1, endTime - startTime);
+        const points = samples.length === 1
+            ? '0,18 100,18'
+            : samples.map(sample => {
+                const x = ((sample.time - startTime) / timeSpan) * 100;
+                const y = spread === 0 ? 18 : 33 - (((sample.value - minimum) / spread) * 30);
+                return `${x.toFixed(2)},${y.toFixed(2)}`;
+            }).join(' ');
+        line.setAttribute('points', points);
+    });
+}
+
 // Fetch and display ADA, BTC, NIGHT, and STRCH prices asynchronously
 async function fetchPrices() {
     const adaEl = document.getElementById('ada-price');
@@ -39,7 +77,7 @@ async function fetchPrices() {
     const strchEl = document.getElementById('strch-price');
 
     try {
-        const response = await fetch(PRICE_API_URL);
+        const response = await fetch(PRICE_API_URL, { cache: 'no-store' });
         if (!response.ok) throw new Error(`Price API HTTP Error: ${response.status}`);
         const prices = await response.json();
         const adaPrice = Number(prices.ada_usd);
@@ -55,6 +93,7 @@ async function fetchPrices() {
         }
         if (nightEl) nightEl.textContent = Number.isFinite(nightPrice) ? `$${nightPrice.toFixed(4)}` : 'N/A';
         if (strchEl) strchEl.textContent = Number.isFinite(strchPrice) ? `$${strchPrice.toFixed(12)}` : 'N/A';
+        renderPriceSparklines(prices.history);
     } catch (error) {
         console.error('Price data could not be loaded', error);
         if (adaEl) adaEl.textContent = 'N/A';
@@ -147,7 +186,7 @@ document.addEventListener("DOMContentLoaded", () => {
     fetchIcebreakerStatus();
     fetchStarchPoolStatus();
     fetchLeaderSchedule();
-    setInterval(fetchPrices, 60000); // Auto-update every 60 seconds
+    setInterval(fetchPrices, 30000);
     setInterval(fetchCryptoNews, 300000);
     setInterval(fetchPoolStatus, 300000);
     setInterval(fetchMithrilStatus, 300000);
