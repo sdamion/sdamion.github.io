@@ -363,7 +363,13 @@ async function fetchCryptoNews() {
         const response = await fetch(NEWS_API_URL, { cache: 'no-store' });
         if (!response.ok) throw new Error(`News API HTTP Error: ${response.status}`);
         const payload = await response.json();
-        const items = Array.isArray(payload?.items) ? payload.items.slice(0, 60) : [];
+        const currentYear = new Date().getUTCFullYear();
+        const items = (Array.isArray(payload?.items) ? payload.items : [])
+            .filter(item => {
+                const publishedAt = Date.parse(item?.published_at || '');
+                return Number.isFinite(publishedAt) && new Date(publishedAt).getUTCFullYear() === currentYear;
+            })
+            .slice(0, 60);
         if (!items.length) throw new Error('News API returned no Cardano headlines');
 
         cryptoNewsItems = items;
