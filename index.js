@@ -31,10 +31,11 @@ let starchPools = [];
 let starchPoolStatus = null;
 let cryptoNewsItems = [];
 
-// Fetch and display ADA, BTC, and STRCH prices asynchronously
+// Fetch and display ADA, BTC, NIGHT, and STRCH prices asynchronously
 async function fetchPrices() {
     const adaEl = document.getElementById('ada-price');
     const btcEl = document.getElementById('btc-price');
+    const nightEl = document.getElementById('night-price');
     const strchEl = document.getElementById('strch-price');
 
     try {
@@ -43,6 +44,7 @@ async function fetchPrices() {
         const prices = await response.json();
         const adaPrice = Number(prices.ada_usd);
         const btcPrice = Number(prices.btc_usd);
+        const nightPrice = Number(prices.night_usd);
         const strchPrice = Number(prices.strch_usd);
 
         if (adaEl) adaEl.textContent = Number.isFinite(adaPrice) ? `$${adaPrice.toFixed(3)}` : 'N/A';
@@ -51,11 +53,13 @@ async function fetchPrices() {
                 ? `$${new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(btcPrice)}`
                 : 'N/A';
         }
+        if (nightEl) nightEl.textContent = Number.isFinite(nightPrice) ? `$${nightPrice.toFixed(4)}` : 'N/A';
         if (strchEl) strchEl.textContent = Number.isFinite(strchPrice) ? `$${strchPrice.toFixed(12)}` : 'N/A';
     } catch (error) {
         console.error('Price data could not be loaded', error);
         if (adaEl) adaEl.textContent = 'N/A';
         if (btcEl) btcEl.textContent = 'N/A';
+        if (nightEl) nightEl.textContent = 'N/A';
         if (strchEl) strchEl.textContent = 'N/A';
     }
 }
@@ -93,7 +97,11 @@ function updateCryptoNewsTickerSpeed() {
     const group = track?.querySelector('.crypto-news-group:not([aria-hidden="true"])');
     if (!track || !group) return;
 
-    const durationSeconds = Math.max(14, Math.min(38, group.scrollWidth / 950));
+    const isMobile = window.matchMedia('(max-width: 700px)').matches;
+    const pixelsPerSecond = isMobile ? 1600 : 950;
+    const minimumDuration = isMobile ? 9 : 14;
+    const maximumDuration = isMobile ? 24 : 38;
+    const durationSeconds = Math.max(minimumDuration, Math.min(maximumDuration, group.scrollWidth / pixelsPerSecond));
     track.style.setProperty('--crypto-news-duration', `${durationSeconds.toFixed(2)}s`);
 }
 

@@ -627,7 +627,7 @@ p {
 
 .price-panel {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 10px;
     width: min(100%, 520px);
     margin-bottom: 12px;
@@ -2495,16 +2495,17 @@ select {
 
     .crypto-news-ticker {
         min-height: 34px;
+        font-size: 0.66rem;
     }
 
     .crypto-news-label {
         padding: 0 8px;
-        font-size: 0.66rem;
+        font-size: inherit;
     }
 
     .crypto-news-message {
         min-height: 34px;
-        font-size: 0.68rem;
+        font-size: inherit;
     }
 
     .crypto-news-group {
@@ -2513,7 +2514,7 @@ select {
     }
 
     .crypto-news-item {
-        font-size: 0.66rem;
+        font-size: inherit;
     }
 }
 
@@ -2795,6 +2796,7 @@ html[data-theme="dark"] input {
     }
 
     .price-panel {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 8px;
         padding: 14px 12px;
     }
