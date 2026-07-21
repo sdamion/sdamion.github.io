@@ -34,18 +34,12 @@ let latestPricePayload = null;
 let priceHistoryChart = null;
 const PRICE_TILE_WINDOW_MS = 60 * 60 * 1000;
 const PRICE_OVERLAY_WINDOW_MS = 24 * 60 * 60 * 1000;
-const KRAKEN_OVERLAY_WINDOW_MS = 24 * 60 * 60 * 1000;
 const PRICE_OVERLAY_BUCKET_MS = 5 * 60 * 1000;
-const KRAKEN_CHART_INTERVALS = Object.freeze([
+const PRICE_CHART_INTERVALS = Object.freeze([
     { minutes: 5, label: '5 min' },
     { minutes: 30, label: '30 min' },
     { minutes: 60, label: '1 hour' }
 ]);
-const KRAKEN_OHLC_FIELDS = Object.freeze({
-    btc_usd: 'btc_ohlc',
-    ada_usd: 'ada_ohlc',
-    night_usd: 'night_ohlc'
-});
 
 function parsePriceValue(value) {
     return value === null || value === undefined || value === '' ? NaN : Number(value);
@@ -156,29 +150,36 @@ function getPriceHistorySamples(key) {
     return Array.from(buckets.values()).sort((left, right) => left.time - right.time);
 }
 
-function getKrakenOhlcSamples(priceKey) {
-    const field = KRAKEN_OHLC_FIELDS[priceKey];
-    if (!field) return [];
-    const cutoff = Date.now() - KRAKEN_OVERLAY_WINDOW_MS;
-    return (Array.isArray(latestPricePayload?.[field]) ? latestPricePayload[field] : [])
-        .map(entry => ({
-            time: Date.parse(entry?.timestamp || ''),
-            open: Number(entry?.open),
-            high: Number(entry?.high),
-            low: Number(entry?.low),
-            close: Number(entry?.close),
-            volume: Number(entry?.volume),
-            trades: Number(entry?.trades)
-        }))
-        .filter(candle => (
-            Number.isFinite(candle.time)
-            && candle.time >= cutoff
-            && [candle.open, candle.high, candle.low, candle.close].every(Number.isFinite)
-        ))
-        .sort((left, right) => left.time - right.time);
+function getHistoryOhlcSamples(priceKey) {
+    const cutoff = Date.now() - PRICE_OVERLAY_WINDOW_MS;
+    const buckets = new Map();
+    (Array.isArray(latestPricePayload?.history) ? latestPricePayload.history : []).forEach(entry => {
+        const time = Date.parse(entry?.timestamp || '');
+        const value = parsePriceValue(entry?.[priceKey]);
+        if (!Number.isFinite(time) || time < cutoff || !Number.isFinite(value)) return;
+
+        const bucketTime = Math.floor(time / PRICE_OVERLAY_BUCKET_MS) * PRICE_OVERLAY_BUCKET_MS;
+        const candle = buckets.get(bucketTime);
+        if (!candle) {
+            buckets.set(bucketTime, {
+                time: bucketTime,
+                open: value,
+                high: value,
+                low: value,
+                close: value,
+                volume: 0,
+                trades: 0
+            });
+            return;
+        }
+        candle.high = Math.max(candle.high, value);
+        candle.low = Math.min(candle.low, value);
+        candle.close = value;
+    });
+    return Array.from(buckets.values()).sort((left, right) => left.time - right.time);
 }
 
-function aggregateKrakenCandles(candles, intervalMinutes) {
+function aggregatePriceCandles(candles, intervalMinutes) {
     const intervalMs = Math.max(5, Number(intervalMinutes) || 5) * 60 * 1000;
     const buckets = new Map();
 
@@ -219,28 +220,28 @@ function openPriceHistoryOverlay(tile) {
     const key = tile?.dataset.priceKey || '';
     const ticker = tile?.dataset.priceTicker || 'Token';
     const samples = getPriceHistorySamples(key);
-    const krakenCandles = getKrakenOhlcSamples(key);
-    const showKrakenTradingChart = krakenCandles.length > 1;
+    const tradingCandles = getHistoryOhlcSamples(key);
+    const showTradingChart = tradingCandles.length > 1;
     const body = document.createElement('section');
     body.className = 'governance-chart-panel price-history-chart-panel';
 
     const current = document.createElement('strong');
     current.className = 'price-history-current';
     current.textContent = tile?.querySelector(':scope > strong')?.textContent || 'N/A';
-    const trendSamples = showKrakenTradingChart
-        ? krakenCandles.map(candle => ({ time: candle.time, value: candle.close }))
+    const trendSamples = showTradingChart
+        ? tradingCandles.map(candle => ({ time: candle.time, value: candle.close }))
         : samples;
     const trendClass = getPriceTrendClass(trendSamples);
     if (trendClass) current.classList.add(trendClass);
     body.appendChild(current);
 
     let intervalSelector = null;
-    if (showKrakenTradingChart) {
+    if (showTradingChart) {
         intervalSelector = document.createElement('div');
         intervalSelector.className = 'price-history-intervals';
         intervalSelector.setAttribute('role', 'group');
         intervalSelector.setAttribute('aria-label', `${ticker} chart interval`);
-        KRAKEN_CHART_INTERVALS.forEach(({ minutes, label }, index) => {
+        PRICE_CHART_INTERVALS.forEach(({ minutes, label }, index) => {
             const button = document.createElement('button');
             button.type = 'button';
             button.className = 'price-history-interval';
@@ -253,12 +254,12 @@ function openPriceHistoryOverlay(tile) {
     }
 
     let canvas = null;
-    if (samples.length || showKrakenTradingChart) {
+    if (samples.length || showTradingChart) {
         const frame = document.createElement('div');
         frame.className = 'price-history-chart-frame';
         canvas = document.createElement('canvas');
         canvas.setAttribute('role', 'img');
-        canvas.setAttribute('aria-label', showKrakenTradingChart
+        canvas.setAttribute('aria-label', showTradingChart
             ? `${ticker}/USD candlestick chart over the last 24 hours`
             : `${ticker} price over the last 24 hours`);
         frame.appendChild(canvas);
@@ -274,8 +275,8 @@ function openPriceHistoryOverlay(tile) {
         id: 'price-history-overlay',
         titleId: 'price-history-title',
         titleText: `${ticker} Price`,
-        headerMeta: showKrakenTradingChart
-            ? `24 hours · 5 min · ${krakenCandles.length.toLocaleString('en-US')} candles · Kraken`
+        headerMeta: showTradingChart
+            ? `24 hours · 5 min · ${tradingCandles.length.toLocaleString('en-US')} candles`
             : `24 hours · ${samples.length.toLocaleString('en-US')} points`,
         closeLabel: `Close ${ticker} price history`,
         closeOverlay: closePriceHistoryOverlay,
@@ -285,17 +286,17 @@ function openPriceHistoryOverlay(tile) {
     });
 
     if (canvas) requestAnimationFrame(() => {
-        if (!showKrakenTradingChart) {
+        if (!showTradingChart) {
             renderPriceHistoryChart(canvas, samples, ticker, trendClass);
             return;
         }
 
         const renderInterval = minutes => {
-            const candles = aggregateKrakenCandles(krakenCandles, minutes);
-            renderKrakenTradingChart(canvas, candles, ticker, minutes);
+            const candles = aggregatePriceCandles(tradingCandles, minutes);
+            renderPriceTradingChart(canvas, candles, ticker, minutes);
             const meta = document.querySelector('#price-history-overlay .governance-menu-header-meta');
-            const option = KRAKEN_CHART_INTERVALS.find(item => item.minutes === minutes);
-            if (meta) meta.textContent = `24 hours · ${option?.label || `${minutes} min`} · ${candles.length.toLocaleString('en-US')} candles · Kraken`;
+            const option = PRICE_CHART_INTERVALS.find(item => item.minutes === minutes);
+            if (meta) meta.textContent = `24 hours · ${option?.label || `${minutes} min`} · ${candles.length.toLocaleString('en-US')} candles`;
             intervalSelector?.querySelectorAll('.price-history-interval').forEach(button => {
                 button.setAttribute('aria-pressed', String(Number(button.dataset.intervalMinutes) === minutes));
             });
@@ -310,7 +311,7 @@ function openPriceHistoryOverlay(tile) {
     });
 }
 
-function renderKrakenTradingChart(canvas, candles, ticker, intervalMinutes = 5) {
+function renderPriceTradingChart(canvas, candles, ticker, intervalMinutes = 5) {
     if (typeof Chart !== 'function' || !canvas?.isConnected || candles.length < 2) return;
     if (priceHistoryChart) priceHistoryChart.destroy();
 
@@ -323,6 +324,7 @@ function renderKrakenTradingChart(canvas, candles, ticker, intervalMinutes = 5) 
     const priceFormatter = value => {
         const number = Number(value);
         if (!Number.isFinite(number)) return 'N/A';
+        if (number !== 0 && Math.abs(number) < 0.000001) return `$${number.toFixed(12)}`;
         const maximumFractionDigits = Math.abs(number) >= 1000 ? 2 : Math.abs(number) >= 1 ? 4 : 8;
         return `$${number.toLocaleString('en-US', { maximumFractionDigits })}`;
     };
