@@ -697,6 +697,13 @@ p {
 .price-panel > div > strong,
 .price-panel > div > span {
     grid-column: 1;
+    min-width: 0;
+}
+
+.price-panel > div > strong {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    font-variant-numeric: tabular-nums;
 }
 
 .price-sparkline {
@@ -2799,10 +2806,27 @@ html[data-theme="dark"] input {
 
     .price-panel > div {
         grid-template-columns: minmax(0, 1fr) 54px;
+        grid-template-rows: auto auto;
         column-gap: 8px;
+        row-gap: 6px;
+    }
+
+    .price-panel > div > strong {
+        grid-column: 1 / -1;
+        grid-row: 1;
+        font-size: 1rem;
+        line-height: 1.2;
+    }
+
+    .price-panel > div > span {
+        grid-column: 1;
+        grid-row: 2;
+        margin-top: 0;
     }
 
     .price-sparkline {
+        grid-column: 2;
+        grid-row: 2;
         width: 54px;
     }
 
