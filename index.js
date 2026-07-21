@@ -40,9 +40,24 @@ const PRICE_CHART_INTERVALS = Object.freeze([
     { minutes: 30, label: '30 min' },
     { minutes: 60, label: '1 hour' }
 ]);
+const PRICE_TOKEN_CONFIG = Object.freeze({
+    btc_usd: { elementId: 'btc-price', decimals: 0 },
+    ada_usd: { elementId: 'ada-price', decimals: 3 },
+    strch_usd: { elementId: 'strch-price', decimals: 12 },
+    night_usd: { elementId: 'night-price', decimals: 4 }
+});
 
 function parsePriceValue(value) {
     return value === null || value === undefined || value === '' ? NaN : Number(value);
+}
+
+function formatUsdPrice(value, decimals) {
+    const number = parsePriceValue(value);
+    if (!Number.isFinite(number)) return 'N/A';
+    return `$${new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+    }).format(number)}`;
 }
 
 function getPriceTrendClass(samples) {
@@ -101,53 +116,20 @@ function renderPriceSparklines(history) {
 
 // Fetch and display ADA, BTC, NIGHT, and STRCH prices asynchronously
 async function fetchPrices() {
-    const adaEl = document.getElementById('ada-price');
-    const btcEl = document.getElementById('btc-price');
-    const nightEl = document.getElementById('night-price');
-    const strchEl = document.getElementById('strch-price');
-
     try {
         const response = await fetch(PRICE_API_URL, { cache: 'no-store' });
         if (!response.ok) throw new Error(`Price API HTTP Error: ${response.status}`);
         const prices = await response.json();
         latestPricePayload = prices;
-        const adaPrice = parsePriceValue(prices.ada_usd);
-        const btcPrice = parsePriceValue(prices.btc_usd);
-        const nightPrice = parsePriceValue(prices.night_usd);
-        const strchPrice = parsePriceValue(prices.strch_usd);
-
-        if (adaEl) adaEl.textContent = Number.isFinite(adaPrice) ? `$${adaPrice.toFixed(3)}` : 'N/A';
-        if (btcEl) {
-            btcEl.textContent = Number.isFinite(btcPrice)
-                ? `$${new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(btcPrice)}`
-                : 'N/A';
-        }
-        if (nightEl) nightEl.textContent = Number.isFinite(nightPrice) ? `$${nightPrice.toFixed(4)}` : 'N/A';
-        if (strchEl) strchEl.textContent = Number.isFinite(strchPrice) ? `$${strchPrice.toFixed(12)}` : 'N/A';
+        Object.entries(PRICE_TOKEN_CONFIG).forEach(([key, config]) => {
+            setText(config.elementId, formatUsdPrice(prices[key], config.decimals));
+        });
         renderPriceSparklines(prices.history);
     } catch (error) {
         console.error('Price data could not be loaded', error);
-        if (adaEl) adaEl.textContent = 'N/A';
-        if (btcEl) btcEl.textContent = 'N/A';
-        if (nightEl) nightEl.textContent = 'N/A';
-        if (strchEl) strchEl.textContent = 'N/A';
+        Object.values(PRICE_TOKEN_CONFIG).forEach(config => setText(config.elementId, 'N/A'));
         renderPriceSparklines([]);
     }
-}
-
-function getPriceHistorySamples(key) {
-    const cutoff = Date.now() - PRICE_OVERLAY_WINDOW_MS;
-    const samples = (Array.isArray(latestPricePayload?.history) ? latestPricePayload.history : [])
-        .map(entry => ({ time: Date.parse(entry?.timestamp || ''), value: parsePriceValue(entry?.[key]) }))
-        .filter(sample => Number.isFinite(sample.time) && sample.time >= cutoff && Number.isFinite(sample.value))
-        .sort((left, right) => left.time - right.time);
-
-    const buckets = new Map();
-    samples.forEach(sample => {
-        const bucketTime = Math.floor(sample.time / PRICE_OVERLAY_BUCKET_MS) * PRICE_OVERLAY_BUCKET_MS;
-        buckets.set(bucketTime, { time: bucketTime, value: sample.value });
-    });
-    return Array.from(buckets.values()).sort((left, right) => left.time - right.time);
 }
 
 function getHistoryOhlcSamples(priceKey) {
@@ -176,7 +158,15 @@ function getHistoryOhlcSamples(priceKey) {
         candle.low = Math.min(candle.low, value);
         candle.close = value;
     });
-    return Array.from(buckets.values()).sort((left, right) => left.time - right.time);
+    const candles = Array.from(buckets.values()).sort((left, right) => left.time - right.time);
+    candles.forEach((candle, index) => {
+        if (index === 0) return;
+        const previousClose = candles[index - 1].close;
+        candle.open = previousClose;
+        candle.high = Math.max(candle.high, previousClose);
+        candle.low = Math.min(candle.low, previousClose);
+    });
+    return candles;
 }
 
 function aggregatePriceCandles(candles, intervalMinutes) {
@@ -219,7 +209,7 @@ function openPriceHistoryOverlay(tile) {
 
     const key = tile?.dataset.priceKey || '';
     const ticker = tile?.dataset.priceTicker || 'Token';
-    const samples = getPriceHistorySamples(key);
+    const priceConfig = PRICE_TOKEN_CONFIG[key] || { decimals: 4 };
     const tradingCandles = getHistoryOhlcSamples(key);
     const showTradingChart = tradingCandles.length > 1;
     const body = document.createElement('section');
@@ -228,9 +218,7 @@ function openPriceHistoryOverlay(tile) {
     const current = document.createElement('strong');
     current.className = 'price-history-current';
     current.textContent = tile?.querySelector(':scope > strong')?.textContent || 'N/A';
-    const trendSamples = showTradingChart
-        ? tradingCandles.map(candle => ({ time: candle.time, value: candle.close }))
-        : samples;
+    const trendSamples = tradingCandles.map(candle => ({ time: candle.time, value: candle.close }));
     const trendClass = getPriceTrendClass(trendSamples);
     if (trendClass) current.classList.add(trendClass);
     body.appendChild(current);
@@ -254,14 +242,12 @@ function openPriceHistoryOverlay(tile) {
     }
 
     let canvas = null;
-    if (samples.length || showTradingChart) {
+    if (showTradingChart) {
         const frame = document.createElement('div');
         frame.className = 'price-history-chart-frame';
         canvas = document.createElement('canvas');
         canvas.setAttribute('role', 'img');
-        canvas.setAttribute('aria-label', showTradingChart
-            ? `${ticker}/USD candlestick chart over the last 24 hours`
-            : `${ticker} price over the last 24 hours`);
+        canvas.setAttribute('aria-label', `${ticker}/USD candlestick chart over the last 24 hours`);
         frame.appendChild(canvas);
         body.appendChild(frame);
     } else {
@@ -277,7 +263,7 @@ function openPriceHistoryOverlay(tile) {
         titleText: `${ticker} Price`,
         headerMeta: showTradingChart
             ? `24 hours · 5 min · ${tradingCandles.length.toLocaleString('en-US')} candles`
-            : `24 hours · ${samples.length.toLocaleString('en-US')} points`,
+            : '24 hours · Price history unavailable',
         closeLabel: `Close ${ticker} price history`,
         closeOverlay: closePriceHistoryOverlay,
         returnFocus: tile,
@@ -286,14 +272,9 @@ function openPriceHistoryOverlay(tile) {
     });
 
     if (canvas) requestAnimationFrame(() => {
-        if (!showTradingChart) {
-            renderPriceHistoryChart(canvas, samples, ticker, trendClass);
-            return;
-        }
-
         const renderInterval = minutes => {
             const candles = aggregatePriceCandles(tradingCandles, minutes);
-            renderPriceTradingChart(canvas, candles, ticker, minutes);
+            renderPriceTradingChart(canvas, candles, ticker, minutes, priceConfig.decimals);
             const meta = document.querySelector('#price-history-overlay .governance-menu-header-meta');
             const option = PRICE_CHART_INTERVALS.find(item => item.minutes === minutes);
             if (meta) meta.textContent = `24 hours · ${option?.label || `${minutes} min`} · ${candles.length.toLocaleString('en-US')} candles`;
@@ -311,7 +292,7 @@ function openPriceHistoryOverlay(tile) {
     });
 }
 
-function renderPriceTradingChart(canvas, candles, ticker, intervalMinutes = 5) {
+function renderPriceTradingChart(canvas, candles, ticker, intervalMinutes = 5, decimals = 4) {
     if (typeof Chart !== 'function' || !canvas?.isConnected || candles.length < 2) return;
     if (priceHistoryChart) priceHistoryChart.destroy();
 
@@ -324,9 +305,7 @@ function renderPriceTradingChart(canvas, candles, ticker, intervalMinutes = 5) {
     const priceFormatter = value => {
         const number = Number(value);
         if (!Number.isFinite(number)) return 'N/A';
-        if (number !== 0 && Math.abs(number) < 0.000001) return `$${number.toFixed(12)}`;
-        const maximumFractionDigits = Math.abs(number) >= 1000 ? 2 : Math.abs(number) >= 1 ? 4 : 8;
-        return `$${number.toLocaleString('en-US', { maximumFractionDigits })}`;
+        return formatUsdPrice(number, decimals);
     };
     const lowest = Math.min(...candles.map(candle => candle.low));
     const highest = Math.max(...candles.map(candle => candle.high));
@@ -422,73 +401,6 @@ function renderPriceTradingChart(canvas, candles, ticker, intervalMinutes = 5) {
                     min: lowest - padding,
                     max: highest + padding,
                     ticks: { color: mutedColor, callback: priceFormatter },
-                    grid: { color: lineColor }
-                }
-            }
-        }
-    });
-}
-
-function renderPriceHistoryChart(canvas, samples, ticker, trendClass = '') {
-    if (typeof Chart !== 'function' || !canvas?.isConnected || !samples.length) return;
-    if (priceHistoryChart) priceHistoryChart.destroy();
-
-    const styles = getComputedStyle(document.documentElement);
-    const mutedColor = styles.getPropertyValue('--muted').trim() || '#94a3b8';
-    const lineColor = styles.getPropertyValue('--line').trim() || 'rgba(148, 163, 184, 0.25)';
-    const accentColor = styles.getPropertyValue('--accent-strong').trim() || '#2dd4bf';
-    const trendColor = trendClass === 'is-price-up'
-        ? '#34d399'
-        : trendClass === 'is-price-down' ? '#f87171' : accentColor;
-    const trendFill = trendClass === 'is-price-up'
-        ? 'rgba(52, 211, 153, 0.12)'
-        : trendClass === 'is-price-down' ? 'rgba(248, 113, 113, 0.12)' : 'rgba(45, 212, 191, 0.12)';
-    const formatValue = value => {
-        const number = Number(value);
-        if (!Number.isFinite(number)) return 'N/A';
-        if (number !== 0 && Math.abs(number) < 0.000001) return `$${number.toFixed(12)}`;
-        return `$${number.toLocaleString('en-US', { maximumSignificantDigits: 6 })}`;
-    };
-    const timeFormatter = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' });
-
-    priceHistoryChart = new Chart(canvas, {
-        type: 'line',
-        data: {
-            labels: samples.map(sample => timeFormatter.format(sample.time)),
-            datasets: [{
-                label: ticker,
-                data: samples.map(sample => sample.value),
-                borderColor: trendColor,
-                backgroundColor: trendFill,
-                borderWidth: 2.5,
-                pointRadius: 2.5,
-                pointHitRadius: 10,
-                pointHoverRadius: 4,
-                tension: 0.32,
-                cubicInterpolationMode: 'monotone',
-                fill: true
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: { duration: 500, easing: 'easeOutQuart' },
-            interaction: { mode: 'index', intersect: false },
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        label: context => `${ticker} ${formatValue(context.parsed.y)}`
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    ticks: { color: mutedColor, maxTicksLimit: 8, maxRotation: 0 },
-                    grid: { color: lineColor }
-                },
-                y: {
-                    ticks: { color: mutedColor, callback: formatValue },
                     grid: { color: lineColor }
                 }
             }
