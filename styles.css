@@ -377,7 +377,7 @@ body {
         var(--page-bg);
     color: var(--text);
     padding-top: 72px;
-    padding-bottom: 42px;
+    padding-bottom: 0;
 }
 
 html {
@@ -741,47 +741,9 @@ p {
 
 .price-history-current {
     display: block;
+    margin-bottom: 14px;
     color: var(--text);
     font-size: 1.45rem;
-}
-
-.price-history-toolbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 14px;
-}
-
-.price-chart-selector {
-    display: inline-flex;
-    padding: 3px;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    background: var(--governance-card-bg);
-}
-
-.price-chart-selector-button {
-    min-height: 34px;
-    padding: 6px 12px;
-    border: 0;
-    border-radius: 6px;
-    background: transparent;
-    color: var(--muted);
-    font: inherit;
-    font-size: 0.85rem;
-    font-weight: 700;
-    cursor: pointer;
-}
-
-.price-chart-selector-button[aria-pressed="true"] {
-    background: var(--accent-strong);
-    color: var(--page-bg);
-}
-
-.price-chart-selector-button:focus-visible {
-    outline: 2px solid var(--accent-strong);
-    outline-offset: 2px;
 }
 
 .price-history-chart-frame {
@@ -789,6 +751,46 @@ p {
     width: 100%;
     height: 360px;
     min-width: 0;
+}
+
+.youtube-video-panel,
+.youtube-video-frame {
+    width: 100%;
+    min-width: 0;
+}
+
+.youtube-video-frame {
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #000;
+    aspect-ratio: 16 / 9;
+}
+
+.youtube-video-frame iframe {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+
+.youtube-video-close {
+    display: block;
+    min-height: 42px;
+    margin: 14px 0 0 auto;
+    padding: 8px 14px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--overlay-surface-strong);
+    color: var(--text);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.youtube-video-close:focus-visible {
+    outline: 2px solid var(--accent-strong);
+    outline-offset: 2px;
 }
 
 .pool-summary-clickable {
@@ -2423,22 +2425,19 @@ select {
     color: var(--muted);
 }
 
-/* Fixed Cardano news ticker */
+/* Cardano news tile */
 .crypto-news-ticker {
-    position: fixed;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    z-index: 1200;
+    position: relative;
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
+    width: 100%;
     min-height: 42px;
+    margin-bottom: 14px;
     overflow: hidden;
-    border-top: 1px solid var(--line);
-    background: var(--header-bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--governance-card-bg);
     color: var(--text);
-    box-shadow: 0 -8px 24px rgba(22, 22, 22, 0.08);
-    backdrop-filter: blur(16px);
 }
 
 .crypto-news-label {
@@ -2446,19 +2445,29 @@ select {
     z-index: 2;
     display: flex;
     align-items: center;
-    padding: 0 16px;
+    justify-content: center;
+    width: 42px;
+    padding: 0;
     border-right: 1px solid var(--line);
     background: var(--surface);
     color: var(--accent-strong);
-    font-size: 0.82rem;
-    font-weight: 700;
-    white-space: nowrap;
+    font-size: 0;
     border-top: 0;
     border-bottom: 0;
     border-left: 0;
     border-radius: 0;
     font-family: inherit;
     cursor: pointer;
+}
+
+.crypto-news-label svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
 }
 
 .crypto-news-label:hover,
@@ -2564,17 +2573,14 @@ select {
 }
 
 @media (max-width: 700px) {
-    body {
-        padding-bottom: 34px;
-    }
-
     .crypto-news-ticker {
         min-height: 34px;
-        font-size: 0.66rem;
+        font-size: 0.72rem;
     }
 
     .crypto-news-label {
-        padding: 0 8px;
+        width: 34px;
+        padding: 0;
         font-size: inherit;
     }
 
@@ -2589,7 +2595,7 @@ select {
     }
 
     .crypto-news-item {
-        font-size: inherit;
+        font-size: 0.72rem;
     }
 }
 
@@ -2834,11 +2840,6 @@ html[data-theme="dark"] input {
         height: 280px;
     }
 
-    .price-history-toolbar {
-        align-items: flex-start;
-        flex-direction: column;
-    }
-
     .governance-list {
         max-height: none;
     }
@@ -2903,6 +2904,10 @@ html[data-theme="dark"] input {
 }
 
 @media (max-width: 480px) {
+    .youtube-video-close {
+        width: 100%;
+    }
+
     .hero-copy,
     .hero-media {
         width: calc(100vw - 32px);

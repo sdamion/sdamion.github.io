@@ -713,6 +713,7 @@ function handleGovernanceMenuEscape(event) {
     if (event.key !== 'Escape') return;
     const overlays = document.querySelectorAll('.governance-menu-overlay');
     const topOverlay = overlays[overlays.length - 1];
+    if (topOverlay?.governanceCloseOnEscape === false) return;
     if (typeof topOverlay?.governanceCloseOverlay === 'function') {
         topOverlay.governanceCloseOverlay();
     }

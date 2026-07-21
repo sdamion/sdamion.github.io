@@ -173,25 +173,7 @@ function openPriceHistoryOverlay(tile) {
     current.textContent = tile?.querySelector(':scope > strong')?.textContent || 'N/A';
     const trendClass = getPriceTrendClass(samples);
     if (trendClass) current.classList.add(trendClass);
-    const toolbar = document.createElement('div');
-    toolbar.className = 'price-history-toolbar';
-    toolbar.appendChild(current);
-
-    const chartSelector = document.createElement('div');
-    chartSelector.className = 'price-chart-selector';
-    chartSelector.setAttribute('role', 'group');
-    chartSelector.setAttribute('aria-label', 'Chart type');
-    ['line', 'bar'].forEach((type, index) => {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'price-chart-selector-button';
-        button.dataset.chartType = type;
-        button.textContent = type === 'line' ? 'Line' : 'Bar';
-        button.setAttribute('aria-pressed', index === 0 ? 'true' : 'false');
-        chartSelector.appendChild(button);
-    });
-    toolbar.appendChild(chartSelector);
-    body.appendChild(toolbar);
+    body.appendChild(current);
 
     let canvas = null;
     if (samples.length) {
@@ -221,22 +203,10 @@ function openPriceHistoryOverlay(tile) {
         bodyNode: body
     });
 
-    if (canvas) {
-        const selectChartType = type => {
-            chartSelector.querySelectorAll('[data-chart-type]').forEach(button => {
-                button.setAttribute('aria-pressed', String(button.dataset.chartType === type));
-            });
-            renderPriceHistoryChart(canvas, samples, ticker, trendClass, type);
-        };
-        chartSelector.addEventListener('click', event => {
-            const button = event.target.closest('[data-chart-type]');
-            if (button) selectChartType(button.dataset.chartType);
-        });
-        requestAnimationFrame(() => selectChartType('line'));
-    }
+    if (canvas) requestAnimationFrame(() => renderPriceHistoryChart(canvas, samples, ticker, trendClass));
 }
 
-function renderPriceHistoryChart(canvas, samples, ticker, trendClass = '', chartType = 'line') {
+function renderPriceHistoryChart(canvas, samples, ticker, trendClass = '') {
     if (typeof Chart !== 'function' || !canvas?.isConnected || !samples.length) return;
     if (priceHistoryChart) priceHistoryChart.destroy();
 
@@ -259,7 +229,7 @@ function renderPriceHistoryChart(canvas, samples, ticker, trendClass = '', chart
     const timeFormatter = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' });
 
     priceHistoryChart = new Chart(canvas, {
-        type: chartType,
+        type: 'line',
         data: {
             labels: samples.map(sample => timeFormatter.format(sample.time)),
             datasets: [{
@@ -267,16 +237,13 @@ function renderPriceHistoryChart(canvas, samples, ticker, trendClass = '', chart
                 data: samples.map(sample => sample.value),
                 borderColor: trendColor,
                 backgroundColor: trendFill,
-                borderWidth: chartType === 'line' ? 2.5 : 1,
-                pointRadius: chartType === 'line' ? 2.5 : 0,
+                borderWidth: 2.5,
+                pointRadius: 2.5,
                 pointHitRadius: 10,
                 pointHoverRadius: 4,
-                tension: chartType === 'line' ? 0.32 : 0,
+                tension: 0.32,
                 cubicInterpolationMode: 'monotone',
-                fill: chartType === 'line',
-                borderRadius: chartType === 'bar' ? 3 : 0,
-                barPercentage: chartType === 'bar' ? 0.9 : undefined,
-                categoryPercentage: chartType === 'bar' ? 0.95 : undefined
+                fill: true
             }]
         },
         options: {
@@ -329,6 +296,11 @@ function createNewsGroup(items, duplicate = false) {
         link.href = url.href;
         link.target = '_blank';
         link.rel = 'noopener noreferrer';
+        const youtubeVideoId = getYouTubeVideoId(url.href);
+        if (youtubeVideoId) {
+            link.dataset.youtubeVideoId = youtubeVideoId;
+            link.dataset.youtubeVideoTitle = title;
+        }
         if (duplicate) link.tabIndex = -1;
 
         const source = document.createElement('strong');
@@ -348,9 +320,9 @@ function updateCryptoNewsTickerSpeed() {
     if (!track || !group) return;
 
     const isMobile = window.matchMedia('(max-width: 700px)').matches;
-    const pixelsPerSecond = isMobile ? 1600 : 950;
-    const minimumDuration = isMobile ? 9 : 14;
-    const maximumDuration = isMobile ? 24 : 38;
+    const pixelsPerSecond = isMobile ? 3000 : 1900;
+    const minimumDuration = isMobile ? 6 : 8;
+    const maximumDuration = isMobile ? 16 : 26;
     const durationSeconds = Math.max(minimumDuration, Math.min(maximumDuration, group.scrollWidth / pixelsPerSecond));
     track.style.setProperty('--crypto-news-duration', `${durationSeconds.toFixed(2)}s`);
 }
@@ -467,12 +439,17 @@ function createCryptoNewsList() {
             ]
         });
         const url = getExternalHttpUrl(item?.url);
+        const youtubeVideoId = getYouTubeVideoId(item?.url);
         if (Number.isFinite(publishedAt)) row.dataset.sortDate = String(publishedAt);
         if (url) {
             row.tabIndex = 0;
             row.setAttribute('role', 'link');
-            row.setAttribute('aria-label', `Open news article: ${item.title}`);
-            const openArticle = () => openExternalSiteWarning(url.href, row);
+            row.setAttribute('aria-label', youtubeVideoId
+                ? `Play YouTube video: ${item.title}`
+                : `Open news article: ${item.title}`);
+            const openArticle = () => youtubeVideoId
+                ? openYouTubeVideoOverlay(youtubeVideoId, item.title, row)
+                : openExternalSiteWarning(url.href, row);
             row.addEventListener('click', openArticle);
             row.addEventListener('keydown', event => {
                 if (event.key !== 'Enter' && event.key !== ' ') return;
@@ -484,6 +461,69 @@ function createCryptoNewsList() {
     });
 
     return list;
+}
+
+function getYouTubeVideoId(value) {
+    try {
+        const url = new URL(value);
+        const host = url.hostname.toLowerCase().replace(/^www\./, '');
+        let videoId = '';
+        if (host === 'youtu.be') {
+            videoId = url.pathname.split('/').filter(Boolean)[0] || '';
+        } else if (['youtube.com', 'm.youtube.com', 'youtube-nocookie.com'].includes(host)) {
+            if (url.pathname === '/watch') videoId = url.searchParams.get('v') || '';
+            else if (/^\/(?:shorts|live|embed)\//.test(url.pathname)) {
+                videoId = url.pathname.split('/').filter(Boolean)[1] || '';
+            }
+        }
+        return /^[0-9A-Za-z_-]{11}$/.test(videoId) ? videoId : '';
+    } catch {
+        return '';
+    }
+}
+
+function openYouTubeVideoOverlay(videoId, title, returnFocus = document.activeElement) {
+    if (!/^[0-9A-Za-z_-]{11}$/.test(String(videoId || ''))) return;
+    closeYouTubeVideoOverlay(false);
+
+    const panel = document.createElement('section');
+    panel.className = 'youtube-video-panel';
+    const frame = document.createElement('div');
+    frame.className = 'youtube-video-frame';
+    const iframe = document.createElement('iframe');
+    iframe.src = `https://www.youtube-nocookie.com/embed/${videoId}?rel=0`;
+    iframe.title = String(title || 'YouTube video');
+    iframe.loading = 'eager';
+    iframe.referrerPolicy = 'strict-origin-when-cross-origin';
+    iframe.allow = 'accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture; web-share';
+    iframe.allowFullscreen = true;
+    frame.appendChild(iframe);
+
+    const closeVideo = document.createElement('button');
+    closeVideo.type = 'button';
+    closeVideo.className = 'youtube-video-close';
+    closeVideo.textContent = 'Close video';
+    closeVideo.addEventListener('click', closeYouTubeVideoOverlay);
+    panel.append(frame, closeVideo);
+
+    createPoolMenuOverlay({
+        id: 'youtube-video-overlay',
+        titleId: 'youtube-video-title',
+        titleText: String(title || 'YouTube Video'),
+        headerMeta: 'YouTube',
+        closeLabel: 'Close YouTube video',
+        closeOverlay: closeYouTubeVideoOverlay,
+        returnFocus,
+        rootTitle: 'Crypto News',
+        bodyNode: panel,
+        showHeaderActions: false,
+        closeOnBackdrop: false,
+        closeOnEscape: !window.matchMedia('(max-width: 700px)').matches
+    });
+}
+
+function closeYouTubeVideoOverlay(restoreFocus = true) {
+    closePoolMenuOverlay('youtube-video-overlay', restoreFocus);
 }
 
 let pendingExternalUrl = '';
@@ -505,6 +545,13 @@ function initExternalLinkWarnings() {
     document.addEventListener('click', event => {
         const link = event.target.closest?.('a[href]');
         if (!link) return;
+        const youtubeVideoId = link.dataset.youtubeVideoId;
+        if (youtubeVideoId) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            openYouTubeVideoOverlay(youtubeVideoId, link.dataset.youtubeVideoTitle, link);
+            return;
+        }
         const url = getExternalHttpUrl(link.href);
         if (!url) return;
 
@@ -939,15 +986,29 @@ function closeStarchPoolsOverlay(restoreFocus = true) {
     closePoolMenuOverlay('pool-starch-overlay', restoreFocus);
 }
 
-function createPoolMenuOverlay({ id, titleId, titleText, headerMeta, closeLabel, closeOverlay, returnFocus, rootTitle, bodyNode }) {
+function createPoolMenuOverlay({
+    id,
+    titleId,
+    titleText,
+    headerMeta,
+    closeLabel,
+    closeOverlay,
+    returnFocus,
+    rootTitle,
+    bodyNode,
+    showHeaderActions = true,
+    closeOnBackdrop = true,
+    closeOnEscape = true
+}) {
     const overlay = document.createElement('div');
     overlay.id = id;
     overlay.className = 'governance-overlay governance-menu-overlay governance-drep-overlay';
     overlay.style.zIndex = String(getNextPoolOverlayZIndex());
     overlay.governanceReturnFocus = returnFocus;
     overlay.governanceCloseOverlay = closeOverlay;
+    overlay.governanceCloseOnEscape = closeOnEscape;
     overlay.addEventListener('click', event => {
-        if (event.target === overlay) closeOverlay();
+        if (closeOnBackdrop && event.target === overlay) closeOverlay();
     });
 
     const dialog = document.createElement('article');
@@ -992,7 +1053,8 @@ function createPoolMenuOverlay({ id, titleId, titleText, headerMeta, closeLabel,
     headerActions.append(back, close);
 
     headerCopy.append(title, meta);
-    header.append(headerCopy, headerActions);
+    header.appendChild(headerCopy);
+    if (showHeaderActions) header.appendChild(headerActions);
 
     const body = document.createElement('div');
     body.className = 'overlay-dialog-body';
