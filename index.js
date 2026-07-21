@@ -32,6 +32,9 @@ let starchPoolStatus = null;
 let cryptoNewsItems = [];
 let latestPricePayload = null;
 let priceHistoryChart = null;
+const PRICE_TILE_WINDOW_MS = 60 * 60 * 1000;
+const PRICE_OVERLAY_WINDOW_MS = 24 * 60 * 60 * 1000;
+const PRICE_OVERLAY_BUCKET_MS = 5 * 60 * 1000;
 
 function parsePriceValue(value) {
     return value === null || value === undefined || value === '' ? NaN : Number(value);
@@ -46,7 +49,7 @@ function getPriceTrendClass(samples) {
 }
 
 function renderPriceSparklines(history) {
-    const cutoff = Date.now() - 86400000;
+    const cutoff = Date.now() - PRICE_TILE_WINDOW_MS;
     const entries = (Array.isArray(history) ? history : [])
         .map(entry => ({ ...entry, time: Date.parse(entry?.timestamp || '') }))
         .filter(entry => Number.isFinite(entry.time) && entry.time >= cutoff)
@@ -128,11 +131,18 @@ async function fetchPrices() {
 }
 
 function getPriceHistorySamples(key) {
-    const cutoff = Date.now() - 86400000;
-    return (Array.isArray(latestPricePayload?.history) ? latestPricePayload.history : [])
+    const cutoff = Date.now() - PRICE_OVERLAY_WINDOW_MS;
+    const samples = (Array.isArray(latestPricePayload?.history) ? latestPricePayload.history : [])
         .map(entry => ({ time: Date.parse(entry?.timestamp || ''), value: parsePriceValue(entry?.[key]) }))
         .filter(sample => Number.isFinite(sample.time) && sample.time >= cutoff && Number.isFinite(sample.value))
         .sort((left, right) => left.time - right.time);
+
+    const buckets = new Map();
+    samples.forEach(sample => {
+        const bucketTime = Math.floor(sample.time / PRICE_OVERLAY_BUCKET_MS) * PRICE_OVERLAY_BUCKET_MS;
+        buckets.set(bucketTime, { time: bucketTime, value: sample.value });
+    });
+    return Array.from(buckets.values()).sort((left, right) => left.time - right.time);
 }
 
 function initPriceHistoryTiles() {
@@ -163,7 +173,25 @@ function openPriceHistoryOverlay(tile) {
     current.textContent = tile?.querySelector(':scope > strong')?.textContent || 'N/A';
     const trendClass = getPriceTrendClass(samples);
     if (trendClass) current.classList.add(trendClass);
-    body.appendChild(current);
+    const toolbar = document.createElement('div');
+    toolbar.className = 'price-history-toolbar';
+    toolbar.appendChild(current);
+
+    const chartSelector = document.createElement('div');
+    chartSelector.className = 'price-chart-selector';
+    chartSelector.setAttribute('role', 'group');
+    chartSelector.setAttribute('aria-label', 'Chart type');
+    ['line', 'bar'].forEach((type, index) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'price-chart-selector-button';
+        button.dataset.chartType = type;
+        button.textContent = type === 'line' ? 'Line' : 'Bar';
+        button.setAttribute('aria-pressed', index === 0 ? 'true' : 'false');
+        chartSelector.appendChild(button);
+    });
+    toolbar.appendChild(chartSelector);
+    body.appendChild(toolbar);
 
     let canvas = null;
     if (samples.length) {
@@ -193,10 +221,22 @@ function openPriceHistoryOverlay(tile) {
         bodyNode: body
     });
 
-    if (canvas) requestAnimationFrame(() => renderPriceHistoryChart(canvas, samples, ticker, trendClass));
+    if (canvas) {
+        const selectChartType = type => {
+            chartSelector.querySelectorAll('[data-chart-type]').forEach(button => {
+                button.setAttribute('aria-pressed', String(button.dataset.chartType === type));
+            });
+            renderPriceHistoryChart(canvas, samples, ticker, trendClass, type);
+        };
+        chartSelector.addEventListener('click', event => {
+            const button = event.target.closest('[data-chart-type]');
+            if (button) selectChartType(button.dataset.chartType);
+        });
+        requestAnimationFrame(() => selectChartType('line'));
+    }
 }
 
-function renderPriceHistoryChart(canvas, samples, ticker, trendClass = '') {
+function renderPriceHistoryChart(canvas, samples, ticker, trendClass = '', chartType = 'line') {
     if (typeof Chart !== 'function' || !canvas?.isConnected || !samples.length) return;
     if (priceHistoryChart) priceHistoryChart.destroy();
 
@@ -219,7 +259,7 @@ function renderPriceHistoryChart(canvas, samples, ticker, trendClass = '') {
     const timeFormatter = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' });
 
     priceHistoryChart = new Chart(canvas, {
-        type: 'line',
+        type: chartType,
         data: {
             labels: samples.map(sample => timeFormatter.format(sample.time)),
             datasets: [{
@@ -227,13 +267,16 @@ function renderPriceHistoryChart(canvas, samples, ticker, trendClass = '') {
                 data: samples.map(sample => sample.value),
                 borderColor: trendColor,
                 backgroundColor: trendFill,
-                borderWidth: 2.5,
-                pointRadius: 0,
+                borderWidth: chartType === 'line' ? 2.5 : 1,
+                pointRadius: chartType === 'line' ? 2.5 : 0,
                 pointHitRadius: 10,
                 pointHoverRadius: 4,
-                tension: 0.32,
+                tension: chartType === 'line' ? 0.32 : 0,
                 cubicInterpolationMode: 'monotone',
-                fill: true
+                fill: chartType === 'line',
+                borderRadius: chartType === 'bar' ? 3 : 0,
+                barPercentage: chartType === 'bar' ? 0.9 : undefined,
+                categoryPercentage: chartType === 'bar' ? 0.95 : undefined
             }]
         },
         options: {
