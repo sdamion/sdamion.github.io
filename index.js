@@ -44,8 +44,8 @@ function getPriceTrendClass(samples) {
     if (!Array.isArray(samples) || samples.length < 2) return '';
     const first = Number(samples[0]?.value);
     const last = Number(samples.at(-1)?.value);
-    if (!Number.isFinite(first) || !Number.isFinite(last) || first === last) return '';
-    return last > first ? 'is-price-up' : 'is-price-down';
+    if (!Number.isFinite(first) || !Number.isFinite(last)) return '';
+    return last >= first ? 'is-price-up' : 'is-price-down';
 }
 
 function renderPriceSparklines(history) {
