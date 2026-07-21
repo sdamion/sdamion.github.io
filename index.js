@@ -145,6 +145,26 @@ function getPriceHistorySamples(key) {
     return Array.from(buckets.values()).sort((left, right) => left.time - right.time);
 }
 
+function getBtcOhlcSamples() {
+    const cutoff = Date.now() - PRICE_OVERLAY_WINDOW_MS;
+    return (Array.isArray(latestPricePayload?.btc_ohlc) ? latestPricePayload.btc_ohlc : [])
+        .map(entry => ({
+            time: Date.parse(entry?.timestamp || ''),
+            open: Number(entry?.open),
+            high: Number(entry?.high),
+            low: Number(entry?.low),
+            close: Number(entry?.close),
+            volume: Number(entry?.volume),
+            trades: Number(entry?.trades)
+        }))
+        .filter(candle => (
+            Number.isFinite(candle.time)
+            && candle.time >= cutoff
+            && [candle.open, candle.high, candle.low, candle.close].every(Number.isFinite)
+        ))
+        .sort((left, right) => left.time - right.time);
+}
+
 function initPriceHistoryTiles() {
     document.querySelectorAll('.price-panel > [data-price-key]').forEach(tile => {
         if (tile.dataset.priceHistoryBound === 'true') return;
@@ -165,6 +185,8 @@ function openPriceHistoryOverlay(tile) {
     const key = tile?.dataset.priceKey || '';
     const ticker = tile?.dataset.priceTicker || 'Token';
     const samples = getPriceHistorySamples(key);
+    const btcCandles = key === 'btc_usd' ? getBtcOhlcSamples() : [];
+    const showBtcTradingChart = btcCandles.length > 1;
     const body = document.createElement('section');
     body.className = 'governance-chart-panel price-history-chart-panel';
 
@@ -176,12 +198,14 @@ function openPriceHistoryOverlay(tile) {
     body.appendChild(current);
 
     let canvas = null;
-    if (samples.length) {
+    if (samples.length || showBtcTradingChart) {
         const frame = document.createElement('div');
         frame.className = 'price-history-chart-frame';
         canvas = document.createElement('canvas');
         canvas.setAttribute('role', 'img');
-        canvas.setAttribute('aria-label', `${ticker} price over the last 24 hours`);
+        canvas.setAttribute('aria-label', showBtcTradingChart
+            ? 'BTC/USD 5-minute candlestick chart over the last 24 hours'
+            : `${ticker} price over the last 24 hours`);
         frame.appendChild(canvas);
         body.appendChild(frame);
     } else {
@@ -195,7 +219,9 @@ function openPriceHistoryOverlay(tile) {
         id: 'price-history-overlay',
         titleId: 'price-history-title',
         titleText: `${ticker} Price`,
-        headerMeta: `24 hours · ${samples.length.toLocaleString('en-US')} points`,
+        headerMeta: showBtcTradingChart
+            ? `24 hours · ${btcCandles.length.toLocaleString('en-US')} candles · Kraken`
+            : `24 hours · ${samples.length.toLocaleString('en-US')} points`,
         closeLabel: `Close ${ticker} price history`,
         closeOverlay: closePriceHistoryOverlay,
         returnFocus: tile,
@@ -203,7 +229,112 @@ function openPriceHistoryOverlay(tile) {
         bodyNode: body
     });
 
-    if (canvas) requestAnimationFrame(() => renderPriceHistoryChart(canvas, samples, ticker, trendClass));
+    if (canvas) requestAnimationFrame(() => {
+        if (showBtcTradingChart) renderBtcTradingChart(canvas, btcCandles);
+        else renderPriceHistoryChart(canvas, samples, ticker, trendClass);
+    });
+}
+
+function renderBtcTradingChart(canvas, candles) {
+    if (typeof Chart !== 'function' || !canvas?.isConnected || candles.length < 2) return;
+    if (priceHistoryChart) priceHistoryChart.destroy();
+
+    const styles = getComputedStyle(document.documentElement);
+    const mutedColor = styles.getPropertyValue('--muted').trim() || '#94a3b8';
+    const lineColor = styles.getPropertyValue('--line').trim() || 'rgba(148, 163, 184, 0.25)';
+    const risingColor = '#34d399';
+    const fallingColor = '#f87171';
+    const timeFormatter = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' });
+    const priceFormatter = value => `$${Number(value).toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
+    const lowest = Math.min(...candles.map(candle => candle.low));
+    const highest = Math.max(...candles.map(candle => candle.high));
+    const padding = Math.max(1, (highest - lowest) * 0.05);
+
+    const candlestickPlugin = {
+        id: 'btc-candlesticks',
+        afterDatasetsDraw(chart) {
+            const { ctx, chartArea, scales } = chart;
+            const points = chart.getDatasetMeta(0).data;
+            if (!chartArea || !scales?.y || !points.length) return;
+            const candleWidth = Math.max(2, Math.min(7, (chartArea.width / candles.length) * 0.72));
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(chartArea.left, chartArea.top, chartArea.width, chartArea.height);
+            ctx.clip();
+            candles.forEach((candle, index) => {
+                const point = points[index];
+                if (!point) return;
+                const color = candle.close >= candle.open ? risingColor : fallingColor;
+                const highY = scales.y.getPixelForValue(candle.high);
+                const lowY = scales.y.getPixelForValue(candle.low);
+                const openY = scales.y.getPixelForValue(candle.open);
+                const closeY = scales.y.getPixelForValue(candle.close);
+                const bodyTop = Math.min(openY, closeY);
+                const bodyHeight = Math.max(1.5, Math.abs(closeY - openY));
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(point.x, highY);
+                ctx.lineTo(point.x, lowY);
+                ctx.stroke();
+                ctx.fillStyle = color;
+                ctx.fillRect(point.x - (candleWidth / 2), bodyTop, candleWidth, bodyHeight);
+            });
+            ctx.restore();
+        }
+    };
+
+    priceHistoryChart = new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels: candles.map(candle => timeFormatter.format(candle.time)),
+            datasets: [{
+                label: 'BTC/USD',
+                data: candles.map(candle => candle.close),
+                borderColor: 'transparent',
+                backgroundColor: 'transparent',
+                borderWidth: 0,
+                pointRadius: 0,
+                pointHitRadius: 8
+            }]
+        },
+        plugins: [candlestickPlugin],
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 300, easing: 'easeOutQuart' },
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        title: contexts => contexts[0]?.label || '',
+                        label: context => {
+                            const candle = candles[context.dataIndex];
+                            return [
+                                `Open ${priceFormatter(candle.open)}`,
+                                `High ${priceFormatter(candle.high)}`,
+                                `Low ${priceFormatter(candle.low)}`,
+                                `Close ${priceFormatter(candle.close)}`
+                            ];
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: { color: mutedColor, maxTicksLimit: 8, maxRotation: 0 },
+                    grid: { color: lineColor }
+                },
+                y: {
+                    min: lowest - padding,
+                    max: highest + padding,
+                    ticks: { color: mutedColor, callback: priceFormatter },
+                    grid: { color: lineColor }
+                }
+            }
+        }
+    });
 }
 
 function renderPriceHistoryChart(canvas, samples, ticker, trendClass = '') {

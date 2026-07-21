@@ -17,6 +17,7 @@ const LOCAL_DREP_DIRECTORY_PROXY_PATH = '/__drep_directory_proxy__';
 const LOCAL_DREP_DETAIL_PROXY_PATH = '/__drep_detail_proxy__';
 const LOCAL_METADATA_PROXY_PATH = '/__metadata_proxy__';
 const LOCAL_TREASURY_PROXY_PATH = '/__treasury_proxy__';
+const GOVERNANCE_MESH_CDN_URL = 'https://esm.sh/@meshsdk/core@1.9.1?bundle-deps';
 const ACTIVE_REFRESH_INTERVAL_MS = 15 * 60 * 1000;
 const EPOCH_DURATION_SECONDS = 432000;
 const CARDANO_MAINNET_EPOCH_ZERO_MS = Date.parse('2017-09-23T21:44:51Z');
@@ -68,6 +69,7 @@ let committeeInfoPromise = null;
 let treasuryPromise = null;
 let treasuryState = null;
 let treasuryHistoryChart = null;
+let governanceMeshPromise = null;
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initGovernance);
@@ -1053,6 +1055,9 @@ function normalizeGovernanceProposal(proposal, linkedSummary = null, container =
     const normalized = { ...proposal };
     normalized.proposal_id = proposal?.proposal_id || proposal?.id || proposal?.gov_action_id || proposal?.action_id || '';
     normalized.proposal_tx_hash = proposal?.proposal_tx_hash || proposal?.tx_hash || proposal?.transaction_hash || '';
+    normalized.proposal_index = coerceNullableNumber(
+        proposal?.proposal_index ?? proposal?.proposalIndex ?? proposal?.tx_index ?? proposal?.action_index
+    );
     normalized.proposal_type = proposal?.proposal_type || proposal?.type || proposal?.gov_action_type || 'Governance';
     normalized.block_time = proposal?.block_time ?? proposal?.created_at ?? proposal?.createdAt ?? proposal?.time ?? 0;
     normalized.proposed_epoch = coerceNullableNumber(proposal?.proposed_epoch ?? proposal?.proposal_epoch ?? proposal?.epoch);
@@ -1451,9 +1456,8 @@ function renderGovernanceGroupIfPresent(container, proposals, emptyMessage) {
 }
 
 function createGovernanceCard(proposal, options = {}) {
-    const card = document.createElement('button');
+    const card = document.createElement('div');
     card.className = 'governance-card governance-menu-card';
-    card.type = 'button';
     card.dataset.proposalId = proposal.proposal_id;
     const sortDate = Number(proposal?.block_time);
     const fallbackSortDate = Number(proposal?.proposed_epoch);
@@ -1466,10 +1470,14 @@ function createGovernanceCard(proposal, options = {}) {
     if (Number.isFinite(totalAsk) && totalAsk > 0) {
         card.dataset.sortAsk = String(totalAsk);
     }
+    const openButton = document.createElement('button');
+    openButton.type = 'button';
+    openButton.className = 'governance-card-open';
+    openButton.setAttribute('aria-label', `Open ${getProposalTitle(proposal)}`);
     const handleClick = options.onClick || (event => {
         openGovernanceOverlay(proposal, { returnFocus: event.currentTarget });
     });
-    card.addEventListener('click', event => {
+    openButton.addEventListener('click', event => {
         event.stopPropagation();
         handleClick(event);
     });
@@ -1492,15 +1500,30 @@ function createGovernanceCard(proposal, options = {}) {
         votes.textContent = formatVotePercentages(proposal.votePercentages, proposal.voteDisplay?.label, proposal.voteSummary, proposal.voteDisplay?.source);
     }
 
-    card.appendChild(title);
-    card.appendChild(expiration);
+    openButton.appendChild(title);
+    openButton.appendChild(expiration);
     metadataItems.forEach(item => {
         const detail = document.createElement('span');
         detail.className = 'governance-card-detail';
         detail.textContent = `${item.label} ${item.value}`;
-        card.appendChild(detail);
+        openButton.appendChild(detail);
     });
-    if (shouldShowVotePercentages(proposal)) card.appendChild(votes);
+    if (shouldShowVotePercentages(proposal)) openButton.appendChild(votes);
+    card.appendChild(openButton);
+
+    if (isGovernanceProposalOpenForVoting(proposal)) {
+        const voteButton = document.createElement('button');
+        voteButton.type = 'button';
+        voteButton.className = 'governance-vote-button';
+        voteButton.textContent = 'Vote';
+        voteButton.setAttribute('aria-label', `Vote on ${getProposalTitle(proposal)}`);
+        voteButton.addEventListener('click', event => {
+            event.preventDefault();
+            event.stopPropagation();
+            openGovernanceVoteOverlay(proposal, event.currentTarget);
+        });
+        card.appendChild(voteButton);
+    }
 
     return card;
 }
@@ -1956,6 +1979,16 @@ function openGovernanceOverlay(proposal, options = {}) {
 
     const content = document.createElement('div');
     content.className = 'governance-detail-content';
+    if (isGovernanceProposalOpenForVoting(proposal)) {
+        const voteButton = document.createElement('button');
+        voteButton.type = 'button';
+        voteButton.className = 'governance-vote-button governance-detail-vote-button';
+        voteButton.textContent = 'Vote as DRep';
+        voteButton.addEventListener('click', event => {
+            openGovernanceVoteOverlay(proposal, event.currentTarget);
+        });
+        content.appendChild(voteButton);
+    }
     const voteDetailsContainer = document.createElement('div');
     voteDetailsContainer.className = 'governance-vote-details';
     voteDetailsContainer.dataset.proposalId = proposal.proposal_id;
@@ -2059,6 +2092,379 @@ async function loadProposalDetails(proposal) {
 
 function closeGovernanceOverlay() {
     removeGovernanceMenuOverlay('governance-overlay');
+}
+
+function isGovernanceProposalOpenForVoting(proposal) {
+    if (!proposal?.proposal_id) return false;
+    if (
+        proposal.ratified_epoch !== null
+        || proposal.enacted_epoch !== null
+        || proposal.expired_epoch !== null
+        || proposal.dropped_epoch !== null
+    ) return false;
+
+    const expirationEpoch = Number(proposal.expiration);
+    const currentEpoch = Number(getClockEpochSnapshot()?.epoch);
+    return !Number.isFinite(expirationEpoch)
+        || !Number.isFinite(currentEpoch)
+        || currentEpoch <= expirationEpoch;
+}
+
+function loadGovernanceMesh() {
+    if (!governanceMeshPromise) {
+        governanceMeshPromise = import(GOVERNANCE_MESH_CDN_URL).catch(error => {
+            governanceMeshPromise = null;
+            throw error;
+        });
+    }
+    return governanceMeshPromise;
+}
+
+function closeGovernanceVoteOverlay() {
+    removeGovernanceMenuOverlay('governance-vote-overlay');
+}
+
+function openGovernanceVoteOverlay(proposal, returnFocus) {
+    const content = document.createElement('div');
+    content.className = 'governance-vote-flow';
+
+    createGovernanceMenuOverlay({
+        id: 'governance-vote-overlay',
+        titleId: 'governance-vote-title',
+        titleText: 'Cast DRep vote',
+        closeLabel: 'Close DRep voting',
+        closeOverlay: closeGovernanceVoteOverlay,
+        bodyNodes: [content],
+        headerMeta: getProposalMeta(proposal),
+        overlayClass: 'governance-action-detail-overlay',
+        returnFocus,
+        rootTitle: getProposalTitle(proposal)
+    });
+
+    renderGovernanceVoteChoice(content, proposal);
+}
+
+function renderGovernanceVoteChoice(container, proposal) {
+    container.replaceChildren();
+
+    const warning = document.createElement('div');
+    warning.className = 'governance-vote-warning governance-menu-card';
+    const warningTitle = document.createElement('strong');
+    warningTitle.textContent = getProposalTitle(proposal);
+    const actionIdLine = document.createElement('div');
+    actionIdLine.className = 'governance-drep-id-line governance-vote-action-id-line';
+    const actionId = document.createElement('span');
+    actionId.className = 'governance-drep-id governance-vote-action-id';
+    actionId.textContent = proposal.proposal_id;
+    actionIdLine.append(actionId, createGovernanceCopyButton(proposal.proposal_id, 'governance action ID'));
+    const warningText = document.createElement('p');
+    warningText.textContent = 'Voting creates a Cardano Mainnet transaction and costs a network fee. Always verify the governance action, vote choice and fee in your wallet before signing.';
+    warning.append(warningTitle, actionIdLine, warningText);
+
+    const label = document.createElement('strong');
+    label.textContent = 'Choose your vote';
+    const choices = document.createElement('div');
+    choices.className = 'governance-vote-choices';
+    ['Yes', 'No', 'Abstain'].forEach(voteKind => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'governance-vote-choice';
+        button.textContent = voteKind;
+        button.addEventListener('click', () => renderGovernanceVoteWallets(container, proposal, voteKind));
+        choices.appendChild(button);
+    });
+
+    container.append(warning, label, choices);
+}
+
+async function renderGovernanceVoteWallets(container, proposal, voteKind) {
+    container.replaceChildren();
+    appendGovernanceVoteStatus(container, `Selected vote: ${voteKind}. Detecting CIP-95 wallets...`);
+
+    try {
+        const { BrowserWallet } = await loadGovernanceMesh();
+        if (!container.isConnected) return;
+        const wallets = BrowserWallet.getInstalledWallets();
+        container.replaceChildren();
+
+        const selected = document.createElement('div');
+        selected.className = 'governance-vote-selection governance-menu-card';
+        selected.textContent = `${getProposalTitle(proposal)} - ${voteKind}`;
+        container.appendChild(selected);
+
+        if (!wallets.length) {
+            appendGovernanceVoteStatus(container, 'No Cardano wallet extension detected. Install a CIP-30/CIP-95 wallet and reopen this dialog.', true);
+            appendGovernanceVoteChangeButton(container, proposal);
+            return;
+        }
+
+        const label = document.createElement('strong');
+        label.textContent = 'Connect your DRep wallet';
+        const list = document.createElement('div');
+        list.className = 'wallet-list governance-vote-wallet-list';
+        wallets.forEach(walletInfo => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'wallet-option';
+            const icon = document.createElement('img');
+            icon.src = walletInfo.icon;
+            icon.alt = '';
+            icon.width = 28;
+            icon.height = 28;
+            const name = document.createElement('span');
+            name.textContent = walletInfo.name;
+            button.append(icon, name);
+            button.addEventListener('click', () => prepareGovernanceVote(container, proposal, voteKind, walletInfo));
+            list.appendChild(button);
+        });
+        container.append(label, list);
+        appendGovernanceVoteChangeButton(container, proposal);
+    } catch (error) {
+        console.error('DRep wallet detection failed', error);
+        if (!container.isConnected) return;
+        container.replaceChildren();
+        appendGovernanceVoteStatus(container, 'The wallet connector could not be loaded. No transaction was built.', true);
+        appendGovernanceVoteChangeButton(container, proposal);
+    }
+}
+
+function appendGovernanceVoteChangeButton(container, proposal) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'governance-vote-secondary';
+    button.textContent = 'Change vote';
+    button.addEventListener('click', () => renderGovernanceVoteChoice(container, proposal));
+    container.appendChild(button);
+}
+
+function appendGovernanceVoteStatus(container, message, isError = false) {
+    const status = document.createElement('p');
+    status.className = `governance-vote-status${isError ? ' is-error' : ''}`;
+    status.textContent = message;
+    container.appendChild(status);
+    return status;
+}
+
+async function prepareGovernanceVote(container, proposal, voteKind, walletInfo) {
+    container.replaceChildren();
+    const status = appendGovernanceVoteStatus(container, `Connecting to ${walletInfo.name} with CIP-95...`);
+
+    try {
+        const latestProposal = findCurrentGovernanceProposal(proposal.proposal_id) || proposal;
+        if (!isGovernanceProposalOpenForVoting(latestProposal)) {
+            throw new Error('This governance action is no longer open for voting.');
+        }
+        const actionRef = getGovernanceActionReference(latestProposal);
+        const { BrowserWallet, MeshTxBuilder } = await loadGovernanceMesh();
+        const wallet = await BrowserWallet.enable(walletInfo.id, [{ cip: 95 }]);
+        const networkId = await wallet.getNetworkId();
+        if (networkId !== 1) throw new Error('Switch your wallet to Cardano Mainnet.');
+
+        const extensions = await wallet.getExtensions().catch(() => []);
+        const drep = await wallet.getDRep();
+        if (!extensions.includes(95) || !drep?.dRepIDCip105 || !drep?.publicKeyHash) {
+            throw new Error('This wallet did not provide CIP-95 DRep access. No transaction was built.');
+        }
+
+        status.textContent = 'Verifying DRep registration and current vote...';
+        const [drepPayload, votesPayload] = await Promise.all([
+            fetchJson(getDrepDetailApiUrl(drep.dRepIDCip105)),
+            fetchProposalVotesPayload(latestProposal.proposal_id)
+        ]);
+        const drepInfo = drepPayload?.info;
+        if (!drepInfo || drepInfo.drep_status !== 'registered') {
+            throw new Error('The connected wallet does not represent a registered DRep in the cached Koios data. No transaction was built.');
+        }
+        if (!votesPayload?.votes?.dreps) {
+            throw new Error('The current DRep votes could not be verified. No transaction was built.');
+        }
+
+        const existingVote = findExistingDrepVote(votesPayload, drep);
+        renderGovernanceVoteReview(container, {
+            proposal: latestProposal,
+            voteKind,
+            wallet,
+            walletName: walletInfo.name,
+            drep,
+            actionRef,
+            existingVote,
+            drepActive: drepInfo.active === true,
+            MeshTxBuilder
+        });
+    } catch (error) {
+        console.error('DRep vote preparation failed', error);
+        if (!container.isConnected) return;
+        container.replaceChildren();
+        appendGovernanceVoteStatus(container, error?.message || 'DRep voting could not be prepared. No transaction was built.', true);
+        appendGovernanceVoteChangeButton(container, proposal);
+    }
+}
+
+function findCurrentGovernanceProposal(proposalId) {
+    if (!governanceGroupsState) return null;
+    return Object.values(governanceGroupsState)
+        .flat()
+        .find(proposal => proposal?.proposal_id === proposalId) || null;
+}
+
+function getGovernanceActionReference(proposal) {
+    const txHash = String(proposal?.proposal_tx_hash || '').toLowerCase();
+    const txIndex = Number(proposal?.proposal_index);
+    if (!/^[0-9a-f]{64}$/.test(txHash) || !Number.isInteger(txIndex) || txIndex < 0) {
+        throw new Error('The governance action transaction reference is incomplete. No transaction was built.');
+    }
+    const decoded = decodeGovernanceActionId(proposal?.proposal_id);
+    if (!decoded || decoded.txHash !== txHash || decoded.txIndex !== txIndex) {
+        throw new Error('The governance action ID does not match its transaction reference. No transaction was built.');
+    }
+    return { txHash, txIndex };
+}
+
+function decodeGovernanceActionId(value) {
+    const encoded = String(value || '').toLowerCase();
+    const separator = encoded.lastIndexOf('1');
+    if (!encoded.startsWith('gov_action1') || separator < 1) return null;
+
+    const charset = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l';
+    const values = Array.from(encoded.slice(separator + 1), character => charset.indexOf(character));
+    if (values.length < 7 || values.some(number => number < 0)) return null;
+    const hrp = encoded.slice(0, separator);
+    const expandedHrp = [
+        ...Array.from(hrp, character => character.charCodeAt(0) >> 5),
+        0,
+        ...Array.from(hrp, character => character.charCodeAt(0) & 31)
+    ];
+    if (getBech32Polymod([...expandedHrp, ...values]) !== 1) return null;
+
+    let accumulator = 0;
+    let bitCount = 0;
+    const bytes = [];
+    for (const number of values.slice(0, -6)) {
+        accumulator = ((accumulator << 5) | number) & 0xfff;
+        bitCount += 5;
+        while (bitCount >= 8) {
+            bitCount -= 8;
+            bytes.push((accumulator >> bitCount) & 0xff);
+        }
+    }
+    if (bytes.length !== 33 || (bitCount > 0 && (accumulator & ((1 << bitCount) - 1)) !== 0)) return null;
+
+    return {
+        txHash: bytes.slice(0, 32).map(number => number.toString(16).padStart(2, '0')).join(''),
+        txIndex: bytes[32]
+    };
+}
+
+function getBech32Polymod(values) {
+    const generators = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3];
+    let checksum = 1;
+    values.forEach(value => {
+        const top = checksum >>> 25;
+        checksum = ((checksum & 0x1ffffff) << 5) ^ value;
+        generators.forEach((generator, index) => {
+            if ((top >>> index) & 1) checksum ^= generator;
+        });
+    });
+    return checksum >>> 0;
+}
+
+function findExistingDrepVote(payload, drep) {
+    const buckets = payload?.votes?.dreps;
+    if (!buckets || typeof buckets !== 'object') return null;
+    const drepId = String(drep?.dRepIDCip105 || '').toLowerCase();
+    const drepHash = String(drep?.publicKeyHash || '').toLowerCase();
+
+    for (const key of ['yes', 'no', 'abstain', 'unknown']) {
+        const votes = Array.isArray(buckets[key]) ? buckets[key] : [];
+        const match = votes.find(vote => (
+            String(vote?.voter_id || vote?.drep_id || '').toLowerCase() === drepId
+            || String(vote?.voter_hex || vote?.hex || '').toLowerCase() === drepHash
+        ));
+        if (match) return formatVoteChoice(match.vote || key);
+    }
+    return null;
+}
+
+function renderGovernanceVoteReview(container, context) {
+    container.replaceChildren();
+    const review = document.createElement('div');
+    review.className = 'governance-vote-review governance-menu-card';
+    addDetailRow(review, 'Governance action', getProposalTitle(context.proposal));
+    addDetailRow(review, 'Action ID', context.proposal.proposal_id);
+    addDetailRow(review, 'DRep', context.drep.dRepIDCip105);
+    addDetailRow(review, 'DRep status', context.drepActive ? 'Active' : 'Inactive');
+    addDetailRow(review, 'Vote', context.voteKind);
+    addDetailRow(review, 'Wallet', context.walletName);
+    if (context.existingVote) addDetailRow(review, 'Current on-chain vote', context.existingVote);
+
+    const warning = document.createElement('p');
+    warning.className = 'governance-vote-review-warning';
+    const isSameVote = context.existingVote === context.voteKind;
+    warning.textContent = isSameVote
+        ? `The cached on-chain data already shows a ${context.voteKind} vote from this DRep. No transaction will be built, avoiding another network fee.`
+        : context.existingVote
+        ? `Submitting will replace your current ${context.existingVote} vote and charge another network fee. Verify everything in your wallet before signing.`
+        : 'Submitting creates a vote transaction and charges a network fee. Verify everything in your wallet before signing.';
+
+    container.append(review, warning);
+    if (!isSameVote) {
+        const submit = document.createElement('button');
+        submit.type = 'button';
+        submit.className = 'governance-vote-submit';
+        submit.textContent = `Continue with ${context.voteKind}`;
+        submit.addEventListener('click', () => submitGovernanceVote(container, context, submit));
+        container.appendChild(submit);
+    }
+    appendGovernanceVoteChangeButton(container, context.proposal);
+}
+
+async function submitGovernanceVote(container, context, submitButton) {
+    submitButton.disabled = true;
+    const status = appendGovernanceVoteStatus(container, 'Building the vote transaction...');
+
+    try {
+        const latestProposal = findCurrentGovernanceProposal(context.proposal.proposal_id) || context.proposal;
+        if (!isGovernanceProposalOpenForVoting(latestProposal)) {
+            throw new Error('This governance action is no longer open for voting.');
+        }
+
+        const utxos = await context.wallet.getUtxos();
+        const changeAddress = await context.wallet.getChangeAddress();
+        if (!utxos?.length || !changeAddress) throw new Error('No spendable wallet UTxO was found for the network fee.');
+
+        const txBuilder = new context.MeshTxBuilder({ verbose: false });
+        const unsignedTx = await txBuilder
+            .vote(
+                { type: 'DRep', drepId: context.drep.dRepIDCip105 },
+                context.actionRef,
+                { voteKind: context.voteKind }
+            )
+            .selectUtxosFrom(utxos)
+            .changeAddress(changeAddress)
+            .complete();
+
+        status.textContent = 'Check the governance action, vote and fee in your wallet before signing.';
+        const signedTx = await context.wallet.signTx(unsignedTx, false);
+        status.textContent = 'Submitting the signed vote transaction...';
+        const txHash = await context.wallet.submitTx(signedTx);
+        proposalVotesCache.delete(context.proposal.proposal_id);
+
+        container.replaceChildren();
+        const success = document.createElement('strong');
+        success.className = 'governance-vote-success';
+        success.textContent = `${context.voteKind} vote submitted.`;
+        const link = document.createElement('a');
+        link.href = `https://cardanoscan.io/transaction/${encodeURIComponent(txHash)}`;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = 'View transaction on Cardanoscan';
+        container.append(success, link);
+    } catch (error) {
+        console.error('DRep vote submission failed', error);
+        status.textContent = `Vote failed: ${error?.info || error?.message || 'The wallet rejected the transaction.'}`;
+        status.classList.add('is-error');
+        submitButton.disabled = false;
+    }
 }
 
 function addDetailRow(container, label, value) {
@@ -2791,6 +3197,13 @@ function closeDrepVotesOverlay() {
 }
 
 function openDrepDirectoryOverlay() {
+    const becomeDrep = document.createElement('button');
+    becomeDrep.type = 'button';
+    becomeDrep.className = 'governance-become-drep-button';
+    becomeDrep.textContent = 'Become a DRep';
+    becomeDrep.setAttribute('aria-label', 'Register as a DRep');
+    becomeDrep.addEventListener('click', event => openDrepRegistrationOverlay(event.currentTarget));
+
     const panel = document.createElement('div');
     panel.className = 'governance-drep-directory-list';
     const loading = document.createElement('p');
@@ -2804,7 +3217,7 @@ function openDrepDirectoryOverlay() {
         titleText: 'DReps',
         closeLabel: 'Close DRep directory',
         closeOverlay: closeDrepDirectoryOverlay,
-        bodyNodes: [panel],
+        bodyNodes: [becomeDrep, panel],
         headerMeta: 'Loading DReps…'
     });
 
@@ -2820,6 +3233,586 @@ function openDrepDirectoryOverlay() {
 
 function closeDrepDirectoryOverlay() {
     removeGovernanceMenuOverlay('governance-drep-directory-overlay');
+}
+
+function closeDrepRegistrationOverlay() {
+    removeGovernanceMenuOverlay('governance-drep-registration-overlay');
+}
+
+function openDrepRegistrationOverlay(returnFocus) {
+    const content = document.createElement('div');
+    content.className = 'governance-vote-flow governance-drep-registration-flow';
+
+    createGovernanceMenuOverlay({
+        id: 'governance-drep-registration-overlay',
+        titleId: 'governance-drep-registration-title',
+        titleText: 'Become a DRep',
+        closeLabel: 'Close DRep registration',
+        closeOverlay: closeDrepRegistrationOverlay,
+        bodyNodes: [content],
+        headerMeta: 'Cardano Mainnet',
+        overlayClass: 'governance-action-detail-overlay',
+        returnFocus,
+        rootTitle: 'DReps'
+    });
+
+    renderDrepRegistrationForm(content);
+}
+
+function renderDrepRegistrationForm(container, values = {}) {
+    container.replaceChildren();
+
+    const warning = document.createElement('div');
+    warning.className = 'governance-vote-warning governance-menu-card';
+    const title = document.createElement('strong');
+    title.textContent = 'On-chain DRep registration';
+    const text = document.createElement('p');
+    text.textContent = 'Registration currently requires a refundable 500 ADA deposit plus a network fee. Verify both amounts in your wallet before signing.';
+    warning.append(title, text);
+
+    const form = document.createElement('form');
+    form.className = 'governance-drep-registration-form';
+    let profileValues = values.profile || {};
+    let generatedMetadataHash = values.generatedHash || '';
+    const urlField = createDrepRegistrationField(
+        'Metadata URL (optional)',
+        'drep-metadata-url',
+        'https://example.com/drep.jsonld',
+        values.url || ''
+    );
+    const hashField = createDrepRegistrationField(
+        'Metadata hash (optional)',
+        'drep-metadata-hash',
+        '64 hexadecimal characters',
+        values.hash || ''
+    );
+    const createMetadata = document.createElement('button');
+    createMetadata.type = 'button';
+    createMetadata.className = 'governance-vote-secondary governance-create-metadata-button';
+    createMetadata.textContent = 'Create metadata file';
+    const urlControls = document.createElement('div');
+    urlControls.className = 'governance-drep-metadata-url-controls';
+    urlField.input.replaceWith(urlControls);
+    urlControls.append(urlField.input, createMetadata);
+    createMetadata.addEventListener('click', () => {
+        openDrepMetadataBuilderOverlay(profileValues, createMetadata, (nextProfile, hash) => {
+            profileValues = nextProfile;
+            generatedMetadataHash = hash;
+            hashField.input.value = hash;
+            removeDrepRegistrationFormStatus(form);
+            appendGovernanceVoteStatus(form, 'Saved drep.jsonld and added its Blake2b-256 hash. Upload this exact file, then enter its public metadata URL.');
+        });
+    });
+    const createHash = document.createElement('button');
+    createHash.type = 'button';
+    createHash.className = 'governance-vote-secondary governance-create-metadata-button';
+    createHash.textContent = 'Create metadata hash';
+    const hashControls = document.createElement('div');
+    hashControls.className = 'governance-drep-metadata-url-controls';
+    hashField.input.replaceWith(hashControls);
+    hashControls.append(hashField.input, createHash);
+    createHash.addEventListener('click', async () => {
+        removeDrepRegistrationFormStatus(form);
+        createHash.disabled = true;
+        const originalText = createHash.textContent;
+        createHash.textContent = 'Creating...';
+        try {
+            const metadataUrl = validateDrepMetadataUrl(urlField.input.value, { required: true });
+            const fetchUrl = getDrepMetadataFetchUrl(metadataUrl, { refresh: true });
+            if (!fetchUrl) throw new Error('This metadata URL is not supported. Use a public HTTPS or IPFS URL.');
+
+            const response = await fetch(fetchUrl, { cache: 'no-store' });
+            if (!response.ok) throw new Error(`Metadata URL could not be loaded (HTTP ${response.status}).`);
+            const documentData = await response.json();
+            if (!documentData || typeof documentData !== 'object' || Array.isArray(documentData)) {
+                throw new Error('The metadata URL did not return a JSON object.');
+            }
+
+            const { hashDrepAnchor } = await loadGovernanceMesh();
+            const hash = hashDrepAnchor(documentData);
+            hashField.input.value = hash;
+            generatedMetadataHash = hash;
+            appendGovernanceVoteStatus(form, 'Metadata URL loaded and its Blake2b-256 hash was added.');
+        } catch (error) {
+            appendGovernanceVoteStatus(form, error?.message || 'Metadata hash could not be created.', true);
+        } finally {
+            createHash.disabled = false;
+            createHash.textContent = originalText;
+        }
+    });
+    const help = document.createElement('p');
+    help.className = 'small-text governance-drep-registration-help';
+    help.textContent = 'Enter both metadata fields or leave both empty. Without metadata, your DRep can vote but may not appear by name in public directories.';
+
+    const submit = document.createElement('button');
+    submit.type = 'submit';
+    submit.className = 'governance-vote-submit';
+    submit.textContent = 'Continue to wallet';
+    form.append(
+        urlField.wrapper,
+        hashField.wrapper,
+        help,
+        submit
+    );
+    form.addEventListener('submit', event => {
+        event.preventDefault();
+        try {
+            const metadata = validateDrepRegistrationMetadata(urlField.input.value, hashField.input.value);
+            metadata.profile = profileValues;
+            metadata.generatedHash = generatedMetadataHash;
+            renderDrepRegistrationWallets(container, metadata);
+        } catch (error) {
+            removeDrepRegistrationFormStatus(form);
+            appendGovernanceVoteStatus(form, error.message, true);
+        }
+    });
+
+    const govTool = document.createElement('a');
+    govTool.className = 'governance-vote-secondary governance-drep-govtool-link';
+    govTool.href = 'https://gov.tools/';
+    govTool.target = '_blank';
+    govTool.rel = 'noopener noreferrer';
+    govTool.textContent = 'Use GovTool instead';
+
+    container.append(warning, form, govTool);
+}
+
+function closeDrepMetadataBuilderOverlay() {
+    removeGovernanceMenuOverlay('governance-drep-metadata-overlay');
+}
+
+function openDrepMetadataBuilderOverlay(profile = {}, returnFocus, onCreated) {
+    const content = document.createElement('div');
+    content.className = 'governance-drep-metadata-builder';
+    const form = document.createElement('form');
+    form.className = 'governance-drep-registration-form';
+    const nameField = createDrepRegistrationField('DRep name', 'drep-profile-name', 'Required for CIP-119 metadata', profile.givenName || '');
+    const paymentField = createDrepRegistrationField('Payment address (optional)', 'drep-profile-payment', 'addr1...', profile.paymentAddress || '');
+    const imageField = createDrepRegistrationField('Profile image URL (optional)', 'drep-profile-image', 'https://example.com/profile.png', profile.imageUrl || '');
+    const imageHashField = createDrepRegistrationField('Image SHA-256 (optional)', 'drep-profile-image-hash', '64 hexadecimal characters', profile.imageHash || '');
+    const objectivesField = createDrepRegistrationTextArea('Objectives (optional)', 'drep-profile-objectives', 'What do you want to achieve as a DRep?', profile.objectives || '');
+    const motivationsField = createDrepRegistrationTextArea('Motivations (optional)', 'drep-profile-motivations', 'Why do you want to become a DRep?', profile.motivations || '');
+    const qualificationsField = createDrepRegistrationTextArea('Qualifications (optional)', 'drep-profile-qualifications', 'Relevant experience and qualifications', profile.qualifications || '');
+    const identityField = createDrepRegistrationField('Identity URL (optional)', 'drep-profile-identity', 'https://social.example/your-profile', profile.identityUrl || '');
+    const linkLabelField = createDrepRegistrationField('Additional link label (optional)', 'drep-profile-link-label', 'Website, X, LinkedIn...', profile.linkLabel || '');
+    const linkUrlField = createDrepRegistrationField('Additional link URL (optional)', 'drep-profile-link-url', 'https://example.com', profile.linkUrl || '');
+    const doNotListField = createDrepRegistrationCheckbox('Do not list me in public DRep directories', 'drep-profile-do-not-list', profile.doNotList === true);
+    const profileFields = {
+        nameField,
+        paymentField,
+        imageField,
+        imageHashField,
+        objectivesField,
+        motivationsField,
+        qualificationsField,
+        identityField,
+        linkLabelField,
+        linkUrlField,
+        doNotListField
+    };
+    const help = document.createElement('p');
+    help.className = 'small-text governance-drep-registration-help';
+    help.textContent = 'Only DRep name is required by CIP-119. The downloaded file must be uploaded unchanged before using its URL and hash.';
+    const submit = document.createElement('button');
+    submit.type = 'submit';
+    submit.className = 'governance-vote-submit';
+    submit.textContent = 'Create and save drep.jsonld';
+    form.append(
+        nameField.wrapper,
+        paymentField.wrapper,
+        imageField.wrapper,
+        imageHashField.wrapper,
+        objectivesField.wrapper,
+        motivationsField.wrapper,
+        qualificationsField.wrapper,
+        identityField.wrapper,
+        linkLabelField.wrapper,
+        linkUrlField.wrapper,
+        doNotListField.wrapper,
+        help,
+        submit
+    );
+    form.addEventListener('submit', async event => {
+        event.preventDefault();
+        removeDrepRegistrationFormStatus(form);
+        submit.disabled = true;
+        try {
+            const nextProfile = collectDrepMetadataProfile(profileFields, { requireName: true });
+            const documentData = createCip119MetadataDocument(nextProfile);
+            const { hashDrepAnchor } = await loadGovernanceMesh();
+            const hash = hashDrepAnchor(documentData);
+            downloadDrepMetadataFile(documentData);
+            closeDrepMetadataBuilderOverlay();
+            onCreated(nextProfile, hash);
+        } catch (error) {
+            appendGovernanceVoteStatus(form, error?.message || 'Metadata file could not be created.', true);
+            submit.disabled = false;
+        }
+    });
+    content.appendChild(form);
+
+    createGovernanceMenuOverlay({
+        id: 'governance-drep-metadata-overlay',
+        titleId: 'governance-drep-metadata-title',
+        titleText: 'Create DRep metadata',
+        closeLabel: 'Close DRep metadata builder',
+        closeOverlay: closeDrepMetadataBuilderOverlay,
+        bodyNodes: [content],
+        headerMeta: 'CIP-119',
+        overlayClass: 'governance-action-detail-overlay',
+        returnFocus,
+        rootTitle: 'DReps'
+    });
+}
+
+function createDrepRegistrationField(labelText, id, placeholder, value) {
+    const wrapper = document.createElement('label');
+    wrapper.className = 'governance-drep-registration-field';
+    wrapper.htmlFor = id;
+    const label = document.createElement('strong');
+    label.textContent = labelText;
+    const input = document.createElement('input');
+    input.id = id;
+    input.type = 'text';
+    input.placeholder = placeholder;
+    input.value = value;
+    input.autocomplete = 'off';
+    input.spellcheck = false;
+    wrapper.append(label, input);
+    return { wrapper, input };
+}
+
+function createDrepRegistrationTextArea(labelText, id, placeholder, value) {
+    const wrapper = document.createElement('label');
+    wrapper.className = 'governance-drep-registration-field';
+    wrapper.htmlFor = id;
+    const label = document.createElement('strong');
+    label.textContent = labelText;
+    const input = document.createElement('textarea');
+    input.id = id;
+    input.placeholder = placeholder;
+    input.value = value;
+    input.maxLength = 1000;
+    input.rows = 4;
+    wrapper.append(label, input);
+    return { wrapper, input };
+}
+
+function createDrepRegistrationCheckbox(labelText, id, checked) {
+    const wrapper = document.createElement('label');
+    wrapper.className = 'governance-drep-registration-checkbox';
+    wrapper.htmlFor = id;
+    const input = document.createElement('input');
+    input.id = id;
+    input.type = 'checkbox';
+    input.checked = checked;
+    const label = document.createElement('span');
+    label.textContent = labelText;
+    wrapper.append(input, label);
+    return { wrapper, input };
+}
+
+function removeDrepRegistrationFormStatus(form) {
+    form.querySelectorAll('.governance-vote-status').forEach(status => status.remove());
+}
+
+function collectDrepMetadataProfile(fields, options = {}) {
+    const profile = {
+        givenName: fields.nameField.input.value.trim(),
+        paymentAddress: fields.paymentField.input.value.trim(),
+        imageUrl: fields.imageField.input.value.trim(),
+        imageHash: fields.imageHashField.input.value.trim().toLowerCase(),
+        objectives: fields.objectivesField.input.value.trim(),
+        motivations: fields.motivationsField.input.value.trim(),
+        qualifications: fields.qualificationsField.input.value.trim(),
+        identityUrl: fields.identityField.input.value.trim(),
+        linkLabel: fields.linkLabelField.input.value.trim(),
+        linkUrl: fields.linkUrlField.input.value.trim(),
+        doNotList: fields.doNotListField.input.checked
+    };
+    if (options.requireName && !profile.givenName) throw new Error('DRep name is required to create CIP-119 metadata.');
+    if (profile.givenName.length > 80) throw new Error('DRep name must be 80 characters or shorter.');
+    ['objectives', 'motivations', 'qualifications'].forEach(key => {
+        if (profile[key].length > 1000) throw new Error(`${key[0].toUpperCase()}${key.slice(1)} must be 1,000 characters or shorter.`);
+    });
+    if (profile.paymentAddress && !/^addr1[0-9a-z]{20,120}$/.test(profile.paymentAddress)) {
+        throw new Error('Payment address must be a Cardano Mainnet addr1 address.');
+    }
+    validateOptionalUrlPair(profile.imageUrl, profile.imageHash, 'Profile image URL', 'image SHA-256');
+    if (profile.imageHash && !/^[0-9a-f]{64}$/.test(profile.imageHash)) throw new Error('Image SHA-256 must contain exactly 64 hexadecimal characters.');
+    validateOptionalHttpsUrl(profile.identityUrl, 'Identity URL');
+    if (Boolean(profile.linkLabel) !== Boolean(profile.linkUrl)) throw new Error('Additional link label and URL must be provided together.');
+    validateOptionalHttpsUrl(profile.linkUrl, 'Additional link URL');
+    return profile;
+}
+
+function validateOptionalUrlPair(url, hash, urlLabel, hashLabel) {
+    if (Boolean(url) !== Boolean(hash)) throw new Error(`${urlLabel} and ${hashLabel} must be provided together.`);
+    validateOptionalHttpsUrl(url, urlLabel);
+}
+
+function validateOptionalHttpsUrl(value, label) {
+    if (!value) return;
+    try {
+        if (new URL(value).protocol !== 'https:') throw new Error();
+    } catch {
+        throw new Error(`${label} must be a valid HTTPS URL.`);
+    }
+}
+
+function createCip119MetadataDocument(profile) {
+    const body = { givenName: profile.givenName };
+    if (profile.paymentAddress) body.paymentAddress = profile.paymentAddress;
+    if (profile.imageUrl) {
+        body.image = { '@type': 'ImageObject', contentUrl: profile.imageUrl, sha256: profile.imageHash };
+    }
+    if (profile.objectives) body.objectives = profile.objectives;
+    if (profile.motivations) body.motivations = profile.motivations;
+    if (profile.qualifications) body.qualifications = profile.qualifications;
+    const references = [];
+    if (profile.identityUrl) references.push({ '@type': 'Identity', label: 'Identity', uri: profile.identityUrl });
+    if (profile.linkUrl) references.push({ '@type': 'Link', label: profile.linkLabel, uri: profile.linkUrl });
+    if (references.length) body.references = references;
+    if (profile.doNotList) body.doNotList = true;
+
+    return {
+        '@context': {
+            CIP100: 'https://github.com/cardano-foundation/CIPs/blob/master/CIP-0100/README.md#',
+            CIP119: 'https://github.com/cardano-foundation/CIPs/blob/master/CIP-0119/README.md#',
+            hashAlgorithm: 'CIP100:hashAlgorithm',
+            body: {
+                '@id': 'CIP119:body',
+                '@context': {
+                    references: {
+                        '@id': 'CIP119:references',
+                        '@container': '@set',
+                        '@context': {
+                            GovernanceMetadata: 'CIP100:GovernanceMetadataReference',
+                            Other: 'CIP100:OtherReference',
+                            label: 'CIP100:reference-label',
+                            uri: 'CIP100:reference-uri'
+                        }
+                    },
+                    paymentAddress: 'CIP119:paymentAddress',
+                    givenName: 'CIP119:givenName',
+                    image: { '@id': 'CIP119:image', '@context': { ImageObject: 'https://schema.org/ImageObject' } },
+                    objectives: 'CIP119:objectives',
+                    motivations: 'CIP119:motivations',
+                    qualifications: 'CIP119:qualifications',
+                    doNotList: 'CIP119:doNotList'
+                }
+            }
+        },
+        hashAlgorithm: 'blake2b-256',
+        body
+    };
+}
+
+function downloadDrepMetadataFile(documentData) {
+    const content = JSON.stringify(documentData, null, 2);
+    const url = URL.createObjectURL(new Blob([content], { type: 'application/ld+json' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'drep.jsonld';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function validateDrepRegistrationMetadata(rawUrl, rawHash) {
+    const url = String(rawUrl || '').trim();
+    const hash = String(rawHash || '').trim().toLowerCase();
+    if (!url && !hash) return { url: '', hash: '', anchor: undefined };
+    if (!url || !hash) throw new Error('Metadata URL and metadata hash must be provided together.');
+    if (!/^[0-9a-f]{64}$/.test(hash)) throw new Error('Metadata hash must contain exactly 64 hexadecimal characters.');
+    validateDrepMetadataUrl(url, { required: true });
+
+    return {
+        url,
+        hash,
+        anchor: { anchorUrl: url, anchorDataHash: hash }
+    };
+}
+
+function validateDrepMetadataUrl(rawUrl, options = {}) {
+    const url = String(rawUrl || '').trim();
+    if (!url) {
+        if (options.required) throw new Error('Enter the metadata URL before creating its hash.');
+        return '';
+    }
+    if (new TextEncoder().encode(url).length > 128) throw new Error('Metadata URL must be 128 bytes or shorter.');
+
+    let protocol = '';
+    try {
+        protocol = new URL(url).protocol;
+    } catch {
+        throw new Error('Enter a valid HTTPS or IPFS metadata URL.');
+    }
+    if (protocol !== 'https:' && protocol !== 'ipfs:') throw new Error('Metadata URL must use HTTPS or IPFS.');
+    return url;
+}
+
+async function renderDrepRegistrationWallets(container, metadata) {
+    container.replaceChildren();
+    appendGovernanceVoteStatus(container, 'Detecting CIP-95 wallets...');
+
+    try {
+        const { BrowserWallet } = await loadGovernanceMesh();
+        if (!container.isConnected) return;
+        const wallets = BrowserWallet.getInstalledWallets();
+        container.replaceChildren();
+
+        if (!wallets.length) {
+            appendGovernanceVoteStatus(container, 'No CIP-95 Cardano wallet extension was detected. No transaction was built.', true);
+            appendDrepRegistrationBackButton(container, metadata);
+            return;
+        }
+
+        const label = document.createElement('strong');
+        label.textContent = 'Connect the wallet that will control your DRep';
+        const list = document.createElement('div');
+        list.className = 'wallet-list governance-vote-wallet-list';
+        wallets.forEach(walletInfo => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'wallet-option';
+            const icon = document.createElement('img');
+            icon.src = walletInfo.icon;
+            icon.alt = '';
+            icon.width = 28;
+            icon.height = 28;
+            const name = document.createElement('span');
+            name.textContent = walletInfo.name;
+            button.append(icon, name);
+            button.addEventListener('click', () => prepareDrepRegistration(container, metadata, walletInfo));
+            list.appendChild(button);
+        });
+        container.append(label, list);
+        appendDrepRegistrationBackButton(container, metadata);
+    } catch (error) {
+        console.error('DRep registration wallet detection failed', error);
+        if (!container.isConnected) return;
+        container.replaceChildren();
+        appendGovernanceVoteStatus(container, 'The wallet connector could not be loaded. No transaction was built.', true);
+        appendDrepRegistrationBackButton(container, metadata);
+    }
+}
+
+function appendDrepRegistrationBackButton(container, metadata) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'governance-vote-secondary';
+    button.textContent = 'Back to metadata';
+    button.addEventListener('click', () => renderDrepRegistrationForm(container, metadata));
+    container.appendChild(button);
+}
+
+async function prepareDrepRegistration(container, metadata, walletInfo) {
+    container.replaceChildren();
+    appendGovernanceVoteStatus(container, `Connecting to ${walletInfo.name} with CIP-95...`);
+
+    try {
+        const { BrowserWallet, MeshTxBuilder, DREP_DEPOSIT } = await loadGovernanceMesh();
+        const wallet = await BrowserWallet.enable(walletInfo.id, [{ cip: 95 }]);
+        if (await wallet.getNetworkId() !== 1) throw new Error('Switch your wallet to Cardano Mainnet.');
+        const extensions = await wallet.getExtensions().catch(() => []);
+        const drep = await wallet.getDRep();
+        if (!extensions.includes(95) || !drep?.dRepIDCip105) {
+            throw new Error('This wallet did not provide CIP-95 DRep access. No transaction was built.');
+        }
+
+        const drepPayload = await fetchJson(getDrepDetailApiUrl(drep.dRepIDCip105));
+        if (drepPayload?.info?.drep_status === 'registered') {
+            throw new Error('This wallet is already registered as a DRep. No transaction was built.');
+        }
+
+        renderDrepRegistrationReview(container, {
+            metadata,
+            walletInfo,
+            wallet,
+            drep,
+            MeshTxBuilder,
+            deposit: String(DREP_DEPOSIT || '500000000')
+        });
+    } catch (error) {
+        console.error('DRep registration preparation failed', error);
+        if (!container.isConnected) return;
+        container.replaceChildren();
+        appendGovernanceVoteStatus(container, error?.message || 'DRep registration could not be prepared. No transaction was built.', true);
+        appendDrepRegistrationBackButton(container, metadata);
+    }
+}
+
+function renderDrepRegistrationReview(container, context) {
+    container.replaceChildren();
+    const review = document.createElement('div');
+    review.className = 'governance-vote-review governance-menu-card';
+    addDetailRow(review, 'DRep ID', context.drep.dRepIDCip105);
+    addDetailRow(review, 'Wallet', context.walletInfo.name);
+    addDetailRow(review, 'Refundable deposit', formatFullAdaFromLovelace(context.deposit));
+    addDetailRow(review, 'Metadata URL', context.metadata.url || 'None');
+    addDetailRow(review, 'Metadata hash', context.metadata.hash || 'None');
+
+    const warning = document.createElement('p');
+    warning.className = 'governance-vote-review-warning';
+    warning.textContent = 'This registers the displayed DRep ID on Cardano Mainnet. Check the 500 ADA deposit, network fee, DRep ID and metadata in your wallet before signing.';
+    const submit = document.createElement('button');
+    submit.type = 'button';
+    submit.className = 'governance-vote-submit';
+    submit.textContent = 'Register as DRep';
+    submit.addEventListener('click', () => submitDrepRegistration(container, context, submit));
+    container.append(review, warning, submit);
+    appendDrepRegistrationBackButton(container, context.metadata);
+}
+
+async function submitDrepRegistration(container, context, submitButton) {
+    submitButton.disabled = true;
+    const status = appendGovernanceVoteStatus(container, 'Building the DRep registration transaction...');
+
+    try {
+        const latest = await fetchJson(getDrepDetailApiUrl(context.drep.dRepIDCip105));
+        if (latest?.info?.drep_status === 'registered') {
+            throw new Error('This DRep is already registered. No transaction was built.');
+        }
+        const utxos = await context.wallet.getUtxos();
+        const changeAddress = await context.wallet.getChangeAddress();
+        if (!utxos?.length || !changeAddress) throw new Error('No spendable wallet UTxO was found for the deposit and network fee.');
+
+        const txBuilder = new context.MeshTxBuilder({ verbose: false });
+        const unsignedTx = await txBuilder
+            .drepRegistrationCertificate(context.drep.dRepIDCip105, context.metadata.anchor, context.deposit)
+            .selectUtxosFrom(utxos)
+            .changeAddress(changeAddress)
+            .complete();
+
+        status.textContent = 'Check the DRep ID, refundable deposit, metadata and fee in your wallet before signing.';
+        const signedTx = await context.wallet.signTx(unsignedTx, false);
+        status.textContent = 'Submitting the signed DRep registration...';
+        const txHash = await context.wallet.submitTx(signedTx);
+
+        container.replaceChildren();
+        const success = document.createElement('strong');
+        success.className = 'governance-vote-success';
+        success.textContent = 'DRep registration submitted.';
+        const idLine = document.createElement('div');
+        idLine.className = 'governance-drep-id-line governance-vote-action-id-line';
+        const id = document.createElement('span');
+        id.className = 'governance-drep-id governance-vote-action-id';
+        id.textContent = context.drep.dRepIDCip105;
+        idLine.append(id, createGovernanceCopyButton(context.drep.dRepIDCip105, 'DRep ID'));
+        const link = document.createElement('a');
+        link.href = `https://cardanoscan.io/transaction/${encodeURIComponent(txHash)}`;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = 'View transaction on Cardanoscan';
+        container.append(success, idLine, link);
+    } catch (error) {
+        console.error('DRep registration submission failed', error);
+        status.textContent = `Registration failed: ${error?.info || error?.message || 'The wallet rejected the transaction.'}`;
+        status.classList.add('is-error');
+        submitButton.disabled = false;
+    }
 }
 
 async function loadDrepDirectoryOverlay(container) {
@@ -4413,15 +5406,15 @@ function getDrepDetailApiUrl(drepId) {
     return `${DREP_DETAIL_API_BASE_URL}/${encodeURIComponent(drepId)}`;
 }
 
-function getDrepMetadataFetchUrl(url) {
+function getDrepMetadataFetchUrl(url, options = {}) {
     const normalizedUrl = normalizeMetadataUrl(url);
     if (!isAllowedBrowserMetadataUrl(normalizedUrl)) return '';
 
+    const params = new URLSearchParams({ url: normalizedUrl });
+    if (options.refresh) params.set('refresh', '1');
     if (shouldUseLocalDashboardProxy()) {
-        const params = new URLSearchParams({ url: normalizedUrl });
         return `${LOCAL_METADATA_PROXY_PATH}?${params.toString()}`;
     }
-    const params = new URLSearchParams({ url: normalizedUrl });
     return `${REMOTE_METADATA_API_URL}?${params.toString()}`;
 }
 
@@ -4430,8 +5423,7 @@ function isAllowedBrowserMetadataUrl(url) {
 
     try {
         const parsed = new URL(url);
-        if (parsed.protocol !== 'https:') return false;
-        return parsed.hostname === 'ipfs.io';
+        return parsed.protocol === 'https:';
     } catch {
         return false;
     }

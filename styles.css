@@ -1172,6 +1172,25 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
 }
 
+.governance-card-open {
+    display: block;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+    box-shadow: none;
+}
+
+.governance-card-open:hover {
+    background: transparent;
+    transform: none;
+}
+
 .governance-card:hover {
     box-shadow: 0 14px 30px rgba(20, 184, 166, 0.12);
 }
@@ -1230,6 +1249,227 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     color: var(--muted);
     font-size: 0.9rem;
     font-weight: 600;
+}
+
+.governance-vote-button,
+.governance-vote-choice,
+.governance-vote-submit,
+.governance-vote-secondary,
+.governance-become-drep-button {
+    min-height: 42px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 9px 14px;
+    background: var(--control-surface);
+    color: var(--text);
+    font: inherit;
+    font-weight: 800;
+    box-shadow: none;
+}
+
+.governance-become-drep-button {
+    display: flex;
+    width: 100%;
+    margin-bottom: 14px;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    text-align: center;
+    text-decoration: none;
+}
+
+.governance-become-drep-button:hover,
+.governance-become-drep-button:focus-visible {
+    background: var(--accent-strong);
+    border-color: var(--accent-strong);
+    color: #fff;
+}
+
+.governance-drep-registration-form,
+.governance-drep-registration-field {
+    display: grid;
+    gap: 10px;
+}
+
+.governance-drep-registration-form {
+    gap: 14px;
+}
+
+.governance-drep-registration-field input,
+.governance-drep-registration-field textarea {
+    width: 100%;
+    min-width: 0;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px 12px;
+    background: var(--control-surface);
+    color: var(--text);
+    font: inherit;
+}
+
+.governance-drep-registration-field input {
+    min-height: 44px;
+}
+
+.governance-drep-registration-field textarea {
+    min-height: 104px;
+    resize: vertical;
+}
+
+.governance-drep-registration-field input:focus,
+.governance-drep-registration-field textarea:focus {
+    border-color: var(--accent);
+    outline: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
+    outline-offset: 1px;
+}
+
+.governance-drep-registration-checkbox {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    color: var(--text);
+    font-weight: 700;
+}
+
+.governance-drep-registration-checkbox input {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    accent-color: var(--accent);
+}
+
+.governance-drep-metadata-url-controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+}
+
+.governance-create-metadata-button {
+    white-space: nowrap;
+}
+
+.governance-create-metadata-button:disabled {
+    cursor: wait;
+    opacity: 0.65;
+}
+
+.governance-drep-registration-help {
+    margin: 0;
+}
+
+.governance-drep-govtool-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    text-decoration: none;
+}
+
+@media (max-width: 600px) {
+    .governance-drep-metadata-url-controls {
+        grid-template-columns: 1fr;
+    }
+}
+
+.governance-vote-button {
+    width: 100%;
+    margin-top: 14px;
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+
+.governance-vote-button:hover,
+.governance-vote-submit:hover {
+    background: var(--accent-strong);
+    border-color: var(--accent-strong);
+    transform: none;
+}
+
+.governance-vote-flow {
+    display: grid;
+    gap: 14px;
+}
+
+.governance-vote-warning,
+.governance-vote-selection,
+.governance-vote-review {
+    padding: 16px;
+}
+
+.governance-vote-warning p,
+.governance-vote-review-warning,
+.governance-vote-status {
+    margin: 8px 0 0;
+    color: var(--muted);
+    line-height: 1.5;
+}
+
+.governance-vote-action-id-line {
+    margin-top: 10px;
+}
+
+.governance-drep-id.governance-vote-action-id {
+    display: block;
+    padding: 7px 0;
+    color: var(--muted);
+    font-size: 0.82rem;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+    white-space: normal;
+}
+
+.governance-vote-choices {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.governance-vote-choice:hover,
+.governance-vote-secondary:hover {
+    background: var(--control-hover-surface);
+    transform: none;
+}
+
+.governance-vote-submit {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+
+.governance-vote-submit:disabled {
+    cursor: wait;
+    opacity: 0.65;
+}
+
+.governance-vote-wallet-list {
+    display: grid;
+    gap: 10px;
+}
+
+.governance-vote-review {
+    display: grid;
+    gap: 10px;
+}
+
+.governance-vote-review .governance-detail-row {
+    margin: 0;
+}
+
+.governance-vote-status.is-error {
+    color: #fb7185;
+}
+
+.governance-vote-success {
+    color: #34d399;
+}
+
+@media (max-width: 520px) {
+    .governance-vote-choices {
+        grid-template-columns: 1fr;
+    }
 }
 
 .governance-treasury-withdrawal-amount {
