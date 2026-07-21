@@ -34,7 +34,13 @@ let latestPricePayload = null;
 let priceHistoryChart = null;
 const PRICE_TILE_WINDOW_MS = 60 * 60 * 1000;
 const PRICE_OVERLAY_WINDOW_MS = 24 * 60 * 60 * 1000;
+const KRAKEN_OVERLAY_WINDOW_MS = 24 * 60 * 60 * 1000;
 const PRICE_OVERLAY_BUCKET_MS = 5 * 60 * 1000;
+const KRAKEN_CHART_INTERVALS = Object.freeze([
+    { minutes: 5, label: '5 min' },
+    { minutes: 30, label: '30 min' },
+    { minutes: 60, label: '1 hour' }
+]);
 const KRAKEN_OHLC_FIELDS = Object.freeze({
     btc_usd: 'btc_ohlc',
     ada_usd: 'ada_ohlc',
@@ -153,7 +159,7 @@ function getPriceHistorySamples(key) {
 function getKrakenOhlcSamples(priceKey) {
     const field = KRAKEN_OHLC_FIELDS[priceKey];
     if (!field) return [];
-    const cutoff = Date.now() - PRICE_OVERLAY_WINDOW_MS;
+    const cutoff = Date.now() - KRAKEN_OVERLAY_WINDOW_MS;
     return (Array.isArray(latestPricePayload?.[field]) ? latestPricePayload[field] : [])
         .map(entry => ({
             time: Date.parse(entry?.timestamp || ''),
@@ -170,6 +176,27 @@ function getKrakenOhlcSamples(priceKey) {
             && [candle.open, candle.high, candle.low, candle.close].every(Number.isFinite)
         ))
         .sort((left, right) => left.time - right.time);
+}
+
+function aggregateKrakenCandles(candles, intervalMinutes) {
+    const intervalMs = Math.max(5, Number(intervalMinutes) || 5) * 60 * 1000;
+    const buckets = new Map();
+
+    candles.forEach(candle => {
+        const bucketKey = Math.floor(candle.time / intervalMs) * intervalMs;
+        const bucket = buckets.get(bucketKey);
+        if (!bucket) {
+            buckets.set(bucketKey, { ...candle, time: bucketKey });
+            return;
+        }
+        bucket.high = Math.max(bucket.high, candle.high);
+        bucket.low = Math.min(bucket.low, candle.low);
+        bucket.close = candle.close;
+        bucket.volume = (Number(bucket.volume) || 0) + (Number(candle.volume) || 0);
+        bucket.trades = (Number(bucket.trades) || 0) + (Number(candle.trades) || 0);
+    });
+
+    return Array.from(buckets.values()).sort((left, right) => left.time - right.time);
 }
 
 function initPriceHistoryTiles() {
@@ -200,9 +227,30 @@ function openPriceHistoryOverlay(tile) {
     const current = document.createElement('strong');
     current.className = 'price-history-current';
     current.textContent = tile?.querySelector(':scope > strong')?.textContent || 'N/A';
-    const trendClass = getPriceTrendClass(samples);
+    const trendSamples = showKrakenTradingChart
+        ? krakenCandles.map(candle => ({ time: candle.time, value: candle.close }))
+        : samples;
+    const trendClass = getPriceTrendClass(trendSamples);
     if (trendClass) current.classList.add(trendClass);
     body.appendChild(current);
+
+    let intervalSelector = null;
+    if (showKrakenTradingChart) {
+        intervalSelector = document.createElement('div');
+        intervalSelector.className = 'price-history-intervals';
+        intervalSelector.setAttribute('role', 'group');
+        intervalSelector.setAttribute('aria-label', `${ticker} chart interval`);
+        KRAKEN_CHART_INTERVALS.forEach(({ minutes, label }, index) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'price-history-interval';
+            button.dataset.intervalMinutes = String(minutes);
+            button.textContent = label;
+            button.setAttribute('aria-pressed', index === 0 ? 'true' : 'false');
+            intervalSelector.appendChild(button);
+        });
+        body.appendChild(intervalSelector);
+    }
 
     let canvas = null;
     if (samples.length || showKrakenTradingChart) {
@@ -211,7 +259,7 @@ function openPriceHistoryOverlay(tile) {
         canvas = document.createElement('canvas');
         canvas.setAttribute('role', 'img');
         canvas.setAttribute('aria-label', showKrakenTradingChart
-            ? `${ticker}/USD 5-minute candlestick chart over the last 24 hours`
+            ? `${ticker}/USD candlestick chart over the last 24 hours`
             : `${ticker} price over the last 24 hours`);
         frame.appendChild(canvas);
         body.appendChild(frame);
@@ -227,7 +275,7 @@ function openPriceHistoryOverlay(tile) {
         titleId: 'price-history-title',
         titleText: `${ticker} Price`,
         headerMeta: showKrakenTradingChart
-            ? `24 hours · ${krakenCandles.length.toLocaleString('en-US')} candles · Kraken`
+            ? `24 hours · 5 min · ${krakenCandles.length.toLocaleString('en-US')} candles · Kraken`
             : `24 hours · ${samples.length.toLocaleString('en-US')} points`,
         closeLabel: `Close ${ticker} price history`,
         closeOverlay: closePriceHistoryOverlay,
@@ -237,12 +285,32 @@ function openPriceHistoryOverlay(tile) {
     });
 
     if (canvas) requestAnimationFrame(() => {
-        if (showKrakenTradingChart) renderKrakenTradingChart(canvas, krakenCandles, ticker);
-        else renderPriceHistoryChart(canvas, samples, ticker, trendClass);
+        if (!showKrakenTradingChart) {
+            renderPriceHistoryChart(canvas, samples, ticker, trendClass);
+            return;
+        }
+
+        const renderInterval = minutes => {
+            const candles = aggregateKrakenCandles(krakenCandles, minutes);
+            renderKrakenTradingChart(canvas, candles, ticker, minutes);
+            const meta = document.querySelector('#price-history-overlay .governance-menu-header-meta');
+            const option = KRAKEN_CHART_INTERVALS.find(item => item.minutes === minutes);
+            if (meta) meta.textContent = `24 hours · ${option?.label || `${minutes} min`} · ${candles.length.toLocaleString('en-US')} candles · Kraken`;
+            intervalSelector?.querySelectorAll('.price-history-interval').forEach(button => {
+                button.setAttribute('aria-pressed', String(Number(button.dataset.intervalMinutes) === minutes));
+            });
+        };
+
+        intervalSelector?.addEventListener('click', event => {
+            const button = event.target.closest('.price-history-interval');
+            if (!button) return;
+            renderInterval(Number(button.dataset.intervalMinutes));
+        });
+        renderInterval(5);
     });
 }
 
-function renderKrakenTradingChart(canvas, candles, ticker) {
+function renderKrakenTradingChart(canvas, candles, ticker, intervalMinutes = 5) {
     if (typeof Chart !== 'function' || !canvas?.isConnected || candles.length < 2) return;
     if (priceHistoryChart) priceHistoryChart.destroy();
 
@@ -261,6 +329,13 @@ function renderKrakenTradingChart(canvas, candles, ticker) {
     const lowest = Math.min(...candles.map(candle => candle.low));
     const highest = Math.max(...candles.map(candle => candle.high));
     const padding = Math.max(1e-12, (highest - lowest) * 0.05, Math.abs(highest) * 0.002);
+    const intervalMs = Math.max(5, Number(intervalMinutes) || 5) * 60 * 1000;
+    const trailingPointCount = Math.max(1, Math.ceil((60 * 60 * 1000) / intervalMs));
+    const chartTimes = candles.map(candle => candle.time);
+    const latestTime = chartTimes.at(-1);
+    for (let index = 1; index <= trailingPointCount; index += 1) {
+        chartTimes.push(latestTime + (index * intervalMs));
+    }
 
     const candlestickPlugin = {
         id: `${String(ticker || 'token').toLowerCase()}-candlesticks`,
@@ -268,7 +343,7 @@ function renderKrakenTradingChart(canvas, candles, ticker) {
             const { ctx, chartArea, scales } = chart;
             const points = chart.getDatasetMeta(0).data;
             if (!chartArea || !scales?.y || !points.length) return;
-            const candleWidth = Math.max(2, Math.min(7, (chartArea.width / candles.length) * 0.72));
+            const candleWidth = Math.max(2, Math.min(7, (chartArea.width / chartTimes.length) * 0.72));
             ctx.save();
             ctx.beginPath();
             ctx.rect(chartArea.left, chartArea.top, chartArea.width, chartArea.height);
@@ -299,10 +374,13 @@ function renderKrakenTradingChart(canvas, candles, ticker) {
     priceHistoryChart = new Chart(canvas, {
         type: 'line',
         data: {
-            labels: candles.map(candle => timeFormatter.format(candle.time)),
+            labels: chartTimes.map(time => timeFormatter.format(time)),
             datasets: [{
                 label: `${ticker}/USD`,
-                data: candles.map(candle => candle.close),
+                data: [
+                    ...candles.map(candle => candle.close),
+                    ...Array(trailingPointCount).fill(null)
+                ],
                 borderColor: 'transparent',
                 backgroundColor: 'transparent',
                 borderWidth: 0,
@@ -966,6 +1044,9 @@ function renderPoolStatus(pool) {
     poolDelegators = Array.isArray(pool?.delegators) ? [...pool.delegators] : [];
     setText('pool-delegators', formatInteger(pool?.delegator_count));
     setText('pool-live-stake', formatAdaFromLovelace(pool?.live_stake_lovelace));
+    setText('pool-pledge', formatAdaFromLovelace(pool?.pledge_lovelace ?? pool?.raw?.pledge));
+    setText('pool-margin', formatPoolMargin(pool?.margin ?? pool?.raw?.margin));
+    setText('pool-fixed-cost', formatAdaFromLovelace(pool?.fixed_cost_lovelace ?? pool?.raw?.fixed_cost));
     setText('pool-id', pool?.pool_id || 'N/A');
 
     const relays = Array.isArray(pool?.relays) ? pool.relays : [];
@@ -1801,6 +1882,12 @@ function formatAdaFromLovelace(value) {
     const number = Number(value);
     if (!Number.isFinite(number)) return 'N/A';
     return `${new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(number / 1_000_000)} ADA`;
+}
+
+function formatPoolMargin(value) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return 'N/A';
+    return `${new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(number * 100)}%`;
 }
 
 function formatTimestamp(value) {

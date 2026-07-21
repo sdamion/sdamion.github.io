@@ -47,9 +47,9 @@
 
     <!-- Preload Logo -->
     <link rel="preload" href="tdsp_logo.webp" as="image">
-    <link rel="stylesheet" href="styles.css?v=20260721-drep-metadata-overlay">
+    <link rel="stylesheet" href="styles.css?v=20260721-pool-costs">
 
-    <script src="index.js?v=20260721-kraken-token-charts" defer></script>
+    <script src="index.js?v=20260721-pool-costs" defer></script>
 </head>
 <body>
     <header class="site-header" id="site-header">
@@ -150,8 +150,33 @@
                     <div>
                         <strong id="pool-live-stake">...</strong>
                         <span class="pool-provider-label">
-                            <img class="pool-provider-icon" src="cardano_logo_ico.webp" alt="">
+                            <span class="pool-provider-icon pool-provider-symbol" aria-hidden="true">₳</span>
                             <span class="pool-provider-label-text">Live stake</span>
+                        </span>
+                    </div>
+                    <div>
+                        <strong id="pool-pledge">...</strong>
+                        <span class="pool-provider-label">
+                            <span class="pool-provider-icon pool-provider-symbol" aria-hidden="true">₳</span>
+                            <span class="pool-provider-label-text">Pledge</span>
+                        </span>
+                    </div>
+                    <div>
+                        <strong id="pool-margin">...</strong>
+                        <span class="pool-provider-label">
+                            <svg class="pool-provider-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <line x1="19" x2="5" y1="5" y2="19"></line>
+                                <circle cx="6.5" cy="6.5" r="2.5"></circle>
+                                <circle cx="17.5" cy="17.5" r="2.5"></circle>
+                            </svg>
+                            <span class="pool-provider-label-text">Margin</span>
+                        </span>
+                    </div>
+                    <div>
+                        <strong id="pool-fixed-cost">...</strong>
+                        <span class="pool-provider-label">
+                            <span class="pool-provider-icon pool-provider-symbol" aria-hidden="true">₳</span>
+                            <span class="pool-provider-label-text">Fixed cost</span>
                         </span>
                     </div>
                     <div id="leader-schedule" aria-live="polite">
