@@ -3412,7 +3412,7 @@ function openDrepMetadataBuilderOverlay(profile = {}, returnFocus, onCreated) {
     };
     const help = document.createElement('p');
     help.className = 'small-text governance-drep-registration-help';
-    help.textContent = 'Only DRep name is required by CIP-119. The downloaded file must be uploaded unchanged before using its URL and hash.';
+    help.textContent = 'Only DRep name is required by CIP-119. The name must not already exist in the DRep directory. The downloaded file must be uploaded unchanged before using its URL and hash.';
     const submit = document.createElement('button');
     submit.type = 'submit';
     submit.className = 'governance-vote-submit';
@@ -3438,6 +3438,9 @@ function openDrepMetadataBuilderOverlay(profile = {}, returnFocus, onCreated) {
         submit.disabled = true;
         try {
             const nextProfile = collectDrepMetadataProfile(profileFields, { requireName: true });
+            submit.textContent = 'Checking name...';
+            await assertDrepMetadataNameAvailable(nextProfile.givenName);
+            submit.textContent = 'Creating file...';
             const documentData = createCip119MetadataDocument(nextProfile);
             const { hashDrepAnchor } = await loadGovernanceMesh();
             const hash = hashDrepAnchor(documentData);
@@ -3447,6 +3450,7 @@ function openDrepMetadataBuilderOverlay(profile = {}, returnFocus, onCreated) {
         } catch (error) {
             appendGovernanceVoteStatus(form, error?.message || 'Metadata file could not be created.', true);
             submit.disabled = false;
+            submit.textContent = 'Create and save drep.jsonld';
         }
     });
     content.appendChild(form);
@@ -3544,6 +3548,38 @@ function collectDrepMetadataProfile(fields, options = {}) {
     if (Boolean(profile.linkLabel) !== Boolean(profile.linkUrl)) throw new Error('Additional link label and URL must be provided together.');
     validateOptionalHttpsUrl(profile.linkUrl, 'Additional link URL');
     return profile;
+}
+
+async function assertDrepMetadataNameAvailable(name) {
+    const normalizedName = normalizeDrepNameForComparison(name);
+    if (!normalizedName) throw new Error('Enter a valid DRep name.');
+
+    let payloads;
+    try {
+        payloads = await Promise.all([
+            fetchJson(getDrepMetadataApiUrl()),
+            fetchDrepInfoPayload()
+        ]);
+    } catch {
+        throw new Error('The DRep directory could not be checked. Please try again before creating the metadata file.');
+    }
+
+    const existingNames = new Set(payloads
+        .flatMap(unwrapDrepEntries)
+        .map(extractDrepNameFromEntry)
+        .filter(Boolean)
+        .map(normalizeDrepNameForComparison));
+    if (existingNames.has(normalizedName)) {
+        throw new Error(`The DRep name "${name}" already exists. Choose a unique name.`);
+    }
+}
+
+function normalizeDrepNameForComparison(value) {
+    return String(value || '')
+        .normalize('NFKC')
+        .trim()
+        .replace(/\s+/g, ' ')
+        .toLocaleLowerCase();
 }
 
 function validateOptionalUrlPair(url, hash, urlLabel, hashLabel) {
@@ -3832,6 +3868,7 @@ async function loadDrepDirectoryOverlay(container) {
             .find(Boolean) || extractDrepNameFromEntry(entry) || primaryIdentifier;
         uniqueDreps.set(primaryIdentifier, {
             id: primaryIdentifier,
+            searchIds: identifiers.join(' '),
             name,
             votingPower: getDrepEntryVotingPower(entry),
             active: entry?.active === true
@@ -3866,6 +3903,7 @@ function renderDrepDirectory(container, dreps, options = {}) {
     dreps.forEach((drep, index) => {
         const row = document.createElement('div');
         row.className = 'governance-cc-member governance-menu-card';
+        row.dataset.searchText = `${drep.id || ''} ${drep.searchIds || ''}`.trim();
         row.dataset.sortName = normalizeOverlaySearchText(drep.name);
         row.dataset.sortPower = String(Number(drep.votingPower) || 0);
         row.dataset.sortStatus = drep.active ? '1' : '0';

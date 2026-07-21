@@ -35,6 +35,11 @@ let priceHistoryChart = null;
 const PRICE_TILE_WINDOW_MS = 60 * 60 * 1000;
 const PRICE_OVERLAY_WINDOW_MS = 24 * 60 * 60 * 1000;
 const PRICE_OVERLAY_BUCKET_MS = 5 * 60 * 1000;
+const KRAKEN_OHLC_FIELDS = Object.freeze({
+    btc_usd: 'btc_ohlc',
+    ada_usd: 'ada_ohlc',
+    night_usd: 'night_ohlc'
+});
 
 function parsePriceValue(value) {
     return value === null || value === undefined || value === '' ? NaN : Number(value);
@@ -145,9 +150,11 @@ function getPriceHistorySamples(key) {
     return Array.from(buckets.values()).sort((left, right) => left.time - right.time);
 }
 
-function getBtcOhlcSamples() {
+function getKrakenOhlcSamples(priceKey) {
+    const field = KRAKEN_OHLC_FIELDS[priceKey];
+    if (!field) return [];
     const cutoff = Date.now() - PRICE_OVERLAY_WINDOW_MS;
-    return (Array.isArray(latestPricePayload?.btc_ohlc) ? latestPricePayload.btc_ohlc : [])
+    return (Array.isArray(latestPricePayload?.[field]) ? latestPricePayload[field] : [])
         .map(entry => ({
             time: Date.parse(entry?.timestamp || ''),
             open: Number(entry?.open),
@@ -185,8 +192,8 @@ function openPriceHistoryOverlay(tile) {
     const key = tile?.dataset.priceKey || '';
     const ticker = tile?.dataset.priceTicker || 'Token';
     const samples = getPriceHistorySamples(key);
-    const btcCandles = key === 'btc_usd' ? getBtcOhlcSamples() : [];
-    const showBtcTradingChart = btcCandles.length > 1;
+    const krakenCandles = getKrakenOhlcSamples(key);
+    const showKrakenTradingChart = krakenCandles.length > 1;
     const body = document.createElement('section');
     body.className = 'governance-chart-panel price-history-chart-panel';
 
@@ -198,13 +205,13 @@ function openPriceHistoryOverlay(tile) {
     body.appendChild(current);
 
     let canvas = null;
-    if (samples.length || showBtcTradingChart) {
+    if (samples.length || showKrakenTradingChart) {
         const frame = document.createElement('div');
         frame.className = 'price-history-chart-frame';
         canvas = document.createElement('canvas');
         canvas.setAttribute('role', 'img');
-        canvas.setAttribute('aria-label', showBtcTradingChart
-            ? 'BTC/USD 5-minute candlestick chart over the last 24 hours'
+        canvas.setAttribute('aria-label', showKrakenTradingChart
+            ? `${ticker}/USD 5-minute candlestick chart over the last 24 hours`
             : `${ticker} price over the last 24 hours`);
         frame.appendChild(canvas);
         body.appendChild(frame);
@@ -219,8 +226,8 @@ function openPriceHistoryOverlay(tile) {
         id: 'price-history-overlay',
         titleId: 'price-history-title',
         titleText: `${ticker} Price`,
-        headerMeta: showBtcTradingChart
-            ? `24 hours · ${btcCandles.length.toLocaleString('en-US')} candles · Kraken`
+        headerMeta: showKrakenTradingChart
+            ? `24 hours · ${krakenCandles.length.toLocaleString('en-US')} candles · Kraken`
             : `24 hours · ${samples.length.toLocaleString('en-US')} points`,
         closeLabel: `Close ${ticker} price history`,
         closeOverlay: closePriceHistoryOverlay,
@@ -230,12 +237,12 @@ function openPriceHistoryOverlay(tile) {
     });
 
     if (canvas) requestAnimationFrame(() => {
-        if (showBtcTradingChart) renderBtcTradingChart(canvas, btcCandles);
+        if (showKrakenTradingChart) renderKrakenTradingChart(canvas, krakenCandles, ticker);
         else renderPriceHistoryChart(canvas, samples, ticker, trendClass);
     });
 }
 
-function renderBtcTradingChart(canvas, candles) {
+function renderKrakenTradingChart(canvas, candles, ticker) {
     if (typeof Chart !== 'function' || !canvas?.isConnected || candles.length < 2) return;
     if (priceHistoryChart) priceHistoryChart.destroy();
 
@@ -245,13 +252,18 @@ function renderBtcTradingChart(canvas, candles) {
     const risingColor = '#34d399';
     const fallingColor = '#f87171';
     const timeFormatter = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' });
-    const priceFormatter = value => `$${Number(value).toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
+    const priceFormatter = value => {
+        const number = Number(value);
+        if (!Number.isFinite(number)) return 'N/A';
+        const maximumFractionDigits = Math.abs(number) >= 1000 ? 2 : Math.abs(number) >= 1 ? 4 : 8;
+        return `$${number.toLocaleString('en-US', { maximumFractionDigits })}`;
+    };
     const lowest = Math.min(...candles.map(candle => candle.low));
     const highest = Math.max(...candles.map(candle => candle.high));
-    const padding = Math.max(1, (highest - lowest) * 0.05);
+    const padding = Math.max(1e-12, (highest - lowest) * 0.05, Math.abs(highest) * 0.002);
 
     const candlestickPlugin = {
-        id: 'btc-candlesticks',
+        id: `${String(ticker || 'token').toLowerCase()}-candlesticks`,
         afterDatasetsDraw(chart) {
             const { ctx, chartArea, scales } = chart;
             const points = chart.getDatasetMeta(0).data;
@@ -289,7 +301,7 @@ function renderBtcTradingChart(canvas, candles) {
         data: {
             labels: candles.map(candle => timeFormatter.format(candle.time)),
             datasets: [{
-                label: 'BTC/USD',
+                label: `${ticker}/USD`,
                 data: candles.map(candle => candle.close),
                 borderColor: 'transparent',
                 backgroundColor: 'transparent',
@@ -1404,7 +1416,9 @@ function installOverlaySearch(body) {
         let visible = 0;
 
         cards.forEach(card => {
-            const searchableText = normalizeOverlaySearchText(card.textContent);
+            const searchableText = normalizeOverlaySearchText(
+                `${card.textContent || ''} ${card.dataset.searchText || ''}`
+            );
             const matches = terms.every(term => searchableText.includes(term));
             card.hidden = !matches;
             if (matches) visible += 1;
