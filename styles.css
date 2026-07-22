@@ -2045,6 +2045,53 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     gap: 10px;
 }
 
+.governance-spo-detail-stats,
+.governance-spo-relay-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 10px;
+}
+
+.governance-spo-detail-stats {
+    margin: 12px 0;
+}
+
+.governance-spo-detail-stat,
+.governance-spo-relay {
+    padding: 14px;
+}
+
+.governance-spo-detail-stat span,
+.governance-spo-relay span {
+    display: block;
+    margin-top: 4px;
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+.governance-spo-relay-address-line {
+    margin: 8px 0 6px;
+}
+
+.governance-spo-provider {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.governance-spo-relay .governance-spo-provider {
+    display: inline-flex;
+}
+
+.governance-spo-provider-logo {
+    width: 22px;
+    height: 22px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    object-fit: contain;
+}
+
 .governance-cc-member {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);

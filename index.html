@@ -47,7 +47,7 @@
 
     <!-- Preload Logo -->
     <link rel="preload" href="tdsp_logo.webp" as="image">
-    <link rel="stylesheet" href="styles.css?v=20260721-pool-costs">
+    <link rel="stylesheet" href="styles.css?v=20260722-spo-relay-addresses">
 
     <script src="index.js?v=20260721-price-movement-candles" defer></script>
 </head>
@@ -290,6 +290,11 @@
                         <span>DReps</span>
                         <span class="governance-summary-subvalue" id="gov-drep-total-power">VPower 0 ADA</span>
                     </div>
+                    <div id="gov-spo-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show stake pool operator directory">
+                        <strong id="gov-spo-count">0</strong>
+                        <span>SPOs</span>
+                        <span class="governance-summary-subvalue" id="gov-spo-total-delegated">Delegated 0 ADA</span>
+                    </div>
                     <div id="gov-committee-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show Constitutional Committee members">
                         <strong id="gov-committee-count">0</strong>
                         <span>CC Members</span>
@@ -327,7 +332,7 @@
 
     <script src="chart.js"></script>
     <script src="starch.js?v=20260721-relevant-sorting" defer></script>
-    <script src="governance.js?v=20260721-drep-search-unique-name" defer></script>
+    <script src="governance.js?v=20260722-spo-relay-addresses" defer></script>
     <script src="stake.js?v=20260717-backend-api-only" defer></script>
 </body>
 </html>

@@ -6,6 +6,7 @@ const PROPOSAL_DETAIL_API_BASE_URL = 'https://api.tdsp.online/api/proposal';
 const DREP_METADATA_API_URL = 'https://api.tdsp.online/api/dreps/metadata';
 const DREP_INFO_API_URL = 'https://api.tdsp.online/api/dreps/info';
 const DREP_DETAIL_API_BASE_URL = 'https://api.tdsp.online/api/drep';
+const SPO_DIRECTORY_API_URL = 'https://api.tdsp.online/api/spos';
 const REMOTE_METADATA_API_URL = 'https://api.tdsp.online/api/metadata';
 const TREASURY_API_URL = 'https://api.tdsp.online/api/treasury';
 const LOCAL_DASHBOARD_PROXY_PATH = '/__dashboard_proxy__';
@@ -15,6 +16,7 @@ const LOCAL_PROPOSAL_VOTES_PROXY_PATH = '/__proposal_votes_proxy__';
 const LOCAL_PROPOSAL_DETAIL_PROXY_PATH = '/__proposal_detail_proxy__';
 const LOCAL_DREP_DIRECTORY_PROXY_PATH = '/__drep_directory_proxy__';
 const LOCAL_DREP_DETAIL_PROXY_PATH = '/__drep_detail_proxy__';
+const LOCAL_SPO_DIRECTORY_PROXY_PATH = '/__spo_directory_proxy__';
 const LOCAL_METADATA_PROXY_PATH = '/__metadata_proxy__';
 const LOCAL_TREASURY_PROXY_PATH = '/__treasury_proxy__';
 const GOVERNANCE_MESH_CDN_URL = 'https://esm.sh/@meshsdk/core@1.9.1?bundle-deps';
@@ -48,6 +50,18 @@ const TREASURY_ADMINISTRATOR_COLORS = Object.freeze([
     '#f97316', '#a78bfa', '#22c55e', '#38bdf8', '#eab308',
     '#f43f5e', '#14b8a6', '#818cf8', '#84cc16', '#f59e0b'
 ]);
+const SPO_CLOUD_PROVIDER_LOGOS = Object.freeze({
+    aws: 'https://cdn.simpleicons.org/amazonwebservices/FF9900',
+    azure: 'https://cdn.simpleicons.org/microsoftazure/0078D4',
+    'google-cloud': 'https://cdn.simpleicons.org/googlecloud/4285F4',
+    digitalocean: 'https://cdn.simpleicons.org/digitalocean/0080FF',
+    hetzner: 'https://cdn.simpleicons.org/hetzner/D50C2D',
+    ovh: 'https://cdn.simpleicons.org/ovh/123F6D',
+    akamai: 'https://cdn.simpleicons.org/akamai/0096D6',
+    vultr: 'https://cdn.simpleicons.org/vultr/007BFC',
+    'oracle-cloud': 'https://cdn.simpleicons.org/oracle/F80000',
+    scaleway: 'https://cdn.simpleicons.org/scaleway/4F0599'
+});
 
 let governanceRefreshTimer = null;
 let epochCountdownTimer = null;
@@ -65,6 +79,8 @@ const drepMetadataCache = new Map();
 let drepDirectoryPromise = null;
 let drepInfoPromise = null;
 let drepStatsPromise = null;
+let spoDirectoryPromise = null;
+let spoDirectoryState = null;
 let committeeInfoPromise = null;
 let treasuryPromise = null;
 let treasuryState = null;
@@ -84,10 +100,12 @@ function initGovernance() {
     setupGovernanceSummaryActionCards();
     setupConstitutionalCommitteeCard();
     setupDrepDirectoryCard();
+    setupSpoDirectoryCard();
     setupTreasuryCard();
     loadCurrentEpoch();
     loadGovernanceActions();
     loadDrepDirectory().catch(() => {});
+    loadSpoDirectory().catch(() => {});
     loadTreasuryData().catch(() => {});
 }
 
@@ -724,6 +742,11 @@ function handleGovernanceMenuEscape(event) {
 function setupDrepDirectoryCard() {
     const card = document.getElementById('gov-drep-card');
     bindGovernanceMenuTrigger(card, openDrepDirectoryOverlay);
+}
+
+function setupSpoDirectoryCard() {
+    const card = document.getElementById('gov-spo-card');
+    bindGovernanceMenuTrigger(card, openSpoDirectoryOverlay);
 }
 
 function setupConstitutionalCommitteeCard() {
@@ -3233,6 +3256,270 @@ function openDrepDirectoryOverlay() {
 
 function closeDrepDirectoryOverlay() {
     removeGovernanceMenuOverlay('governance-drep-directory-overlay');
+}
+
+function openSpoDirectoryOverlay() {
+    const panel = document.createElement('div');
+    panel.className = 'governance-drep-directory-list';
+    const loading = document.createElement('p');
+    loading.className = 'small-text';
+    loading.textContent = 'Loading SPO data...';
+    panel.appendChild(loading);
+
+    createGovernanceMenuOverlay({
+        id: 'governance-spo-directory-overlay',
+        titleId: 'governance-spo-directory-title',
+        titleText: 'SPOs',
+        closeLabel: 'Close SPO directory',
+        closeOverlay: closeSpoDirectoryOverlay,
+        bodyNodes: [panel],
+        headerMeta: spoDirectoryState
+            ? `${spoDirectoryState.count.toLocaleString('en-US')} SPOs`
+            : 'Loading SPOs...'
+    });
+
+    loadSpoDirectory().then(payload => {
+        if (!panel.isConnected) return;
+        renderSpoDirectory(panel, payload.spos);
+        updateGovernanceMenuHeaderMeta(
+            'governance-spo-directory-overlay',
+            `${payload.count.toLocaleString('en-US')} SPOs`,
+            panel
+        );
+    }).catch(() => {
+        if (!panel.isConnected) return;
+        panel.replaceChildren();
+        const message = document.createElement('p');
+        message.className = 'small-text';
+        message.textContent = 'SPO data could not be loaded.';
+        panel.appendChild(message);
+    });
+}
+
+function closeSpoDirectoryOverlay() {
+    removeGovernanceMenuOverlay('governance-spo-directory-overlay');
+}
+
+function renderSpoDirectory(container, spos) {
+    container.replaceChildren();
+    if (!spos.length) {
+        const message = document.createElement('p');
+        message.className = 'small-text';
+        message.textContent = 'No registered SPOs are available.';
+        container.appendChild(message);
+        return;
+    }
+
+    const fragment = document.createDocumentFragment();
+    spos.forEach((spo, index) => {
+        const row = document.createElement('div');
+        row.className = 'governance-cc-member governance-menu-card governance-cc-member-clickable';
+        row.dataset.searchText = `${spo.name || ''} ${spo.ticker || ''} ${spo.pool_id || ''}`.trim();
+        row.dataset.sortName = normalizeOverlaySearchText(getSpoDisplayName(spo));
+        row.dataset.sortAmount = String(Number(spo.delegated_lovelace) || 0);
+        row.dataset.sortDelegators = String(Number(spo.delegator_count) || 0);
+        row.setAttribute('role', 'button');
+        row.tabIndex = 0;
+        row.setAttribute('aria-label', `Show ${getSpoDisplayName(spo)} stake pool details`);
+
+        const number = document.createElement('strong');
+        number.textContent = String(index + 1);
+
+        const copy = document.createElement('div');
+        copy.className = 'governance-drep-member-copy';
+        const name = document.createElement('span');
+        name.className = 'governance-cc-member-hash';
+        name.textContent = getSpoDisplayName(spo);
+
+        const delegated = document.createElement('span');
+        delegated.className = 'governance-cc-member-stats';
+        delegated.textContent = `Delegated: ${formatCompactAdaFromLovelace(spo.delegated_lovelace)}`;
+
+        const delegators = document.createElement('span');
+        delegators.className = 'governance-cc-member-meta';
+        delegators.textContent = `Delegators: ${Number(spo.delegator_count || 0).toLocaleString('en-US')}`;
+
+        const idLine = createSpoPoolIdLine(spo.pool_id);
+        copy.append(name, delegated, delegators, idLine);
+        row.append(number, copy);
+        bindGovernanceMenuTrigger(row, event => openSpoDetailOverlay(spo, event.currentTarget));
+        fragment.appendChild(row);
+    });
+    container.appendChild(fragment);
+}
+
+function openSpoDetailOverlay(spo, returnFocus) {
+    const content = document.createElement('div');
+    content.className = 'governance-detail-content';
+    renderSpoDetails(content, spo);
+
+    createGovernanceMenuOverlay({
+        id: 'governance-spo-detail-overlay',
+        titleId: 'governance-spo-detail-title',
+        titleText: getSpoDisplayName(spo),
+        closeLabel: `Close ${getSpoDisplayName(spo)} details`,
+        closeOverlay: closeSpoDetailOverlay,
+        bodyNodes: [content],
+        leadingNodes: spo.cloud_provider ? [createSpoProviderBadge(spo.cloud_provider, true)] : [],
+        headerMeta: formatCompactAdaFromLovelace(spo.delegated_lovelace),
+        overlayClass: 'governance-action-detail-overlay',
+        returnFocus,
+        rootTitle: 'SPOs'
+    });
+}
+
+function closeSpoDetailOverlay() {
+    removeGovernanceMenuOverlay('governance-spo-detail-overlay');
+}
+
+function renderSpoDetails(container, spo) {
+    container.replaceChildren();
+    container.appendChild(createSpoPoolIdLine(spo.pool_id));
+
+    const stats = document.createElement('div');
+    stats.className = 'governance-spo-detail-stats';
+    [
+        ['Delegators', Number(spo.delegator_count || 0).toLocaleString('en-US')],
+        ['Delegated', formatFullAdaFromLovelace(spo.delegated_lovelace)],
+        ['Pledge', formatFullAdaFromLovelace(spo.pledge_lovelace)],
+        ['Fixed cost', formatFullAdaFromLovelace(spo.fixed_cost_lovelace)],
+        ['Margin', formatSpoMargin(spo.margin)]
+    ].forEach(([label, value]) => {
+        const card = document.createElement('div');
+        card.className = 'governance-spo-detail-stat governance-menu-card';
+        const title = document.createElement('strong');
+        title.textContent = label;
+        const detail = document.createElement('span');
+        detail.textContent = value || '--';
+        card.append(title, detail);
+        stats.appendChild(card);
+    });
+    container.appendChild(stats);
+
+    const relayTitle = document.createElement('strong');
+    relayTitle.textContent = `Relay nodes (${Number(spo.relay_count || spo.relays?.length || 0).toLocaleString('en-US')})`;
+    container.appendChild(relayTitle);
+
+    const relayList = document.createElement('div');
+    relayList.className = 'governance-spo-relay-list';
+    const relays = Array.isArray(spo.relays) ? spo.relays : [];
+    if (!relays.length) {
+        const message = document.createElement('p');
+        message.className = 'small-text';
+        message.textContent = 'No advertised relay nodes are available.';
+        relayList.appendChild(message);
+    } else {
+        relays.forEach((relay, index) => {
+            const card = document.createElement('div');
+            card.className = 'governance-spo-relay governance-menu-card';
+            const title = document.createElement('strong');
+            title.textContent = `Relay ${index + 1}`;
+            card.appendChild(title);
+            const address = formatSpoRelayAddress(relay);
+            if (address) {
+                const addressLine = document.createElement('div');
+                addressLine.className = 'governance-drep-id-line governance-spo-relay-address-line';
+                const addressText = document.createElement('span');
+                addressText.className = 'governance-cc-member-meta governance-drep-id';
+                addressText.textContent = address;
+                addressLine.append(addressText, createGovernanceCopyButton(address, `Relay ${index + 1} address`));
+                card.appendChild(addressLine);
+            }
+            if (spo.cloud_provider) {
+                card.appendChild(createSpoProviderBadge(spo.cloud_provider));
+            } else {
+                const provider = document.createElement('span');
+                provider.textContent = 'Cloud provider not identified';
+                card.appendChild(provider);
+            }
+            relayList.appendChild(card);
+        });
+    }
+    container.appendChild(relayList);
+}
+
+function formatSpoRelayAddress(relay) {
+    const host = String(relay?.host || '').trim();
+    if (!host) return '';
+    const formattedHost = host.includes(':') && !host.startsWith('[') ? `[${host}]` : host;
+    const port = Number(relay?.port);
+    return Number.isInteger(port) && port > 0 ? `${formattedHost}:${port}` : formattedHost;
+}
+
+function createSpoPoolIdLine(poolId) {
+    const line = document.createElement('div');
+    line.className = 'governance-drep-id-line';
+    const id = document.createElement('span');
+    id.className = 'governance-cc-member-meta governance-drep-id';
+    id.textContent = poolId || '--';
+    line.append(id);
+    if (poolId) line.appendChild(createGovernanceCopyButton(poolId, 'pool ID'));
+    return line;
+}
+
+function createSpoProviderBadge(provider, iconOnly = false) {
+    const badge = document.createElement('span');
+    badge.className = 'governance-spo-provider';
+    const logoUrl = SPO_CLOUD_PROVIDER_LOGOS[provider?.id];
+    if (logoUrl) {
+        const logo = document.createElement('img');
+        logo.className = 'governance-spo-provider-logo';
+        logo.src = logoUrl;
+        logo.alt = '';
+        logo.loading = 'lazy';
+        logo.referrerPolicy = 'no-referrer';
+        logo.addEventListener('error', () => logo.remove(), { once: true });
+        badge.appendChild(logo);
+    }
+    if (!iconOnly) {
+        const name = document.createElement('span');
+        name.textContent = provider?.name || 'Cloud provider';
+        badge.appendChild(name);
+    }
+    badge.setAttribute('aria-label', provider?.name || 'Cloud provider');
+    return badge;
+}
+
+function getSpoDisplayName(spo) {
+    const name = firstNonEmptyText(spo?.name, spo?.ticker, 'No Name');
+    const ticker = firstNonEmptyText(spo?.ticker);
+    return ticker && ticker.toLowerCase() !== name.toLowerCase() ? `[${ticker}] ${name}` : name;
+}
+
+function formatSpoMargin(value) {
+    const margin = Number(value);
+    return Number.isFinite(margin) ? formatPercentage(margin * 100) : '--';
+}
+
+async function loadSpoDirectory() {
+    if (!spoDirectoryPromise) {
+        spoDirectoryPromise = fetchJson(getSpoDirectoryApiUrl())
+            .then(payload => {
+                const spos = Array.isArray(payload?.spos) ? payload.spos : [];
+                spoDirectoryState = {
+                    ...payload,
+                    count: Number.isFinite(Number(payload?.count)) ? Number(payload.count) : spos.length,
+                    spos
+                };
+                setText('gov-spo-count', spoDirectoryState.count.toLocaleString('en-US'));
+                setText(
+                    'gov-spo-total-delegated',
+                    `Delegated ${formatCompactAdaFromLovelace(spoDirectoryState.total_delegated_lovelace || 0)}`
+                );
+                return spoDirectoryState;
+            })
+            .catch(error => {
+                spoDirectoryPromise = null;
+                setText('gov-spo-count', '--');
+                setText('gov-spo-total-delegated', 'Delegated -- ADA');
+                throw error;
+            });
+    }
+    return spoDirectoryPromise;
+}
+
+function getSpoDirectoryApiUrl() {
+    return shouldUseLocalDashboardProxy() ? LOCAL_SPO_DIRECTORY_PROXY_PATH : SPO_DIRECTORY_API_URL;
 }
 
 function closeDrepRegistrationOverlay() {
