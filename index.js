@@ -1260,6 +1260,8 @@ const OVERLAY_SORT_DEFINITIONS = Object.freeze([
     { value: 'power-asc', label: 'Least power', key: 'sortPower', direction: 1, type: 'number' },
     { value: 'delegators-desc', label: 'Most delegators', key: 'sortDelegators', direction: -1, type: 'number' },
     { value: 'delegators-asc', label: 'Least delegators', key: 'sortDelegators', direction: 1, type: 'number' },
+    { value: 'cloud-first', label: 'Cloud first', key: 'sortCloud', direction: -1, type: 'number' },
+    { value: 'non-cloud-first', label: 'Non-cloud first', key: 'sortCloud', direction: 1, type: 'number' },
     { value: 'balance-desc', label: 'Highest balance', key: 'sortBalance', direction: -1, type: 'number' },
     { value: 'balance-asc', label: 'Lowest balance', key: 'sortBalance', direction: 1, type: 'number' },
     { value: 'blocks-desc', label: 'Most blocks', key: 'sortBlocks', direction: -1, type: 'number' },

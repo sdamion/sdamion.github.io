@@ -3310,6 +3310,8 @@ function renderSpoDirectory(container, spos) {
         return;
     }
 
+    container.appendChild(createSpoCloudStatusChart(spos, container));
+
     const fragment = document.createDocumentFragment();
     spos.forEach((spo, index) => {
         const row = document.createElement('div');
@@ -3318,6 +3320,7 @@ function renderSpoDirectory(container, spos) {
         row.dataset.sortName = normalizeOverlaySearchText(getSpoDisplayName(spo));
         row.dataset.sortAmount = String(Number(spo.delegated_lovelace) || 0);
         row.dataset.sortDelegators = String(Number(spo.delegator_count) || 0);
+        row.dataset.sortCloud = isSpoFullyCloudHosted(spo) ? '1' : '0';
         row.setAttribute('role', 'button');
         row.tabIndex = 0;
         row.setAttribute('aria-label', `Show ${getSpoDisplayName(spo)} stake pool details`);
@@ -3346,6 +3349,60 @@ function renderSpoDirectory(container, spos) {
         fragment.appendChild(row);
     });
     container.appendChild(fragment);
+}
+
+function createSpoCloudStatusChart(spos, directory) {
+    const cloudCount = spos.filter(isSpoFullyCloudHosted).length;
+    const groups = [
+        { key: 'cloud', label: 'Cloud', color: '#34d399', value: cloudCount },
+        { key: 'non-cloud', label: 'Non-cloud', color: '#f59e0b', value: spos.length - cloudCount }
+    ];
+
+    const section = document.createElement('section');
+    section.className = 'governance-vote-chart governance-chart-panel governance-drep-status-chart';
+
+    const title = document.createElement('strong');
+    title.textContent = 'SPO Hosting';
+
+    const layout = document.createElement('div');
+    layout.className = 'governance-vote-chart-layout';
+    const chart = createUniversalPieChart(groups, {
+        labelFormatter: segment => formatPercentage((segment.value / spos.length) * 100)
+    });
+
+    const legend = document.createElement('div');
+    legend.className = 'governance-vote-legend';
+    groups.forEach(group => {
+        const percentage = spos.length ? (group.value / spos.length) * 100 : 0;
+        legend.appendChild(createGovernanceStatBox({
+            label: group.label,
+            detail: `${group.value.toLocaleString('en-US')} SPOs • ${formatPercentage(percentage)}`,
+            color: group.color,
+            onClick: () => applySpoCloudSort(directory, group.key === 'cloud' ? 'cloud-first' : 'non-cloud-first')
+        }));
+    });
+
+    layout.append(chart, legend);
+    section.append(title, layout);
+    return section;
+}
+
+function applySpoCloudSort(directory, mode) {
+    const body = directory?.closest('.overlay-dialog-body');
+    if (!body) return;
+
+    const cards = getOverlaySearchCards(body);
+    sortOverlayCards(body, cards, mode);
+
+    const sort = body.querySelector('.overlay-sort-select');
+    if (!sort || !Array.from(sort.options).some(option => option.value === mode)) return;
+    sort.value = mode;
+    sort.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+function isSpoFullyCloudHosted(spo) {
+    const relays = Array.isArray(spo?.relays) ? spo.relays : [];
+    return relays.length > 0 && relays.every(relay => Boolean(relay?.provider?.id));
 }
 
 function openSpoDetailOverlay(spo, returnFocus) {
@@ -3483,7 +3540,9 @@ function createSpoProviderBadge(provider, iconOnly = false) {
 function getSpoDisplayName(spo) {
     const name = firstNonEmptyText(spo?.name, spo?.ticker, 'No Name');
     const ticker = firstNonEmptyText(spo?.ticker);
-    return ticker && ticker.toLowerCase() !== name.toLowerCase() ? `[${ticker}] ${name}` : name;
+    const poolName = ticker && ticker.toLowerCase() !== name.toLowerCase() ? `[${ticker}] ${name}` : name;
+    const providerName = firstNonEmptyText(spo?.cloud_provider?.name);
+    return providerName ? `${poolName} (${providerName})` : poolName;
 }
 
 function formatSpoMargin(value) {
