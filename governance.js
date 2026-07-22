@@ -3320,7 +3320,10 @@ function renderSpoDirectory(container, spos) {
         row.dataset.sortName = normalizeOverlaySearchText(getSpoDisplayName(spo));
         row.dataset.sortAmount = String(Number(spo.delegated_lovelace) || 0);
         row.dataset.sortDelegators = String(Number(spo.delegator_count) || 0);
-        row.dataset.sortCloud = isSpoFullyCloudHosted(spo) ? '1' : '0';
+        const cloudHostingType = getSpoCloudHostingType(spo);
+        row.dataset.sortFullCloud = cloudHostingType === 'full-cloud' ? '1' : '0';
+        row.dataset.sortPartialCloud = cloudHostingType === 'partial-cloud' ? '1' : '0';
+        row.dataset.sortNoCloud = cloudHostingType === 'no-cloud' ? '1' : '0';
         row.setAttribute('role', 'button');
         row.tabIndex = 0;
         row.setAttribute('aria-label', `Show ${getSpoDisplayName(spo)} stake pool details`);
@@ -3352,10 +3355,14 @@ function renderSpoDirectory(container, spos) {
 }
 
 function createSpoCloudStatusChart(spos, directory) {
-    const cloudCount = spos.filter(isSpoFullyCloudHosted).length;
+    const counts = spos.reduce((result, spo) => {
+        result[getSpoCloudHostingType(spo)] += 1;
+        return result;
+    }, { 'full-cloud': 0, 'partial-cloud': 0, 'no-cloud': 0 });
     const groups = [
-        { key: 'cloud', label: 'Cloud', color: '#34d399', value: cloudCount },
-        { key: 'non-cloud', label: 'Non-cloud', color: '#f59e0b', value: spos.length - cloudCount }
+        { key: 'full-cloud', label: 'Full cloud', color: '#34d399', value: counts['full-cloud'] },
+        { key: 'partial-cloud', label: 'Partial cloud', color: '#f59e0b', value: counts['partial-cloud'] },
+        { key: 'no-cloud', label: 'No cloud', color: '#94a3b8', value: counts['no-cloud'] }
     ];
 
     const section = document.createElement('section');
@@ -3378,7 +3385,7 @@ function createSpoCloudStatusChart(spos, directory) {
             label: group.label,
             detail: `${group.value.toLocaleString('en-US')} SPOs • ${formatPercentage(percentage)}`,
             color: group.color,
-            onClick: () => applySpoCloudSort(directory, group.key === 'cloud' ? 'cloud-first' : 'non-cloud-first')
+            onClick: () => applySpoCloudSort(directory, `${group.key}-first`)
         }));
     });
 
@@ -3400,15 +3407,19 @@ function applySpoCloudSort(directory, mode) {
     sort.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
-function isSpoFullyCloudHosted(spo) {
+function getSpoCloudHostingType(spo) {
     const relays = Array.isArray(spo?.relays) ? spo.relays : [];
-    return relays.length > 0 && relays.every(relay => Boolean(relay?.provider?.id));
+    const cloudRelayCount = relays.filter(relay => Boolean(relay?.provider?.id)).length;
+    if (relays.length > 0 && cloudRelayCount === relays.length) return 'full-cloud';
+    if (cloudRelayCount > 0) return 'partial-cloud';
+    return 'no-cloud';
 }
 
 function openSpoDetailOverlay(spo, returnFocus) {
     const content = document.createElement('div');
     content.className = 'governance-detail-content';
     renderSpoDetails(content, spo);
+    const cloudProviders = getSpoCloudProviders(spo);
 
     createGovernanceMenuOverlay({
         id: 'governance-spo-detail-overlay',
@@ -3417,7 +3428,7 @@ function openSpoDetailOverlay(spo, returnFocus) {
         closeLabel: `Close ${getSpoDisplayName(spo)} details`,
         closeOverlay: closeSpoDetailOverlay,
         bodyNodes: [content],
-        leadingNodes: spo.cloud_provider ? [createSpoProviderBadge(spo.cloud_provider, true)] : [],
+        leadingNodes: cloudProviders.length === 1 ? [createSpoProviderBadge(cloudProviders[0], true)] : [],
         headerMeta: formatCompactAdaFromLovelace(spo.delegated_lovelace),
         overlayClass: 'governance-action-detail-overlay',
         returnFocus,
@@ -3482,8 +3493,9 @@ function renderSpoDetails(container, spo) {
                 addressLine.append(addressText, createGovernanceCopyButton(address, `Relay ${index + 1} address`));
                 card.appendChild(addressLine);
             }
-            if (spo.cloud_provider) {
-                card.appendChild(createSpoProviderBadge(spo.cloud_provider));
+            const provider = relay?.provider || spo.cloud_provider;
+            if (provider) {
+                card.appendChild(createSpoProviderBadge(provider));
             } else {
                 const provider = document.createElement('span');
                 provider.textContent = 'Cloud provider not identified';
@@ -3541,8 +3553,21 @@ function getSpoDisplayName(spo) {
     const name = firstNonEmptyText(spo?.name, spo?.ticker, 'No Name');
     const ticker = firstNonEmptyText(spo?.ticker);
     const poolName = ticker && ticker.toLowerCase() !== name.toLowerCase() ? `[${ticker}] ${name}` : name;
-    const providerName = firstNonEmptyText(spo?.cloud_provider?.name);
-    return providerName ? `${poolName} (${providerName})` : poolName;
+    const providerNames = getSpoCloudProviders(spo).map(provider => provider.name);
+    return providerNames.length ? `${poolName} (${providerNames.join(', ')})` : poolName;
+}
+
+function getSpoCloudProviders(spo) {
+    const providers = new Map();
+    const addProvider = provider => {
+        const id = firstNonEmptyText(provider?.id);
+        const name = firstNonEmptyText(provider?.name);
+        if (id && name) providers.set(id, { id, name });
+    };
+
+    addProvider(spo?.cloud_provider);
+    (Array.isArray(spo?.relays) ? spo.relays : []).forEach(relay => addProvider(relay?.provider));
+    return Array.from(providers.values());
 }
 
 function formatSpoMargin(value) {
