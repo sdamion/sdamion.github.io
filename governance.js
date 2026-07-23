@@ -124,6 +124,8 @@ function openConstitutionAssistantOverlay() {
         closeOverlay: closeConstitutionAssistantOverlay,
         bodyNodes: [panel],
         dialogClass: 'governance-constitution-chat-dialog',
+        closeOnBackdrop: false,
+        showBack: false,
         enableSearch: false,
         returnFocus: document.getElementById('gov-constitution-card')
     });
@@ -144,6 +146,7 @@ function createConstitutionChatPanel() {
     const heading = document.createElement('div');
     heading.className = 'constitution-chat-heading';
     const headingCopy = document.createElement('div');
+    headingCopy.className = 'constitution-chat-heading-copy';
     const title = document.createElement('strong');
     title.id = 'constitution-chat-title';
     title.textContent = 'Ask the Constitution';
@@ -154,7 +157,15 @@ function createConstitutionChatPanel() {
     readButton.id = 'constitution-document-open';
     readButton.type = 'button';
     readButton.textContent = 'Read Constitution';
-    heading.append(headingCopy, readButton);
+    const resetButton = document.createElement('button');
+    resetButton.id = 'constitution-chat-reset';
+    resetButton.type = 'button';
+    resetButton.textContent = 'Reset';
+    resetButton.setAttribute('aria-label', 'Reset Constitution questions and answers');
+    const headingActions = document.createElement('div');
+    headingActions.className = 'constitution-chat-heading-actions';
+    headingActions.append(resetButton, readButton);
+    heading.append(headingCopy, headingActions);
 
     const messages = document.createElement('div');
     messages.id = 'constitution-chat-messages';
@@ -268,8 +279,9 @@ function setupConstitutionChat() {
     const input = document.getElementById('constitution-chat-question');
     const messages = document.getElementById('constitution-chat-messages');
     const submit = document.getElementById('constitution-chat-submit');
+    const reset = document.getElementById('constitution-chat-reset');
     const status = document.getElementById('constitution-chat-status');
-    if (!form || !input || !messages || !submit || !status) return;
+    if (!form || !input || !messages || !submit || !reset || !status) return;
     const conversation = [];
 
     const resizeInput = () => {
@@ -283,6 +295,18 @@ function setupConstitutionChat() {
             form.requestSubmit();
         }
     });
+    reset.addEventListener('click', () => {
+        conversation.length = 0;
+        messages.textContent = '';
+        const empty = document.createElement('p');
+        empty.className = 'constitution-chat-empty';
+        empty.textContent = 'Ask about a governance action, voting body, treasury rule, or constitutional guardrail.';
+        messages.appendChild(empty);
+        input.value = '';
+        resizeInput();
+        status.textContent = '';
+        input.focus();
+    });
 
     form.addEventListener('submit', async event => {
         event.preventDefault();
@@ -292,11 +316,12 @@ function setupConstitutionChat() {
         const empty = messages.querySelector('.constitution-chat-empty');
         if (empty) empty.remove();
         appendConstitutionChatMessage(messages, question, 'question');
-        const history = getConstitutionChatHistory(conversation);
+        const history = getConstitutionChatHistoryForQuestion(conversation, question);
         conversation.push({ role: 'user', content: question });
         input.value = '';
         resizeInput();
         submit.disabled = true;
+        reset.disabled = true;
         input.disabled = true;
         status.textContent = 'Consulting the Constitution...';
         let pendingAnswerMessage = null;
@@ -352,6 +377,7 @@ function setupConstitutionChat() {
             status.textContent = '';
         } finally {
             submit.disabled = false;
+            reset.disabled = false;
             input.disabled = false;
             input.focus();
         }
@@ -369,6 +395,19 @@ function getConstitutionChatHistory(conversation) {
         remaining -= content.length;
     }
     return history.reverse();
+}
+
+function getConstitutionChatHistoryForQuestion(conversation, question) {
+    const normalizedQuestion = String(question || '').replace(/\s+/g, ' ').trim().toLowerCase();
+    for (let index = 0; index < conversation.length; index += 1) {
+        const message = conversation[index];
+        if (message.role !== 'user') continue;
+        const previousQuestion = String(message.content || '').replace(/\s+/g, ' ').trim().toLowerCase();
+        if (previousQuestion === normalizedQuestion) {
+            return getConstitutionChatHistory(conversation.slice(0, index));
+        }
+    }
+    return getConstitutionChatHistory(conversation);
 }
 
 function getConstitutionChatApiUrl() {
@@ -1914,7 +1953,7 @@ function createGovernanceMenuOverlay(options) {
         rootTitle = titleText,
         closeOnBackdrop = true,
         showBack = true,
-        closeText = '<',
+        closeText = '',
         enableSearch = true
     } = options;
 
@@ -1947,16 +1986,25 @@ function createGovernanceMenuOverlay(options) {
     close.type = 'button';
     close.setAttribute('aria-label', closeLabel);
     close.title = closeLabel;
-    close.textContent = closeText;
-    close.addEventListener('click', closeOverlay);
+    if (closeText) {
+        close.textContent = closeText;
+    } else {
+        const closeIcon = document.createElement('span');
+        closeIcon.className = 'governance-close-icon';
+        closeIcon.setAttribute('aria-hidden', 'true');
+        close.appendChild(closeIcon);
+    }
+    close.addEventListener('click', closeText
+        ? closeOverlay
+        : () => closeGovernanceOverlayStack(overlay));
 
     const back = document.createElement('button');
     back.className = 'governance-back-to-root';
     back.type = 'button';
-    back.textContent = '<<';
-    back.setAttribute('aria-label', `Back to ${overlay.governanceRootTitle}`);
-    back.title = `Back to ${overlay.governanceRootTitle}`;
-    back.addEventListener('click', () => returnToGovernanceRootOverlay(overlay));
+    back.textContent = '<';
+    back.setAttribute('aria-label', 'Back one window');
+    back.title = 'Back one window';
+    back.addEventListener('click', closeOverlay);
 
     const title = document.createElement(titleTag);
     title.id = `${titleId}-${governanceOverlaySequence}`;
@@ -2009,29 +2057,20 @@ function getTopGovernanceMenuOverlay(id = '') {
     }, null);
 }
 
-function returnToGovernanceRootOverlay(sourceOverlay) {
-    const rootOverlay = sourceOverlay?.governanceRootOverlay;
+function closeGovernanceOverlayStack(sourceOverlay) {
+    const rootOverlay = sourceOverlay?.governanceRootOverlay || sourceOverlay;
     if (!rootOverlay?.isConnected) return;
 
-    if (sourceOverlay === rootOverlay) {
-        const closeRootOverlay = rootOverlay.governanceCloseOverlay;
-        if (typeof closeRootOverlay === 'function') closeRootOverlay();
-        if (rootOverlay.isConnected) rootOverlay.remove();
-        syncGovernanceMenuOverlayAccessibility();
-        return;
-    }
-
     let topOverlay = getTopGovernanceMenuOverlay();
-    while (topOverlay && topOverlay !== rootOverlay) {
+    while (topOverlay) {
         const closeOverlay = topOverlay.governanceCloseOverlay;
         if (typeof closeOverlay === 'function') closeOverlay();
         if (topOverlay.isConnected) topOverlay.remove();
+        if (topOverlay === rootOverlay) break;
         topOverlay = getTopGovernanceMenuOverlay();
     }
 
     syncGovernanceMenuOverlayAccessibility();
-    const rootClose = rootOverlay.querySelector('.governance-close');
-    if (rootClose) rootClose.focus();
 }
 
 function getNextGovernanceOverlayZIndex() {
