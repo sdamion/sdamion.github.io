@@ -3447,16 +3447,20 @@ function renderSpoDirectory(container, spos) {
         name.className = 'governance-cc-member-hash';
         name.textContent = getSpoDisplayName(spo);
 
+        const cloudService = document.createElement('span');
+        cloudService.className = 'governance-cc-member-meta';
+        cloudService.textContent = `Cloud Service: ${getSpoCloudServiceText(spo)}`;
+
         const delegated = document.createElement('span');
         delegated.className = 'governance-cc-member-stats';
-        delegated.textContent = `Delegated: ${formatCompactAdaFromLovelace(spo.delegated_lovelace)}`;
+        delegated.textContent = `Delegation: ${formatCompactAdaFromLovelace(spo.delegated_lovelace)}`;
 
         const delegators = document.createElement('span');
         delegators.className = 'governance-cc-member-meta';
         delegators.textContent = `Delegators: ${Number(spo.delegator_count || 0).toLocaleString('en-US')}`;
 
         const idLine = createSpoPoolIdLine(spo.pool_id);
-        copy.append(name, delegated, delegators, idLine);
+        copy.append(name, cloudService, delegated, delegators, idLine);
         row.append(number, copy);
         bindGovernanceMenuTrigger(row, event => openSpoDetailOverlay(spo, event.currentTarget));
         fragment.appendChild(row);
@@ -3558,7 +3562,8 @@ function renderSpoDetails(container, spo) {
     stats.className = 'governance-spo-detail-stats';
     [
         ['Delegators', Number(spo.delegator_count || 0).toLocaleString('en-US')],
-        ['Delegated', formatFullAdaFromLovelace(spo.delegated_lovelace)],
+        ['Delegation', formatFullAdaFromLovelace(spo.delegated_lovelace)],
+        ['Cloud Service', getSpoCloudServiceText(spo)],
         ['Pledge', formatFullAdaFromLovelace(spo.pledge_lovelace)],
         ['Fixed cost', formatFullAdaFromLovelace(spo.fixed_cost_lovelace)],
         ['Margin', formatSpoMargin(spo.margin)]
@@ -3662,9 +3667,14 @@ function createSpoProviderBadge(provider, iconOnly = false) {
 function getSpoDisplayName(spo) {
     const name = firstNonEmptyText(spo?.name, spo?.ticker, 'No Name');
     const ticker = firstNonEmptyText(spo?.ticker);
-    const poolName = ticker && ticker.toLowerCase() !== name.toLowerCase() ? `[${ticker}] ${name}` : name;
+    return ticker && ticker.toLowerCase() !== name.toLowerCase() ? `${name} - ${ticker}` : name;
+}
+
+function getSpoCloudServiceText(spo) {
     const providerNames = getSpoCloudProviders(spo).map(provider => provider.name);
-    return providerNames.length ? `${poolName} (${providerNames.join(', ')})` : poolName;
+    if (!providerNames.length) return 'Not identified';
+    const label = providerNames.join(', ');
+    return getSpoCloudHostingType(spo) === 'partial-cloud' ? `${label} (Partial cloud)` : label;
 }
 
 function getSpoCloudProviders(spo) {
