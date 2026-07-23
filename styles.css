@@ -1338,6 +1338,15 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     max-height: min(92vh, 1080px);
 }
 
+.governance-constitution-chat-dialog {
+    width: min(920px, 100%);
+    max-height: min(88vh, 960px);
+}
+
+.governance-constitution-chat-dialog .constitution-chat {
+    margin: 0;
+}
+
 .constitution-document {
     min-width: 0;
 }

@@ -92,9 +92,8 @@ if (document.readyState === 'loading') {
 }
 
 function initGovernance() {
-    setupConstitutionChat();
-    setupConstitutionDocument();
     setupGovernanceMenuKeyboard();
+    setupConstitutionAssistantCard();
     removeDrepPowerSplitCard();
     ensureEpochCountdownCard();
     setupGovernanceSummaryActionCards();
@@ -107,6 +106,96 @@ function initGovernance() {
     loadDrepDirectory().catch(() => {});
     loadSpoDirectory().catch(() => {});
     loadTreasuryData().catch(() => {});
+}
+
+function setupConstitutionAssistantCard() {
+    const card = document.getElementById('gov-constitution-card');
+    bindGovernanceMenuTrigger(card, openConstitutionAssistantOverlay);
+}
+
+function openConstitutionAssistantOverlay() {
+    if (getTopGovernanceMenuOverlay('constitution-assistant-overlay')) return;
+    const panel = createConstitutionChatPanel();
+    createGovernanceMenuOverlay({
+        id: 'constitution-assistant-overlay',
+        titleId: 'constitution-assistant-title',
+        titleText: 'Ask the Constitution',
+        closeLabel: 'Close Constitution assistant',
+        closeOverlay: closeConstitutionAssistantOverlay,
+        bodyNodes: [panel],
+        dialogClass: 'governance-constitution-chat-dialog',
+        enableSearch: false,
+        returnFocus: document.getElementById('gov-constitution-card')
+    });
+    setupConstitutionChat();
+    setupConstitutionDocument();
+    document.getElementById('constitution-chat-question')?.focus();
+}
+
+function closeConstitutionAssistantOverlay() {
+    removeGovernanceMenuOverlay('constitution-assistant-overlay');
+}
+
+function createConstitutionChatPanel() {
+    const panel = document.createElement('section');
+    panel.className = 'constitution-chat governance-menu-card';
+    panel.setAttribute('aria-labelledby', 'constitution-chat-title');
+
+    const heading = document.createElement('div');
+    heading.className = 'constitution-chat-heading';
+    const headingCopy = document.createElement('div');
+    const title = document.createElement('strong');
+    title.id = 'constitution-chat-title';
+    title.textContent = 'Ask the Constitution';
+    const subtitle = document.createElement('span');
+    subtitle.textContent = 'Current Constitution · All cached governance actions';
+    headingCopy.append(title, subtitle);
+    const readButton = document.createElement('button');
+    readButton.id = 'constitution-document-open';
+    readButton.type = 'button';
+    readButton.textContent = 'Read Constitution';
+    heading.append(headingCopy, readButton);
+
+    const messages = document.createElement('div');
+    messages.id = 'constitution-chat-messages';
+    messages.className = 'constitution-chat-messages';
+    messages.setAttribute('aria-live', 'polite');
+    const empty = document.createElement('p');
+    empty.className = 'constitution-chat-empty';
+    empty.textContent = 'Ask about a governance action, voting body, treasury rule, or constitutional guardrail.';
+    messages.appendChild(empty);
+
+    const form = document.createElement('form');
+    form.id = 'constitution-chat-form';
+    form.className = 'constitution-chat-form';
+    const label = document.createElement('label');
+    label.className = 'sr-only';
+    label.htmlFor = 'constitution-chat-question';
+    label.textContent = 'Question about Cardano governance';
+    const input = document.createElement('textarea');
+    input.id = 'constitution-chat-question';
+    input.name = 'question';
+    input.rows = 1;
+    input.maxLength = 600;
+    input.placeholder = 'Ask about a governance action or the Constitution';
+    input.required = true;
+    const submit = document.createElement('button');
+    submit.id = 'constitution-chat-submit';
+    submit.type = 'submit';
+    submit.textContent = 'Ask';
+    form.append(label, input, submit);
+
+    const status = document.createElement('p');
+    status.id = 'constitution-chat-status';
+    status.className = 'constitution-chat-status';
+    status.setAttribute('role', 'status');
+    status.setAttribute('aria-live', 'polite');
+    const note = document.createElement('p');
+    note.className = 'constitution-chat-note';
+    note.textContent = 'AI-generated answer. Verify proposal details and constitutional references before making decisions.';
+
+    panel.append(heading, messages, form, status, note);
+    return panel;
 }
 
 function setupConstitutionDocument() {
@@ -210,26 +299,49 @@ function setupConstitutionChat() {
         submit.disabled = true;
         input.disabled = true;
         status.textContent = 'Consulting the Constitution...';
+        let pendingAnswerMessage = null;
 
         try {
             const response = await fetch(getConstitutionChatApiUrl(), {
                 method: 'POST',
                 headers: {
-                    accept: 'application/json',
+                    accept: 'application/x-ndjson, application/json',
                     'content-type': 'application/json'
                 },
-                body: JSON.stringify({ question, history })
+                body: JSON.stringify({ question, history, stream: true })
             });
-            const payload = await response.json().catch(() => ({}));
             if (!response.ok) {
+                const payload = await response.json().catch(() => ({}));
                 throw new Error(payload.error || `Constitution assistant returned ${response.status}`);
             }
-            appendConstitutionChatMessage(messages, payload.answer, 'answer');
-            conversation.push({ role: 'assistant', content: String(payload.answer || '') });
+            const contentType = response.headers.get('content-type') || '';
+            let payload;
+            let answer = '';
+            if (contentType.includes('application/x-ndjson') && response.body) {
+                pendingAnswerMessage = appendConstitutionChatMessage(messages, '', 'answer');
+                payload = await readConstitutionChatStream(response, event => {
+                    answer += String(event.text || '');
+                    pendingAnswerMessage.body.textContent = answer;
+                    messages.scrollTop = messages.scrollHeight;
+                    status.textContent = 'Generating answer...';
+                });
+                if (!answer) {
+                    pendingAnswerMessage.message.remove();
+                    throw new Error('The Constitution assistant returned an empty answer.');
+                }
+            } else {
+                payload = await response.json().catch(() => ({}));
+                answer = String(payload.answer || '');
+                appendConstitutionChatMessage(messages, answer, 'answer');
+            }
+            conversation.push({ role: 'assistant', content: answer });
             while (conversation.length > 12) conversation.shift();
             status.textContent = payload.cached ? 'Answer loaded from the secure cache.' : '';
         } catch (error) {
             if (conversation.at(-1)?.role === 'user') conversation.pop();
+            if (pendingAnswerMessage && !pendingAnswerMessage.body.textContent) {
+                pendingAnswerMessage.message.remove();
+            }
             appendConstitutionChatMessage(
                 messages,
                 error instanceof Error
@@ -265,6 +377,41 @@ function getConstitutionChatApiUrl() {
         : CONSTITUTION_CHAT_API_URL;
 }
 
+async function readConstitutionChatStream(response, onDelta) {
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let result = {};
+    const processLine = line => {
+        const value = line.trim();
+        if (!value) return;
+        let event;
+        try {
+            event = JSON.parse(value);
+        } catch {
+            return;
+        }
+        if (event.type === 'delta') {
+            onDelta(event);
+        } else if (event.type === 'done') {
+            result = event;
+        } else if (event.type === 'error') {
+            throw new Error(event.error || 'The Constitution assistant is temporarily unavailable.');
+        }
+    };
+
+    while (true) {
+        const { value, done } = await reader.read();
+        buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+        const lines = buffer.split(/\r?\n/);
+        buffer = lines.pop() || '';
+        lines.forEach(processLine);
+        if (done) break;
+    }
+    if (buffer) processLine(buffer);
+    return result;
+}
+
 function appendConstitutionChatMessage(container, text, type) {
     const message = document.createElement('div');
     message.className = `constitution-chat-message constitution-chat-message-${type}`;
@@ -279,6 +426,7 @@ function appendConstitutionChatMessage(container, text, type) {
         container.firstElementChild?.remove();
     }
     container.scrollTop = container.scrollHeight;
+    return { message, body };
 }
 
 function setupTreasuryCard() {
