@@ -3470,9 +3470,9 @@ function createSpoCloudStatusChart(spos, directory) {
         return result;
     }, { 'full-cloud': 0, 'partial-cloud': 0, 'no-cloud': 0 });
     const groups = [
-        { key: 'full-cloud', label: 'Full cloud', color: '#34d399', value: counts['full-cloud'] },
-        { key: 'partial-cloud', label: 'Partial cloud', color: '#f59e0b', value: counts['partial-cloud'] },
-        { key: 'no-cloud', label: 'No cloud', color: '#94a3b8', value: counts['no-cloud'] }
+        { key: 'full-cloud', label: 'Full cloud', color: '#f87171', value: counts['full-cloud'] },
+        { key: 'partial-cloud', label: 'Partial cloud', color: '#fbbf24', value: counts['partial-cloud'] },
+        { key: 'no-cloud', label: 'No cloud', color: '#34d399', value: counts['no-cloud'] }
     ];
 
     const section = document.createElement('section');
