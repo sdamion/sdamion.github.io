@@ -3636,7 +3636,7 @@ function renderSpoDetails(container, spo) {
             }
             const provider = relay?.provider || spo.cloud_provider;
             if (provider) {
-                card.appendChild(createSpoProviderBadge());
+                card.appendChild(createSpoProviderBadge(provider));
             } else {
                 const provider = document.createElement('span');
                 provider.textContent = 'Cloud provider not identified';
@@ -3667,13 +3667,13 @@ function createSpoPoolIdLine(poolId) {
     return line;
 }
 
-function createSpoProviderBadge() {
+function createSpoProviderBadge(provider) {
     const badge = document.createElement('span');
     badge.className = 'governance-spo-provider';
     const name = document.createElement('span');
-    name.textContent = 'Cloud SPO';
+    name.textContent = `Cloud Service: ${provider?.name || 'Not identified'}`;
     badge.appendChild(name);
-    badge.setAttribute('aria-label', 'Cloud SPO');
+    badge.setAttribute('aria-label', name.textContent);
     return badge;
 }
 
@@ -3684,7 +3684,21 @@ function getSpoDisplayName(spo) {
 }
 
 function getSpoCloudServiceText(spo) {
-    return getSpoCloudHostingType(spo) === 'cloud-spo' ? 'Cloud SPO' : 'Not identified';
+    const providerNames = getSpoCloudProviders(spo).map(provider => provider.name);
+    return providerNames.length ? providerNames.join(', ') : 'Not identified';
+}
+
+function getSpoCloudProviders(spo) {
+    const providers = new Map();
+    const addProvider = provider => {
+        const id = firstNonEmptyText(provider?.id);
+        const name = firstNonEmptyText(provider?.name);
+        if (id && name) providers.set(id, { id, name });
+    };
+
+    addProvider(spo?.cloud_provider);
+    (Array.isArray(spo?.relays) ? spo.relays : []).forEach(relay => addProvider(relay?.provider));
+    return Array.from(providers.values());
 }
 
 function formatSpoMargin(value) {
