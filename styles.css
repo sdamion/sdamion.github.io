@@ -1531,6 +1531,27 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     text-transform: lowercase;
 }
 
+.governance-summary .governance-constitution-blink {
+    animation: constitution-label-blink 1.6s ease-in-out infinite;
+}
+
+@keyframes constitution-label-blink {
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.32;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .governance-summary .governance-constitution-blink {
+        animation: none;
+    }
+}
+
 .governance-summary span {
     color: var(--muted);
     font-size: 0.9rem;
