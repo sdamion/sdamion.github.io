@@ -1545,17 +1545,7 @@ function createGovernanceCard(proposal, options = {}) {
     card.appendChild(openButton);
 
     if (isGovernanceProposalOpenForVoting(proposal)) {
-        const voteButton = document.createElement('button');
-        voteButton.type = 'button';
-        voteButton.className = 'governance-vote-button';
-        voteButton.textContent = 'Vote';
-        voteButton.setAttribute('aria-label', `Vote on ${getProposalTitle(proposal)}`);
-        voteButton.addEventListener('click', event => {
-            event.preventDefault();
-            event.stopPropagation();
-            openGovernanceVoteOverlay(proposal, event.currentTarget);
-        });
-        card.appendChild(voteButton);
+        card.appendChild(createGovernanceProposalActionButtons(proposal));
     }
 
     return card;
@@ -2012,27 +2002,7 @@ function openGovernanceOverlay(proposal, options = {}) {
 
     const content = document.createElement('div');
     content.className = 'governance-detail-content';
-    const actions = document.createElement('div');
-    actions.className = 'governance-action-buttons';
-    const summaryButton = document.createElement('button');
-    summaryButton.type = 'button';
-    summaryButton.className = 'governance-vote-button governance-summary-button';
-    summaryButton.textContent = 'Summary';
-    summaryButton.addEventListener('click', event => {
-        openProposalSummaryOverlay(proposal, event.currentTarget);
-    });
-    actions.appendChild(summaryButton);
-    if (isGovernanceProposalOpenForVoting(proposal)) {
-        const voteButton = document.createElement('button');
-        voteButton.type = 'button';
-        voteButton.className = 'governance-vote-button governance-detail-vote-button';
-        voteButton.textContent = 'Vote as DRep';
-        voteButton.addEventListener('click', event => {
-            openGovernanceVoteOverlay(proposal, event.currentTarget);
-        });
-        actions.appendChild(voteButton);
-    }
-    content.appendChild(actions);
+    content.appendChild(createGovernanceProposalActionButtons(proposal));
     const voteDetailsContainer = document.createElement('div');
     voteDetailsContainer.className = 'governance-vote-details';
     voteDetailsContainer.dataset.proposalId = proposal.proposal_id;
@@ -2077,6 +2047,37 @@ function openGovernanceOverlay(proposal, options = {}) {
                 renderGovernanceProposalDetails(proposalDetailsContainer, proposal, { hasError: true });
             });
     }
+}
+
+function createGovernanceProposalActionButtons(proposal) {
+    const actions = document.createElement('div');
+    actions.className = 'governance-action-buttons';
+    actions.appendChild(createGovernanceProposalActionButton(
+        'Summary',
+        'governance-summary-button',
+        (event) => openProposalSummaryOverlay(proposal, event.currentTarget)
+    ));
+    if (isGovernanceProposalOpenForVoting(proposal)) {
+        actions.appendChild(createGovernanceProposalActionButton(
+            'Vote as DRep',
+            'governance-detail-vote-button',
+            (event) => openGovernanceVoteOverlay(proposal, event.currentTarget)
+        ));
+    }
+    return actions;
+}
+
+function createGovernanceProposalActionButton(label, className, onClick) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = `governance-vote-button governance-proposal-action-button ${className}`;
+    button.textContent = label;
+    button.addEventListener('click', event => {
+        event.preventDefault();
+        event.stopPropagation();
+        onClick(event);
+    });
+    return button;
 }
 
 function openProposalSummaryOverlay(proposal, returnFocus) {
@@ -2154,8 +2155,8 @@ async function loadProposalSummary(proposal, container, attempt = 0) {
     const warning = document.createElement('p');
     warning.className = 'small-text governance-proposal-summary-warning';
     warning.textContent = payload?.status === 'stale'
-        ? 'AI-generated summary based on an older proposal version. Verify it against the full proposal.'
-        : 'AI-generated summary. Verify important details against the full proposal before making decisions.';
+        ? '!! AI-generated summary based on an older proposal version. Verify it against the full proposal. !!'
+        : '!! AI-generated summary. Verify important details against the full proposal before making decisions. !!';
     container.appendChild(warning);
 }
 

@@ -1196,13 +1196,21 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 
 .governance-action-buttons {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 10px;
+    width: 100%;
     margin-bottom: 12px;
 }
 
-.governance-action-buttons .governance-detail-vote-button {
+.governance-action-buttons .governance-proposal-action-button {
+    flex: 1 1 0;
+    min-width: 0;
+    width: auto;
     margin: 0;
+}
+
+.governance-card > .governance-action-buttons {
+    margin: 14px 0 0;
 }
 
 .governance-proposal-summary {
@@ -1238,6 +1246,7 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 
 .governance-proposal-summary-warning {
     margin: 14px 0 0;
+    font-weight: 700;
 }
 
 .governance-list {
