@@ -151,7 +151,7 @@ function createConstitutionChatPanel() {
     title.id = 'constitution-chat-title';
     title.textContent = 'Ask the Constitution';
     const subtitle = document.createElement('span');
-    subtitle.textContent = 'Current Constitution · All cached governance actions';
+    subtitle.textContent = 'Constitution · Governance · DReps · SPOs · Starch · Treasury';
     headingCopy.append(title, subtitle);
     const readButton = document.createElement('button');
     readButton.id = 'constitution-document-open';
@@ -173,7 +173,7 @@ function createConstitutionChatPanel() {
     messages.setAttribute('aria-live', 'polite');
     const empty = document.createElement('p');
     empty.className = 'constitution-chat-empty';
-    empty.textContent = 'Ask about a governance action, voting body, treasury rule, or constitutional guardrail.';
+    empty.textContent = 'Ask about cached governance, DReps, SPOs, Starch, Treasury, or the Constitution.';
     messages.appendChild(empty);
 
     const form = document.createElement('form');
@@ -188,7 +188,7 @@ function createConstitutionChatPanel() {
     input.name = 'question';
     input.rows = 1;
     input.maxLength = 600;
-    input.placeholder = 'Ask about a governance action or the Constitution';
+    input.placeholder = 'Search cached Cardano data or ask about the Constitution';
     input.required = true;
     const submit = document.createElement('button');
     submit.id = 'constitution-chat-submit';
@@ -300,7 +300,7 @@ function setupConstitutionChat() {
         messages.textContent = '';
         const empty = document.createElement('p');
         empty.className = 'constitution-chat-empty';
-        empty.textContent = 'Ask about a governance action, voting body, treasury rule, or constitutional guardrail.';
+        empty.textContent = 'Ask about cached governance, DReps, SPOs, Starch, Treasury, or the Constitution.';
         messages.appendChild(empty);
         input.value = '';
         resizeInput();
