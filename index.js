@@ -3,6 +3,7 @@ const THEME_STORAGE_KEY = 'tdsp-theme';
 const OVERLAY_SORT_STORAGE_KEY = 'tdsp-overlay-sort';
 const PRICE_API_URL = IS_LOCAL_PREVIEW ? '/__prices_proxy__' : 'https://api.tdsp.online/api/prices';
 const NEWS_API_URL = IS_LOCAL_PREVIEW ? '/__news_proxy__' : 'https://api.tdsp.online/api/news';
+const CARDANO_EVENTS_API_URL = IS_LOCAL_PREVIEW ? '/__events_proxy__' : 'https://api.tdsp.online/api/events';
 const POOL_API_URL = IS_LOCAL_PREVIEW ? '/__pool_proxy__' : 'https://api.tdsp.online/api/pool';
 const MITHRIL_API_URL = IS_LOCAL_PREVIEW ? '/__mithril_proxy__' : 'https://api.tdsp.online/api/mithril';
 const ICEBREAKER_API_URL = IS_LOCAL_PREVIEW ? '/__icebreaker_proxy__' : 'https://api.tdsp.online/api/icebreaker';
@@ -493,6 +494,108 @@ async function fetchCryptoNews() {
     }
 }
 
+function parseCardanoEventDate(value) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ''))) return null;
+    const date = new Date(`${value}T12:00:00Z`);
+    return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatCardanoEventDate(startValue, endValue) {
+    const start = parseCardanoEventDate(startValue);
+    const end = parseCardanoEventDate(endValue) || start;
+    if (!start) return 'Date unavailable';
+
+    const full = new Intl.DateTimeFormat('en-GB', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        timeZone: 'UTC'
+    });
+    if (!end || start.getTime() === end.getTime()) return full.format(start);
+
+    const startYear = start.getUTCFullYear();
+    const endYear = end.getUTCFullYear();
+    const startMonth = start.getUTCMonth();
+    const endMonth = end.getUTCMonth();
+    if (startYear === endYear && startMonth === endMonth) {
+        const month = new Intl.DateTimeFormat('en-GB', { month: 'short', timeZone: 'UTC' }).format(start);
+        return `${start.getUTCDate()} to ${end.getUTCDate()} ${month} ${startYear}`;
+    }
+    return `${full.format(start)} to ${full.format(end)}`;
+}
+
+function createCardanoEventCard(event) {
+    const card = document.createElement('article');
+    card.className = 'cardano-event-card';
+
+    if (event?.image_url) {
+        const image = document.createElement('img');
+        image.className = 'cardano-event-image';
+        image.src = event.image_url;
+        image.alt = event.title || 'Cardano event';
+        image.loading = 'lazy';
+        image.referrerPolicy = 'no-referrer';
+        image.addEventListener('error', () => image.remove(), { once: true });
+        card.appendChild(image);
+    }
+
+    const copy = document.createElement('div');
+    copy.className = 'cardano-event-copy';
+
+    const date = document.createElement('strong');
+    date.className = 'cardano-event-date';
+    date.textContent = formatCardanoEventDate(event?.start_date, event?.end_date);
+
+    const title = document.createElement('h3');
+    title.textContent = event?.title || 'Cardano event';
+
+    const meta = document.createElement('p');
+    meta.className = 'cardano-event-meta';
+    meta.textContent = [event?.location, event?.organizer].filter(Boolean).join(' | ') || 'Event details';
+
+    const description = document.createElement('p');
+    description.className = 'cardano-event-description';
+    description.textContent = event?.description || 'More information is available on the event website.';
+
+    copy.append(date, title, meta, description);
+
+    if (event?.link) {
+        const link = document.createElement('a');
+        link.className = 'cardano-event-link';
+        link.href = event.link;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = 'View event';
+        copy.appendChild(link);
+    }
+
+    card.appendChild(copy);
+    return card;
+}
+
+async function fetchCardanoEvents() {
+    const container = document.getElementById('cardano-events');
+    if (!container) return;
+
+    try {
+        const response = await fetch(CARDANO_EVENTS_API_URL, { cache: 'no-store' });
+        if (!response.ok) throw new Error(`Events API HTTP Error: ${response.status}`);
+        const payload = await response.json();
+        const today = new Date().toISOString().slice(0, 10);
+        const events = (Array.isArray(payload?.events) ? payload.events : [])
+            .filter(event => String(event?.end_date || event?.start_date || '') >= today)
+            .sort((left, right) => String(left?.start_date || '').localeCompare(String(right?.start_date || '')));
+        if (!events.length) throw new Error('Events API returned no upcoming events');
+        container.replaceChildren(...events.map(createCardanoEventCard));
+    } catch (error) {
+        console.error('Cardano events could not be loaded', error);
+        const message = document.createElement('p');
+        message.className = 'small-text';
+        message.textContent = 'Upcoming Cardano events are temporarily unavailable.';
+        container.replaceChildren(message);
+    }
+}
+
 // Fetch prices on page load and set up auto-update
 // Initialize UI behaviors and price fetching when DOM is ready
 document.addEventListener("DOMContentLoaded", () => {
@@ -506,6 +609,7 @@ document.addEventListener("DOMContentLoaded", () => {
     initCryptoNewsTicker();
     fetchPrices();
     fetchCryptoNews();
+    fetchCardanoEvents();
     fetchPoolStatus();
     fetchMithrilStatus();
     fetchIcebreakerStatus();
@@ -513,6 +617,7 @@ document.addEventListener("DOMContentLoaded", () => {
     fetchLeaderSchedule();
     setInterval(fetchPrices, 30000);
     setInterval(fetchCryptoNews, 300000);
+    setInterval(fetchCardanoEvents, 900000);
     setInterval(fetchPoolStatus, 300000);
     setInterval(fetchMithrilStatus, 300000);
     setInterval(fetchIcebreakerStatus, 300000);

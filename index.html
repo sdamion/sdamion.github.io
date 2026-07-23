@@ -47,9 +47,9 @@
 
     <!-- Preload Logo -->
     <link rel="preload" href="tdsp_logo.webp" as="image">
-    <link rel="stylesheet" href="styles.css?v=20260723-remove-cloud-provider-logos">
+    <link rel="stylesheet" href="styles.css?v=20260723-cardano-calendar">
 
-    <script src="index.js?v=20260723-top-ten-cloud-providers" defer></script>
+    <script src="index.js?v=20260723-cardano-calendar" defer></script>
 </head>
 <body>
     <header class="site-header" id="site-header">
@@ -60,6 +60,7 @@
                     <a class="nav-link" href="#pool">Pool</a>
                     <a class="nav-link" href="#starch">Starch</a>
                     <a class="nav-link" href="#governance">Governance</a>
+                    <a class="nav-link" href="#calendar">Cardano Calendar</a>
                     <a class="nav-link" href="#stakenow" data-stake-open>Stake Now</a>
                     <a class="nav-link" href="https://twitter.com/DamionDutch" target="_blank" rel="noopener noreferrer">X</a>
                 </nav>
@@ -303,6 +304,20 @@
                 </div>
 
                 <p class="small-text">Source: <a href="https://api.koios.rest/" target="_blank" rel="noopener noreferrer" aria-label="Koios API">Koios API</a></p>
+            </div>
+        </section>
+
+        <section class="section cardano-calendar-section" id="calendar">
+            <div class="section-inner">
+                <p class="eyebrow">Calendar</p>
+                <h2>Cardano Events</h2>
+                <div id="cardano-events" class="cardano-events-grid" aria-live="polite">
+                    <p class="small-text">Loading upcoming Cardano events...</p>
+                </div>
+                <p class="small-text">
+                    Source:
+                    <a href="https://cardano.org/events/" target="_blank" rel="noopener noreferrer">cardano.org/events</a>
+                </p>
             </div>
         </section>
 
