@@ -2138,13 +2138,23 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     display: inline-flex;
 }
 
-.governance-spo-provider-logo {
-    width: 22px;
-    height: 22px;
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-    object-fit: contain;
+.governance-cc-member.governance-spo-directory-card {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+}
+
+.governance-spo-hosting-icon {
+    width: 30px;
+    height: 30px;
+    flex: 0 0 auto;
+}
+
+.governance-spo-hosting-icon.is-cloud {
+    color: #f87171;
+}
+
+.governance-spo-hosting-icon.is-hardware {
+    color: #34d399;
 }
 
 .governance-cc-member {

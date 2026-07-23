@@ -52,19 +52,24 @@ const TREASURY_ADMINISTRATOR_COLORS = Object.freeze([
     '#f97316', '#a78bfa', '#22c55e', '#38bdf8', '#eab308',
     '#f43f5e', '#14b8a6', '#818cf8', '#84cc16', '#f59e0b'
 ]);
-const SPO_CLOUD_PROVIDER_LOGOS = Object.freeze({
-    aws: 'https://cdn.simpleicons.org/amazonwebservices/FF9900',
-    azure: 'https://cdn.simpleicons.org/microsoftazure/0078D4',
-    'google-cloud': 'https://cdn.simpleicons.org/googlecloud/4285F4',
-    digitalocean: 'https://cdn.simpleicons.org/digitalocean/0080FF',
-    hetzner: 'https://cdn.simpleicons.org/hetzner/D50C2D',
-    ovh: 'https://cdn.simpleicons.org/ovh/123F6D',
-    akamai: 'https://cdn.simpleicons.org/akamai/0096D6',
-    vultr: 'https://cdn.simpleicons.org/vultr/007BFC',
-    'oracle-cloud': 'https://cdn.simpleicons.org/oracle/F80000',
-    scaleway: 'https://cdn.simpleicons.org/scaleway/4F0599'
-});
-
+const SPO_CLOUD_PROVIDER_CHART_STYLES = Object.freeze([
+    { key: 'aws', label: 'Amazon Web Services', color: '#ef4444' },
+    { key: 'azure', label: 'Microsoft Azure', color: '#dc2626' },
+    { key: 'google-cloud', label: 'Google Cloud Platform', color: '#f87171' },
+    { key: 'oracle-cloud', label: 'Oracle Cloud Infrastructure', color: '#b91c1c' },
+    { key: 'alibaba-cloud', label: 'Alibaba Cloud', color: '#fb7185' },
+    { key: 'ibm-cloud', label: 'IBM Cloud', color: '#e11d48' },
+    { key: 'tencent-cloud', label: 'Tencent Cloud', color: '#be123c' },
+    { key: 'huawei-cloud', label: 'Huawei Cloud', color: '#f43f5e' },
+    { key: 'ovh', label: 'OVHcloud', color: '#991b1b' },
+    { key: 'digitalocean', label: 'DigitalOcean', color: '#e05252' },
+    { key: 'multi-cloud', label: 'Multi-cloud', color: '#7f1d1d' }
+]);
+const SPO_CLOUD_PROVIDER_KEYS = new Set(
+    SPO_CLOUD_PROVIDER_CHART_STYLES
+        .map(provider => provider.key)
+        .filter(key => key !== 'multi-cloud')
+);
 let governanceRefreshTimer = null;
 let epochCountdownTimer = null;
 let epochEndsAtMs = null;
@@ -3425,15 +3430,15 @@ function renderSpoDirectory(container, spos) {
     const fragment = document.createDocumentFragment();
     spos.forEach((spo, index) => {
         const row = document.createElement('div');
-        row.className = 'governance-cc-member governance-menu-card governance-cc-member-clickable';
+        row.className = 'governance-cc-member governance-menu-card governance-cc-member-clickable governance-spo-directory-card';
         row.dataset.searchText = `${spo.name || ''} ${spo.ticker || ''} ${spo.pool_id || ''}`.trim();
         row.dataset.sortName = normalizeOverlaySearchText(getSpoDisplayName(spo));
         row.dataset.sortAmount = String(Number(spo.delegated_lovelace) || 0);
         row.dataset.sortDelegators = String(Number(spo.delegator_count) || 0);
         const cloudHostingType = getSpoCloudHostingType(spo);
-        row.dataset.sortFullCloud = cloudHostingType === 'full-cloud' ? '1' : '0';
-        row.dataset.sortPartialCloud = cloudHostingType === 'partial-cloud' ? '1' : '0';
-        row.dataset.sortNoCloud = cloudHostingType === 'no-cloud' ? '1' : '0';
+        row.dataset.cloudProviderKeys = getSpoCloudProviderKeys(spo).join(' ');
+        row.dataset.sortCloudSpo = cloudHostingType === 'cloud-spo' ? '1' : '0';
+        row.dataset.sortSpo = cloudHostingType === 'spo' ? '1' : '0';
         row.setAttribute('role', 'button');
         row.tabIndex = 0;
         row.setAttribute('aria-label', `Show ${getSpoDisplayName(spo)} stake pool details`);
@@ -3461,7 +3466,7 @@ function renderSpoDirectory(container, spos) {
 
         const idLine = createSpoPoolIdLine(spo.pool_id);
         copy.append(name, cloudService, delegated, delegators, idLine);
-        row.append(number, copy);
+        row.append(number, copy, createSpoHostingIcon(cloudHostingType));
         bindGovernanceMenuTrigger(row, event => openSpoDetailOverlay(spo, event.currentTarget));
         fragment.appendChild(row);
     });
@@ -3469,14 +3474,16 @@ function renderSpoDirectory(container, spos) {
 }
 
 function createSpoCloudStatusChart(spos, directory) {
-    const counts = spos.reduce((result, spo) => {
-        result[getSpoCloudHostingType(spo)] += 1;
-        return result;
-    }, { 'full-cloud': 0, 'partial-cloud': 0, 'no-cloud': 0 });
+    const counts = new Map([['spo', 0]]);
+    spos.forEach(spo => {
+        const key = getSpoCloudChartKey(spo);
+        counts.set(key, (counts.get(key) || 0) + 1);
+    });
     const groups = [
-        { key: 'full-cloud', label: 'Full cloud', color: '#f87171', value: counts['full-cloud'] },
-        { key: 'partial-cloud', label: 'Partial cloud', color: '#fbbf24', value: counts['partial-cloud'] },
-        { key: 'no-cloud', label: 'No cloud', color: '#34d399', value: counts['no-cloud'] }
+        ...SPO_CLOUD_PROVIDER_CHART_STYLES
+            .map(group => ({ ...group, value: counts.get(group.key) || 0 }))
+            .filter(group => group.value > 0),
+        { key: 'spo', label: 'SPO', color: '#34d399', value: counts.get('spo') || 0 }
     ];
 
     const section = document.createElement('section');
@@ -3499,13 +3506,46 @@ function createSpoCloudStatusChart(spos, directory) {
             label: group.label,
             detail: `${group.value.toLocaleString('en-US')} SPOs • ${formatPercentage(percentage)}`,
             color: group.color,
-            onClick: () => applySpoCloudSort(directory, `${group.key}-first`)
+            onClick: () => applySpoCloudChartSort(directory, group.key)
         }));
     });
 
     layout.append(chart, legend);
     section.append(title, layout);
     return section;
+}
+
+function applySpoCloudChartSort(directory, key) {
+    if (key === 'spo') {
+        applySpoCloudSort(directory, 'spo-first');
+        return;
+    }
+
+    const body = directory?.closest('.overlay-dialog-body');
+    if (!body) return;
+    const cards = getOverlaySearchCards(body);
+    cards.forEach((card, index) => {
+        if (card.dataset.overlaySortIndex === undefined) {
+            card.dataset.overlaySortIndex = String(index);
+        }
+    });
+    const matches = card => {
+        const providers = String(card.dataset.cloudProviderKeys || '').split(/\s+/).filter(Boolean);
+        return key === 'multi-cloud' ? providers.length > 1 : providers.includes(key);
+    };
+    const cardsByParent = new Map();
+    cards.forEach(card => {
+        const siblings = cardsByParent.get(card.parentElement) || [];
+        siblings.push(card);
+        cardsByParent.set(card.parentElement, siblings);
+    });
+    cardsByParent.forEach((siblings, parent) => {
+        [...siblings]
+            .sort((left, right) =>
+                Number(matches(right)) - Number(matches(left))
+                || Number(left.dataset.overlaySortIndex) - Number(right.dataset.overlaySortIndex))
+            .forEach(card => parent.appendChild(card));
+    });
 }
 
 function applySpoCloudSort(directory, mode) {
@@ -3523,17 +3563,68 @@ function applySpoCloudSort(directory, mode) {
 
 function getSpoCloudHostingType(spo) {
     const relays = Array.isArray(spo?.relays) ? spo.relays : [];
-    const cloudRelayCount = relays.filter(relay => Boolean(relay?.provider?.id)).length;
-    if (relays.length > 0 && cloudRelayCount === relays.length) return 'full-cloud';
-    if (cloudRelayCount > 0) return 'partial-cloud';
-    return 'no-cloud';
+    return relays.length > 0
+        && relays.every(relay => SPO_CLOUD_PROVIDER_KEYS.has(firstNonEmptyText(relay?.provider?.id)))
+        ? 'cloud-spo'
+        : 'spo';
+}
+
+function getSpoCloudProviderKeys(spo) {
+    return [...new Set(
+        (Array.isArray(spo?.relays) ? spo.relays : [])
+            .map(relay => firstNonEmptyText(relay?.provider?.id))
+            .filter(Boolean)
+    )];
+}
+
+function getSpoCloudChartKey(spo) {
+    if (getSpoCloudHostingType(spo) !== 'cloud-spo') return 'spo';
+    const providers = getSpoCloudProviderKeys(spo);
+    return providers.length === 1 ? providers[0] : 'multi-cloud';
+}
+
+function createSpoHostingIcon(hostingType) {
+    const isCloud = hostingType === 'cloud-spo';
+    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    icon.classList.add('governance-spo-hosting-icon');
+    icon.classList.add(isCloud ? 'is-cloud' : 'is-hardware');
+    icon.setAttribute('viewBox', '0 0 24 24');
+    icon.setAttribute('fill', 'none');
+    icon.setAttribute('stroke', 'currentColor');
+    icon.setAttribute('stroke-width', '2');
+    icon.setAttribute('stroke-linecap', 'round');
+    icon.setAttribute('stroke-linejoin', 'round');
+    icon.setAttribute('role', 'img');
+    icon.setAttribute('aria-label', isCloud ? 'Cloud SPO' : 'SPO hardware');
+
+    const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+    title.textContent = isCloud ? 'Cloud SPO' : 'SPO hardware';
+    icon.appendChild(title);
+
+    if (isCloud) {
+        const cloud = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        cloud.setAttribute('d', 'M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z');
+        icon.appendChild(cloud);
+    } else {
+        [
+            ['rect', { x: '2', y: '2', width: '20', height: '8', rx: '2' }],
+            ['rect', { x: '2', y: '14', width: '20', height: '8', rx: '2' }],
+            ['path', { d: 'M6 6h.01' }],
+            ['path', { d: 'M6 18h.01' }]
+        ].forEach(([tag, attributes]) => {
+            const part = document.createElementNS('http://www.w3.org/2000/svg', tag);
+            Object.entries(attributes).forEach(([name, value]) => part.setAttribute(name, value));
+            icon.appendChild(part);
+        });
+    }
+
+    return icon;
 }
 
 function openSpoDetailOverlay(spo, returnFocus) {
     const content = document.createElement('div');
     content.className = 'governance-detail-content';
     renderSpoDetails(content, spo);
-    const cloudProviders = getSpoCloudProviders(spo);
 
     createGovernanceMenuOverlay({
         id: 'governance-spo-detail-overlay',
@@ -3542,7 +3633,6 @@ function openSpoDetailOverlay(spo, returnFocus) {
         closeLabel: `Close ${getSpoDisplayName(spo)} details`,
         closeOverlay: closeSpoDetailOverlay,
         bodyNodes: [content],
-        leadingNodes: cloudProviders.length === 1 ? [createSpoProviderBadge(cloudProviders[0], true)] : [],
         headerMeta: formatCompactAdaFromLovelace(spo.delegated_lovelace),
         overlayClass: 'governance-action-detail-overlay',
         returnFocus,
@@ -3641,25 +3731,12 @@ function createSpoPoolIdLine(poolId) {
     return line;
 }
 
-function createSpoProviderBadge(provider, iconOnly = false) {
+function createSpoProviderBadge(provider) {
     const badge = document.createElement('span');
     badge.className = 'governance-spo-provider';
-    const logoUrl = SPO_CLOUD_PROVIDER_LOGOS[provider?.id];
-    if (logoUrl) {
-        const logo = document.createElement('img');
-        logo.className = 'governance-spo-provider-logo';
-        logo.src = logoUrl;
-        logo.alt = '';
-        logo.loading = 'lazy';
-        logo.referrerPolicy = 'no-referrer';
-        logo.addEventListener('error', () => logo.remove(), { once: true });
-        badge.appendChild(logo);
-    }
-    if (!iconOnly) {
-        const name = document.createElement('span');
-        name.textContent = provider?.name || 'Cloud provider';
-        badge.appendChild(name);
-    }
+    const name = document.createElement('span');
+    name.textContent = provider?.name || 'Cloud provider';
+    badge.appendChild(name);
     badge.setAttribute('aria-label', provider?.name || 'Cloud provider');
     return badge;
 }
@@ -3673,8 +3750,7 @@ function getSpoDisplayName(spo) {
 function getSpoCloudServiceText(spo) {
     const providerNames = getSpoCloudProviders(spo).map(provider => provider.name);
     if (!providerNames.length) return 'Not identified';
-    const label = providerNames.join(', ');
-    return getSpoCloudHostingType(spo) === 'partial-cloud' ? `${label} (Partial cloud)` : label;
+    return providerNames.join(', ');
 }
 
 function getSpoCloudProviders(spo) {
