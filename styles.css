@@ -1504,6 +1504,21 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     line-height: 1.15;
 }
 
+.governance-ai-label {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    min-width: 0;
+}
+
+.governance-summary .governance-ai-beta {
+    color: #f87171;
+    font-size: 0.68rem;
+    font-weight: 700;
+    line-height: 1;
+    text-transform: lowercase;
+}
+
 .governance-summary span {
     color: var(--muted);
     font-size: 0.9rem;
