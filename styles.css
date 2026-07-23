@@ -1194,6 +1194,52 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     line-height: 1.15;
 }
 
+.governance-action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.governance-action-buttons .governance-detail-vote-button {
+    margin: 0;
+}
+
+.governance-proposal-summary {
+    padding: 18px;
+}
+
+.governance-proposal-summary-text {
+    margin: 0;
+    color: var(--text);
+    font-size: 1rem;
+    line-height: 1.65;
+    white-space: pre-line;
+}
+
+.governance-proposal-summary-sections {
+    display: grid;
+    gap: 16px;
+}
+
+.governance-proposal-summary-section h3 {
+    margin: 0 0 5px;
+    color: var(--text);
+    font-size: 1rem;
+    line-height: 1.35;
+}
+
+.governance-proposal-summary-section p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
+.governance-proposal-summary-warning {
+    margin: 14px 0 0;
+}
+
 .governance-list {
     display: grid;
     gap: 12px;
