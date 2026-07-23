@@ -1272,6 +1272,166 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     padding-top: 96px;
 }
 
+.constitution-chat {
+    display: grid;
+    gap: 14px;
+    width: 100%;
+    margin: 22px 0 18px;
+    padding: 18px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--governance-card-bg);
+}
+
+.constitution-chat:hover,
+.constitution-chat:focus-within {
+    border-color: var(--line);
+    background: var(--governance-card-bg);
+    box-shadow: none;
+    transform: none;
+}
+
+.constitution-chat-heading {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    justify-content: space-between;
+}
+
+.constitution-chat-heading > div {
+    display: grid;
+    gap: 3px;
+}
+
+.constitution-chat-heading strong {
+    color: var(--text);
+    font-size: 1rem;
+}
+
+.constitution-chat-heading span,
+.constitution-chat-heading a {
+    color: var(--muted);
+    font-size: 0.82rem;
+    line-height: 1.4;
+}
+
+.constitution-chat-heading a {
+    flex: 0 0 auto;
+    color: var(--accent-strong);
+    font-weight: 700;
+}
+
+.constitution-chat-messages {
+    display: grid;
+    gap: 10px;
+    max-height: 360px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+
+.constitution-chat-empty,
+.constitution-chat-message p,
+.constitution-chat-status,
+.constitution-chat-note {
+    margin: 0;
+    font-size: 0.88rem;
+}
+
+.constitution-chat-empty,
+.constitution-chat-status,
+.constitution-chat-note {
+    color: var(--muted);
+}
+
+.constitution-chat-message {
+    display: grid;
+    gap: 4px;
+    padding: 11px 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface-muted);
+}
+
+.constitution-chat-message-question {
+    border-color: var(--accent);
+}
+
+.constitution-chat-message-answer {
+    background: var(--surface);
+}
+
+.constitution-chat-message-error strong,
+.constitution-chat-message-error p {
+    color: #f87171;
+}
+
+.constitution-chat-message p {
+    color: var(--text);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.constitution-chat-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: end;
+}
+
+.constitution-chat-form textarea {
+    width: 100%;
+    min-height: 44px;
+    max-height: 128px;
+    padding: 10px 12px;
+    resize: none;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    outline: none;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 0.9rem;
+    line-height: 1.45;
+}
+
+.constitution-chat-form textarea:focus {
+    border-color: var(--accent);
+}
+
+.constitution-chat-form button {
+    min-height: 44px;
+    padding: 0 18px;
+    border: 1px solid var(--accent-strong);
+    border-radius: 8px;
+    background: var(--accent-strong);
+    color: var(--surface);
+    font: inherit;
+    font-size: 0.88rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.constitution-chat-form button:disabled {
+    cursor: wait;
+    opacity: 0.6;
+}
+
+.constitution-chat-note {
+    font-size: 0.76rem;
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
 .governance-summary > div {
     display: grid;
     gap: 4px;
@@ -1685,6 +1845,27 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 }
 
 @media (max-width: 520px) {
+    .constitution-chat {
+        padding: 14px;
+    }
+
+    .constitution-chat-heading,
+    .constitution-chat-form {
+        grid-template-columns: 1fr;
+    }
+
+    .constitution-chat-heading {
+        display: grid;
+    }
+
+    .constitution-chat-heading a {
+        justify-self: start;
+    }
+
+    .constitution-chat-form button {
+        width: 100%;
+    }
+
     .governance-vote-choices {
         grid-template-columns: 1fr;
     }

@@ -10,6 +10,7 @@ const DREP_DETAIL_API_BASE_URL = 'https://api.tdsp.online/api/drep';
 const SPO_DIRECTORY_API_URL = 'https://api.tdsp.online/api/spos';
 const REMOTE_METADATA_API_URL = 'https://api.tdsp.online/api/metadata';
 const TREASURY_API_URL = 'https://api.tdsp.online/api/treasury';
+const CONSTITUTION_CHAT_API_URL = 'https://api.tdsp.online/api/constitution/chat';
 const LOCAL_DASHBOARD_PROXY_PATH = '/__dashboard_proxy__';
 const LOCAL_COMPACT_DASHBOARD_PROXY_PATH = '/__dashboard_compact_proxy__';
 const LOCAL_COMMITTEE_PROXY_PATH = '/__committee_proxy__';
@@ -21,6 +22,7 @@ const LOCAL_DREP_DETAIL_PROXY_PATH = '/__drep_detail_proxy__';
 const LOCAL_SPO_DIRECTORY_PROXY_PATH = '/__spo_directory_proxy__';
 const LOCAL_METADATA_PROXY_PATH = '/__metadata_proxy__';
 const LOCAL_TREASURY_PROXY_PATH = '/__treasury_proxy__';
+const LOCAL_CONSTITUTION_CHAT_PROXY_PATH = '/__constitution_chat_proxy__';
 const GOVERNANCE_MESH_CDN_URL = 'https://esm.sh/@meshsdk/core@1.9.1?bundle-deps';
 const ACTIVE_REFRESH_INTERVAL_MS = 15 * 60 * 1000;
 const EPOCH_DURATION_SECONDS = 432000;
@@ -88,6 +90,7 @@ if (document.readyState === 'loading') {
 }
 
 function initGovernance() {
+    setupConstitutionChat();
     setupGovernanceMenuKeyboard();
     removeDrepPowerSplitCard();
     ensureEpochCountdownCard();
@@ -101,6 +104,94 @@ function initGovernance() {
     loadDrepDirectory().catch(() => {});
     loadSpoDirectory().catch(() => {});
     loadTreasuryData().catch(() => {});
+}
+
+function setupConstitutionChat() {
+    const form = document.getElementById('constitution-chat-form');
+    const input = document.getElementById('constitution-chat-question');
+    const messages = document.getElementById('constitution-chat-messages');
+    const submit = document.getElementById('constitution-chat-submit');
+    const status = document.getElementById('constitution-chat-status');
+    if (!form || !input || !messages || !submit || !status) return;
+
+    const resizeInput = () => {
+        input.style.height = 'auto';
+        input.style.height = `${Math.min(input.scrollHeight, 128)}px`;
+    };
+    input.addEventListener('input', resizeInput);
+    input.addEventListener('keydown', event => {
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            form.requestSubmit();
+        }
+    });
+
+    form.addEventListener('submit', async event => {
+        event.preventDefault();
+        const question = input.value.replace(/\s+/g, ' ').trim();
+        if (!question || submit.disabled) return;
+
+        const empty = messages.querySelector('.constitution-chat-empty');
+        if (empty) empty.remove();
+        appendConstitutionChatMessage(messages, question, 'question');
+        input.value = '';
+        resizeInput();
+        submit.disabled = true;
+        input.disabled = true;
+        status.textContent = 'Consulting the Constitution...';
+
+        try {
+            const response = await fetch(getConstitutionChatApiUrl(), {
+                method: 'POST',
+                headers: {
+                    accept: 'application/json',
+                    'content-type': 'application/json'
+                },
+                body: JSON.stringify({ question })
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(payload.error || `Constitution assistant returned ${response.status}`);
+            }
+            appendConstitutionChatMessage(messages, payload.answer, 'answer');
+            status.textContent = payload.cached ? 'Answer loaded from the secure cache.' : '';
+        } catch (error) {
+            appendConstitutionChatMessage(
+                messages,
+                error instanceof Error
+                    ? error.message
+                    : 'The Constitution assistant is temporarily unavailable.',
+                'error'
+            );
+            status.textContent = '';
+        } finally {
+            submit.disabled = false;
+            input.disabled = false;
+            input.focus();
+        }
+    });
+}
+
+function getConstitutionChatApiUrl() {
+    return shouldUseLocalDashboardProxy()
+        ? LOCAL_CONSTITUTION_CHAT_PROXY_PATH
+        : CONSTITUTION_CHAT_API_URL;
+}
+
+function appendConstitutionChatMessage(container, text, type) {
+    const message = document.createElement('div');
+    message.className = `constitution-chat-message constitution-chat-message-${type}`;
+    const label = document.createElement('strong');
+    label.textContent = type === 'question' ? 'You' : type === 'answer' ? 'Governance assistant' : 'Unavailable';
+    const body = document.createElement('p');
+    body.textContent = String(text || '');
+    message.append(label, body);
+    container.appendChild(message);
+
+    while (container.children.length > 20) {
+        container.firstElementChild?.remove();
+    }
+    container.scrollTop = container.scrollHeight;
 }
 
 function setupTreasuryCard() {
