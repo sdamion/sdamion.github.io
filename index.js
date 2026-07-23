@@ -524,40 +524,92 @@ function formatCardanoEventDate(startValue, endValue) {
     return `${full.format(start)} to ${full.format(end)}`;
 }
 
-function createCardanoEventCard(event) {
-    const card = document.createElement('article');
-    card.className = 'cardano-event-card';
-
-    if (event?.image_url) {
-        const image = document.createElement('img');
-        image.className = 'cardano-event-image';
-        image.src = event.image_url;
-        image.alt = event.title || 'Cardano event';
-        image.loading = 'lazy';
-        image.referrerPolicy = 'no-referrer';
-        image.addEventListener('error', () => image.remove(), { once: true });
-        card.appendChild(image);
+function formatCardanoEventDateTime(event) {
+    if (!event?.start_at) {
+        return formatCardanoEventDate(event?.start_date, event?.end_date);
+    }
+    const start = new Date(event.start_at);
+    const end = event?.end_at ? new Date(event.end_at) : null;
+    if (Number.isNaN(start.getTime())) {
+        return formatCardanoEventDate(event?.start_date, event?.end_date);
     }
 
-    const copy = document.createElement('div');
-    copy.className = 'cardano-event-copy';
+    const date = new Intl.DateTimeFormat('en-GB', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+    }).format(start);
+    const time = new Intl.DateTimeFormat('en-GB', {
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+    if (!end || Number.isNaN(end.getTime())) return `${date} | ${time.format(start)}`;
+    return `${date} | ${time.format(start)} to ${time.format(end)}`;
+}
+
+function createCardanoEventCard(event) {
+    const card = document.createElement('button');
+    card.className = 'cardano-event-card governance-menu-card';
+    card.type = 'button';
+    card.dataset.sortDate = String(Date.parse(event?.start_at || `${event?.start_date}T00:00:00Z`) || 0);
+    card.dataset.sortName = String(event?.title || '');
+    card.setAttribute('aria-label', `Open event: ${event?.title || 'Cardano event'}`);
 
     const date = document.createElement('strong');
     date.className = 'cardano-event-date';
-    date.textContent = formatCardanoEventDate(event?.start_date, event?.end_date);
+    date.textContent = formatCardanoEventDateTime(event);
 
-    const title = document.createElement('h3');
+    const title = document.createElement('span');
+    title.className = 'cardano-event-title';
     title.textContent = event?.title || 'Cardano event';
 
     const meta = document.createElement('p');
     meta.className = 'cardano-event-meta';
     meta.textContent = [event?.location, event?.organizer].filter(Boolean).join(' | ') || 'Event details';
 
-    const description = document.createElement('p');
-    description.className = 'cardano-event-description';
-    description.textContent = event?.description || 'More information is available on the event website.';
+    card.append(date, title, meta);
+    card.addEventListener('click', () => openCardanoEventOverlay(event, card));
+    return card;
+}
 
-    copy.append(date, title, meta, description);
+function createCardanoEventDetail(event) {
+    const detail = document.createElement('div');
+    detail.className = 'cardano-event-detail';
+
+    if (event?.image_url) {
+        const image = document.createElement('img');
+        image.className = 'cardano-event-detail-image';
+        image.src = event.image_url;
+        image.alt = `${event.title || 'Cardano event'} poster`;
+        image.referrerPolicy = 'no-referrer';
+        image.addEventListener('error', () => image.remove(), { once: true });
+        detail.appendChild(image);
+    }
+
+    const facts = document.createElement('div');
+    facts.className = 'cardano-event-detail-facts';
+    [
+        ['Date', formatCardanoEventDateTime(event)],
+        ['Location', event?.location],
+        ['Organizer', event?.organizer]
+    ].forEach(([labelText, value]) => {
+        if (!value) return;
+        const row = document.createElement('div');
+        row.className = 'cardano-event-detail-fact';
+        const label = document.createElement('strong');
+        label.textContent = labelText;
+        const text = document.createElement('span');
+        text.textContent = value;
+        row.append(label, text);
+        facts.appendChild(row);
+    });
+    detail.appendChild(facts);
+
+    const description = document.createElement('p');
+    description.className = 'cardano-event-detail-description';
+    description.textContent = event?.description
+        || 'More information is available on the event website.';
+    detail.appendChild(description);
 
     if (event?.link) {
         const link = document.createElement('a');
@@ -566,11 +618,29 @@ function createCardanoEventCard(event) {
         link.target = '_blank';
         link.rel = 'noopener noreferrer';
         link.textContent = 'View event';
-        copy.appendChild(link);
+        detail.appendChild(link);
     }
 
-    card.appendChild(copy);
-    return card;
+    return detail;
+}
+
+function openCardanoEventOverlay(event, returnFocus = document.activeElement) {
+    closeCardanoEventOverlay(false);
+    createPoolMenuOverlay({
+        id: 'cardano-event-overlay',
+        titleId: 'cardano-event-title',
+        titleText: event?.title || 'Cardano Event',
+        headerMeta: formatCardanoEventDateTime(event),
+        closeLabel: 'Close Cardano event',
+        closeOverlay: closeCardanoEventOverlay,
+        returnFocus,
+        rootTitle: 'Cardano Events',
+        bodyNode: createCardanoEventDetail(event)
+    });
+}
+
+function closeCardanoEventOverlay(restoreFocus = true) {
+    closePoolMenuOverlay('cardano-event-overlay', restoreFocus);
 }
 
 async function fetchCardanoEvents() {

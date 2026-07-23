@@ -1142,76 +1142,115 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 
 .cardano-events-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 14px;
     margin: 28px 0 18px;
 }
 
 .cardano-event-card {
-    display: flex;
+    display: grid;
     min-width: 0;
-    flex-direction: column;
+    min-height: 132px;
+    align-content: start;
+    gap: 8px;
+    padding: 16px;
     overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--governance-card-bg);
+    width: 100%;
+    color: var(--text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    appearance: none;
+}
+
+.cardano-event-card:hover,
+.cardano-event-card:focus-visible {
+    border-color: var(--accent);
+    box-shadow: 0 14px 30px rgba(20, 184, 166, 0.12);
+    transform: translateY(-1px);
+    outline: none;
+}
+
+.cardano-event-date {
+    color: var(--accent-strong);
+    font-size: 0.72rem;
+    font-weight: 800;
+    line-height: 1.3;
+    text-transform: uppercase;
+}
+
+.cardano-event-title {
+    display: block;
+    margin: 0;
+    color: var(--text);
+    font-size: 0.98rem;
+    font-weight: 800;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+
+.cardano-event-meta {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.76rem;
+    font-weight: 700;
+    overflow: hidden;
+    line-height: 1.4;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cardano-event-detail {
+    display: grid;
+    gap: 20px;
+}
+
+.cardano-event-detail-image {
+    width: 100%;
+    max-height: min(52vh, 520px);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    object-fit: contain;
+    background: var(--overlay-surface-muted);
+}
+
+.cardano-event-detail-facts {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.cardano-event-detail-fact {
+    display: grid;
+    min-width: 0;
+    gap: 4px;
+    padding: 14px;
     border: 1px solid var(--line);
     border-radius: 8px;
     background: var(--governance-card-bg);
 }
 
-.cardano-event-image {
-    width: 100%;
-    aspect-ratio: 16 / 9;
-    border: 0;
-    border-radius: 0;
-    object-fit: cover;
-}
-
-.cardano-event-copy {
-    display: flex;
-    min-width: 0;
-    flex: 1;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-    padding: 18px;
-}
-
-.cardano-event-date {
+.cardano-event-detail-fact strong {
     color: var(--accent-strong);
-    font-size: 0.82rem;
-    font-weight: 800;
-    text-transform: uppercase;
+    font-size: 0.78rem;
 }
 
-.cardano-event-copy h3 {
-    margin: 0;
-    color: var(--text);
-    font-size: 1.12rem;
-    line-height: 1.25;
-}
-
-.cardano-event-meta,
-.cardano-event-description {
-    margin: 0;
+.cardano-event-detail-fact span,
+.cardano-event-detail-description {
     color: var(--muted);
+    overflow-wrap: anywhere;
 }
 
-.cardano-event-meta {
-    font-size: 0.84rem;
-    font-weight: 700;
-}
-
-.cardano-event-description {
-    display: -webkit-box;
-    overflow: hidden;
-    font-size: 0.9rem;
-    line-height: 1.55;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 4;
+.cardano-event-detail-description {
+    margin: 0;
+    line-height: 1.6;
 }
 
 .cardano-event-link {
-    margin-top: auto;
-    padding-top: 4px;
+    justify-self: start;
     color: var(--accent-strong);
     font-size: 0.88rem;
     font-weight: 800;
@@ -3388,13 +3427,18 @@ html[data-theme="dark"] input {
     }
 
     .cardano-events-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 12px;
         margin-top: 20px;
     }
 
-    .cardano-event-copy {
-        padding: 15px;
+    .cardano-event-card {
+        min-height: 122px;
+        padding: 13px;
+    }
+
+    .cardano-event-detail-facts {
+        grid-template-columns: 1fr;
     }
 }
 
