@@ -63,6 +63,11 @@ const SPO_CLOUD_PROVIDER_CHART_STYLES = Object.freeze([
     { key: 'huawei-cloud', label: 'Huawei Cloud', color: '#f43f5e' },
     { key: 'ovh', label: 'OVHcloud', color: '#991b1b' },
     { key: 'digitalocean', label: 'DigitalOcean', color: '#e05252' },
+    { key: 'hetzner', label: 'Hetzner', color: '#d94646' },
+    { key: 'akamai', label: 'Akamai Connected Cloud / Linode', color: '#c24141' },
+    { key: 'vultr', label: 'Vultr', color: '#a83232' },
+    { key: 'scaleway', label: 'Scaleway', color: '#f05555' },
+    { key: 'contabo', label: 'Contabo', color: '#8f2727' },
     { key: 'multi-cloud', label: 'Multi-cloud', color: '#7f1d1d' }
 ]);
 const SPO_CLOUD_PROVIDER_KEYS = new Set(
