@@ -669,6 +669,7 @@ async function fetchCardanoEvents() {
 // Fetch prices on page load and set up auto-update
 // Initialize UI behaviors and price fetching when DOM is ready
 document.addEventListener("DOMContentLoaded", () => {
+    initFixedHeaderLayout();
     initExternalLinkWarnings();
     initThemeToggle();
     initPoolCopyButtons();
@@ -695,6 +696,23 @@ document.addEventListener("DOMContentLoaded", () => {
     setInterval(fetchLeaderSchedule, 300000);
     initUI();
 });
+
+function initFixedHeaderLayout() {
+    const header = document.getElementById('site-header');
+    if (!header) return;
+
+    const syncHeight = () => {
+        const height = Math.ceil(header.getBoundingClientRect().height);
+        document.documentElement.style.setProperty('--site-header-height', `${height}px`);
+    };
+    syncHeight();
+    window.addEventListener('resize', syncHeight, { passive: true });
+    if ('ResizeObserver' in window) {
+        const observer = new ResizeObserver(syncHeight);
+        observer.observe(header);
+        header.siteHeaderResizeObserver = observer;
+    }
+}
 
 function initCryptoNewsTicker() {
     const button = document.getElementById('crypto-news-open');

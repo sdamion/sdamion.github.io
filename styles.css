@@ -360,7 +360,8 @@ footer {
 
 /* App Shell */
 html {
-    scroll-padding-top: 78px;
+    --site-header-height: 72px;
+    scroll-padding-top: calc(var(--site-header-height) + 6px);
 }
 
 html,
@@ -376,7 +377,7 @@ body {
         linear-gradient(315deg, rgba(183, 121, 31, 0.10), transparent 28%),
         var(--page-bg);
     color: var(--text);
-    padding-top: 72px;
+    padding-top: var(--site-header-height);
     padding-bottom: 0;
 }
 
@@ -3213,10 +3214,6 @@ html[data-theme="dark"] input {
 
 /* Responsive Layout */
 @media (max-width: 860px) {
-    body {
-        padding-top: 54px;
-    }
-
     .header-inner {
         width: min(100% - 24px, 1120px);
     }
@@ -3232,9 +3229,10 @@ html[data-theme="dark"] input {
 
     .menu-bar__nav {
         display: flex;
-        justify-content: flex-start;
-        width: auto;
-        overflow-x: auto;
+        width: 100%;
+        flex-wrap: wrap;
+        justify-content: center;
+        overflow: visible;
     }
 
     .nav-link {
@@ -3244,14 +3242,16 @@ html[data-theme="dark"] input {
     }
 
     .menu-bar__side {
+        width: 100%;
+        justify-content: center;
         max-width: 100%;
-        align-items: flex-end;
+        align-items: center;
     }
 
     .menu-bar__actions {
         max-width: 100%;
-        overflow-x: auto;
-        justify-content: flex-end;
+        overflow: visible;
+        justify-content: center;
         padding-bottom: 2px;
     }
 
@@ -3370,10 +3370,6 @@ html[data-theme="dark"] input {
 }
 
 @media (max-width: 700px) {
-    body {
-        padding-top: 62px;
-    }
-
     html {
         scroll-padding-top: 62px;
     }
