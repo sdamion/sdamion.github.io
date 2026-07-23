@@ -47,7 +47,7 @@
 
     <!-- Preload Logo -->
     <link rel="preload" href="tdsp_logo.webp" as="image">
-    <link rel="stylesheet" href="styles.css?v=20260723-constitution-chat">
+    <link rel="stylesheet" href="styles.css?v=20260723-constitution-reader">
 
     <script src="index.js?v=20260723-fixed-mobile-header" defer></script>
 </head>
@@ -259,7 +259,7 @@
                             <strong id="constitution-chat-title">Ask Cardano Governance</strong>
                             <span>Current Constitution · All cached governance actions</span>
                         </div>
-                        <a href="https://cardano.org/constitution/" target="_blank" rel="noopener noreferrer">Read Constitution</a>
+                        <button id="constitution-document-open" type="button">Read Constitution</button>
                     </div>
                     <div id="constitution-chat-messages" class="constitution-chat-messages" aria-live="polite">
                         <p class="constitution-chat-empty">Ask about a governance action, voting body, treasury rule, or constitutional guardrail.</p>
@@ -366,7 +366,7 @@
 
     <script src="chart.js"></script>
     <script src="starch.js?v=20260721-relevant-sorting" defer></script>
-    <script src="governance.js?v=20260723-constitution-chat" defer></script>
+    <script src="governance.js?v=20260723-constitution-reader" defer></script>
     <script src="stake.js?v=20260717-backend-api-only" defer></script>
 </body>
 </html>

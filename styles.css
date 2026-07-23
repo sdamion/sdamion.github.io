@@ -1309,16 +1309,48 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 }
 
 .constitution-chat-heading span,
-.constitution-chat-heading a {
+.constitution-chat-heading button {
     color: var(--muted);
     font-size: 0.82rem;
     line-height: 1.4;
 }
 
-.constitution-chat-heading a {
+.constitution-chat-heading button {
     flex: 0 0 auto;
+    padding: 0;
+    border: 0;
+    background: transparent;
     color: var(--accent-strong);
+    font: inherit;
+    font-size: 0.82rem;
     font-weight: 700;
+    cursor: pointer;
+}
+
+.constitution-chat-heading button:hover,
+.constitution-chat-heading button:focus-visible {
+    color: var(--accent);
+    outline: none;
+}
+
+.governance-constitution-dialog {
+    width: min(1040px, 100%);
+    max-height: min(92vh, 1080px);
+}
+
+.constitution-document {
+    min-width: 0;
+}
+
+.constitution-document-text {
+    width: 100%;
+    margin: 0;
+    color: var(--text);
+    font: inherit;
+    font-size: 0.9rem;
+    line-height: 1.65;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
 }
 
 .constitution-chat-messages {
@@ -1858,7 +1890,7 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
         display: grid;
     }
 
-    .constitution-chat-heading a {
+    .constitution-chat-heading button {
         justify-self: start;
     }
 

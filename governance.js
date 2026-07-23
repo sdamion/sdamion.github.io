@@ -11,6 +11,7 @@ const SPO_DIRECTORY_API_URL = 'https://api.tdsp.online/api/spos';
 const REMOTE_METADATA_API_URL = 'https://api.tdsp.online/api/metadata';
 const TREASURY_API_URL = 'https://api.tdsp.online/api/treasury';
 const CONSTITUTION_CHAT_API_URL = 'https://api.tdsp.online/api/constitution/chat';
+const CONSTITUTION_DOCUMENT_API_URL = 'https://api.tdsp.online/api/constitution/document';
 const LOCAL_DASHBOARD_PROXY_PATH = '/__dashboard_proxy__';
 const LOCAL_COMPACT_DASHBOARD_PROXY_PATH = '/__dashboard_compact_proxy__';
 const LOCAL_COMMITTEE_PROXY_PATH = '/__committee_proxy__';
@@ -23,6 +24,7 @@ const LOCAL_SPO_DIRECTORY_PROXY_PATH = '/__spo_directory_proxy__';
 const LOCAL_METADATA_PROXY_PATH = '/__metadata_proxy__';
 const LOCAL_TREASURY_PROXY_PATH = '/__treasury_proxy__';
 const LOCAL_CONSTITUTION_CHAT_PROXY_PATH = '/__constitution_chat_proxy__';
+const LOCAL_CONSTITUTION_DOCUMENT_PROXY_PATH = '/__constitution_document_proxy__';
 const GOVERNANCE_MESH_CDN_URL = 'https://esm.sh/@meshsdk/core@1.9.1?bundle-deps';
 const ACTIVE_REFRESH_INTERVAL_MS = 15 * 60 * 1000;
 const EPOCH_DURATION_SECONDS = 432000;
@@ -91,6 +93,7 @@ if (document.readyState === 'loading') {
 
 function initGovernance() {
     setupConstitutionChat();
+    setupConstitutionDocument();
     setupGovernanceMenuKeyboard();
     removeDrepPowerSplitCard();
     ensureEpochCountdownCard();
@@ -106,6 +109,71 @@ function initGovernance() {
     loadTreasuryData().catch(() => {});
 }
 
+function setupConstitutionDocument() {
+    const button = document.getElementById('constitution-document-open');
+    if (button) button.addEventListener('click', openConstitutionDocumentOverlay);
+}
+
+async function openConstitutionDocumentOverlay() {
+    if (getTopGovernanceMenuOverlay('constitution-document-overlay')) return;
+    const content = document.createElement('div');
+    content.className = 'constitution-document';
+    const loading = document.createElement('p');
+    loading.className = 'small-text';
+    loading.textContent = 'Loading Constitution...';
+    content.appendChild(loading);
+
+    createGovernanceMenuOverlay({
+        id: 'constitution-document-overlay',
+        titleId: 'constitution-document-title',
+        titleText: 'Cardano Constitution',
+        closeLabel: 'Close Constitution',
+        closeOverlay: closeConstitutionDocumentOverlay,
+        bodyNodes: [content],
+        dialogClass: 'governance-constitution-dialog',
+        closeOnBackdrop: false,
+        showBack: false,
+        closeText: 'Close',
+        enableSearch: false,
+        returnFocus: document.getElementById('constitution-document-open')
+    });
+
+    try {
+        const response = await fetch(getConstitutionDocumentApiUrl(), {
+            headers: { accept: 'application/json' }
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || !payload.text) {
+            throw new Error(payload.error || `Constitution document returned ${response.status}`);
+        }
+        if (!content.isConnected) return;
+        content.textContent = '';
+        const documentText = document.createElement('pre');
+        documentText.className = 'constitution-document-text';
+        documentText.textContent = payload.text;
+        content.appendChild(documentText);
+    } catch (error) {
+        if (!content.isConnected) return;
+        content.textContent = '';
+        const message = document.createElement('p');
+        message.className = 'error-text';
+        message.textContent = error instanceof Error
+            ? error.message
+            : 'The Cardano Constitution could not be loaded.';
+        content.appendChild(message);
+    }
+}
+
+function closeConstitutionDocumentOverlay() {
+    removeGovernanceMenuOverlay('constitution-document-overlay');
+}
+
+function getConstitutionDocumentApiUrl() {
+    return shouldUseLocalDashboardProxy()
+        ? LOCAL_CONSTITUTION_DOCUMENT_PROXY_PATH
+        : CONSTITUTION_DOCUMENT_API_URL;
+}
+
 function setupConstitutionChat() {
     const form = document.getElementById('constitution-chat-form');
     const input = document.getElementById('constitution-chat-question');
@@ -113,6 +181,7 @@ function setupConstitutionChat() {
     const submit = document.getElementById('constitution-chat-submit');
     const status = document.getElementById('constitution-chat-status');
     if (!form || !input || !messages || !submit || !status) return;
+    const conversation = [];
 
     const resizeInput = () => {
         input.style.height = 'auto';
@@ -134,6 +203,8 @@ function setupConstitutionChat() {
         const empty = messages.querySelector('.constitution-chat-empty');
         if (empty) empty.remove();
         appendConstitutionChatMessage(messages, question, 'question');
+        const history = getConstitutionChatHistory(conversation);
+        conversation.push({ role: 'user', content: question });
         input.value = '';
         resizeInput();
         submit.disabled = true;
@@ -147,15 +218,18 @@ function setupConstitutionChat() {
                     accept: 'application/json',
                     'content-type': 'application/json'
                 },
-                body: JSON.stringify({ question })
+                body: JSON.stringify({ question, history })
             });
             const payload = await response.json().catch(() => ({}));
             if (!response.ok) {
                 throw new Error(payload.error || `Constitution assistant returned ${response.status}`);
             }
             appendConstitutionChatMessage(messages, payload.answer, 'answer');
+            conversation.push({ role: 'assistant', content: String(payload.answer || '') });
+            while (conversation.length > 12) conversation.shift();
             status.textContent = payload.cached ? 'Answer loaded from the secure cache.' : '';
         } catch (error) {
+            if (conversation.at(-1)?.role === 'user') conversation.pop();
             appendConstitutionChatMessage(
                 messages,
                 error instanceof Error
@@ -170,6 +244,19 @@ function setupConstitutionChat() {
             input.focus();
         }
     });
+}
+
+function getConstitutionChatHistory(conversation) {
+    const history = [];
+    let remaining = 4000;
+    for (const message of conversation.slice(-6).reverse()) {
+        if (remaining <= 0) break;
+        const content = String(message.content || '').slice(0, remaining);
+        if (!content) continue;
+        history.push({ role: message.role, content });
+        remaining -= content.length;
+    }
+    return history.reverse();
 }
 
 function getConstitutionChatApiUrl() {
@@ -1676,7 +1763,11 @@ function createGovernanceMenuOverlay(options) {
         titleTag = 'h3',
         headerMeta = '',
         returnFocus = document.activeElement,
-        rootTitle = titleText
+        rootTitle = titleText,
+        closeOnBackdrop = true,
+        showBack = true,
+        closeText = '<',
+        enableSearch = true
     } = options;
 
     const previousTopOverlay = getTopGovernanceMenuOverlay();
@@ -1691,9 +1782,11 @@ function createGovernanceMenuOverlay(options) {
     overlay.governanceCloseOverlay = closeOverlay;
     overlay.governanceRootOverlay = previousTopOverlay?.governanceRootOverlay || overlay;
     overlay.governanceRootTitle = previousTopOverlay?.governanceRootTitle || rootTitle;
-    overlay.addEventListener('click', event => {
-        if (event.target === overlay) closeOverlay();
-    });
+    if (closeOnBackdrop) {
+        overlay.addEventListener('click', event => {
+            if (event.target === overlay) closeOverlay();
+        });
+    }
 
     const dialog = document.createElement('article');
     dialog.className = `governance-dialog ${dialogClass}`.trim();
@@ -1706,7 +1799,7 @@ function createGovernanceMenuOverlay(options) {
     close.type = 'button';
     close.setAttribute('aria-label', closeLabel);
     close.title = closeLabel;
-    close.textContent = '<';
+    close.textContent = closeText;
     close.addEventListener('click', closeOverlay);
 
     const back = document.createElement('button');
@@ -1727,9 +1820,9 @@ function createGovernanceMenuOverlay(options) {
     meta.dataset.governanceMenuHeaderMeta = 'true';
     meta.textContent = headerMeta;
 
-    appendGovernanceDialogHeader(dialog, title, close, leadingNodes, meta, back);
+    appendGovernanceDialogHeader(dialog, title, close, leadingNodes, meta, showBack ? back : null);
     const body = appendGovernanceDialogBody(dialog, ...bodyNodes);
-    installOverlaySearch(body);
+    if (enableSearch) installOverlaySearch(body);
     overlay.appendChild(dialog);
     document.body.appendChild(overlay);
     syncGovernanceMenuOverlayAccessibility();
