@@ -3824,6 +3824,7 @@ function renderSpoDirectory(container, spos) {
         row.dataset.sortName = normalizeOverlaySearchText(getSpoDisplayName(spo));
         row.dataset.sortAmount = String(Number(spo.delegated_lovelace) || 0);
         row.dataset.sortDelegators = String(Number(spo.delegator_count) || 0);
+        row.dataset.sortSaturation = String(Number(spo.saturation_pct) || 0);
         const cloudHostingType = getSpoCloudHostingType(spo);
         row.dataset.sortCloudSpo = cloudHostingType === 'cloud-spo' ? '1' : '0';
         row.dataset.sortSpo = cloudHostingType === 'spo' ? '1' : '0';
@@ -3852,8 +3853,12 @@ function renderSpoDirectory(container, spos) {
         delegators.className = 'governance-cc-member-meta';
         delegators.textContent = `Delegators: ${Number(spo.delegator_count || 0).toLocaleString('en-US')}`;
 
+        const saturation = document.createElement('span');
+        saturation.className = 'governance-cc-member-meta';
+        saturation.textContent = `Saturation: ${formatSpoSaturation(spo.saturation_pct)}`;
+
         const idLine = createSpoPoolIdLine(spo.pool_id);
-        copy.append(name, cloudService, delegated, delegators, idLine);
+        copy.append(name, cloudService, delegated, delegators, saturation, idLine);
         row.append(number, copy, createSpoHostingIcon(cloudHostingType));
         bindGovernanceMenuTrigger(row, event => openSpoDetailOverlay(spo, event.currentTarget));
         fragment.appendChild(row);
@@ -3991,6 +3996,7 @@ function renderSpoDetails(container, spo) {
     [
         ['Delegators', Number(spo.delegator_count || 0).toLocaleString('en-US')],
         ['Delegation', formatFullAdaFromLovelace(spo.delegated_lovelace)],
+        ['Saturation', formatSpoSaturation(spo.saturation_pct)],
         ['Cloud Service', getSpoCloudServiceText(spo)],
         ['Pledge', formatFullAdaFromLovelace(spo.pledge_lovelace)],
         ['Fixed cost', formatFullAdaFromLovelace(spo.fixed_cost_lovelace)],
@@ -4106,6 +4112,11 @@ function getSpoCloudProviders(spo) {
 function formatSpoMargin(value) {
     const margin = Number(value);
     return Number.isFinite(margin) ? formatPercentage(margin * 100) : '--';
+}
+
+function formatSpoSaturation(value) {
+    const saturation = Number(value);
+    return Number.isFinite(saturation) ? formatPercentage(saturation) : '--';
 }
 
 async function loadSpoDirectory() {

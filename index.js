@@ -1154,6 +1154,7 @@ function renderPoolStatus(pool) {
     poolDelegators = Array.isArray(pool?.delegators) ? [...pool.delegators] : [];
     setText('pool-delegators', formatInteger(pool?.delegator_count));
     setText('pool-live-stake', formatAdaFromLovelace(pool?.live_stake_lovelace));
+    setText('pool-saturation', formatPoolSaturation(pool?.saturation_pct ?? pool?.raw?.live_saturation));
     setText('pool-pledge', formatAdaFromLovelace(pool?.pledge_lovelace ?? pool?.raw?.pledge));
     setText('pool-margin', formatPoolMargin(pool?.margin ?? pool?.raw?.margin));
     setText('pool-fixed-cost', formatAdaFromLovelace(pool?.fixed_cost_lovelace ?? pool?.raw?.fixed_cost));
@@ -1456,6 +1457,8 @@ const OVERLAY_SORT_DEFINITIONS = Object.freeze([
     { value: 'power-asc', label: 'Least power', key: 'sortPower', direction: 1, type: 'number' },
     { value: 'delegators-desc', label: 'Most delegators', key: 'sortDelegators', direction: -1, type: 'number' },
     { value: 'delegators-asc', label: 'Least delegators', key: 'sortDelegators', direction: 1, type: 'number' },
+    { value: 'saturation-desc', label: 'Highest saturation', key: 'sortSaturation', direction: -1, type: 'number' },
+    { value: 'saturation-asc', label: 'Lowest saturation', key: 'sortSaturation', direction: 1, type: 'number' },
     { value: 'cloud-spo-first', label: 'Cloud SPO first', key: 'sortCloudSpo', direction: -1, type: 'number' },
     { value: 'spo-first', label: 'SPO first', key: 'sortSpo', direction: -1, type: 'number' },
     { value: 'balance-desc', label: 'Highest balance', key: 'sortBalance', direction: -1, type: 'number' },
@@ -2002,6 +2005,15 @@ function formatPoolMargin(value) {
     const number = Number(value);
     if (!Number.isFinite(number)) return 'N/A';
     return `${new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(number * 100)}%`;
+}
+
+function formatPoolSaturation(value) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return 'N/A';
+    return `${new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: number > 0 && number < 0.01 ? 3 : 0,
+        maximumFractionDigits: 2
+    }).format(number)}%`;
 }
 
 function formatTimestamp(value) {
