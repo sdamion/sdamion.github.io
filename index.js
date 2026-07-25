@@ -573,8 +573,117 @@ function createCardanoEventCard(event) {
     meta.textContent = [event?.location, event?.organizer].filter(Boolean).join(' | ') || 'Event details';
 
     card.append(date, title, meta);
+    if (event?.image_url) {
+        const image = document.createElement('img');
+        image.className = 'cardano-event-card-image';
+        image.src = event.image_url;
+        image.alt = '';
+        image.loading = 'lazy';
+        image.referrerPolicy = 'no-referrer';
+        image.addEventListener('error', () => {
+            image.remove();
+            card.classList.remove('has-image');
+        }, { once: true });
+        card.classList.add('has-image');
+        card.appendChild(image);
+    }
     card.addEventListener('click', () => openCardanoEventOverlay(event, card));
     return card;
+}
+
+function getCardanoEventSource(event, payload) {
+    if (String(event?.source || '').trim().toLowerCase() === 'luma') {
+        return {
+            key: 'luma',
+            name: 'Luma',
+            description: 'Cardano community calendar',
+            url: payload?.luma_source_url || 'https://luma.com/CardanoEvents'
+        };
+    }
+    return {
+        key: 'cardano',
+        name: 'Cardano.org',
+        description: 'Official Cardano events',
+        url: payload?.source_url || 'https://cardano.org/events/'
+    };
+}
+
+function createCardanoEventSourceTile(source, events) {
+    const tile = document.createElement('div');
+    tile.className = 'governance-summary-clickable governance-menu-card cardano-event-source-tile';
+    tile.setAttribute('role', 'button');
+    tile.setAttribute('tabindex', '0');
+    tile.setAttribute('aria-label', `Show ${source.name} events`);
+    const count = document.createElement('strong');
+    count.textContent = String(events.length);
+    const name = document.createElement('span');
+    name.textContent = source.name;
+    const description = document.createElement('span');
+    description.className = 'governance-summary-subvalue';
+    description.textContent = source.description;
+    const copy = document.createElement('div');
+    copy.className = 'cardano-event-source-copy';
+    copy.append(count, name, description);
+    tile.appendChild(copy);
+
+    const upcomingEvent = events[0];
+    if (upcomingEvent?.image_url) {
+        const image = document.createElement('img');
+        image.className = 'cardano-event-source-image';
+        image.src = upcomingEvent.image_url;
+        image.alt = `${upcomingEvent.title || source.name} event`;
+        image.loading = 'lazy';
+        image.referrerPolicy = 'no-referrer';
+        image.addEventListener('error', () => {
+            image.remove();
+            tile.classList.remove('has-image');
+        }, { once: true });
+        tile.classList.add('has-image');
+        tile.appendChild(image);
+    }
+    const open = () => openCardanoEventSourceOverlay(source, events, tile);
+    tile.addEventListener('click', open);
+    tile.addEventListener('keydown', event => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        open();
+    });
+    return tile;
+}
+
+function createCardanoEventSourceContent(source, events) {
+    const content = document.createElement('div');
+    content.className = 'cardano-event-source-content';
+    const eventGrid = document.createElement('div');
+    eventGrid.className = 'cardano-events-grid';
+    eventGrid.append(...events.map(createCardanoEventCard));
+    content.appendChild(eventGrid);
+
+    const sourceLink = document.createElement('a');
+    sourceLink.className = 'cardano-event-link';
+    sourceLink.href = source.url;
+    sourceLink.target = '_blank';
+    sourceLink.rel = 'noopener noreferrer';
+    sourceLink.textContent = `Open ${source.name}`;
+    content.appendChild(sourceLink);
+    return content;
+}
+
+function openCardanoEventSourceOverlay(source, events, returnFocus = document.activeElement) {
+    const overlayId = `cardano-event-source-${source.key}-overlay`;
+    closePoolMenuOverlay(overlayId, false);
+    createPoolMenuOverlay({
+        id: overlayId,
+        titleId: `cardano-event-source-${source.key}-title`,
+        titleText: `${source.name} Events`,
+        headerMeta: `${events.length} events`,
+        closeLabel: `Close ${source.name} events`,
+        closeOverlay: restoreFocus => closePoolMenuOverlay(overlayId, restoreFocus),
+        returnFocus,
+        rootTitle: 'Cardano Events',
+        bodyNode: createCardanoEventSourceContent(source, events),
+        defaultSort: 'oldest'
+    });
 }
 
 function createCardanoEventDetail(event) {
@@ -661,7 +770,27 @@ async function fetchCardanoEvents() {
             .filter(event => String(event?.end_date || event?.start_date || '') >= today)
             .sort((left, right) => String(left?.start_date || '').localeCompare(String(right?.start_date || '')));
         if (!events.length) throw new Error('Events API returned no upcoming events');
-        container.replaceChildren(...events.map(createCardanoEventCard));
+        const sourceOrder = ['cardano', 'luma'];
+        const groupedEvents = new Map(sourceOrder.map(key => [key, []]));
+        events.forEach(event => {
+            const source = getCardanoEventSource(event, payload);
+            if (!groupedEvents.has(source.key)) groupedEvents.set(source.key, []);
+            groupedEvents.get(source.key).push(event);
+        });
+        const sourceTiles = sourceOrder
+            .map(key => {
+                const sourceEvents = groupedEvents.get(key) || [];
+                if (!sourceEvents.length) return null;
+                return createCardanoEventSourceTile(
+                    getCardanoEventSource(sourceEvents[0], payload),
+                    sourceEvents
+                );
+            })
+            .filter(Boolean);
+        const summary = document.createElement('div');
+        summary.className = 'governance-summary cardano-event-source-summary';
+        summary.append(...sourceTiles);
+        container.replaceChildren(summary);
     } catch (error) {
         console.error('Cardano events could not be loaded', error);
         const message = document.createElement('p');
@@ -1406,6 +1535,7 @@ function createUniversalOverlay(options) {
         closeOnEscape = true,
         showBack = true,
         enableSearch = true,
+        defaultSort = '',
         uniqueId = false
     } = options;
 
@@ -1469,7 +1599,7 @@ function createUniversalOverlay(options) {
     body.className = 'overlay-dialog-body';
     bodyNodes.forEach(node => body.appendChild(node));
     dialog.appendChild(body);
-    if (enableSearch) installOverlaySearch(body);
+    if (enableSearch) installOverlaySearch(body, { defaultSort });
 
     overlay.appendChild(dialog);
     document.body.appendChild(overlay);
@@ -1490,7 +1620,8 @@ function createPoolMenuOverlay({
     rootTitle,
     bodyNode,
     closeOnBackdrop = true,
-    closeOnEscape = true
+    closeOnEscape = true,
+    defaultSort = ''
 }) {
     return createUniversalOverlay({
         id,
@@ -1503,7 +1634,8 @@ function createPoolMenuOverlay({
         rootTitle,
         bodyNodes: [bodyNode],
         closeOnBackdrop,
-        closeOnEscape
+        closeOnEscape,
+        defaultSort
     });
 }
 
@@ -1649,7 +1781,7 @@ function sortOverlayCards(body, cards, mode) {
     });
 }
 
-function installOverlaySearch(body) {
+function installOverlaySearch(body, { defaultSort = '' } = {}) {
     if (!body || body.querySelector(':scope > .overlay-search-bar')) return;
 
     const searchBar = document.createElement('div');
@@ -1677,9 +1809,11 @@ function installOverlaySearch(body) {
         sort.appendChild(option);
     });
     const storedSort = getStoredOverlaySort(sortOptions);
-    sort.value = sortOptions.some(option => option.value === storedSort)
-        ? storedSort
-        : sortOptions[0]?.value || '';
+    sort.value = sortOptions.some(option => option.value === defaultSort)
+        ? defaultSort
+        : sortOptions.some(option => option.value === storedSort)
+            ? storedSort
+            : sortOptions[0]?.value || '';
     sort.hidden = sortOptions.length < 2;
 
     const count = document.createElement('span');

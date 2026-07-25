@@ -1105,14 +1105,70 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     margin: 8px 0;
 }
 
+.cardano-event-sources {
+    margin: 28px 0 18px;
+}
+
+.cardano-event-source-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: 0;
+}
+
+.cardano-event-source-tile {
+    position: relative;
+    align-items: center;
+    overflow: hidden;
+}
+
+.cardano-event-source-tile.has-image {
+    isolation: isolate;
+}
+
+.cardano-event-source-copy {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    min-width: 0;
+    gap: 4px;
+    text-align: left;
+}
+
+.cardano-event-source-tile.has-image .cardano-event-source-copy {
+    width: 64%;
+    margin-right: auto;
+}
+
+.cardano-event-source-image {
+    position: absolute;
+    inset: 0 0 0 auto;
+    z-index: 1;
+    width: 72%;
+    height: 100%;
+    border: 0;
+    border-radius: inherit;
+    object-fit: contain;
+    object-position: right center;
+    background: var(--overlay-surface-muted);
+    opacity: 0.62;
+    pointer-events: none;
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.5) 32%, #000 58%, #000 100%);
+    mask-image: linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.5) 32%, #000 58%, #000 100%);
+}
+
+.cardano-event-source-content {
+    display: grid;
+    gap: 18px;
+}
+
 .cardano-events-grid {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 14px;
-    margin: 28px 0 18px;
+    margin: 0;
 }
 
 .cardano-event-card {
+    position: relative;
     display: grid;
     min-width: 0;
     min-height: 132px;
@@ -1120,9 +1176,6 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     gap: 8px;
     padding: 16px;
     overflow: hidden;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    background: var(--governance-card-bg);
     width: 100%;
     color: var(--text);
     font: inherit;
@@ -1131,12 +1184,35 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     appearance: none;
 }
 
-.cardano-event-card:hover,
-.cardano-event-card:focus-visible {
-    border-color: var(--accent);
-    box-shadow: 0 14px 30px rgba(20, 184, 166, 0.12);
-    transform: translateY(-1px);
-    outline: none;
+.cardano-event-card.has-image {
+    isolation: isolate;
+}
+
+.cardano-event-card > :not(.cardano-event-card-image) {
+    position: relative;
+    z-index: 2;
+}
+
+.cardano-event-card-image {
+    position: absolute;
+    inset: 0 0 0 auto;
+    z-index: 1;
+    width: 86%;
+    height: 100%;
+    border: 0;
+    border-radius: inherit;
+    object-fit: contain;
+    object-position: right center;
+    opacity: 0.5;
+    pointer-events: none;
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, transparent 28%, rgba(0, 0, 0, 0.4) 58%, #000 100%);
+    mask-image: linear-gradient(to right, transparent 0%, transparent 28%, rgba(0, 0, 0, 0.4) 58%, #000 100%);
+}
+
+.cardano-event-card.has-image .cardano-event-date,
+.cardano-event-card.has-image .cardano-event-title,
+.cardano-event-card.has-image .cardano-event-meta {
+    max-width: 78%;
 }
 
 .cardano-event-date {

@@ -47,9 +47,9 @@
 
     <!-- Preload Logo -->
     <link rel="preload" href="tdsp_logo.webp" as="image">
-    <link rel="stylesheet" href="styles.css?v=20260725-responsive-ticker-type">
+    <link rel="stylesheet" href="styles.css?v=20260725-event-card-images">
 
-    <script src="index.js?v=20260725-universal-overlay-shell" defer></script>
+    <script src="index.js?v=20260725-events-oldest-first" defer></script>
 </head>
 <body>
     <header class="site-header" id="site-header">
@@ -332,13 +332,9 @@
             <div class="section-inner">
                 <p class="eyebrow">Calendar</p>
                 <h2>Cardano Events</h2>
-                <div id="cardano-events" class="cardano-events-grid" aria-live="polite">
+                <div id="cardano-events" class="cardano-event-sources" aria-live="polite">
                     <p class="small-text">Loading upcoming Cardano events...</p>
                 </div>
-                <p class="small-text">
-                    Source:
-                    <a href="https://luma.com/CardanoEvents" target="_blank" rel="noopener noreferrer">Cardano Events on Luma</a>
-                </p>
             </div>
         </section>
 
