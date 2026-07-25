@@ -157,14 +157,9 @@ function createConstitutionChatPanel() {
     readButton.id = 'constitution-document-open';
     readButton.type = 'button';
     readButton.textContent = 'Read Constitution';
-    const resetButton = document.createElement('button');
-    resetButton.id = 'constitution-chat-reset';
-    resetButton.type = 'button';
-    resetButton.textContent = 'Reset';
-    resetButton.setAttribute('aria-label', 'Reset Constitution questions and answers');
     const headingActions = document.createElement('div');
     headingActions.className = 'constitution-chat-heading-actions';
-    headingActions.append(resetButton, readButton);
+    headingActions.append(readButton);
     heading.append(headingCopy, headingActions);
 
     const messages = document.createElement('div');
@@ -179,6 +174,7 @@ function createConstitutionChatPanel() {
     const form = document.createElement('form');
     form.id = 'constitution-chat-form';
     form.className = 'constitution-chat-form';
+    form.autocomplete = 'off';
     const label = document.createElement('label');
     label.className = 'sr-only';
     label.htmlFor = 'constitution-chat-question';
@@ -188,6 +184,7 @@ function createConstitutionChatPanel() {
     input.name = 'question';
     input.rows = 1;
     input.maxLength = 600;
+    input.autocomplete = 'off';
     input.placeholder = 'Search Cardano data or ask about the Constitution';
     input.required = true;
     const submit = document.createElement('button');
@@ -291,11 +288,19 @@ function setupConstitutionChat() {
     const messages = document.getElementById('constitution-chat-messages');
     const submit = document.getElementById('constitution-chat-submit');
     const newQuestion = document.getElementById('constitution-chat-new-question');
-    const reset = document.getElementById('constitution-chat-reset');
     const status = document.getElementById('constitution-chat-status');
-    if (!form || !input || !messages || !submit || !newQuestion || !reset || !status) return;
+    if (!form || !input || !messages || !submit || !newQuestion || !status) return;
     const conversation = [];
 
+    const clearConversation = () => {
+        conversation.length = 0;
+        messages.textContent = '';
+        const empty = document.createElement('p');
+        empty.className = 'constitution-chat-empty';
+        empty.textContent = 'Ask about available governance, DReps, SPOs, Starch, Treasury, or the Constitution.';
+        messages.appendChild(empty);
+        status.textContent = '';
+    };
     const resizeInput = () => {
         input.style.height = 'auto';
         input.style.height = `${Math.min(input.scrollHeight, 128)}px`;
@@ -307,17 +312,8 @@ function setupConstitutionChat() {
             form.requestSubmit(submit);
         }
     });
-    reset.addEventListener('click', () => {
-        conversation.length = 0;
-        messages.textContent = '';
-        const empty = document.createElement('p');
-        empty.className = 'constitution-chat-empty';
-        empty.textContent = 'Ask about available governance, DReps, SPOs, Starch, Treasury, or the Constitution.';
-        messages.appendChild(empty);
-        input.value = '';
-        resizeInput();
-        status.textContent = '';
-        input.focus();
+    newQuestion.addEventListener('click', () => {
+        clearConversation();
     });
 
     form.addEventListener('submit', async event => {
@@ -327,8 +323,7 @@ function setupConstitutionChat() {
         if (!question || submit.disabled || newQuestion.disabled) return;
 
         if (startsNewConversation) {
-            conversation.length = 0;
-            messages.textContent = '';
+            clearConversation();
         }
         const empty = messages.querySelector('.constitution-chat-empty');
         if (empty) empty.remove();
@@ -341,7 +336,6 @@ function setupConstitutionChat() {
         resizeInput();
         submit.disabled = true;
         newQuestion.disabled = true;
-        reset.disabled = true;
         input.disabled = true;
         status.textContent = 'Consulting the Constitution...';
         let pendingAnswerMessage = null;
@@ -399,7 +393,6 @@ function setupConstitutionChat() {
         } finally {
             submit.disabled = false;
             newQuestion.disabled = false;
-            reset.disabled = false;
             input.disabled = false;
             input.focus();
         }
