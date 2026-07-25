@@ -3334,7 +3334,7 @@ select {
 }
 
 .crypto-news-track.is-scrolling {
-    animation: crypto-news-scroll-ltr var(--crypto-news-duration, 30s) linear infinite;
+    animation: crypto-news-scroll-rtl var(--crypto-news-duration, 30s) linear infinite;
 }
 
 .crypto-news-ticker:hover .crypto-news-track,
@@ -3389,9 +3389,9 @@ select {
     font-weight: 700;
 }
 
-@keyframes crypto-news-scroll-ltr {
-    from { transform: translateX(-50%); }
-    to { transform: translateX(0); }
+@keyframes crypto-news-scroll-rtl {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
 }
 
 @media (prefers-reduced-motion: reduce) {

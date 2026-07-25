@@ -477,11 +477,15 @@ async function fetchCryptoNews() {
                 const publishedAt = Date.parse(item?.published_at || '');
                 return Number.isFinite(publishedAt) && new Date(publishedAt).getUTCFullYear() === currentYear;
             })
+            .sort((left, right) => (
+                Date.parse(right?.published_at || '') - Date.parse(left?.published_at || '')
+            ))
             .slice(0, 60);
         if (!items.length) throw new Error('News API returned no Cardano headlines');
 
         cryptoNewsItems = items;
-        track.replaceChildren(createNewsGroup(items), createNewsGroup(items, true));
+        const tickerItems = items.slice(0, 20);
+        track.replaceChildren(createNewsGroup(tickerItems), createNewsGroup(tickerItems, true));
         track.classList.add('is-scrolling');
         requestAnimationFrame(updateCryptoNewsTickerSpeed);
     } catch (error) {
