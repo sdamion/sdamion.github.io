@@ -356,6 +356,7 @@ footer {
     --panel-surface-muted: rgba(255, 255, 255, 0.72);
     --button-surface: rgba(255, 255, 255, 0.64);
     --field-surface: #ffffff;
+    --compact-ticker-font-size: 0.9rem;
 }
 
 /* App Shell */
@@ -872,7 +873,7 @@ p {
     display: inline;
     margin-top: 0;
     color: inherit;
-    font-size: inherit;
+    font-size: var(--compact-ticker-font-size);
 }
 
 .pool-provider-icon {
@@ -3436,6 +3437,8 @@ select {
     .crypto-news-ticker {
         min-height: 34px;
         font-size: 0.9rem;
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
     }
 
     .crypto-news-label {
@@ -3455,7 +3458,7 @@ select {
     }
 
     .crypto-news-item {
-        font-size: 0.9rem;
+        font-size: var(--compact-ticker-font-size);
     }
 }
 
