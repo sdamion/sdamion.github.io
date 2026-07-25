@@ -455,10 +455,11 @@ function updateCryptoNewsTickerSpeed() {
     const group = track?.querySelector('.crypto-news-group:not([aria-hidden="true"])');
     if (!track || !group) return;
 
-    const pixelsPerSecond = 1900;
-    const minimumDuration = 8;
-    const maximumDuration = 26;
-    const durationSeconds = Math.max(minimumDuration, Math.min(maximumDuration, group.scrollWidth / pixelsPerSecond));
+    const pixelsPerSecond = 180;
+    const minimumDuration = 20;
+    const distance = group.scrollWidth;
+    const durationSeconds = Math.max(minimumDuration, distance / pixelsPerSecond);
+    track.style.setProperty('--crypto-news-distance', `-${distance}px`);
     track.style.setProperty('--crypto-news-duration', `${durationSeconds.toFixed(2)}s`);
 }
 
@@ -485,8 +486,9 @@ async function fetchCryptoNews() {
         cryptoNewsItems = items;
         const tickerItems = items.slice(0, 20);
         track.replaceChildren(createNewsGroup(tickerItems), createNewsGroup(tickerItems, true));
+        updateCryptoNewsTickerSpeed();
         track.classList.add('is-scrolling');
-        requestAnimationFrame(updateCryptoNewsTickerSpeed);
+        document.fonts?.ready.then(updateCryptoNewsTickerSpeed).catch(() => {});
     } catch (error) {
         console.error('Crypto news could not be loaded', error);
         const message = document.createElement('span');

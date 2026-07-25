@@ -3410,7 +3410,7 @@ select {
 
 @keyframes crypto-news-scroll-rtl {
     from { transform: translateX(0); }
-    to { transform: translateX(-50%); }
+    to { transform: translateX(var(--crypto-news-distance, -50%)); }
 }
 
 @media (prefers-reduced-motion: reduce) {
