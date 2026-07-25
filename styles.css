@@ -1999,6 +1999,10 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
         padding-inline: 10px;
     }
 
+    .constitution-chat-form textarea {
+        min-height: 68px;
+    }
+
     .governance-vote-choices {
         grid-template-columns: 1fr;
     }
@@ -2729,31 +2733,6 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
         max-height: calc(100dvh - 16px);
         padding: 0;
         border-radius: 16px;
-        overscroll-behavior: contain;
-    }
-
-    .governance-constitution-chat-dialog {
-        height: calc(100dvh - 16px);
-        max-height: calc(100dvh - 16px);
-    }
-
-    .governance-constitution-chat-dialog .overlay-dialog-body {
-        display: flex;
-        min-height: 0;
-        overflow: hidden;
-        padding: 10px;
-    }
-
-    .governance-constitution-chat-dialog .constitution-chat {
-        flex: 1 1 auto;
-        min-height: 0;
-        height: 100%;
-        grid-template-rows: auto minmax(0, 1fr) auto auto auto;
-    }
-
-    .governance-constitution-chat-dialog .constitution-chat-messages {
-        min-height: 0;
-        max-height: none;
         overscroll-behavior: contain;
     }
 
