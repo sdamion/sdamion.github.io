@@ -119,7 +119,7 @@ function openConstitutionAssistantOverlay() {
     createGovernanceMenuOverlay({
         id: 'constitution-assistant-overlay',
         titleId: 'constitution-assistant-title',
-        titleText: 'Ask TDSPbot',
+        titleText: 'TDSPBot',
         closeLabel: 'Close Constitution assistant',
         closeOverlay: closeConstitutionAssistantOverlay,
         bodyNodes: [panel],
@@ -149,7 +149,7 @@ function createConstitutionChatPanel() {
     headingCopy.className = 'constitution-chat-heading-copy';
     const title = document.createElement('strong');
     title.id = 'constitution-chat-title';
-    title.textContent = 'Ask TDSPbot';
+    title.textContent = 'TDSPBot';
     const subtitle = document.createElement('span');
     subtitle.textContent = 'Constitution · Governance · DReps · SPOs · Starch · Treasury';
     headingCopy.append(title, subtitle);

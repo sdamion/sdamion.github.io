@@ -446,7 +446,11 @@ html {
     cursor: pointer;
 }
 
-.tdspbot-nav-link {
+.tdspbot-nav-icon {
+    display: block;
+    width: 18px;
+    height: 18px;
+    flex: 0 0 18px;
     animation: constitution-label-blink 1.6s ease-in-out infinite;
 }
 
@@ -1571,7 +1575,7 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .tdspbot-nav-link {
+    .tdspbot-nav-icon {
         animation: none;
     }
 }
