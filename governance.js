@@ -109,8 +109,8 @@ function initGovernance() {
 }
 
 function setupConstitutionAssistantCard() {
-    const card = document.getElementById('gov-constitution-card');
-    bindGovernanceMenuTrigger(card, openConstitutionAssistantOverlay);
+    const trigger = document.getElementById('tdspbot-open');
+    bindGovernanceMenuTrigger(trigger, openConstitutionAssistantOverlay);
 }
 
 function openConstitutionAssistantOverlay() {
@@ -127,7 +127,7 @@ function openConstitutionAssistantOverlay() {
         closeOnBackdrop: false,
         showBack: false,
         enableSearch: false,
-        returnFocus: document.getElementById('gov-constitution-card')
+        returnFocus: document.getElementById('tdspbot-open')
     });
     setupConstitutionChat();
     setupConstitutionDocument();
