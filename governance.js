@@ -32,8 +32,8 @@ const CARDANO_MAINNET_EPOCH_ZERO_MS = Date.parse('2017-09-23T21:44:51Z');
 const APPROVAL_GRACE_PERIOD_SECONDS = 300;
 const TREASURY_NET_CHANGE_LIMIT_ADA = 350_000_000;
 const TREASURY_NET_CHANGE_LIMIT_LOVELACE = TREASURY_NET_CHANGE_LIMIT_ADA * 1_000_000;
-const TREASURY_BUDGET_YEAR_START_EPOCH = 604;
-const TREASURY_BUDGET_YEAR_EPOCHS = 73;
+const TREASURY_BUDGET_YEAR_START_EPOCH = 613;
+const TREASURY_BUDGET_YEAR_EPOCHS = 101;
 const TREASURY_RECIPIENT_ADMINISTRATORS = Object.freeze({
     stake17xzc8pt7fgf0lc0x7eq6z7z6puhsxmzktna7dluahrj6g6ghh5qjr: 'Intersect Treasury Reserve Smart Contract',
     stake17x3n2krrld46qms4f4hzqqxzjgaf59u3fecvl6eh8scmaacjqmvjw: 'Harmonic Laboratories',
@@ -522,6 +522,7 @@ async function loadTreasuryData() {
             ? `Income ${formatCompactAdaFromLovelace(latestIncome, { fixedFractionDigits: 2 })}`
             : 'Income -- ADA'
     );
+    if (governanceState) updateTreasuryBudgetBar();
 }
 
 function fetchTreasuryPayload() {
@@ -2235,20 +2236,17 @@ function getBudgetAmountTone(value) {
 }
 
 function getTreasuryBudgetUsedThisYear() {
-    const proposals = Array.isArray(governanceState?.proposals)
-        ? getGovernanceProposalsFromDashboardPayload(governanceState)
+    const withdrawals = Array.isArray(treasuryState?.treasury_withdrawals)
+        ? treasuryState.treasury_withdrawals
         : [];
     const yearEndEpoch = TREASURY_BUDGET_YEAR_START_EPOCH + TREASURY_BUDGET_YEAR_EPOCHS;
 
-    return proposals.reduce((sum, proposal) => {
-        if (proposal?.proposal_type !== 'TreasuryWithdrawals') return sum;
-        if (getGovernanceStatus(proposal) !== 'approved') return sum;
-
-        const proposedEpoch = Number(proposal?.proposed_epoch);
-        if (!Number.isFinite(proposedEpoch)) return sum;
-        if (proposedEpoch < TREASURY_BUDGET_YEAR_START_EPOCH || proposedEpoch >= yearEndEpoch) return sum;
-
-        return sum + getProposalTotalAskLovelace(proposal);
+    return withdrawals.reduce((sum, withdrawal) => {
+        const enactedEpoch = Number(withdrawal?.enacted_epoch);
+        const amount = Number(withdrawal?.amount_lovelace);
+        if (!Number.isFinite(enactedEpoch) || !Number.isFinite(amount)) return sum;
+        if (enactedEpoch < TREASURY_BUDGET_YEAR_START_EPOCH || enactedEpoch >= yearEndEpoch) return sum;
+        return sum + amount;
     }, 0);
 }
 
