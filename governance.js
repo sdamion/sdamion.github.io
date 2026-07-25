@@ -119,7 +119,7 @@ function openConstitutionAssistantOverlay() {
     createGovernanceMenuOverlay({
         id: 'constitution-assistant-overlay',
         titleId: 'constitution-assistant-title',
-        titleText: 'Ask the Constitution',
+        titleText: 'Ask TDSPbot',
         closeLabel: 'Close Constitution assistant',
         closeOverlay: closeConstitutionAssistantOverlay,
         bodyNodes: [panel],
@@ -149,7 +149,7 @@ function createConstitutionChatPanel() {
     headingCopy.className = 'constitution-chat-heading-copy';
     const title = document.createElement('strong');
     title.id = 'constitution-chat-title';
-    title.textContent = 'Ask the Constitution';
+    title.textContent = 'Ask TDSPbot';
     const subtitle = document.createElement('span');
     subtitle.textContent = 'Constitution · Governance · DReps · SPOs · Starch · Treasury';
     headingCopy.append(title, subtitle);
@@ -173,7 +173,7 @@ function createConstitutionChatPanel() {
     messages.setAttribute('aria-live', 'polite');
     const empty = document.createElement('p');
     empty.className = 'constitution-chat-empty';
-    empty.textContent = 'Ask about cached governance, DReps, SPOs, Starch, Treasury, or the Constitution.';
+    empty.textContent = 'Ask about available governance, DReps, SPOs, Starch, Treasury, or the Constitution.';
     messages.appendChild(empty);
 
     const form = document.createElement('form');
@@ -188,7 +188,7 @@ function createConstitutionChatPanel() {
     input.name = 'question';
     input.rows = 1;
     input.maxLength = 600;
-    input.placeholder = 'Search cached Cardano data or ask about the Constitution';
+    input.placeholder = 'Search Cardano data or ask about the Constitution';
     input.required = true;
     const submit = document.createElement('button');
     submit.id = 'constitution-chat-submit';
@@ -300,7 +300,7 @@ function setupConstitutionChat() {
         messages.textContent = '';
         const empty = document.createElement('p');
         empty.className = 'constitution-chat-empty';
-        empty.textContent = 'Ask about cached governance, DReps, SPOs, Starch, Treasury, or the Constitution.';
+        empty.textContent = 'Ask about available governance, DReps, SPOs, Starch, Treasury, or the Constitution.';
         messages.appendChild(empty);
         input.value = '';
         resizeInput();
@@ -346,7 +346,8 @@ function setupConstitutionChat() {
                 pendingAnswerMessage = appendConstitutionChatMessage(messages, '', 'answer');
                 payload = await readConstitutionChatStream(response, event => {
                     answer += String(event.text || '');
-                    pendingAnswerMessage.body.textContent = answer;
+                    pendingAnswerMessage.body.textContent = formatConstitutionChatAnswer(answer);
+                    pendingAnswerMessage.stakePrompt.hidden = false;
                     messages.scrollTop = messages.scrollHeight;
                     status.textContent = 'Generating answer...';
                 });
@@ -361,7 +362,7 @@ function setupConstitutionChat() {
             }
             conversation.push({ role: 'assistant', content: answer });
             while (conversation.length > 12) conversation.shift();
-            status.textContent = payload.cached ? 'Answer loaded from the secure cache.' : '';
+            status.textContent = payload.cached ? 'Answer loaded from saved website data.' : '';
         } catch (error) {
             if (conversation.at(-1)?.role === 'user') conversation.pop();
             if (pendingAnswerMessage && !pendingAnswerMessage.body.textContent) {
@@ -457,15 +458,47 @@ function appendConstitutionChatMessage(container, text, type) {
     const label = document.createElement('strong');
     label.textContent = type === 'question' ? 'You' : type === 'answer' ? 'Governance assistant' : 'Unavailable';
     const body = document.createElement('p');
-    body.textContent = String(text || '');
+    body.textContent = type === 'answer'
+        ? formatConstitutionChatAnswer(text)
+        : String(text || '');
     message.append(label, body);
+    let stakePrompt = null;
+    if (type === 'answer') {
+        stakePrompt = createConstitutionChatStakePrompt();
+        stakePrompt.hidden = !String(text || '').trim();
+        message.appendChild(stakePrompt);
+    }
     container.appendChild(message);
 
     while (container.children.length > 20) {
         container.firstElementChild?.remove();
     }
     container.scrollTop = container.scrollHeight;
-    return { message, body };
+    return { message, body, stakePrompt };
+}
+
+function formatConstitutionChatAnswer(value) {
+    return String(value || '')
+        .replace(/\bbackend cache\b/gi, 'website data')
+        .replace(/\bcached\b/gi, 'available')
+        .replace(/\bcache\b/gi, 'website data');
+}
+
+function createConstitutionChatStakePrompt() {
+    const prompt = document.createElement('p');
+    prompt.className = 'constitution-chat-stake-prompt';
+    prompt.append('If this answer was useful, consider ');
+    const link = document.createElement('a');
+    link.href = '#stakenow';
+    link.textContent = 'staking to TDSP';
+    link.addEventListener('click', event => {
+        const stakeTrigger = document.querySelector('[data-stake-open]');
+        if (!stakeTrigger) return;
+        event.preventDefault();
+        stakeTrigger.click();
+    });
+    prompt.append(link, '.');
+    return prompt;
 }
 
 function setupTreasuryCard() {

@@ -1424,6 +1424,24 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     overflow-wrap: anywhere;
 }
 
+.constitution-chat-message .constitution-chat-stake-prompt {
+    margin-top: 4px;
+    color: var(--muted);
+    font-size: 0.88rem;
+}
+
+.constitution-chat-stake-prompt a {
+    color: var(--accent);
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.constitution-chat-stake-prompt a:hover,
+.constitution-chat-stake-prompt a:focus-visible {
+    color: var(--text);
+}
+
 .constitution-chat-form {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
