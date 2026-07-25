@@ -1201,7 +1201,6 @@ async function fetchStarchPoolStatus() {
     } catch (error) {
         starchPoolStatus = null;
         starchPools = [];
-        setStarchPoolCardStatus('N/A', null);
     }
 }
 
@@ -1219,8 +1218,6 @@ function renderStarchPoolStatus(payload) {
                 { sensitivity: 'base' }
             );
         });
-    const active = payload?.tdsp?.active === true || Number(payload?.tdsp?.status) === 1;
-    setStarchPoolCardStatus(active ? 'Active' : 'Inactive', active);
 }
 
 function setStarchPoolCardStatus(label, active) {
@@ -1391,18 +1388,21 @@ function closeMithrilSignersOverlay(restoreFocus = true) {
 }
 
 function initStarchPoolCard() {
-    ['pool-starch-status-card', 'starch-pools-card'].forEach(cardId => {
-        const card = document.getElementById(cardId);
-        if (!card || card.dataset.starchPoolBound === 'true') return;
+    bindStarchPoolCard('pool-starch-status-card', card => openTdspStarchCompanyOverlay(card));
+    bindStarchPoolCard('starch-pools-card', card => openStarchPoolsOverlay(card));
+}
 
-        const open = () => openStarchPoolsOverlay(card);
-        card.dataset.starchPoolBound = 'true';
-        card.addEventListener('click', open);
-        card.addEventListener('keydown', event => {
-            if (event.key !== 'Enter' && event.key !== ' ') return;
-            event.preventDefault();
-            open();
-        });
+function bindStarchPoolCard(cardId, openOverlay) {
+    const card = document.getElementById(cardId);
+    if (!card || card.dataset.starchPoolBound === 'true') return;
+
+    const open = () => openOverlay(card);
+    card.dataset.starchPoolBound = 'true';
+    card.addEventListener('click', open);
+    card.addEventListener('keydown', event => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        open();
     });
 }
 

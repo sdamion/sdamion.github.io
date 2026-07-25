@@ -49,7 +49,7 @@
     <link rel="preload" href="tdsp_logo.webp" as="image">
     <link rel="stylesheet" href="styles.css?v=20260725-event-card-images">
 
-    <script src="index.js?v=20260725-events-oldest-first" defer></script>
+    <script src="index.js?v=20260725-tdsp-active-miners" defer></script>
 </head>
 <body>
     <header class="site-header" id="site-header">
@@ -135,7 +135,7 @@
         <section class="section pool-section" id="pool">
             <div class="section-inner">
                 <p class="eyebrow">Stake pool</p>
-                <h2>SPO Status</h2>
+                <h2>SPO Stats</h2>
                 <div class="pool-id-line">
                     <span>Pool ID</span>
                     <strong id="pool-id">...</strong>
@@ -227,9 +227,9 @@
                         <strong id="pool-icebreaker-status" class="pool-status-value">...</strong>
                         <span class="pool-provider-label"><img class="pool-provider-icon" src="Icebreaker_logo.webp" alt="">Icebreaker 53</span>
                     </a>
-                    <div id="pool-starch-status-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show Starch pools">
+                    <div id="pool-starch-status-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show active miners for Starch company B0ADAD">
                         <strong id="pool-starch-status" class="pool-status-value">...</strong>
-                        <span class="pool-provider-label"><img class="pool-provider-icon" src="starchCompanyLogo.webp" alt="">Starch Pool</span>
+                        <span class="pool-provider-label"><img class="pool-provider-icon" src="starchCompanyLogo.webp" alt=""><span id="pool-starch-miner-label" class="pool-provider-label-text">... Starch Miners</span></span>
                     </div>
                     <a id="pool-realfi-card" class="pool-summary-link governance-menu-card" href="https://realfi.co/" target="_blank" rel="noopener noreferrer" aria-label="Open Realfi SPO">
                         <strong class="pool-status-value">Active</strong>
@@ -355,7 +355,7 @@
     </template>
 
     <script src="chart.js"></script>
-    <script src="starch.js?v=20260721-relevant-sorting" defer></script>
+    <script src="starch.js?v=20260725-tdsp-miner-count" defer></script>
     <script src="governance.js?v=20260725-universal-overlay-shell" defer></script>
     <script src="stake.js?v=20260725-universal-overlay-shell" defer></script>
 </body>

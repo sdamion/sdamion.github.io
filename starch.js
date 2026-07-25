@@ -5,9 +5,12 @@ const STARCH_API_BASE_URL = STARCH_IS_LOCAL_PREVIEW
 const STARCH_DIRECTORY_URL = STARCH_IS_LOCAL_PREVIEW
     ? '/__starch_directory_proxy__'
     : 'https://api.tdsp.online/api/starch/directory';
+const TDSP_STARCH_COMPANY_ID = 'B0ADAD';
 
 let starchDirectory = { miners: [], companies: [] };
 let minerChartInstance = null;
+let tdspStarchCompanyEnabled = null;
+let tdspStarchMinerCount = null;
 
 const formatBalance = balance =>
     `${new Intl.NumberFormat('en-US', {
@@ -41,6 +44,33 @@ async function fetchStarchDirectory() {
     }
 }
 
+async function fetchTdspStarchMinerCount() {
+    try {
+        const response = await fetch(getStarchSummaryUrl(TDSP_STARCH_COMPANY_ID));
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const summary = await response.json();
+        tdspStarchMinerCount = Array.isArray(summary?.miners) ? summary.miners.length : null;
+    } catch (error) {
+        console.error(`Starch company ${TDSP_STARCH_COMPANY_ID} miner count failed: ${error.message}`);
+    }
+    renderTdspStarchPoolTile();
+}
+
+function renderTdspStarchPoolTile() {
+    setStarchPoolCardStatus(
+        tdspStarchCompanyEnabled === null
+            ? 'N/A'
+            : tdspStarchCompanyEnabled ? 'Active' : 'Inactive',
+        tdspStarchCompanyEnabled
+    );
+    const minerLabel = document.getElementById('pool-starch-miner-label');
+    if (minerLabel) {
+        minerLabel.textContent = Number.isFinite(tdspStarchMinerCount)
+            ? `${tdspStarchMinerCount.toLocaleString('en-US')} Starch Miners`
+            : 'N/A Starch Miners';
+    }
+}
+
 function updateStarchDirectoryTiles(payload) {
     const minerCount = document.getElementById('starchMinerCount');
     const companyCount = document.getElementById('starchCompanyCount');
@@ -51,6 +81,14 @@ function updateStarchDirectoryTiles(payload) {
     if (companyCount) {
         const value = Number(payload?.company_count);
         companyCount.textContent = Number.isFinite(value) ? value.toLocaleString('en-US') : 'N/A';
+    }
+
+    if (typeof setStarchPoolCardStatus === 'function') {
+        const companies = Array.isArray(payload?.companies) ? payload.companies : null;
+        tdspStarchCompanyEnabled = companies
+            ? companies.some(company => String(company?.id || '').trim().toUpperCase() === TDSP_STARCH_COMPANY_ID)
+            : null;
+        renderTdspStarchPoolTile();
     }
 }
 
@@ -213,7 +251,20 @@ function createStarchCompanyStats(company) {
     return stats;
 }
 
-async function openStarchCompanyOverlay(company, returnFocus) {
+function openTdspStarchCompanyOverlay(returnFocus) {
+    const company = starchDirectory.companies.find(record =>
+        String(record?.id || '').trim().toUpperCase() === TDSP_STARCH_COMPANY_ID
+    ) || {
+        id: TDSP_STARCH_COMPANY_ID,
+        name: 'TDSP 01'
+    };
+    openStarchCompanyOverlay(company, returnFocus, {
+        activeMembers: true,
+        titleText: `Miner Company ${TDSP_STARCH_COMPANY_ID}`
+    });
+}
+
+async function openStarchCompanyOverlay(company, returnFocus, options = {}) {
     closeStarchCompanyOverlay(false);
     const companyId = String(company?.id || '').trim().toUpperCase();
     const content = document.createElement('div');
@@ -226,7 +277,7 @@ async function openStarchCompanyOverlay(company, returnFocus) {
     createPoolMenuOverlay({
         id: 'starch-company-detail-overlay',
         titleId: 'starch-company-detail-title',
-        titleText: String(company?.name || 'No Name'),
+        titleText: String(options.titleText || company?.name || 'No Name'),
         headerMeta: companyId,
         closeLabel: `Close ${String(company?.name || 'company')}`,
         closeOverlay: closeStarchCompanyOverlay,
@@ -239,8 +290,12 @@ async function openStarchCompanyOverlay(company, returnFocus) {
         const response = await fetch(getStarchSummaryUrl(companyId));
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const summary = await response.json();
+        if (companyId === TDSP_STARCH_COMPANY_ID) {
+            tdspStarchMinerCount = Array.isArray(summary?.miners) ? summary.miners.length : null;
+            renderTdspStarchPoolTile();
+        }
         if (!document.getElementById('starch-company-detail-overlay')) return;
-        renderStarchCompanyDetail(content, company, summary);
+        renderStarchCompanyDetail(content, company, summary, options);
     } catch (error) {
         console.error(`Starch company ${companyId} failed: ${error.message}`);
         if (!document.getElementById('starch-company-detail-overlay')) return;
@@ -260,13 +315,14 @@ function closeStarchCompanyOverlay(restoreFocus = true) {
     closePoolMenuOverlay('starch-company-detail-overlay', restoreFocus);
 }
 
-function renderStarchCompanyDetail(content, company, summary) {
-    const miners = (Array.isArray(summary?.miners) ? summary.miners : []).map(miner => ({
-        miner_id: String(miner?.miner_id || ''),
-        rank: Number.isFinite(Number(miner?.rank)) ? Number(miner.rank) : null,
-        balance: Number(miner?.balance) || 0,
-        weeklyBlocks: Number(miner?.weekly_blocks) || 0
-    }));
+function renderStarchCompanyDetail(content, company, summary, options = {}) {
+    const miners = (Array.isArray(summary?.miners) ? summary.miners : [])
+        .map(miner => ({
+            miner_id: String(miner?.miner_id || ''),
+            rank: Number.isFinite(Number(miner?.rank)) ? Number(miner.rank) : null,
+            balance: Number(miner?.balance) || 0,
+            weeklyBlocks: Number(miner?.weekly_blocks) || 0
+        }));
     content.replaceChildren();
 
     const summaryTiles = document.createElement('div');
@@ -274,7 +330,10 @@ function renderStarchCompanyDetail(content, company, summary) {
     summaryTiles.append(
         createStarchStatTile(formatBalance(summary?.team_balance), 'Company Balance'),
         createStarchStatTile(Number(summary?.weekly_blocks || 0).toLocaleString('en-US'), 'Weekly Blocks'),
-        createStarchStatTile(miners.length.toLocaleString('en-US'), 'Miners')
+        createStarchStatTile(
+            miners.length.toLocaleString('en-US'),
+            options.activeMembers ? 'Active Miners' : 'Miners'
+        )
     );
 
     const idLine = document.createElement('div');
@@ -442,5 +501,7 @@ document.addEventListener('DOMContentLoaded', () => {
     bindStarchDirectoryTile('starch-miners-card', 'miners', 'Miners');
     bindStarchDirectoryTile('starch-companies-card', 'companies', 'Companies');
     fetchStarchDirectory();
+    fetchTdspStarchMinerCount();
     setInterval(fetchStarchDirectory, 300000);
+    setInterval(fetchTdspStarchMinerCount, 300000);
 });
