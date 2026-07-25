@@ -455,7 +455,7 @@ function updateCryptoNewsTickerSpeed() {
     const group = track?.querySelector('.crypto-news-group:not([aria-hidden="true"])');
     if (!track || !group) return;
 
-    const pixelsPerSecond = 180;
+    const pixelsPerSecond = 72;
     const minimumDuration = 20;
     const distance = group.scrollWidth;
     const durationSeconds = Math.max(minimumDuration, distance / pixelsPerSecond);
