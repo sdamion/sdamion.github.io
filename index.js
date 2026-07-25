@@ -455,10 +455,9 @@ function updateCryptoNewsTickerSpeed() {
     const group = track?.querySelector('.crypto-news-group:not([aria-hidden="true"])');
     if (!track || !group) return;
 
-    const isMobile = window.matchMedia('(max-width: 700px)').matches;
-    const pixelsPerSecond = isMobile ? 3000 : 1900;
-    const minimumDuration = isMobile ? 6 : 8;
-    const maximumDuration = isMobile ? 16 : 26;
+    const pixelsPerSecond = 1900;
+    const minimumDuration = 8;
+    const maximumDuration = 26;
     const durationSeconds = Math.max(minimumDuration, Math.min(maximumDuration, group.scrollWidth / pixelsPerSecond));
     track.style.setProperty('--crypto-news-duration', `${durationSeconds.toFixed(2)}s`);
 }
