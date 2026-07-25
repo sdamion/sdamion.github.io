@@ -69,7 +69,6 @@ let lastActiveRenderSignature = '';
 let governanceState = null;
 let governanceGroupsState = null;
 let committeeInfoState = null;
-let governanceOverlaySequence = 0;
 const proposalVotesCache = new Map();
 const proposalDetailsCache = new Map();
 const committeeMemberStatsCache = new Map();
@@ -92,8 +91,8 @@ if (document.readyState === 'loading') {
 }
 
 function initGovernance() {
-    setupGovernanceMenuKeyboard();
     setupConstitutionAssistantCard();
+    setupConstitutionDocument();
     removeDrepPowerSplitCard();
     ensureEpochCountdownCard();
     setupGovernanceSummaryActionCards();
@@ -130,7 +129,6 @@ function openConstitutionAssistantOverlay() {
         returnFocus: document.getElementById('tdspbot-open')
     });
     setupConstitutionChat();
-    setupConstitutionDocument();
     document.getElementById('constitution-chat-question')?.focus();
 }
 
@@ -150,17 +148,8 @@ function createConstitutionChatPanel() {
     const title = document.createElement('strong');
     title.id = 'constitution-chat-title';
     title.textContent = 'TDSPBot';
-    const subtitle = document.createElement('span');
-    subtitle.textContent = 'Constitution · Governance · DReps · SPOs · Starch · Treasury';
-    headingCopy.append(title, subtitle);
-    const readButton = document.createElement('button');
-    readButton.id = 'constitution-document-open';
-    readButton.type = 'button';
-    readButton.textContent = 'Read Constitution';
-    const headingActions = document.createElement('div');
-    headingActions.className = 'constitution-chat-heading-actions';
-    headingActions.append(readButton);
-    heading.append(headingCopy, headingActions);
+    headingCopy.append(title);
+    heading.append(headingCopy);
 
     const messages = document.createElement('div');
     messages.id = 'constitution-chat-messages';
@@ -218,8 +207,8 @@ function createConstitutionChatPanel() {
 }
 
 function setupConstitutionDocument() {
-    const button = document.getElementById('constitution-document-open');
-    if (button) button.addEventListener('click', openConstitutionDocumentOverlay);
+    const trigger = document.getElementById('constitution-document-open');
+    bindGovernanceMenuTrigger(trigger, openConstitutionDocumentOverlay);
 }
 
 async function openConstitutionDocumentOverlay() {
@@ -241,7 +230,6 @@ async function openConstitutionDocumentOverlay() {
         dialogClass: 'governance-constitution-dialog',
         closeOnBackdrop: false,
         showBack: false,
-        closeText: 'Close',
         enableSearch: false,
         returnFocus: document.getElementById('constitution-document-open')
     });
@@ -1131,21 +1119,6 @@ function formatTreasuryTimestamp(value) {
     });
 }
 
-function setupGovernanceMenuKeyboard() {
-    document.removeEventListener('keydown', handleGovernanceMenuEscape);
-    document.addEventListener('keydown', handleGovernanceMenuEscape);
-}
-
-function handleGovernanceMenuEscape(event) {
-    if (event.key !== 'Escape') return;
-    const overlays = document.querySelectorAll('.governance-menu-overlay');
-    const topOverlay = overlays[overlays.length - 1];
-    if (topOverlay?.governanceCloseOnEscape === false) return;
-    if (typeof topOverlay?.governanceCloseOverlay === 'function') {
-        topOverlay.governanceCloseOverlay();
-    }
-}
-
 function setupDrepDirectoryCard() {
     const card = document.getElementById('gov-drep-card');
     bindGovernanceMenuTrigger(card, openDrepDirectoryOverlay);
@@ -1956,123 +1929,8 @@ function createGovernanceCard(proposal, options = {}) {
     return card;
 }
 
-function appendGovernanceDialogHeader(dialog, title, close, leadingNodes = [], meta = null, back = null) {
-    const header = document.createElement('header');
-    header.className = 'overlay-dialog-header';
-
-    const copy = document.createElement('div');
-    copy.className = 'overlay-dialog-header-copy';
-    leadingNodes.forEach(node => copy.appendChild(node));
-    copy.appendChild(title);
-    if (meta) copy.appendChild(meta);
-
-    const actions = document.createElement('div');
-    actions.className = 'overlay-dialog-header-actions';
-    if (back) actions.appendChild(back);
-    actions.appendChild(close);
-
-    header.appendChild(copy);
-    header.appendChild(actions);
-    dialog.appendChild(header);
-}
-
-function appendGovernanceDialogBody(dialog, ...nodes) {
-    const body = document.createElement('div');
-    body.className = 'overlay-dialog-body';
-    nodes.forEach(node => body.appendChild(node));
-    dialog.appendChild(body);
-    return body;
-}
-
 function createGovernanceMenuOverlay(options) {
-    const {
-        id,
-        titleId,
-        titleText,
-        closeLabel,
-        closeOverlay,
-        bodyNodes = [],
-        leadingNodes = [],
-        overlayClass = 'governance-drep-overlay',
-        dialogClass = 'governance-drep-dialog',
-        titleTag = 'h3',
-        headerMeta = '',
-        returnFocus = document.activeElement,
-        rootTitle = titleText,
-        closeOnBackdrop = true,
-        showBack = true,
-        closeText = '',
-        enableSearch = true
-    } = options;
-
-    const previousTopOverlay = getTopGovernanceMenuOverlay();
-    governanceOverlaySequence += 1;
-    const instanceId = `${id}-${governanceOverlaySequence}`;
-    const overlay = document.createElement('div');
-    overlay.className = `governance-overlay governance-menu-overlay ${overlayClass}`.trim();
-    overlay.id = instanceId;
-    overlay.dataset.governanceOverlayId = id;
-    overlay.style.zIndex = String(getNextGovernanceOverlayZIndex());
-    overlay.governanceReturnFocus = returnFocus;
-    overlay.governanceCloseOverlay = closeOverlay;
-    overlay.governanceRootOverlay = previousTopOverlay?.governanceRootOverlay || overlay;
-    overlay.governanceRootTitle = previousTopOverlay?.governanceRootTitle || rootTitle;
-    if (closeOnBackdrop) {
-        overlay.addEventListener('click', event => {
-            if (event.target === overlay) closeOverlay();
-        });
-    }
-
-    const dialog = document.createElement('article');
-    dialog.className = `governance-dialog ${dialogClass}`.trim();
-    dialog.setAttribute('role', 'dialog');
-    dialog.setAttribute('aria-modal', 'true');
-    dialog.setAttribute('aria-labelledby', `${titleId}-${governanceOverlaySequence}`);
-
-    const close = document.createElement('button');
-    close.className = 'governance-close';
-    close.type = 'button';
-    close.setAttribute('aria-label', closeLabel);
-    close.title = closeLabel;
-    if (closeText) {
-        close.textContent = closeText;
-    } else {
-        const closeIcon = document.createElement('span');
-        closeIcon.className = 'governance-close-icon';
-        closeIcon.setAttribute('aria-hidden', 'true');
-        close.appendChild(closeIcon);
-    }
-    close.addEventListener('click', closeText
-        ? closeOverlay
-        : () => closeGovernanceOverlayStack(overlay));
-
-    const back = document.createElement('button');
-    back.className = 'governance-back-to-root';
-    back.type = 'button';
-    back.textContent = '<';
-    back.setAttribute('aria-label', 'Back one window');
-    back.title = 'Back one window';
-    back.addEventListener('click', closeOverlay);
-
-    const title = document.createElement(titleTag);
-    title.id = `${titleId}-${governanceOverlaySequence}`;
-    if (titleTag !== 'h2') title.className = 'governance-drep-title';
-    title.textContent = titleText;
-
-    const meta = document.createElement('span');
-    meta.className = 'governance-menu-header-meta';
-    meta.dataset.governanceMenuHeaderMeta = 'true';
-    meta.textContent = headerMeta;
-
-    appendGovernanceDialogHeader(dialog, title, close, leadingNodes, meta, showBack ? back : null);
-    const body = appendGovernanceDialogBody(dialog, ...bodyNodes);
-    if (enableSearch) installOverlaySearch(body);
-    overlay.appendChild(dialog);
-    document.body.appendChild(overlay);
-    syncGovernanceMenuOverlayAccessibility();
-    close.focus();
-
-    return { overlay, dialog, close, title, meta };
+    return createUniversalOverlay({ ...options, uniqueId: true });
 }
 
 function updateGovernanceMenuHeaderMeta(id, text, context = null) {
@@ -2090,63 +1948,6 @@ function removeGovernanceMenuOverlay(id) {
     if (overlay) overlay.remove();
     syncGovernanceMenuOverlayAccessibility();
     if (returnFocus?.isConnected) returnFocus.focus();
-}
-
-function getTopGovernanceMenuOverlay(id = '') {
-    const selector = id
-        ? `.governance-menu-overlay[data-governance-overlay-id="${CSS.escape(id)}"]`
-        : '.governance-menu-overlay';
-    const overlays = Array.from(document.querySelectorAll(selector));
-    return overlays.reduce((top, overlay) => {
-        if (!top) return overlay;
-        const overlayZIndex = Number.parseInt(getComputedStyle(overlay).zIndex, 10) || 0;
-        const topZIndex = Number.parseInt(getComputedStyle(top).zIndex, 10) || 0;
-        return overlayZIndex >= topZIndex ? overlay : top;
-    }, null);
-}
-
-function closeGovernanceOverlayStack(sourceOverlay) {
-    const rootOverlay = sourceOverlay?.governanceRootOverlay || sourceOverlay;
-    if (!rootOverlay?.isConnected) return;
-
-    let topOverlay = getTopGovernanceMenuOverlay();
-    while (topOverlay) {
-        const closeOverlay = topOverlay.governanceCloseOverlay;
-        if (typeof closeOverlay === 'function') closeOverlay();
-        if (topOverlay.isConnected) topOverlay.remove();
-        if (topOverlay === rootOverlay) break;
-        topOverlay = getTopGovernanceMenuOverlay();
-    }
-
-    syncGovernanceMenuOverlayAccessibility();
-}
-
-function getNextGovernanceOverlayZIndex() {
-    const currentHighest = Array.from(document.querySelectorAll('.governance-menu-overlay'))
-        .reduce((highest, overlay) => {
-            const zIndex = Number.parseInt(getComputedStyle(overlay).zIndex, 10);
-            return Number.isFinite(zIndex) ? Math.max(highest, zIndex) : highest;
-        }, 3000);
-    return currentHighest + 100;
-}
-
-function syncGovernanceMenuOverlayAccessibility() {
-    const overlays = Array.from(document.querySelectorAll('.governance-menu-overlay'));
-    let topOverlay = null;
-    let topZIndex = Number.NEGATIVE_INFINITY;
-
-    overlays.forEach(overlay => {
-        const dialog = overlay.querySelector('.governance-dialog');
-        if (dialog) dialog.setAttribute('aria-modal', 'false');
-        const zIndex = Number.parseInt(getComputedStyle(overlay).zIndex, 10);
-        if (Number.isFinite(zIndex) && zIndex >= topZIndex) {
-            topOverlay = overlay;
-            topZIndex = zIndex;
-        }
-    });
-
-    const topDialog = topOverlay?.querySelector('.governance-dialog');
-    if (topDialog) topDialog.setAttribute('aria-modal', 'true');
 }
 
 function openGovernanceActionGroupOverlay(groupKey, titleText, emptyMessage, rootTitle = titleText) {

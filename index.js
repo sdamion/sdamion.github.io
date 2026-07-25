@@ -832,12 +832,7 @@ function openYouTubeVideoOverlay(videoId, title, returnFocus = document.activeEl
     iframe.allowFullscreen = true;
     frame.appendChild(iframe);
 
-    const closeVideo = document.createElement('button');
-    closeVideo.type = 'button';
-    closeVideo.className = 'youtube-video-close';
-    closeVideo.textContent = 'Close video';
-    closeVideo.addEventListener('click', closeYouTubeVideoOverlay);
-    panel.append(frame, closeVideo);
+    panel.appendChild(frame);
 
     createPoolMenuOverlay({
         id: 'youtube-video-overlay',
@@ -849,7 +844,6 @@ function openYouTubeVideoOverlay(videoId, title, returnFocus = document.activeEl
         returnFocus,
         rootTitle: 'Crypto News',
         bodyNode: panel,
-        showHeaderActions: false,
         closeOnBackdrop: false,
         closeOnEscape: !window.matchMedia('(max-width: 700px)').matches
     });
@@ -894,26 +888,9 @@ function initExternalLinkWarnings() {
     }, true);
 }
 
-function getExternalSiteWarning() {
+function getExternalSiteWarning(returnFocus = document.activeElement) {
     let overlay = document.getElementById('external-site-warning');
     if (overlay) return overlay;
-
-    overlay = document.createElement('div');
-    overlay.id = 'external-site-warning';
-    overlay.className = 'external-site-warning';
-    overlay.hidden = true;
-    overlay.setAttribute('aria-hidden', 'true');
-
-    const dialog = document.createElement('article');
-    dialog.className = 'external-site-warning-dialog';
-    dialog.setAttribute('role', 'dialog');
-    dialog.setAttribute('aria-modal', 'true');
-    dialog.setAttribute('aria-labelledby', 'external-site-warning-title');
-    dialog.setAttribute('aria-describedby', 'external-site-warning-message');
-
-    const title = document.createElement('h2');
-    title.id = 'external-site-warning-title';
-    title.textContent = "You're opening an external site";
 
     const message = document.createElement('p');
     message.id = 'external-site-warning-message';
@@ -967,49 +944,47 @@ function getExternalSiteWarning() {
     });
 
     actions.append(cancel, proceed);
-    dialog.append(title, message, urlRow, actions);
-    overlay.appendChild(dialog);
-    overlay.addEventListener('click', event => {
-        if (event.target === overlay) closeExternalSiteWarning();
+    const elements = createUniversalOverlay({
+        id: 'external-site-warning',
+        titleId: 'external-site-warning-title',
+        titleText: "You're opening an external site",
+        titleTag: 'h2',
+        closeLabel: 'Close external site warning',
+        closeOverlay: closeExternalSiteWarning,
+        returnFocus,
+        overlayClass: 'external-site-warning',
+        dialogClass: 'external-site-warning-dialog',
+        bodyNodes: [message, urlRow, actions],
+        enableSearch: false
     });
-    document.body.appendChild(overlay);
-    return overlay;
+    elements.body.classList.add('external-site-warning-body');
+    elements.dialog.setAttribute('aria-describedby', 'external-site-warning-message');
+    return elements.overlay;
 }
 
 function openExternalSiteWarning(value, returnFocus = document.activeElement) {
     const url = getExternalHttpUrl(value);
     if (!url) return false;
 
-    const overlay = getExternalSiteWarning();
+    pendingExternalUrl = url.href;
+    externalLinkReturnFocus = returnFocus;
+    const overlay = getExternalSiteWarning(returnFocus);
     const host = overlay.querySelector('[data-external-site-host]');
     const copy = overlay.querySelector('.external-site-warning-copy');
     if (host) host.textContent = url.href;
     if (copy) copy.textContent = 'Copy';
-    pendingExternalUrl = url.href;
-    externalLinkReturnFocus = returnFocus;
-    overlay.hidden = false;
-    overlay.setAttribute('aria-hidden', 'false');
-    overlay.querySelector('.external-site-warning-cancel')?.focus();
     return true;
 }
 
 function closeExternalSiteWarning(restoreFocus = true) {
     const overlay = document.getElementById('external-site-warning');
     if (!overlay) return;
-    overlay.hidden = true;
-    overlay.setAttribute('aria-hidden', 'true');
+    overlay.remove();
+    syncGovernanceMenuOverlayAccessibility();
     pendingExternalUrl = '';
     if (restoreFocus && externalLinkReturnFocus?.isConnected) externalLinkReturnFocus.focus();
     externalLinkReturnFocus = null;
 }
-
-document.addEventListener('keydown', event => {
-    const overlay = document.getElementById('external-site-warning');
-    if (event.key === 'Escape' && overlay && !overlay.hidden) {
-        event.preventDefault();
-        closeExternalSiteWarning();
-    }
-});
 
 document.addEventListener('tdsp:content-loaded', () => {
     initUI();
@@ -1323,6 +1298,187 @@ function closeStarchPoolsOverlay(restoreFocus = true) {
     closePoolMenuOverlay('pool-starch-overlay', restoreFocus);
 }
 
+let universalOverlaySequence = 0;
+
+function getTopGovernanceMenuOverlay(id = '') {
+    const selector = id
+        ? `.governance-menu-overlay[data-governance-overlay-id="${CSS.escape(id)}"]`
+        : '.governance-menu-overlay';
+    const overlays = Array.from(document.querySelectorAll(selector));
+    return overlays.reduce((top, overlay) => {
+        if (!top) return overlay;
+        const overlayZIndex = Number.parseInt(getComputedStyle(overlay).zIndex, 10) || 0;
+        const topZIndex = Number.parseInt(getComputedStyle(top).zIndex, 10) || 0;
+        return overlayZIndex >= topZIndex ? overlay : top;
+    }, null);
+}
+
+function getNextGovernanceOverlayZIndex() {
+    const currentHighest = Array.from(document.querySelectorAll('.governance-menu-overlay'))
+        .reduce((highest, overlay) => {
+            const zIndex = Number.parseInt(getComputedStyle(overlay).zIndex, 10);
+            return Number.isFinite(zIndex) ? Math.max(highest, zIndex) : highest;
+        }, 3000);
+    return currentHighest + 100;
+}
+
+function syncGovernanceMenuOverlayAccessibility() {
+    const overlays = Array.from(document.querySelectorAll('.governance-menu-overlay'));
+    let topOverlay = null;
+    let topZIndex = Number.NEGATIVE_INFINITY;
+
+    overlays.forEach(overlay => {
+        const dialog = overlay.querySelector('.governance-dialog');
+        if (dialog) dialog.setAttribute('aria-modal', 'false');
+        const zIndex = Number.parseInt(getComputedStyle(overlay).zIndex, 10);
+        if (Number.isFinite(zIndex) && zIndex >= topZIndex) {
+            topOverlay = overlay;
+            topZIndex = zIndex;
+        }
+    });
+
+    const topDialog = topOverlay?.querySelector('.governance-dialog');
+    if (topDialog) topDialog.setAttribute('aria-modal', 'true');
+}
+
+function setupUniversalOverlayKeyboard() {
+    if (document.documentElement.dataset.universalOverlayKeyboardBound === 'true') return;
+    document.documentElement.dataset.universalOverlayKeyboardBound = 'true';
+    document.addEventListener('keydown', event => {
+        if (event.key !== 'Escape') return;
+        const topOverlay = getTopGovernanceMenuOverlay();
+        if (topOverlay?.governanceCloseOnEscape === false) return;
+        if (typeof topOverlay?.governanceCloseOverlay === 'function') {
+            topOverlay.governanceCloseOverlay();
+        }
+    });
+}
+
+function closeGovernanceOverlayStack(sourceOverlay) {
+    const rootOverlay = sourceOverlay?.governanceRootOverlay || sourceOverlay;
+    if (!rootOverlay?.isConnected) return;
+
+    let topOverlay = getTopGovernanceMenuOverlay();
+    while (topOverlay) {
+        const closeOverlay = topOverlay.governanceCloseOverlay;
+        if (typeof closeOverlay === 'function') closeOverlay();
+        if (topOverlay.isConnected) topOverlay.remove();
+        if (topOverlay === rootOverlay) break;
+        topOverlay = getTopGovernanceMenuOverlay();
+    }
+
+    syncGovernanceMenuOverlayAccessibility();
+}
+
+function appendUniversalOverlayHeader(dialog, title, close, leadingNodes = [], meta = null, back = null) {
+    const header = document.createElement('header');
+    header.className = 'overlay-dialog-header';
+    const copy = document.createElement('div');
+    copy.className = 'overlay-dialog-header-copy';
+    leadingNodes.forEach(node => copy.appendChild(node));
+    copy.appendChild(title);
+    if (meta) copy.appendChild(meta);
+
+    const actions = document.createElement('div');
+    actions.className = 'overlay-dialog-header-actions';
+    if (back) actions.appendChild(back);
+    actions.appendChild(close);
+    header.append(copy, actions);
+    dialog.appendChild(header);
+}
+
+function createUniversalOverlay(options) {
+    const {
+        id,
+        titleId,
+        titleText,
+        closeLabel,
+        closeOverlay,
+        bodyNodes = [],
+        leadingNodes = [],
+        overlayClass = 'governance-drep-overlay',
+        dialogClass = 'governance-drep-dialog',
+        titleTag = 'h3',
+        headerMeta = '',
+        returnFocus = document.activeElement,
+        rootTitle = titleText,
+        closeOnBackdrop = true,
+        closeOnEscape = true,
+        showBack = true,
+        enableSearch = true,
+        uniqueId = false
+    } = options;
+
+    const previousTopOverlay = getTopGovernanceMenuOverlay();
+    universalOverlaySequence += 1;
+    const suffix = uniqueId ? `-${universalOverlaySequence}` : '';
+    const overlay = document.createElement('div');
+    overlay.id = `${id}${suffix}`;
+    overlay.className = `governance-overlay governance-menu-overlay ${overlayClass}`.trim();
+    overlay.dataset.governanceOverlayId = id;
+    overlay.style.zIndex = String(getNextGovernanceOverlayZIndex());
+    overlay.governanceReturnFocus = returnFocus;
+    overlay.governanceCloseOverlay = closeOverlay;
+    overlay.governanceCloseOnEscape = closeOnEscape;
+    overlay.governanceRootOverlay = previousTopOverlay?.governanceRootOverlay || overlay;
+    overlay.governanceRootTitle = previousTopOverlay?.governanceRootTitle || rootTitle;
+    if (closeOnBackdrop) {
+        overlay.addEventListener('click', event => {
+            if (event.target === overlay) closeOverlay();
+        });
+    }
+
+    const dialog = document.createElement('article');
+    dialog.className = `governance-dialog ${dialogClass}`.trim();
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.setAttribute('aria-labelledby', `${titleId}${suffix}`);
+
+    const close = document.createElement('button');
+    close.className = 'governance-close';
+    close.type = 'button';
+    close.setAttribute('aria-label', closeLabel);
+    close.title = closeLabel;
+    const closeIcon = document.createElement('span');
+    closeIcon.className = 'governance-close-icon';
+    closeIcon.setAttribute('aria-hidden', 'true');
+    close.appendChild(closeIcon);
+    close.addEventListener('click', () => closeGovernanceOverlayStack(overlay));
+
+    const back = document.createElement('button');
+    back.className = 'governance-back-to-root';
+    back.type = 'button';
+    back.textContent = '<';
+    back.setAttribute('aria-label', 'Back one window');
+    back.title = 'Back one window';
+    back.addEventListener('click', closeOverlay);
+
+    const title = document.createElement(titleTag);
+    title.id = `${titleId}${suffix}`;
+    if (titleTag !== 'h2') title.className = 'governance-drep-title';
+    title.textContent = titleText;
+
+    const meta = document.createElement('span');
+    meta.className = 'governance-menu-header-meta';
+    meta.dataset.governanceMenuHeaderMeta = 'true';
+    meta.textContent = headerMeta;
+
+    const hasBackTarget = showBack !== false && Boolean(previousTopOverlay);
+    appendUniversalOverlayHeader(dialog, title, close, leadingNodes, meta, hasBackTarget ? back : null);
+    const body = document.createElement('div');
+    body.className = 'overlay-dialog-body';
+    bodyNodes.forEach(node => body.appendChild(node));
+    dialog.appendChild(body);
+    if (enableSearch) installOverlaySearch(body);
+
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+    setupUniversalOverlayKeyboard();
+    syncGovernanceMenuOverlayAccessibility();
+    close.focus();
+    return { overlay, dialog, body, close, title, meta };
+}
+
 function createPoolMenuOverlay({
     id,
     titleId,
@@ -1333,78 +1489,22 @@ function createPoolMenuOverlay({
     returnFocus,
     rootTitle,
     bodyNode,
-    showHeaderActions = true,
     closeOnBackdrop = true,
     closeOnEscape = true
 }) {
-    const overlay = document.createElement('div');
-    overlay.id = id;
-    overlay.className = 'governance-overlay governance-menu-overlay governance-drep-overlay';
-    overlay.style.zIndex = String(getNextPoolOverlayZIndex());
-    overlay.governanceReturnFocus = returnFocus;
-    overlay.governanceCloseOverlay = closeOverlay;
-    overlay.governanceCloseOnEscape = closeOnEscape;
-    overlay.addEventListener('click', event => {
-        if (closeOnBackdrop && event.target === overlay) closeOverlay();
+    return createUniversalOverlay({
+        id,
+        titleId,
+        titleText,
+        headerMeta,
+        closeLabel,
+        closeOverlay,
+        returnFocus,
+        rootTitle,
+        bodyNodes: [bodyNode],
+        closeOnBackdrop,
+        closeOnEscape
     });
-
-    const dialog = document.createElement('article');
-    dialog.className = 'governance-dialog governance-drep-dialog';
-    dialog.setAttribute('role', 'dialog');
-    dialog.setAttribute('aria-modal', 'true');
-    dialog.setAttribute('aria-labelledby', titleId);
-
-    const header = document.createElement('header');
-    header.className = 'overlay-dialog-header';
-
-    const headerCopy = document.createElement('div');
-    headerCopy.className = 'overlay-dialog-header-copy';
-
-    const title = document.createElement('h3');
-    title.id = titleId;
-    title.className = 'governance-drep-title';
-    title.textContent = titleText;
-
-    const meta = document.createElement('span');
-    meta.className = 'governance-menu-header-meta';
-    meta.textContent = headerMeta;
-
-    const close = document.createElement('button');
-    close.className = 'governance-close';
-    close.type = 'button';
-    close.textContent = '<';
-    close.setAttribute('aria-label', closeLabel);
-    close.title = closeLabel;
-    close.addEventListener('click', closeOverlay);
-
-    const back = document.createElement('button');
-    back.className = 'governance-back-to-root';
-    back.type = 'button';
-    back.textContent = '<<';
-    back.setAttribute('aria-label', `Back to ${rootTitle || titleText}`);
-    back.title = `Back to ${rootTitle || titleText}`;
-    back.addEventListener('click', closeOverlay);
-
-    const headerActions = document.createElement('div');
-    headerActions.className = 'overlay-dialog-header-actions';
-    headerActions.append(back, close);
-
-    headerCopy.append(title, meta);
-    header.appendChild(headerCopy);
-    if (showHeaderActions) header.appendChild(headerActions);
-
-    const body = document.createElement('div');
-    body.className = 'overlay-dialog-body';
-    body.appendChild(bodyNode);
-    installOverlaySearch(body);
-
-    dialog.append(header, body);
-    overlay.appendChild(dialog);
-    document.body.appendChild(overlay);
-    if (typeof syncGovernanceMenuOverlayAccessibility === 'function') {
-        syncGovernanceMenuOverlayAccessibility();
-    }
-    close.focus();
 }
 
 function normalizeOverlaySearchText(value) {
@@ -1657,22 +1757,11 @@ function installOverlaySearch(body) {
     applySearch();
 }
 
-function getNextPoolOverlayZIndex() {
-    const currentHighest = Array.from(document.querySelectorAll('.governance-menu-overlay'))
-        .reduce((highest, overlay) => {
-            const zIndex = Number.parseInt(getComputedStyle(overlay).zIndex, 10);
-            return Number.isFinite(zIndex) ? Math.max(highest, zIndex) : highest;
-        }, 3000);
-    return currentHighest + 100;
-}
-
 function closePoolMenuOverlay(id, restoreFocus = true) {
     const overlay = document.getElementById(id);
     const returnFocus = overlay?.governanceReturnFocus;
     overlay?.remove();
-    if (typeof syncGovernanceMenuOverlayAccessibility === 'function') {
-        syncGovernanceMenuOverlayAccessibility();
-    }
+    syncGovernanceMenuOverlayAccessibility();
     if (restoreFocus && returnFocus?.isConnected) returnFocus.focus();
 }
 

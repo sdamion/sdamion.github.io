@@ -47,9 +47,9 @@
 
     <!-- Preload Logo -->
     <link rel="preload" href="tdsp_logo.webp" as="image">
-    <link rel="stylesheet" href="styles.css?v=20260725-mobile-chat-input">
+    <link rel="stylesheet" href="styles.css?v=20260725-responsive-ticker-type">
 
-    <script src="index.js?v=20260725-news-ticker-speed-40" defer></script>
+    <script src="index.js?v=20260725-universal-overlay-shell" defer></script>
 </head>
 <body>
     <header class="site-header" id="site-header">
@@ -317,6 +317,11 @@
                         <span>CC Members</span>
                         <span class="governance-summary-subvalue" id="gov-committee-voted">Voted --%</span>
                     </div>
+                    <div id="constitution-document-open" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Read the Cardano Constitution">
+                        <strong>Read</strong>
+                        <span>Constitution</span>
+                        <span class="governance-summary-subvalue">Cardano Constitution</span>
+                    </div>
                 </div>
 
                 <p class="small-text">Source: <a href="https://api.koios.rest/" target="_blank" rel="noopener noreferrer" aria-label="Koios API">Koios API</a></p>
@@ -343,27 +348,19 @@
         &copy; 2026 The Dutch Stake Pool. All rights reserved.
     </footer>
 
-    <div id="stakenow" class="iframe-modal" aria-hidden="true">
-        <div class="iframe-content wallet-modal-content" role="dialog" aria-modal="true" aria-label="Choose a Cardano wallet">
-            <header class="overlay-dialog-header wallet-dialog-header">
-                <strong class="wallet-dialog-title">Stake Now</strong>
-                <button class="wallet-modal-close" data-stake-close aria-label="Close">Close</button>
-            </header>
-            <div class="overlay-dialog-body wallet-dialog-body">
-                <div id="stake-warning" class="stake-warning">
-                    <strong>Check before signing</strong>
-                    <p>Always review the transaction in your wallet before approving. Confirm it delegates to The Dutch Stake Pool and does not include anything unexpected.</p>
-                    <button class="stake-continue-button" type="button" data-stake-continue>Continue</button>
-                </div>
-                <div id="wallet-list" class="wallet-list"></div>
-                <p id="wallet-status" class="wallet-status" role="status" aria-live="polite"></p>
-            </div>
+    <template id="stakenow">
+        <div id="stake-warning" class="stake-warning">
+            <strong>Check before signing</strong>
+            <p>Always review the transaction in your wallet before approving. Confirm it delegates to The Dutch Stake Pool and does not include anything unexpected.</p>
+            <button class="stake-continue-button" type="button" data-stake-continue>Continue</button>
         </div>
-    </div>
+        <div id="wallet-list" class="wallet-list"></div>
+        <p id="wallet-status" class="wallet-status" role="status" aria-live="polite"></p>
+    </template>
 
     <script src="chart.js"></script>
     <script src="starch.js?v=20260721-relevant-sorting" defer></script>
-    <script src="governance.js?v=20260725-tdspbot-private-chat" defer></script>
-    <script src="stake.js?v=20260717-backend-api-only" defer></script>
+    <script src="governance.js?v=20260725-universal-overlay-shell" defer></script>
+    <script src="stake.js?v=20260725-universal-overlay-shell" defer></script>
 </body>
 </html>

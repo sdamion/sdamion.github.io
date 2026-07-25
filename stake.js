@@ -13,7 +13,7 @@ function loadMeshLib() {
 }
 
 function getModal() {
-    return document.getElementById('stakenow');
+    return getTopGovernanceMenuOverlay('stake-now-overlay');
 }
 
 function setWalletStep(step) {
@@ -185,21 +185,36 @@ async function delegateWithWallet(walletId) {
 
 function openStakeModal(event) {
     if (event) event.preventDefault();
-    const modal = getModal();
-    if (!modal) return;
-    modal.style.display = 'block';
-    modal.setAttribute('aria-hidden', 'false');
-    modal.setAttribute('tabindex', '-1');
-    modal.focus();
+    if (getModal()) return;
+    const template = document.getElementById('stakenow');
+    if (!(template instanceof HTMLTemplateElement)) return;
+    const content = template.content.cloneNode(true);
+    const bodyNodes = Array.from(content.children);
+    const elements = createUniversalOverlay({
+        id: 'stake-now-overlay',
+        titleId: 'stake-now-title',
+        titleText: 'Stake Now',
+        closeLabel: 'Close Stake Now',
+        closeOverlay: closeStakeModal,
+        returnFocus: event?.currentTarget || document.activeElement,
+        rootTitle: 'Stake Now',
+        overlayClass: 'stake-overlay',
+        dialogClass: 'wallet-modal-content',
+        bodyNodes,
+        enableSearch: false
+    });
+    const modal = elements.overlay;
+    elements.body.classList.add('wallet-dialog-body');
     modal._triggerElement = event ? event.currentTarget : null;
+    bindStakeControls(modal);
     setWalletStep('warning');
 }
 
 function closeStakeModal() {
     const modal = getModal();
     if (!modal) return;
-    modal.style.display = 'none';
-    modal.setAttribute('aria-hidden', 'true');
+    modal.remove();
+    syncGovernanceMenuOverlayAccessibility();
     if (modal._triggerElement && typeof modal._triggerElement.focus === 'function') {
         modal._triggerElement.focus();
     }
@@ -211,12 +226,6 @@ function bindStakeControls(root = document) {
         if (button.dataset.stakeBound === 'true') return;
         button.dataset.stakeBound = 'true';
         button.addEventListener('click', openStakeModal);
-    });
-
-    root.querySelectorAll('[data-stake-close]').forEach(button => {
-        if (button.dataset.stakeBound === 'true') return;
-        button.dataset.stakeBound = 'true';
-        button.addEventListener('click', closeStakeModal);
     });
 
     root.querySelectorAll('[data-stake-continue]').forEach(button => {
@@ -232,17 +241,3 @@ function bindStakeControls(root = document) {
 bindStakeControls();
 document.addEventListener('DOMContentLoaded', () => bindStakeControls());
 document.addEventListener('tdsp:content-loaded', () => bindStakeControls());
-
-document.addEventListener('keydown', event => {
-    const modal = getModal();
-    if (modal && modal.style.display === 'block' && event.key === 'Escape') {
-        closeStakeModal();
-    }
-});
-
-window.addEventListener('click', event => {
-    const modal = getModal();
-    if (modal && event.target === modal) {
-        closeStakeModal();
-    }
-});

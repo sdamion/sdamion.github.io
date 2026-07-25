@@ -114,28 +114,9 @@ th {
     background-color: rgba(15, 118, 110, 0.08);
 }
 
-/* Modal Helpers */
-.iframe-modal {
-    display: none;
-    position: fixed;
-    top: 0; left: 0;
-    width: 100vw; height: 100vh;
-    padding: 24px;
-    background-color: rgba(17, 24, 22, 0.72);
-    backdrop-filter: blur(10px);
-    z-index: 9999;
-}
-.iframe-content {
-    position: relative;
-    width: min(100%, 360px);
-    margin: min(16vh, 120px) auto 0;
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
-}
-
+/* Stake modal */
 .wallet-modal-content {
+    width: min(100%, 360px);
     height: auto;
     max-height: calc(100vh - 48px);
     padding: 0;
@@ -143,7 +124,7 @@ th {
     color: var(--text);
 }
 
-.wallet-dialog-body {
+.governance-dialog .overlay-dialog-body.wallet-dialog-body {
     padding: 16px;
 }
 
@@ -234,24 +215,6 @@ th {
 .wallet-status a {
     color: var(--accent-strong);
     font-weight: 600;
-}
-
-.wallet-modal-close {
-    display: block;
-    width: 100%;
-    min-height: 42px;
-    margin-bottom: 10px;
-    background: var(--surface-muted);
-    color: var(--text);
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    font: inherit;
-    font-weight: 700;
-}
-
-.wallet-modal-close:hover {
-    background: var(--control-hover-surface);
-    transform: none;
 }
 
 /* Base Interactive Elements */
@@ -824,25 +787,6 @@ p {
     width: 100%;
     height: 100%;
     border: 0;
-}
-
-.youtube-video-close {
-    display: block;
-    min-height: 42px;
-    margin: 14px 0 0 auto;
-    padding: 8px 14px;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    background: var(--overlay-surface-strong);
-    color: var(--text);
-    font: inherit;
-    font-weight: 700;
-    cursor: pointer;
-}
-
-.youtube-video-close:focus-visible {
-    outline: 2px solid var(--accent-strong);
-    outline-offset: 2px;
 }
 
 .pool-summary-clickable {
@@ -2478,18 +2422,6 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     background: rgba(0, 0, 0, 0.72);
 }
 
-.governance-drep-overlay {
-    z-index: 3100;
-}
-
-.governance-action-detail-overlay {
-    z-index: 3200;
-}
-
-.governance-nested-overlay {
-    z-index: 3300;
-}
-
 .governance-dialog {
     position: relative;
     display: flex;
@@ -2948,38 +2880,12 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     text-align: center;
 }
 
-.external-site-warning {
-    position: fixed;
-    inset: 0;
-    z-index: 6000;
-    display: grid;
-    place-items: center;
-    padding: 20px;
-    background: rgba(0, 0, 0, 0.72);
-}
-
-.external-site-warning[hidden] {
-    display: none;
-}
-
 .external-site-warning-dialog {
     width: min(440px, calc(100vw - 40px));
-    max-width: 100%;
-    min-width: 0;
-    padding: 24px;
-    overflow: hidden;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    background: var(--overlay-surface);
-    color: var(--text);
-    box-shadow: var(--overlay-shadow);
 }
 
-.external-site-warning-dialog h2 {
-    margin: 0 0 10px;
-    color: var(--text);
-    font-size: 1.35rem;
-    line-height: 1.2;
+.external-site-warning-body {
+    padding: 24px;
 }
 
 .external-site-warning-dialog p {
@@ -3171,21 +3077,12 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     font-weight: 700;
 }
 
-.wallet-dialog-header {
-    width: 100%;
-    margin: 0;
-    padding: 12px 16px;
-}
-
-.wallet-dialog-title {
-    color: var(--text);
-    font-size: 1.05rem;
-}
-
-.wallet-dialog-header .wallet-modal-close {
-    width: auto;
-    margin: 0;
-    flex: 0 0 auto;
+.governance-close:hover,
+.governance-close:focus-visible,
+.governance-back-to-root:hover,
+.governance-back-to-root:focus-visible {
+    background: var(--control-hover-surface);
+    transform: none;
 }
 
 @media (max-width: 720px) {
@@ -3232,6 +3129,9 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 
     .external-site-warning-dialog {
         width: calc(100vw - 24px);
+    }
+
+    .external-site-warning-body {
         padding: 20px;
     }
 
@@ -3378,7 +3278,7 @@ select {
 
 .crypto-news-item {
     color: var(--text);
-    font-size: 0.8rem;
+    font-size: var(--compact-ticker-font-size);
     font-weight: 500;
     text-decoration: none;
 }
@@ -3411,7 +3311,7 @@ select {
     min-height: 42px;
     padding: 0 16px;
     color: var(--muted);
-    font-size: 0.8rem;
+    font-size: var(--compact-ticker-font-size);
     font-weight: 700;
 }
 
@@ -3441,9 +3341,12 @@ select {
 }
 
 @media (max-width: 700px) {
+    :root {
+        --compact-ticker-font-size: 0.8rem;
+    }
+
     .crypto-news-ticker {
         min-height: 34px;
-        font-size: 0.9rem;
         -webkit-text-size-adjust: 100%;
         text-size-adjust: 100%;
     }
@@ -3456,7 +3359,6 @@ select {
 
     .crypto-news-message {
         min-height: 34px;
-        font-size: inherit;
     }
 
     .crypto-news-group {
@@ -3464,9 +3366,6 @@ select {
         padding-right: 28px;
     }
 
-    .crypto-news-item {
-        font-size: var(--compact-ticker-font-size);
-    }
 }
 
 /* Automatic Dark Theme */
@@ -3801,10 +3700,6 @@ html[data-theme="dark"] input {
 }
 
 @media (max-width: 480px) {
-    .youtube-video-close {
-        width: 100%;
-    }
-
     .hero-copy,
     .hero-media {
         width: calc(100vw - 32px);
