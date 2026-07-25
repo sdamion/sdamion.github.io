@@ -1484,20 +1484,30 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     border-color: var(--accent);
 }
 
-.constitution-chat-form button {
-    min-height: 44px;
-    padding: 0 18px;
-    border: 1px solid var(--accent-strong);
-    border-radius: 8px;
-    background: var(--accent-strong);
-    color: var(--surface);
-    font: inherit;
-    font-size: 0.88rem;
-    font-weight: 700;
-    cursor: pointer;
+.constitution-chat-form-actions {
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
 }
 
-.constitution-chat-form button:disabled {
+.constitution-chat-form-actions .governance-vote-button,
+.constitution-chat-form-actions .governance-vote-secondary {
+    min-height: 44px;
+    width: auto;
+    margin: 0;
+    padding: 0 18px;
+    font-size: 0.88rem;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.constitution-chat-form-actions .governance-vote-button {
+    background: var(--accent-strong);
+    border-color: var(--accent-strong);
+    color: var(--surface);
+}
+
+.constitution-chat-form-actions button:disabled {
     cursor: wait;
     opacity: 0.6;
 }
@@ -1969,8 +1979,16 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
         justify-content: flex-start;
     }
 
-    .constitution-chat-form button {
+    .constitution-chat-form-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .constitution-chat-form-actions .governance-vote-button,
+    .constitution-chat-form-actions .governance-vote-secondary {
         width: 100%;
+        min-width: 0;
+        padding-inline: 10px;
     }
 
     .governance-vote-choices {

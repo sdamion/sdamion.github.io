@@ -193,8 +193,19 @@ function createConstitutionChatPanel() {
     const submit = document.createElement('button');
     submit.id = 'constitution-chat-submit';
     submit.type = 'submit';
-    submit.textContent = 'Ask';
-    form.append(label, input, submit);
+    submit.className = 'governance-vote-button';
+    submit.textContent = 'Continue Chat';
+    submit.setAttribute('aria-label', 'Continue with conversation history');
+    const newQuestion = document.createElement('button');
+    newQuestion.id = 'constitution-chat-new-question';
+    newQuestion.type = 'submit';
+    newQuestion.className = 'governance-vote-secondary';
+    newQuestion.textContent = 'Chat';
+    newQuestion.setAttribute('aria-label', 'Ask a new question without conversation history');
+    const formActions = document.createElement('div');
+    formActions.className = 'constitution-chat-form-actions';
+    formActions.append(submit, newQuestion);
+    form.append(label, input, formActions);
 
     const status = document.createElement('p');
     status.id = 'constitution-chat-status';
@@ -279,9 +290,10 @@ function setupConstitutionChat() {
     const input = document.getElementById('constitution-chat-question');
     const messages = document.getElementById('constitution-chat-messages');
     const submit = document.getElementById('constitution-chat-submit');
+    const newQuestion = document.getElementById('constitution-chat-new-question');
     const reset = document.getElementById('constitution-chat-reset');
     const status = document.getElementById('constitution-chat-status');
-    if (!form || !input || !messages || !submit || !reset || !status) return;
+    if (!form || !input || !messages || !submit || !newQuestion || !reset || !status) return;
     const conversation = [];
 
     const resizeInput = () => {
@@ -292,7 +304,7 @@ function setupConstitutionChat() {
     input.addEventListener('keydown', event => {
         if (event.key === 'Enter' && !event.shiftKey) {
             event.preventDefault();
-            form.requestSubmit();
+            form.requestSubmit(submit);
         }
     });
     reset.addEventListener('click', () => {
@@ -311,16 +323,24 @@ function setupConstitutionChat() {
     form.addEventListener('submit', async event => {
         event.preventDefault();
         const question = input.value.replace(/\s+/g, ' ').trim();
-        if (!question || submit.disabled) return;
+        const startsNewConversation = event.submitter === newQuestion;
+        if (!question || submit.disabled || newQuestion.disabled) return;
 
+        if (startsNewConversation) {
+            conversation.length = 0;
+            messages.textContent = '';
+        }
         const empty = messages.querySelector('.constitution-chat-empty');
         if (empty) empty.remove();
         appendConstitutionChatMessage(messages, question, 'question');
-        const history = getConstitutionChatHistoryForQuestion(conversation, question);
+        const history = startsNewConversation
+            ? []
+            : getConstitutionChatHistoryForQuestion(conversation, question);
         conversation.push({ role: 'user', content: question });
         input.value = '';
         resizeInput();
         submit.disabled = true;
+        newQuestion.disabled = true;
         reset.disabled = true;
         input.disabled = true;
         status.textContent = 'Consulting the Constitution...';
@@ -378,6 +398,7 @@ function setupConstitutionChat() {
             status.textContent = '';
         } finally {
             submit.disabled = false;
+            newQuestion.disabled = false;
             reset.disabled = false;
             input.disabled = false;
             input.focus();
