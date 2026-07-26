@@ -4,7 +4,7 @@ const STARCH_API_BASE_URL = STARCH_IS_LOCAL_PREVIEW
     : 'https://api.tdsp.online/api/starch';
 const STARCH_DIRECTORY_URL = STARCH_IS_LOCAL_PREVIEW
     ? '/__starch_directory_proxy__'
-    : 'https://api.tdsp.online/api/starch/directory';
+    : 'https://api.tdsp.online/api/starch/directory/compact';
 const TDSP_STARCH_COMPANY_ID = 'B0ADAD';
 
 let starchDirectory = { miners: [], companies: [] };

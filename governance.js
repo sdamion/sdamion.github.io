@@ -1,13 +1,14 @@
 const DASHBOARD_API_URL = 'https://api.tdsp.online/api/dashboard';
 const COMPACT_DASHBOARD_API_URL = 'https://api.tdsp.online/api/dashboard/compact';
-const COMMITTEE_INFO_API_URL = 'https://api.tdsp.online/api/committee';
+const COMMITTEE_INFO_API_URL = 'https://api.tdsp.online/api/committee/directory';
+const COMMITTEE_MEMBER_API_BASE_URL = 'https://api.tdsp.online/api/committee/member';
 const PROPOSAL_VOTES_API_BASE_URL = 'https://api.tdsp.online/api/proposal';
 const PROPOSAL_DETAIL_API_BASE_URL = 'https://api.tdsp.online/api/proposal';
 const PROPOSAL_SUMMARY_API_BASE_URL = 'https://api.tdsp.online/api/proposal';
-const DREP_METADATA_API_URL = 'https://api.tdsp.online/api/dreps/metadata';
-const DREP_INFO_API_URL = 'https://api.tdsp.online/api/dreps/info';
+const DREP_INFO_API_URL = 'https://api.tdsp.online/api/dreps/directory';
 const DREP_DETAIL_API_BASE_URL = 'https://api.tdsp.online/api/drep';
-const SPO_DIRECTORY_API_URL = 'https://api.tdsp.online/api/spos';
+const SPO_DIRECTORY_API_URL = 'https://api.tdsp.online/api/spos/directory';
+const SPO_DETAIL_API_BASE_URL = 'https://api.tdsp.online/api/spo';
 const REMOTE_METADATA_API_URL = 'https://api.tdsp.online/api/metadata';
 const TREASURY_API_URL = 'https://api.tdsp.online/api/treasury';
 const CONSTITUTION_CHAT_API_URL = 'https://api.tdsp.online/api/constitution/chat';
@@ -16,12 +17,14 @@ const CONSTITUTION_DOCUMENT_API_URL = 'https://api.tdsp.online/api/constitution/
 const LOCAL_DASHBOARD_PROXY_PATH = '/__dashboard_proxy__';
 const LOCAL_COMPACT_DASHBOARD_PROXY_PATH = '/__dashboard_compact_proxy__';
 const LOCAL_COMMITTEE_PROXY_PATH = '/__committee_proxy__';
+const LOCAL_COMMITTEE_MEMBER_PROXY_PATH = '/__committee_member_proxy__';
 const LOCAL_PROPOSAL_VOTES_PROXY_PATH = '/__proposal_votes_proxy__';
 const LOCAL_PROPOSAL_DETAIL_PROXY_PATH = '/__proposal_detail_proxy__';
 const LOCAL_PROPOSAL_SUMMARY_PROXY_PATH = '/__proposal_summary_proxy__';
 const LOCAL_DREP_DIRECTORY_PROXY_PATH = '/__drep_directory_proxy__';
 const LOCAL_DREP_DETAIL_PROXY_PATH = '/__drep_detail_proxy__';
 const LOCAL_SPO_DIRECTORY_PROXY_PATH = '/__spo_directory_proxy__';
+const LOCAL_SPO_DETAIL_PROXY_PATH = '/__spo_detail_proxy__';
 const LOCAL_METADATA_PROXY_PATH = '/__metadata_proxy__';
 const LOCAL_TREASURY_PROXY_PATH = '/__treasury_proxy__';
 const LOCAL_CONSTITUTION_CHAT_PROXY_PATH = '/__constitution_chat_proxy__';
@@ -1492,6 +1495,14 @@ async function fetchJson(url) {
 
 function getCommitteeInfoApiUrl() {
     return shouldUseLocalDashboardProxy() ? LOCAL_COMMITTEE_PROXY_PATH : COMMITTEE_INFO_API_URL;
+}
+
+function getCommitteeMemberApiUrl(memberId) {
+    if (shouldUseLocalDashboardProxy()) {
+        const params = new URLSearchParams({ memberId });
+        return `${LOCAL_COMMITTEE_MEMBER_PROXY_PATH}?${params.toString()}`;
+    }
+    return `${COMMITTEE_MEMBER_API_BASE_URL}/${encodeURIComponent(memberId)}`;
 }
 
 async function fetchCommitteeInfoPayload() {
@@ -3804,6 +3815,9 @@ function applySpoCloudSort(directory, mode) {
 }
 
 function getSpoCloudHostingType(spo) {
+    if (spo?.cloud_hosting_type === 'cloud-spo' || spo?.cloud_hosting_type === 'spo') {
+        return spo.cloud_hosting_type;
+    }
     const relays = Array.isArray(spo?.relays) ? spo.relays : [];
     return relays.length > 0
         && relays.every(relay => SPO_CLOUD_PROVIDER_KEYS.has(firstNonEmptyText(relay?.provider?.id)))
@@ -3852,7 +3866,10 @@ function createSpoHostingIcon(hostingType) {
 function openSpoDetailOverlay(spo, returnFocus) {
     const content = document.createElement('div');
     content.className = 'governance-detail-content';
-    renderSpoDetails(content, spo);
+    const loading = document.createElement('p');
+    loading.className = 'small-text';
+    loading.textContent = 'Loading SPO details...';
+    content.appendChild(loading);
 
     createGovernanceMenuOverlay({
         id: 'governance-spo-detail-overlay',
@@ -3866,6 +3883,20 @@ function openSpoDetailOverlay(spo, returnFocus) {
         returnFocus,
         rootTitle: 'SPOs'
     });
+
+    fetchJson(getSpoDetailApiUrl(spo.pool_id))
+        .then(payload => {
+            if (!content.isConnected) return;
+            renderSpoDetails(content, payload?.spo || spo);
+        })
+        .catch(() => {
+            if (!content.isConnected) return;
+            content.replaceChildren();
+            const message = document.createElement('p');
+            message.className = 'small-text';
+            message.textContent = 'SPO details could not be loaded.';
+            content.appendChild(message);
+        });
 }
 
 function closeSpoDetailOverlay() {
@@ -3977,6 +4008,8 @@ function getSpoDisplayName(spo) {
 }
 
 function getSpoCloudServiceText(spo) {
+    const compactService = firstNonEmptyText(spo?.cloud_service);
+    if (compactService) return compactService;
     const providerNames = getSpoCloudProviders(spo).map(provider => provider.name);
     return providerNames.length ? providerNames.join(', ') : 'Not identified';
 }
@@ -4033,6 +4066,14 @@ async function loadSpoDirectory() {
 
 function getSpoDirectoryApiUrl() {
     return shouldUseLocalDashboardProxy() ? LOCAL_SPO_DIRECTORY_PROXY_PATH : SPO_DIRECTORY_API_URL;
+}
+
+function getSpoDetailApiUrl(poolId) {
+    if (shouldUseLocalDashboardProxy()) {
+        const params = new URLSearchParams({ poolId });
+        return `${LOCAL_SPO_DETAIL_PROXY_PATH}?${params.toString()}`;
+    }
+    return `${SPO_DETAIL_API_BASE_URL}/${encodeURIComponent(poolId)}`;
 }
 
 function closeDrepRegistrationOverlay() {
@@ -4354,18 +4395,14 @@ async function assertDrepMetadataNameAvailable(name) {
     const normalizedName = normalizeDrepNameForComparison(name);
     if (!normalizedName) throw new Error('Enter a valid DRep name.');
 
-    let payloads;
+    let payload;
     try {
-        payloads = await Promise.all([
-            fetchJson(getDrepMetadataApiUrl()),
-            fetchDrepInfoPayload()
-        ]);
+        payload = await fetchDrepInfoPayload();
     } catch {
         throw new Error('The DRep directory could not be checked. Please try again before creating the metadata file.');
     }
 
-    const existingNames = new Set(payloads
-        .flatMap(unwrapDrepEntries)
+    const existingNames = new Set(unwrapDrepEntries(payload)
         .map(extractDrepNameFromEntry)
         .filter(Boolean)
         .map(normalizeDrepNameForComparison));
@@ -5186,12 +5223,7 @@ function openConstitutionalCommitteeActionsOverlay(member, returnFocus = null) {
         returnFocus
     });
 
-    if (hasConstitutionalCommitteeBackendActionStats(member)) {
-        renderConstitutionalCommitteeBackendActionStats(member, panel);
-        return;
-    }
-
-    loadConstitutionalCommitteeActionVotes(member, panel).catch(() => {
+    const renderFallback = () => loadConstitutionalCommitteeActionVotes(member, panel).catch(() => {
         if (!panel.isConnected) return;
         panel.textContent = '';
         const message = document.createElement('p');
@@ -5199,6 +5231,25 @@ function openConstitutionalCommitteeActionsOverlay(member, returnFocus = null) {
         message.textContent = 'Governance action votes could not be loaded.';
         panel.appendChild(message);
     });
+
+    if (hasConstitutionalCommitteeBackendActionStats(member)) {
+        renderConstitutionalCommitteeBackendActionStats(member, panel);
+        return;
+    }
+
+    fetchJson(getCommitteeMemberApiUrl(member.id))
+        .then(payload => {
+            if (!panel.isConnected) return;
+            const detailedMember = normalizeConstitutionalCommitteeMember(payload?.member);
+            if (!detailedMember || !hasConstitutionalCommitteeBackendActionStats(detailedMember)) {
+                return renderFallback();
+            }
+            renderConstitutionalCommitteeBackendActionStats({
+                ...detailedMember,
+                sinceEpoch: member.sinceEpoch
+            }, panel);
+        })
+        .catch(renderFallback);
 }
 
 function closeConstitutionalCommitteeActionsOverlay() {
@@ -5255,6 +5306,22 @@ async function loadConstitutionalCommitteeMemberSummaryStats(members, container)
         updateConstitutionalCommitteeMemberSummaryStats(
             container,
             members.map(getConstitutionalCommitteeBackendMemberSummaryStats)
+        );
+        return;
+    }
+    if (hasConstitutionalCommitteeBackendStats(members)) {
+        updateConstitutionalCommitteeMemberSummaryStats(
+            container,
+            members.map(member => {
+                const proposalStats = getConstitutionalCommitteeMemberProposalStats(member);
+                return {
+                    voted: Number(member.voteStats?.voted) || 0,
+                    total: Number(member.voteStats?.total) || 0,
+                    open: proposalStats.open,
+                    notApplicable: proposalStats.notApplicable,
+                    all: proposalStats.total
+                };
+            })
         );
         return;
     }
@@ -6017,18 +6084,9 @@ async function loadDrepDirectory() {
 }
 
 async function fetchDrepDirectory() {
-    const [metadataPayload, infoPayload] = await Promise.allSettled([
-        fetchJson(getDrepMetadataApiUrl()),
-        fetchDrepInfoPayload()
-    ]);
-
+    const infoPayload = await fetchDrepInfoPayload().catch(() => null);
     const directory = new Map();
-    if (metadataPayload.status === 'fulfilled') {
-        addDrepDirectoryEntries(directory, metadataPayload.value);
-    }
-    if (infoPayload.status === 'fulfilled') {
-        addDrepDirectoryEntries(directory, infoPayload.value);
-    }
+    if (infoPayload) addDrepDirectoryEntries(directory, infoPayload);
 
     return directory;
 }
@@ -6222,16 +6280,9 @@ function normalizeMetadataUrl(url) {
     return trimmed;
 }
 
-function getDrepMetadataApiUrl() {
-    if (shouldUseLocalDashboardProxy()) {
-        return `${LOCAL_DREP_DIRECTORY_PROXY_PATH}?type=metadata`;
-    }
-    return DREP_METADATA_API_URL;
-}
-
 function getDrepInfoApiUrl() {
     if (shouldUseLocalDashboardProxy()) {
-        return `${LOCAL_DREP_DIRECTORY_PROXY_PATH}?type=info`;
+        return `${LOCAL_DREP_DIRECTORY_PROXY_PATH}?type=directory`;
     }
     return DREP_INFO_API_URL;
 }
@@ -7158,7 +7209,12 @@ function getConstitutionalCommitteeQuorumStats(payload) {
             && actionEpoch < currentCommitteeStartEpoch;
         const participation = usesHistoricalSummary
             ? getHistoricalConstitutionalCommitteeParticipation(proposal.voteSummary)
-            : getCurrentConstitutionalCommitteeParticipation(members, proposal.proposal_id, proposal.voteSummary);
+            : getCurrentConstitutionalCommitteeParticipation(
+                members,
+                proposal.proposal_id,
+                proposal.voteSummary,
+                payload?.action_stats
+            );
         if (!participation) return;
 
         evaluatedActions += 1;
@@ -7209,7 +7265,17 @@ function getConstitutionalCommitteeVoteEpoch(proposal) {
     );
 }
 
-function getCurrentConstitutionalCommitteeParticipation(members, proposalId, summary) {
+function getCurrentConstitutionalCommitteeParticipation(members, proposalId, summary, compactActionStats = null) {
+    const compactStats = Array.isArray(compactActionStats)
+        ? compactActionStats.find(action => String(action?.proposal_id || '') === String(proposalId || ''))
+        : null;
+    if (compactStats && Number(compactStats.member_entries) === members.length) {
+        return {
+            votes: Number(compactStats.votes) || 0,
+            members: members.length
+        };
+    }
+
     const actionVotes = getConstitutionalCommitteeActionVotes(members, proposalId);
     const hasCompleteMemberVotes = actionVotes.length === members.length;
     const votes = hasCompleteMemberVotes
