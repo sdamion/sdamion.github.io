@@ -1485,6 +1485,34 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     color: var(--text);
 }
 
+.constitution-chat-feedback {
+    display: grid;
+    gap: 8px;
+    margin-top: 8px;
+    padding-top: 10px;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 0.88rem;
+}
+
+.constitution-chat-feedback-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.constitution-chat-feedback-actions button {
+    min-height: 38px;
+    width: auto;
+    margin: 0;
+    padding: 0 16px;
+    font-size: 0.85rem;
+}
+
+.constitution-chat-feedback-actions button:disabled {
+    cursor: wait;
+    opacity: 0.6;
+}
+
 .constitution-chat-form {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;

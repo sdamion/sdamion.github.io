@@ -11,6 +11,7 @@ const SPO_DIRECTORY_API_URL = 'https://api.tdsp.online/api/spos';
 const REMOTE_METADATA_API_URL = 'https://api.tdsp.online/api/metadata';
 const TREASURY_API_URL = 'https://api.tdsp.online/api/treasury';
 const CONSTITUTION_CHAT_API_URL = 'https://api.tdsp.online/api/constitution/chat';
+const CONSTITUTION_CHAT_FEEDBACK_API_URL = 'https://api.tdsp.online/api/constitution/chat/feedback';
 const CONSTITUTION_DOCUMENT_API_URL = 'https://api.tdsp.online/api/constitution/document';
 const LOCAL_DASHBOARD_PROXY_PATH = '/__dashboard_proxy__';
 const LOCAL_COMPACT_DASHBOARD_PROXY_PATH = '/__dashboard_compact_proxy__';
@@ -24,6 +25,7 @@ const LOCAL_SPO_DIRECTORY_PROXY_PATH = '/__spo_directory_proxy__';
 const LOCAL_METADATA_PROXY_PATH = '/__metadata_proxy__';
 const LOCAL_TREASURY_PROXY_PATH = '/__treasury_proxy__';
 const LOCAL_CONSTITUTION_CHAT_PROXY_PATH = '/__constitution_chat_proxy__';
+const LOCAL_CONSTITUTION_CHAT_FEEDBACK_PROXY_PATH = '/__constitution_chat_feedback_proxy__';
 const LOCAL_CONSTITUTION_DOCUMENT_PROXY_PATH = '/__constitution_document_proxy__';
 const GOVERNANCE_MESH_CDN_URL = 'https://esm.sh/@meshsdk/core@1.9.1?bundle-deps';
 const ACTIVE_REFRESH_INTERVAL_MS = 15 * 60 * 1000;
@@ -360,7 +362,14 @@ function setupConstitutionChat() {
             } else {
                 payload = await response.json().catch(() => ({}));
                 answer = String(payload.answer || '');
-                appendConstitutionChatMessage(messages, answer, 'answer');
+                pendingAnswerMessage = appendConstitutionChatMessage(messages, answer, 'answer');
+            }
+            if (payload.feedback_id && pendingAnswerMessage) {
+                appendConstitutionChatFeedback(
+                    pendingAnswerMessage.message,
+                    payload.feedback_id,
+                    status
+                );
             }
             conversation.push({ role: 'assistant', content: answer });
             while (conversation.length > 12) conversation.shift();
@@ -417,6 +426,12 @@ function getConstitutionChatApiUrl() {
     return shouldUseLocalDashboardProxy()
         ? LOCAL_CONSTITUTION_CHAT_PROXY_PATH
         : CONSTITUTION_CHAT_API_URL;
+}
+
+function getConstitutionChatFeedbackApiUrl() {
+    return shouldUseLocalDashboardProxy()
+        ? LOCAL_CONSTITUTION_CHAT_FEEDBACK_PROXY_PATH
+        : CONSTITUTION_CHAT_FEEDBACK_API_URL;
 }
 
 async function readConstitutionChatStream(response, onDelta) {
@@ -501,6 +516,61 @@ function createConstitutionChatStakePrompt() {
     });
     prompt.append(link, '.');
     return prompt;
+}
+
+function appendConstitutionChatFeedback(message, feedbackId, status) {
+    const feedback = document.createElement('div');
+    feedback.className = 'constitution-chat-feedback';
+    const question = document.createElement('strong');
+    question.textContent = 'Was this the answer you were looking for?';
+    const actions = document.createElement('div');
+    actions.className = 'constitution-chat-feedback-actions';
+    const yes = document.createElement('button');
+    yes.type = 'button';
+    yes.textContent = 'Yes';
+    yes.className = 'governance-vote-button';
+    const no = document.createElement('button');
+    no.type = 'button';
+    no.textContent = 'No';
+    no.className = 'governance-vote-secondary';
+    actions.append(yes, no);
+    feedback.append(question, actions);
+    message.appendChild(feedback);
+
+    const submitFeedback = async helpful => {
+        yes.disabled = true;
+        no.disabled = true;
+        try {
+            const response = await fetch(getConstitutionChatFeedbackApiUrl(), {
+                method: 'POST',
+                headers: {
+                    accept: 'application/json',
+                    'content-type': 'application/json'
+                },
+                body: JSON.stringify({
+                    feedback_id: feedbackId,
+                    helpful
+                })
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(payload.error || `Feedback returned ${response.status}`);
+            }
+            feedback.replaceChildren();
+            const result = document.createElement('span');
+            result.textContent = helpful ? 'Answer saved.' : 'Saved for review.';
+            feedback.appendChild(result);
+            status.textContent = '';
+        } catch (error) {
+            yes.disabled = false;
+            no.disabled = false;
+            status.textContent = error instanceof Error
+                ? error.message
+                : 'Answer feedback could not be saved.';
+        }
+    };
+    yes.addEventListener('click', () => submitFeedback(true));
+    no.addEventListener('click', () => submitFeedback(false));
 }
 
 function setupTreasuryCard() {
