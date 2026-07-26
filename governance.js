@@ -191,7 +191,7 @@ function createConstitutionChatPanel() {
     newQuestion.id = 'constitution-chat-new-question';
     newQuestion.type = 'submit';
     newQuestion.className = 'governance-vote-secondary';
-    newQuestion.textContent = 'Chat';
+    newQuestion.textContent = 'New Chat';
     newQuestion.setAttribute('aria-label', 'Ask a new question without conversation history');
     const formActions = document.createElement('div');
     formActions.className = 'constitution-chat-form-actions';
@@ -373,6 +373,7 @@ function setupConstitutionChat() {
                     payload.feedback_id,
                     status
                 );
+                messages.scrollTop = messages.scrollHeight;
             }
             conversation.push({ role: 'assistant', content: answer });
             while (conversation.length > 12) conversation.shift();
@@ -561,7 +562,9 @@ function appendConstitutionChatFeedback(message, feedbackId, status) {
             }
             feedback.replaceChildren();
             const result = document.createElement('span');
-            result.textContent = helpful ? 'Answer saved.' : 'Saved for review.';
+            result.textContent = helpful
+                ? (payload.saved ? 'Answer saved.' : 'Thank you for your feedback.')
+                : 'Saved for review.';
             feedback.appendChild(result);
             status.textContent = '';
         } catch (error) {
