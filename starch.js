@@ -259,8 +259,7 @@ function openTdspStarchCompanyOverlay(returnFocus) {
         name: 'TDSP 01'
     };
     openStarchCompanyOverlay(company, returnFocus, {
-        activeMembers: true,
-        titleText: `Miner Company ${TDSP_STARCH_COMPANY_ID}`
+        activeMembers: true
     });
 }
 
