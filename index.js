@@ -1756,6 +1756,13 @@ function sortOverlayCards(body, cards, mode) {
     if (!definition) return;
     cardsByParent.forEach((siblings, parent) => {
         const sorted = [...siblings].sort((left, right) => {
+            const leftPinRank = Number(left.dataset.overlayPinRank);
+            const rightPinRank = Number(right.dataset.overlayPinRank);
+            const leftPinned = Number.isFinite(leftPinRank);
+            const rightPinned = Number.isFinite(rightPinRank);
+            if (leftPinned !== rightPinned) return leftPinned ? -1 : 1;
+            if (leftPinned && leftPinRank !== rightPinRank) return leftPinRank - rightPinRank;
+
             if (definition.type === 'text') {
                 const result = String(left.dataset[definition.key] || '').localeCompare(
                     String(right.dataset[definition.key] || ''),

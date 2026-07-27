@@ -142,18 +142,14 @@ function sortStarchDirectoryRecords(records, type) {
     const sorted = [...records];
     if (type !== 'companies') return sorted;
 
-    const tdspOrder = new Map([
-        ['B0ADAD', 0],
-        ['868C0C', 1]
-    ]);
     return sorted.sort((left, right) => {
         const leftId = String(left?.id || '').toUpperCase();
         const rightId = String(right?.id || '').toUpperCase();
-        const leftTdsp = tdspOrder.get(leftId);
-        const rightTdsp = tdspOrder.get(rightId);
-        if (leftTdsp != null || rightTdsp != null) {
-            if (leftTdsp == null) return 1;
-            if (rightTdsp == null) return -1;
+        const leftTdsp = getStarchCompanyPinRank(leftId);
+        const rightTdsp = getStarchCompanyPinRank(rightId);
+        if (Number.isFinite(leftTdsp) || Number.isFinite(rightTdsp)) {
+            if (!Number.isFinite(leftTdsp)) return 1;
+            if (!Number.isFinite(rightTdsp)) return -1;
             return leftTdsp - rightTdsp;
         }
 
@@ -174,6 +170,10 @@ function createStarchDirectoryCard(record, index, type, label) {
     const id = String(record?.id || '').trim();
     const row = document.createElement('div');
     row.className = 'pool-delegator-row governance-menu-card';
+    if (type === 'companies') {
+        const pinRank = getStarchCompanyPinRank(id);
+        if (Number.isFinite(pinRank)) row.dataset.overlayPinRank = String(pinRank);
+    }
 
     const rank = document.createElement('span');
     rank.className = 'pool-delegator-rank';
@@ -233,6 +233,14 @@ function createStarchDirectoryCard(record, index, type, label) {
 
     row.append(rank, content);
     return row;
+}
+
+function getStarchCompanyPinRank(companyId) {
+    const tdspOrder = new Map([
+        ['B0ADAD', 0],
+        ['868C0C', 1]
+    ]);
+    return tdspOrder.get(String(companyId || '').trim().toUpperCase()) ?? Infinity;
 }
 
 function createStarchCompanyStats(company) {

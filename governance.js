@@ -70,6 +70,8 @@ const SPO_CLOUD_PROVIDER_KEYS = new Set([
     'ibm-cloud', 'tencent-cloud', 'huawei-cloud', 'ovh', 'digitalocean',
     'hetzner', 'akamai', 'vultr', 'scaleway', 'contabo'
 ]);
+const TDSP_POOL_ID = 'pool1zfd0gl76h3f0ammgp4gu0qvt99qcqkn5a895wv0q779d6p9dz5u';
+const DAMION_DREP_ID = 'drep1yg5gkkyxwwr7d6qflf2qqp6drkp9432h6cvtmun0dqthusqlkz8hj';
 let governanceRefreshTimer = null;
 let epochCountdownTimer = null;
 let epochEndsAtMs = null;
@@ -3757,8 +3759,11 @@ function renderSpoDirectory(container, spos) {
 
     container.appendChild(createSpoCloudStatusChart(spos, container));
 
+    const orderedSpos = [...spos].sort((left, right) =>
+        getSpoPinRank(left) - getSpoPinRank(right)
+    );
     const fragment = document.createDocumentFragment();
-    spos.forEach((spo, index) => {
+    orderedSpos.forEach((spo, index) => {
         const row = document.createElement('div');
         row.className = 'governance-cc-member governance-menu-card governance-cc-member-clickable governance-spo-directory-card';
         row.dataset.searchText = `${spo.name || ''} ${spo.ticker || ''} ${spo.pool_id || ''}`.trim();
@@ -3769,6 +3774,8 @@ function renderSpoDirectory(container, spos) {
         const cloudHostingType = getSpoCloudHostingType(spo);
         row.dataset.sortCloudSpo = cloudHostingType === 'cloud-spo' ? '1' : '0';
         row.dataset.sortSpo = cloudHostingType === 'spo' ? '1' : '0';
+        const pinRank = getSpoPinRank(spo);
+        if (Number.isFinite(pinRank)) row.dataset.overlayPinRank = String(pinRank);
         row.setAttribute('role', 'button');
         row.tabIndex = 0;
         row.setAttribute('aria-label', `Show ${getSpoDisplayName(spo)} stake pool details`);
@@ -3805,6 +3812,12 @@ function renderSpoDirectory(container, spos) {
         fragment.appendChild(row);
     });
     container.appendChild(fragment);
+}
+
+function getSpoPinRank(spo) {
+    const poolId = String(spo?.pool_id || '').trim().toLowerCase();
+    const ticker = String(spo?.ticker || '').trim().toUpperCase();
+    return poolId === TDSP_POOL_ID || ticker === 'TDSP' ? 0 : Infinity;
 }
 
 function createSpoCloudStatusChart(spos, directory) {
@@ -4758,7 +4771,11 @@ async function loadDrepDirectoryOverlay(container) {
     });
 
     const dreps = Array.from(uniqueDreps.values())
-        .sort((left, right) => right.votingPower - left.votingPower || left.name.localeCompare(right.name));
+        .sort((left, right) =>
+            getDrepPinRank(left) - getDrepPinRank(right)
+            || right.votingPower - left.votingPower
+            || left.name.localeCompare(right.name)
+        );
     updateGovernanceMenuHeaderMeta(
         'governance-drep-directory-overlay',
         `${dreps.length.toLocaleString('en-US')} DReps`,
@@ -4789,6 +4806,8 @@ function renderDrepDirectory(container, dreps, options = {}) {
         row.dataset.sortName = normalizeOverlaySearchText(drep.name);
         row.dataset.sortPower = String(Number(drep.votingPower) || 0);
         row.dataset.sortStatus = drep.active ? '1' : '0';
+        const pinRank = getDrepPinRank(drep);
+        if (Number.isFinite(pinRank)) row.dataset.overlayPinRank = String(pinRank);
 
         const number = document.createElement('strong');
         number.textContent = String(index + 1);
@@ -4833,6 +4852,12 @@ function renderDrepDirectory(container, dreps, options = {}) {
         fragment.appendChild(row);
     });
     container.appendChild(fragment);
+}
+
+function getDrepPinRank(drep) {
+    const id = String(drep?.id || '').trim().toLowerCase();
+    const name = normalizeOverlaySearchText(drep?.name).replace(/\s+/g, '');
+    return id === DAMION_DREP_ID || name === 'damiondutch' ? 0 : Infinity;
 }
 
 function createDrepDirectoryStatusChart(dreps) {
