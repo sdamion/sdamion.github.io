@@ -2692,13 +2692,13 @@ async function prepareGovernanceVote(container, proposal, voteKind, walletInfo) 
 
         const extensions = await wallet.getExtensions().catch(() => []);
         const drep = await wallet.getDRep();
-        if (!extensions.includes(95) || !drep?.dRepIDCip105 || !drep?.publicKeyHash) {
+        if (!extensions.includes(95) || !drep?.dRepIDCip105) {
             throw new Error('This wallet did not provide CIP-95 DRep access. No transaction was built.');
         }
 
         status.textContent = 'Verifying DRep registration and current vote...';
         const [drepPayload, votesPayload] = await Promise.all([
-            fetchJson(getDrepDetailApiUrl(drep.dRepIDCip105)),
+            fetchWalletDrepDetails(drep),
             fetchProposalVotesPayload(latestProposal.proposal_id)
         ]);
         const drepInfo = drepPayload?.info;
@@ -2801,17 +2801,52 @@ function getBech32Polymod(values) {
 function findExistingDrepVote(payload, drep) {
     const buckets = payload?.votes?.dreps;
     if (!buckets || typeof buckets !== 'object') return null;
-    const drepId = String(drep?.dRepIDCip105 || '').toLowerCase();
-    const drepHash = String(drep?.publicKeyHash || '').toLowerCase();
+    const drepIdentifiers = new Set(getWalletDrepIdentifiers(drep));
 
     for (const key of ['yes', 'no', 'abstain', 'unknown']) {
         const votes = Array.isArray(buckets[key]) ? buckets[key] : [];
-        const match = votes.find(vote => (
-            String(vote?.voter_id || vote?.drep_id || '').toLowerCase() === drepId
-            || String(vote?.voter_hex || vote?.hex || '').toLowerCase() === drepHash
-        ));
+        const match = votes.find(vote => [
+            vote?.voter_id,
+            vote?.drep_id,
+            vote?.drep_id_bech32,
+            vote?.voter_hex,
+            vote?.hex,
+            vote?.drep_hash,
+            vote?.voter
+        ].some(identifier => drepIdentifiers.has(normalizeDrepIdentifier(identifier))));
         if (match) return formatVoteChoice(match.vote || key);
     }
+    return null;
+}
+
+function normalizeDrepIdentifier(value) {
+    return String(value || '').trim().toLowerCase();
+}
+
+function getWalletDrepIdentifiers(drep) {
+    return [...new Set([
+        drep?.publicKeyHash,
+        drep?.dRepIDCip105
+    ].map(normalizeDrepIdentifier).filter(Boolean))];
+}
+
+async function fetchWalletDrepDetails(drep) {
+    const identifiers = getWalletDrepIdentifiers(drep);
+    let fallbackPayload = null;
+    let lastError = null;
+
+    for (const identifier of identifiers) {
+        try {
+            const payload = await fetchJson(getDrepDetailApiUrl(identifier));
+            fallbackPayload ||= payload;
+            if (payload?.info) return payload;
+        } catch (error) {
+            lastError = error;
+        }
+    }
+
+    if (fallbackPayload) return fallbackPayload;
+    if (lastError) throw lastError;
     return null;
 }
 
@@ -4605,7 +4640,7 @@ async function prepareDrepRegistration(container, metadata, walletInfo) {
             throw new Error('This wallet did not provide CIP-95 DRep access. No transaction was built.');
         }
 
-        const drepPayload = await fetchJson(getDrepDetailApiUrl(drep.dRepIDCip105));
+        const drepPayload = await fetchWalletDrepDetails(drep);
         if (drepPayload?.info?.drep_status === 'registered') {
             throw new Error('This wallet is already registered as a DRep. No transaction was built.');
         }
@@ -4654,7 +4689,7 @@ async function submitDrepRegistration(container, context, submitButton) {
     const status = appendGovernanceVoteStatus(container, 'Building the DRep registration transaction...');
 
     try {
-        const latest = await fetchJson(getDrepDetailApiUrl(context.drep.dRepIDCip105));
+        const latest = await fetchWalletDrepDetails(context.drep);
         if (latest?.info?.drep_status === 'registered') {
             throw new Error('This DRep is already registered. No transaction was built.');
         }
