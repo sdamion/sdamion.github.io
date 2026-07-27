@@ -39,6 +39,10 @@ const TREASURY_NET_CHANGE_LIMIT_ADA = 350_000_000;
 const TREASURY_NET_CHANGE_LIMIT_LOVELACE = TREASURY_NET_CHANGE_LIMIT_ADA * 1_000_000;
 const TREASURY_BUDGET_YEAR_START_EPOCH = 613;
 const TREASURY_BUDGET_YEAR_EPOCHS = 101;
+const DREP_STATS_EXCLUDED_PROPOSAL_IDS = new Set([
+    'gov_action1pvv5wmjqhwa4u85vu9f4ydmzu2mgt8n7et967ph2urhx53r70xusqnmm525',
+    'gov_action1k2jertppnnndejjcglszfqq4yzw8evzrd2nt66rr6rqlz54xp0zsq05ecsn'
+]);
 const TREASURY_RECIPIENT_ADMINISTRATORS = Object.freeze({
     stake17xzc8pt7fgf0lc0x7eq6z7z6puhsxmzktna7dluahrj6g6ghh5qjr: 'Intersect Treasury Reserve Smart Contract',
     stake17x3n2krrld46qms4f4hzqqxzjgaf59u3fecvl6eh8scmaacjqmvjw: 'Harmonic Laboratories',
@@ -4965,7 +4969,8 @@ function renderDrepActionHistory(container, payload, drep) {
     const actionsById = new Map((Array.isArray(voteStats.actions) ? voteStats.actions : [])
         .map(action => [String(action?.proposal_id || ''), action]));
     const registrationTime = Number(voteStats.registration_time);
-    const proposals = getGovernanceActionsForCommitteeOverview();
+    const proposals = getGovernanceActionsForCommitteeOverview()
+        .filter(proposal => !isGovernanceActionExcludedFromDrepStats(proposal));
     const rows = proposals
         .filter(proposal => isGovernanceActionApplicableToDrep(proposal, registrationTime))
         .map(proposal => ({ action: actionsById.get(String(proposal.proposal_id || '')) || null, proposal }))
@@ -5033,8 +5038,32 @@ function renderDrepActionHistory(container, payload, drep) {
 
 function isGovernanceActionApplicableToDrep(proposal, registrationTime) {
     if (!Number.isFinite(registrationTime)) return true;
+    const registrationEpoch = Math.max(Math.floor(
+        ((registrationTime * 1000) - CARDANO_MAINNET_EPOCH_ZERO_MS)
+            / (EPOCH_DURATION_SECONDS * 1000)
+    ), 0);
+    const terminalEpochs = [
+        proposal?.ratified_epoch,
+        proposal?.enacted_epoch,
+        proposal?.expired_epoch,
+        proposal?.dropped_epoch
+    ]
+        .filter(epoch => epoch !== null && epoch !== undefined && epoch !== '')
+        .map(Number)
+        .filter(Number.isFinite);
+    if (terminalEpochs.some(epoch => epoch <= registrationEpoch)) return false;
+
     const blockTime = Number(proposal?.block_time);
-    return !Number.isFinite(blockTime) || blockTime >= registrationTime;
+    if (!Number.isFinite(blockTime) || blockTime >= registrationTime) return true;
+
+    const expirationEpoch = Number(proposal?.expiration);
+    return Number.isFinite(expirationEpoch) && expirationEpoch >= registrationEpoch;
+}
+
+function isGovernanceActionExcludedFromDrepStats(proposal) {
+    const proposalId = String(proposal?.proposal_id || '');
+    return (proposal?.dropped_epoch !== null && proposal?.dropped_epoch !== undefined)
+        || DREP_STATS_EXCLUDED_PROPOSAL_IDS.has(proposalId);
 }
 
 function createDrepActionHistoryChart(stats) {
@@ -5090,14 +5119,14 @@ function createDrepActionHistoryChart(stats) {
             'Not Voted'
         ),
         extraLegendItems: [{
-            label: 'Not Applicable',
+            label: 'Not a DRep Yet',
             detail: `${notApplicable} actions`,
             color: '#94a3b8',
             onClick: event => openGovernanceStatusActionsOverlay(
                 drepName,
                 notApplicableProposals,
                 event.currentTarget,
-                'Not Applicable'
+                'Not a DRep Yet'
             )
         }]
     });
