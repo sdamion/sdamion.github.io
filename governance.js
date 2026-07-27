@@ -3276,8 +3276,8 @@ function renderVoteDetailsPanel(container, proposal, payload) {
 
     const summary = proposal?.voteSummary;
     const drepVotes = getDrepVotes(payload);
-    const notVotedDreps = getNotVotedDreps(payload, drepVotes);
-    const drepBreakdown = getDrepStakeBreakdown(summary, notVotedDreps);
+    const nonVoters = getDrepNonVoterGroups(payload, drepVotes);
+    const drepBreakdown = getDrepStakeBreakdown(summary, nonVoters);
 
     if (drepBreakdown.length) {
         container.appendChild(createDrepVoteChartSection(drepBreakdown, drepVotes));
@@ -3524,7 +3524,10 @@ function createVotePieChart(breakdown) {
 }
 
 function createVoteLegendItem(item, drepVotes) {
-    const interactive = ['no', 'not-voted', 'abstain', 'always-abstain', 'always-no-confidence', 'yes'].includes(item.key);
+    const interactive = [
+        'no', 'not-voted', 'not-a-drep-yet', 'not-active-drep',
+        'abstain', 'always-abstain', 'always-no-confidence', 'yes'
+    ].includes(item.key);
     const element = createGovernanceStatBox({
         label: item.label,
         detail: formatVoteLegendDetail(item, drepVotes),
@@ -3569,8 +3572,8 @@ function createGovernanceStatBox({ label, detail, color, statusClass = '', onCli
 
 function formatVoteLegendDetail(item, drepVotes) {
     return [
-        Number.isFinite(item.count) ? `${item.count} votes` : null,
-        formatCompactAdaFromLovelace(item.displayValue ?? item.value),
+        Number.isFinite(item.count) ? `${item.count} ${item.countLabel || 'votes'}` : null,
+        item.omitValue ? null : formatCompactAdaFromLovelace(item.displayValue ?? item.value),
         Number.isFinite(item.voteCountPercentage) ? formatPercentage(item.voteCountPercentage) : null,
         Number.isFinite(item.votePowerPercentage) ? formatPercentage(item.votePowerPercentage) : null,
         item.excludedFromPercentage ? 'not counted' : null
@@ -3582,7 +3585,7 @@ function renderDrepDetailsPanel(container, item, drepVotes) {
     container.hidden = false;
     container.dataset.activeGroup = item.key;
 
-    if (item.key === 'not-voted') {
+    if (['not-voted', 'not-a-drep-yet', 'not-active-drep'].includes(item.key)) {
         renderNoVotesList(container, item.votes || [], item.label);
         return;
     }
@@ -6357,8 +6360,11 @@ function mapBreakdownKeyToVote(key) {
     return null;
 }
 
-function getDrepStakeBreakdown(summary, notVotedDreps = []) {
+function getDrepStakeBreakdown(summary, nonVoters = {}) {
     if (!summary) return [];
+    const notVotedDreps = nonVoters.notVoted || [];
+    const notADrepYet = nonVoters.notADrepYet || [];
+    const notActiveDreps = nonVoters.notActive || [];
 
     const yesVotePower = pickFirstNumber(
         summary.drep_yes_vote_power,
@@ -6400,6 +6406,28 @@ function getDrepStakeBreakdown(summary, notVotedDreps = []) {
             count: notVotedDreps.length,
             votes: notVotedDreps,
             color: '#fb7185'
+        },
+        {
+            key: 'not-a-drep-yet',
+            label: 'Not a DRep Yet',
+            value: 0,
+            count: notADrepYet.length,
+            countLabel: 'DReps',
+            votes: notADrepYet,
+            color: '#94a3b8',
+            excludedFromPercentage: true,
+            omitValue: true
+        },
+        {
+            key: 'not-active-drep',
+            label: 'Not an Active DRep',
+            value: 0,
+            count: notActiveDreps.length,
+            countLabel: 'DReps',
+            votes: notActiveDreps,
+            color: '#64748b',
+            excludedFromPercentage: true,
+            omitValue: true
         },
         {
             key: 'abstain',
@@ -6503,21 +6531,30 @@ function getSpoVotes(payload) {
     });
 }
 
-function getNotVotedDreps(payload, drepVotes) {
+function getDrepNonVoterGroups(payload, drepVotes) {
     const drepInfo = payload?.drep_info && typeof payload.drep_info === 'object'
         ? payload.drep_info
         : {};
+    const eligibility = payload?.drep_eligibility && typeof payload.drep_eligibility === 'object'
+        ? payload.drep_eligibility
+        : {};
     const votedIds = new Set(drepVotes.flatMap(vote => getDrepVoteIdentifierCandidates(vote)));
 
-    return Object.entries(drepInfo)
+    const nonVoters = Object.entries(drepInfo)
         .filter(([identifier, info]) => !getDrepVoteIdentifierCandidates({ ...info, drep_id: identifier }).some(id => votedIds.has(id)))
         .map(([identifier, info]) => ({
             ...info,
             vote: 'Not voted',
+            eligibility_status: eligibility[identifier]?.status || 'unknown',
             drep_id: info?.drep_id || identifier,
             voter_id: info?.voter_id || info?.drep_id || identifier,
             voter_hex: info?.voter_hex || info?.hex || ''
         }));
+    return {
+        notVoted: nonVoters.filter(drep => !['not_a_drep_yet', 'not_active'].includes(drep.eligibility_status)),
+        notADrepYet: nonVoters.filter(drep => drep.eligibility_status === 'not_a_drep_yet'),
+        notActive: nonVoters.filter(drep => drep.eligibility_status === 'not_active')
+    };
 }
 
 function getDrepVoteIdentifierCandidates(vote) {
