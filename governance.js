@@ -1218,8 +1218,7 @@ function setupGovernanceSummaryActionCards() {
     [
         { id: 'gov-active-card', groupKey: 'active', title: 'Active Governance Actions', tileTitle: 'Governance Actions', emptyMessage: 'No active actions found.' },
         { id: 'gov-approved-card', groupKey: 'approved', title: 'Approved Governance Actions', tileTitle: 'Approved Actions', emptyMessage: 'No approved actions found.' },
-        { id: 'gov-rejected-card', groupKey: 'rejected', title: 'Rejected Governance Actions', tileTitle: 'Rejected Actions', emptyMessage: 'No rejected actions found.' },
-        { id: 'gov-info-card', groupKey: 'info', title: 'Active Info Actions', tileTitle: 'Info Actions', emptyMessage: 'No active info actions found.' }
+        { id: 'gov-rejected-card', groupKey: 'rejected', title: 'Rejected Governance Actions', tileTitle: 'Rejected Actions', emptyMessage: 'No rejected actions found.' }
     ].forEach(config => {
         const card = document.getElementById(config.id);
         const open = () => openGovernanceActionGroupOverlay(
@@ -1285,8 +1284,7 @@ async function loadGovernanceActions() {
     const groups = {
         active: document.getElementById('governance-active'),
         approved: document.getElementById('governance-approved'),
-        rejected: document.getElementById('governance-rejected'),
-        info: document.getElementById('governance-info')
+        rejected: document.getElementById('governance-rejected')
     };
 
     try {
@@ -1302,7 +1300,6 @@ async function loadGovernanceActions() {
         renderGovernanceGroupIfPresent(groups.active, grouped.active, 'No active actions found.');
         renderGovernanceGroupIfPresent(groups.approved, grouped.approved, 'No approved actions found.');
         renderGovernanceGroupIfPresent(groups.rejected, grouped.rejected, 'No rejected actions found.');
-        renderGovernanceGroupIfPresent(groups.info, grouped.info, 'No info actions found.');
         await updateGovernanceCounts(grouped);
         lastActiveRenderSignature = getGovernanceGroupSignature(grouped.active);
         updateEpochDisplayFromDashboardPayload(dashboardPayload);
@@ -1323,8 +1320,7 @@ async function refreshActiveGovernanceGroup() {
     const groups = {
         active: document.getElementById('governance-active'),
         approved: document.getElementById('governance-approved'),
-        rejected: document.getElementById('governance-rejected'),
-        info: document.getElementById('governance-info')
+        rejected: document.getElementById('governance-rejected')
     };
 
     const dashboardPayload = await fetchGovernanceDashboardPayload().catch(() => null);
@@ -1342,7 +1338,6 @@ async function refreshActiveGovernanceGroup() {
     renderGovernanceGroupIfPresent(groups.active, grouped.active, 'No active actions found.');
     renderGovernanceGroupIfPresent(groups.approved, grouped.approved, 'No approved actions found.');
     renderGovernanceGroupIfPresent(groups.rejected, grouped.rejected, 'No rejected actions found.');
-    renderGovernanceGroupIfPresent(groups.info, grouped.info, 'No info actions found.');
     await updateGovernanceCounts(grouped);
     lastActiveRenderSignature = nextSignature;
 }
@@ -1785,6 +1780,9 @@ function groupGovernanceProposals(proposals) {
         return grouped;
     }, { active: [], approved: [], rejected: [], info: [] });
 
+    groups.active.push(...getActiveInfoActions(groups.info));
+    groups.info = [];
+
     groups.active.sort((a, b) => {
         const aPercentage = normalizePercentageNumber(a?.votePercentages?.yes);
         const bPercentage = normalizePercentageNumber(b?.votePercentages?.yes);
@@ -2046,9 +2044,7 @@ function openGovernanceActionGroupOverlay(groupKey, titleText, emptyMessage, roo
     const groupedProposals = governanceGroupsState?.[groupKey]
         || groupGovernanceProposals(getGovernanceProposalsFromDashboardPayload(governanceState || {}))[groupKey]
         || [];
-    const proposals = groupKey === 'info'
-        ? getActiveInfoActions(groupedProposals)
-        : groupedProposals;
+    const proposals = groupedProposals;
     const panel = document.createElement('div');
     panel.className = 'governance-list governance-action-group-list';
     renderGovernanceGroup(panel, proposals, emptyMessage);
@@ -7140,8 +7136,6 @@ async function updateGovernanceCounts(groups) {
     setText('gov-active-count', getCollectionLength(groups.active));
     setText('gov-approved-count', getCollectionLength(groups.approved));
     setText('gov-rejected-count', getCollectionLength(groups.rejected));
-    setText('gov-info-count', getCollectionLength(getActiveInfoActions(groups.info)));
-    setText('gov-info-last-action', formatLatestInfoActionEpoch(groups.info));
     setText('gov-active-ask', formatGovernanceAskAmount(groups.active));
     setText('gov-approved-ask', formatGovernanceAskAmount(groups.approved));
     setText('gov-rejected-ask', formatGovernanceAskAmount(groups.rejected));
@@ -7190,14 +7184,6 @@ function getActiveInfoActions(proposals) {
             || !Number.isFinite(clockEpoch)
             || clockEpoch <= expirationEpoch;
     });
-}
-
-function formatLatestInfoActionEpoch(proposals) {
-    const epochs = (Array.isArray(proposals) ? proposals : [])
-        .map(proposal => Number(proposal?.proposed_epoch))
-        .filter(Number.isFinite);
-    if (!epochs.length) return 'Last action epoch --';
-    return `Last action epoch ${Math.max(...epochs)}`;
 }
 
 function getDashboardDrepStats(payload) {
