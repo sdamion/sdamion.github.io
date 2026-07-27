@@ -1958,6 +1958,10 @@ function createGovernanceCard(proposal, options = {}) {
     const card = document.createElement('div');
     card.className = 'governance-card governance-menu-card';
     card.dataset.proposalId = proposal.proposal_id;
+    card.dataset.searchText = [
+        proposal.proposal_id,
+        proposal.proposal_tx_hash
+    ].filter(Boolean).join(' ');
     const sortDate = Number(proposal?.block_time);
     const fallbackSortDate = Number(proposal?.proposed_epoch);
     const totalAsk = getProposalTotalAskLovelace(proposal);
