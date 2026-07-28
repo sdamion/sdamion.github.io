@@ -1047,20 +1047,24 @@ function createCatalystFundingStatusChart(payload) {
             label: 'Claimed',
             value: status.claimed,
             color: '#34d399',
+            currency: 'ADA',
             projects: status.projects.filter(project => (
                 Number(project.claimed_lovelace) > 0
             )),
-            amountField: 'claimed_lovelace'
+            amountField: 'claimed_lovelace',
+            requestedField: 'requested_lovelace'
         },
         {
             key: 'not-claimed',
             label: 'Not Claimed',
             value: status.notClaimed,
             color: '#fb7185',
+            currency: 'ADA',
             projects: status.projects.filter(project => (
                 Number(project.not_claimed_lovelace) > 0
             )),
-            amountField: 'not_claimed_lovelace'
+            amountField: 'not_claimed_lovelace',
+            requestedField: 'requested_lovelace'
         }
     ].filter(group => group.value > 0);
     const section = document.createElement('section');
@@ -1282,6 +1286,10 @@ function normalizeCatalystFunds(payload) {
             proposal_count: proposalCount,
             ada_proposal_count: Number(fund?.ada_proposal_count) || 0,
             funded_project_count: Number(fund?.funded_project_count) || 0,
+            funding_currency: String(fund?.funding_currency || '').toUpperCase() || null,
+            requested_amount: Number(fund?.requested_amount) || 0,
+            claimed_amount: Number(fund?.claimed_amount) || 0,
+            not_claimed_amount: Number(fund?.not_claimed_amount) || 0,
             requested_lovelace: String(fund?.requested_lovelace || '0'),
             claimed_lovelace: String(fund?.claimed_lovelace || '0'),
             not_claimed_lovelace: String(fund?.not_claimed_lovelace || '0')
@@ -1318,11 +1326,11 @@ function createCatalystFundCard(fund, index) {
 
     const claimed = document.createElement('span');
     claimed.className = 'governance-card-detail governance-treasury-withdrawal-amount';
-    claimed.textContent = `Claimed ${formatFullAdaFromLovelace(fund.claimed_lovelace)}`;
+    claimed.textContent = `Claimed ${formatCatalystFundAmount(fund, 'claimed', true)}`;
 
     const notClaimed = document.createElement('span');
     notClaimed.className = 'governance-card-detail';
-    notClaimed.textContent = `Not Claimed ${formatFullAdaFromLovelace(fund.not_claimed_lovelace)}`;
+    notClaimed.textContent = `Not Claimed ${formatCatalystFundAmount(fund, 'not_claimed', true)}`;
 
     card.append(position, title, proposals, claimed, notClaimed);
     return card;
@@ -1360,7 +1368,9 @@ async function openCatalystFundOverlay(fund, returnFocus) {
         panel.replaceChildren();
 
         const fundingPayload = createCatalystFundFundingPayload(fund, businessPayload);
-        const fundingChart = createCatalystFundingStatusChart(fundingPayload);
+        const fundingChart = fund.funding_currency === 'ADA'
+            ? createCatalystFundingStatusChart(fundingPayload)
+            : createCatalystCurrencyFundingStatusChart(fund, directoryPayload?.proposals);
         if (fundingChart) panel.appendChild(fundingChart);
         else panel.appendChild(createCatalystFundTotals(fund));
 
@@ -1381,7 +1391,7 @@ async function openCatalystFundOverlay(fund, returnFocus) {
         panel.appendChild(list);
         updateGovernanceMenuHeaderMeta(
             'governance-catalyst-fund-overlay',
-            `${proposals.length.toLocaleString('en-US')} proposals • Claimed ${formatCompactAdaFromLovelace(fund.claimed_lovelace)} • Not Claimed ${formatCompactAdaFromLovelace(fund.not_claimed_lovelace)}`,
+            `${proposals.length.toLocaleString('en-US')} proposals • Claimed ${formatCatalystFundAmount(fund, 'claimed', true)} • Not Claimed ${formatCatalystFundAmount(fund, 'not_claimed', true)}`,
             panel
         );
     } catch {
@@ -1421,16 +1431,126 @@ function createCatalystFundTotals(fund) {
     summary.append(
         createGovernanceStatBox({
             label: 'Claimed',
-            detail: formatFullAdaFromLovelace(fund.claimed_lovelace),
+            detail: formatCatalystFundAmount(fund, 'claimed'),
             color: '#34d399'
         }),
         createGovernanceStatBox({
             label: 'Not Claimed',
-            detail: formatFullAdaFromLovelace(fund.not_claimed_lovelace),
+            detail: formatCatalystFundAmount(fund, 'not_claimed'),
             color: '#fb7185'
         })
     );
     return summary;
+}
+
+function createCatalystCurrencyFundingStatusChart(fund, proposals = []) {
+    const requested = Number(fund.requested_amount) || 0;
+    if (!fund.funding_currency || requested <= 0) return null;
+    const fundingProjects = (Array.isArray(proposals) ? proposals : []).flatMap(project => {
+        const projectRequested = Number(project?.amount_requested);
+        if (
+            project?.project_status !== 'in_progress'
+            || !Number.isFinite(projectRequested)
+            || projectRequested <= 0
+        ) return [];
+        const projectClaimed = Math.min(
+            Math.max(Number(project?.amount_received) || 0, 0),
+            projectRequested
+        );
+        return [{
+            ...project,
+            requested_amount: projectRequested,
+            claimed_amount: projectClaimed,
+            not_claimed_amount: Math.max(projectRequested - projectClaimed, 0)
+        }];
+    });
+    const groups = [
+        {
+            key: 'claimed',
+            label: 'Claimed',
+            value: Number(fund.claimed_amount) || 0,
+            color: '#34d399',
+            currency: fund.funding_currency,
+            projects: fundingProjects.filter(project => project.claimed_amount > 0),
+            amountField: 'claimed_amount',
+            requestedField: 'requested_amount'
+        },
+        {
+            key: 'not-claimed',
+            label: 'Not Claimed',
+            value: Number(fund.not_claimed_amount) || 0,
+            color: '#fb7185',
+            currency: fund.funding_currency,
+            projects: fundingProjects.filter(project => project.not_claimed_amount > 0),
+            amountField: 'not_claimed_amount',
+            requestedField: 'requested_amount'
+        }
+    ].filter(group => group.value > 0);
+    if (!groups.length) return null;
+
+    const section = document.createElement('section');
+    section.className = 'governance-vote-chart governance-chart-panel';
+
+    const title = document.createElement('strong');
+    title.textContent = 'Catalyst funding status';
+
+    const projects = document.createElement('span');
+    projects.className = 'governance-card-detail';
+    projects.textContent = `${fund.funded_project_count.toLocaleString('en-US')} in-progress projects`;
+
+    const layout = document.createElement('div');
+    layout.className = 'governance-vote-chart-layout';
+    layout.appendChild(createUniversalPieChart(groups, {
+        labelFormatter: segment => (
+            ((segment.end - segment.start) / 360) >= 0.03
+                ? formatCatalystCurrencyAmount(
+                    segment.value,
+                    fund.funding_currency,
+                    true
+                )
+                : ''
+        ),
+        onSegmentClick: (segment, returnFocus) => (
+            openCatalystFundingProjectsOverlay(segment, returnFocus)
+        ),
+        showSegmentSeparators: true
+    }));
+
+    const legend = document.createElement('div');
+    legend.className = 'governance-vote-legend';
+    groups.forEach(group => {
+        legend.appendChild(createGovernanceStatBox({
+            label: group.label,
+            detail: `${formatCatalystCurrencyAmount(group.value, fund.funding_currency)} • ${formatPercentage((group.value / requested) * 100)}`,
+            color: group.color,
+            onClick: event => openCatalystFundingProjectsOverlay(group, event.currentTarget)
+        }));
+    });
+
+    layout.appendChild(legend);
+    section.append(title, projects, layout);
+    return section;
+}
+
+function formatCatalystFundAmount(fund, kind, compact = false) {
+    if (fund?.funding_currency === 'ADA') {
+        const lovelace = fund?.[`${kind}_lovelace`];
+        return compact
+            ? formatCompactAdaFromLovelace(lovelace)
+            : formatFullAdaFromLovelace(lovelace);
+    }
+    const amount = Number(fund?.[`${kind}_amount`]) || 0;
+    return formatCatalystCurrencyAmount(amount, fund?.funding_currency || 'USD', compact);
+}
+
+function formatCatalystCurrencyAmount(value, currency, compact = false) {
+    if (!currency || currency === 'MIXED') return '--';
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency,
+        notation: compact ? 'compact' : 'standard',
+        maximumFractionDigits: compact ? 2 : 0
+    }).format(Number(value) || 0);
 }
 
 function createCatalystProposalCard(proposal) {
@@ -1497,7 +1617,7 @@ function openCatalystFundingProjectsOverlay(group, returnFocus) {
             || String(left?.title || '').localeCompare(String(right?.title || ''), 'en-US')
         ))
         .forEach(project => {
-            panel.appendChild(createCatalystFundingProjectCard(project, group.amountField));
+            panel.appendChild(createCatalystFundingProjectCard(project, group));
         });
 
     createGovernanceMenuOverlay({
@@ -1507,7 +1627,7 @@ function openCatalystFundingProjectsOverlay(group, returnFocus) {
         closeLabel: `Close ${group.label} projects`,
         closeOverlay: closeCatalystFundingProjectsOverlay,
         bodyNodes: [panel],
-        headerMeta: `${group.projects.length.toLocaleString('en-US')} projects • ${formatCompactAdaFromLovelace(group.value)}`,
+        headerMeta: `${group.projects.length.toLocaleString('en-US')} projects • ${formatCatalystFundingAmount(group.value, group.currency, true)}`,
         overlayClass: 'governance-action-detail-overlay',
         returnFocus,
         rootTitle: 'Funding Recipients',
@@ -1520,7 +1640,9 @@ function getCatalystFundNumber(value) {
     return match ? Number(match[0]) : Number.MAX_SAFE_INTEGER;
 }
 
-function createCatalystFundingProjectCard(project, amountField) {
+function createCatalystFundingProjectCard(project, group) {
+    const amountField = group.amountField;
+    const requestedField = group.requestedField || 'requested_lovelace';
     const amount = Number(project?.[amountField]) || 0;
     const card = document.createElement('button');
     card.type = 'button';
@@ -1547,14 +1669,24 @@ function createCatalystFundingProjectCard(project, amountField) {
 
     const funding = document.createElement('span');
     funding.className = 'governance-card-detail governance-treasury-withdrawal-amount';
-    funding.textContent = `${amountField === 'claimed_lovelace' ? 'Claimed' : 'Not Claimed'} ${formatFullAdaFromLovelace(amount)}`;
+    funding.textContent = `${amountField.includes('claimed') && !amountField.startsWith('not_') ? 'Claimed' : 'Not Claimed'} ${formatCatalystFundingAmount(amount, group.currency)}`;
 
     const requested = document.createElement('span');
     requested.className = 'governance-card-detail';
-    requested.textContent = `Requested ${formatFullAdaFromLovelace(project.requested_lovelace)}`;
+    requested.textContent = `Requested ${formatCatalystFundingAmount(project?.[requestedField], group.currency)}`;
 
     card.append(title, business, funding, requested);
     return card;
+}
+
+function formatCatalystFundingAmount(value, currency = 'ADA', compact = false) {
+    return currency === 'ADA'
+        ? (
+            compact
+                ? formatCompactAdaFromLovelace(value)
+                : formatFullAdaFromLovelace(value)
+        )
+        : formatCatalystCurrencyAmount(value, currency, compact);
 }
 
 function closeCatalystFundingProjectsOverlay() {
