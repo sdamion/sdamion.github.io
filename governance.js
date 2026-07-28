@@ -111,6 +111,7 @@ function initGovernance() {
     setupDrepDirectoryCard();
     setupSpoDirectoryCard();
     setupTreasuryCard();
+    setupBusinessCard();
     loadCurrentEpoch();
     loadGovernanceActions();
     loadDrepDirectory().catch(() => {});
@@ -590,6 +591,11 @@ function setupTreasuryCard() {
     bindGovernanceMenuTrigger(card, openTreasuryOverlay);
 }
 
+function setupBusinessCard() {
+    const card = document.getElementById('gov-business-card');
+    bindGovernanceMenuTrigger(card, openBusinessOverlay);
+}
+
 async function loadTreasuryData() {
     const payload = await fetchTreasuryPayload();
     treasuryState = payload;
@@ -606,6 +612,7 @@ async function loadTreasuryData() {
             ? `Income ${formatCompactAdaFromLovelace(latestIncome, { fixedFractionDigits: 2 })}`
             : 'Income -- ADA'
     );
+    updateBusinessSummary(payload);
     if (governanceState) updateTreasuryBudgetBar();
 }
 
@@ -772,6 +779,175 @@ function openTreasuryAdministratorWithdrawalsOverlay(group, returnFocus) {
 
 function closeTreasuryAdministratorWithdrawalsOverlay() {
     removeGovernanceMenuOverlay('governance-treasury-administrator-overlay');
+}
+
+function getTreasuryBusinessGroups(payload) {
+    const groups = new Map();
+    getTreasuryWithdrawals(payload).forEach(withdrawal => {
+        const proposer = String(withdrawal?.proposer || '').trim() || 'Unknown proposer';
+        const group = groups.get(proposer) || {
+            key: proposer,
+            label: proposer,
+            value: 0,
+            withdrawals: []
+        };
+        group.value += Number(withdrawal?.amount_lovelace) || 0;
+        group.withdrawals.push(withdrawal);
+        groups.set(proposer, group);
+    });
+    return [...groups.values()].sort((left, right) => (
+        right.value - left.value
+        || left.label.localeCompare(right.label)
+    ));
+}
+
+function updateBusinessSummary(payload) {
+    const groups = getTreasuryBusinessGroups(payload);
+    const total = groups.reduce((sum, group) => sum + group.value, 0);
+    setText('gov-business-count', groups.length.toLocaleString('en-US'));
+    setText('gov-business-total', `Received ${formatCompactAdaFromLovelace(total)}`);
+}
+
+async function openBusinessOverlay(returnFocus = document.activeElement) {
+    const panel = document.createElement('div');
+    panel.className = 'governance-list governance-action-group-list';
+    const loading = document.createElement('p');
+    loading.className = 'small-text';
+    loading.textContent = 'Loading treasury proposers...';
+    panel.appendChild(loading);
+
+    createGovernanceMenuOverlay({
+        id: 'governance-business-overlay',
+        titleId: 'governance-business-title',
+        titleText: 'Business',
+        closeLabel: 'Close treasury proposers',
+        closeOverlay: closeBusinessOverlay,
+        bodyNodes: [panel],
+        headerMeta: 'Loading...',
+        returnFocus,
+        rootTitle: 'Business',
+        defaultSort: 'amount-desc'
+    });
+
+    try {
+        const payload = treasuryState || await fetchTreasuryPayload();
+        treasuryState = payload;
+        if (!panel.isConnected) return;
+        const groups = getTreasuryBusinessGroups(payload);
+        const total = groups.reduce((sum, group) => sum + group.value, 0);
+        panel.textContent = '';
+
+        if (!groups.length) {
+            const empty = document.createElement('p');
+            empty.className = 'small-text';
+            empty.textContent = 'No treasury proposer data is available yet.';
+            panel.appendChild(empty);
+        } else {
+            groups.forEach((group, index) => {
+                panel.appendChild(createTreasuryBusinessCard(group, index));
+            });
+        }
+
+        updateBusinessSummary(payload);
+        updateGovernanceMenuHeaderMeta(
+            'governance-business-overlay',
+            `${groups.length.toLocaleString('en-US')} proposers • ${formatCompactAdaFromLovelace(total)}`,
+            panel
+        );
+    } catch {
+        if (!panel.isConnected) return;
+        panel.textContent = '';
+        const error = document.createElement('p');
+        error.className = 'small-text';
+        error.textContent = 'Treasury proposer data could not be loaded.';
+        panel.appendChild(error);
+    }
+}
+
+function createTreasuryBusinessCard(group, index) {
+    const actionsCount = getTreasuryBusinessActions(group).length;
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'governance-card governance-menu-card';
+    card.dataset.searchText = group.label;
+    card.dataset.sortName = group.label;
+    card.dataset.sortAmount = String(group.value);
+    card.addEventListener('click', event => {
+        openTreasuryBusinessActionsOverlay(group, event.currentTarget);
+    });
+
+    const name = document.createElement('strong');
+    name.className = 'governance-title';
+    name.textContent = group.label;
+
+    const amount = document.createElement('span');
+    amount.className = 'governance-card-detail governance-treasury-withdrawal-amount';
+    amount.textContent = formatFullAdaFromLovelace(group.value);
+
+    const actions = document.createElement('span');
+    actions.className = 'governance-card-detail';
+    actions.textContent = `${actionsCount.toLocaleString('en-US')} treasury action${actionsCount === 1 ? '' : 's'}`;
+
+    const position = document.createElement('span');
+    position.className = 'governance-list-index';
+    position.textContent = String(index + 1);
+
+    card.append(position, name, amount, actions);
+    return card;
+}
+
+function getTreasuryBusinessActions(group) {
+    const actions = new Map();
+    group.withdrawals.forEach((withdrawal, index) => {
+        const key = withdrawal?.action_id || `withdrawal-${index}`;
+        const existing = actions.get(key);
+        if (existing) {
+            existing.amount_lovelace = String(
+                (Number(existing.amount_lovelace) || 0)
+                + (Number(withdrawal?.amount_lovelace) || 0)
+            );
+            if (existing.stake_address !== withdrawal?.stake_address) {
+                existing.stake_address = null;
+            }
+            return;
+        }
+        actions.set(key, { ...withdrawal });
+    });
+    return [...actions.values()].sort((left, right) => (
+        Number(right?.enacted_epoch || 0) - Number(left?.enacted_epoch || 0)
+        || (Number(right?.amount_lovelace) || 0) - (Number(left?.amount_lovelace) || 0)
+    ));
+}
+
+function openTreasuryBusinessActionsOverlay(group, returnFocus) {
+    const panel = document.createElement('div');
+    panel.className = 'governance-list governance-action-group-list';
+    const actions = getTreasuryBusinessActions(group);
+    actions.forEach(withdrawal => {
+        panel.appendChild(createTreasuryWithdrawalCard(withdrawal));
+    });
+
+    createGovernanceMenuOverlay({
+        id: 'governance-business-actions-overlay',
+        titleId: 'governance-business-actions-title',
+        titleText: group.label,
+        closeLabel: `Close treasury actions for ${group.label}`,
+        closeOverlay: closeTreasuryBusinessActionsOverlay,
+        bodyNodes: [panel],
+        headerMeta: `${actions.length.toLocaleString('en-US')} actions • ${formatCompactAdaFromLovelace(group.value)}`,
+        overlayClass: 'governance-action-detail-overlay',
+        returnFocus,
+        rootTitle: 'Business',
+        defaultSort: 'newest'
+    });
+}
+
+function closeBusinessOverlay() {
+    removeGovernanceMenuOverlay('governance-business-overlay');
+}
+
+function closeTreasuryBusinessActionsOverlay() {
+    removeGovernanceMenuOverlay('governance-business-actions-overlay');
 }
 
 function createTreasuryHistoryChart(payload, withdrawals) {
@@ -1068,6 +1244,8 @@ function getTreasuryWithdrawals(payload) {
         .map(withdrawal => ({
             action_id: withdrawal?.action_id || null,
             title: withdrawal?.title || 'Conway treasury withdrawal',
+            proposer: withdrawal?.proposer || null,
+            proposers: Array.isArray(withdrawal?.proposers) ? withdrawal.proposers : [],
             enacted_epoch: Number(withdrawal?.enacted_epoch) || null,
             amount_lovelace: String(withdrawal?.amount_lovelace || '0'),
             stake_address: withdrawal?.stake_address || null
@@ -2046,6 +2224,13 @@ function createGovernanceCard(proposal, options = {}) {
     });
     if (shouldShowVotePercentages(proposal)) openButton.appendChild(votes);
     card.appendChild(openButton);
+
+    const copyActionIdButton = createGovernanceCopyButton(
+        proposal.proposal_id,
+        'governance action ID'
+    );
+    copyActionIdButton.classList.add('governance-action-id-copy-button');
+    card.appendChild(copyActionIdButton);
 
     if (isGovernanceProposalOpenForVoting(proposal)) {
         card.appendChild(createGovernanceProposalActionButtons(proposal));
