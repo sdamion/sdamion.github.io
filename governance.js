@@ -849,6 +849,9 @@ function getCatalystBusinessProjects(payload) {
             title,
             business: project?.business || 'Unknown Catalyst proposer',
             amount_received_lovelace: String(Math.round(amount)),
+            amount_requested_lovelace: Number(project?.amount_requested_lovelace) > 0
+                ? String(Math.round(Number(project.amount_requested_lovelace)))
+                : null,
             project_status: project?.project_status || null,
             funding_status: project?.funding_status || null,
             fund_name: project?.fund_name || null,
@@ -949,6 +952,8 @@ async function openBusinessOverlay(returnFocus = document.activeElement) {
         const groups = getTreasuryBusinessGroups(payload, catalystPayload);
         const total = groups.reduce((sum, group) => sum + group.value, 0);
         panel.textContent = '';
+        const fundingChart = createCatalystFundingStatusChart(catalystPayload);
+        if (fundingChart) panel.appendChild(fundingChart);
 
         if (!groups.length) {
             const empty = document.createElement('p');
@@ -975,6 +980,105 @@ async function openBusinessOverlay(returnFocus = document.activeElement) {
         error.textContent = 'Funding recipient data could not be loaded.';
         panel.appendChild(error);
     }
+}
+
+function createCatalystFundingStatusChart(payload) {
+    const status = getCatalystFundingStatus(payload);
+    if (!status || status.requested <= 0) return null;
+
+    const groups = [
+        {
+            key: 'claimed',
+            label: 'Claimed',
+            value: status.claimed,
+            color: '#34d399'
+        },
+        {
+            key: 'not-claimed',
+            label: 'Not Claimed',
+            value: status.notClaimed,
+            color: '#fb7185'
+        }
+    ];
+    const section = document.createElement('section');
+    section.className = 'governance-vote-chart governance-chart-panel';
+
+    const title = document.createElement('strong');
+    title.textContent = 'Catalyst funding status';
+
+    const layout = document.createElement('div');
+    layout.className = 'governance-vote-chart-layout';
+    layout.appendChild(createUniversalPieChart(groups, {
+        labelFormatter: segment => (
+            ((segment.end - segment.start) / 360) >= 0.03
+                ? formatCompactAdaFromLovelace(segment.value)
+                : ''
+        )
+    }));
+
+    const legend = document.createElement('div');
+    legend.className = 'governance-vote-legend';
+    groups.forEach(group => {
+        const percentage = status.requested > 0
+            ? (group.value / status.requested) * 100
+            : 0;
+        legend.appendChild(createGovernanceStatBox({
+            label: group.label,
+            detail: `${formatFullAdaFromLovelace(group.value)} • ${formatPercentage(percentage)}`,
+            color: group.color
+        }));
+    });
+
+    const projects = document.createElement('span');
+    projects.className = 'governance-card-detail';
+    projects.textContent = `${status.projectCount.toLocaleString('en-US')} in-progress projects`;
+
+    layout.appendChild(legend);
+    section.append(title, projects, layout);
+    return section;
+}
+
+function getCatalystFundingStatus(payload) {
+    const cached = payload?.funding_status;
+    const requested = Number(cached?.requested_lovelace);
+    const claimed = Number(cached?.claimed_lovelace);
+    const notClaimed = Number(cached?.not_claimed_lovelace);
+    if (
+        Number.isFinite(requested)
+        && requested > 0
+        && Number.isFinite(claimed)
+        && Number.isFinite(notClaimed)
+    ) {
+        return {
+            projectCount: Number(cached?.project_count) || 0,
+            requested,
+            claimed,
+            notClaimed
+        };
+    }
+
+    const projects = getCatalystBusinessProjects(payload).filter(project => (
+        project.project_status === 'in_progress'
+        && Number(project.amount_requested_lovelace) > 0
+    ));
+    if (!projects.length) return null;
+    const fallbackRequested = projects.reduce(
+        (sum, project) => sum + Number(project.amount_requested_lovelace || 0),
+        0
+    );
+    const fallbackClaimed = projects.reduce(
+        (sum, project) => sum + Math.min(
+            Number(project.amount_received_lovelace || 0),
+            Number(project.amount_requested_lovelace || 0)
+        ),
+        0
+    );
+    return {
+        projectCount: projects.length,
+        requested: fallbackRequested,
+        claimed: fallbackClaimed,
+        notClaimed: Math.max(fallbackRequested - fallbackClaimed, 0)
+    };
 }
 
 function createTreasuryBusinessCard(group, index) {
