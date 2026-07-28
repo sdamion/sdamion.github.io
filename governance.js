@@ -922,19 +922,19 @@ async function openBusinessOverlay(returnFocus = document.activeElement) {
     panel.className = 'governance-list governance-action-group-list';
     const loading = document.createElement('p');
     loading.className = 'small-text';
-    loading.textContent = 'Loading treasury proposers...';
+    loading.textContent = 'Loading funding recipients...';
     panel.appendChild(loading);
 
     createGovernanceMenuOverlay({
         id: 'governance-business-overlay',
         titleId: 'governance-business-title',
-        titleText: 'Business',
-        closeLabel: 'Close treasury proposers',
+        titleText: 'Funding Recipients',
+        closeLabel: 'Close funding recipients',
         closeOverlay: closeBusinessOverlay,
         bodyNodes: [panel],
         headerMeta: 'Loading...',
         returnFocus,
-        rootTitle: 'Business',
+        rootTitle: 'Funding Recipients',
         defaultSort: 'amount-desc'
     });
 
@@ -953,7 +953,7 @@ async function openBusinessOverlay(returnFocus = document.activeElement) {
         if (!groups.length) {
             const empty = document.createElement('p');
             empty.className = 'small-text';
-            empty.textContent = 'No treasury proposer data is available yet.';
+            empty.textContent = 'No funding recipient data is available yet.';
             panel.appendChild(empty);
         } else {
             groups.forEach((group, index) => {
@@ -972,7 +972,7 @@ async function openBusinessOverlay(returnFocus = document.activeElement) {
         panel.textContent = '';
         const error = document.createElement('p');
         error.className = 'small-text';
-        error.textContent = 'Treasury proposer data could not be loaded.';
+        error.textContent = 'Funding recipient data could not be loaded.';
         panel.appendChild(error);
     }
 }
@@ -1056,7 +1056,7 @@ function openTreasuryBusinessActionsOverlay(group, returnFocus) {
         headerMeta: `${projectCount.toLocaleString('en-US')} projects • ${formatCompactAdaFromLovelace(group.value)}`,
         overlayClass: 'governance-action-detail-overlay',
         returnFocus,
-        rootTitle: 'Business',
+        rootTitle: 'Funding Recipients',
         defaultSort: 'newest'
     });
 }
