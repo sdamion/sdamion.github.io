@@ -5096,15 +5096,20 @@ function renderDrepActionHistory(container, payload, drep) {
         `${rows.length.toLocaleString('en-US')} actions`,
         container
     );
-    const closedRows = rows.filter(row => isExpiredGovernanceActionForCommitteeStats(row.proposal));
-    const votedRows = rows.filter(row => row.action);
-    const activeRows = rows.filter(row => (
-        !row.action && !isExpiredGovernanceActionForCommitteeStats(row.proposal)
-    ));
+    const rowsByParticipation = rows.map(row => ({
+        ...row,
+        participation: classifyGovernanceParticipation(
+            Boolean(row.action),
+            isExpiredGovernanceActionForCommitteeStats(row.proposal)
+        )
+    }));
+    const votedRows = rowsByParticipation.filter(row => row.participation === 'voted');
+    const notVotedRows = rowsByParticipation.filter(row => row.participation === 'not_voted');
+    const activeRows = rowsByParticipation.filter(row => row.participation === 'active_not_voted');
     const voted = votedRows.length;
-    const notVoted = closedRows.filter(row => !row.action).length;
+    const notVoted = notVotedRows.length;
     const active = activeRows.length;
-    const notVotedProposals = closedRows.filter(row => !row.action).map(row => row.proposal);
+    const notVotedProposals = notVotedRows.map(row => row.proposal);
     const votedProposals = votedRows.map(row => row.proposal);
     const activeProposals = activeRows.map(row => row.proposal);
     const notApplicableProposals = proposals
@@ -5188,6 +5193,11 @@ function isGovernanceActionExcludedFromDrepStats(proposal) {
     const proposalId = String(proposal?.proposal_id || '');
     return (proposal?.dropped_epoch !== null && proposal?.dropped_epoch !== undefined)
         || DREP_STATS_EXCLUDED_PROPOSAL_IDS.has(proposalId);
+}
+
+function classifyGovernanceParticipation(hasVote, isFinal) {
+    if (hasVote) return 'voted';
+    return isFinal ? 'not_voted' : 'active_not_voted';
 }
 
 function createDrepActionHistoryChart(stats) {
@@ -5473,7 +5483,7 @@ async function loadConstitutionalCommitteeMemberSummaryStats(members, container)
                 return {
                     voted: Number(member.voteStats?.voted) || 0,
                     total: Number(member.voteStats?.total) || 0,
-                    open: proposalStats.open,
+                    open: Number(member.voteStats?.active_not_voted) || 0,
                     notApplicable: proposalStats.notApplicable,
                     all: proposalStats.total
                 };
@@ -5483,8 +5493,7 @@ async function loadConstitutionalCommitteeMemberSummaryStats(members, container)
     }
 
     const proposals = getGovernanceActionsForCommitteeOverview()
-        .filter(isConstitutionalCommitteeMemberVoteApplicable)
-        .filter(isExpiredGovernanceActionForCommitteeStats);
+        .filter(isConstitutionalCommitteeMemberVoteApplicable);
     const cacheKey = getConstitutionalCommitteeMemberStatsCacheKey(members, proposals);
 
     if (!proposals.length) {
@@ -5522,7 +5531,7 @@ async function calculateConstitutionalCommitteeMemberSummaryStats(members, propo
         return {
             voted: 0,
             total: 0,
-            open: proposalStats.open,
+            open: 0,
             notApplicable: proposalStats.notApplicable,
             all: proposalStats.total
         };
@@ -5544,9 +5553,20 @@ async function calculateConstitutionalCommitteeMemberSummaryStats(members, propo
 
             members.forEach((member, memberIndex) => {
                 if (!isGovernanceActionInCommitteeMemberTerm(proposal, member)) return;
-                stats[memberIndex].total += 1;
-                if (payload && findConstitutionalCommitteeVoteForMember(payload, member)) {
+                const hasVote = Boolean(
+                    payload && findConstitutionalCommitteeVoteForMember(payload, member)
+                );
+                const participation = classifyGovernanceParticipation(
+                    hasVote,
+                    isExpiredGovernanceActionForCommitteeStats(proposal)
+                );
+                if (participation === 'voted') {
                     stats[memberIndex].voted += 1;
+                    stats[memberIndex].total += 1;
+                } else if (participation === 'not_voted') {
+                    stats[memberIndex].total += 1;
+                } else {
+                    stats[memberIndex].open += 1;
                 }
             });
         }
@@ -5604,17 +5624,30 @@ function getConstitutionalCommitteeBackendMemberSummaryStats(member) {
     const proposalStats = getConstitutionalCommitteeMemberProposalStats(member);
     const stats = {
         voted: 0,
-        total: proposalStats.applicable,
-        open: proposalStats.open,
+        total: 0,
+        open: 0,
         notApplicable: proposalStats.notApplicable,
         all: proposalStats.total
     };
 
-    proposalStats.closed.forEach(proposal => {
-        const actionStats = actionStatsById.get(String(proposal.proposal_id || ''));
-        if (!actionStats) return;
-        if (actionStats.voted) stats.voted += 1;
-    });
+    getGovernanceActionsForCommitteeMember(member)
+        .filter(isConstitutionalCommitteeMemberVoteApplicable)
+        .forEach(proposal => {
+            const actionStats = actionStatsById.get(String(proposal.proposal_id || ''));
+            if (!actionStats) return;
+            const participation = classifyGovernanceParticipation(
+                actionStats.voted === true,
+                isExpiredGovernanceActionForCommitteeStats(proposal)
+            );
+            if (participation === 'voted') {
+                stats.voted += 1;
+                stats.total += 1;
+            } else if (participation === 'not_voted') {
+                stats.total += 1;
+            } else {
+                stats.open += 1;
+            }
+        });
 
     return stats;
 }
@@ -5625,7 +5658,7 @@ function updateConstitutionalCommitteeMemberSummaryStats(container, stats) {
         if (!element) return;
 
         if (!item.total) {
-            element.textContent = `No expired actions yet • Not applicable ${Number(item.notApplicable) || 0}`;
+            element.textContent = `Active ${Number(item.open) || 0} • Voted 0% • Not voted 0% • Not applicable ${Number(item.notApplicable) || 0}`;
             return;
         }
 
@@ -5854,25 +5887,27 @@ function updateConstitutionalCommitteeVoteChart(container, results, member) {
 
 function renderConstitutionalCommitteeVoteChartContent(container, results, isLoading = false, member = null) {
     const memberName = member?.name || 'CC Member';
-    const eligibleResults = results.filter(result => (
-        isConstitutionalCommitteeMemberVoteApplicable(result.proposal)
-        && isExpiredGovernanceActionForCommitteeStats(result.proposal)
-    ));
-    const voted = eligibleResults.filter(result => result.vote).length;
-    const total = eligibleResults.length;
-    const notVoted = Math.max(total - voted, 0);
+    const eligibleResults = results
+        .filter(result => isConstitutionalCommitteeMemberVoteApplicable(result.proposal))
+        .map(result => ({
+            ...result,
+            participation: classifyGovernanceParticipation(
+                Boolean(result.vote),
+                isExpiredGovernanceActionForCommitteeStats(result.proposal)
+            )
+        }));
+    const votedResults = eligibleResults.filter(result => result.participation === 'voted');
+    const notVotedResults = eligibleResults.filter(result => result.participation === 'not_voted');
+    const activeResults = eligibleResults.filter(result => result.participation === 'active_not_voted');
+    const voted = votedResults.length;
+    const notVoted = notVotedResults.length;
+    const total = voted + notVoted;
     const votedPct = total > 0 ? (voted / total) * 100 : 0;
     const notVotedPct = total > 0 ? (notVoted / total) * 100 : 0;
     const proposalStats = getConstitutionalCommitteeMemberProposalStats(member);
-    const votedProposals = eligibleResults
-        .filter(result => result.vote)
-        .map(result => result.proposal);
-    const notVotedProposals = eligibleResults
-        .filter(result => !result.vote)
-        .map(result => result.proposal);
-    const activeProposals = getGovernanceActionsForCommitteeMember(member)
-        .filter(isConstitutionalCommitteeMemberVoteApplicable)
-        .filter(proposal => !isExpiredGovernanceActionForCommitteeStats(proposal));
+    const votedProposals = votedResults.map(result => result.proposal);
+    const notVotedProposals = notVotedResults.map(result => result.proposal);
+    const activeProposals = activeResults.map(result => result.proposal);
     const notApplicableProposals = getGovernanceActionsForCommitteeOverview()
         .filter(proposal => isGovernanceActionInCommitteeMemberTerm(proposal, member))
         .filter(proposal => !isConstitutionalCommitteeMemberVoteApplicable(proposal));
@@ -5891,7 +5926,7 @@ function renderConstitutionalCommitteeVoteChartContent(container, results, isLoa
         stackLegend: true,
         prependLegendItems: [{
             label: 'Active',
-            detail: `${proposalStats.open} actions`,
+            detail: `${activeProposals.length} actions`,
             color: '#60a5fa',
             onClick: isLoading ? null : event => openGovernanceStatusActionsOverlay(
                 memberName,
