@@ -1343,13 +1343,6 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     gap: 3px;
 }
 
-.constitution-chat-heading-actions {
-    display: flex;
-    flex: 0 0 auto;
-    align-items: center;
-    gap: 12px;
-}
-
 .constitution-chat-heading strong {
     color: var(--text);
     font-size: 1rem;
@@ -1446,19 +1439,6 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     border: 1px solid var(--line);
     border-radius: 8px;
     background: var(--surface-muted);
-}
-
-.constitution-chat-message-question {
-    border-color: var(--accent);
-}
-
-.constitution-chat-message-answer {
-    background: var(--surface);
-}
-
-.constitution-chat-message-error strong,
-.constitution-chat-message-error p {
-    color: #f87171;
 }
 
 .constitution-chat-message p {
@@ -2043,10 +2023,6 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
         justify-self: start;
     }
 
-    .constitution-chat-heading-actions {
-        justify-content: flex-start;
-    }
-
     .constitution-chat-form-actions {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2095,18 +2071,6 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 
 .governance-budget-amount {
     color: var(--accent-strong);
-}
-
-.governance-budget-amount.is-green {
-    color: var(--accent-strong);
-}
-
-.governance-budget-amount.is-orange {
-    color: #fbbf24;
-}
-
-.governance-budget-amount.is-red {
-    color: #f87171;
 }
 
 .governance-budget-bar span.is-negative .governance-budget-amount {
@@ -3277,22 +3241,6 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 
 }
 
-/* Form Controls */
-.control-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 12px;
-    margin: 16px 0;
-}
-
-.control-row label {
-    color: var(--muted);
-    font-size: 0.9rem;
-    font-weight: 700;
-    line-height: 1.35;
-}
-
 select,
 input {
     min-height: 42px;
@@ -3823,12 +3771,6 @@ html[data-theme="dark"] input {
 }
 
 @media (max-width: 480px) {
-    .hero-copy,
-    .hero-media {
-        width: calc(100vw - 32px);
-        max-width: calc(100vw - 32px);
-    }
-
     h1 {
         max-width: 100%;
         overflow-wrap: break-word;
@@ -3837,11 +3779,6 @@ html[data-theme="dark"] input {
 
     h2 {
         font-size: 2.1rem;
-    }
-
-    .lead {
-        max-width: 100%;
-        font-size: 1rem;
     }
 
     .links a {

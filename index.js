@@ -123,12 +123,12 @@ async function fetchPrices() {
         const prices = await response.json();
         latestPricePayload = prices;
         Object.entries(PRICE_TOKEN_CONFIG).forEach(([key, config]) => {
-            setText(config.elementId, formatUsdPrice(prices[key], config.decimals));
+            window.TDSPRuntime.setText(config.elementId, formatUsdPrice(prices[key], config.decimals));
         });
         renderPriceSparklines(prices.history);
     } catch (error) {
         console.error('Price data could not be loaded', error);
-        Object.values(PRICE_TOKEN_CONFIG).forEach(config => setText(config.elementId, 'N/A'));
+        Object.values(PRICE_TOKEN_CONFIG).forEach(config => window.TDSPRuntime.setText(config.elementId, 'N/A'));
         renderPriceSparklines([]);
     }
 }
@@ -1040,7 +1040,7 @@ function getExternalSiteWarning(returnFocus = document.activeElement) {
     copyUrl.addEventListener('click', async () => {
         if (!pendingExternalUrl) return;
         try {
-            await copyText(pendingExternalUrl);
+            await window.TDSPRuntime.copyText(pendingExternalUrl);
             copyUrl.textContent = 'Copied';
         } catch {
             copyUrl.textContent = 'Copy failed';
@@ -1244,29 +1244,29 @@ async function fetchLeaderSchedule() {
 
 function renderLeaderSchedule(schedule) {
     const leadership = Array.isArray(schedule?.leadership) ? schedule.leadership : [];
-    setText('leader-schedule-count', formatInteger(schedule?.slotCount ?? leadership.length));
-    setText('leader-schedule-meta', `Possible blocks · Epoch ${formatInteger(schedule?.epoch)}`);
+    window.TDSPRuntime.setText('leader-schedule-count', formatInteger(schedule?.slotCount ?? leadership.length));
+    window.TDSPRuntime.setText('leader-schedule-meta', `Possible blocks · Epoch ${formatInteger(schedule?.epoch)}`);
 }
 
 function renderLeaderScheduleError() {
-    setText('leader-schedule-count', 'N/A');
-    setText('leader-schedule-meta', 'Possible blocks · Epoch N/A');
+    window.TDSPRuntime.setText('leader-schedule-count', 'N/A');
+    window.TDSPRuntime.setText('leader-schedule-meta', 'Possible blocks · Epoch N/A');
 }
 
 function renderPoolStatus(pool) {
     poolDelegators = Array.isArray(pool?.delegators) ? [...pool.delegators] : [];
-    setText('pool-delegators', formatInteger(pool?.delegator_count));
-    setText('pool-live-stake', formatAdaFromLovelace(pool?.live_stake_lovelace));
-    setText('pool-saturation', formatPoolSaturation(pool?.saturation_pct ?? pool?.raw?.live_saturation));
-    setText('pool-pledge', formatAdaFromLovelace(pool?.pledge_lovelace ?? pool?.raw?.pledge));
-    setText('pool-margin', formatPoolMargin(pool?.margin ?? pool?.raw?.margin));
-    setText('pool-fixed-cost', formatAdaFromLovelace(pool?.fixed_cost_lovelace ?? pool?.raw?.fixed_cost));
-    setText('pool-id', pool?.pool_id || 'N/A');
+    window.TDSPRuntime.setText('pool-delegators', formatInteger(pool?.delegator_count));
+    window.TDSPRuntime.setText('pool-live-stake', formatAdaFromLovelace(pool?.live_stake_lovelace));
+    window.TDSPRuntime.setText('pool-saturation', formatPoolSaturation(pool?.saturation_pct ?? pool?.raw?.live_saturation));
+    window.TDSPRuntime.setText('pool-pledge', formatAdaFromLovelace(pool?.pledge_lovelace ?? pool?.raw?.pledge));
+    window.TDSPRuntime.setText('pool-margin', formatPoolMargin(pool?.margin ?? pool?.raw?.margin));
+    window.TDSPRuntime.setText('pool-fixed-cost', formatAdaFromLovelace(pool?.fixed_cost_lovelace ?? pool?.raw?.fixed_cost));
+    window.TDSPRuntime.setText('pool-id', pool?.pool_id || 'N/A');
 
     const relays = Array.isArray(pool?.relays) ? pool.relays : [];
     const upCount = relays.filter(relay => relay.up === true).length;
     setRelayCardStatus(relays.length ? upCount : null, relays.length || null);
-    setText('pool-last-updated', formatTimestamp(pool?.updated_at));
+    window.TDSPRuntime.setText('pool-last-updated', formatTimestamp(pool?.updated_at));
 
     const relaysEl = document.getElementById('pool-relays');
     if (!relaysEl) return;
@@ -1988,7 +1988,7 @@ function createMithrilSignersList() {
             copy.addEventListener('click', async () => {
                 const original = copy.textContent;
                 try {
-                    await copyText(poolId);
+                    await window.TDSPRuntime.copyText(poolId);
                     copy.textContent = 'Copied';
                 } catch (error) {
                     copy.textContent = 'Copy failed';
@@ -2065,7 +2065,7 @@ function createPoolDelegatorsList() {
             const fullAddress = copy.dataset.copyValue;
             try {
                 if (!fullAddress) throw new Error('Missing stake address');
-                await copyText(fullAddress);
+                await window.TDSPRuntime.copyText(fullAddress);
                 copy.textContent = 'Copied';
             } catch (error) {
                 copy.textContent = 'Copy failed';
@@ -2168,7 +2168,7 @@ function initPoolCopyButtons() {
             const originalLabel = button.textContent;
             const originalAriaLabel = button.getAttribute('aria-label') || '';
             try {
-                await copyText(value);
+                await window.TDSPRuntime.copyText(value);
                 button.textContent = 'Copied';
                 button.setAttribute('aria-label', `Copied ${value}`);
                 setTimeout(() => {
@@ -2183,23 +2183,6 @@ function initPoolCopyButtons() {
             }
         });
     });
-}
-
-async function copyText(value) {
-    if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(value);
-        return;
-    }
-
-    const textArea = document.createElement('textarea');
-    textArea.value = value;
-    textArea.setAttribute('readonly', '');
-    textArea.style.position = 'fixed';
-    textArea.style.left = '-9999px';
-    document.body.appendChild(textArea);
-    textArea.select();
-    document.execCommand('copy');
-    textArea.remove();
 }
 
 function notifyRelayMaintenance(downRelays) {
@@ -2217,11 +2200,6 @@ function notifyRelayMaintenance(downRelays) {
         body: `${newDownRelays.map(item => item.label).join(', ')} down for maintenance.`,
         tag: 'tdsp-relay-maintenance'
     });
-}
-
-function setText(id, value) {
-    const element = document.getElementById(id);
-    if (element) element.textContent = value;
 }
 
 function formatInteger(value) {

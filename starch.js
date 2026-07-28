@@ -483,7 +483,7 @@ function createStarchCopyButton(value, label) {
         event.stopPropagation();
         const original = button.textContent;
         try {
-            await copyStarchText(value);
+            await window.TDSPRuntime.copyText(value);
             button.textContent = 'Copied';
         } catch {
             button.textContent = 'Copy failed';
@@ -491,22 +491,6 @@ function createStarchCopyButton(value, label) {
         setTimeout(() => { button.textContent = original; }, 1400);
     });
     return button;
-}
-
-async function copyStarchText(value) {
-    if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(value);
-        return;
-    }
-    const textArea = document.createElement('textarea');
-    textArea.value = value;
-    textArea.setAttribute('readonly', '');
-    textArea.style.position = 'fixed';
-    textArea.style.left = '-9999px';
-    document.body.appendChild(textArea);
-    textArea.select();
-    document.execCommand('copy');
-    textArea.remove();
 }
 
 function shadeColor(color, percent) {

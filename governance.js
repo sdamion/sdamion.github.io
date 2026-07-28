@@ -130,8 +130,8 @@ function initGovernance() {
     loadSpoDirectory().catch(() => {});
     loadTreasuryData().catch(() => {});
     loadCatalystFundDirectory().catch(() => {
-        setText('gov-catalyst-proposals-count', 'Unavailable');
-        setText('gov-catalyst-funds-count', 'Funds unavailable');
+        window.TDSPRuntime.setText('gov-catalyst-proposals-count', 'Unavailable');
+        window.TDSPRuntime.setText('gov-catalyst-funds-count', 'Funds unavailable');
     });
 }
 
@@ -620,11 +620,11 @@ function setupCatalystProposalsCard() {
 async function loadCatalystFundDirectory() {
     const payload = await fetchCatalystFundDirectoryPayload();
     catalystFundDirectoryState = payload;
-    setText(
+    window.TDSPRuntime.setText(
         'gov-catalyst-proposals-count',
         Number(payload?.proposal_count || 0).toLocaleString('en-US')
     );
-    setText(
+    window.TDSPRuntime.setText(
         'gov-catalyst-funds-count',
         `${Number(payload?.fund_count || payload?.funds?.length || 0).toLocaleString('en-US')} Funds`
     );
@@ -641,11 +641,11 @@ async function loadTreasuryData() {
     const treasuryLovelace = getTreasuryLovelace(payload);
     if (!Number.isFinite(treasuryLovelace)) throw new Error('Treasury amount is unavailable');
 
-    setText('gov-treasury-amount', formatCompactAdaFromLovelace(treasuryLovelace, { fixedFractionDigits: 2 }));
+    window.TDSPRuntime.setText('gov-treasury-amount', formatCompactAdaFromLovelace(treasuryLovelace, { fixedFractionDigits: 2 }));
     const latestIncome = getTreasuryIncomeLovelace(payload);
     const latestEpoch = getTreasuryEpoch(payload);
-    setText('gov-treasury-epoch', `Treasury Epoch ${latestEpoch ?? '--'}`);
-    setText(
+    window.TDSPRuntime.setText('gov-treasury-epoch', `Treasury Epoch ${latestEpoch ?? '--'}`);
+    window.TDSPRuntime.setText(
         'gov-treasury-income',
         Number.isFinite(latestIncome)
             ? `Income ${formatCompactAdaFromLovelace(latestIncome, { fixedFractionDigits: 2 })}`
@@ -971,8 +971,8 @@ function getTreasuryBusinessName(withdrawal) {
 function updateBusinessSummary(payload, catalystPayload = catalystBusinessState) {
     const groups = getTreasuryBusinessGroups(payload, catalystPayload);
     const total = groups.reduce((sum, group) => sum + group.value, 0);
-    setText('gov-business-count', groups.length.toLocaleString('en-US'));
-    setText('gov-business-total', `Received ${formatCompactAdaFromLovelace(total)}`);
+    window.TDSPRuntime.setText('gov-business-count', groups.length.toLocaleString('en-US'));
+    window.TDSPRuntime.setText('gov-business-total', `Received ${formatCompactAdaFromLovelace(total)}`);
 }
 
 async function openBusinessOverlay(returnFocus = document.activeElement) {
@@ -4050,21 +4050,17 @@ function findExistingDrepVote(payload, drep) {
             vote?.hex,
             vote?.drep_hash,
             vote?.voter
-        ].some(identifier => drepIdentifiers.has(normalizeDrepIdentifier(identifier))));
+        ].some(identifier => drepIdentifiers.has(normalizeGovernanceIdentifier(identifier))));
         if (match) return formatVoteChoice(match.vote || key);
     }
     return null;
-}
-
-function normalizeDrepIdentifier(value) {
-    return String(value || '').trim().toLowerCase();
 }
 
 function getWalletDrepIdentifiers(drep) {
     return [...new Set([
         drep?.publicKeyHash,
         drep?.dRepIDCip105
-    ].map(normalizeDrepIdentifier).filter(Boolean))];
+    ].map(normalizeGovernanceIdentifier).filter(Boolean))];
 }
 
 async function fetchWalletDrepDetails(drep) {
@@ -5345,8 +5341,8 @@ async function loadSpoDirectory() {
                     count: Number.isFinite(Number(payload?.count)) ? Number(payload.count) : spos.length,
                     spos
                 };
-                setText('gov-spo-count', spoDirectoryState.count.toLocaleString('en-US'));
-                setText(
+                window.TDSPRuntime.setText('gov-spo-count', spoDirectoryState.count.toLocaleString('en-US'));
+                window.TDSPRuntime.setText(
                     'gov-spo-total-delegated',
                     `Delegated ${formatCompactAdaFromLovelace(spoDirectoryState.total_delegated_lovelace || 0)}`
                 );
@@ -5354,8 +5350,8 @@ async function loadSpoDirectory() {
             })
             .catch(error => {
                 spoDirectoryPromise = null;
-                setText('gov-spo-count', '--');
-                setText('gov-spo-total-delegated', 'Delegated -- ADA');
+                window.TDSPRuntime.setText('gov-spo-count', '--');
+                window.TDSPRuntime.setText('gov-spo-total-delegated', 'Delegated -- ADA');
                 throw error;
             });
     }
@@ -6202,7 +6198,7 @@ function createGovernanceCopyButton(value, label) {
         const originalAriaLabel = button.getAttribute('aria-label') || '';
 
         try {
-            await copyGovernanceText(value);
+            await window.TDSPRuntime.copyText(value);
             button.textContent = 'Copied';
             button.setAttribute('aria-label', `Copied ${label}`);
         } catch {
@@ -6215,23 +6211,6 @@ function createGovernanceCopyButton(value, label) {
         }, 1400);
     });
     return button;
-}
-
-async function copyGovernanceText(value) {
-    if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(value);
-        return;
-    }
-
-    const textArea = document.createElement('textarea');
-    textArea.value = value;
-    textArea.setAttribute('readonly', '');
-    textArea.style.position = 'fixed';
-    textArea.style.left = '-9999px';
-    document.body.appendChild(textArea);
-    textArea.select();
-    document.execCommand('copy');
-    textArea.remove();
 }
 
 function openDrepActionHistoryOverlay(drep, returnFocus = null) {
@@ -6989,7 +6968,7 @@ function findConstitutionalCommitteeVoteForMember(payload, member) {
         const votes = Array.isArray(committeeVotes[bucket]) ? committeeVotes[bucket] : [];
         const vote = votes.find(item => {
             const voterIds = [item?.voter_id, item?.voter_hex, item?.cc_hot_id, item?.cc_hot_hex]
-                .map(normalizeCommitteeVoteIdentifier)
+                .map(normalizeGovernanceIdentifier)
                 .filter(Boolean);
             return voterIds.some(id => candidates.has(id));
         });
@@ -7004,11 +6983,7 @@ function getConstitutionalCommitteeVoteCandidateIds(member) {
         member?.hotId,
         member?.hotHex,
         member?.id
-    ].map(normalizeCommitteeVoteIdentifier).filter(Boolean));
-}
-
-function normalizeCommitteeVoteIdentifier(value) {
-    return String(value || '').trim().toLowerCase();
+    ].map(normalizeGovernanceIdentifier).filter(Boolean));
 }
 
 function renderConstitutionalCommitteeActionShell(container, member) {
@@ -7436,7 +7411,7 @@ function createDrepVoteRow(vote) {
 }
 
 function getDrepFromVote(vote) {
-    const id = normalizeDrepIdentifier(getDrepVoteIdentifier(vote));
+    const id = normalizeGovernanceIdentifier(getDrepVoteIdentifier(vote));
     return {
         id,
         name: getDrepPrimaryDisplayName(vote),
@@ -7493,7 +7468,7 @@ async function resolveDrepNameFromApi(vote, options = {}) {
     const directName = vote?.resolvedDrepName || vote?.drep_name || vote?.drepName || vote?.name;
     if (directName) return directName;
 
-    const lookupId = normalizeDrepIdentifier(
+    const lookupId = normalizeGovernanceIdentifier(
         getDrepVoteIdentifier(vote)
     );
 
@@ -7545,7 +7520,7 @@ function fetchDrepInfoPayload() {
 }
 
 async function fetchDrepNameById(drepId) {
-    const normalizedId = normalizeDrepIdentifier(drepId);
+    const normalizedId = normalizeGovernanceIdentifier(drepId);
     if (!normalizedId) return null;
 
     const cacheKey = `detail:${normalizedId}`;
@@ -7639,17 +7614,17 @@ function getDrepEntryIdentifiers(entry) {
         entry?.metadata?.voterId,
         entry?.metadata?.drep_id
     ]
-        .map(normalizeDrepIdentifier)
+        .map(normalizeGovernanceIdentifier)
         .filter(Boolean);
 }
 
-function normalizeDrepIdentifier(value) {
+function normalizeGovernanceIdentifier(value) {
     if (value === null || value === undefined) return '';
     return String(value).trim().toLowerCase();
 }
 
 function shortenDrepIdentifier(value) {
-    const normalized = normalizeDrepIdentifier(value);
+    const normalized = normalizeGovernanceIdentifier(value);
     if (!normalized) return '';
     return normalized.startsWith('drep1') ? normalized.slice(5) : normalized;
 }
@@ -7975,7 +7950,7 @@ function getDrepVoteIdentifierCandidates(vote) {
         vote?.hex,
         vote?.id
     ]
-        .map(normalizeDrepIdentifier)
+        .map(normalizeGovernanceIdentifier)
         .filter(Boolean);
 }
 
@@ -8555,18 +8530,18 @@ function getGovernanceGroupSignature(proposals) {
 }
 
 async function updateGovernanceCounts(groups) {
-    setText('gov-active-count', getCollectionLength(groups.active));
-    setText('gov-approved-count', getCollectionLength(groups.approved));
-    setText('gov-rejected-count', getCollectionLength(groups.rejected));
-    setText('gov-active-ask', formatGovernanceAskAmount(groups.active));
-    setText('gov-approved-ask', formatGovernanceAskAmount(groups.approved));
-    setText('gov-rejected-ask', formatGovernanceAskAmount(groups.rejected));
-    setText('gov-committee-count', formatGovernanceCount(
+    window.TDSPRuntime.setText('gov-active-count', getCollectionLength(groups.active));
+    window.TDSPRuntime.setText('gov-approved-count', getCollectionLength(groups.approved));
+    window.TDSPRuntime.setText('gov-rejected-count', getCollectionLength(groups.rejected));
+    window.TDSPRuntime.setText('gov-active-ask', formatGovernanceAskAmount(groups.active));
+    window.TDSPRuntime.setText('gov-approved-ask', formatGovernanceAskAmount(groups.approved));
+    window.TDSPRuntime.setText('gov-rejected-ask', formatGovernanceAskAmount(groups.rejected));
+    window.TDSPRuntime.setText('gov-committee-count', formatGovernanceCount(
         getConstitutionalCommitteeMemberCount(governanceState, groups)
     ));
     fetchCommitteeInfoPayload()
         .then(payload => {
-            setText('gov-committee-count', formatGovernanceCount(
+            window.TDSPRuntime.setText('gov-committee-count', formatGovernanceCount(
                 getConstitutionalCommitteeMemberCount(payload || governanceState, groups)
             ));
             updateConstitutionalCommitteeQuorumScore(payload);
@@ -8581,8 +8556,8 @@ async function updateGovernanceCounts(groups) {
         renderDrepSummaryStats(drepStats);
     } catch {
         if (!cachedDrepStats) {
-            setText('gov-drep-count', '0');
-            setText('gov-drep-total-power', 'VPower 0 ADA');
+            window.TDSPRuntime.setText('gov-drep-count', '0');
+            window.TDSPRuntime.setText('gov-drep-total-power', 'VPower 0 ADA');
         }
     }
 
@@ -8621,8 +8596,8 @@ function getDashboardDrepStats(payload) {
 }
 
 function renderDrepSummaryStats(stats) {
-    setText('gov-drep-count', stats.count.toLocaleString('en-US'));
-    setText('gov-drep-total-power', `VPower ${formatCompactAdaFromLovelace(stats.totalPower, { fixedFractionDigits: 2 })}`);
+    window.TDSPRuntime.setText('gov-drep-count', stats.count.toLocaleString('en-US'));
+    window.TDSPRuntime.setText('gov-drep-total-power', `VPower ${formatCompactAdaFromLovelace(stats.totalPower, { fixedFractionDigits: 2 })}`);
 }
 
 function getConstitutionalCommitteeMemberCount(payload, groups = null) {
@@ -8658,7 +8633,7 @@ function getConstitutionalCommitteeMemberCount(payload, groups = null) {
 
 function updateConstitutionalCommitteeQuorumScore(payload) {
     const stats = getConstitutionalCommitteeQuorumStats(payload);
-    setText('gov-committee-voted', Number.isFinite(stats?.votedPct)
+    window.TDSPRuntime.setText('gov-committee-voted', Number.isFinite(stats?.votedPct)
         ? `Voted ${formatPercentage(stats.votedPct)}`
         : 'Voted --%');
 }
@@ -9170,11 +9145,6 @@ function getDrepEntryVotingPower(entry) {
 
 function getCollectionLength(collection) {
     return Array.isArray(collection) ? collection.length : collection.length || 0;
-}
-
-function setText(id, value) {
-    const element = document.getElementById(id);
-    if (element) element.textContent = String(value);
 }
 
 function formatProposalType(type) {

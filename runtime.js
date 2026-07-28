@@ -68,11 +68,35 @@
         preloadObserver?.observe(element);
     }
 
+    function setText(id, value) {
+        const element = document.getElementById(id);
+        if (element) element.textContent = String(value);
+    }
+
+    async function copyText(value) {
+        if (navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(value);
+            return;
+        }
+
+        const textArea = document.createElement('textarea');
+        textArea.value = value;
+        textArea.setAttribute('readonly', '');
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-9999px';
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        textArea.remove();
+    }
+
     window.TDSPRuntime = Object.freeze({
         detailCacheTtlMs: DETAIL_CACHE_TTL_MS,
         isLocalPreview: isLocalPreviewHostname(window.location.hostname),
         isLocalPreviewHostname,
         loadDetail,
-        bindDetailPreload
+        bindDetailPreload,
+        setText,
+        copyText
     });
 }());
