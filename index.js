@@ -1,4 +1,4 @@
-const IS_LOCAL_PREVIEW = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+const IS_LOCAL_PREVIEW = window.TDSPRuntime?.isLocalPreview === true;
 const THEME_STORAGE_KEY = 'tdsp-theme';
 const OVERLAY_SORT_STORAGE_KEY = 'tdsp-overlay-sort';
 const PRICE_API_URL = IS_LOCAL_PREVIEW ? '/__prices_proxy__' : 'https://api.tdsp.online/api/prices';

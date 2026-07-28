@@ -1,4 +1,4 @@
-const STARCH_IS_LOCAL_PREVIEW = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+const STARCH_IS_LOCAL_PREVIEW = window.TDSPRuntime?.isLocalPreview === true;
 const STARCH_API_BASE_URL = STARCH_IS_LOCAL_PREVIEW
     ? '/__starch_proxy__'
     : 'https://api.tdsp.online/api/starch';
@@ -26,6 +26,20 @@ function getStarchSummaryUrl(teamId) {
     return `${STARCH_API_BASE_URL}/${encodeURIComponent(teamId)}`;
 }
 
+async function fetchStarchCompanySummary(companyId) {
+    const response = await fetch(getStarchSummaryUrl(companyId), { cache: 'no-store' });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return response.json();
+}
+
+function loadStarchCompanySummary(companyId) {
+    const normalizedId = String(companyId || '').trim().toUpperCase();
+    const loader = () => fetchStarchCompanySummary(normalizedId);
+    return window.TDSPRuntime?.loadDetail
+        ? window.TDSPRuntime.loadDetail(`starch:${normalizedId}`, loader)
+        : loader();
+}
+
 async function fetchStarchDirectory() {
     try {
         const response = await fetch(STARCH_DIRECTORY_URL);
@@ -46,9 +60,7 @@ async function fetchStarchDirectory() {
 
 async function fetchTdspStarchMinerCount() {
     try {
-        const response = await fetch(getStarchSummaryUrl(TDSP_STARCH_COMPANY_ID));
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const summary = await response.json();
+        const summary = await loadStarchCompanySummary(TDSP_STARCH_COMPANY_ID);
         tdspStarchMinerCount = Array.isArray(summary?.miners) ? summary.miners.length : null;
     } catch (error) {
         console.error(`Starch company ${TDSP_STARCH_COMPANY_ID} miner count failed: ${error.message}`);
@@ -204,6 +216,11 @@ function createStarchDirectoryCard(record, index, type, label) {
             event.preventDefault();
             open();
         });
+        window.TDSPRuntime?.bindDetailPreload?.(
+            row,
+            `starch:${id.toUpperCase()}`,
+            () => fetchStarchCompanySummary(id)
+        );
     } else if (type === 'miners' && id) {
         row.classList.add('starch-miner-card');
         row.setAttribute('role', 'link');
@@ -294,9 +311,7 @@ async function openStarchCompanyOverlay(company, returnFocus, options = {}) {
     });
 
     try {
-        const response = await fetch(getStarchSummaryUrl(companyId), { cache: 'no-store' });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const summary = await response.json();
+        const summary = await loadStarchCompanySummary(companyId);
         if (companyId === TDSP_STARCH_COMPANY_ID) {
             tdspStarchMinerCount = Array.isArray(summary?.miners) ? summary.miners.length : null;
             renderTdspStarchPoolTile();

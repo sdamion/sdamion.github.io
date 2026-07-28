@@ -2,7 +2,7 @@ const POOL_ID = 'pool1zfd0gl76h3f0ammgp4gu0qvt99qcqkn5a895wv0q779d6p9dz5u';
 const POOL_ID_HEX = '125af47fdabc52feef680d51c7818b2941805a74e9cb4731e0f78add';
 const TARGET_POOL_IDS = new Set([POOL_ID, POOL_ID_HEX]);
 const MESH_CDN_URL = 'https://esm.sh/@meshsdk/core@1.9.1?bundle-deps';
-const IS_LOCAL_STAKE_PREVIEW = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+const IS_LOCAL_STAKE_PREVIEW = window.TDSPRuntime?.isLocalPreview === true;
 
 let meshLibPromise = null;
 function loadMeshLib() {

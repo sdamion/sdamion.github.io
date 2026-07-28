@@ -1369,8 +1369,7 @@ async function fetchGovernanceDashboardPayload() {
 }
 
 function shouldUseLocalDashboardProxy() {
-    const host = window.location.hostname;
-    return host === '127.0.0.1' || host === 'localhost';
+    return window.TDSPRuntime?.isLocalPreview === true;
 }
 
 function getProposalVotesApiUrl(proposalId) {
@@ -1495,6 +1494,40 @@ async function fetchJson(url, options = {}) {
         throw new Error(detail ? `HTTP ${response.status}: ${detail}` : `HTTP ${response.status}`);
     }
     return response.json();
+}
+
+function loadGovernanceEntityDetail(key, loader) {
+    return window.TDSPRuntime?.loadDetail
+        ? window.TDSPRuntime.loadDetail(key, loader)
+        : Promise.resolve().then(loader);
+}
+
+function bindGovernanceEntityPreload(element, key, loader) {
+    window.TDSPRuntime?.bindDetailPreload?.(element, key, loader);
+}
+
+function loadSpoDetail(spo) {
+    const poolId = String(spo?.pool_id || '').trim().toLowerCase();
+    return loadGovernanceEntityDetail(
+        `spo:${poolId}`,
+        () => fetchJson(getSpoDetailApiUrl(poolId), { cache: 'no-store' })
+    );
+}
+
+function loadDrepDetail(drep) {
+    const drepId = String(drep?.id || '').trim().toLowerCase();
+    return loadGovernanceEntityDetail(
+        `drep:${drepId}`,
+        () => fetchJson(getDrepDetailApiUrl(drepId), { cache: 'no-store' })
+    );
+}
+
+function loadCommitteeMemberDetail(member) {
+    const memberId = String(member?.id || '').trim().toLowerCase();
+    return loadGovernanceEntityDetail(
+        `committee:${memberId}`,
+        () => fetchJson(getCommitteeMemberApiUrl(memberId), { cache: 'no-store' })
+    );
 }
 
 function getCommitteeInfoApiUrl() {
@@ -3809,6 +3842,11 @@ function renderSpoDirectory(container, spos) {
         copy.append(name, cloudService, delegated, delegators, saturation, idLine);
         row.append(number, copy, createSpoHostingIcon(cloudHostingType));
         bindGovernanceMenuTrigger(row, event => openSpoDetailOverlay(spo, event.currentTarget));
+        bindGovernanceEntityPreload(
+            row,
+            `spo:${String(spo.pool_id || '').toLowerCase()}`,
+            () => fetchJson(getSpoDetailApiUrl(spo.pool_id), { cache: 'no-store' })
+        );
         fragment.appendChild(row);
     });
     container.appendChild(fragment);
@@ -3942,7 +3980,7 @@ function openSpoDetailOverlay(spo, returnFocus) {
         rootTitle: 'SPOs'
     });
 
-    fetchJson(getSpoDetailApiUrl(spo.pool_id), { cache: 'no-store' })
+    loadSpoDetail(spo)
         .then(payload => {
             if (!content.isConnected) return;
             renderSpoDetails(content, payload?.spo || spo);
@@ -4849,6 +4887,11 @@ function renderDrepDirectory(container, dreps, options = {}) {
         row.tabIndex = 0;
         row.setAttribute('aria-label', `Show votes by ${drep.name}`);
         bindGovernanceMenuTrigger(row, event => openDrepActionHistoryOverlay(drep, event.currentTarget));
+        bindGovernanceEntityPreload(
+            row,
+            `drep:${String(drep.id || '').toLowerCase()}`,
+            () => fetchJson(getDrepDetailApiUrl(drep.id), { cache: 'no-store' })
+        );
         fragment.appendChild(row);
     });
     container.appendChild(fragment);
@@ -5009,7 +5052,7 @@ function openDrepActionHistoryOverlay(drep, returnFocus = null) {
         returnFocus
     });
 
-    fetchJson(getDrepDetailApiUrl(drep.id), { cache: 'no-store' })
+    loadDrepDetail(drep)
         .then(payload => {
             const refreshedDrep = mergeDrepDetail(drep, payload);
             Object.assign(drep, refreshedDrep);
@@ -5363,6 +5406,11 @@ function renderConstitutionalCommitteeMembers(container, members, emptyMessage =
         row.tabIndex = 0;
         row.setAttribute('aria-label', `Show governance actions for ${member.name || `CC Member ${index + 1}`}`);
         bindGovernanceMenuTrigger(row, event => openConstitutionalCommitteeActionsOverlay(member, event.currentTarget));
+        bindGovernanceEntityPreload(
+            row,
+            `committee:${String(member.id || '').toLowerCase()}`,
+            () => fetchJson(getCommitteeMemberApiUrl(member.id), { cache: 'no-store' })
+        );
         container.appendChild(row);
     });
 
@@ -5398,12 +5446,12 @@ function openConstitutionalCommitteeActionsOverlay(member, returnFocus = null) {
         panel.appendChild(message);
     });
 
-    if (hasConstitutionalCommitteeBackendActionStats(member)) {
+    const hasCachedActionStats = hasConstitutionalCommitteeBackendActionStats(member);
+    if (hasCachedActionStats) {
         renderConstitutionalCommitteeBackendActionStats(member, panel);
-        return;
     }
 
-    fetchJson(getCommitteeMemberApiUrl(member.id))
+    loadCommitteeMemberDetail(member)
         .then(payload => {
             if (!panel.isConnected) return;
             const detailedMember = normalizeConstitutionalCommitteeMember(payload?.member);
@@ -5415,7 +5463,9 @@ function openConstitutionalCommitteeActionsOverlay(member, returnFocus = null) {
                 sinceEpoch: member.sinceEpoch
             }, panel);
         })
-        .catch(renderFallback);
+        .catch(() => {
+            if (!hasCachedActionStats) renderFallback();
+        });
 }
 
 function closeConstitutionalCommitteeActionsOverlay() {
@@ -5483,7 +5533,7 @@ async function loadConstitutionalCommitteeMemberSummaryStats(members, container)
                 return {
                     voted: Number(member.voteStats?.voted) || 0,
                     total: Number(member.voteStats?.total) || 0,
-                    open: Number(member.voteStats?.active_not_voted) || 0,
+                    open: Number(member.voteStats?.activeNotVoted) || 0,
                     notApplicable: proposalStats.notApplicable,
                     all: proposalStats.total
                 };
@@ -7665,6 +7715,13 @@ function normalizeConstitutionalCommitteeMemberVoteStats(stats) {
     return {
         voted: pickFirstNumber(stats.voted, stats.voted_count),
         notVoted: pickFirstNumber(stats.notVoted, stats.not_voted, stats.not_voted_count),
+        activeNotVoted: pickFirstNumber(
+            stats.activeNotVoted,
+            stats.active_not_voted,
+            stats.active_not_voted_count
+        ),
+        active: pickFirstNumber(stats.active, stats.active_count),
+        applicable: pickFirstNumber(stats.applicable, stats.applicable_count),
         total: pickFirstNumber(stats.total, stats.total_actions),
         votedPct: pickFirstNumber(stats.votedPct, stats.voted_pct),
         notVotedPct: pickFirstNumber(stats.notVotedPct, stats.not_voted_pct),
