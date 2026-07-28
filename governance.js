@@ -1240,7 +1240,7 @@ async function openCatalystFundsOverlay(returnFocus = document.activeElement) {
         headerMeta: 'Loading...',
         returnFocus,
         rootTitle: 'Catalyst Proposals',
-        defaultSort: 'fund-asc'
+        defaultSort: 'fund-desc'
     });
 
     try {
@@ -1287,7 +1287,7 @@ function normalizeCatalystFunds(payload) {
             not_claimed_lovelace: String(fund?.not_claimed_lovelace || '0')
         }];
     }).sort((left, right) => (
-        getCatalystFundNumber(left.fund_name) - getCatalystFundNumber(right.fund_name)
+        getCatalystFundNumber(right.fund_name) - getCatalystFundNumber(left.fund_name)
         || left.fund_name.localeCompare(right.fund_name, 'en-US')
     ));
 }
