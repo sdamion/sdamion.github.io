@@ -294,7 +294,7 @@ async function openStarchCompanyOverlay(company, returnFocus, options = {}) {
     });
 
     try {
-        const response = await fetch(getStarchSummaryUrl(companyId));
+        const response = await fetch(getStarchSummaryUrl(companyId), { cache: 'no-store' });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const summary = await response.json();
         if (companyId === TDSP_STARCH_COMPANY_ID) {

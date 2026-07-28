@@ -1482,8 +1482,8 @@ function formatEpochCountdown(totalSeconds) {
     ].join(':');
 }
 
-async function fetchJson(url) {
-    const response = await fetch(url);
+async function fetchJson(url, options = {}) {
+    const response = await fetch(url, options);
     if (!response.ok) {
         let detail = '';
         try {
@@ -2839,7 +2839,7 @@ async function fetchWalletDrepDetails(drep) {
 
     for (const identifier of identifiers) {
         try {
-            const payload = await fetchJson(getDrepDetailApiUrl(identifier));
+            const payload = await fetchJson(getDrepDetailApiUrl(identifier), { cache: 'no-store' });
             fallbackPayload ||= payload;
             if (payload?.info) return payload;
         } catch (error) {
@@ -3942,7 +3942,7 @@ function openSpoDetailOverlay(spo, returnFocus) {
         rootTitle: 'SPOs'
     });
 
-    fetchJson(getSpoDetailApiUrl(spo.pool_id))
+    fetchJson(getSpoDetailApiUrl(spo.pool_id), { cache: 'no-store' })
         .then(payload => {
             if (!content.isConnected) return;
             renderSpoDetails(content, payload?.spo || spo);
@@ -5009,8 +5009,15 @@ function openDrepActionHistoryOverlay(drep, returnFocus = null) {
         returnFocus
     });
 
-    fetchJson(getDrepDetailApiUrl(drep.id))
-        .then(payload => renderDrepActionHistory(panel, payload, drep))
+    fetchJson(getDrepDetailApiUrl(drep.id), { cache: 'no-store' })
+        .then(payload => {
+            const refreshedDrep = mergeDrepDetail(drep, payload);
+            Object.assign(drep, refreshedDrep);
+            updateDrepDirectoryRow(returnFocus, refreshedDrep);
+            const title = document.getElementById('governance-drep-actions-title');
+            if (title) title.textContent = refreshedDrep.name;
+            renderDrepActionHistory(panel, payload, refreshedDrep);
+        })
         .catch(() => {
             if (!panel.isConnected) return;
             panel.textContent = '';
@@ -5023,6 +5030,49 @@ function openDrepActionHistoryOverlay(drep, returnFocus = null) {
 
 function closeDrepActionHistoryOverlay() {
     removeGovernanceMenuOverlay('governance-drep-actions-overlay');
+}
+
+function mergeDrepDetail(drep, payload) {
+    const info = payload?.info || {};
+    const metadata = payload?.metadata || {};
+    const refreshedVotingPower = getDrepEntryVotingPower(info);
+    const hasRefreshedVotingPower = [
+        info?.amount,
+        info?.voting_power,
+        info?.vote_power,
+        info?.stake,
+        info?.lovelace
+    ].some(value => value !== undefined && value !== null && value !== '');
+    return {
+        ...drep,
+        id: firstNonEmptyText(payload?.drep_id, drep?.id),
+        name: extractDrepNameFromEntry(metadata)
+            || extractDrepNameFromEntry(info)
+            || drep?.name
+            || payload?.drep_id
+            || 'DRep',
+        votingPower: hasRefreshedVotingPower && Number.isFinite(refreshedVotingPower)
+            ? refreshedVotingPower
+            : Number(drep?.votingPower) || 0,
+        active: typeof info?.active === 'boolean' ? info.active : Boolean(drep?.active)
+    };
+}
+
+function updateDrepDirectoryRow(row, drep) {
+    if (!(row instanceof HTMLElement)) return;
+    const name = row.querySelector('.governance-cc-member-hash');
+    const power = row.querySelector('.governance-cc-member-stats');
+    const status = row.querySelector('.governance-drep-member-status');
+    if (name) name.textContent = drep.name;
+    if (power) power.textContent = `Voting power: ${formatCompactAdaFromLovelace(drep.votingPower)}`;
+    if (status) status.textContent = drep.active ? 'Active' : 'Inactive';
+    row.classList.toggle('governance-drep-member--active', drep.active);
+    row.classList.toggle('governance-drep-member--inactive', !drep.active);
+    row.dataset.sortName = normalizeOverlaySearchText(drep.name);
+    row.dataset.sortPower = String(Number(drep.votingPower) || 0);
+    row.dataset.sortStatus = drep.active ? '1' : '0';
+    row.dataset.searchText = `${drep.id || ''} ${drep.name || ''}`.trim();
+    row.setAttribute('aria-label', `Show votes by ${drep.name}`);
 }
 
 function renderDrepActionHistory(container, payload, drep) {
