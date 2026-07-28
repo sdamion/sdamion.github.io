@@ -5082,10 +5082,13 @@ function renderDrepActionHistory(container, payload, drep) {
     const actionsById = new Map((Array.isArray(voteStats.actions) ? voteStats.actions : [])
         .map(action => [String(action?.proposal_id || ''), action]));
     const registrationTime = Number(voteStats.registration_time);
+    const eligibility = voteStats?.eligibility && typeof voteStats.eligibility === 'object'
+        ? voteStats.eligibility
+        : null;
     const proposals = getGovernanceActionsForCommitteeOverview()
         .filter(proposal => !isGovernanceActionExcludedFromDrepStats(proposal));
     const rows = proposals
-        .filter(proposal => isGovernanceActionApplicableToDrep(proposal, registrationTime))
+        .filter(proposal => isGovernanceActionApplicableToDrep(proposal, registrationTime, eligibility))
         .map(proposal => ({ action: actionsById.get(String(proposal.proposal_id || '')) || null, proposal }))
         .sort((left, right) => (Number(right.proposal.block_time) || 0) - (Number(left.proposal.block_time) || 0));
     updateGovernanceMenuHeaderMeta(
@@ -5094,16 +5097,18 @@ function renderDrepActionHistory(container, payload, drep) {
         container
     );
     const closedRows = rows.filter(row => isExpiredGovernanceActionForCommitteeStats(row.proposal));
-    const voted = closedRows.filter(row => row.action).length;
-    const notVoted = Math.max(closedRows.length - voted, 0);
-    const active = Math.max(rows.length - closedRows.length, 0);
+    const votedRows = rows.filter(row => row.action);
+    const activeRows = rows.filter(row => (
+        !row.action && !isExpiredGovernanceActionForCommitteeStats(row.proposal)
+    ));
+    const voted = votedRows.length;
+    const notVoted = closedRows.filter(row => !row.action).length;
+    const active = activeRows.length;
     const notVotedProposals = closedRows.filter(row => !row.action).map(row => row.proposal);
-    const votedProposals = closedRows.filter(row => row.action).map(row => row.proposal);
-    const activeProposals = rows
-        .filter(row => !isExpiredGovernanceActionForCommitteeStats(row.proposal))
-        .map(row => row.proposal);
+    const votedProposals = votedRows.map(row => row.proposal);
+    const activeProposals = activeRows.map(row => row.proposal);
     const notApplicableProposals = proposals
-        .filter(proposal => !isGovernanceActionApplicableToDrep(proposal, registrationTime));
+        .filter(proposal => !isGovernanceActionApplicableToDrep(proposal, registrationTime, eligibility));
     const notApplicable = notApplicableProposals.length;
 
     container.appendChild(createDrepActionHistoryChart({
@@ -5149,28 +5154,34 @@ function renderDrepActionHistory(container, payload, drep) {
     });
 }
 
-function isGovernanceActionApplicableToDrep(proposal, registrationTime) {
+function isGovernanceActionApplicableToDrep(proposal, registrationTime, eligibility = null) {
+    const proposalId = String(proposal?.proposal_id || '');
+    if (eligibility && Object.prototype.hasOwnProperty.call(eligibility, proposalId)) {
+        return eligibility[proposalId] === 'eligible';
+    }
     if (!Number.isFinite(registrationTime)) return true;
     const registrationEpoch = Math.max(Math.floor(
         ((registrationTime * 1000) - CARDANO_MAINNET_EPOCH_ZERO_MS)
             / (EPOCH_DURATION_SECONDS * 1000)
     ), 0);
+    const effectiveRegistrationEpoch = registrationEpoch + 1;
     const terminalEpochs = [
         proposal?.ratified_epoch,
         proposal?.enacted_epoch,
         proposal?.expired_epoch,
-        proposal?.dropped_epoch
+        proposal?.dropped_epoch,
+        proposal?.expiration
     ]
         .filter(epoch => epoch !== null && epoch !== undefined && epoch !== '')
         .map(Number)
         .filter(Number.isFinite);
-    if (terminalEpochs.some(epoch => epoch <= registrationEpoch)) return false;
+    if (terminalEpochs.some(epoch => epoch <= effectiveRegistrationEpoch)) return false;
 
     const blockTime = Number(proposal?.block_time);
     if (!Number.isFinite(blockTime) || blockTime >= registrationTime) return true;
 
     const expirationEpoch = Number(proposal?.expiration);
-    return Number.isFinite(expirationEpoch) && expirationEpoch >= registrationEpoch;
+    return Number.isFinite(expirationEpoch) && expirationEpoch > effectiveRegistrationEpoch;
 }
 
 function isGovernanceActionExcludedFromDrepStats(proposal) {
