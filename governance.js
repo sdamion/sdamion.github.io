@@ -1355,7 +1355,7 @@ async function openCatalystFundOverlay(fund, returnFocus) {
         overlayClass: 'governance-action-detail-overlay',
         returnFocus,
         rootTitle: 'Catalyst Proposals',
-        defaultSort: 'name-asc'
+        enableSearch: false
     });
 
     try {
@@ -1367,27 +1367,35 @@ async function openCatalystFundOverlay(fund, returnFocus) {
         catalystBusinessState = businessPayload;
         panel.replaceChildren();
 
+        const proposals = Array.isArray(directoryPayload?.proposals)
+            ? directoryPayload.proposals
+            : [];
         const fundingPayload = createCatalystFundFundingPayload(fund, businessPayload);
-        const fundingChart = fund.funding_currency === 'ADA'
-            ? createCatalystFundingStatusChart(fundingPayload)
-            : createCatalystCurrencyFundingStatusChart(fund, directoryPayload?.proposals);
+        let fundingChart = null;
+        try {
+            fundingChart = fund.funding_currency === 'ADA'
+                ? createCatalystFundingStatusChart(fundingPayload)
+                : createCatalystCurrencyFundingStatusChart(fund, proposals);
+        } catch (error) {
+            console.warn(`${fund.fund_name} funding chart could not be rendered`, error);
+        }
         if (fundingChart) panel.appendChild(fundingChart);
         else panel.appendChild(createCatalystFundTotals(fund));
 
         const list = document.createElement('div');
         list.className = 'governance-list governance-action-group-list';
-        const proposals = Array.isArray(directoryPayload?.proposals)
-            ? directoryPayload.proposals
-            : [];
+        const cards = document.createDocumentFragment();
         proposals.forEach(proposal => {
-            list.appendChild(createCatalystProposalCard(proposal));
+            cards.appendChild(createCatalystProposalCard(proposal));
         });
+        list.appendChild(cards);
         if (!proposals.length) {
             const empty = document.createElement('p');
             empty.className = 'small-text';
             empty.textContent = `No proposals were found for ${fund.fund_name}.`;
             list.appendChild(empty);
         }
+        if (proposals.length) installOverlaySearch(list, { defaultSort: 'name-asc' });
         panel.appendChild(list);
         updateGovernanceMenuHeaderMeta(
             'governance-catalyst-fund-overlay',
