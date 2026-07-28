@@ -1007,8 +1007,6 @@ async function openBusinessOverlay(returnFocus = document.activeElement) {
         const groups = getTreasuryBusinessGroups(payload, catalystPayload);
         const total = groups.reduce((sum, group) => sum + group.value, 0);
         panel.textContent = '';
-        const fundingChart = createCatalystFundingStatusChart(catalystPayload);
-        if (fundingChart) panel.appendChild(fundingChart);
 
         if (!groups.length) {
             const empty = document.createElement('p');
@@ -1266,7 +1264,8 @@ async function openCatalystFundsOverlay(returnFocus = document.activeElement) {
             `${Number(payload?.proposal_count || 0).toLocaleString('en-US')} proposals • ${funds.length.toLocaleString('en-US')} funds`,
             panel
         );
-    } catch {
+    } catch (loadError) {
+        console.error('Catalyst funds could not be rendered', loadError);
         if (!panel.isConnected) return;
         panel.replaceChildren();
         const error = document.createElement('p');
@@ -1402,7 +1401,8 @@ async function openCatalystFundOverlay(fund, returnFocus) {
             `${proposals.length.toLocaleString('en-US')} proposals • Claimed ${formatCatalystFundAmount(fund, 'claimed', true)} • Not Claimed ${formatCatalystFundAmount(fund, 'not_claimed', true)}`,
             panel
         );
-    } catch {
+    } catch (loadError) {
+        console.error(`${fund.fund_name} proposals could not be rendered`, loadError);
         if (!panel.isConnected) return;
         panel.replaceChildren();
         const error = document.createElement('p');
@@ -1552,13 +1552,23 @@ function formatCatalystFundAmount(fund, kind, compact = false) {
 }
 
 function formatCatalystCurrencyAmount(value, currency, compact = false) {
-    if (!currency || currency === 'MIXED') return '--';
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency,
+    const normalizedCurrency = String(currency || '').trim().toUpperCase();
+    if (!normalizedCurrency || normalizedCurrency === 'MIXED') return '--';
+    const amount = Number(value) || 0;
+    const options = {
         notation: compact ? 'compact' : 'standard',
         maximumFractionDigits: compact ? 2 : 0
-    }).format(Number(value) || 0);
+    };
+
+    try {
+        return new Intl.NumberFormat('en-US', {
+            ...options,
+            style: 'currency',
+            currency: normalizedCurrency
+        }).format(amount);
+    } catch {
+        return `${new Intl.NumberFormat('en-US', options).format(amount)} ${normalizedCurrency}`;
+    }
 }
 
 function createCatalystProposalCard(proposal) {
@@ -1951,11 +1961,7 @@ function formatCatalystProposalAmount(proposal, kind) {
     }
     const amount = Number(proposal?.[`amount_${kind}`]);
     if (!Number.isFinite(amount)) return null;
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: String(proposal?.currency || 'USD').toUpperCase(),
-        maximumFractionDigits: 2
-    }).format(amount);
+    return formatCatalystCurrencyAmount(amount, proposal?.currency || 'USD');
 }
 
 function closeBusinessOverlay() {
