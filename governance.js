@@ -11,6 +11,7 @@ const SPO_DIRECTORY_API_URL = 'https://api.tdsp.online/api/spos/directory';
 const SPO_DETAIL_API_BASE_URL = 'https://api.tdsp.online/api/spo';
 const REMOTE_METADATA_API_URL = 'https://api.tdsp.online/api/metadata';
 const TREASURY_API_URL = 'https://api.tdsp.online/api/treasury';
+const CATALYST_BUSINESS_API_URL = 'https://api.tdsp.online/api/catalyst/businesses';
 const CONSTITUTION_CHAT_API_URL = 'https://api.tdsp.online/api/constitution/chat';
 const CONSTITUTION_CHAT_FEEDBACK_API_URL = 'https://api.tdsp.online/api/constitution/chat/feedback';
 const CONSTITUTION_DOCUMENT_API_URL = 'https://api.tdsp.online/api/constitution/document';
@@ -27,6 +28,7 @@ const LOCAL_SPO_DIRECTORY_PROXY_PATH = '/__spo_directory_proxy__';
 const LOCAL_SPO_DETAIL_PROXY_PATH = '/__spo_detail_proxy__';
 const LOCAL_METADATA_PROXY_PATH = '/__metadata_proxy__';
 const LOCAL_TREASURY_PROXY_PATH = '/__treasury_proxy__';
+const LOCAL_CATALYST_BUSINESS_PROXY_PATH = '/__catalyst_business_proxy__';
 const LOCAL_CONSTITUTION_CHAT_PROXY_PATH = '/__constitution_chat_proxy__';
 const LOCAL_CONSTITUTION_CHAT_FEEDBACK_PROXY_PATH = '/__constitution_chat_feedback_proxy__';
 const LOCAL_CONSTITUTION_DOCUMENT_PROXY_PATH = '/__constitution_document_proxy__';
@@ -47,7 +49,7 @@ const TREASURY_RECIPIENT_ADMINISTRATORS = Object.freeze({
     stake17xzc8pt7fgf0lc0x7eq6z7z6puhsxmzktna7dluahrj6g6ghh5qjr: 'Intersect Treasury Reserve Smart Contract',
     stake17x3n2krrld46qms4f4hzqqxzjgaf59u3fecvl6eh8scmaacjqmvjw: 'Harmonic Laboratories',
     stake1790c5a0h3qwkxquehkdg746ccaa3hdfzgp7ckx6wzdpp7lq6ysdg0: 'Blink Labs',
-    stake17x2x5cv4nlwptph8kxvnyw93pp2sp54dk54dpfp2ax7fkggaj3ty4: 'Stablecoin DeFi Liquidity Interim Committee',
+    stake17x2x5cv4nlwptph8kxvnyw93pp2sp54dk54dpfp2ax7fkggaj3ty4: 'UTxO Company / Siban Labs',
     stake1u99m2kxsvdwlulg4l6qwjrpvayzrzwk0fugnvu3uklfqtws257z0g: 'Orion Fund / Arouet Holdings',
     stake17xnev6rc25xwz8kg4qae8lq6dcg964z00py5gqgxd387pncv8fq8g: 'Amaru - Matthias Benkort',
     stake17xd74ehu0l4d5mx0sfz4fd0r5jvw4v2jqkkfyjxrlwvnkhccrqj9l: 'Amaru - Arnaud Bailly',
@@ -92,6 +94,8 @@ let spoDirectoryState = null;
 let committeeInfoPromise = null;
 let treasuryPromise = null;
 let treasuryState = null;
+let catalystBusinessPromise = null;
+let catalystBusinessState = null;
 let treasuryHistoryChart = null;
 let governanceMeshPromise = null;
 
@@ -597,8 +601,12 @@ function setupBusinessCard() {
 }
 
 async function loadTreasuryData() {
-    const payload = await fetchTreasuryPayload();
+    const [payload, catalystPayload] = await Promise.all([
+        fetchTreasuryPayload(),
+        fetchCatalystBusinessPayload().catch(() => null)
+    ]);
     treasuryState = payload;
+    catalystBusinessState = catalystPayload;
     const treasuryLovelace = getTreasuryLovelace(payload);
     if (!Number.isFinite(treasuryLovelace)) throw new Error('Treasury amount is unavailable');
 
@@ -612,7 +620,7 @@ async function loadTreasuryData() {
             ? `Income ${formatCompactAdaFromLovelace(latestIncome, { fixedFractionDigits: 2 })}`
             : 'Income -- ADA'
     );
-    updateBusinessSummary(payload);
+    updateBusinessSummary(payload, catalystPayload);
     if (governanceState) updateTreasuryBudgetBar();
 }
 
@@ -625,6 +633,19 @@ function fetchTreasuryPayload() {
         });
     }
     return treasuryPromise;
+}
+
+function fetchCatalystBusinessPayload() {
+    if (!catalystBusinessPromise) {
+        const url = shouldUseLocalDashboardProxy()
+            ? LOCAL_CATALYST_BUSINESS_PROXY_PATH
+            : CATALYST_BUSINESS_API_URL;
+        catalystBusinessPromise = fetchJson(url).catch(error => {
+            catalystBusinessPromise = null;
+            throw error;
+        });
+    }
+    return catalystBusinessPromise;
 }
 
 async function openTreasuryOverlay() {
@@ -781,19 +802,35 @@ function closeTreasuryAdministratorWithdrawalsOverlay() {
     removeGovernanceMenuOverlay('governance-treasury-administrator-overlay');
 }
 
-function getTreasuryBusinessGroups(payload) {
+function getTreasuryBusinessGroups(payload, catalystPayload = catalystBusinessState) {
     const groups = new Map();
     getTreasuryWithdrawals(payload).forEach(withdrawal => {
-        const proposer = String(withdrawal?.proposer || '').trim() || 'Unknown proposer';
-        const group = groups.get(proposer) || {
-            key: proposer,
+        const proposer = getTreasuryBusinessName(withdrawal);
+        const key = proposer.toLocaleLowerCase('en-US');
+        const group = groups.get(key) || {
+            key,
             label: proposer,
             value: 0,
-            withdrawals: []
+            withdrawals: [],
+            catalystProjects: []
         };
         group.value += Number(withdrawal?.amount_lovelace) || 0;
         group.withdrawals.push(withdrawal);
-        groups.set(proposer, group);
+        groups.set(key, group);
+    });
+    getCatalystBusinessProjects(catalystPayload).forEach(project => {
+        const business = normalizeTreasuryBusinessName(project?.business);
+        const key = business.toLocaleLowerCase('en-US');
+        const group = groups.get(key) || {
+            key,
+            label: business,
+            value: 0,
+            withdrawals: [],
+            catalystProjects: []
+        };
+        group.value += Number(project?.amount_received_lovelace) || 0;
+        group.catalystProjects.push(project);
+        groups.set(key, group);
     });
     return [...groups.values()].sort((left, right) => (
         right.value - left.value
@@ -801,8 +838,80 @@ function getTreasuryBusinessGroups(payload) {
     ));
 }
 
-function updateBusinessSummary(payload) {
-    const groups = getTreasuryBusinessGroups(payload);
+function getCatalystBusinessProjects(payload) {
+    return (Array.isArray(payload?.projects) ? payload.projects : []).flatMap(project => {
+        const amount = Number(project?.amount_received_lovelace);
+        const id = String(project?.id || '').trim();
+        const title = String(project?.title || '').trim();
+        if (!id || !title || !Number.isFinite(amount) || amount <= 0) return [];
+        return [{
+            id,
+            title,
+            business: project?.business || 'Unknown Catalyst proposer',
+            amount_received_lovelace: String(Math.round(amount)),
+            project_status: project?.project_status || null,
+            funding_status: project?.funding_status || null,
+            fund_name: project?.fund_name || null,
+            source: project?.source || payload?.source || 'lido_nation',
+            source_url: project?.source_url || null
+        }];
+    });
+}
+
+const TREASURY_BUSINESS_ALIASES = Object.freeze({
+    'abailly <arnaud@pankzsoft.com>': 'Amaru',
+    ktorz: 'Amaru',
+    'yoram ben-zvi (elk gmbh)': '5 AM Earth Foundation',
+    'arouet holdings, director n.m.': 'Draper Dragon',
+    'chris gianelloni': 'Blink Labs',
+    dingo: 'Blink Labs',
+    'ryan jones': 'NEWM',
+    damon: 'CHARLI3',
+    'patrick tobler': 'NMKR',
+    'vladimir sinyakov': 'zkFold',
+    'dan gonzalez': 'SundaeSwap',
+    'ethan | optim': 'Optim',
+    'seira yun': 'Socious',
+    '$conrad': 'ADA Handle',
+    '$conrad ada handle': 'ADA Handle',
+    'chris joannou': 'Draper Dragon',
+    'michele nuzzi': 'HLabs',
+    'glen jordan': 'Empowa',
+    strica: 'Cardanoscan',
+    'robert hever': 'CHARLI3',
+    'wes parkinson': 'Rare Network',
+    'matteo coppola': 'FluidTokens',
+    christian: 'Orcfax',
+    'janis aguilar': 'CV Labs',
+    'sheldon hunt': 'Sundial',
+    philipdisarro: 'Anastasia Labs',
+    'pritesh gosai': 'Kaizen Crypto',
+    'matthew plomin': 'Mehen (Matthew Plomin)',
+    'teo petricevic': 'Emurgo',
+    cardano2vn: 'Atala Prism',
+    'sebastian pabon': 'Gimbalabs',
+    'maarten menheere': 'GameChanger'
+});
+
+const TREASURY_BUSINESS_BY_STAKE_ADDRESS = Object.freeze({
+    stake17x2x5cv4nlwptph8kxvnyw93pp2sp54dk54dpfp2ax7fkggaj3ty4: 'UTxO Company / Siban Labs'
+});
+
+function normalizeTreasuryBusinessName(value) {
+    const name = String(value || '').trim();
+    if (!name) return 'Unknown proposer';
+    return TREASURY_BUSINESS_ALIASES[name.toLowerCase()] || name;
+}
+
+function getTreasuryBusinessName(withdrawal) {
+    const stakeAddress = String(withdrawal?.stake_address || '').trim();
+    return withdrawal?.business
+        || TREASURY_BUSINESS_BY_STAKE_ADDRESS[stakeAddress]
+        || normalizeTreasuryBusinessName(withdrawal?.proposer);
+}
+
+function updateBusinessSummary(payload, catalystPayload = catalystBusinessState) {
+    const groups = getTreasuryBusinessGroups(payload, catalystPayload);
     const total = groups.reduce((sum, group) => sum + group.value, 0);
     setText('gov-business-count', groups.length.toLocaleString('en-US'));
     setText('gov-business-total', `Received ${formatCompactAdaFromLovelace(total)}`);
@@ -830,10 +939,14 @@ async function openBusinessOverlay(returnFocus = document.activeElement) {
     });
 
     try {
-        const payload = treasuryState || await fetchTreasuryPayload();
+        const [payload, catalystPayload] = await Promise.all([
+            treasuryState || fetchTreasuryPayload(),
+            catalystBusinessState || fetchCatalystBusinessPayload().catch(() => null)
+        ]);
         treasuryState = payload;
+        catalystBusinessState = catalystPayload;
         if (!panel.isConnected) return;
-        const groups = getTreasuryBusinessGroups(payload);
+        const groups = getTreasuryBusinessGroups(payload, catalystPayload);
         const total = groups.reduce((sum, group) => sum + group.value, 0);
         panel.textContent = '';
 
@@ -848,7 +961,7 @@ async function openBusinessOverlay(returnFocus = document.activeElement) {
             });
         }
 
-        updateBusinessSummary(payload);
+        updateBusinessSummary(payload, catalystPayload);
         updateGovernanceMenuHeaderMeta(
             'governance-business-overlay',
             `${groups.length.toLocaleString('en-US')} proposers • ${formatCompactAdaFromLovelace(total)}`,
@@ -866,6 +979,8 @@ async function openBusinessOverlay(returnFocus = document.activeElement) {
 
 function createTreasuryBusinessCard(group, index) {
     const actionsCount = getTreasuryBusinessActions(group).length;
+    const catalystCount = group.catalystProjects.length;
+    const projectCount = actionsCount + catalystCount;
     const card = document.createElement('button');
     card.type = 'button';
     card.className = 'governance-card governance-menu-card';
@@ -886,7 +1001,7 @@ function createTreasuryBusinessCard(group, index) {
 
     const actions = document.createElement('span');
     actions.className = 'governance-card-detail';
-    actions.textContent = `${actionsCount.toLocaleString('en-US')} treasury action${actionsCount === 1 ? '' : 's'}`;
+    actions.textContent = `${projectCount.toLocaleString('en-US')} funded project${projectCount === 1 ? '' : 's'}`;
 
     const position = document.createElement('span');
     position.className = 'governance-list-index';
@@ -926,6 +1041,10 @@ function openTreasuryBusinessActionsOverlay(group, returnFocus) {
     actions.forEach(withdrawal => {
         panel.appendChild(createTreasuryWithdrawalCard(withdrawal));
     });
+    group.catalystProjects.forEach(project => {
+        panel.appendChild(createCatalystBusinessProjectCard(project));
+    });
+    const projectCount = actions.length + group.catalystProjects.length;
 
     createGovernanceMenuOverlay({
         id: 'governance-business-actions-overlay',
@@ -934,12 +1053,51 @@ function openTreasuryBusinessActionsOverlay(group, returnFocus) {
         closeLabel: `Close treasury actions for ${group.label}`,
         closeOverlay: closeTreasuryBusinessActionsOverlay,
         bodyNodes: [panel],
-        headerMeta: `${actions.length.toLocaleString('en-US')} actions • ${formatCompactAdaFromLovelace(group.value)}`,
+        headerMeta: `${projectCount.toLocaleString('en-US')} projects • ${formatCompactAdaFromLovelace(group.value)}`,
         overlayClass: 'governance-action-detail-overlay',
         returnFocus,
         rootTitle: 'Business',
         defaultSort: 'newest'
     });
+}
+
+function createCatalystBusinessProjectCard(project) {
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'governance-card governance-menu-card governance-treasury-withdrawal-card';
+    card.dataset.searchText = [
+        project.title,
+        project.fund_name,
+        project.project_status,
+        'Catalyst'
+    ].filter(Boolean).join(' ');
+    card.dataset.sortAmount = String(project.amount_received_lovelace || '0');
+    if (project.source_url) {
+        card.addEventListener('click', event => {
+            openExternalSiteWarning(project.source_url, event.currentTarget);
+        });
+    } else {
+        card.disabled = true;
+    }
+
+    const title = document.createElement('strong');
+    title.className = 'governance-title';
+    title.textContent = project.title;
+
+    const amount = document.createElement('span');
+    amount.className = 'governance-card-detail governance-treasury-withdrawal-amount';
+    amount.textContent = formatFullAdaFromLovelace(project.amount_received_lovelace);
+
+    const detail = document.createElement('span');
+    detail.className = 'governance-card-detail';
+    detail.textContent = [
+        'Project Catalyst',
+        project.fund_name,
+        project.project_status || project.funding_status
+    ].filter(Boolean).join(' • ');
+
+    card.append(title, amount, detail);
+    return card;
 }
 
 function closeBusinessOverlay() {
@@ -1246,6 +1404,7 @@ function getTreasuryWithdrawals(payload) {
             title: withdrawal?.title || 'Conway treasury withdrawal',
             proposer: withdrawal?.proposer || null,
             proposers: Array.isArray(withdrawal?.proposers) ? withdrawal.proposers : [],
+            business: withdrawal?.business || null,
             enacted_epoch: Number(withdrawal?.enacted_epoch) || null,
             amount_lovelace: String(withdrawal?.amount_lovelace || '0'),
             stake_address: withdrawal?.stake_address || null
