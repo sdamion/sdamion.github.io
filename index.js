@@ -1701,6 +1701,8 @@ const OVERLAY_SORT_DEFINITIONS = Object.freeze([
     { value: 'blocks-asc', label: 'Least blocks', key: 'sortBlocks', direction: 1, type: 'number' },
     { value: 'epoch-desc', label: 'Latest epoch', key: 'sortEpoch', direction: -1, type: 'number' },
     { value: 'epoch-asc', label: 'Earliest epoch', key: 'sortEpoch', direction: 1, type: 'number' },
+    { value: 'fund-desc', label: 'Fund: Newest first', key: 'sortFund', direction: -1, type: 'number' },
+    { value: 'fund-asc', label: 'Fund: Oldest first', key: 'sortFund', direction: 1, type: 'number' },
     { value: 'active-first', label: 'Active first', key: 'sortStatus', direction: -1, type: 'number' },
     { value: 'inactive-first', label: 'Inactive first', key: 'sortStatus', direction: 1, type: 'number' },
     { value: 'name-asc', label: 'Name A-Z', key: 'sortName', direction: 1, type: 'text' },

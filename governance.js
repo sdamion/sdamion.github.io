@@ -12,6 +12,7 @@ const SPO_DETAIL_API_BASE_URL = 'https://api.tdsp.online/api/spo';
 const REMOTE_METADATA_API_URL = 'https://api.tdsp.online/api/metadata';
 const TREASURY_API_URL = 'https://api.tdsp.online/api/treasury';
 const CATALYST_BUSINESS_API_URL = 'https://api.tdsp.online/api/catalyst/businesses';
+const CATALYST_PROPOSAL_DETAIL_API_BASE_URL = 'https://api.tdsp.online/api/catalyst/proposal';
 const CONSTITUTION_CHAT_API_URL = 'https://api.tdsp.online/api/constitution/chat';
 const CONSTITUTION_CHAT_FEEDBACK_API_URL = 'https://api.tdsp.online/api/constitution/chat/feedback';
 const CONSTITUTION_DOCUMENT_API_URL = 'https://api.tdsp.online/api/constitution/document';
@@ -29,6 +30,7 @@ const LOCAL_SPO_DETAIL_PROXY_PATH = '/__spo_detail_proxy__';
 const LOCAL_METADATA_PROXY_PATH = '/__metadata_proxy__';
 const LOCAL_TREASURY_PROXY_PATH = '/__treasury_proxy__';
 const LOCAL_CATALYST_BUSINESS_PROXY_PATH = '/__catalyst_business_proxy__';
+const LOCAL_CATALYST_PROPOSAL_DETAIL_PROXY_PATH = '/__catalyst_proposal_detail_proxy__';
 const LOCAL_CONSTITUTION_CHAT_PROXY_PATH = '/__constitution_chat_proxy__';
 const LOCAL_CONSTITUTION_CHAT_FEEDBACK_PROXY_PATH = '/__constitution_chat_feedback_proxy__';
 const LOCAL_CONSTITUTION_DOCUMENT_PROXY_PATH = '/__constitution_document_proxy__';
@@ -96,6 +98,7 @@ let treasuryPromise = null;
 let treasuryState = null;
 let catalystBusinessPromise = null;
 let catalystBusinessState = null;
+const catalystProposalDetailsCache = new Map();
 let treasuryHistoryChart = null;
 let governanceMeshPromise = null;
 
@@ -991,15 +994,23 @@ function createCatalystFundingStatusChart(payload) {
             key: 'claimed',
             label: 'Claimed',
             value: status.claimed,
-            color: '#34d399'
+            color: '#34d399',
+            projects: status.projects.filter(project => (
+                Number(project.claimed_lovelace) > 0
+            )),
+            amountField: 'claimed_lovelace'
         },
         {
             key: 'not-claimed',
             label: 'Not Claimed',
             value: status.notClaimed,
-            color: '#fb7185'
+            color: '#fb7185',
+            projects: status.projects.filter(project => (
+                Number(project.not_claimed_lovelace) > 0
+            )),
+            amountField: 'not_claimed_lovelace'
         }
-    ];
+    ].filter(group => group.value > 0);
     const section = document.createElement('section');
     section.className = 'governance-vote-chart governance-chart-panel';
 
@@ -1013,7 +1024,11 @@ function createCatalystFundingStatusChart(payload) {
             ((segment.end - segment.start) / 360) >= 0.03
                 ? formatCompactAdaFromLovelace(segment.value)
                 : ''
-        )
+        ),
+        onSegmentClick: (segment, returnFocus) => (
+            openCatalystFundingProjectsOverlay(segment, returnFocus)
+        ),
+        showSegmentSeparators: true
     }));
 
     const legend = document.createElement('div');
@@ -1025,7 +1040,8 @@ function createCatalystFundingStatusChart(payload) {
         legend.appendChild(createGovernanceStatBox({
             label: group.label,
             detail: `${formatFullAdaFromLovelace(group.value)} • ${formatPercentage(percentage)}`,
-            color: group.color
+            color: group.color,
+            onClick: event => openCatalystFundingProjectsOverlay(group, event.currentTarget)
         }));
     });
 
@@ -1043,17 +1059,40 @@ function getCatalystFundingStatus(payload) {
     const requested = Number(cached?.requested_lovelace);
     const claimed = Number(cached?.claimed_lovelace);
     const notClaimed = Number(cached?.not_claimed_lovelace);
+    const rounds = (Array.isArray(cached?.rounds) ? cached.rounds : []).flatMap(round => {
+        const roundRequested = Number(round?.requested_lovelace);
+        const roundClaimed = Number(round?.claimed_lovelace);
+        const roundNotClaimed = Number(round?.not_claimed_lovelace);
+        const fundName = String(round?.fund_name || '').trim();
+        if (
+            !fundName
+            || !Number.isFinite(roundRequested)
+            || !Number.isFinite(roundClaimed)
+            || !Number.isFinite(roundNotClaimed)
+        ) return [];
+        return [{
+            fundName,
+            projectCount: Number(round?.project_count) || 0,
+            requested: roundRequested,
+            claimed: roundClaimed,
+            notClaimed: roundNotClaimed
+        }];
+    });
+    const fundingProjects = getCatalystFundingProjects(payload);
     if (
         Number.isFinite(requested)
         && requested > 0
         && Number.isFinite(claimed)
         && Number.isFinite(notClaimed)
+        && rounds.length
     ) {
         return {
             projectCount: Number(cached?.project_count) || 0,
             requested,
             claimed,
-            notClaimed
+            notClaimed,
+            rounds,
+            projects: fundingProjects
         };
     }
 
@@ -1077,8 +1116,131 @@ function getCatalystFundingStatus(payload) {
         projectCount: projects.length,
         requested: fallbackRequested,
         claimed: fallbackClaimed,
-        notClaimed: Math.max(fallbackRequested - fallbackClaimed, 0)
+        notClaimed: Math.max(fallbackRequested - fallbackClaimed, 0),
+        rounds: [{
+            fundName: 'All rounds',
+            projectCount: projects.length,
+            requested: fallbackRequested,
+            claimed: fallbackClaimed,
+            notClaimed: Math.max(fallbackRequested - fallbackClaimed, 0)
+        }],
+        projects: projects.map(project => ({
+            id: project.id,
+            title: project.title,
+            business: project.business,
+            fund_name: 'All rounds',
+            requested_lovelace: project.amount_requested_lovelace,
+            claimed_lovelace: project.amount_received_lovelace,
+            not_claimed_lovelace: String(Math.max(
+                Number(project.amount_requested_lovelace || 0)
+                - Number(project.amount_received_lovelace || 0),
+                0
+            )),
+            source_url: project.source_url
+        }))
     };
+}
+
+function getCatalystFundingProjects(payload) {
+    return (Array.isArray(payload?.funding_projects) ? payload.funding_projects : []).flatMap(project => {
+        const id = String(project?.id || '').trim();
+        const title = String(project?.title || '').trim();
+        const fundName = String(project?.fund_name || '').trim();
+        const requested = Number(project?.requested_lovelace);
+        const claimed = Number(project?.claimed_lovelace);
+        const notClaimed = Number(project?.not_claimed_lovelace);
+        if (
+            !id
+            || !title
+            || !fundName
+            || !Number.isFinite(requested)
+            || !Number.isFinite(claimed)
+            || !Number.isFinite(notClaimed)
+        ) return [];
+        return [{
+            id,
+            title,
+            business: project?.business || 'Unknown Catalyst proposer',
+            fund_name: fundName,
+            requested_lovelace: String(Math.round(requested)),
+            claimed_lovelace: String(Math.round(claimed)),
+            not_claimed_lovelace: String(Math.round(notClaimed)),
+            source_url: project?.source_url || null
+        }];
+    });
+}
+
+function openCatalystFundingProjectsOverlay(group, returnFocus) {
+    const panel = document.createElement('div');
+    panel.className = 'governance-list governance-action-group-list';
+    [...group.projects]
+        .sort((left, right) => (
+            getCatalystFundNumber(left?.fund_name) - getCatalystFundNumber(right?.fund_name)
+            || String(left?.title || '').localeCompare(String(right?.title || ''), 'en-US')
+        ))
+        .forEach(project => {
+            panel.appendChild(createCatalystFundingProjectCard(project, group.amountField));
+        });
+
+    createGovernanceMenuOverlay({
+        id: 'governance-catalyst-funding-projects-overlay',
+        titleId: 'governance-catalyst-funding-projects-title',
+        titleText: group.label,
+        closeLabel: `Close ${group.label} projects`,
+        closeOverlay: closeCatalystFundingProjectsOverlay,
+        bodyNodes: [panel],
+        headerMeta: `${group.projects.length.toLocaleString('en-US')} projects • ${formatCompactAdaFromLovelace(group.value)}`,
+        overlayClass: 'governance-action-detail-overlay',
+        returnFocus,
+        rootTitle: 'Funding Recipients',
+        defaultSort: 'fund-asc'
+    });
+}
+
+function getCatalystFundNumber(value) {
+    const match = String(value || '').match(/\d+/);
+    return match ? Number(match[0]) : Number.MAX_SAFE_INTEGER;
+}
+
+function createCatalystFundingProjectCard(project, amountField) {
+    const amount = Number(project?.[amountField]) || 0;
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'governance-card governance-menu-card governance-treasury-withdrawal-card';
+    card.dataset.searchText = [
+        project.title,
+        project.business,
+        project.fund_name
+    ].filter(Boolean).join(' ');
+    card.dataset.sortName = project.title;
+    card.dataset.sortAmount = String(amount);
+    card.dataset.sortFund = String(getCatalystFundNumber(project.fund_name));
+    card.addEventListener('click', event => {
+        openCatalystProposalDetailOverlay(project, event.currentTarget);
+    });
+
+    const title = document.createElement('strong');
+    title.className = 'governance-title';
+    title.textContent = project.title;
+
+    const business = document.createElement('span');
+    business.className = 'governance-card-detail';
+    business.textContent = `${project.business} • ${project.fund_name}`;
+
+    const funding = document.createElement('span');
+    funding.className = 'governance-card-detail governance-treasury-withdrawal-amount';
+    funding.textContent = `${amountField === 'claimed_lovelace' ? 'Claimed' : 'Not Claimed'} ${formatFullAdaFromLovelace(amount)}`;
+
+    const requested = document.createElement('span');
+    requested.className = 'governance-card-detail';
+    requested.textContent = `Requested ${formatFullAdaFromLovelace(project.requested_lovelace)}`;
+
+    card.append(title, business, funding, requested);
+    return card;
+}
+
+function closeCatalystFundingProjectsOverlay() {
+    removeGovernanceMenuOverlay('governance-catalyst-funding-projects-overlay');
 }
 
 function createTreasuryBusinessCard(group, index) {
@@ -1176,13 +1338,9 @@ function createCatalystBusinessProjectCard(project) {
         'Catalyst'
     ].filter(Boolean).join(' ');
     card.dataset.sortAmount = String(project.amount_received_lovelace || '0');
-    if (project.source_url) {
-        card.addEventListener('click', event => {
-            openExternalSiteWarning(project.source_url, event.currentTarget);
-        });
-    } else {
-        card.disabled = true;
-    }
+    card.addEventListener('click', event => {
+        openCatalystProposalDetailOverlay(project, event.currentTarget);
+    });
 
     const title = document.createElement('strong');
     title.className = 'governance-title';
@@ -1202,6 +1360,144 @@ function createCatalystBusinessProjectCard(project) {
 
     card.append(title, amount, detail);
     return card;
+}
+
+function openCatalystProposalDetailOverlay(project, returnFocus) {
+    const content = document.createElement('div');
+    content.className = 'governance-detail-content';
+    const loading = document.createElement('p');
+    loading.className = 'small-text';
+    loading.textContent = 'Loading Catalyst proposal...';
+    content.appendChild(loading);
+
+    const overlay = createGovernanceMenuOverlay({
+        id: 'governance-catalyst-proposal-detail-overlay',
+        titleId: 'governance-catalyst-proposal-detail-title',
+        titleText: project?.title || 'Catalyst proposal',
+        closeLabel: 'Close Catalyst proposal',
+        closeOverlay: closeCatalystProposalDetailOverlay,
+        bodyNodes: [content],
+        headerMeta: [project?.fund_name, project?.project_status || project?.funding_status]
+            .filter(Boolean)
+            .join(' • '),
+        overlayClass: 'governance-action-detail-overlay',
+        returnFocus,
+        rootTitle: 'Funding Recipients'
+    });
+
+    loadCatalystProposalDetail(project)
+        .then(detail => {
+            if (!content.isConnected) return;
+            renderCatalystProposalDetail(content, detail);
+            overlay.title.textContent = detail.title || project.title;
+            updateGovernanceMenuHeaderMeta(
+                'governance-catalyst-proposal-detail-overlay',
+                [detail.fund_name, detail.project_status || detail.funding_status]
+                    .filter(Boolean)
+                    .join(' • '),
+                content
+            );
+        })
+        .catch(() => {
+            if (!content.isConnected) return;
+            content.replaceChildren();
+            const message = document.createElement('p');
+            message.className = 'small-text';
+            message.textContent = 'Catalyst proposal details could not be loaded.';
+            content.appendChild(message);
+        });
+}
+
+function closeCatalystProposalDetailOverlay() {
+    removeGovernanceMenuOverlay('governance-catalyst-proposal-detail-overlay');
+}
+
+function loadCatalystProposalDetail(project) {
+    const proposalId = String(project?.id || '').trim();
+    if (!proposalId) return Promise.reject(new Error('Catalyst proposal id is missing'));
+    if (!catalystProposalDetailsCache.has(proposalId)) {
+        const request = fetchJson(getCatalystProposalDetailApiUrl(proposalId), { cache: 'no-store' })
+            .catch(error => {
+                catalystProposalDetailsCache.delete(proposalId);
+                throw error;
+            });
+        catalystProposalDetailsCache.set(proposalId, request);
+    }
+    return catalystProposalDetailsCache.get(proposalId);
+}
+
+function getCatalystDetailText(value) {
+    if (typeof value === 'string') return value.trim();
+    if (Array.isArray(value)) {
+        return value.map(getCatalystDetailText).filter(Boolean).join('\n\n');
+    }
+    if (value && typeof value === 'object') {
+        return Object.entries(value)
+            .map(([key, item]) => {
+                const text = getCatalystDetailText(item);
+                return text ? `${key.replaceAll('_', ' ')}: ${text}` : '';
+            })
+            .filter(Boolean)
+            .join('\n\n');
+    }
+    return '';
+}
+
+function renderCatalystProposalDetail(container, proposal) {
+    container.replaceChildren();
+    addDetailRow(container, 'Proposal ID', proposal.id);
+    addDetailRow(container, 'Proposer', proposal.business);
+    addDetailRow(container, 'Fund', proposal.fund_name);
+    addDetailRow(container, 'Status', proposal.project_status || proposal.funding_status);
+    addDetailRow(container, 'Requested', formatCatalystProposalAmount(proposal, 'requested'));
+    addDetailRow(container, 'Received', formatCatalystProposalAmount(proposal, 'received'));
+    if (Number.isFinite(Number(proposal.project_length))) {
+        addDetailRow(container, 'Project length', `${proposal.project_length} months`);
+    }
+    if (proposal.team?.length) {
+        addDetailRow(
+            container,
+            'Team',
+            proposal.team.map(member => (
+                member.role ? `${member.name} (${member.role})` : member.name
+            )).join(', ')
+        );
+    }
+    addMarkdownDetailSection(container, 'Problem', proposal.problem);
+    addMarkdownDetailSection(container, 'Solution', proposal.solution);
+    addMarkdownDetailSection(container, 'Experience', proposal.experience);
+    addMarkdownDetailSection(container, 'Project details', getCatalystDetailText(proposal.project_details));
+    addMarkdownDetailSection(container, 'Open source', proposal.opensource_description);
+
+    const sourceUrl = proposal.source_url || proposal.website;
+    if (sourceUrl) {
+        const actions = document.createElement('div');
+        actions.className = 'governance-action-buttons';
+        actions.appendChild(createGovernanceProposalActionButton(
+            'Open proposal website',
+            'governance-catalyst-source-button',
+            event => openExternalSiteWarning(sourceUrl, event.currentTarget)
+        ));
+        container.appendChild(actions);
+    }
+}
+
+function formatCatalystProposalAmount(proposal, kind) {
+    const lovelace = proposal?.[`amount_${kind}_lovelace`];
+    if (
+        String(proposal?.currency || '').toUpperCase() === 'ADA'
+        && lovelace !== null
+        && lovelace !== undefined
+    ) {
+        return formatFullAdaFromLovelace(lovelace);
+    }
+    const amount = Number(proposal?.[`amount_${kind}`]);
+    if (!Number.isFinite(amount)) return null;
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: String(proposal?.currency || 'USD').toUpperCase(),
+        maximumFractionDigits: 2
+    }).format(amount);
 }
 
 function closeBusinessOverlay() {
@@ -1837,6 +2133,14 @@ function getProposalSummaryApiUrl(proposalId) {
         return `${LOCAL_PROPOSAL_SUMMARY_PROXY_PATH}?${params.toString()}`;
     }
     return `${PROPOSAL_SUMMARY_API_BASE_URL}/${encodeURIComponent(proposalId)}/summary`;
+}
+
+function getCatalystProposalDetailApiUrl(proposalId) {
+    if (shouldUseLocalDashboardProxy()) {
+        const params = new URLSearchParams({ proposalId });
+        return `${LOCAL_CATALYST_PROPOSAL_DETAIL_PROXY_PATH}?${params.toString()}`;
+    }
+    return `${CATALYST_PROPOSAL_DETAIL_API_BASE_URL}/${encodeURIComponent(proposalId)}`;
 }
 
 function updateEpochDisplayFromDashboardPayload(payload) {
@@ -7311,6 +7615,20 @@ function createPieChartSvg(segments, chart, options = {}) {
 
         svg.append(interactiveSegment, arc);
     });
+
+    if (options.showSegmentSeparators === true && segments.length > 1) {
+        segments.forEach(segment => {
+            const inner = getPieChartPoint(segment.start, 39);
+            const outer = getPieChartPoint(segment.start, 47);
+            const separator = document.createElementNS(namespace, 'line');
+            separator.classList.add('governance-pie-chart-separator');
+            separator.setAttribute('x1', String(inner.x));
+            separator.setAttribute('y1', String(inner.y));
+            separator.setAttribute('x2', String(outer.x));
+            separator.setAttribute('y2', String(outer.y));
+            svg.appendChild(separator);
+        });
+    }
 
     return svg;
 }
