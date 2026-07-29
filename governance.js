@@ -1097,6 +1097,7 @@ const TREASURY_BUSINESS_ALIASES = Object.freeze({
     'maarten menheere': 'GameChanger',
     'catalyst rider': 'WingRiders',
     'drip dropz': 'Adam Dean - Drip Dropz',
+    dripdropz: 'Adam Dean - Drip Dropz',
     'adam dean': 'Adam Dean - Drip Dropz',
     josef: 'Cexplorer',
     'marcel - eternl.io': 'Eternl',
