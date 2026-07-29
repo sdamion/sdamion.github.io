@@ -102,6 +102,8 @@ let catalystBusinessPromise = null;
 let catalystBusinessState = null;
 let catalystFundDirectoryPromise = null;
 let catalystFundDirectoryState = null;
+let catalystProposalDirectoryPromise = null;
+let catalystProposalDirectoryState = null;
 const catalystProposalDetailsCache = new Map();
 let treasuryHistoryChart = null;
 let governanceMeshPromise = null;
@@ -690,6 +692,22 @@ function fetchCatalystFundDirectoryPayload() {
     return catalystFundDirectoryPromise;
 }
 
+function fetchCatalystProposalDirectoryPayload() {
+    if (!catalystProposalDirectoryPromise) {
+        const url = getCatalystProposalsApiUrl();
+        catalystProposalDirectoryPromise = fetchJson(url)
+            .then(payload => {
+                catalystProposalDirectoryState = payload;
+                return payload;
+            })
+            .catch(error => {
+                catalystProposalDirectoryPromise = null;
+                throw error;
+            });
+    }
+    return catalystProposalDirectoryPromise;
+}
+
 function getCatalystProposalsApiUrl(options = {}) {
     if (shouldUseLocalDashboardProxy()) {
         const params = new URLSearchParams();
@@ -911,9 +929,10 @@ function getTreasuryBusinessGroups(payload, catalystPayload = catalystBusinessSt
 
 function getCatalystTeamSearchTerms(project) {
     return [
+        project?.business,
         ...(Array.isArray(project?.submitters) ? project.submitters : []),
         ...(Array.isArray(project?.team) ? project.team : [])
-    ].flatMap(member => [
+    ].flatMap(member => typeof member === 'string' ? [member] : [
         member?.name,
         member?.username
     ]).map(value => String(value || '').trim()).filter(Boolean);
@@ -1304,6 +1323,55 @@ async function openCatalystFundsOverlay(returnFocus = document.activeElement) {
     loading.textContent = 'Loading Catalyst funds...';
     panel.appendChild(loading);
 
+    let funds = [];
+    let proposals = [];
+    let renderedSignature = '';
+    let directoryReady = false;
+    const renderDirectory = normalizedQuery => {
+        if (!directoryReady) return;
+        const teamMatches = normalizedQuery
+            ? proposals.filter(proposal => getCatalystTeamSearchTerms(proposal).some(term => (
+                normalizeOverlaySearchText(term).includes(normalizedQuery)
+            )))
+            : [];
+        const showTeamMatches = teamMatches.length > 0;
+        const visibleProposals = showTeamMatches ? teamMatches : proposals;
+        const signature = showTeamMatches
+            ? `team:${teamMatches.map(proposal => proposal.id).join('|')}`
+            : 'funds';
+        if (signature === renderedSignature) return;
+        renderedSignature = signature;
+        panel.replaceChildren();
+        if (showTeamMatches) {
+            teamMatches.forEach(proposal => {
+                panel.appendChild(createCatalystProposalCard(proposal));
+            });
+        } else {
+            funds.forEach((fund, index) => {
+                panel.appendChild(createCatalystFundCard(fund, index));
+            });
+            if (!funds.length) {
+                const empty = document.createElement('p');
+                empty.className = 'small-text';
+                empty.textContent = 'No Catalyst funds are available yet.';
+                panel.appendChild(empty);
+            }
+        }
+        const askedUsd = visibleProposals.reduce(
+            (total, proposal) => total + (Number(proposal?.amount_requested_usd) || 0),
+            0
+        );
+        const receivedUsd = visibleProposals.reduce(
+            (total, proposal) => total + (Number(proposal?.amount_received_usd) || 0),
+            0
+        );
+        updateGovernanceMenuHeaderMeta(
+            'governance-catalyst-funds-overlay',
+            `Asked ${formatCatalystCurrencyAmount(askedUsd, 'USD', true)} • Received ${formatCatalystCurrencyAmount(receivedUsd, 'USD', true)}`,
+            panel
+        );
+    };
+
     createGovernanceMenuOverlay({
         id: 'governance-catalyst-funds-overlay',
         titleId: 'governance-catalyst-funds-title',
@@ -1314,28 +1382,23 @@ async function openCatalystFundsOverlay(returnFocus = document.activeElement) {
         headerMeta: 'Loading...',
         returnFocus,
         rootTitle: 'Catalyst Proposals',
-        defaultSort: 'fund-desc'
+        defaultSort: 'fund-desc',
+        onSearch: renderDirectory
     });
 
     try {
-        const payload = catalystFundDirectoryState || await loadCatalystFundDirectory();
+        const [payload, proposalPayload] = await Promise.all([
+            catalystFundDirectoryState || loadCatalystFundDirectory(),
+            catalystProposalDirectoryState || fetchCatalystProposalDirectoryPayload()
+        ]);
         if (!panel.isConnected) return;
-        const funds = normalizeCatalystFunds(payload);
-        panel.replaceChildren();
-        funds.forEach((fund, index) => {
-            panel.appendChild(createCatalystFundCard(fund, index));
-        });
-        if (!funds.length) {
-            const empty = document.createElement('p');
-            empty.className = 'small-text';
-            empty.textContent = 'No Catalyst funds are available yet.';
-            panel.appendChild(empty);
-        }
-        updateGovernanceMenuHeaderMeta(
-            'governance-catalyst-funds-overlay',
-            `${Number(payload?.proposal_count || 0).toLocaleString('en-US')} proposals • ${funds.length.toLocaleString('en-US')} funds`,
-            panel
-        );
+        funds = normalizeCatalystFunds(payload);
+        proposals = Array.isArray(proposalPayload?.proposals)
+            ? proposalPayload.proposals
+            : [];
+        directoryReady = true;
+        renderedSignature = '';
+        renderDirectory('');
     } catch (loadError) {
         console.error('Catalyst funds could not be rendered', loadError);
         if (!panel.isConnected) return;
@@ -1697,6 +1760,7 @@ function createCatalystProposalCard(proposal) {
         proposal?.funding_status,
         ...getCatalystTeamSearchTerms(proposal)
     ].filter(Boolean).join(' ');
+    card.dataset.searchTeamLabels = getCatalystTeamSearchTerms(proposal).join('\n');
     card.dataset.sortName = proposal?.title || '';
     card.dataset.sortAmount = String(proposal?.amount_requested_usd || '0');
     card.addEventListener('click', event => {
@@ -1786,6 +1850,7 @@ function createCatalystFundingProjectCard(project, group) {
         project.fund_name,
         ...getCatalystTeamSearchTerms(project)
     ].filter(Boolean).join(' ');
+    card.dataset.searchTeamLabels = getCatalystTeamSearchTerms(project).join('\n');
     card.dataset.sortName = project.title;
     card.dataset.sortAmount = String(amount);
     card.dataset.sortFund = String(getCatalystFundNumber(project.fund_name));
@@ -1851,13 +1916,17 @@ function createTreasuryBusinessCard(group, index) {
     const card = document.createElement('button');
     card.type = 'button';
     card.className = 'governance-card governance-menu-card';
-    card.dataset.searchText = [
+    const teamSearchLabels = [
         group.label,
-        ...group.catalystProjects.flatMap(getCatalystTeamSearchTerms),
+        ...group.catalystProjects.flatMap(getCatalystTeamSearchTerms)
+    ].filter(Boolean);
+    card.dataset.searchText = [
+        ...teamSearchLabels,
         ...group.withdrawals.flatMap(withdrawal => (
             Array.isArray(withdrawal?.proposers) ? withdrawal.proposers : []
         ))
     ].filter(Boolean).join(' ');
+    card.dataset.searchTeamLabels = teamSearchLabels.join('\n');
     card.dataset.sortName = group.label;
     card.dataset.sortAmount = String(group.value);
     card.addEventListener('click', event => {
@@ -1971,6 +2040,7 @@ function createCatalystBusinessProjectCard(project) {
         ...getCatalystTeamSearchTerms(project),
         'Catalyst'
     ].filter(Boolean).join(' ');
+    card.dataset.searchTeamLabels = getCatalystTeamSearchTerms(project).join('\n');
     card.dataset.sortAmount = String(project.amount_received_usd || '0');
     card.addEventListener('click', event => {
         openCatalystProposalDetailOverlay(project, event.currentTarget);

@@ -1536,6 +1536,7 @@ function createUniversalOverlay(options) {
         showBack = true,
         enableSearch = true,
         defaultSort = '',
+        onSearch = null,
         uniqueId = false
     } = options;
 
@@ -1599,7 +1600,7 @@ function createUniversalOverlay(options) {
     body.className = 'overlay-dialog-body';
     bodyNodes.forEach(node => body.appendChild(node));
     dialog.appendChild(body);
-    if (enableSearch) installOverlaySearch(body, { defaultSort });
+    if (enableSearch) installOverlaySearch(body, { defaultSort, onSearch });
 
     overlay.appendChild(dialog);
     document.body.appendChild(overlay);
@@ -1790,7 +1791,7 @@ function sortOverlayCards(body, cards, mode) {
     });
 }
 
-function installOverlaySearch(body, { defaultSort = '' } = {}) {
+function installOverlaySearch(body, { defaultSort = '', onSearch = null } = {}) {
     if (!body || body.querySelector(':scope > .overlay-search-bar')) return;
 
     const searchBar = document.createElement('div');
@@ -1838,6 +1839,8 @@ function installOverlaySearch(body, { defaultSort = '' } = {}) {
     body.prepend(searchBar, empty);
 
     const applySearch = () => {
+        const normalizedQuery = normalizeOverlaySearchText(input.value).trim();
+        if (typeof onSearch === 'function') onSearch(normalizedQuery);
         const cards = getOverlaySearchCards(body);
         const relevantOptions = getRelevantOverlaySortOptions(cards);
         const currentOptionValues = Array.from(sort.options, option => option.value).join('|');
@@ -1855,14 +1858,27 @@ function installOverlaySearch(body, { defaultSort = '' } = {}) {
         }
         sort.hidden = relevantOptions.length < 2;
         sortOverlayCards(body, cards, sort.value);
-        const terms = normalizeOverlaySearchText(input.value).trim().split(/\s+/).filter(Boolean);
+        const terms = normalizedQuery.split(/\s+/).filter(Boolean);
+        const teamSearchActive = Boolean(normalizedQuery) && cards.some(card => (
+            String(card.dataset.searchTeamLabels || '')
+                .split('\n')
+                .map(normalizeOverlaySearchText)
+                .some(label => label.trim().includes(normalizedQuery))
+        ));
         let visible = 0;
 
         cards.forEach(card => {
             const searchableText = normalizeOverlaySearchText(
                 `${card.textContent || ''} ${card.dataset.searchText || ''}`
             );
-            const matches = terms.every(term => searchableText.includes(term));
+            const teamLabels = String(card.dataset.searchTeamLabels || '')
+                .split('\n')
+                .map(normalizeOverlaySearchText)
+                .map(label => label.trim())
+                .filter(Boolean);
+            const matches = teamSearchActive
+                ? teamLabels.some(label => label.includes(normalizedQuery))
+                : terms.every(term => searchableText.includes(term));
             card.hidden = !matches;
             if (matches) visible += 1;
         });
