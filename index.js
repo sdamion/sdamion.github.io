@@ -2174,10 +2174,10 @@ function formatDelegatorAda(lovelace) {
     const wholeAda = lovelace / 1_000_000n;
     const fraction = lovelace % 1_000_000n;
     const value = `${wholeAda}.${fraction.toString().padStart(6, '0')}`;
-    return `${new Intl.NumberFormat('en-US', {
+    return `₳ ${new Intl.NumberFormat('en-US', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
-    }).format(Number(value))} ADA`;
+    }).format(Number(value))}`;
 }
 
 function shortenStakeAddress(address) {

@@ -1741,10 +1741,73 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     transform: none;
 }
 
+.governance-card-open.has-catalyst-milestones {
+    position: relative;
+    min-height: 52px;
+    padding-right: 150px;
+}
+
+.catalyst-milestone-indicator {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    display: grid;
+    grid-template-columns: minmax(64px, 112px) auto;
+    gap: 8px;
+    align-items: center;
+    width: min(138px, 38%);
+    pointer-events: none;
+    transform: translateY(-50%);
+}
+
+.catalyst-milestone-bar {
+    display: flex;
+    gap: 2px;
+    min-width: 0;
+    height: 8px;
+}
+
+.catalyst-milestone-segment {
+    min-width: 2px;
+    flex: 1 1 0;
+    border-radius: 2px;
+}
+
+.catalyst-milestone-segment.is-complete {
+    background: #34d399;
+}
+
+.catalyst-milestone-segment.is-unfinished {
+    background: #f87171;
+}
+
+.catalyst-milestone-count {
+    color: var(--text);
+    font-size: 0.78rem;
+    line-height: 1;
+    white-space: nowrap;
+}
+
 .governance-action-id-copy-button {
     top: 12px;
     right: 12px;
     transform: none;
+}
+
+@media (max-width: 600px) {
+    .governance-card-open.has-catalyst-milestones {
+        padding-right: 106px;
+    }
+
+    .catalyst-milestone-indicator {
+        grid-template-columns: minmax(44px, 68px) auto;
+        gap: 6px;
+        width: min(98px, 42%);
+    }
+
+    .catalyst-milestone-count {
+        font-size: 0.7rem;
+    }
 }
 
 .governance-action-id-copy-button:hover,
