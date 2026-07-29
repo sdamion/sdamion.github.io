@@ -1126,13 +1126,13 @@ async function openBusinessOverlay(returnFocus = document.activeElement) {
     createGovernanceMenuOverlay({
         id: 'governance-business-overlay',
         titleId: 'governance-business-title',
-        titleText: 'Catalyst/Treasury',
-        closeLabel: 'Close Catalyst/Treasury',
+        titleText: 'Catalyst/Treasury Recipients',
+        closeLabel: 'Close Catalyst/Treasury recipients',
         closeOverlay: closeBusinessOverlay,
         bodyNodes: [panel],
         headerMeta: 'Loading...',
         returnFocus,
-        rootTitle: 'Catalyst/Treasury',
+        rootTitle: 'Catalyst/Treasury Recipients',
         defaultSort: 'amount-desc',
         searchPlaceholder: 'Search proposers or team members, separated by commas',
         onSearch: renderRecipients
@@ -1877,7 +1877,7 @@ function openCatalystFundingProjectsOverlay(group, returnFocus) {
         headerMeta: `${group.projects.length.toLocaleString('en-US')} projects • ${formatCatalystFundingAmount(group.value, group.currency, true)}`,
         overlayClass: 'governance-action-detail-overlay',
         returnFocus,
-        rootTitle: 'Catalyst/Treasury',
+        rootTitle: 'Catalyst/Treasury Recipients',
         defaultSort: 'fund-asc'
     });
 }
@@ -2074,7 +2074,7 @@ function openTreasuryBusinessActionsOverlay(group, returnFocus) {
         headerMeta: `${projectCount.toLocaleString('en-US')} projects • ${formatCatalystCurrencyAmount(group.value, 'USD', true)}`,
         overlayClass: 'governance-action-detail-overlay',
         returnFocus,
-        rootTitle: 'Catalyst/Treasury',
+        rootTitle: 'Catalyst/Treasury Recipients',
         defaultSort: 'newest'
     });
 }
@@ -2138,7 +2138,7 @@ function openCatalystProposalDetailOverlay(project, returnFocus) {
             .join(' • '),
         overlayClass: 'governance-action-detail-overlay',
         returnFocus,
-        rootTitle: 'Catalyst/Treasury'
+        rootTitle: 'Catalyst/Treasury Recipients'
     });
 
     loadCatalystProposalDetail(project)
