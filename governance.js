@@ -909,6 +909,16 @@ function getTreasuryBusinessGroups(payload, catalystPayload = catalystBusinessSt
     ));
 }
 
+function getCatalystTeamSearchTerms(project) {
+    return [
+        ...(Array.isArray(project?.submitters) ? project.submitters : []),
+        ...(Array.isArray(project?.team) ? project.team : [])
+    ].flatMap(member => [
+        member?.name,
+        member?.username
+    ]).map(value => String(value || '').trim()).filter(Boolean);
+}
+
 function getCatalystBusinessProjects(payload) {
     return (Array.isArray(payload?.projects) ? payload.projects : []).flatMap(project => {
         const amountUsd = Number(project?.amount_received_usd);
@@ -948,6 +958,7 @@ function getCatalystBusinessProjects(payload) {
             project_status: project?.project_status || null,
             funding_status: project?.funding_status || null,
             fund_name: project?.fund_name || null,
+            submitters: Array.isArray(project?.submitters) ? project.submitters : [],
             source: project?.source || payload?.source || 'project_catalyst_official',
             source_url: project?.source_url || null
         }];
@@ -964,6 +975,8 @@ const TREASURY_BUSINESS_ALIASES = Object.freeze({
     'ryan jones': 'NEWM',
     damon: 'CHARLI3',
     'patrick tobler': 'NMKR',
+    'kristian.portz': 'NMKR',
+    'federico weill': 'TxPipe',
     'vladimir sinyakov': 'zkFold',
     'dan gonzalez': 'SundaeSwap',
     'ethan | optim': 'Optim',
@@ -1274,6 +1287,7 @@ function getCatalystFundingProjects(payload) {
             currency: project?.currency || null,
             amount_requested: project?.amount_requested,
             amount_received: project?.amount_received,
+            submitters: Array.isArray(project?.submitters) ? project.submitters : [],
             requested_usd: requested,
             claimed_usd: claimed,
             not_claimed_usd: notClaimed,
@@ -1680,7 +1694,8 @@ function createCatalystProposalCard(proposal) {
         proposal?.title,
         proposal?.business,
         proposal?.project_status,
-        proposal?.funding_status
+        proposal?.funding_status,
+        ...getCatalystTeamSearchTerms(proposal)
     ].filter(Boolean).join(' ');
     card.dataset.sortName = proposal?.title || '';
     card.dataset.sortAmount = String(proposal?.amount_requested_usd || '0');
@@ -1768,7 +1783,8 @@ function createCatalystFundingProjectCard(project, group) {
     card.dataset.searchText = [
         project.title,
         project.business,
-        project.fund_name
+        project.fund_name,
+        ...getCatalystTeamSearchTerms(project)
     ].filter(Boolean).join(' ');
     card.dataset.sortName = project.title;
     card.dataset.sortAmount = String(amount);
@@ -1835,7 +1851,13 @@ function createTreasuryBusinessCard(group, index) {
     const card = document.createElement('button');
     card.type = 'button';
     card.className = 'governance-card governance-menu-card';
-    card.dataset.searchText = group.label;
+    card.dataset.searchText = [
+        group.label,
+        ...group.catalystProjects.flatMap(getCatalystTeamSearchTerms),
+        ...group.withdrawals.flatMap(withdrawal => (
+            Array.isArray(withdrawal?.proposers) ? withdrawal.proposers : []
+        ))
+    ].filter(Boolean).join(' ');
     card.dataset.sortName = group.label;
     card.dataset.sortAmount = String(group.value);
     card.addEventListener('click', event => {
@@ -1946,6 +1968,7 @@ function createCatalystBusinessProjectCard(project) {
         project.title,
         project.fund_name,
         project.project_status,
+        ...getCatalystTeamSearchTerms(project),
         'Catalyst'
     ].filter(Boolean).join(' ');
     card.dataset.sortAmount = String(project.amount_received_usd || '0');
