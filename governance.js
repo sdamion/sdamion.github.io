@@ -782,7 +782,7 @@ function createTreasuryAdministratorChart(withdrawals) {
     layout.appendChild(createUniversalPieChart(groups, {
         labelFormatter: segment => (
             ((segment.end - segment.start) / 360) >= 0.02
-                ? formatCompactAdaFromLovelace(segment.value)
+                ? formatCatalystCurrencyAmount(segment.value, 'USD', true)
                 : ''
         ),
         onSegmentClick: (segment, returnFocus) => openTreasuryAdministratorWithdrawalsOverlay(segment, returnFocus)
@@ -794,7 +794,7 @@ function createTreasuryAdministratorChart(withdrawals) {
         const percentage = total > 0 ? (group.value / total) * 100 : 0;
         legend.appendChild(createGovernanceStatBox({
             label: group.label,
-            detail: `${group.withdrawals.length.toLocaleString('en-US')} withdrawals • ${formatCompactAdaFromLovelace(group.value)} • ${formatPercentage(percentage)}`,
+            detail: `${group.withdrawals.length.toLocaleString('en-US')} withdrawals • ${formatCatalystCurrencyAmount(group.value, 'USD', true)} • ${formatPercentage(percentage)}`,
             color: group.color,
             onClick: event => openTreasuryAdministratorWithdrawalsOverlay(group, event.currentTarget)
         }));
@@ -818,9 +818,11 @@ function getTreasuryAdministratorGroups(withdrawals) {
             key: administrator,
             label: administrator,
             value: 0,
+            adaValue: 0,
             withdrawals: []
         };
-        group.value += Number(withdrawal?.amount_lovelace) || 0;
+        group.value += Number(withdrawal?.amount_usd) || 0;
+        group.adaValue += Number(withdrawal?.amount_ada) || 0;
         group.withdrawals.push(withdrawal);
         groups.set(administrator, group);
     });
@@ -847,7 +849,7 @@ function openTreasuryAdministratorWithdrawalsOverlay(group, returnFocus) {
         closeLabel: `Close withdrawals for ${group.label}`,
         closeOverlay: closeTreasuryAdministratorWithdrawalsOverlay,
         bodyNodes: [panel],
-        headerMeta: `${group.withdrawals.length.toLocaleString('en-US')} withdrawals • ${formatCompactAdaFromLovelace(group.value)}`,
+        headerMeta: `${group.withdrawals.length.toLocaleString('en-US')} withdrawals • ${formatCatalystCurrencyAmount(group.value, 'USD', true)}`,
         overlayClass: 'governance-action-detail-overlay',
         returnFocus
     });
@@ -866,10 +868,12 @@ function getTreasuryBusinessGroups(payload, catalystPayload = catalystBusinessSt
             key,
             label: proposer,
             value: 0,
+            adaValue: 0,
             withdrawals: [],
             catalystProjects: []
         };
-        group.value += Number(withdrawal?.amount_lovelace) || 0;
+        group.value += Number(withdrawal?.amount_usd) || 0;
+        group.adaValue += Number(withdrawal?.amount_ada) || 0;
         group.withdrawals.push(withdrawal);
         groups.set(key, group);
     });
@@ -880,10 +884,12 @@ function getTreasuryBusinessGroups(payload, catalystPayload = catalystBusinessSt
             key,
             label: business,
             value: 0,
+            adaValue: 0,
             withdrawals: [],
             catalystProjects: []
         };
-        group.value += Number(project?.amount_received_lovelace) || 0;
+        group.value += Number(project?.amount_received_usd) || 0;
+        group.adaValue += Number(project?.amount_received_ada) || 0;
         group.catalystProjects.push(project);
         groups.set(key, group);
     });
@@ -895,18 +901,27 @@ function getTreasuryBusinessGroups(payload, catalystPayload = catalystBusinessSt
 
 function getCatalystBusinessProjects(payload) {
     return (Array.isArray(payload?.projects) ? payload.projects : []).flatMap(project => {
-        const amount = Number(project?.amount_received_lovelace);
+        const amountUsd = Number(project?.amount_received_usd);
         const id = String(project?.id || '').trim();
         const title = String(project?.title || '').trim();
-        if (!id || !title || !Number.isFinite(amount) || amount <= 0) return [];
+        if (!id || !title || !Number.isFinite(amountUsd) || amountUsd <= 0) return [];
+        const amountAda = project?.currency === 'ADA'
+            ? Number(project?.amount_received)
+            : null;
         return [{
             id,
             title,
             business: project?.business || 'Unknown Catalyst proposer',
-            amount_received_lovelace: String(Math.round(amount)),
-            amount_requested_lovelace: Number(project?.amount_requested_lovelace) > 0
-                ? String(Math.round(Number(project.amount_requested_lovelace)))
+            currency: project?.currency || null,
+            amount_received_usd: amountUsd,
+            amount_requested_usd: Number(project?.amount_requested_usd),
+            amount_received_ada: Number.isFinite(amountAda) ? amountAda : null,
+            amount_requested_ada: project?.currency === 'ADA'
+                && Number.isFinite(Number(project?.amount_requested))
+                ? Number(project.amount_requested)
                 : null,
+            amount_received_lovelace: project?.amount_received_lovelace || null,
+            amount_requested_lovelace: project?.amount_requested_lovelace || null,
             project_status: project?.project_status || null,
             funding_status: project?.funding_status || null,
             fund_name: project?.fund_name || null,
@@ -972,7 +987,10 @@ function updateBusinessSummary(payload, catalystPayload = catalystBusinessState)
     const groups = getTreasuryBusinessGroups(payload, catalystPayload);
     const total = groups.reduce((sum, group) => sum + group.value, 0);
     window.TDSPRuntime.setText('gov-business-count', groups.length.toLocaleString('en-US'));
-    window.TDSPRuntime.setText('gov-business-total', `Received ${formatCompactAdaFromLovelace(total)}`);
+    window.TDSPRuntime.setText(
+        'gov-business-total',
+        `Received ${formatCatalystCurrencyAmount(total, 'USD', true)}`
+    );
 }
 
 async function openBusinessOverlay(returnFocus = document.activeElement) {
@@ -1022,7 +1040,7 @@ async function openBusinessOverlay(returnFocus = document.activeElement) {
         updateBusinessSummary(payload, catalystPayload);
         updateGovernanceMenuHeaderMeta(
             'governance-business-overlay',
-            `${groups.length.toLocaleString('en-US')} proposers • ${formatCompactAdaFromLovelace(total)}`,
+            `${groups.length.toLocaleString('en-US')} proposers • ${formatCatalystCurrencyAmount(total, 'USD', true)}`,
             panel
         );
     } catch {
@@ -1045,24 +1063,24 @@ function createCatalystFundingStatusChart(payload) {
             label: 'Claimed',
             value: status.claimed,
             color: '#34d399',
-            currency: 'ADA',
+            currency: 'USD',
             projects: status.projects.filter(project => (
-                Number(project.claimed_lovelace) > 0
+                Number(project.claimed_usd) > 0
             )),
-            amountField: 'claimed_lovelace',
-            requestedField: 'requested_lovelace'
+            amountField: 'claimed_usd',
+            requestedField: 'requested_usd'
         },
         {
             key: 'not-claimed',
             label: 'Not Claimed',
             value: status.notClaimed,
             color: '#fb7185',
-            currency: 'ADA',
+            currency: 'USD',
             projects: status.projects.filter(project => (
-                Number(project.not_claimed_lovelace) > 0
+                Number(project.not_claimed_usd) > 0
             )),
-            amountField: 'not_claimed_lovelace',
-            requestedField: 'requested_lovelace'
+            amountField: 'not_claimed_usd',
+            requestedField: 'requested_usd'
         }
     ].filter(group => group.value > 0);
     const section = document.createElement('section');
@@ -1076,7 +1094,7 @@ function createCatalystFundingStatusChart(payload) {
     layout.appendChild(createUniversalPieChart(groups, {
         labelFormatter: segment => (
             ((segment.end - segment.start) / 360) >= 0.03
-                ? formatCompactAdaFromLovelace(segment.value)
+                ? formatCatalystCurrencyAmount(segment.value, 'USD', true)
                 : ''
         ),
         onSegmentClick: (segment, returnFocus) => (
@@ -1093,7 +1111,7 @@ function createCatalystFundingStatusChart(payload) {
             : 0;
         legend.appendChild(createGovernanceStatBox({
             label: group.label,
-            detail: `${formatFullAdaFromLovelace(group.value)} • ${formatPercentage(percentage)}`,
+            detail: `${formatCatalystCurrencyAmount(group.value, 'USD')} • ${formatPercentage(percentage)}`,
             color: group.color,
             onClick: event => openCatalystFundingProjectsOverlay(group, event.currentTarget)
         }));
@@ -1110,13 +1128,13 @@ function createCatalystFundingStatusChart(payload) {
 
 function getCatalystFundingStatus(payload) {
     const cached = payload?.funding_status;
-    const requested = Number(cached?.requested_lovelace);
-    const claimed = Number(cached?.claimed_lovelace);
-    const notClaimed = Number(cached?.not_claimed_lovelace);
+    const requested = Number(cached?.requested_usd);
+    const claimed = Number(cached?.claimed_usd);
+    const notClaimed = Number(cached?.not_claimed_usd);
     const rounds = (Array.isArray(cached?.rounds) ? cached.rounds : []).flatMap(round => {
-        const roundRequested = Number(round?.requested_lovelace);
-        const roundClaimed = Number(round?.claimed_lovelace);
-        const roundNotClaimed = Number(round?.not_claimed_lovelace);
+        const roundRequested = Number(round?.requested_usd);
+        const roundClaimed = Number(round?.claimed_usd);
+        const roundNotClaimed = Number(round?.not_claimed_usd);
         const fundName = String(round?.fund_name || '').trim();
         if (
             !fundName
@@ -1152,17 +1170,17 @@ function getCatalystFundingStatus(payload) {
 
     const projects = getCatalystBusinessProjects(payload).filter(project => (
         project.project_status === 'in_progress'
-        && Number(project.amount_requested_lovelace) > 0
+        && Number(project.amount_requested_usd) > 0
     ));
     if (!projects.length) return null;
     const fallbackRequested = projects.reduce(
-        (sum, project) => sum + Number(project.amount_requested_lovelace || 0),
+        (sum, project) => sum + Number(project.amount_requested_usd || 0),
         0
     );
     const fallbackClaimed = projects.reduce(
         (sum, project) => sum + Math.min(
-            Number(project.amount_received_lovelace || 0),
-            Number(project.amount_requested_lovelace || 0)
+            Number(project.amount_received_usd || 0),
+            Number(project.amount_requested_usd || 0)
         ),
         0
     );
@@ -1183,13 +1201,16 @@ function getCatalystFundingStatus(payload) {
             title: project.title,
             business: project.business,
             fund_name: 'All rounds',
-            requested_lovelace: project.amount_requested_lovelace,
-            claimed_lovelace: project.amount_received_lovelace,
-            not_claimed_lovelace: String(Math.max(
-                Number(project.amount_requested_lovelace || 0)
-                - Number(project.amount_received_lovelace || 0),
+            currency: project.currency,
+            amount_requested: project.amount_requested_ada,
+            amount_received: project.amount_received_ada,
+            requested_usd: project.amount_requested_usd,
+            claimed_usd: project.amount_received_usd,
+            not_claimed_usd: Math.max(
+                Number(project.amount_requested_usd || 0)
+                - Number(project.amount_received_usd || 0),
                 0
-            )),
+            ),
             source_url: project.source_url
         }))
     };
@@ -1200,9 +1221,9 @@ function getCatalystFundingProjects(payload) {
         const id = String(project?.id || '').trim();
         const title = String(project?.title || '').trim();
         const fundName = String(project?.fund_name || '').trim();
-        const requested = Number(project?.requested_lovelace);
-        const claimed = Number(project?.claimed_lovelace);
-        const notClaimed = Number(project?.not_claimed_lovelace);
+        const requested = Number(project?.requested_usd);
+        const claimed = Number(project?.claimed_usd);
+        const notClaimed = Number(project?.not_claimed_usd);
         if (
             !id
             || !title
@@ -1216,9 +1237,12 @@ function getCatalystFundingProjects(payload) {
             title,
             business: project?.business || 'Unknown Catalyst proposer',
             fund_name: fundName,
-            requested_lovelace: String(Math.round(requested)),
-            claimed_lovelace: String(Math.round(claimed)),
-            not_claimed_lovelace: String(Math.round(notClaimed)),
+            currency: project?.currency || null,
+            amount_requested: project?.amount_requested,
+            amount_received: project?.amount_received,
+            requested_usd: requested,
+            claimed_usd: claimed,
+            not_claimed_usd: notClaimed,
             source_url: project?.source_url || null
         }];
     });
@@ -1289,9 +1313,10 @@ function normalizeCatalystFunds(payload) {
             requested_amount: Number(fund?.requested_amount) || 0,
             claimed_amount: Number(fund?.claimed_amount) || 0,
             not_claimed_amount: Number(fund?.not_claimed_amount) || 0,
-            requested_lovelace: String(fund?.requested_lovelace || '0'),
-            claimed_lovelace: String(fund?.claimed_lovelace || '0'),
-            not_claimed_lovelace: String(fund?.not_claimed_lovelace || '0')
+            requested_ada: Number(fund?.requested_ada) || 0,
+            claimed_ada: Number(fund?.claimed_ada) || 0,
+            not_claimed_ada: Number(fund?.not_claimed_ada) || 0,
+            conversion_missing_count: Number(fund?.conversion_missing_count) || 0,
         }];
     }).sort((left, right) => (
         getCatalystFundNumber(right.fund_name) - getCatalystFundNumber(left.fund_name)
@@ -1306,7 +1331,7 @@ function createCatalystFundCard(fund, index) {
     card.dataset.searchText = fund.fund_name;
     card.dataset.sortName = fund.fund_name;
     card.dataset.sortFund = String(getCatalystFundNumber(fund.fund_name));
-    card.dataset.sortAmount = fund.requested_lovelace;
+    card.dataset.sortAmount = String(fund.requested_amount || 0);
     card.addEventListener('click', event => {
         openCatalystFundOverlay(fund, event.currentTarget);
     });
@@ -1331,7 +1356,20 @@ function createCatalystFundCard(fund, index) {
     notClaimed.className = 'governance-card-detail';
     notClaimed.textContent = `Not Claimed ${formatCatalystFundAmount(fund, 'not_claimed', true)}`;
 
-    card.append(position, title, proposals, claimed, notClaimed);
+    card.append(position, title, proposals, claimed);
+    if (fund.claimed_ada > 0) {
+        const claimedAda = document.createElement('span');
+        claimedAda.className = 'governance-card-detail';
+        claimedAda.textContent = `ADA portion ${formatAdaAmount(fund.claimed_ada)}`;
+        card.appendChild(claimedAda);
+    }
+    card.appendChild(notClaimed);
+    if (fund.not_claimed_ada > 0) {
+        const notClaimedAda = document.createElement('span');
+        notClaimedAda.className = 'governance-card-detail';
+        notClaimedAda.textContent = `ADA portion ${formatAdaAmount(fund.not_claimed_ada)}`;
+        card.appendChild(notClaimedAda);
+    }
     return card;
 }
 
@@ -1455,14 +1493,14 @@ function createCatalystCurrencyFundingStatusChart(fund, proposals = []) {
     const requested = Number(fund.requested_amount) || 0;
     if (!fund.funding_currency || requested <= 0) return null;
     const fundingProjects = (Array.isArray(proposals) ? proposals : []).flatMap(project => {
-        const projectRequested = Number(project?.amount_requested);
+        const projectRequested = Number(project?.amount_requested_usd);
         if (
             project?.project_status !== 'in_progress'
             || !Number.isFinite(projectRequested)
             || projectRequested <= 0
         ) return [];
         const projectClaimed = Math.min(
-            Math.max(Number(project?.amount_received) || 0, 0),
+            Math.max(Number(project?.amount_received_usd) || 0, 0),
             projectRequested
         );
         return [{
@@ -1541,14 +1579,8 @@ function createCatalystCurrencyFundingStatusChart(fund, proposals = []) {
 }
 
 function formatCatalystFundAmount(fund, kind, compact = false) {
-    if (fund?.funding_currency === 'ADA') {
-        const lovelace = fund?.[`${kind}_lovelace`];
-        return compact
-            ? formatCompactAdaFromLovelace(lovelace)
-            : formatFullAdaFromLovelace(lovelace);
-    }
     const amount = Number(fund?.[`${kind}_amount`]) || 0;
-    return formatCatalystCurrencyAmount(amount, fund?.funding_currency || 'USD', compact);
+    return formatCatalystCurrencyAmount(amount, 'USD', compact);
 }
 
 function formatCatalystCurrencyAmount(value, currency, compact = false) {
@@ -1571,6 +1603,34 @@ function formatCatalystCurrencyAmount(value, currency, compact = false) {
     }
 }
 
+function formatCatalystUsdRate(value) {
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 6
+    }).format(Number(value) || 0);
+}
+
+function formatAdaAmount(value, compact = false) {
+    const amount = Number(value);
+    if (!Number.isFinite(amount)) return '-- ADA';
+    return `${new Intl.NumberFormat('en-US', {
+        notation: compact ? 'compact' : 'standard',
+        maximumFractionDigits: compact ? 2 : 6
+    }).format(amount)} ADA`;
+}
+
+function appendCatalystAdaAmount(container, proposal, kind) {
+    if (String(proposal?.currency || '').toUpperCase() !== 'ADA') return;
+    const amount = Number(proposal?.[`amount_${kind}`]);
+    if (!Number.isFinite(amount)) return;
+    const secondary = document.createElement('span');
+    secondary.className = 'governance-card-detail';
+    secondary.textContent = formatAdaAmount(amount);
+    container.appendChild(secondary);
+}
+
 function createCatalystProposalCard(proposal) {
     const card = document.createElement('button');
     card.type = 'button';
@@ -1582,11 +1642,7 @@ function createCatalystProposalCard(proposal) {
         proposal?.funding_status
     ].filter(Boolean).join(' ');
     card.dataset.sortName = proposal?.title || '';
-    card.dataset.sortAmount = String(
-        proposal?.amount_requested_lovelace
-        || proposal?.amount_requested
-        || '0'
-    );
+    card.dataset.sortAmount = String(proposal?.amount_requested_usd || '0');
     card.addEventListener('click', event => {
         openCatalystProposalDetailOverlay(proposal, event.currentTarget);
     });
@@ -1614,7 +1670,10 @@ function createCatalystProposalCard(proposal) {
     received.className = 'governance-card-detail';
     received.textContent = `Received ${formatCatalystProposalAmount(proposal, 'received') || '--'}`;
 
-    card.append(title, proposer, status, requested, received);
+    card.append(title, proposer, status, requested);
+    appendCatalystAdaAmount(card, proposal, 'requested');
+    card.appendChild(received);
+    appendCatalystAdaAmount(card, proposal, 'received');
     return card;
 }
 
@@ -1693,7 +1752,24 @@ function createCatalystFundingProjectCard(project, group) {
     requested.className = 'governance-card-detail';
     requested.textContent = `Requested ${formatCatalystFundingAmount(project?.[requestedField], group.currency)}`;
 
-    card.append(title, business, funding, requested);
+    card.append(title, business, funding);
+    if (String(project?.currency || '').toUpperCase() === 'ADA') {
+        const fundingAda = document.createElement('span');
+        fundingAda.className = 'governance-card-detail';
+        const requestedAda = Math.max(Number(project?.amount_requested) || 0, 0);
+        const receivedAda = Math.min(
+            Math.max(Number(project?.amount_received) || 0, 0),
+            requestedAda
+        );
+        fundingAda.textContent = formatAdaAmount(
+            group.key === 'claimed'
+                ? receivedAda
+                : Math.max(requestedAda - receivedAda, 0)
+        );
+        card.appendChild(fundingAda);
+    }
+    card.appendChild(requested);
+    appendCatalystAdaAmount(card, project, 'requested');
     return card;
 }
 
@@ -1731,7 +1807,7 @@ function createTreasuryBusinessCard(group, index) {
 
     const amount = document.createElement('span');
     amount.className = 'governance-card-detail governance-treasury-withdrawal-amount';
-    amount.textContent = formatFullAdaFromLovelace(group.value);
+    amount.textContent = formatCatalystCurrencyAmount(group.value, 'USD');
 
     const actions = document.createElement('span');
     actions.className = 'governance-card-detail';
@@ -1741,7 +1817,14 @@ function createTreasuryBusinessCard(group, index) {
     position.className = 'governance-list-index';
     position.textContent = String(index + 1);
 
-    card.append(position, name, amount, actions);
+    card.append(position, name, amount);
+    if (group.adaValue > 0) {
+        const adaAmount = document.createElement('span');
+        adaAmount.className = 'governance-card-detail';
+        adaAmount.textContent = formatAdaAmount(group.adaValue);
+        card.appendChild(adaAmount);
+    }
+    card.appendChild(actions);
     return card;
 }
 
@@ -1755,6 +1838,10 @@ function getTreasuryBusinessActions(group) {
                 (Number(existing.amount_lovelace) || 0)
                 + (Number(withdrawal?.amount_lovelace) || 0)
             );
+            existing.amount_ada = (Number(existing.amount_ada) || 0)
+                + (Number(withdrawal?.amount_ada) || 0);
+            existing.amount_usd = (Number(existing.amount_usd) || 0)
+                + (Number(withdrawal?.amount_usd) || 0);
             if (existing.stake_address !== withdrawal?.stake_address) {
                 existing.stake_address = null;
             }
@@ -1764,7 +1851,7 @@ function getTreasuryBusinessActions(group) {
     });
     return [...actions.values()].sort((left, right) => (
         Number(right?.enacted_epoch || 0) - Number(left?.enacted_epoch || 0)
-        || (Number(right?.amount_lovelace) || 0) - (Number(left?.amount_lovelace) || 0)
+        || (Number(right?.amount_usd) || 0) - (Number(left?.amount_usd) || 0)
     ));
 }
 
@@ -1787,7 +1874,7 @@ function openTreasuryBusinessActionsOverlay(group, returnFocus) {
         closeLabel: `Close treasury actions for ${group.label}`,
         closeOverlay: closeTreasuryBusinessActionsOverlay,
         bodyNodes: [panel],
-        headerMeta: `${projectCount.toLocaleString('en-US')} projects • ${formatCompactAdaFromLovelace(group.value)}`,
+        headerMeta: `${projectCount.toLocaleString('en-US')} projects • ${formatCatalystCurrencyAmount(group.value, 'USD', true)}`,
         overlayClass: 'governance-action-detail-overlay',
         returnFocus,
         rootTitle: 'Funding Recipients',
@@ -1805,7 +1892,7 @@ function createCatalystBusinessProjectCard(project) {
         project.project_status,
         'Catalyst'
     ].filter(Boolean).join(' ');
-    card.dataset.sortAmount = String(project.amount_received_lovelace || '0');
+    card.dataset.sortAmount = String(project.amount_received_usd || '0');
     card.addEventListener('click', event => {
         openCatalystProposalDetailOverlay(project, event.currentTarget);
     });
@@ -1816,7 +1903,7 @@ function createCatalystBusinessProjectCard(project) {
 
     const amount = document.createElement('span');
     amount.className = 'governance-card-detail governance-treasury-withdrawal-amount';
-    amount.textContent = formatFullAdaFromLovelace(project.amount_received_lovelace);
+    amount.textContent = formatCatalystCurrencyAmount(project.amount_received_usd, 'USD');
 
     const detail = document.createElement('span');
     detail.className = 'governance-card-detail';
@@ -1826,7 +1913,14 @@ function createCatalystBusinessProjectCard(project) {
         project.project_status || project.funding_status
     ].filter(Boolean).join(' • ');
 
-    card.append(title, amount, detail);
+    card.append(title, amount);
+    if (Number.isFinite(Number(project.amount_received_ada))) {
+        const adaAmount = document.createElement('span');
+        adaAmount.className = 'governance-card-detail';
+        adaAmount.textContent = formatAdaAmount(project.amount_received_ada);
+        card.appendChild(adaAmount);
+    }
+    card.appendChild(detail);
     return card;
 }
 
@@ -1919,6 +2013,13 @@ function renderCatalystProposalDetail(container, proposal) {
     addDetailRow(container, 'Status', proposal.project_status || proposal.funding_status);
     addDetailRow(container, 'Requested', formatCatalystProposalAmount(proposal, 'requested'));
     addDetailRow(container, 'Received', formatCatalystProposalAmount(proposal, 'received'));
+    if (Number.isFinite(Number(proposal.ada_usd_rate))) {
+        addDetailRow(
+            container,
+            'Historical ADA/USD',
+            `${formatCatalystUsdRate(proposal.ada_usd_rate)} on ${proposal.usd_conversion_date || 'date unavailable'}`
+        );
+    }
     if (Number.isFinite(Number(proposal.project_length))) {
         addDetailRow(container, 'Project length', `${proposal.project_length} months`);
     }
@@ -1951,17 +2052,9 @@ function renderCatalystProposalDetail(container, proposal) {
 }
 
 function formatCatalystProposalAmount(proposal, kind) {
-    const lovelace = proposal?.[`amount_${kind}_lovelace`];
-    if (
-        String(proposal?.currency || '').toUpperCase() === 'ADA'
-        && lovelace !== null
-        && lovelace !== undefined
-    ) {
-        return formatFullAdaFromLovelace(lovelace);
-    }
-    const amount = Number(proposal?.[`amount_${kind}`]);
+    const amount = Number(proposal?.[`amount_${kind}_usd`]);
     if (!Number.isFinite(amount)) return null;
-    return formatCatalystCurrencyAmount(amount, proposal?.currency || 'USD');
+    return formatCatalystCurrencyAmount(amount, 'USD');
 }
 
 function closeBusinessOverlay() {
@@ -2271,6 +2364,16 @@ function getTreasuryWithdrawals(payload) {
             business: withdrawal?.business || null,
             enacted_epoch: Number(withdrawal?.enacted_epoch) || null,
             amount_lovelace: String(withdrawal?.amount_lovelace || '0'),
+            amount_ada: Number.isFinite(Number(withdrawal?.amount_ada))
+                ? Number(withdrawal.amount_ada)
+                : Number(withdrawal?.amount_lovelace) / 1_000_000,
+            amount_usd: Number.isFinite(Number(withdrawal?.amount_usd))
+                ? Number(withdrawal.amount_usd)
+                : null,
+            usd_conversion_date: withdrawal?.usd_conversion_date || null,
+            ada_usd_rate: Number.isFinite(Number(withdrawal?.ada_usd_rate))
+                ? Number(withdrawal.ada_usd_rate)
+                : null,
             stake_address: withdrawal?.stake_address || null
         }))
         .slice(0, 200);
@@ -2280,7 +2383,7 @@ function createTreasuryWithdrawalCard(withdrawal) {
     const proposal = getTreasuryGovernanceProposal(withdrawal);
     const card = document.createElement(proposal ? 'button' : 'div');
     card.className = 'governance-card governance-menu-card governance-treasury-withdrawal-card';
-    card.dataset.sortAmount = String(withdrawal?.amount_lovelace || '0');
+    card.dataset.sortAmount = String(withdrawal?.amount_usd || '0');
     if (Number.isFinite(Number(withdrawal?.enacted_epoch))) {
         card.dataset.sortEpoch = String(Number(withdrawal.enacted_epoch));
     }
@@ -2300,8 +2403,17 @@ function createTreasuryWithdrawalCard(withdrawal) {
 
     const amount = document.createElement('span');
     amount.className = 'governance-card-detail governance-treasury-withdrawal-amount';
-    amount.textContent = formatFullAdaFromLovelace(withdrawal?.amount_lovelace);
+    amount.textContent = Number.isFinite(Number(withdrawal?.amount_usd))
+        ? formatCatalystCurrencyAmount(withdrawal.amount_usd, 'USD')
+        : formatFullAdaFromLovelace(withdrawal?.amount_lovelace);
     card.appendChild(amount);
+
+    if (Number.isFinite(Number(withdrawal?.amount_usd))) {
+        const adaAmount = document.createElement('span');
+        adaAmount.className = 'governance-card-detail';
+        adaAmount.textContent = formatAdaAmount(withdrawal?.amount_ada);
+        card.appendChild(adaAmount);
+    }
 
     const epoch = document.createElement('span');
     epoch.className = 'governance-card-detail';
