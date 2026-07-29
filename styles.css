@@ -1625,6 +1625,28 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     line-height: 1.15;
 }
 
+.funding-recipient-value-row,
+.governance-card-amount-row {
+    display: flex !important;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+}
+
+.governance-card-amount-row {
+    margin-top: 6px;
+}
+
+.governance-card-amount-row .governance-card-detail {
+    margin-top: 0;
+}
+
+.funding-recipient-ada-value {
+    color: var(--muted) !important;
+    font-size: 0.74rem !important;
+    font-weight: 700;
+}
+
 .governance-action-buttons {
     display: flex;
     flex-wrap: nowrap;

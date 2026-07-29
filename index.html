@@ -47,7 +47,7 @@
 
     <!-- Preload Logo -->
     <link rel="preload" href="tdsp_logo.webp?v=20260727-smooth-lines" as="image" type="image/webp">
-    <link rel="stylesheet" href="styles.css?v=20260728-fund15-proposals">
+    <link rel="stylesheet" href="styles.css?v=20260729-funding-recipients-usd">
 
     <script src="runtime.js?v=20260728-fund15-proposals" defer></script>
     <script src="index.js?v=20260728-fund15-proposals" defer></script>
@@ -306,7 +306,10 @@
                     <div id="gov-business-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show funding recipients">
                         <strong id="gov-business-count">0</strong>
                         <span>Funding Recipients</span>
-                        <span class="governance-summary-subvalue" id="gov-business-total">Received 0 ADA</span>
+                        <span class="governance-summary-subvalue funding-recipient-value-row" id="gov-business-total">
+                            <span id="gov-business-total-usd">Received $0</span>
+                            <span class="funding-recipient-ada-value" id="gov-business-total-ada">0 ADA</span>
+                        </span>
                     </div>
                     <div id="gov-drep-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show DRep directory">
                         <strong id="gov-drep-count">0</strong>
@@ -362,7 +365,7 @@
 
     <script src="chart.js"></script>
     <script src="starch.js?v=20260728-fund15-proposals" defer></script>
-    <script src="governance.js?v=20260729-treasury-historical-usd" defer></script>
+    <script src="governance.js?v=20260729-funding-recipients-usd" defer></script>
     <script src="stake.js?v=20260728-lan-preview" defer></script>
 </body>
 </html>

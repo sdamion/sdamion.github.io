@@ -869,10 +869,15 @@ function getTreasuryBusinessGroups(payload, catalystPayload = catalystBusinessSt
             label: proposer,
             value: 0,
             adaValue: 0,
+            usdPending: false,
             withdrawals: [],
             catalystProjects: []
         };
-        group.value += Number(withdrawal?.amount_usd) || 0;
+        if (hasNumericValue(withdrawal?.amount_usd)) {
+            group.value += Number(withdrawal.amount_usd);
+        } else {
+            group.usdPending = true;
+        }
         group.adaValue += Number(withdrawal?.amount_ada) || 0;
         group.withdrawals.push(withdrawal);
         groups.set(key, group);
@@ -885,10 +890,15 @@ function getTreasuryBusinessGroups(payload, catalystPayload = catalystBusinessSt
             label: business,
             value: 0,
             adaValue: 0,
+            usdPending: false,
             withdrawals: [],
             catalystProjects: []
         };
-        group.value += Number(project?.amount_received_usd) || 0;
+        if (hasNumericValue(project?.amount_received_usd)) {
+            group.value += Number(project.amount_received_usd);
+        } else {
+            group.usdPending = true;
+        }
         group.adaValue += Number(project?.amount_received_ada) || 0;
         group.catalystProjects.push(project);
         groups.set(key, group);
@@ -902,18 +912,31 @@ function getTreasuryBusinessGroups(payload, catalystPayload = catalystBusinessSt
 function getCatalystBusinessProjects(payload) {
     return (Array.isArray(payload?.projects) ? payload.projects : []).flatMap(project => {
         const amountUsd = Number(project?.amount_received_usd);
+        const legacyAmountAda = Number(project?.amount_received_lovelace) / 1_000_000;
         const id = String(project?.id || '').trim();
         const title = String(project?.title || '').trim();
-        if (!id || !title || !Number.isFinite(amountUsd) || amountUsd <= 0) return [];
-        const amountAda = project?.currency === 'ADA'
-            ? Number(project?.amount_received)
-            : null;
+        if (
+            !id
+            || !title
+            || (
+                (!Number.isFinite(amountUsd) || amountUsd <= 0)
+                && (!Number.isFinite(legacyAmountAda) || legacyAmountAda <= 0)
+            )
+        ) return [];
+        const sourceAmountAda = Number(project?.amount_received);
+        const amountAda = project?.currency === 'ADA' && Number.isFinite(sourceAmountAda)
+            ? sourceAmountAda
+            : Number.isFinite(legacyAmountAda) && legacyAmountAda > 0
+                ? legacyAmountAda
+                : null;
         return [{
             id,
             title,
             business: project?.business || 'Unknown Catalyst proposer',
             currency: project?.currency || null,
-            amount_received_usd: amountUsd,
+            amount_received_usd: hasNumericValue(project?.amount_received_usd)
+                ? amountUsd
+                : null,
             amount_requested_usd: Number(project?.amount_requested_usd),
             amount_received_ada: Number.isFinite(amountAda) ? amountAda : null,
             amount_requested_ada: project?.currency === 'ADA'
@@ -925,7 +948,7 @@ function getCatalystBusinessProjects(payload) {
             project_status: project?.project_status || null,
             funding_status: project?.funding_status || null,
             fund_name: project?.fund_name || null,
-            source: project?.source || payload?.source || 'lido_nation',
+            source: project?.source || payload?.source || 'project_catalyst_official',
             source_url: project?.source_url || null
         }];
     });
@@ -986,10 +1009,18 @@ function getTreasuryBusinessName(withdrawal) {
 function updateBusinessSummary(payload, catalystPayload = catalystBusinessState) {
     const groups = getTreasuryBusinessGroups(payload, catalystPayload);
     const total = groups.reduce((sum, group) => sum + group.value, 0);
+    const totalAda = groups.reduce((sum, group) => sum + group.adaValue, 0);
+    const usdPending = groups.some(group => group.usdPending);
     window.TDSPRuntime.setText('gov-business-count', groups.length.toLocaleString('en-US'));
     window.TDSPRuntime.setText(
-        'gov-business-total',
-        `Received ${formatCatalystCurrencyAmount(total, 'USD', true)}`
+        'gov-business-total-usd',
+        usdPending
+            ? 'Received USD updating'
+            : `Received ${formatCatalystCurrencyAmount(total, 'USD', true)}`
+    );
+    window.TDSPRuntime.setText(
+        'gov-business-total-ada',
+        totalAda > 0 ? formatAdaAmount(totalAda, true) : ''
     );
 }
 
@@ -1024,6 +1055,7 @@ async function openBusinessOverlay(returnFocus = document.activeElement) {
         if (!panel.isConnected) return;
         const groups = getTreasuryBusinessGroups(payload, catalystPayload);
         const total = groups.reduce((sum, group) => sum + group.value, 0);
+        const usdPending = groups.some(group => group.usdPending);
         panel.textContent = '';
 
         if (!groups.length) {
@@ -1040,7 +1072,9 @@ async function openBusinessOverlay(returnFocus = document.activeElement) {
         updateBusinessSummary(payload, catalystPayload);
         updateGovernanceMenuHeaderMeta(
             'governance-business-overlay',
-            `${groups.length.toLocaleString('en-US')} proposers • ${formatCatalystCurrencyAmount(total, 'USD', true)}`,
+            `${groups.length.toLocaleString('en-US')} proposers • ${usdPending
+                ? 'USD updating'
+                : formatCatalystCurrencyAmount(total, 'USD', true)}`,
             panel
         );
     } catch {
@@ -1612,6 +1646,13 @@ function formatCatalystUsdRate(value) {
     }).format(Number(value) || 0);
 }
 
+function hasNumericValue(value) {
+    return value !== null
+        && value !== undefined
+        && value !== ''
+        && Number.isFinite(Number(value));
+}
+
 function formatAdaAmount(value, compact = false) {
     const amount = Number(value);
     if (!Number.isFinite(amount)) return '-- ADA';
@@ -1805,9 +1846,11 @@ function createTreasuryBusinessCard(group, index) {
     name.className = 'governance-title';
     name.textContent = group.label;
 
-    const amount = document.createElement('span');
-    amount.className = 'governance-card-detail governance-treasury-withdrawal-amount';
-    amount.textContent = formatCatalystCurrencyAmount(group.value, 'USD');
+    const amount = createFundingRecipientAmountRow(
+        group.value,
+        group.adaValue,
+        group.usdPending
+    );
 
     const actions = document.createElement('span');
     actions.className = 'governance-card-detail';
@@ -1817,15 +1860,28 @@ function createTreasuryBusinessCard(group, index) {
     position.className = 'governance-list-index';
     position.textContent = String(index + 1);
 
-    card.append(position, name, amount);
-    if (group.adaValue > 0) {
-        const adaAmount = document.createElement('span');
-        adaAmount.className = 'governance-card-detail';
-        adaAmount.textContent = formatAdaAmount(group.adaValue);
-        card.appendChild(adaAmount);
-    }
-    card.appendChild(actions);
+    card.append(position, name, amount, actions);
     return card;
+}
+
+function createFundingRecipientAmountRow(usdValue, adaValue = null, usdPending = false) {
+    const row = document.createElement('span');
+    row.className = 'governance-card-amount-row';
+
+    const usdAmount = document.createElement('span');
+    usdAmount.className = 'governance-card-detail governance-treasury-withdrawal-amount';
+    usdAmount.textContent = usdPending
+        ? 'USD updating'
+        : formatCatalystCurrencyAmount(usdValue, 'USD');
+    row.appendChild(usdAmount);
+
+    if (Number(adaValue) > 0) {
+        const adaAmount = document.createElement('span');
+        adaAmount.className = 'governance-card-detail funding-recipient-ada-value';
+        adaAmount.textContent = formatAdaAmount(adaValue);
+        row.appendChild(adaAmount);
+    }
+    return row;
 }
 
 function getTreasuryBusinessActions(group) {
@@ -1901,9 +1957,11 @@ function createCatalystBusinessProjectCard(project) {
     title.className = 'governance-title';
     title.textContent = project.title;
 
-    const amount = document.createElement('span');
-    amount.className = 'governance-card-detail governance-treasury-withdrawal-amount';
-    amount.textContent = formatCatalystCurrencyAmount(project.amount_received_usd, 'USD');
+    const amount = createFundingRecipientAmountRow(
+        project.amount_received_usd,
+        project.amount_received_ada,
+        !hasNumericValue(project.amount_received_usd)
+    );
 
     const detail = document.createElement('span');
     detail.className = 'governance-card-detail';
@@ -1913,14 +1971,7 @@ function createCatalystBusinessProjectCard(project) {
         project.project_status || project.funding_status
     ].filter(Boolean).join(' • ');
 
-    card.append(title, amount);
-    if (Number.isFinite(Number(project.amount_received_ada))) {
-        const adaAmount = document.createElement('span');
-        adaAmount.className = 'governance-card-detail';
-        adaAmount.textContent = formatAdaAmount(project.amount_received_ada);
-        card.appendChild(adaAmount);
-    }
-    card.appendChild(detail);
+    card.append(title, amount, detail);
     return card;
 }
 
@@ -2010,6 +2061,12 @@ function renderCatalystProposalDetail(container, proposal) {
     addDetailRow(container, 'Proposal ID', proposal.id);
     addDetailRow(container, 'Proposer', proposal.business);
     addDetailRow(container, 'Fund', proposal.fund_name);
+    addDetailRow(container, 'Category', proposal.challenge || proposal.horizon_group);
+    addDetailRow(
+        container,
+        'Location',
+        [proposal.country, proposal.continent].filter(Boolean).join(', ') || null
+    );
     addDetailRow(container, 'Status', proposal.project_status || proposal.funding_status);
     addDetailRow(container, 'Requested', formatCatalystProposalAmount(proposal, 'requested'));
     addDetailRow(container, 'Received', formatCatalystProposalAmount(proposal, 'received'));
@@ -2032,6 +2089,39 @@ function renderCatalystProposalDetail(container, proposal) {
             )).join(', ')
         );
     }
+    if (proposal.voting) {
+        addDetailRow(container, 'Votes cast', Number(proposal.voting.votes_cast || 0).toLocaleString('en-US'));
+        addDetailRow(container, 'Voting result', proposal.voting.status);
+        addDetailRow(container, 'Yes', formatCatalystOfficialMoney(proposal.voting.yes));
+        addDetailRow(container, 'No', formatCatalystOfficialMoney(proposal.voting.no));
+        addDetailRow(container, 'Abstain', formatCatalystOfficialMoney(proposal.voting.abstain));
+    }
+    if (proposal.milestones) {
+        const total = Number(proposal.milestones.complete || 0)
+            + Number(proposal.milestones.in_progress || 0)
+            + (proposal.milestones.items || []).filter(item => (
+                !['complete', 'in progress'].includes(String(item?.status || '').toLowerCase())
+            )).length;
+        addDetailRow(
+            container,
+            'Milestones',
+            `${Number(proposal.milestones.complete || 0)} complete`
+                + ` • ${Number(proposal.milestones.in_progress || 0)} in progress`
+                + (total ? ` • ${total} total` : '')
+        );
+        addMarkdownDetailSection(
+            container,
+            'Milestone details',
+            (proposal.milestones.items || []).map(item => (
+                `${item.number ? `${item.number}. ` : ''}${item.title || 'Milestone'}`
+                + `${item.status ? ` — ${item.status}` : ''}`
+                + `${item.delivery_date ? ` — ${item.delivery_date}` : ''}`
+            )).join('\n')
+        );
+    }
+    if (proposal.completion?.date) {
+        addDetailRow(container, 'Completed', proposal.completion.date);
+    }
     addMarkdownDetailSection(container, 'Problem', proposal.problem);
     addMarkdownDetailSection(container, 'Solution', proposal.solution);
     addMarkdownDetailSection(container, 'Experience', proposal.experience);
@@ -2049,6 +2139,15 @@ function renderCatalystProposalDetail(container, proposal) {
         ));
         container.appendChild(actions);
     }
+}
+
+function formatCatalystOfficialMoney(value) {
+    const amount = Number(value?.amount);
+    if (!Number.isFinite(amount)) return null;
+    const currency = String(value?.currency || '').replace(/^\$/, '').toUpperCase();
+    return currency === 'ADA'
+        ? `${amount.toLocaleString('en-US', { maximumFractionDigits: 2 })} ADA`
+        : formatCatalystCurrencyAmount(amount, currency || 'USD');
 }
 
 function formatCatalystProposalAmount(proposal, kind) {
