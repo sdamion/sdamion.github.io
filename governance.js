@@ -1094,7 +1094,9 @@ const TREASURY_BUSINESS_ALIASES = Object.freeze({
     'teo petricevic': 'Emurgo',
     cardano2vn: 'Atala Prism',
     'sebastian pabon': 'Gimbalabs',
-    'maarten menheere': 'GameChanger'
+    'maarten menheere': 'GameChanger',
+    'catalyst rider': 'WingRiders',
+    'adem dean': 'Adem Dean - Drip Dropz'
 });
 
 const TREASURY_BUSINESS_BY_STAKE_ADDRESS = Object.freeze({
