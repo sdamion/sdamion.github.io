@@ -133,7 +133,7 @@ function initGovernance() {
     loadTreasuryData().catch(() => {});
     loadCatalystFundDirectory().catch(() => {
         window.TDSPRuntime.setText('gov-catalyst-proposals-count', 'Unavailable');
-        window.TDSPRuntime.setText('gov-catalyst-funds-count', 'Funds unavailable');
+        window.TDSPRuntime.setText('gov-catalyst-funds-count', 'Funded total unavailable');
     });
 }
 
@@ -622,13 +622,22 @@ function setupCatalystProposalsCard() {
 async function loadCatalystFundDirectory() {
     const payload = await fetchCatalystFundDirectoryPayload();
     catalystFundDirectoryState = payload;
+    const funds = Array.isArray(payload?.funds) ? payload.funds : [];
+    const fundedUsd = funds.reduce(
+        (total, fund) => total + (Number(fund?.requested_amount) || 0),
+        0
+    );
+    const claimedUsd = funds.reduce(
+        (total, fund) => total + (Number(fund?.claimed_amount) || 0),
+        0
+    );
     window.TDSPRuntime.setText(
         'gov-catalyst-proposals-count',
         Number(payload?.proposal_count || 0).toLocaleString('en-US')
     );
     window.TDSPRuntime.setText(
         'gov-catalyst-funds-count',
-        `${Number(payload?.fund_count || payload?.funds?.length || 0).toLocaleString('en-US')} Funds`
+        `Funded ${formatCatalystCurrencyAmount(fundedUsd, 'USD', true)} • Claimed ${formatCatalystCurrencyAmount(claimedUsd, 'USD', true)}`
     );
     return payload;
 }
@@ -1061,20 +1070,72 @@ async function openBusinessOverlay(returnFocus = document.activeElement) {
     panel.className = 'governance-list governance-action-group-list';
     const loading = document.createElement('p');
     loading.className = 'small-text';
-    loading.textContent = 'Loading funding recipients...';
+    loading.textContent = 'Loading Catalyst/Treasury recipients...';
     panel.appendChild(loading);
+
+    let groups = [];
+    let directoryReady = false;
+    let renderedSignature = '';
+    const renderRecipients = normalizedQuery => {
+        if (!directoryReady) return false;
+        const queries = normalizedQuery
+            .split(',')
+            .map(query => query.trim())
+            .filter(Boolean);
+        const matchingGroups = queries.length
+            ? groups.filter(group => {
+                const teamTerms = [
+                    group.label,
+                    ...group.catalystProjects.flatMap(getCatalystTeamSearchTerms),
+                    ...group.withdrawals.flatMap(withdrawal => (
+                        Array.isArray(withdrawal?.proposers) ? withdrawal.proposers : []
+                    ))
+                ].map(normalizeOverlaySearchText);
+                return queries.some(query => teamTerms.some(term => term.includes(query)));
+            })
+            : [];
+        const showMatches = matchingGroups.length > 0;
+        const visibleGroups = showMatches ? matchingGroups : groups;
+        const signature = showMatches
+            ? `recipients:${matchingGroups.map(group => group.key).join('|')}`
+            : 'recipients:all';
+        if (signature === renderedSignature) return showMatches;
+        renderedSignature = signature;
+        panel.replaceChildren();
+        visibleGroups.forEach((group, index) => {
+            panel.appendChild(createTreasuryBusinessCard(group, index));
+        });
+        if (!visibleGroups.length) {
+            const empty = document.createElement('p');
+            empty.className = 'small-text';
+            empty.textContent = 'No Catalyst/Treasury recipient data is available yet.';
+            panel.appendChild(empty);
+        }
+        const total = visibleGroups.reduce((sum, group) => sum + group.value, 0);
+        const usdPending = visibleGroups.some(group => group.usdPending);
+        updateGovernanceMenuHeaderMeta(
+            'governance-business-overlay',
+            `${visibleGroups.length.toLocaleString('en-US')} recipients • Received ${usdPending
+                ? 'USD updating'
+                : formatCatalystCurrencyAmount(total, 'USD', true)}`,
+            panel
+        );
+        return showMatches;
+    };
 
     createGovernanceMenuOverlay({
         id: 'governance-business-overlay',
         titleId: 'governance-business-title',
-        titleText: 'Funding Recipients',
-        closeLabel: 'Close funding recipients',
+        titleText: 'Catalyst/Treasury',
+        closeLabel: 'Close Catalyst/Treasury',
         closeOverlay: closeBusinessOverlay,
         bodyNodes: [panel],
         headerMeta: 'Loading...',
         returnFocus,
-        rootTitle: 'Funding Recipients',
-        defaultSort: 'amount-desc'
+        rootTitle: 'Catalyst/Treasury',
+        defaultSort: 'amount-desc',
+        searchPlaceholder: 'Search proposers or team members, separated by commas',
+        onSearch: renderRecipients
     });
 
     try {
@@ -1085,30 +1146,11 @@ async function openBusinessOverlay(returnFocus = document.activeElement) {
         treasuryState = payload;
         catalystBusinessState = catalystPayload;
         if (!panel.isConnected) return;
-        const groups = getTreasuryBusinessGroups(payload, catalystPayload);
-        const total = groups.reduce((sum, group) => sum + group.value, 0);
-        const usdPending = groups.some(group => group.usdPending);
-        panel.textContent = '';
-
-        if (!groups.length) {
-            const empty = document.createElement('p');
-            empty.className = 'small-text';
-            empty.textContent = 'No funding recipient data is available yet.';
-            panel.appendChild(empty);
-        } else {
-            groups.forEach((group, index) => {
-                panel.appendChild(createTreasuryBusinessCard(group, index));
-            });
-        }
-
+        groups = getTreasuryBusinessGroups(payload, catalystPayload);
+        directoryReady = true;
+        renderedSignature = '';
+        renderRecipients('');
         updateBusinessSummary(payload, catalystPayload);
-        updateGovernanceMenuHeaderMeta(
-            'governance-business-overlay',
-            `${groups.length.toLocaleString('en-US')} proposers • ${usdPending
-                ? 'USD updating'
-                : formatCatalystCurrencyAmount(total, 'USD', true)}`,
-            panel
-        );
     } catch {
         if (!panel.isConnected) return;
         panel.textContent = '';
@@ -1328,18 +1370,24 @@ async function openCatalystFundsOverlay(returnFocus = document.activeElement) {
     let renderedSignature = '';
     let directoryReady = false;
     const renderDirectory = normalizedQuery => {
-        if (!directoryReady) return;
-        const teamMatches = normalizedQuery
-            ? proposals.filter(proposal => getCatalystTeamSearchTerms(proposal).some(term => (
-                normalizeOverlaySearchText(term).includes(normalizedQuery)
-            )))
+        if (!directoryReady) return false;
+        const teamQueries = normalizedQuery
+            .split(',')
+            .map(query => query.trim())
+            .filter(Boolean);
+        const teamMatches = teamQueries.length
+            ? proposals.filter(proposal => {
+                const teamTerms = getCatalystTeamSearchTerms(proposal)
+                    .map(normalizeOverlaySearchText);
+                return teamQueries.some(query => teamTerms.some(term => term.includes(query)));
+            })
             : [];
         const showTeamMatches = teamMatches.length > 0;
         const visibleProposals = showTeamMatches ? teamMatches : proposals;
         const signature = showTeamMatches
             ? `team:${teamMatches.map(proposal => proposal.id).join('|')}`
             : 'funds';
-        if (signature === renderedSignature) return;
+        if (signature === renderedSignature) return showTeamMatches;
         renderedSignature = signature;
         panel.replaceChildren();
         if (showTeamMatches) {
@@ -1370,6 +1418,7 @@ async function openCatalystFundsOverlay(returnFocus = document.activeElement) {
             `Asked ${formatCatalystCurrencyAmount(askedUsd, 'USD', true)} • Received ${formatCatalystCurrencyAmount(receivedUsd, 'USD', true)}`,
             panel
         );
+        return showTeamMatches;
     };
 
     createGovernanceMenuOverlay({
@@ -1383,6 +1432,7 @@ async function openCatalystFundsOverlay(returnFocus = document.activeElement) {
         returnFocus,
         rootTitle: 'Catalyst Proposals',
         defaultSort: 'fund-desc',
+        searchPlaceholder: 'Search team members, separated by commas',
         onSearch: renderDirectory
     });
 
@@ -1827,7 +1877,7 @@ function openCatalystFundingProjectsOverlay(group, returnFocus) {
         headerMeta: `${group.projects.length.toLocaleString('en-US')} projects • ${formatCatalystFundingAmount(group.value, group.currency, true)}`,
         overlayClass: 'governance-action-detail-overlay',
         returnFocus,
-        rootTitle: 'Funding Recipients',
+        rootTitle: 'Catalyst/Treasury',
         defaultSort: 'fund-asc'
     });
 }
@@ -2024,7 +2074,7 @@ function openTreasuryBusinessActionsOverlay(group, returnFocus) {
         headerMeta: `${projectCount.toLocaleString('en-US')} projects • ${formatCatalystCurrencyAmount(group.value, 'USD', true)}`,
         overlayClass: 'governance-action-detail-overlay',
         returnFocus,
-        rootTitle: 'Funding Recipients',
+        rootTitle: 'Catalyst/Treasury',
         defaultSort: 'newest'
     });
 }
@@ -2088,7 +2138,7 @@ function openCatalystProposalDetailOverlay(project, returnFocus) {
             .join(' • '),
         overlayClass: 'governance-action-detail-overlay',
         returnFocus,
-        rootTitle: 'Funding Recipients'
+        rootTitle: 'Catalyst/Treasury'
     });
 
     loadCatalystProposalDetail(project)

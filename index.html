@@ -50,7 +50,7 @@
     <link rel="stylesheet" href="styles.css?v=20260729-funding-recipients-usd">
 
     <script src="runtime.js?v=20260728-fund15-proposals" defer></script>
-    <script src="index.js?v=20260729-catalyst-team-search" defer></script>
+    <script src="index.js?v=20260729-ada-price-symbol" defer></script>
 </head>
 <body>
     <header class="site-header" id="site-header">
@@ -107,7 +107,7 @@
                         </div>
                         <div class="pool-summary-clickable" data-price-key="ada_usd" data-price-ticker="ADA" role="button" tabindex="0" aria-label="Show ADA 24 hour price history">
                             <strong id="ada-price">Loading...</strong>
-                            <span class="pool-provider-label"><img class="pool-provider-icon" src="cardano_logo_ico.webp?v=20260727-retina" alt=""><span class="pool-provider-label-text">ADA</span></span>
+                            <span class="pool-provider-label"><img class="pool-provider-icon" src="cardano_logo_ico.webp?v=20260727-retina" alt="Cardano"></span>
                             <svg class="price-sparkline" data-price-key="ada_usd" viewBox="0 0 100 36" preserveAspectRatio="none" role="img" aria-label="ADA price over the last hour"><polyline points=""></polyline></svg>
                         </div>
                         <div class="pool-summary-clickable" data-price-key="strch_usd" data-price-ticker="STRCH" role="button" tabindex="0" aria-label="Show STRCH 24 hour price history">
@@ -286,7 +286,7 @@
                     <div id="gov-catalyst-proposals-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show Catalyst proposals by fund">
                         <strong id="gov-catalyst-proposals-count">Loading...</strong>
                         <span>Catalyst Proposals</span>
-                        <span class="governance-summary-subvalue" id="gov-catalyst-funds-count">Loading funds...</span>
+                        <span class="governance-summary-subvalue" id="gov-catalyst-funds-count">Loading funded total...</span>
                     </div>
                     <div id="gov-active-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show active governance actions">
                         <strong id="gov-active-count">0</strong>
@@ -303,9 +303,9 @@
                         <span>Rejected Actions</span>
                         <span class="governance-summary-subvalue" id="gov-rejected-ask">0 ADA</span>
                     </div>
-                    <div id="gov-business-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show funding recipients">
+                    <div id="gov-business-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show Catalyst and Treasury recipients">
                         <strong id="gov-business-count">0</strong>
-                        <span>Funding Recipients</span>
+                        <span>Catalyst/Treasury</span>
                         <span class="governance-summary-subvalue funding-recipient-value-row" id="gov-business-total">
                             <span id="gov-business-total-usd">Received $0</span>
                             <span class="funding-recipient-ada-value" id="gov-business-total-ada">0 ADA</span>
@@ -365,7 +365,7 @@
 
     <script src="chart.js"></script>
     <script src="starch.js?v=20260728-fund15-proposals" defer></script>
-    <script src="governance.js?v=20260729-catalyst-team-search" defer></script>
+    <script src="governance.js?v=20260729-catalyst-treasury-label" defer></script>
     <script src="stake.js?v=20260728-lan-preview" defer></script>
 </body>
 </html>

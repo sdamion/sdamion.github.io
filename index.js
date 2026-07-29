@@ -43,7 +43,7 @@ const PRICE_CHART_INTERVALS = Object.freeze([
 ]);
 const PRICE_TOKEN_CONFIG = Object.freeze({
     btc_usd: { elementId: 'btc-price', decimals: 0 },
-    ada_usd: { elementId: 'ada-price', decimals: 3 },
+    ada_usd: { elementId: 'ada-price', decimals: 3, prefix: '₳ ' },
     strch_usd: { elementId: 'strch-price', decimals: 12 },
     night_usd: { elementId: 'night-price', decimals: 4 }
 });
@@ -123,7 +123,10 @@ async function fetchPrices() {
         const prices = await response.json();
         latestPricePayload = prices;
         Object.entries(PRICE_TOKEN_CONFIG).forEach(([key, config]) => {
-            window.TDSPRuntime.setText(config.elementId, formatUsdPrice(prices[key], config.decimals));
+            window.TDSPRuntime.setText(
+                config.elementId,
+                `${config.prefix || ''}${formatUsdPrice(prices[key], config.decimals)}`
+            );
         });
         renderPriceSparklines(prices.history);
     } catch (error) {
@@ -1536,6 +1539,7 @@ function createUniversalOverlay(options) {
         showBack = true,
         enableSearch = true,
         defaultSort = '',
+        searchPlaceholder = 'Search by name, ID, title or status',
         onSearch = null,
         uniqueId = false
     } = options;
@@ -1600,7 +1604,7 @@ function createUniversalOverlay(options) {
     body.className = 'overlay-dialog-body';
     bodyNodes.forEach(node => body.appendChild(node));
     dialog.appendChild(body);
-    if (enableSearch) installOverlaySearch(body, { defaultSort, onSearch });
+    if (enableSearch) installOverlaySearch(body, { defaultSort, searchPlaceholder, onSearch });
 
     overlay.appendChild(dialog);
     document.body.appendChild(overlay);
@@ -1791,7 +1795,11 @@ function sortOverlayCards(body, cards, mode) {
     });
 }
 
-function installOverlaySearch(body, { defaultSort = '', onSearch = null } = {}) {
+function installOverlaySearch(body, {
+    defaultSort = '',
+    searchPlaceholder = 'Search by name, ID, title or status',
+    onSearch = null
+} = {}) {
     if (!body || body.querySelector(':scope > .overlay-search-bar')) return;
 
     const searchBar = document.createElement('div');
@@ -1801,7 +1809,7 @@ function installOverlaySearch(body, { defaultSort = '', onSearch = null } = {}) 
     const input = document.createElement('input');
     input.className = 'overlay-search-input';
     input.type = 'search';
-    input.placeholder = 'Search by name, ID, title or status';
+    input.placeholder = searchPlaceholder;
     input.setAttribute('aria-label', 'Search this overlay');
     input.autocomplete = 'off';
     input.autocapitalize = 'none';
@@ -1840,7 +1848,7 @@ function installOverlaySearch(body, { defaultSort = '', onSearch = null } = {}) 
 
     const applySearch = () => {
         const normalizedQuery = normalizeOverlaySearchText(input.value).trim();
-        if (typeof onSearch === 'function') onSearch(normalizedQuery);
+        const searchHandled = typeof onSearch === 'function' && onSearch(normalizedQuery) === true;
         const cards = getOverlaySearchCards(body);
         const relevantOptions = getRelevantOverlaySortOptions(cards);
         const currentOptionValues = Array.from(sort.options, option => option.value).join('|');
@@ -1876,9 +1884,12 @@ function installOverlaySearch(body, { defaultSort = '', onSearch = null } = {}) 
                 .map(normalizeOverlaySearchText)
                 .map(label => label.trim())
                 .filter(Boolean);
-            const matches = teamSearchActive
-                ? teamLabels.some(label => label.includes(normalizedQuery))
-                : terms.every(term => searchableText.includes(term));
+            const matches = searchHandled
+                || (
+                    teamSearchActive
+                        ? teamLabels.some(label => label.includes(normalizedQuery))
+                        : terms.every(term => searchableText.includes(term))
+                );
             card.hidden = !matches;
             if (matches) visible += 1;
         });
