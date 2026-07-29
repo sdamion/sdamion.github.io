@@ -652,15 +652,15 @@ async function loadTreasuryData() {
     const treasuryLovelace = getTreasuryLovelace(payload);
     if (!Number.isFinite(treasuryLovelace)) throw new Error('Treasury amount is unavailable');
 
-    window.TDSPRuntime.setText('gov-treasury-amount', formatCompactAdaFromLovelace(treasuryLovelace, { fixedFractionDigits: 2 }));
+    window.TDSPRuntime.setText('gov-treasury-amount', formatTileAdaFromLovelace(treasuryLovelace, { fixedFractionDigits: 2 }));
     const latestIncome = getTreasuryIncomeLovelace(payload);
     const latestEpoch = getTreasuryEpoch(payload);
     window.TDSPRuntime.setText('gov-treasury-epoch', `Treasury Epoch ${latestEpoch ?? '--'}`);
     window.TDSPRuntime.setText(
         'gov-treasury-income',
         Number.isFinite(latestIncome)
-            ? `Income ${formatCompactAdaFromLovelace(latestIncome, { fixedFractionDigits: 2 })}`
-            : 'Income -- ADA'
+            ? `Income ${formatTileAdaFromLovelace(latestIncome, { fixedFractionDigits: 2 })}`
+            : 'Income ₳ --'
     );
     updateBusinessSummary(payload, catalystPayload);
     if (governanceState) updateTreasuryBudgetBar();
@@ -947,6 +947,61 @@ function getCatalystTeamSearchTerms(project) {
     ]).map(value => String(value || '').trim()).filter(Boolean);
 }
 
+function getCatalystMultiSearchQueries(normalizedQuery) {
+    return String(normalizedQuery || '')
+        .split(',')
+        .map(query => query.trim())
+        .filter(Boolean);
+}
+
+function matchesCatalystMultiSearch(searchTerms, queries) {
+    if (!queries.length) return false;
+    const normalizedTerms = searchTerms
+        .map(normalizeOverlaySearchText)
+        .map(term => term.trim())
+        .filter(Boolean);
+    return queries.some(query => normalizedTerms.some(term => term.includes(query)));
+}
+
+function getFundingRecipientSearchTerms(group) {
+    return [
+        group?.label,
+        ...(Array.isArray(group?.catalystProjects)
+            ? group.catalystProjects.flatMap(getCatalystTeamSearchTerms)
+            : []),
+        ...(Array.isArray(group?.withdrawals)
+            ? group.withdrawals.flatMap(withdrawal => (
+                Array.isArray(withdrawal?.proposers) ? withdrawal.proposers : []
+            ))
+            : [])
+    ].filter(Boolean);
+}
+
+function getCatalystProposalUsdTotals(proposals) {
+    return (Array.isArray(proposals) ? proposals : []).reduce((totals, proposal) => ({
+        asked: totals.asked + (Number(proposal?.amount_requested_usd) || 0),
+        received: totals.received + (Number(proposal?.amount_received_usd) || 0)
+    }), { asked: 0, received: 0 });
+}
+
+function getFundingRecipientUsdTotals(groups) {
+    return (Array.isArray(groups) ? groups : []).reduce((totals, group) => {
+        const catalystAsked = group.catalystProjects.reduce(
+            (sum, project) => sum + (Number(project?.amount_requested_usd) || 0),
+            0
+        );
+        const treasuryAsked = group.withdrawals.reduce(
+            (sum, withdrawal) => sum + (Number(withdrawal?.amount_usd) || 0),
+            0
+        );
+        return {
+            asked: totals.asked + catalystAsked + treasuryAsked,
+            received: totals.received + (Number(group?.value) || 0),
+            pending: totals.pending || group?.usdPending === true
+        };
+    }, { asked: 0, received: 0, pending: false });
+}
+
 function getCatalystBusinessProjects(payload) {
     return (Array.isArray(payload?.projects) ? payload.projects : []).flatMap(project => {
         const amountUsd = Number(project?.amount_received_usd);
@@ -1050,18 +1105,13 @@ function getTreasuryBusinessName(withdrawal) {
 function updateBusinessSummary(payload, catalystPayload = catalystBusinessState) {
     const groups = getTreasuryBusinessGroups(payload, catalystPayload);
     const total = groups.reduce((sum, group) => sum + group.value, 0);
-    const totalAda = groups.reduce((sum, group) => sum + group.adaValue, 0);
     const usdPending = groups.some(group => group.usdPending);
     window.TDSPRuntime.setText('gov-business-count', groups.length.toLocaleString('en-US'));
     window.TDSPRuntime.setText(
         'gov-business-total-usd',
         usdPending
-            ? 'Received USD updating'
-            : `Received ${formatCatalystCurrencyAmount(total, 'USD', true)}`
-    );
-    window.TDSPRuntime.setText(
-        'gov-business-total-ada',
-        totalAda > 0 ? formatAdaAmount(totalAda, true) : ''
+            ? 'USD updating'
+            : formatCatalystCurrencyAmount(total, 'USD', true)
     );
 }
 
@@ -1078,21 +1128,12 @@ async function openBusinessOverlay(returnFocus = document.activeElement) {
     let renderedSignature = '';
     const renderRecipients = normalizedQuery => {
         if (!directoryReady) return false;
-        const queries = normalizedQuery
-            .split(',')
-            .map(query => query.trim())
-            .filter(Boolean);
+        const queries = getCatalystMultiSearchQueries(normalizedQuery);
         const matchingGroups = queries.length
-            ? groups.filter(group => {
-                const teamTerms = [
-                    group.label,
-                    ...group.catalystProjects.flatMap(getCatalystTeamSearchTerms),
-                    ...group.withdrawals.flatMap(withdrawal => (
-                        Array.isArray(withdrawal?.proposers) ? withdrawal.proposers : []
-                    ))
-                ].map(normalizeOverlaySearchText);
-                return queries.some(query => teamTerms.some(term => term.includes(query)));
-            })
+            ? groups.filter(group => matchesCatalystMultiSearch(
+                getFundingRecipientSearchTerms(group),
+                queries
+            ))
             : [];
         const showMatches = matchingGroups.length > 0;
         const visibleGroups = showMatches ? matchingGroups : groups;
@@ -1111,13 +1152,12 @@ async function openBusinessOverlay(returnFocus = document.activeElement) {
             empty.textContent = 'No Catalyst/Treasury recipient data is available yet.';
             panel.appendChild(empty);
         }
-        const total = visibleGroups.reduce((sum, group) => sum + group.value, 0);
-        const usdPending = visibleGroups.some(group => group.usdPending);
+        const totals = getFundingRecipientUsdTotals(visibleGroups);
         updateGovernanceMenuHeaderMeta(
             'governance-business-overlay',
-            `${visibleGroups.length.toLocaleString('en-US')} recipients • Received ${usdPending
-                ? 'USD updating'
-                : formatCatalystCurrencyAmount(total, 'USD', true)}`,
+            totals.pending
+                ? 'Asked/received USD updating'
+                : `Asked ${formatCatalystCurrencyAmount(totals.asked, 'USD', true)} • Received ${formatCatalystCurrencyAmount(totals.received, 'USD', true)}`,
             panel
         );
         return showMatches;
@@ -1371,16 +1411,12 @@ async function openCatalystFundsOverlay(returnFocus = document.activeElement) {
     let directoryReady = false;
     const renderDirectory = normalizedQuery => {
         if (!directoryReady) return false;
-        const teamQueries = normalizedQuery
-            .split(',')
-            .map(query => query.trim())
-            .filter(Boolean);
+        const teamQueries = getCatalystMultiSearchQueries(normalizedQuery);
         const teamMatches = teamQueries.length
-            ? proposals.filter(proposal => {
-                const teamTerms = getCatalystTeamSearchTerms(proposal)
-                    .map(normalizeOverlaySearchText);
-                return teamQueries.some(query => teamTerms.some(term => term.includes(query)));
-            })
+            ? proposals.filter(proposal => matchesCatalystMultiSearch(
+                getCatalystTeamSearchTerms(proposal),
+                teamQueries
+            ))
             : [];
         const showTeamMatches = teamMatches.length > 0;
         const visibleProposals = showTeamMatches ? teamMatches : proposals;
@@ -1405,17 +1441,10 @@ async function openCatalystFundsOverlay(returnFocus = document.activeElement) {
                 panel.appendChild(empty);
             }
         }
-        const askedUsd = visibleProposals.reduce(
-            (total, proposal) => total + (Number(proposal?.amount_requested_usd) || 0),
-            0
-        );
-        const receivedUsd = visibleProposals.reduce(
-            (total, proposal) => total + (Number(proposal?.amount_received_usd) || 0),
-            0
-        );
+        const totals = getCatalystProposalUsdTotals(visibleProposals);
         updateGovernanceMenuHeaderMeta(
             'governance-catalyst-funds-overlay',
-            `Asked ${formatCatalystCurrencyAmount(askedUsd, 'USD', true)} • Received ${formatCatalystCurrencyAmount(receivedUsd, 'USD', true)}`,
+            `Asked ${formatCatalystCurrencyAmount(totals.asked, 'USD', true)} • Received ${formatCatalystCurrencyAmount(totals.received, 'USD', true)}`,
             panel
         );
         return showTeamMatches;
@@ -1432,7 +1461,7 @@ async function openCatalystFundsOverlay(returnFocus = document.activeElement) {
         returnFocus,
         rootTitle: 'Catalyst Proposals',
         defaultSort: 'fund-desc',
-        searchPlaceholder: 'Search team members, separated by commas',
+        searchPlaceholder: 'Search proposers or team members, separated by commas',
         onSearch: renderDirectory
     });
 
@@ -5712,14 +5741,14 @@ async function loadSpoDirectory() {
                 window.TDSPRuntime.setText('gov-spo-count', spoDirectoryState.count.toLocaleString('en-US'));
                 window.TDSPRuntime.setText(
                     'gov-spo-total-delegated',
-                    `Delegated ${formatCompactAdaFromLovelace(spoDirectoryState.total_delegated_lovelace || 0)}`
+                    `Delegated ${formatTileAdaFromLovelace(spoDirectoryState.total_delegated_lovelace || 0)}`
                 );
                 return spoDirectoryState;
             })
             .catch(error => {
                 spoDirectoryPromise = null;
                 window.TDSPRuntime.setText('gov-spo-count', '--');
-                window.TDSPRuntime.setText('gov-spo-total-delegated', 'Delegated -- ADA');
+                window.TDSPRuntime.setText('gov-spo-total-delegated', 'Delegated ₳ --');
                 throw error;
             });
     }
@@ -8925,7 +8954,7 @@ async function updateGovernanceCounts(groups) {
     } catch {
         if (!cachedDrepStats) {
             window.TDSPRuntime.setText('gov-drep-count', '0');
-            window.TDSPRuntime.setText('gov-drep-total-power', 'VPower 0 ADA');
+            window.TDSPRuntime.setText('gov-drep-total-power', 'Voting Power ₳ 0');
         }
     }
 
@@ -8965,7 +8994,7 @@ function getDashboardDrepStats(payload) {
 
 function renderDrepSummaryStats(stats) {
     window.TDSPRuntime.setText('gov-drep-count', stats.count.toLocaleString('en-US'));
-    window.TDSPRuntime.setText('gov-drep-total-power', `VPower ${formatCompactAdaFromLovelace(stats.totalPower, { fixedFractionDigits: 2 })}`);
+    window.TDSPRuntime.setText('gov-drep-total-power', `Voting Power ${formatTileAdaFromLovelace(stats.totalPower, { fixedFractionDigits: 2 })}`);
 }
 
 function getConstitutionalCommitteeMemberCount(payload, groups = null) {
@@ -9451,8 +9480,8 @@ function formatGovernanceAskAmount(proposals) {
         : 0;
 
     return totalAsk
-        ? formatCompactAdaFromLovelace(totalAsk, { fixedFractionDigits: 2 })
-        : '0 ADA';
+        ? formatTileAdaFromLovelace(totalAsk, { fixedFractionDigits: 2 })
+        : '₳ 0';
 }
 
 async function getDrepStats(groups) {
@@ -9557,4 +9586,15 @@ function formatCompactAdaFromLovelace(value, options = {}) {
         minimumFractionDigits: fixedFractionDigits ?? 0,
         maximumFractionDigits: fixedFractionDigits ?? 2
     })} ADA`;
+}
+
+function formatTileAdaText(value) {
+    const text = String(value ?? '').trim();
+    return /\sADA$/i.test(text)
+        ? `₳ ${text.replace(/\sADA$/i, '')}`
+        : text;
+}
+
+function formatTileAdaFromLovelace(value, options = {}) {
+    return formatTileAdaText(formatCompactAdaFromLovelace(value, options));
 }

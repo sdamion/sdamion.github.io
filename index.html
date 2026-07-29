@@ -50,7 +50,7 @@
     <link rel="stylesheet" href="styles.css?v=20260729-funding-recipients-usd">
 
     <script src="runtime.js?v=20260728-fund15-proposals" defer></script>
-    <script src="index.js?v=20260729-ada-price-symbol" defer></script>
+    <script src="index.js?v=20260729-tile-ada-symbol" defer></script>
 </head>
 <body>
     <header class="site-header" id="site-header">
@@ -107,7 +107,7 @@
                         </div>
                         <div class="pool-summary-clickable" data-price-key="ada_usd" data-price-ticker="ADA" role="button" tabindex="0" aria-label="Show ADA 24 hour price history">
                             <strong id="ada-price">Loading...</strong>
-                            <span class="pool-provider-label"><img class="pool-provider-icon" src="cardano_logo_ico.webp?v=20260727-retina" alt="Cardano"></span>
+                            <span class="pool-provider-label"><img class="pool-provider-icon" src="cardano_logo_ico.webp?v=20260727-retina" alt=""><span class="pool-provider-label-text">ADA</span></span>
                             <svg class="price-sparkline" data-price-key="ada_usd" viewBox="0 0 100 36" preserveAspectRatio="none" role="img" aria-label="ADA price over the last hour"><polyline points=""></polyline></svg>
                         </div>
                         <div class="pool-summary-clickable" data-price-key="strch_usd" data-price-ticker="STRCH" role="button" tabindex="0" aria-label="Show STRCH 24 hour price history">
@@ -279,9 +279,9 @@
 
                 <div class="governance-summary" id="governance-summary">
                     <div id="gov-treasury-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show Cardano treasury data">
-                        <strong id="gov-treasury-amount">-- ADA</strong>
+                        <strong id="gov-treasury-amount">₳ --</strong>
                         <span id="gov-treasury-epoch">Treasury Epoch --</span>
-                        <span class="governance-summary-subvalue" id="gov-treasury-income">Income -- ADA</span>
+                        <span class="governance-summary-subvalue" id="gov-treasury-income">Income ₳ --</span>
                     </div>
                     <div id="gov-catalyst-proposals-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show Catalyst proposals by fund">
                         <strong id="gov-catalyst-proposals-count">Loading...</strong>
@@ -291,35 +291,34 @@
                     <div id="gov-active-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show active governance actions">
                         <strong id="gov-active-count">0</strong>
                         <span>Governance Actions</span>
-                        <span class="governance-summary-subvalue" id="gov-active-ask">0 ADA</span>
+                        <span class="governance-summary-subvalue" id="gov-active-ask">₳ 0</span>
                     </div>
                     <div id="gov-approved-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show approved governance actions">
                         <strong id="gov-approved-count">0</strong>
                         <span>Approved Actions</span>
-                        <span class="governance-summary-subvalue" id="gov-approved-ask">0 ADA</span>
+                        <span class="governance-summary-subvalue" id="gov-approved-ask">₳ 0</span>
                     </div>
                     <div id="gov-rejected-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show rejected governance actions">
                         <strong id="gov-rejected-count">0</strong>
                         <span>Rejected Actions</span>
-                        <span class="governance-summary-subvalue" id="gov-rejected-ask">0 ADA</span>
+                        <span class="governance-summary-subvalue" id="gov-rejected-ask">₳ 0</span>
                     </div>
                     <div id="gov-business-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show Catalyst and Treasury recipients">
                         <strong id="gov-business-count">0</strong>
                         <span>Catalyst/Treasury Recipients</span>
                         <span class="governance-summary-subvalue funding-recipient-value-row" id="gov-business-total">
-                            <span id="gov-business-total-usd">Received $0</span>
-                            <span class="funding-recipient-ada-value" id="gov-business-total-ada">0 ADA</span>
+                            <span id="gov-business-total-usd">$0</span>
                         </span>
                     </div>
                     <div id="gov-drep-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show DRep directory">
                         <strong id="gov-drep-count">0</strong>
                         <span>DReps</span>
-                        <span class="governance-summary-subvalue" id="gov-drep-total-power">VPower 0 ADA</span>
+                        <span class="governance-summary-subvalue" id="gov-drep-total-power">Voting Power ₳ 0</span>
                     </div>
                     <div id="gov-spo-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show stake pool operator directory">
                         <strong id="gov-spo-count">0</strong>
                         <span>SPOs</span>
-                        <span class="governance-summary-subvalue" id="gov-spo-total-delegated">Delegated 0 ADA</span>
+                        <span class="governance-summary-subvalue" id="gov-spo-total-delegated">Delegated ₳ 0</span>
                     </div>
                     <div id="gov-committee-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show Constitutional Committee members">
                         <strong id="gov-committee-count">0</strong>
@@ -365,7 +364,7 @@
 
     <script src="chart.js"></script>
     <script src="starch.js?v=20260728-fund15-proposals" defer></script>
-    <script src="governance.js?v=20260729-catalyst-treasury-recipients" defer></script>
+    <script src="governance.js?v=20260729-voting-power-label" defer></script>
     <script src="stake.js?v=20260728-lan-preview" defer></script>
 </body>
 </html>

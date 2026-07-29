@@ -43,7 +43,7 @@ const PRICE_CHART_INTERVALS = Object.freeze([
 ]);
 const PRICE_TOKEN_CONFIG = Object.freeze({
     btc_usd: { elementId: 'btc-price', decimals: 0 },
-    ada_usd: { elementId: 'ada-price', decimals: 3, prefix: '₳ ' },
+    ada_usd: { elementId: 'ada-price', decimals: 3 },
     strch_usd: { elementId: 'strch-price', decimals: 12 },
     night_usd: { elementId: 'night-price', decimals: 4 }
 });
@@ -2237,7 +2237,7 @@ function formatInteger(value) {
 function formatAdaFromLovelace(value) {
     const number = Number(value);
     if (!Number.isFinite(number)) return 'N/A';
-    return `${new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(number / 1_000_000)} ADA`;
+    return `₳ ${new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(number / 1_000_000)}`;
 }
 
 function formatPoolMargin(value) {
