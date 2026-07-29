@@ -1096,7 +1096,16 @@ const TREASURY_BUSINESS_ALIASES = Object.freeze({
     'sebastian pabon': 'Gimbalabs',
     'maarten menheere': 'GameChanger',
     'catalyst rider': 'WingRiders',
-    'adem dean': 'Adem Dean - Drip Dropz'
+    'drip dropz': 'Adam Dean - Drip Dropz',
+    'adam dean': 'Adam Dean - Drip Dropz',
+    josef: 'Cexplorer',
+    'marcel - eternl.io': 'Eternl',
+    andrewwestberg: 'NEWM',
+    'newm foundation': 'NEWM',
+    'gimbalabs team': 'Gimbalabs',
+    'gimbalabs hk': 'Gimbalabs',
+    'gimbalabs official': 'Gimbalabs',
+    'björn sandmann': 'Blocktrust (Atala PRISM)'
 });
 
 const TREASURY_BUSINESS_BY_STAKE_ADDRESS = Object.freeze({
