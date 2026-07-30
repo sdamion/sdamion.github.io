@@ -1771,10 +1771,13 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 
 .governance-card {
     position: relative;
-    display: block;
+    display: grid;
+    align-content: start;
+    gap: 6px;
     width: 100%;
     min-width: 0;
-    padding: 16px;
+    padding: 16px 16px 18px;
+    overflow: hidden;
     color: var(--text);
     cursor: pointer;
     font: inherit;
@@ -1795,6 +1798,25 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     font: inherit;
     text-align: left;
     box-shadow: none;
+}
+
+.governance-card > :last-child,
+.governance-card-open > :last-child {
+    margin-bottom: 0;
+}
+
+.governance-list-index {
+    display: inline-grid;
+    width: 30px;
+    height: 30px;
+    margin: 0 0 4px;
+    place-items: center;
+    border-radius: 999px;
+    background: var(--overlay-surface-strong);
+    color: var(--accent-strong);
+    font-size: 0.82rem;
+    font-weight: 800;
+    line-height: 1;
 }
 
 .governance-card-open:hover {
@@ -1926,6 +1948,7 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     line-height: 1.25;
     overflow-wrap: anywhere;
     word-break: break-word;
+    white-space: normal;
 }
 
 .governance-expiration {
@@ -1945,6 +1968,7 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     font-weight: 600;
     overflow-wrap: anywhere;
     word-break: break-word;
+    white-space: normal;
 }
 
 .governance-vote-button,
@@ -3101,6 +3125,7 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 .table-shell td {
     overflow-wrap: anywhere;
     word-break: break-word;
+    white-space: normal;
 }
 
 .governance-menu-overlay .governance-markdown-code,
