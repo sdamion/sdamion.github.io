@@ -1114,7 +1114,8 @@ const TREASURY_BUSINESS_ALIASES = Object.freeze({
     'chadle (bbhmm)': 'zenGate Global',
     'emily martins': 'Liqwid Labs',
     'michal porubsky': 'Vacuumlabs',
-    'michael yagi': 'MLabs'
+    'michael yagi': 'MLabs',
+    'opshinlanguage lang': 'Opshin'
 });
 
 const TREASURY_BUSINESS_BY_STAKE_ADDRESS = Object.freeze({
@@ -1163,7 +1164,9 @@ const TREASURY_BUSINESS_BY_ACTION_ID = Object.freeze({
     gov_action13tfag48nf94rtjcdq7c06vhkslmxxw9h6c88sl7q5g5nnewcsvlqczags6z: 'Harmonic Labs',
     gov_action13tfag48nf94rtjcdq7c06vhkslmxxw9h6c88sl7q5g5nnewcsvlzyc3clg6: 'PyCardano',
     gov_action1k02990lhw6wh74t7c6ufw3mqaek9ujtvyan99dj5qv5kvcs7pn8sj72rg72: 'TxPipe',
-    gov_action13tfag48nf94rtjcdq7c06vhkslmxxw9h6c88sl7q5g5nnewcsvlqx488pdm: 'Vacuumlabs'
+    gov_action13tfag48nf94rtjcdq7c06vhkslmxxw9h6c88sl7q5g5nnewcsvlqx488pdm: 'Vacuumlabs',
+    gov_action1cp0w6zwgwpj98jtu3r2q838lgwmhs6j49l58zx4q05lx220lmzaqqztnljz: 'Cardano Pentad',
+    gov_action13tfag48nf94rtjcdq7c06vhkslmxxw9h6c88sl7q5g5nnewcsvlzzy7m65d: 'Opshin'
 });
 
 function normalizeTreasuryBusinessName(value) {
