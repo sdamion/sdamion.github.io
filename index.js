@@ -9,6 +9,7 @@ const MITHRIL_API_URL = IS_LOCAL_PREVIEW ? '/__mithril_proxy__' : 'https://api.t
 const ICEBREAKER_API_URL = IS_LOCAL_PREVIEW ? '/__icebreaker_proxy__' : 'https://api.tdsp.online/api/icebreaker';
 const STARCH_POOL_API_URL = IS_LOCAL_PREVIEW ? '/__starch_pools_proxy__' : 'https://api.tdsp.online/api/starch/pools';
 const LEADER_SCHEDULE_API_URL = IS_LOCAL_PREVIEW ? '/__leader_schedule_proxy__' : 'https://api.tdsp.online/api/leader-schedule';
+const DATABASE_STATUS_API_URL = IS_LOCAL_PREVIEW ? '/__sqlite_status_proxy__' : 'https://api.tdsp.online/api/sqlite/status';
 const STARCH_POOL_WEBSITES = Object.freeze({
     '4free': 'https://x.com/4FREE_stakepool',
     a3c: 'https://x.com/A3Cpool_Shawn',
@@ -823,6 +824,7 @@ document.addEventListener("DOMContentLoaded", () => {
     fetchIcebreakerStatus();
     fetchStarchPoolStatus();
     fetchLeaderSchedule();
+    fetchDatabaseStatus();
     setInterval(fetchPrices, 30000);
     setInterval(fetchCryptoNews, 300000);
     setInterval(fetchCardanoEvents, 900000);
@@ -831,8 +833,43 @@ document.addEventListener("DOMContentLoaded", () => {
     setInterval(fetchIcebreakerStatus, 300000);
     setInterval(fetchStarchPoolStatus, 300000);
     setInterval(fetchLeaderSchedule, 300000);
+    setInterval(fetchDatabaseStatus, 300000);
     initUI();
 });
+
+async function fetchDatabaseStatus() {
+    const status = document.getElementById('database-status');
+    const text = document.getElementById('database-status-text');
+    if (!status || !text) return;
+
+    try {
+        const response = await fetch(DATABASE_STATUS_API_URL, { cache: 'no-store' });
+        if (!response.ok) throw new Error(`Database status HTTP Error: ${response.status}`);
+        const payload = await response.json();
+        const recordCount = Number(payload.ai_records);
+        status.classList.remove('is-active', 'is-loading', 'is-down');
+
+        if (payload.rebuilding) {
+            status.classList.add('is-loading');
+            text.textContent = 'DB syncing';
+            return;
+        }
+
+        if (payload.enabled && Number.isFinite(recordCount) && recordCount > 0 && !payload.last_error) {
+            status.classList.add('is-active');
+            text.textContent = `DB ${recordCount.toLocaleString('en-US')}`;
+            return;
+        }
+
+        status.classList.add('is-down');
+        text.textContent = 'DB down';
+    } catch (error) {
+        console.error('Database status could not be loaded', error);
+        status.classList.remove('is-active', 'is-loading');
+        status.classList.add('is-down');
+        text.textContent = 'DB down';
+    }
+}
 
 function initFixedHeaderLayout() {
     const header = document.getElementById('site-header');
