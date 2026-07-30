@@ -1461,6 +1461,9 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     gap: 10px;
     align-content: start;
     grid-auto-rows: max-content;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
     max-height: 360px;
     overflow-y: auto;
     scrollbar-width: thin;
@@ -1484,16 +1487,22 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     display: grid;
     gap: 4px;
     align-content: start;
+    min-width: 0;
+    max-width: 100%;
     padding: 11px 12px;
+    overflow: hidden;
     border: 1px solid var(--line);
     border-radius: 8px;
     background: var(--surface-muted);
 }
 
 .constitution-chat-message p {
+    min-width: 0;
+    max-width: 100%;
     color: var(--text);
     white-space: pre-wrap;
     overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 .constitution-chat-message .constitution-chat-stake-prompt {
@@ -1551,6 +1560,7 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 
 .constitution-chat-form textarea {
     width: 100%;
+    min-width: 0;
     min-height: 44px;
     max-height: 128px;
     padding: 10px 12px;
@@ -3086,11 +3096,16 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 
 .governance-menu-overlay :is(
     .overlay-dialog-body,
+    .overlay-dialog-body > *,
     .governance-list,
     .governance-menu-card,
+    .governance-menu-card > *,
     .governance-card,
+    .governance-card > *,
     .governance-card-open,
+    .governance-card-open > *,
     .governance-cc-member,
+    .governance-cc-member > *,
     .governance-drep-member-copy,
     .governance-markdown,
     .governance-markdown-section,
@@ -3109,10 +3124,14 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 .governance-menu-overlay :is(
     .governance-title,
     .governance-card-detail,
+    .governance-card *,
+    .governance-card-open *,
     .governance-cc-member-hash,
     .governance-cc-member-meta,
     .governance-cc-member-stats,
     .governance-drep-id,
+    .constitution-chat,
+    .constitution-chat *,
     .governance-markdown,
     .governance-markdown-code,
     .governance-markdown-table,
