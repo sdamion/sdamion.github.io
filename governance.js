@@ -4067,7 +4067,8 @@ function createGovernanceCard(proposal, options = {}) {
     if (isGovernanceProposalOpenForVoting(proposal)) {
         card.appendChild(createGovernanceProposalActionButtons(proposal, {
             showSummary: false,
-            showBot: false
+            showBot: false,
+            showVote: false
         }));
     }
 
@@ -4423,7 +4424,7 @@ function createGovernanceProposalActionButtons(proposal, options = {}) {
             )
         ));
     }
-    if (isGovernanceProposalOpenForVoting(proposal)) {
+    if (options.showVote !== false && isGovernanceProposalOpenForVoting(proposal)) {
         actions.appendChild(createGovernanceProposalActionButton(
             'Vote as DRep',
             'governance-detail-vote-button',
