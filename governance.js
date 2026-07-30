@@ -1114,6 +1114,13 @@ const TREASURY_BUSINESS_BY_STAKE_ADDRESS = Object.freeze({
     stake17x2x5cv4nlwptph8kxvnyw93pp2sp54dk54dpfp2ax7fkggaj3ty4: 'UTxO Company / Siban Labs'
 });
 
+const TREASURY_BUSINESS_BY_ACTION_ID = Object.freeze({
+    gov_action13tfag48nf94rtjcdq7c06vhkslmxxw9h6c88sl7q5g5nnewcsvlqz6d98zp: 'Input Output Global',
+    gov_action13tfag48nf94rtjcdq7c06vhkslmxxw9h6c88sl7q5g5nnewcsvlpwywvhcq: 'Input Output Global',
+    gov_action13tfag48nf94rtjcdq7c06vhkslmxxw9h6c88sl7q5g5nnewcsvlzqhm6e8q: 'Input Output Global',
+    gov_action13tfag48nf94rtjcdq7c06vhkslmxxw9h6c88sl7q5g5nnewcsvlqyxzxz7k: 'Input Output Global'
+});
+
 function normalizeTreasuryBusinessName(value) {
     const name = String(value || '').trim();
     if (!name) return 'Unknown proposer';
@@ -1122,7 +1129,8 @@ function normalizeTreasuryBusinessName(value) {
 
 function getTreasuryBusinessName(withdrawal) {
     const stakeAddress = String(withdrawal?.stake_address || '').trim();
-    return withdrawal?.business
+    return TREASURY_BUSINESS_BY_ACTION_ID[String(withdrawal?.action_id || '').trim()]
+        || withdrawal?.business
         || TREASURY_BUSINESS_BY_STAKE_ADDRESS[stakeAddress]
         || normalizeTreasuryBusinessName(withdrawal?.proposer);
 }
