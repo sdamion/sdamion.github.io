@@ -1079,6 +1079,7 @@ const TREASURY_BUSINESS_ALIASES = Object.freeze({
     'ethan | optim': 'Optim',
     'seira yun': 'Socious.io',
     'seira yun socious.io': 'Socious.io',
+    'socious team': 'Socious.io',
     'darlington wleh': 'Lido Nation',
     'donbosco otunga': 'Lido Nation',
     '$conrad': 'ADA Handle',
