@@ -69,10 +69,6 @@
                         <img class="tdspbot-nav-icon" src="bot.svg" alt="" width="18" height="18">
                         <span>TDSPBot</span>
                     </button>
-                    <span class="nav-db-status is-loading" id="database-status" aria-live="polite">
-                        <span class="nav-db-status__dot" aria-hidden="true"></span>
-                        <span id="database-status-text">DB loading</span>
-                    </span>
                 </nav>
                 <div class="menu-bar__side">
                     <span id="menu-epoch" class="menu-epoch nav-status" aria-live="polite">Epoch ...</span>
@@ -353,7 +349,11 @@
     </main>
 
     <footer class="site-footer">
-        &copy; 2026 The Dutch Stake Pool. All rights reserved.
+        <span>&copy; 2026 The Dutch Stake Pool. All rights reserved.</span>
+        <span class="nav-db-status is-loading" id="database-status" aria-live="polite">
+            <span class="nav-db-status__dot" aria-hidden="true"></span>
+            <span id="database-status-text">DB loading</span>
+        </span>
     </footer>
 
     <template id="stakenow">
