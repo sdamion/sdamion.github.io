@@ -343,7 +343,7 @@ function setupConstitutionChat(panel, context = null) {
     input.addEventListener('keydown', event => {
         if (event.key === 'Enter' && !event.shiftKey) {
             event.preventDefault();
-            form.requestSubmit(submit);
+            form.requestSubmit(newQuestion);
         }
     });
     newQuestion.addEventListener('click', () => {
