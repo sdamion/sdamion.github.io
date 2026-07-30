@@ -1037,7 +1037,9 @@ function getCatalystBusinessProjects(payload) {
         return [{
             id,
             title,
-            business: project?.business || 'Unknown Catalyst proposer',
+            business: project?.business
+                ? normalizeTreasuryBusinessName(project.business)
+                : 'Unknown Catalyst proposer',
             currency: project?.currency || null,
             amount_received_usd: hasNumericValue(project?.amount_received_usd)
                 ? amountUsd
@@ -1107,7 +1109,12 @@ const TREASURY_BUSINESS_ALIASES = Object.freeze({
     'gimbalabs team': 'Gimbalabs',
     'gimbalabs hk': 'Gimbalabs',
     'gimbalabs official': 'Gimbalabs',
-    'björn sandmann': 'Blocktrust (Atala PRISM)'
+    'björn sandmann': 'Blocktrust (Atala PRISM)',
+    jschreiner22: 'Snapbrillia',
+    'chadle (bbhmm)': 'zenGate Global',
+    'emily martins': 'Liqwid Labs',
+    'michal porubsky': 'Vacuumlabs',
+    'michael yagi': 'MLabs'
 });
 
 const TREASURY_BUSINESS_BY_STAKE_ADDRESS = Object.freeze({
@@ -1132,7 +1139,23 @@ const TREASURY_BUSINESS_BY_ACTION_ID = Object.freeze({
     gov_action13tfag48nf94rtjcdq7c06vhkslmxxw9h6c88sl7q5g5nnewcsvlq77jt4x4: 'Eryx',
     gov_action13tfag48nf94rtjcdq7c06vhkslmxxw9h6c88sl7q5g5nnewcsvlpx66gmxa: 'NFTCDN',
     gov_action13tfag48nf94rtjcdq7c06vhkslmxxw9h6c88sl7q5g5nnewcsvlpvhtd5td: 'Input Output Global',
-    gov_action13tfag48nf94rtjcdq7c06vhkslmxxw9h6c88sl7q5g5nnewcsvlpqx4t762: 'Eternl'
+    gov_action13tfag48nf94rtjcdq7c06vhkslmxxw9h6c88sl7q5g5nnewcsvlpqx4t762: 'Eternl',
+    gov_action18nefry4qacd80xzs2srjahxm2e4vz3c8wvrr03rrtk8mdqfuknysq66459t: 'MLabs',
+    gov_action193leqzml768nz7nmpepzx822a5mzyanqhtewaxjtul5gp6uhwvfsqgl2qg0: 'BloxBean',
+    gov_action13tfag48nf94rtjcdq7c06vhkslmxxw9h6c88sl7q5g5nnewcsvlzgf074ea: 'MLabs',
+    gov_action1k02990lhw6wh74t7c6ufw3mqaek9ujtvyan99dj5qv5kvcs7pn8ssd0ztd8: 'TxPipe',
+    gov_action1k02990lhw6wh74t7c6ufw3mqaek9ujtvyan99dj5qv5kvcs7pn8sztttste: 'TxPipe',
+    gov_action1k02990lhw6wh74t7c6ufw3mqaek9ujtvyan99dj5qv5kvcs7pn8s5z9qdza: 'TxPipe',
+    gov_action13tfag48nf94rtjcdq7c06vhkslmxxw9h6c88sl7q5g5nnewcsvlqvckzwqt: 'Anastasia Labs',
+    gov_action13tfag48nf94rtjcdq7c06vhkslmxxw9h6c88sl7q5g5nnewcsvlpgcp0jyh: 'AdaStat.net',
+    gov_action13tfag48nf94rtjcdq7c06vhkslmxxw9h6c88sl7q5g5nnewcsvlqsufvuyl: 'TxPipe',
+    gov_action13tfag48nf94rtjcdq7c06vhkslmxxw9h6c88sl7q5g5nnewcsvlq2yeptuu: 'TxPipe',
+    gov_action1k02990lhw6wh74t7c6ufw3mqaek9ujtvyan99dj5qv5kvcs7pn8sw64d667: 'TxPipe',
+    gov_action13tfag48nf94rtjcdq7c06vhkslmxxw9h6c88sl7q5g5nnewcsvlqghuqg03: 'TxPipe',
+    gov_action1k02990lhw6wh74t7c6ufw3mqaek9ujtvyan99dj5qv5kvcs7pn8svfsvefn: 'MLabs',
+    gov_action13tfag48nf94rtjcdq7c06vhkslmxxw9h6c88sl7q5g5nnewcsvlq63cfnf0: 'MLabs',
+    gov_action13tfag48nf94rtjcdq7c06vhkslmxxw9h6c88sl7q5g5nnewcsvlpyflfc4s: 'Cexplorer',
+    gov_action13tfag48nf94rtjcdq7c06vhkslmxxw9h6c88sl7q5g5nnewcsvlqj0vdlhj: 'Vacuumlabs'
 });
 
 function normalizeTreasuryBusinessName(value) {
@@ -1144,7 +1167,9 @@ function normalizeTreasuryBusinessName(value) {
 function getTreasuryBusinessName(withdrawal) {
     const stakeAddress = String(withdrawal?.stake_address || '').trim();
     return TREASURY_BUSINESS_BY_ACTION_ID[String(withdrawal?.action_id || '').trim()]
-        || withdrawal?.business
+        || (withdrawal?.business
+            ? normalizeTreasuryBusinessName(withdrawal.business)
+            : null)
         || TREASURY_BUSINESS_BY_STAKE_ADDRESS[stakeAddress]
         || normalizeTreasuryBusinessName(withdrawal?.proposer);
 }
@@ -1553,7 +1578,9 @@ function getCatalystFundingProjects(payload) {
         return [{
             id,
             title,
-            business: project?.business || 'Unknown Catalyst proposer',
+            business: project?.business
+                ? normalizeTreasuryBusinessName(project.business)
+                : 'Unknown Catalyst proposer',
             fund_name: fundName,
             currency: project?.currency || null,
             amount_requested: project?.amount_requested,
@@ -2066,6 +2093,7 @@ function createCatalystProposalCard(proposal) {
     const card = document.createElement('div');
     card.className = 'governance-card governance-menu-card governance-treasury-withdrawal-card';
     card.dataset.searchText = [
+        proposal?.id,
         proposal?.title,
         proposal?.business,
         proposal?.project_status,
@@ -2082,35 +2110,24 @@ function createCatalystProposalCard(proposal) {
         openCatalystProposalDetailOverlay(proposal, event.currentTarget);
     });
 
-    const title = document.createElement('strong');
-    title.className = 'governance-title';
-    title.textContent = proposal?.title || 'Untitled Catalyst proposal';
-
-    const proposer = document.createElement('span');
-    proposer.className = 'governance-card-detail';
-    proposer.textContent = proposal?.business || 'Unknown Catalyst proposer';
-
-    const status = document.createElement('span');
-    status.className = 'governance-card-detail';
-    status.textContent = [
-        proposal?.project_status,
-        proposal?.funding_status
-    ].filter(Boolean).join(' • ') || 'Status unavailable';
-
-    const requested = document.createElement('span');
-    requested.className = 'governance-card-detail governance-treasury-withdrawal-amount';
-    requested.textContent = `Requested ${formatCatalystProposalAmount(proposal, 'requested') || '--'}`;
-
-    const received = document.createElement('span');
-    received.className = 'governance-card-detail';
-    received.textContent = `Received ${formatCatalystProposalAmount(proposal, 'received') || '--'}`;
-
-    openButton.append(title, proposer, status, requested);
-    appendCatalystAdaAmount(openButton, proposal, 'requested');
-    openButton.appendChild(received);
-    appendCatalystAdaAmount(openButton, proposal, 'received');
+    appendUniversalFundingTileContent(openButton, {
+        title: proposal?.title || 'Untitled Catalyst proposal',
+        usdValue: proposal?.amount_requested_usd,
+        adaValue: String(proposal?.currency || '').toUpperCase() === 'ADA'
+            ? proposal?.amount_requested
+            : null,
+        usdPending: !hasNumericValue(proposal?.amount_requested_usd),
+        contextItems: getCatalystTileContext(proposal),
+        proposer: proposal?.business
+            ? normalizeTreasuryBusinessName(proposal.business)
+            : 'Unknown Catalyst proposer',
+        detailItems: [
+            `Received ${formatCatalystProposalAmount(proposal, 'received') || '--'}`
+        ]
+    });
     appendCatalystMilestoneIndicator(openButton, proposal);
-    card.append(openButton, createCatalystProposalActionButtons(proposal));
+    card.appendChild(openButton);
+    appendProposalIdCopyButton(card, proposal?.id);
     return card;
 }
 
@@ -2165,6 +2182,7 @@ function createCatalystFundingProjectCard(project, group) {
     const card = document.createElement('div');
     card.className = 'governance-card governance-menu-card governance-treasury-withdrawal-card';
     card.dataset.searchText = [
+        project.id,
         project.title,
         project.business,
         project.fund_name,
@@ -2217,7 +2235,8 @@ function createCatalystFundingProjectCard(project, group) {
     openButton.appendChild(requested);
     appendCatalystAdaAmount(openButton, project, 'requested');
     appendCatalystMilestoneIndicator(openButton, project);
-    card.append(openButton, createCatalystProposalActionButtons(project));
+    card.appendChild(openButton);
+    appendProposalIdCopyButton(card, project?.id);
     return card;
 }
 
@@ -2359,6 +2378,7 @@ function createCatalystBusinessProjectCard(project) {
     const card = document.createElement('div');
     card.className = 'governance-card governance-menu-card governance-treasury-withdrawal-card';
     card.dataset.searchText = [
+        project.id,
         project.title,
         project.fund_name,
         project.project_status,
@@ -2374,28 +2394,70 @@ function createCatalystBusinessProjectCard(project) {
         openCatalystProposalDetailOverlay(project, event.currentTarget);
     });
 
+    appendUniversalFundingTileContent(openButton, {
+        title: project.title,
+        usdValue: project.amount_received_usd,
+        adaValue: project.amount_received_ada,
+        usdPending: !hasNumericValue(project.amount_received_usd),
+        contextItems: getCatalystTileContext(project),
+        proposer: project?.business
+            ? normalizeTreasuryBusinessName(project.business)
+            : 'Unknown Catalyst proposer'
+    });
+    appendCatalystMilestoneIndicator(openButton, project);
+    card.appendChild(openButton);
+    appendProposalIdCopyButton(card, project?.id);
+    return card;
+}
+
+function appendProposalIdCopyButton(card, proposalId) {
+    const id = String(proposalId || '').trim();
+    if (!id) return;
+    const copyButton = createGovernanceCopyButton(id, 'Catalyst proposal ID');
+    copyButton.classList.add('governance-action-id-copy-button');
+    card.appendChild(copyButton);
+}
+
+function getCatalystTileContext(project) {
+    const rawStatus = project?.project_status || project?.funding_status;
+    const normalizedStatus = String(rawStatus || '')
+        .trim()
+        .toLowerCase()
+        .replaceAll('_', ' ');
+    const status = (normalizedStatus === 'complete' ? 'completed' : normalizedStatus)
+        .replace(/^\w/, character => character.toUpperCase());
+    return [status, project?.fund_name].filter(Boolean);
+}
+
+function appendUniversalFundingTileContent(container, options = {}) {
     const title = document.createElement('strong');
     title.className = 'governance-title';
-    title.textContent = project.title;
+    title.textContent = cleanGovernanceText(options.title || 'Untitled project');
 
     const amount = createFundingRecipientAmountRow(
-        project.amount_received_usd,
-        project.amount_received_ada,
-        !hasNumericValue(project.amount_received_usd)
+        options.usdValue,
+        options.adaValue,
+        options.usdPending === true
     );
 
-    const detail = document.createElement('span');
-    detail.className = 'governance-card-detail';
-    detail.textContent = [
-        'Project Catalyst',
-        project.fund_name,
-        project.project_status || project.funding_status
-    ].filter(Boolean).join(' • ');
+    const context = document.createElement('span');
+    context.className = 'governance-card-detail governance-funding-card-context';
+    context.textContent = (options.contextItems || []).filter(Boolean).join(' • ');
 
-    openButton.append(title, amount, detail);
-    appendCatalystMilestoneIndicator(openButton, project);
-    card.append(openButton, createCatalystProposalActionButtons(project));
-    return card;
+    container.append(title, amount);
+    if (context.textContent) container.appendChild(context);
+    if (options.proposer) {
+        const proposer = document.createElement('span');
+        proposer.className = 'governance-card-detail governance-funding-card-proposer';
+        proposer.textContent = `Proposer: ${options.proposer}`;
+        container.appendChild(proposer);
+    }
+    (options.detailItems || []).filter(Boolean).forEach(item => {
+        const detail = document.createElement('span');
+        detail.className = 'governance-card-detail';
+        detail.textContent = item;
+        container.appendChild(detail);
+    });
 }
 
 function openCatalystProposalDetailOverlay(project, returnFocus) {
@@ -2482,8 +2544,16 @@ function getCatalystDetailText(value) {
 function renderCatalystProposalDetail(container, proposal) {
     container.replaceChildren();
     container.appendChild(createCatalystProposalActionButtons(proposal));
-    addDetailRow(container, 'Proposal ID', proposal.id);
-    addDetailRow(container, 'Proposer', proposal.business);
+    const votingChart = createCatalystVoteChartSection(proposal.voting);
+    if (votingChart) container.appendChild(votingChart);
+    addDetailRow(container, 'Proposal ID', proposal.id, {
+        copyLabel: 'Catalyst proposal ID'
+    });
+    addDetailRow(
+        container,
+        'Proposer',
+        proposal?.business ? normalizeTreasuryBusinessName(proposal.business) : null
+    );
     addDetailRow(container, 'Fund', proposal.fund_name);
     addDetailRow(container, 'Category', proposal.challenge || proposal.horizon_group);
     addDetailRow(
@@ -2514,11 +2584,13 @@ function renderCatalystProposalDetail(container, proposal) {
         );
     }
     if (proposal.voting) {
-        addDetailRow(container, 'Votes cast', Number(proposal.voting.votes_cast || 0).toLocaleString('en-US'));
-        addDetailRow(container, 'Voting result', proposal.voting.status);
-        addDetailRow(container, 'Yes', formatCatalystOfficialMoney(proposal.voting.yes));
-        addDetailRow(container, 'No', formatCatalystOfficialMoney(proposal.voting.no));
-        addDetailRow(container, 'Abstain', formatCatalystOfficialMoney(proposal.voting.abstain));
+        if (!votingChart) {
+            addDetailRow(container, 'Votes cast', Number(proposal.voting.votes_cast || 0).toLocaleString('en-US'));
+            addDetailRow(container, 'Voting result', proposal.voting.status);
+            addDetailRow(container, 'Yes', formatCatalystOfficialMoney(proposal.voting.yes));
+            addDetailRow(container, 'No', formatCatalystOfficialMoney(proposal.voting.no));
+            addDetailRow(container, 'Abstain', formatCatalystOfficialMoney(proposal.voting.abstain));
+        }
     }
     if (proposal.milestones) {
         const total = Number(proposal.milestones.complete || 0)
@@ -2563,6 +2635,59 @@ function renderCatalystProposalDetail(container, proposal) {
         ));
         container.appendChild(actions);
     }
+}
+
+function createCatalystVoteChartSection(voting) {
+    if (!voting) return null;
+    const voteItems = [
+        { key: 'yes', label: 'Yes', color: '#34d399', money: voting.yes },
+        { key: 'no', label: 'No', color: '#fb7185', money: voting.no },
+        { key: 'abstain', label: 'Abstain', color: '#60a5fa', money: voting.abstain }
+    ]
+        .map(item => ({
+            ...item,
+            value: Number(item.money?.amount)
+        }))
+        .filter(item => Number.isFinite(item.value) && item.value > 0);
+    const total = voteItems.reduce((sum, item) => sum + item.value, 0);
+    if (!voteItems.length || total <= 0) return null;
+
+    const section = document.createElement('section');
+    section.className = 'governance-vote-chart governance-chart-panel';
+
+    const title = document.createElement('strong');
+    title.textContent = 'Catalyst vote overview';
+
+    const layout = document.createElement('div');
+    layout.className = 'governance-vote-chart-layout';
+    layout.appendChild(createUniversalPieChart(voteItems, {
+        labelFormatter: segment => formatPercentage((segment.value / total) * 100)
+    }));
+
+    const legend = document.createElement('div');
+    legend.className = 'governance-vote-legend governance-vote-legend--stacked';
+    legend.appendChild(createGovernanceStatBox({
+        label: 'Vote result',
+        detail: [
+            voting.status || null,
+            `${Number(voting.votes_cast || 0).toLocaleString('en-US')} votes cast`
+        ].filter(Boolean).join(' • '),
+        color: '#94a3b8'
+    }));
+    voteItems.forEach(item => {
+        legend.appendChild(createGovernanceStatBox({
+            label: item.label,
+            detail: [
+                formatCatalystOfficialMoney(item.money),
+                formatPercentage((item.value / total) * 100)
+            ].filter(Boolean).join(' • '),
+            color: item.color
+        }));
+    });
+
+    layout.appendChild(legend);
+    section.append(title, layout);
+    return section;
 }
 
 function formatCatalystOfficialMoney(value) {
@@ -2867,14 +2992,23 @@ function getTreasuryGovernanceProposal(withdrawal, epoch = withdrawal?.enacted_e
     const proposal = proposalsById?.get(actionId)
         || getGovernanceProposalsFromDashboardPayload(governanceState || {})
             .find(item => item.proposal_id === actionId);
-    if (proposal) return proposal;
+    if (proposal) {
+        return {
+            ...proposal,
+            treasury_stake_address: withdrawal?.stake_address
+                || proposal?.treasury_stake_address
+                || null
+        };
+    }
 
-    return normalizeGovernanceProposal({
+    const normalized = normalizeGovernanceProposal({
         proposal_id: actionId,
         proposal_type: 'TreasuryWithdrawals',
         enacted_epoch: Number(epoch) || null,
         meta_json: { body: { title: withdrawal?.title || 'Conway treasury withdrawal' } }
     });
+    normalized.treasury_stake_address = withdrawal?.stake_address || null;
+    return normalized;
 }
 
 function getTreasuryWithdrawals(payload) {
@@ -2919,49 +3053,31 @@ function createTreasuryWithdrawalCard(withdrawal) {
         });
     }
 
-    const title = document.createElement('strong');
-    title.className = 'governance-title';
-    title.textContent = cleanGovernanceText(withdrawal?.title || 'Conway treasury withdrawal');
-    card.appendChild(title);
-
-    const amount = document.createElement('span');
-    amount.className = 'governance-card-detail governance-treasury-withdrawal-amount';
-    amount.textContent = Number.isFinite(Number(withdrawal?.amount_usd))
-        ? formatCatalystCurrencyAmount(withdrawal.amount_usd, 'USD')
-        : formatFullAdaFromLovelace(withdrawal?.amount_lovelace);
-    card.appendChild(amount);
-
-    if (Number.isFinite(Number(withdrawal?.amount_usd))) {
-        const adaAmount = document.createElement('span');
-        adaAmount.className = 'governance-card-detail';
-        adaAmount.textContent = formatAdaAmount(withdrawal?.amount_ada);
-        card.appendChild(adaAmount);
-    }
-
-    const epoch = document.createElement('span');
-    epoch.className = 'governance-card-detail';
-    epoch.textContent = `Enacted epoch ${Number(withdrawal?.enacted_epoch) || '--'}`;
-    card.appendChild(epoch);
+    appendUniversalFundingTileContent(card, {
+        title: withdrawal?.title || 'Conway treasury withdrawal',
+        usdValue: withdrawal?.amount_usd,
+        adaValue: withdrawal?.amount_ada,
+        usdPending: !hasNumericValue(withdrawal?.amount_usd),
+        contextItems: [`Enacted Epoch ${Number(withdrawal?.enacted_epoch) || '--'}`]
+    });
 
     const address = String(withdrawal?.stake_address || '');
     if (address) {
         const administrator = TREASURY_RECIPIENT_ADMINISTRATORS[address];
         if (administrator) {
             const administratorLine = document.createElement('span');
-            administratorLine.className = 'governance-card-detail';
-            administratorLine.textContent = `Administrator: ${administrator}`;
+            administratorLine.className = 'governance-card-detail governance-drep-id-line';
+
+            const administratorText = document.createElement('span');
+            administratorText.className = 'governance-drep-id';
+            administratorText.textContent = `Administrator: ${administrator}`;
+            administratorLine.appendChild(administratorText);
+            administratorLine.appendChild(createGovernanceCopyButton(
+                administrator,
+                'administrator'
+            ));
             card.appendChild(administratorLine);
         }
-
-        const addressLine = document.createElement('span');
-        addressLine.className = 'governance-card-detail governance-drep-id-line';
-
-        const addressText = document.createElement('span');
-        addressText.className = 'governance-drep-id';
-        addressText.textContent = shortenGovernanceAddress(address);
-        addressLine.appendChild(addressText);
-        addressLine.appendChild(createGovernanceCopyButton(address, 'recipient address'));
-        card.appendChild(addressLine);
     }
 
     return card;
@@ -3907,7 +4023,9 @@ function createGovernanceCard(proposal, options = {}) {
     card.appendChild(copyActionIdButton);
 
     if (isGovernanceProposalOpenForVoting(proposal)) {
-        card.appendChild(createGovernanceProposalActionButtons(proposal));
+        card.appendChild(createGovernanceProposalActionButtons(proposal, {
+            showSummary: false
+        }));
     }
 
     return card;
@@ -4240,14 +4358,16 @@ function openGovernanceOverlay(proposal, options = {}) {
     }
 }
 
-function createGovernanceProposalActionButtons(proposal) {
+function createGovernanceProposalActionButtons(proposal, options = {}) {
     const actions = document.createElement('div');
     actions.className = 'governance-action-buttons';
-    actions.appendChild(createGovernanceProposalActionButton(
-        'Summary',
-        'governance-summary-button',
-        (event) => openProposalSummaryOverlay(proposal, event.currentTarget)
-    ));
+    if (options.showSummary !== false) {
+        actions.appendChild(createGovernanceProposalActionButton(
+            'Summary',
+            'governance-summary-button',
+            (event) => openProposalSummaryOverlay(proposal, event.currentTarget)
+        ));
+    }
     if (isGovernanceProposalOpenForVoting(proposal)) {
         actions.appendChild(createGovernanceProposalActionButton(
             'Vote as DRep',
@@ -4398,7 +4518,20 @@ function renderProposalSummaryMessage(container, message) {
 
 function renderGovernanceProposalDetails(container, proposal, options = {}) {
     container.textContent = '';
-    addDetailRow(container, 'Action ID', proposal.proposal_id);
+    addDetailRow(container, 'Action ID', proposal.proposal_id, {
+        copyLabel: 'governance action ID'
+    });
+    getProposalTreasuryStakeAddresses(proposal).forEach((address, index) => {
+        addDetailRow(
+            container,
+            index === 0 ? 'Stake address' : `Stake address ${index + 1}`,
+            address,
+            {
+                copyLabel: 'treasury stake address',
+                displayValue: shortenGovernanceAddress(address)
+            }
+        );
+    });
     addDetailRow(container, 'Transaction', proposal.proposal_tx_hash);
 
     const body = proposal.meta_json?.body || proposal.meta_json || {};
@@ -4415,6 +4548,21 @@ function renderGovernanceProposalDetails(container, proposal, options = {}) {
             : 'Loading proposal details...';
         container.appendChild(message);
     }
+}
+
+function getProposalTreasuryStakeAddresses(proposal) {
+    const proposalId = String(proposal?.proposal_id || '').trim();
+    const addresses = [
+        proposal?.treasury_stake_address,
+        proposal?.stake_address,
+        proposal?.withdrawal_stake_address
+    ];
+    if (proposalId && treasuryState) {
+        getTreasuryWithdrawals(treasuryState)
+            .filter(withdrawal => String(withdrawal?.action_id || '').trim() === proposalId)
+            .forEach(withdrawal => addresses.push(withdrawal?.stake_address));
+    }
+    return [...new Set(addresses.map(address => String(address || '').trim()).filter(Boolean))];
 }
 
 async function loadProposalDetails(proposal) {
@@ -4859,10 +5007,13 @@ async function submitGovernanceVote(container, context, submitButton) {
     }
 }
 
-function addDetailRow(container, label, value) {
+function addDetailRow(container, label, value, options = {}) {
     if (value === null || value === undefined || value === '') return;
     const cleanValue = cleanGovernanceText(String(value));
     if (!cleanValue) return;
+    const displayValue = options.displayValue === undefined
+        ? cleanValue
+        : cleanGovernanceText(String(options.displayValue));
 
     const row = document.createElement('div');
     row.className = 'governance-detail-row';
@@ -4871,10 +5022,19 @@ function addDetailRow(container, label, value) {
     key.textContent = label;
 
     const text = document.createElement('span');
-    appendRichText(text, cleanValue);
+    appendRichText(text, displayValue);
 
     row.appendChild(key);
     row.appendChild(text);
+    if (options.copyLabel) {
+        row.classList.add('governance-detail-row--copyable');
+        const copyButton = createGovernanceCopyButton(
+            String(value),
+            options.copyLabel
+        );
+        copyButton.classList.add('governance-detail-copy-button');
+        row.appendChild(copyButton);
+    }
     container.appendChild(row);
 }
 
