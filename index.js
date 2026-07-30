@@ -1727,6 +1727,8 @@ const OVERLAY_SORT_DEFINITIONS = Object.freeze([
     { value: 'oldest', label: 'Oldest', key: 'sortDate', direction: 1, type: 'number' },
     { value: 'ask-desc', label: 'Most ask', key: 'sortAsk', direction: -1, type: 'number' },
     { value: 'ask-asc', label: 'Less ask', key: 'sortAsk', direction: 1, type: 'number' },
+    { value: 'yes-votes-desc', label: 'Most Yes votes', key: 'sortYesVotes', direction: -1, type: 'number' },
+    { value: 'no-votes-desc', label: 'Most No votes', key: 'sortNoVotes', direction: -1, type: 'number' },
     { value: 'amount-desc', label: 'Highest amount', key: 'sortAmount', direction: -1, type: 'number' },
     { value: 'amount-asc', label: 'Lowest amount', key: 'sortAmount', direction: 1, type: 'number' },
     { value: 'power-desc', label: 'Most power', key: 'sortPower', direction: -1, type: 'number' },

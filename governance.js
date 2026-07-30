@@ -141,12 +141,11 @@ function initGovernance() {
 
 function setupConstitutionAssistantCard() {
     const trigger = document.getElementById('tdspbot-open');
-    bindGovernanceMenuTrigger(trigger, openConstitutionAssistantOverlay);
+    bindGovernanceMenuTrigger(trigger, event => openConstitutionAssistantOverlay(null, event.currentTarget));
 }
 
-function openConstitutionAssistantOverlay() {
-    if (getTopGovernanceMenuOverlay('constitution-assistant-overlay')) return;
-    const panel = createConstitutionChatPanel();
+function openConstitutionAssistantOverlay(context = null, returnFocus = document.getElementById('tdspbot-open')) {
+    const panel = createConstitutionChatPanel(context);
     createGovernanceMenuOverlay({
         id: 'constitution-assistant-overlay',
         titleId: 'constitution-assistant-title',
@@ -158,17 +157,17 @@ function openConstitutionAssistantOverlay() {
         closeOnBackdrop: false,
         showBack: false,
         enableSearch: false,
-        returnFocus: document.getElementById('tdspbot-open')
+        returnFocus
     });
-    setupConstitutionChat();
-    document.getElementById('constitution-chat-question')?.focus();
+    setupConstitutionChat(panel, context);
+    panel.querySelector('#constitution-chat-question')?.focus();
 }
 
 function closeConstitutionAssistantOverlay() {
     removeGovernanceMenuOverlay('constitution-assistant-overlay');
 }
 
-function createConstitutionChatPanel() {
+function createConstitutionChatPanel(context = null) {
     const panel = document.createElement('section');
     panel.className = 'constitution-chat governance-menu-card';
     panel.setAttribute('aria-labelledby', 'constitution-chat-title');
@@ -189,7 +188,9 @@ function createConstitutionChatPanel() {
     messages.setAttribute('aria-live', 'polite');
     const empty = document.createElement('p');
     empty.className = 'constitution-chat-empty';
-    empty.textContent = 'Ask about available governance, DReps, SPOs, Starch, Treasury, or the Constitution.';
+    empty.textContent = context?.title
+        ? `Ask about ${context.title}.`
+        : 'Ask about available governance, DReps, SPOs, Starch, Treasury, or the Constitution.';
     messages.appendChild(empty);
 
     const form = document.createElement('form');
@@ -234,7 +235,20 @@ function createConstitutionChatPanel() {
     note.className = 'constitution-chat-note';
     note.textContent = 'AI-generated answer. Verify proposal details and constitutional references before making decisions.';
 
-    panel.append(heading, messages, form, status, note);
+    panel.appendChild(heading);
+
+    if (context?.title || context?.id) {
+        const contextLine = document.createElement('p');
+        contextLine.className = 'constitution-chat-note';
+        contextLine.textContent = [
+            context?.kind === 'catalyst_proposal' ? 'Catalyst proposal context' : 'Governance action context',
+            context?.title,
+            context?.id
+        ].filter(Boolean).join(' • ');
+        panel.appendChild(contextLine);
+    }
+
+    panel.append(messages, form, status, note);
     return panel;
 }
 
@@ -302,13 +316,13 @@ function getConstitutionDocumentApiUrl() {
         : CONSTITUTION_DOCUMENT_API_URL;
 }
 
-function setupConstitutionChat() {
-    const form = document.getElementById('constitution-chat-form');
-    const input = document.getElementById('constitution-chat-question');
-    const messages = document.getElementById('constitution-chat-messages');
-    const submit = document.getElementById('constitution-chat-submit');
-    const newQuestion = document.getElementById('constitution-chat-new-question');
-    const status = document.getElementById('constitution-chat-status');
+function setupConstitutionChat(panel, context = null) {
+    const form = panel?.querySelector('#constitution-chat-form');
+    const input = panel?.querySelector('#constitution-chat-question');
+    const messages = panel?.querySelector('#constitution-chat-messages');
+    const submit = panel?.querySelector('#constitution-chat-submit');
+    const newQuestion = panel?.querySelector('#constitution-chat-new-question');
+    const status = panel?.querySelector('#constitution-chat-status');
     if (!form || !input || !messages || !submit || !newQuestion || !status) return;
     const conversation = [];
 
@@ -367,7 +381,12 @@ function setupConstitutionChat() {
                     accept: 'application/x-ndjson, application/json',
                     'content-type': 'application/json'
                 },
-                body: JSON.stringify({ question, history, stream: true })
+                body: JSON.stringify({
+                    question,
+                    history,
+                    stream: true,
+                    context: getConstitutionChatRequestContext(context)
+                })
             });
             if (!response.ok) {
                 const payload = await response.json().catch(() => ({}));
@@ -3950,7 +3969,7 @@ function shouldShowVotePercentages(proposal) {
     return Boolean(proposal?.proposal_id);
 }
 
-function renderGovernanceGroup(container, proposals, emptyMessage) {
+function renderGovernanceGroup(container, proposals, emptyMessage, options = {}) {
     container.textContent = '';
 
     if (!proposals.length) {
@@ -3962,13 +3981,13 @@ function renderGovernanceGroup(container, proposals, emptyMessage) {
     }
 
     proposals.forEach(proposal => {
-        container.appendChild(createGovernanceCard(proposal));
+        container.appendChild(createGovernanceCard(proposal, options));
     });
 }
 
-function renderGovernanceGroupIfPresent(container, proposals, emptyMessage) {
+function renderGovernanceGroupIfPresent(container, proposals, emptyMessage, options = {}) {
     if (!container) return;
-    renderGovernanceGroup(container, proposals, emptyMessage);
+    renderGovernanceGroup(container, proposals, emptyMessage, options);
 }
 
 function createGovernanceCard(proposal, options = {}) {
@@ -3989,6 +4008,13 @@ function createGovernanceCard(proposal, options = {}) {
     }
     if (Number.isFinite(totalAsk) && totalAsk > 0) {
         card.dataset.sortAsk = String(totalAsk);
+    }
+    if (options.enableVoteSort) {
+        const voteSummary = proposal?.voteSummary || {};
+        const yesVotes = Number(voteSummary.drep_yes_votes_cast);
+        const noVotes = Number(voteSummary.drep_no_votes_cast);
+        if (Number.isFinite(yesVotes)) card.dataset.sortYesVotes = String(yesVotes);
+        if (Number.isFinite(noVotes)) card.dataset.sortNoVotes = String(noVotes);
     }
     const openButton = document.createElement('button');
     openButton.type = 'button';
@@ -4040,7 +4066,8 @@ function createGovernanceCard(proposal, options = {}) {
 
     if (isGovernanceProposalOpenForVoting(proposal)) {
         card.appendChild(createGovernanceProposalActionButtons(proposal, {
-            showSummary: false
+            showSummary: false,
+            showBot: false
         }));
     }
 
@@ -4075,7 +4102,9 @@ function openGovernanceActionGroupOverlay(groupKey, titleText, emptyMessage, roo
     const proposals = groupedProposals;
     const panel = document.createElement('div');
     panel.className = 'governance-list governance-action-group-list';
-    renderGovernanceGroup(panel, proposals, emptyMessage);
+    renderGovernanceGroup(panel, proposals, emptyMessage, {
+        enableVoteSort: groupKey === 'active'
+    });
 
     createGovernanceMenuOverlay({
         id: 'governance-action-group-overlay',
@@ -4384,6 +4413,16 @@ function createGovernanceProposalActionButtons(proposal, options = {}) {
             (event) => openProposalSummaryOverlay(proposal, event.currentTarget)
         ));
     }
+    if (options.showBot !== false) {
+        actions.appendChild(createGovernanceProposalActionButton(
+            'TDSPBot',
+            'governance-tdspbot-button',
+            (event) => openConstitutionAssistantOverlay(
+                createGovernanceActionBotContext(proposal),
+                event.currentTarget
+            )
+        ));
+    }
     if (isGovernanceProposalOpenForVoting(proposal)) {
         actions.appendChild(createGovernanceProposalActionButton(
             'Vote as DRep',
@@ -4402,7 +4441,49 @@ function createCatalystProposalActionButtons(proposal) {
         'governance-summary-button',
         event => openCatalystProposalSummaryOverlay(proposal, event.currentTarget)
     ));
+    actions.appendChild(createGovernanceProposalActionButton(
+        'TDSPBot',
+        'governance-tdspbot-button',
+        event => openConstitutionAssistantOverlay(
+            createCatalystProposalBotContext(proposal),
+            event.currentTarget
+        )
+    ));
     return actions;
+}
+
+function createGovernanceActionBotContext(proposal) {
+    return {
+        kind: 'governance_action',
+        id: String(proposal?.proposal_id || '').trim(),
+        title: getProposalTitle(proposal),
+        proposal_type: proposal?.proposal_type || null,
+        status: getGovernanceStatus(proposal),
+        proposed_epoch: proposal?.proposed_epoch ?? null,
+        expiration_epoch: proposal?.expiration ?? null,
+        enacted_epoch: proposal?.enacted_epoch ?? null,
+        ratified_epoch: proposal?.ratified_epoch ?? null,
+        requested_lovelace: getProposalTotalAskLovelace(proposal) || null
+    };
+}
+
+function createCatalystProposalBotContext(proposal) {
+    return {
+        kind: 'catalyst_proposal',
+        id: String(proposal?.id || '').trim(),
+        title: proposal?.title || 'Catalyst proposal',
+        proposer: proposal?.business || proposal?.ideascale_user || null,
+        fund: proposal?.fund_name || null,
+        status: proposal?.project_status || proposal?.funding_status || null,
+        requested_usd: proposal?.amount_requested_usd ?? null,
+        received_usd: proposal?.amount_received_usd ?? null
+    };
+}
+
+function getConstitutionChatRequestContext(context) {
+    if (!context || typeof context !== 'object') return null;
+    return Object.fromEntries(Object.entries(context)
+        .filter(([, value]) => value !== null && value !== undefined && value !== ''));
 }
 
 function createGovernanceProposalActionButton(label, className, onClick) {
@@ -7098,7 +7179,7 @@ function openDrepActionHistoryOverlay(drep, returnFocus = null) {
         closeLabel: `Close votes by ${drep.name}`,
         closeOverlay: closeDrepActionHistoryOverlay,
         bodyNodes: [panel],
-        headerMeta: 'Loading actions…',
+        headerMeta: formatDrepOverlayHeaderMeta(drep),
         overlayClass: 'governance-action-detail-overlay',
         returnFocus
     });
@@ -7124,6 +7205,15 @@ function openDrepActionHistoryOverlay(drep, returnFocus = null) {
 
 function closeDrepActionHistoryOverlay() {
     removeGovernanceMenuOverlay('governance-drep-actions-overlay');
+}
+
+function formatDrepOverlayHeaderMeta(drep, actionCount = null) {
+    const power = formatCompactAdaFromLovelace(Number(drep?.votingPower) || 0);
+    const parts = [`Voting Power ${power}`];
+    if (Number.isFinite(Number(actionCount))) {
+        parts.push(`${Number(actionCount).toLocaleString('en-US')} actions`);
+    }
+    return parts.join(' • ');
 }
 
 function mergeDrepDetail(drep, payload) {
@@ -7187,7 +7277,7 @@ function renderDrepActionHistory(container, payload, drep) {
         .sort((left, right) => (Number(right.proposal.block_time) || 0) - (Number(left.proposal.block_time) || 0));
     updateGovernanceMenuHeaderMeta(
         'governance-drep-actions-overlay',
-        `${rows.length.toLocaleString('en-US')} actions`,
+        formatDrepOverlayHeaderMeta(drep, rows.length),
         container
     );
     const rowsByParticipation = rows.map(row => ({
