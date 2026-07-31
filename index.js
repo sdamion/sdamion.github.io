@@ -1538,7 +1538,7 @@ function closeGovernanceOverlayStack(sourceOverlay) {
     syncGovernanceMenuOverlayAccessibility();
 }
 
-function appendUniversalOverlayHeader(dialog, title, close, leadingNodes = [], meta = null, back = null) {
+function appendUniversalOverlayHeader(dialog, title, close, leadingNodes = [], meta = null, back = null, extraActions = []) {
     const header = document.createElement('header');
     header.className = 'overlay-dialog-header';
     const copy = document.createElement('div');
@@ -1549,6 +1549,7 @@ function appendUniversalOverlayHeader(dialog, title, close, leadingNodes = [], m
 
     const actions = document.createElement('div');
     actions.className = 'overlay-dialog-header-actions';
+    extraActions.filter(Boolean).forEach(action => actions.appendChild(action));
     if (back) actions.appendChild(back);
     actions.appendChild(close);
     header.append(copy, actions);
@@ -1577,7 +1578,9 @@ function createUniversalOverlay(options) {
         defaultSort = '',
         searchPlaceholder = 'Search by name, ID, title or status',
         onSearch = null,
-        uniqueId = false
+        uniqueId = false,
+        showBotButton = false,
+        botContext = null
     } = options;
 
     const previousTopOverlay = getTopGovernanceMenuOverlay();
@@ -1593,6 +1596,7 @@ function createUniversalOverlay(options) {
     overlay.governanceCloseOnEscape = closeOnEscape;
     overlay.governanceRootOverlay = previousTopOverlay?.governanceRootOverlay || overlay;
     overlay.governanceRootTitle = previousTopOverlay?.governanceRootTitle || rootTitle;
+    overlay.governanceBotContext = botContext;
     if (closeOnBackdrop) {
         overlay.addEventListener('click', event => {
             if (event.target === overlay) closeOverlay();
@@ -1624,6 +1628,20 @@ function createUniversalOverlay(options) {
     back.title = 'Back one window';
     back.addEventListener('click', closeOverlay);
 
+    let botButton = null;
+    if (showBotButton && botContext && typeof window.openConstitutionAssistantOverlay === 'function') {
+        botButton = document.createElement('button');
+        botButton.className = 'governance-overlay-bot-button';
+        botButton.type = 'button';
+        botButton.textContent = 'TDSPBot';
+        botButton.setAttribute('aria-label', 'Ask TDSPBot about this menu');
+        botButton.addEventListener('click', event => {
+            event.preventDefault();
+            event.stopPropagation();
+            window.openConstitutionAssistantOverlay(overlay.governanceBotContext || botContext, botButton);
+        });
+    }
+
     const title = document.createElement(titleTag);
     title.id = `${titleId}${suffix}`;
     if (titleTag !== 'h2') title.className = 'governance-drep-title';
@@ -1635,7 +1653,7 @@ function createUniversalOverlay(options) {
     meta.textContent = headerMeta;
 
     const hasBackTarget = showBack !== false && Boolean(previousTopOverlay);
-    appendUniversalOverlayHeader(dialog, title, close, leadingNodes, meta, hasBackTarget ? back : null);
+    appendUniversalOverlayHeader(dialog, title, close, leadingNodes, meta, hasBackTarget ? back : null, [botButton]);
     const body = document.createElement('div');
     body.className = 'overlay-dialog-body';
     bodyNodes.forEach(node => body.appendChild(node));

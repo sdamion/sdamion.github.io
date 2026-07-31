@@ -2808,21 +2808,21 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     display: block;
 }
 
-.governance-cc-member-hash {
+.governance-cc-member-hash:not(.governance-title) {
     color: var(--text);
     font-size: 0.9rem;
     font-weight: 700;
     overflow-wrap: anywhere;
 }
 
-.governance-cc-member-meta {
+.governance-cc-member-meta:not(.governance-card-detail) {
     margin-top: 4px;
     color: var(--muted);
     font-size: 0.9rem;
     line-height: 1.35;
 }
 
-.governance-cc-member-stats {
+.governance-cc-member-stats:not(.governance-card-detail) {
     display: block;
     margin-top: 6px;
     color: var(--accent-strong);
@@ -3341,7 +3341,8 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 }
 
 .governance-close,
-.governance-back-to-root {
+.governance-back-to-root,
+.governance-overlay-bot-button {
     position: static;
     flex: 0 0 auto;
     min-height: 38px;
@@ -3393,10 +3394,18 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     font-weight: 700;
 }
 
+.governance-overlay-bot-button {
+    color: var(--accent-strong);
+    font-size: 0.82rem;
+    font-weight: 800;
+}
+
 .governance-close:hover,
 .governance-close:focus-visible,
 .governance-back-to-root:hover,
-.governance-back-to-root:focus-visible {
+.governance-back-to-root:focus-visible,
+.governance-overlay-bot-button:hover,
+.governance-overlay-bot-button:focus-visible {
     background: var(--control-hover-surface);
     transform: none;
 }
@@ -3413,12 +3422,20 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
         align-self: flex-start;
     }
 
-    .governance-back-to-root {
-        width: 42px;
+    .governance-back-to-root,
+    .governance-overlay-bot-button {
         min-height: 34px;
         padding: 0 8px;
         font-size: 0.72rem;
         line-height: 1.15;
+    }
+
+    .governance-back-to-root {
+        width: 42px;
+    }
+
+    .governance-overlay-bot-button {
+        max-width: 86px;
     }
 
     .governance-dialog .overlay-dialog-body {

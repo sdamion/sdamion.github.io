@@ -241,7 +241,7 @@ function createConstitutionChatPanel(context = null) {
         const contextLine = document.createElement('p');
         contextLine.className = 'constitution-chat-note';
         contextLine.textContent = [
-            context?.kind === 'catalyst_proposal' ? 'Catalyst proposal context' : 'Governance action context',
+            getConstitutionChatContextLabel(context),
             context?.title,
             context?.id
         ].filter(Boolean).join(' • ');
@@ -250,6 +250,13 @@ function createConstitutionChatPanel(context = null) {
 
     panel.append(messages, form, status, note);
     return panel;
+}
+
+function getConstitutionChatContextLabel(context) {
+    if (context?.kind === 'catalyst_proposal') return 'Catalyst proposal context';
+    if (context?.kind === 'governance_action') return 'Governance action context';
+    if (context?.section) return `${context.section} context`;
+    return 'Website context';
 }
 
 function setupConstitutionDocument() {
@@ -2456,7 +2463,8 @@ function openCatalystProposalDetailOverlay(project, returnFocus) {
             .join(' • '),
         overlayClass: 'governance-action-detail-overlay',
         returnFocus,
-        rootTitle: 'Catalyst/Treasury Recipients'
+        rootTitle: 'Catalyst/Treasury Recipients',
+        botContext: createCatalystProposalBotContext(project)
     });
 
     loadCatalystProposalDetail(project)
@@ -2464,6 +2472,7 @@ function openCatalystProposalDetailOverlay(project, returnFocus) {
             if (!content.isConnected) return;
             renderCatalystProposalDetail(content, detail);
             overlay.title.textContent = detail.title || project.title;
+            overlay.overlay.governanceBotContext = createCatalystProposalBotContext(detail);
             updateGovernanceMenuHeaderMeta(
                 'governance-catalyst-proposal-detail-overlay',
                 [detail.fund_name, detail.project_status || detail.funding_status]
@@ -4006,7 +4015,50 @@ function createGovernanceCard(proposal, options = {}) {
 }
 
 function createGovernanceMenuOverlay(options) {
-    return createUniversalOverlay({ ...options, uniqueId: true });
+    const botContext = options.botContext === undefined
+        ? createGovernanceOverlayBotContext(options)
+        : options.botContext;
+    return createUniversalOverlay({
+        ...options,
+        botContext,
+        showBotButton: options.showBotButton !== false && Boolean(botContext),
+        uniqueId: true
+    });
+}
+
+function createGovernanceOverlayBotContext(options = {}) {
+    if (options.id === 'constitution-assistant-overlay') return null;
+    const title = String(options.titleText || options.rootTitle || 'this menu').trim();
+    const source = [
+        options.id,
+        options.titleText,
+        options.rootTitle,
+        options.headerMeta
+    ].filter(Boolean).join(' ').toLowerCase();
+
+    let section = 'Gov Actions';
+    let kind = 'site_section';
+    if (source.includes('catalyst')) {
+        section = 'Catalyst';
+    } else if (source.includes('drep')) {
+        section = 'DReps';
+    } else if (source.includes('spo') || source.includes('stake pool')) {
+        section = 'SPOs';
+    } else if (source.includes('cc member') || source.includes('committee') || source.includes('constitutional')) {
+        section = 'CC Members';
+    } else if (source.includes('starch')) {
+        section = 'Starch';
+    } else if (source.includes('treasury')) {
+        section = 'Treasury';
+    }
+
+    return {
+        kind,
+        section,
+        title,
+        menu: title,
+        root: String(options.rootTitle || title).trim()
+    };
 }
 
 function updateGovernanceMenuHeaderMeta(id, text, context = null) {
@@ -4313,7 +4365,8 @@ function openGovernanceOverlay(proposal, options = {}) {
         headerMeta: getGovernanceActionHeaderMeta(proposal),
         overlayClass: 'governance-action-detail-overlay',
         titleTag: 'h2',
-        returnFocus: options.returnFocus
+        returnFocus: options.returnFocus,
+        botContext: createGovernanceActionBotContext(proposal)
     });
     loadProposalVoteDetails(proposal, voteDetailsContainer).catch(() => {
         if (!voteDetailsContainer.isConnected) return;
@@ -5594,7 +5647,7 @@ function renderSpoVotesList(container, votes, voteLabel) {
         idLine.className = 'governance-drep-id-line';
 
         const id = document.createElement('span');
-        id.className = 'governance-cc-member-meta governance-drep-id';
+        id.className = 'governance-card-detail governance-cc-member-meta governance-drep-id';
         id.textContent = poolId || 'Unknown pool';
 
         idLine.appendChild(id);
@@ -5893,13 +5946,13 @@ function renderSpoDirectory(container, spos) {
         const idLine = createSpoPoolIdLine(spo.pool_id);
         window.TDSPRuntime?.appendUniversalTileContent?.(row, {
             title: getSpoDisplayName(spo),
-            titleClassName: 'governance-cc-member-hash',
+            titleClassName: 'governance-title governance-cc-member-hash',
             primaryText: `Delegation: ${formatCompactAdaFromLovelace(spo.delegated_lovelace)}`,
-            primaryClassName: 'governance-cc-member-stats',
+            primaryClassName: 'governance-card-detail governance-treasury-withdrawal-amount governance-cc-member-stats',
             detailItems: [
-                { text: `Cloud Service: ${getSpoCloudServiceText(spo)}`, className: 'governance-cc-member-meta' },
-                { text: `Delegators: ${Number(spo.delegator_count || 0).toLocaleString('en-US')}`, className: 'governance-cc-member-meta' },
-                { text: `Saturation: ${formatSpoSaturation(spo.saturation_pct)}`, className: 'governance-cc-member-meta' },
+                { text: `Cloud Service: ${getSpoCloudServiceText(spo)}`, className: 'governance-card-detail governance-cc-member-meta' },
+                { text: `Delegators: ${Number(spo.delegator_count || 0).toLocaleString('en-US')}`, className: 'governance-card-detail governance-cc-member-meta' },
+                { text: `Saturation: ${formatSpoSaturation(spo.saturation_pct)}`, className: 'governance-card-detail governance-cc-member-meta' },
                 idLine
             ]
         });
@@ -6142,7 +6195,7 @@ function createSpoPoolIdLine(poolId) {
     const line = document.createElement('div');
     line.className = 'governance-drep-id-line';
     const id = document.createElement('span');
-    id.className = 'governance-cc-member-meta governance-drep-id';
+    id.className = 'governance-card-detail governance-cc-member-meta governance-drep-id';
     id.textContent = poolId || '--';
     line.append(id);
     if (poolId) line.appendChild(createGovernanceCopyButton(poolId, 'pool ID'));
@@ -6915,7 +6968,7 @@ function renderDrepDirectory(container, dreps, options = {}) {
         idLine.className = 'governance-drep-id-line';
 
         const id = document.createElement('span');
-        id.className = 'governance-cc-member-meta governance-drep-id';
+        id.className = 'governance-card-detail governance-cc-member-meta governance-drep-id';
         id.textContent = drep.id;
 
         const copyId = createGovernanceCopyButton(drep.id, 'DRep ID');
@@ -6924,13 +6977,13 @@ function renderDrepDirectory(container, dreps, options = {}) {
 
         window.TDSPRuntime?.appendUniversalTileContent?.(row, {
             title: drep.name,
-            titleClassName: 'governance-cc-member-hash',
+            titleClassName: 'governance-title governance-cc-member-hash',
             primaryText: `Voting power: ${formatCompactAdaFromLovelace(drep.votingPower)}`,
-            primaryClassName: 'governance-cc-member-stats',
+            primaryClassName: 'governance-card-detail governance-treasury-withdrawal-amount governance-cc-member-stats',
             detailItems: [
                 {
                     text: drep.active ? 'Active' : 'Inactive',
-                    className: 'governance-cc-member-meta governance-drep-member-status'
+                    className: 'governance-card-detail governance-drep-member-status'
                 },
                 idLine
             ]
@@ -7424,18 +7477,18 @@ function renderConstitutionalCommitteeMembers(container, members, emptyMessage =
         }
 
         const stats = document.createElement('span');
-        stats.className = 'governance-cc-member-stats';
+        stats.className = 'governance-card-detail governance-treasury-withdrawal-amount governance-cc-member-stats';
         stats.dataset.ccMemberIndex = String(index);
         stats.textContent = 'Voting stats loading...';
 
         window.TDSPRuntime?.appendUniversalTileContent?.(row, {
             title: member.name || `CC Member ${index + 1}`,
-            titleClassName: 'governance-cc-member-hash',
+            titleClassName: 'governance-title governance-cc-member-hash',
             primaryNode: stats,
             detailItems: [
                 {
                     text: member.expiresEpoch ? `expires epoch ${member.expiresEpoch}` : '',
-                    className: 'governance-cc-member-meta'
+                    className: 'governance-card-detail governance-cc-member-meta'
                 }
             ]
         });
@@ -7556,39 +7609,27 @@ function renderConstitutionalCommitteeActionLoading(container, complete, total) 
 }
 
 async function loadConstitutionalCommitteeMemberSummaryStats(members, container) {
-    if (hasConstitutionalCommitteeBackendActionStatsForMembers(members)) {
+    const detailedMembers = await loadConstitutionalCommitteeMembersWithActionStats(members);
+    if (!container.isConnected) return;
+
+    if (detailedMembers.some(member => hasConstitutionalCommitteeBackendActionStats(member) || hasConstitutionalCommitteeBackendStats([member]))) {
         updateConstitutionalCommitteeMemberSummaryStats(
             container,
-            members.map(getConstitutionalCommitteeBackendMemberSummaryStats)
-        );
-        return;
-    }
-    if (hasConstitutionalCommitteeBackendStats(members)) {
-        updateConstitutionalCommitteeMemberSummaryStats(
-            container,
-            members.map(member => {
-                const proposalStats = getConstitutionalCommitteeMemberProposalStats(member);
-                return {
-                    voted: Number(member.voteStats?.voted) || 0,
-                    total: Number(member.voteStats?.total) || 0,
-                    open: Number(member.voteStats?.activeNotVoted) || 0,
-                    notApplicable: proposalStats.notApplicable,
-                    all: proposalStats.total
-                };
-            })
+            detailedMembers.map(getConstitutionalCommitteeMemberSummaryStats)
         );
         return;
     }
 
     const proposals = getGovernanceActionsForCommitteeOverview()
         .filter(isConstitutionalCommitteeMemberVoteApplicable);
-    const cacheKey = getConstitutionalCommitteeMemberStatsCacheKey(members, proposals);
+    const cacheKey = getConstitutionalCommitteeMemberStatsCacheKey(detailedMembers, proposals);
 
     if (!proposals.length) {
-        updateConstitutionalCommitteeMemberSummaryStats(container, members.map(member => {
+        updateConstitutionalCommitteeMemberSummaryStats(container, detailedMembers.map(member => {
             const proposalStats = getConstitutionalCommitteeMemberProposalStats(member);
             return {
                 voted: 0,
+                notVoted: 0,
                 total: 0,
                 open: proposalStats.open,
                 notApplicable: proposalStats.notApplicable,
@@ -7605,7 +7646,7 @@ async function loadConstitutionalCommitteeMemberSummaryStats(members, container)
         return;
     }
 
-    const statsPromise = calculateConstitutionalCommitteeMemberSummaryStats(members, proposals);
+    const statsPromise = calculateConstitutionalCommitteeMemberSummaryStats(detailedMembers, proposals);
     committeeMemberStatsCache.set(cacheKey, statsPromise);
     const stats = await statsPromise;
     committeeMemberStatsCache.set(cacheKey, stats);
@@ -7613,11 +7654,47 @@ async function loadConstitutionalCommitteeMemberSummaryStats(members, container)
     updateConstitutionalCommitteeMemberSummaryStats(container, stats);
 }
 
+async function loadConstitutionalCommitteeMembersWithActionStats(members) {
+    const enrichedMembers = Array.isArray(members) ? members : [];
+    const results = await Promise.allSettled(enrichedMembers.map(async member => {
+        if (hasConstitutionalCommitteeBackendActionStats(member)) return member;
+        const detail = await loadCommitteeMemberDetail(member);
+        const normalized = normalizeConstitutionalCommitteeMember(detail?.member);
+        if (!normalized) return member;
+        return {
+            ...member,
+            ...normalized,
+            sinceEpoch: pickFirstNumber(normalized.sinceEpoch, member.sinceEpoch),
+            name: normalized.name || member.name,
+            expiresEpoch: pickFirstNumber(normalized.expiresEpoch, member.expiresEpoch)
+        };
+    }));
+
+    return results.map((result, index) => result.status === 'fulfilled' ? result.value : enrichedMembers[index]);
+}
+
+function getConstitutionalCommitteeMemberSummaryStats(member) {
+    if (hasConstitutionalCommitteeBackendActionStats(member)) {
+        return getConstitutionalCommitteeBackendMemberSummaryStats(member);
+    }
+    const proposalStats = getConstitutionalCommitteeMemberProposalStats(member);
+    const voteStats = normalizeConstitutionalCommitteeTileStats(member.voteStats, proposalStats);
+    return {
+        voted: voteStats.voted,
+        notVoted: voteStats.notVoted,
+        total: voteStats.total,
+        open: voteStats.active,
+        notApplicable: proposalStats.notApplicable,
+        all: proposalStats.total
+    };
+}
+
 async function calculateConstitutionalCommitteeMemberSummaryStats(members, proposals) {
     const stats = members.map(member => {
         const proposalStats = getConstitutionalCommitteeMemberProposalStats(member);
         return {
             voted: 0,
+            notVoted: 0,
             total: 0,
             open: 0,
             notApplicable: proposalStats.notApplicable,
@@ -7652,6 +7729,7 @@ async function calculateConstitutionalCommitteeMemberSummaryStats(members, propo
                     stats[memberIndex].voted += 1;
                     stats[memberIndex].total += 1;
                 } else if (participation === 'not_voted') {
+                    stats[memberIndex].notVoted += 1;
                     stats[memberIndex].total += 1;
                 } else {
                     stats[memberIndex].open += 1;
@@ -7712,6 +7790,7 @@ function getConstitutionalCommitteeBackendMemberSummaryStats(member) {
     const proposalStats = getConstitutionalCommitteeMemberProposalStats(member);
     const stats = {
         voted: 0,
+        notVoted: 0,
         total: 0,
         open: 0,
         notApplicable: proposalStats.notApplicable,
@@ -7731,6 +7810,7 @@ function getConstitutionalCommitteeBackendMemberSummaryStats(member) {
                 stats.voted += 1;
                 stats.total += 1;
             } else if (participation === 'not_voted') {
+                stats.notVoted += 1;
                 stats.total += 1;
             } else {
                 stats.open += 1;
@@ -7740,18 +7820,50 @@ function getConstitutionalCommitteeBackendMemberSummaryStats(member) {
     return stats;
 }
 
+function normalizeConstitutionalCommitteeTileStats(voteStats, proposalStats = {}) {
+    const voted = Math.max(0, Number(voteStats?.voted) || 0);
+    const explicitNotVoted = Number(voteStats?.notVoted);
+    const applicableClosed = Number(voteStats?.applicable);
+    const rawTotal = Number(voteStats?.total);
+    const explicitActive = Number(voteStats?.activeNotVoted ?? voteStats?.active);
+    const active = Math.max(0, Number.isFinite(explicitActive) ? explicitActive : Number(proposalStats.open) || 0);
+    let notVoted = 0;
+
+    if (Number.isFinite(explicitNotVoted)) {
+        notVoted = Math.max(0, explicitNotVoted);
+    } else if (Number.isFinite(applicableClosed)) {
+        notVoted = Math.max(0, applicableClosed - voted);
+    } else if (Number.isFinite(rawTotal)) {
+        notVoted = Math.max(0, rawTotal - active - voted);
+    }
+
+    return {
+        voted,
+        notVoted,
+        total: voted + notVoted,
+        active
+    };
+}
+
 function updateConstitutionalCommitteeMemberSummaryStats(container, stats) {
     stats.forEach((item, index) => {
         const element = container.querySelector(`.governance-cc-member-stats[data-cc-member-index="${index}"]`);
         if (!element) return;
 
-        if (!item.total) {
+        const votedCount = Math.max(0, Number(item.voted) || 0);
+        const explicitNotVoted = Number(item.notVoted);
+        const notVotedCount = Number.isFinite(explicitNotVoted)
+            ? Math.max(0, explicitNotVoted)
+            : Math.max(0, (Number(item.total) || 0) - votedCount);
+        const applicableClosedTotal = votedCount + notVotedCount;
+
+        if (!applicableClosedTotal) {
             element.textContent = `Active ${Number(item.open) || 0} • Voted 0% • Not voted 0% • Not applicable ${Number(item.notApplicable) || 0}`;
             return;
         }
 
-        const votedPct = (item.voted / item.total) * 100;
-        const notVotedPct = ((item.total - item.voted) / item.total) * 100;
+        const votedPct = (votedCount / applicableClosedTotal) * 100;
+        const notVotedPct = (notVotedCount / applicableClosedTotal) * 100;
         element.textContent = '';
 
         const voted = document.createElement('span');
