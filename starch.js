@@ -144,8 +144,8 @@ function createStarchDirectoryList(records, type, label) {
         return list;
     }
 
-    sortStarchDirectoryRecords(records, type).forEach((record, index) => {
-        list.appendChild(createStarchDirectoryCard(record, index, type, label));
+    sortStarchDirectoryRecords(records, type).forEach(record => {
+        list.appendChild(createStarchDirectoryCard(record, type));
     });
     return list;
 }
@@ -178,54 +178,25 @@ function sortStarchDirectoryRecords(records, type) {
     });
 }
 
-function createStarchDirectoryCard(record, index, type, label) {
+function createStarchDirectoryCard(record, type) {
     const id = String(record?.id || '').trim();
+    if (type === 'companies') {
+        return createStarchCompanyDirectoryCard(record, id);
+    }
+
     const row = document.createElement('div');
-    row.className = 'pool-delegator-row governance-menu-card';
-    if (type === 'companies') {
-        const pinRank = getStarchCompanyPinRank(id);
-        if (Number.isFinite(pinRank)) row.dataset.overlayPinRank = String(pinRank);
-    }
+    row.className = 'governance-card governance-menu-card governance-treasury-withdrawal-card starch-miner-card';
+    row.dataset.sortName = normalizeOverlaySearchText(String(record?.name || 'No Name'));
+    row.setAttribute('role', id ? 'link' : 'group');
+    if (id) row.tabIndex = 0;
+    row.setAttribute('aria-label', id ? `Open ${String(record?.name || 'No Name')} on Starch` : String(record?.name || 'No Name'));
 
-    const rank = document.createElement('span');
-    rank.className = 'pool-delegator-rank';
-    rank.textContent = String(index + 1);
+    window.TDSPRuntime?.appendUniversalTileContent?.(row, {
+        title: String(record?.name || 'No Name')
+    });
+    appendStarchDirectoryIdLine(row, id, 'Miner ID');
 
-    const content = document.createElement('div');
-    content.className = 'pool-delegator-content';
-    const name = document.createElement('strong');
-    name.className = 'pool-delegator-handle';
-    name.textContent = String(record?.name || 'No Name');
-    row.dataset.sortName = normalizeOverlaySearchText(name.textContent);
-    if (type === 'companies' && record?.stats_resolved === true) {
-        row.dataset.sortBalance = String(Number(record?.balance) || 0);
-        row.dataset.sortBlocks = String(Number(record?.weekly_blocks) || 0);
-    }
-    content.appendChild(name);
-
-    if (type === 'companies') {
-        row.classList.add('starch-company-card');
-        row.setAttribute('role', 'button');
-        row.tabIndex = 0;
-        row.setAttribute('aria-label', `Open ${name.textContent}`);
-        content.appendChild(createStarchCompanyStats(record));
-        const open = () => openStarchCompanyOverlay(record, row);
-        row.addEventListener('click', open);
-        row.addEventListener('keydown', event => {
-            if (event.key !== 'Enter' && event.key !== ' ') return;
-            event.preventDefault();
-            open();
-        });
-        window.TDSPRuntime?.bindDetailPreload?.(
-            row,
-            `starch:${id.toUpperCase()}`,
-            () => fetchStarchCompanySummary(id)
-        );
-    } else if (type === 'miners' && id) {
-        row.classList.add('starch-miner-card');
-        row.setAttribute('role', 'link');
-        row.tabIndex = 0;
-        row.setAttribute('aria-label', `Open ${name.textContent} on Starch`);
+    if (type === 'miners' && id) {
         const open = () => {
             openExternalSiteWarning(`https://starch.one/miner/${encodeURIComponent(id)}`, row);
         };
@@ -237,19 +208,65 @@ function createStarchDirectoryCard(record, index, type, label) {
         });
     }
 
+    return row;
+}
+
+function createStarchCompanyDirectoryCard(record, id) {
+    const row = document.createElement('div');
+    row.className = 'governance-card governance-menu-card governance-treasury-withdrawal-card starch-company-card';
+    row.dataset.sortName = normalizeOverlaySearchText(String(record?.name || 'No Name'));
+    if (record?.stats_resolved === true) {
+        row.dataset.sortBalance = String(Number(record?.balance) || 0);
+        row.dataset.sortBlocks = String(Number(record?.weekly_blocks) || 0);
+    }
+
+    const pinRank = getStarchCompanyPinRank(id);
+    if (Number.isFinite(pinRank)) row.dataset.overlayPinRank = String(pinRank);
+
+    row.setAttribute('role', 'button');
+    row.tabIndex = 0;
+    row.setAttribute('aria-label', `Open ${String(record?.name || 'No Name')}`);
+
+    window.TDSPRuntime?.appendUniversalTileContent?.(row, {
+        title: String(record?.name || 'No Name'),
+        primaryText: record?.stats_resolved === true
+            ? `Balance ${formatBalance(record.balance)} STRCH`
+            : 'Balance loading...',
+        contextItems: [
+            record?.stats_resolved === true
+                ? `Weekly Blocks ${Number(record.weekly_blocks || 0).toLocaleString('en-US')}`
+                : 'Weekly Blocks loading...',
+            record?.stats_resolved === true
+                ? `Amount of miners ${Number(record.miner_count || 0).toLocaleString('en-US')}`
+                : 'Amount of miners loading...'
+        ]
+    });
+    appendStarchDirectoryIdLine(row, id, 'Company ID');
+
+    const open = () => openStarchCompanyOverlay(record, row);
+    row.addEventListener('click', open);
+    row.addEventListener('keydown', event => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        open();
+    });
+    window.TDSPRuntime?.bindDetailPreload?.(
+        row,
+        `starch:${id.toUpperCase()}`,
+        () => fetchStarchCompanySummary(id)
+    );
+
+    return row;
+}
+
+function appendStarchDirectoryIdLine(container, id, copyLabel) {
     const idLine = document.createElement('div');
     idLine.className = 'starch-directory-id-line';
     const idText = document.createElement('span');
-    idText.textContent = id || 'N/A';
+    idText.textContent = id ? `ID ${id}` : 'ID N/A';
     idLine.append(idText);
-    if (id) {
-        const singularLabel = type === 'companies' ? 'Company' : 'Miner';
-        idLine.appendChild(createStarchCopyButton(id, `${singularLabel} ID`));
-    }
-    content.appendChild(idLine);
-
-    row.append(rank, content);
-    return row;
+    if (id) idLine.appendChild(createStarchCopyButton(id, copyLabel));
+    container.appendChild(idLine);
 }
 
 function getStarchCompanyPinRank(companyId) {
@@ -258,22 +275,6 @@ function getStarchCompanyPinRank(companyId) {
         ['868C0C', 1]
     ]);
     return tdspOrder.get(String(companyId || '').trim().toUpperCase()) ?? Infinity;
-}
-
-function createStarchCompanyStats(company) {
-    const stats = document.createElement('div');
-    stats.className = 'starch-company-stats';
-    const balance = document.createElement('span');
-    const blocks = document.createElement('span');
-    if (company?.stats_resolved === true) {
-        balance.textContent = `Balance ${formatBalance(company.balance)} STRCH`;
-        blocks.textContent = `Weekly Blocks ${Number(company.weekly_blocks || 0).toLocaleString('en-US')}`;
-    } else {
-        balance.textContent = 'Balance loading...';
-        blocks.textContent = 'Weekly Blocks loading...';
-    }
-    stats.append(balance, blocks);
-    return stats;
 }
 
 function openTdspStarchCompanyOverlay(returnFocus) {
@@ -361,7 +362,7 @@ function renderStarchCompanyDetail(content, company, summary, options = {}) {
     const idLine = document.createElement('div');
     idLine.className = 'pool-id-line starch-company-id-line';
     const idLabel = document.createElement('span');
-    idLabel.textContent = 'Company ID';
+    idLabel.textContent = 'ID';
     const idValue = document.createElement('strong');
     idValue.textContent = String(company?.id || summary?.team_id || 'N/A');
     idLine.append(idLabel, idValue);

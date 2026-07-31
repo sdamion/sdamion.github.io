@@ -1250,8 +1250,8 @@ async function openBusinessOverlay(returnFocus = document.activeElement) {
         if (signature === renderedSignature) return showMatches;
         renderedSignature = signature;
         panel.replaceChildren();
-        visibleGroups.forEach((group, index) => {
-            panel.appendChild(createTreasuryBusinessCard(group, index));
+        visibleGroups.forEach(group => {
+            panel.appendChild(createTreasuryBusinessCard(group));
         });
         if (!visibleGroups.length) {
             const empty = document.createElement('p');
@@ -1665,8 +1665,8 @@ async function openCatalystFundsOverlay(returnFocus = document.activeElement) {
             });
         } else {
             if (fundingChart) panel.appendChild(fundingChart);
-            funds.forEach((fund, index) => {
-                panel.appendChild(createCatalystFundCard(fund, index));
+            funds.forEach(fund => {
+                panel.appendChild(createCatalystFundCard(fund));
             });
             if (!funds.length) {
                 const empty = document.createElement('p');
@@ -1755,7 +1755,7 @@ function normalizeCatalystFunds(payload) {
     ));
 }
 
-function createCatalystFundCard(fund, index) {
+function createCatalystFundCard(fund) {
     const card = document.createElement('button');
     card.type = 'button';
     card.className = 'governance-card governance-menu-card';
@@ -1767,40 +1767,19 @@ function createCatalystFundCard(fund, index) {
         openCatalystFundOverlay(fund, event.currentTarget);
     });
 
-    const position = document.createElement('span');
-    position.className = 'governance-list-index';
-    position.textContent = String(index + 1);
-
-    const title = document.createElement('strong');
-    title.className = 'governance-title';
-    title.textContent = fund.fund_name;
-
-    const proposals = document.createElement('span');
-    proposals.className = 'governance-card-detail';
-    proposals.textContent = `${fund.proposal_count.toLocaleString('en-US')} proposals`;
-
-    const claimed = document.createElement('span');
-    claimed.className = 'governance-card-detail governance-treasury-withdrawal-amount';
-    claimed.textContent = `Claimed ${formatCatalystFundAmount(fund, 'claimed', true)}`;
-
-    const notClaimed = document.createElement('span');
-    notClaimed.className = 'governance-card-detail';
-    notClaimed.textContent = `Not Claimed ${formatCatalystFundAmount(fund, 'not_claimed', true)}`;
-
-    card.append(position, title, proposals, claimed);
+    const detailItems = [`Not Claimed ${formatCatalystFundAmount(fund, 'not_claimed', true)}`];
     if (fund.claimed_ada > 0) {
-        const claimedAda = document.createElement('span');
-        claimedAda.className = 'governance-card-detail';
-        claimedAda.textContent = `Original amount ${formatAdaAmount(fund.claimed_ada)}`;
-        card.appendChild(claimedAda);
+        detailItems.push(`Original amount ${formatAdaAmount(fund.claimed_ada)}`);
     }
-    card.appendChild(notClaimed);
     if (fund.not_claimed_ada > 0) {
-        const notClaimedAda = document.createElement('span');
-        notClaimedAda.className = 'governance-card-detail';
-        notClaimedAda.textContent = `Original amount ${formatAdaAmount(fund.not_claimed_ada)}`;
-        card.appendChild(notClaimedAda);
+        detailItems.push(`Original amount ${formatAdaAmount(fund.not_claimed_ada)}`);
     }
+    window.TDSPRuntime?.appendUniversalTileContent?.(card, {
+        title: fund.fund_name,
+        primaryText: `Claimed ${formatCatalystFundAmount(fund, 'claimed', true)}`,
+        contextItems: [`${fund.proposal_count.toLocaleString('en-US')} proposals`],
+        detailItems
+    });
     return card;
 }
 
@@ -2234,40 +2213,27 @@ function createCatalystFundingProjectCard(project, group) {
         openCatalystProposalDetailOverlay(project, event.currentTarget);
     });
 
-    const title = document.createElement('strong');
-    title.className = 'governance-title';
-    title.textContent = project.title;
-
-    const business = document.createElement('span');
-    business.className = 'governance-card-detail';
-    business.textContent = `${project.business} • ${project.fund_name}`;
-
-    const funding = document.createElement('span');
-    funding.className = 'governance-card-detail governance-treasury-withdrawal-amount';
-    funding.textContent = `${group.label} ${formatCatalystFundingAmount(amount, group.currency)}`;
-
-    const requested = document.createElement('span');
-    requested.className = 'governance-card-detail';
-    requested.textContent = `Requested ${formatCatalystFundingAmount(project?.[requestedField], group.currency)}`;
-
-    openButton.append(title, business, funding);
+    const detailItems = [];
     if (String(project?.currency || '').toUpperCase() === 'ADA') {
-        const fundingAda = document.createElement('span');
-        fundingAda.className = 'governance-card-detail';
         const requestedAda = Math.max(Number(project?.amount_requested) || 0, 0);
         const receivedAda = Math.min(
             Math.max(Number(project?.amount_received) || 0, 0),
             requestedAda
         );
         const isClaimed = group.key === 'claimed';
-        fundingAda.textContent = `${isClaimed ? 'Claimed' : 'Unclaimed'} ${formatAdaAmount(
+        detailItems.push(`${isClaimed ? 'Claimed' : 'Unclaimed'} ${formatAdaAmount(
             isClaimed
                 ? receivedAda
                 : Math.max(requestedAda - receivedAda, 0)
-        )}`;
-        openButton.appendChild(fundingAda);
+        )}`);
     }
-    openButton.appendChild(requested);
+    detailItems.push(`Requested ${formatCatalystFundingAmount(project?.[requestedField], group.currency)}`);
+    window.TDSPRuntime?.appendUniversalTileContent?.(openButton, {
+        title: project.title,
+        primaryText: `${group.label} ${formatCatalystFundingAmount(amount, group.currency)}`,
+        contextItems: [`${project.business} • ${project.fund_name}`],
+        detailItems
+    });
     appendCatalystAdaAmount(openButton, project, 'requested');
     appendCatalystMilestoneIndicator(openButton, project);
     card.appendChild(openButton);
@@ -2289,7 +2255,7 @@ function closeCatalystFundingProjectsOverlay() {
     removeGovernanceMenuOverlay('governance-catalyst-funding-projects-overlay');
 }
 
-function createTreasuryBusinessCard(group, index) {
+function createTreasuryBusinessCard(group) {
     const actionsCount = getTreasuryBusinessActions(group).length;
     const catalystCount = group.catalystProjects.length;
     const projectCount = actionsCount + catalystCount;
@@ -2313,25 +2279,16 @@ function createTreasuryBusinessCard(group, index) {
         openTreasuryBusinessActionsOverlay(group, event.currentTarget);
     });
 
-    const name = document.createElement('strong');
-    name.className = 'governance-title';
-    name.textContent = group.label;
-
     const amount = createFundingRecipientAmountRow(
         group.value,
         group.adaValue,
         group.usdPending
     );
-
-    const actions = document.createElement('span');
-    actions.className = 'governance-card-detail';
-    actions.textContent = `${projectCount.toLocaleString('en-US')} funded project${projectCount === 1 ? '' : 's'}`;
-
-    const position = document.createElement('span');
-    position.className = 'governance-list-index';
-    position.textContent = String(index + 1);
-
-    card.append(position, name, amount, actions);
+    window.TDSPRuntime?.appendUniversalTileContent?.(card, {
+        title: group.label,
+        primaryNode: amount,
+        detailItems: [`${projectCount.toLocaleString('en-US')} funded project${projectCount === 1 ? '' : 's'}`]
+    });
     return card;
 }
 
@@ -2465,33 +2422,17 @@ function getCatalystTileContext(project) {
 }
 
 function appendUniversalFundingTileContent(container, options = {}) {
-    const title = document.createElement('strong');
-    title.className = 'governance-title';
-    title.textContent = cleanGovernanceText(options.title || 'Untitled project');
-
     const amount = createFundingRecipientAmountRow(
         options.usdValue,
         options.adaValue,
         options.usdPending === true
     );
-
-    const context = document.createElement('span');
-    context.className = 'governance-card-detail governance-funding-card-context';
-    context.textContent = (options.contextItems || []).filter(Boolean).join(' • ');
-
-    container.append(title, amount);
-    if (context.textContent) container.appendChild(context);
-    if (options.proposer) {
-        const proposer = document.createElement('span');
-        proposer.className = 'governance-card-detail governance-funding-card-proposer';
-        proposer.textContent = `Proposer: ${options.proposer}`;
-        container.appendChild(proposer);
-    }
-    (options.detailItems || []).filter(Boolean).forEach(item => {
-        const detail = document.createElement('span');
-        detail.className = 'governance-card-detail';
-        detail.textContent = item;
-        container.appendChild(detail);
+    window.TDSPRuntime?.appendUniversalTileContent?.(container, {
+        title: cleanGovernanceText(options.title || 'Untitled project'),
+        primaryNode: amount,
+        contextItems: options.contextItems || [],
+        proposer: options.proposer,
+        detailItems: options.detailItems || []
     });
 }
 
@@ -4028,14 +3969,6 @@ function createGovernanceCard(proposal, options = {}) {
         handleClick(event);
     });
 
-    const title = document.createElement('span');
-    title.className = 'governance-title';
-    title.textContent = getProposalTitle(proposal);
-
-    const expiration = document.createElement('span');
-    expiration.className = 'governance-expiration';
-    expiration.textContent = getExpirationText(proposal);
-
     const metadataItems = getActiveGovernanceCardMetadata(proposal);
     const votes = document.createElement('span');
     if (!proposal.votePercentages) {
@@ -4046,13 +3979,10 @@ function createGovernanceCard(proposal, options = {}) {
         votes.textContent = formatVotePercentages(proposal.votePercentages, proposal.voteDisplay?.label, proposal.voteSummary, proposal.voteDisplay?.source);
     }
 
-    openButton.appendChild(title);
-    openButton.appendChild(expiration);
-    metadataItems.forEach(item => {
-        const detail = document.createElement('span');
-        detail.className = 'governance-card-detail';
-        detail.textContent = `${item.label} ${item.value}`;
-        openButton.appendChild(detail);
+    window.TDSPRuntime?.appendUniversalTileContent?.(openButton, {
+        title: getProposalTitle(proposal),
+        contextItems: [getExpirationText(proposal)],
+        detailItems: metadataItems.map(item => `${item.label} ${item.value}`)
     });
     if (shouldShowVotePercentages(proposal)) openButton.appendChild(votes);
     card.appendChild(openButton);
@@ -5640,13 +5570,10 @@ function renderSpoVotesList(container, votes, voteLabel) {
     ));
 
     const fragment = document.createDocumentFragment();
-    sortedVotes.forEach((vote, index) => {
+    sortedVotes.forEach(vote => {
         const poolId = getSpoVoteIdentifier(vote);
         const row = document.createElement('div');
         row.className = 'governance-cc-member governance-menu-card';
-
-        const number = document.createElement('strong');
-        number.textContent = String(index + 1);
 
         const copy = document.createElement('div');
         copy.className = 'governance-drep-member-copy';
@@ -5676,7 +5603,7 @@ function renderSpoVotesList(container, votes, voteLabel) {
         copy.append(name, choice);
         if (poolDetails.textContent) copy.appendChild(poolDetails);
         copy.appendChild(idLine);
-        row.append(number, copy);
+        row.appendChild(copy);
         fragment.appendChild(row);
     });
 
@@ -5946,9 +5873,9 @@ function renderSpoDirectory(container, spos) {
         getSpoPinRank(left) - getSpoPinRank(right)
     );
     const fragment = document.createDocumentFragment();
-    orderedSpos.forEach((spo, index) => {
+    orderedSpos.forEach(spo => {
         const row = document.createElement('div');
-        row.className = 'governance-cc-member governance-menu-card governance-cc-member-clickable governance-spo-directory-card';
+        row.className = 'governance-card governance-menu-card governance-cc-member governance-cc-member-clickable governance-spo-directory-card';
         row.dataset.searchText = `${spo.name || ''} ${spo.ticker || ''} ${spo.pool_id || ''}`.trim();
         row.dataset.sortName = normalizeOverlaySearchText(getSpoDisplayName(spo));
         row.dataset.sortAmount = String(Number(spo.delegated_lovelace) || 0);
@@ -5963,34 +5890,20 @@ function renderSpoDirectory(container, spos) {
         row.tabIndex = 0;
         row.setAttribute('aria-label', `Show ${getSpoDisplayName(spo)} stake pool details`);
 
-        const number = document.createElement('strong');
-        number.textContent = String(index + 1);
-
-        const copy = document.createElement('div');
-        copy.className = 'governance-drep-member-copy';
-        const name = document.createElement('span');
-        name.className = 'governance-cc-member-hash';
-        name.textContent = getSpoDisplayName(spo);
-
-        const cloudService = document.createElement('span');
-        cloudService.className = 'governance-cc-member-meta';
-        cloudService.textContent = `Cloud Service: ${getSpoCloudServiceText(spo)}`;
-
-        const delegated = document.createElement('span');
-        delegated.className = 'governance-cc-member-stats';
-        delegated.textContent = `Delegation: ${formatCompactAdaFromLovelace(spo.delegated_lovelace)}`;
-
-        const delegators = document.createElement('span');
-        delegators.className = 'governance-cc-member-meta';
-        delegators.textContent = `Delegators: ${Number(spo.delegator_count || 0).toLocaleString('en-US')}`;
-
-        const saturation = document.createElement('span');
-        saturation.className = 'governance-cc-member-meta';
-        saturation.textContent = `Saturation: ${formatSpoSaturation(spo.saturation_pct)}`;
-
         const idLine = createSpoPoolIdLine(spo.pool_id);
-        copy.append(name, cloudService, delegated, delegators, saturation, idLine);
-        row.append(number, copy, createSpoHostingIcon(cloudHostingType));
+        window.TDSPRuntime?.appendUniversalTileContent?.(row, {
+            title: getSpoDisplayName(spo),
+            titleClassName: 'governance-cc-member-hash',
+            primaryText: `Delegation: ${formatCompactAdaFromLovelace(spo.delegated_lovelace)}`,
+            primaryClassName: 'governance-cc-member-stats',
+            detailItems: [
+                { text: `Cloud Service: ${getSpoCloudServiceText(spo)}`, className: 'governance-cc-member-meta' },
+                { text: `Delegators: ${Number(spo.delegator_count || 0).toLocaleString('en-US')}`, className: 'governance-cc-member-meta' },
+                { text: `Saturation: ${formatSpoSaturation(spo.saturation_pct)}`, className: 'governance-cc-member-meta' },
+                idLine
+            ]
+        });
+        row.appendChild(createSpoHostingIcon(cloudHostingType));
         bindGovernanceMenuTrigger(row, event => openSpoDetailOverlay(spo, event.currentTarget));
         bindGovernanceEntityPreload(
             row,
@@ -6166,11 +6079,10 @@ function renderSpoDetails(container, spo) {
     ].forEach(([label, value]) => {
         const card = document.createElement('div');
         card.className = 'governance-spo-detail-stat governance-menu-card';
-        const title = document.createElement('strong');
-        title.textContent = label;
-        const detail = document.createElement('span');
-        detail.textContent = value || '--';
-        card.append(title, detail);
+        window.TDSPRuntime?.appendUniversalTileContent?.(card, {
+            title: label,
+            primaryText: value || '--'
+        });
         stats.appendChild(card);
     });
     container.appendChild(stats);
@@ -6987,9 +6899,9 @@ function renderDrepDirectory(container, dreps, options = {}) {
     }
 
     const fragment = document.createDocumentFragment();
-    dreps.forEach((drep, index) => {
+    dreps.forEach(drep => {
         const row = document.createElement('div');
-        row.className = 'governance-cc-member governance-menu-card';
+        row.className = 'governance-card governance-menu-card governance-cc-member';
         row.dataset.searchText = `${drep.id || ''} ${drep.searchIds || ''}`.trim();
         row.dataset.sortName = normalizeOverlaySearchText(drep.name);
         row.dataset.sortPower = String(Number(drep.votingPower) || 0);
@@ -6997,22 +6909,6 @@ function renderDrepDirectory(container, dreps, options = {}) {
         const pinRank = getDrepPinRank(drep);
         if (Number.isFinite(pinRank)) row.dataset.overlayPinRank = String(pinRank);
 
-        const number = document.createElement('strong');
-        number.textContent = String(index + 1);
-
-        const copy = document.createElement('div');
-        copy.className = 'governance-drep-member-copy';
-        const name = document.createElement('span');
-        name.className = 'governance-cc-member-hash';
-        name.textContent = drep.name;
-
-        const power = document.createElement('span');
-        power.className = 'governance-cc-member-stats';
-        power.textContent = `Voting power: ${formatCompactAdaFromLovelace(drep.votingPower)}`;
-
-        const status = document.createElement('span');
-        status.className = 'governance-cc-member-meta governance-drep-member-status';
-        status.textContent = drep.active ? 'Active' : 'Inactive';
         row.classList.add(drep.active ? 'governance-drep-member--active' : 'governance-drep-member--inactive');
 
         const idLine = document.createElement('div');
@@ -7026,12 +6922,19 @@ function renderDrepDirectory(container, dreps, options = {}) {
         idLine.appendChild(id);
         idLine.appendChild(copyId);
 
-        copy.appendChild(name);
-        copy.appendChild(power);
-        copy.appendChild(status);
-        copy.appendChild(idLine);
-        row.appendChild(number);
-        row.appendChild(copy);
+        window.TDSPRuntime?.appendUniversalTileContent?.(row, {
+            title: drep.name,
+            titleClassName: 'governance-cc-member-hash',
+            primaryText: `Voting power: ${formatCompactAdaFromLovelace(drep.votingPower)}`,
+            primaryClassName: 'governance-cc-member-stats',
+            detailItems: [
+                {
+                    text: drep.active ? 'Active' : 'Inactive',
+                    className: 'governance-cc-member-meta governance-drep-member-status'
+                },
+                idLine
+            ]
+        });
         row.classList.add('governance-cc-member-clickable');
         row.setAttribute('role', 'button');
         row.tabIndex = 0;
@@ -7514,35 +7417,28 @@ function renderConstitutionalCommitteeMembers(container, members, emptyMessage =
 
     enrichedMembers.forEach((member, index) => {
         const row = document.createElement('div');
-        row.className = 'governance-cc-member governance-menu-card';
+        row.className = 'governance-card governance-menu-card governance-cc-member';
         row.dataset.sortName = normalizeOverlaySearchText(member.name || `CC Member ${index + 1}`);
         if (Number.isFinite(Number(member.expiresEpoch))) {
             row.dataset.sortEpoch = String(Number(member.expiresEpoch));
         }
 
-        const number = document.createElement('strong');
-        number.textContent = String(index + 1);
-
-        const copy = document.createElement('div');
-        const hash = document.createElement('span');
-        hash.className = 'governance-cc-member-hash';
-        hash.textContent = member.name || `CC Member ${index + 1}`;
-
-        const meta = document.createElement('span');
-        meta.className = 'governance-cc-member-meta';
-        meta.textContent = [
-            member.expiresEpoch ? `expires epoch ${member.expiresEpoch}` : ''
-        ].filter(Boolean).join(' • ');
         const stats = document.createElement('span');
         stats.className = 'governance-cc-member-stats';
         stats.dataset.ccMemberIndex = String(index);
         stats.textContent = 'Voting stats loading...';
 
-        copy.appendChild(hash);
-        copy.appendChild(meta);
-        copy.appendChild(stats);
-        row.appendChild(number);
-        row.appendChild(copy);
+        window.TDSPRuntime?.appendUniversalTileContent?.(row, {
+            title: member.name || `CC Member ${index + 1}`,
+            titleClassName: 'governance-cc-member-hash',
+            primaryNode: stats,
+            detailItems: [
+                {
+                    text: member.expiresEpoch ? `expires epoch ${member.expiresEpoch}` : '',
+                    className: 'governance-cc-member-meta'
+                }
+            ]
+        });
         row.classList.add('governance-cc-member-clickable');
         row.setAttribute('role', 'button');
         row.tabIndex = 0;

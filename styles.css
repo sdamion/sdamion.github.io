@@ -917,18 +917,6 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     gap: 5px;
 }
 
-.pool-delegator-rank {
-    display: grid;
-    place-items: center;
-    width: 38px;
-    height: 38px;
-    border-radius: 50%;
-    background: var(--overlay-surface-muted);
-    color: var(--accent-strong);
-    font-size: 0.9rem;
-    font-weight: 800;
-}
-
 .pool-delegator-address-line {
     display: flex;
     min-width: 0;
@@ -992,18 +980,6 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 .starch-miner-card,
 .starch-pool-link-card {
     cursor: pointer;
-}
-
-.starch-company-stats {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px 14px;
-}
-
-.starch-company-stats > span {
-    color: var(--accent-strong);
-    font-size: 0.82rem;
-    font-weight: 800;
 }
 
 .starch-company-detail {
@@ -1813,20 +1789,6 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 .governance-card > :last-child,
 .governance-card-open > :last-child {
     margin-bottom: 0;
-}
-
-.governance-list-index {
-    display: inline-grid;
-    width: 30px;
-    height: 30px;
-    margin: 0 0 4px;
-    place-items: center;
-    border-radius: 999px;
-    background: var(--overlay-surface-strong);
-    color: var(--accent-strong);
-    font-size: 0.82rem;
-    font-weight: 800;
-    line-height: 1;
 }
 
 .governance-card-open:hover {
@@ -2812,14 +2774,16 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 }
 
 .governance-cc-member.governance-spo-directory-card {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    align-items: center;
+    position: relative;
+    padding-right: 58px;
 }
 
 .governance-spo-hosting-icon {
+    position: absolute;
+    top: 16px;
+    right: 16px;
     width: 30px;
     height: 30px;
-    flex: 0 0 auto;
 }
 
 .governance-spo-hosting-icon.is-cloud {
@@ -2831,27 +2795,12 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 }
 
 .governance-cc-member {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    gap: 14px;
-    align-items: start;
+    display: block;
     padding: 14px;
 }
 
 .governance-cc-member-clickable {
     cursor: pointer;
-}
-
-.governance-cc-member > strong {
-    display: grid;
-    place-items: center;
-    width: 32px;
-    height: 32px;
-    border-radius: 999px;
-    background: var(--overlay-surface-strong);
-    color: var(--accent-strong);
-    font-size: 0.9rem;
-    line-height: 1;
 }
 
 .governance-cc-member-hash,

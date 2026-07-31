@@ -927,13 +927,12 @@ function createCryptoNewsList() {
         return list;
     }
 
-    cryptoNewsItems.forEach((item, index) => {
+    cryptoNewsItems.forEach(item => {
         const publishedAt = Date.parse(item?.published_at || '');
         const dateText = Number.isFinite(publishedAt)
             ? new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium' }).format(publishedAt)
             : '';
         const row = createPoolOverlayRow({
-            index,
             title: String(item?.title || 'Untitled Cardano news'),
             titleClassName: 'crypto-news-list-title',
             details: [
@@ -1986,9 +1985,8 @@ function createStarchPoolsList() {
         return list;
     }
 
-    starchPools.forEach((pool, index) => {
+    starchPools.forEach(pool => {
         const row = createPoolOverlayRow({
-            index,
             title: pool?.name || 'No Name',
             titleClassName: 'pool-delegator-handle',
             details: [String(pool?.ticker || '').toUpperCase() || 'N/A']
@@ -2071,7 +2069,6 @@ function createMithrilSignersList() {
         stake.textContent = formatDelegatorAda(getMithrilSignerStake(signer));
 
         const row = createPoolOverlayRow({
-            index,
             title: signer?.display_name || signer?.name || 'No Name',
             titleClassName: 'pool-delegator-handle',
             details: [idLine, stake]
@@ -2156,7 +2153,7 @@ function createPoolDelegatorsList() {
             details.push(epochText);
         }
 
-        const row = createPoolOverlayRow({ index, details });
+        const row = createPoolOverlayRow({ details });
         row.dataset.sortName = normalizeOverlaySearchText(adaHandle || address);
         row.dataset.sortAmount = getDelegatorAmount(delegator).toString();
         if (Number.isFinite(epoch)) row.dataset.sortEpoch = String(epoch);
@@ -2166,13 +2163,9 @@ function createPoolDelegatorsList() {
     return list;
 }
 
-function createPoolOverlayRow({ index, title = '', titleClassName = '', details = [] }) {
+function createPoolOverlayRow({ title = '', titleClassName = '', details = [] }) {
     const row = document.createElement('div');
     row.className = 'pool-delegator-row governance-menu-card';
-
-    const rank = document.createElement('span');
-    rank.className = 'pool-delegator-rank';
-    rank.textContent = String(index + 1);
 
     const content = document.createElement('div');
     content.className = 'pool-delegator-content';
@@ -2197,7 +2190,7 @@ function createPoolOverlayRow({ index, title = '', titleClassName = '', details 
         content.appendChild(text);
     });
 
-    row.append(rank, content);
+    row.appendChild(content);
     return row;
 }
 

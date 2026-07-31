@@ -90,6 +90,56 @@
         textArea.remove();
     }
 
+    function cleanTileText(value) {
+        return String(value || '').replace(/\n{3,}/g, '\n\n').trim();
+    }
+
+    function appendUniversalTileContent(container, options = {}) {
+        if (!(container instanceof HTMLElement)) return;
+
+        const title = document.createElement('strong');
+        title.className = options.titleClassName || 'governance-title';
+        title.textContent = cleanTileText(options.title || 'Untitled');
+        container.appendChild(title);
+
+        if (options.primaryNode instanceof Node) {
+            container.appendChild(options.primaryNode);
+        } else if (options.primaryText) {
+            const primary = document.createElement('span');
+            primary.className = options.primaryClassName || 'governance-card-detail governance-treasury-withdrawal-amount';
+            primary.textContent = cleanTileText(options.primaryText);
+            container.appendChild(primary);
+        }
+
+        const context = (options.contextItems || []).filter(Boolean).join(' • ');
+        if (context) {
+            const contextLine = document.createElement('span');
+            contextLine.className = 'governance-card-detail governance-funding-card-context';
+            contextLine.textContent = cleanTileText(context);
+            container.appendChild(contextLine);
+        }
+
+        if (options.proposer) {
+            const proposer = document.createElement('span');
+            proposer.className = 'governance-card-detail governance-funding-card-proposer';
+            proposer.textContent = `Proposer: ${cleanTileText(options.proposer)}`;
+            container.appendChild(proposer);
+        }
+
+        (options.detailItems || []).filter(Boolean).forEach(item => {
+            if (item instanceof Node) {
+                container.appendChild(item);
+                return;
+            }
+            const detailText = cleanTileText(item?.text || item);
+            if (!detailText) return;
+            const detail = document.createElement('span');
+            detail.className = item?.className || 'governance-card-detail';
+            detail.textContent = detailText;
+            container.appendChild(detail);
+        });
+    }
+
     window.TDSPRuntime = Object.freeze({
         detailCacheTtlMs: DETAIL_CACHE_TTL_MS,
         isLocalPreview: isLocalPreviewHostname(window.location.hostname),
@@ -97,6 +147,7 @@
         loadDetail,
         bindDetailPreload,
         setText,
-        copyText
+        copyText,
+        appendUniversalTileContent
     });
 }());
