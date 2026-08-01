@@ -830,7 +830,7 @@ function createTreasuryAdministratorChart(withdrawals) {
     section.className = 'governance-vote-chart governance-chart-panel';
 
     const title = document.createElement('strong');
-    title.textContent = 'Withdrawals by administrator';
+    title.textContent = 'Withdrawals by PRAGMA association';
 
     const layout = document.createElement('div');
     layout.className = 'governance-vote-chart-layout';
@@ -865,7 +865,7 @@ function getTreasuryAdministratorGroups(withdrawals) {
     const groups = new Map();
     withdrawals.forEach(withdrawal => {
         const address = String(withdrawal?.stake_address || '');
-        const recipientAdministrator = TREASURY_RECIPIENT_ADMINISTRATORS[address] || 'Unknown administrator';
+        const recipientAdministrator = TREASURY_RECIPIENT_ADMINISTRATORS[address] || 'Unknown PRAGMA association';
         const administrator = recipientAdministrator.startsWith('Amaru')
             ? 'Amaru'
             : recipientAdministrator;
@@ -3055,11 +3055,11 @@ function createTreasuryWithdrawalCard(withdrawal) {
 
             const administratorText = document.createElement('span');
             administratorText.className = 'governance-drep-id';
-            administratorText.textContent = `Administrator: ${administrator}`;
+            administratorText.textContent = `PRAGMA association: ${administrator}`;
             administratorLine.appendChild(administratorText);
             administratorLine.appendChild(createGovernanceCopyButton(
                 administrator,
-                'administrator'
+                'PRAGMA association'
             ));
             card.appendChild(administratorLine);
         }
