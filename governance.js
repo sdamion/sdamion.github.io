@@ -830,7 +830,7 @@ function createTreasuryAdministratorChart(withdrawals) {
     section.className = 'governance-vote-chart governance-chart-panel';
 
     const title = document.createElement('strong');
-    title.textContent = 'Withdrawals by PRAGMA association';
+    title.textContent = 'Withdrawals by administrator';
 
     const layout = document.createElement('div');
     layout.className = 'governance-vote-chart-layout';
@@ -864,8 +864,11 @@ function createTreasuryAdministratorChart(withdrawals) {
 function getTreasuryAdministratorGroups(withdrawals) {
     const groups = new Map();
     withdrawals.forEach(withdrawal => {
-        const address = String(withdrawal?.stake_address || '');
-        const administrator = getTreasuryAdministratorName(address);
+        const recipientAdministrator = getTreasuryWithdrawalAdministrator(withdrawal)
+            || 'Unknown administrator';
+        const administrator = recipientAdministrator.startsWith('Amaru')
+            ? 'Amaru'
+            : recipientAdministrator;
         const group = groups.get(administrator) || {
             key: administrator,
             label: administrator,
@@ -887,12 +890,48 @@ function getTreasuryAdministratorGroups(withdrawals) {
         }));
 }
 
-function getTreasuryAdministratorName(address) {
-    const recipientAdministrator = TREASURY_RECIPIENT_ADMINISTRATORS[String(address || '')]
-        || 'Unknown PRAGMA association';
-    return recipientAdministrator.startsWith('Amaru')
-        ? 'PRAGMA Association'
-        : recipientAdministrator;
+function getTreasuryWithdrawalAdministrator(withdrawal) {
+    const address = String(withdrawal?.stake_address || '');
+    const mappedAdministrator = TREASURY_RECIPIENT_ADMINISTRATORS[address];
+    if (mappedAdministrator) return mappedAdministrator;
+
+    const proposal = getTreasuryGovernanceProposal(withdrawal);
+    const text = [
+        withdrawal?.business,
+        withdrawal?.proposer,
+        ...(Array.isArray(withdrawal?.proposers) ? withdrawal.proposers : []),
+        proposal?.business,
+        proposal?.ideascale_user,
+        proposal?.proposer,
+        ...(Array.isArray(proposal?.proposers) ? proposal.proposers : []),
+        ...(Array.isArray(proposal?.authors)
+            ? proposal.authors.map(author => author?.name || author)
+            : []),
+        getProposalMetadataText(proposal)
+    ].filter(Boolean).join(' ').toLowerCase();
+
+    if (/\bintersect\b/.test(text)) return 'Intersect';
+    return null;
+}
+
+function getProposalMetadataText(proposal) {
+    const values = [];
+    const visit = value => {
+        if (value === null || value === undefined) return;
+        if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+            values.push(String(value));
+            return;
+        }
+        if (Array.isArray(value)) {
+            value.forEach(visit);
+            return;
+        }
+        if (typeof value === 'object') {
+            Object.values(value).forEach(visit);
+        }
+    };
+    visit(proposal?.meta_json);
+    return values.join(' ');
 }
 
 function openTreasuryAdministratorWithdrawalsOverlay(group, returnFocus) {
@@ -1088,7 +1127,6 @@ function getCatalystBusinessProjects(payload) {
             fund_name: project?.fund_name || null,
             submitters: Array.isArray(project?.submitters) ? project.submitters : [],
             source: project?.source || payload?.source || 'project_catalyst_official',
-            website: project?.website || null,
             source_url: project?.source_url || null
         }];
     });
@@ -1602,7 +1640,6 @@ function getCatalystFundingStatus(payload) {
                 - Number(project.amount_received_usd || 0),
                 0
             ),
-            website: project.website,
             source_url: project.source_url
         }))
     };
@@ -1638,7 +1675,6 @@ function getCatalystFundingProjects(payload) {
             requested_usd: requested,
             claimed_usd: claimed,
             not_claimed_usd: notClaimed,
-            website: project?.website || null,
             source_url: project?.source_url || null
         }];
     });
@@ -2617,25 +2653,15 @@ function renderCatalystProposalDetail(container, proposal) {
     addMarkdownDetailSection(container, 'Project details', getCatalystDetailText(proposal.project_details));
     addMarkdownDetailSection(container, 'Open source', proposal.opensource_description);
 
-    const projectWebsite = proposal.website;
-    const sourceUrl = proposal.source_url;
-    if (projectWebsite || sourceUrl) {
+    const sourceUrl = proposal.source_url || proposal.website;
+    if (sourceUrl) {
         const actions = document.createElement('div');
         actions.className = 'governance-action-buttons';
-        if (projectWebsite) {
-            actions.appendChild(createGovernanceProposalActionButton(
-                'Open project website',
-                'governance-catalyst-source-button',
-                event => openExternalSiteWarning(projectWebsite, event.currentTarget)
-            ));
-        }
-        if (sourceUrl && sourceUrl !== projectWebsite) {
-            actions.appendChild(createGovernanceProposalActionButton(
-                'Open proposal source',
-                'governance-catalyst-source-button',
-                event => openExternalSiteWarning(sourceUrl, event.currentTarget)
-            ));
-        }
+        actions.appendChild(createGovernanceProposalActionButton(
+            'Open proposal website',
+            'governance-catalyst-source-button',
+            event => openExternalSiteWarning(sourceUrl, event.currentTarget)
+        ));
         container.appendChild(actions);
     }
 }
@@ -3066,18 +3092,18 @@ function createTreasuryWithdrawalCard(withdrawal) {
 
     const address = String(withdrawal?.stake_address || '');
     if (address) {
-        if (TREASURY_RECIPIENT_ADMINISTRATORS[address]) {
-            const administrator = getTreasuryAdministratorName(address);
+        const administrator = getTreasuryWithdrawalAdministrator(withdrawal);
+        if (administrator) {
             const administratorLine = document.createElement('span');
             administratorLine.className = 'governance-card-detail governance-drep-id-line';
 
             const administratorText = document.createElement('span');
             administratorText.className = 'governance-drep-id';
-            administratorText.textContent = `PRAGMA association: ${administrator}`;
+            administratorText.textContent = `Administrator: ${administrator}`;
             administratorLine.appendChild(administratorText);
             administratorLine.appendChild(createGovernanceCopyButton(
                 administrator,
-                'PRAGMA association'
+                'administrator'
             ));
             card.appendChild(administratorLine);
         }
