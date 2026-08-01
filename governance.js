@@ -1118,7 +1118,8 @@ const TREASURY_BUSINESS_ALIASES = Object.freeze({
     '$conrad': 'ADA Handle',
     '$conrad ada handle': 'ADA Handle',
     'chris joannou': 'Draper Dragon',
-    'michele nuzzi': 'HLabs',
+    'michele nuzzi': 'Harmonic Labs',
+    hlabs: 'Harmonic Labs',
     'glen jordan': 'Empowa',
     strica: 'Cardanoscan',
     'robert hever': 'CHARLI3',
@@ -1128,7 +1129,6 @@ const TREASURY_BUSINESS_ALIASES = Object.freeze({
     'janis aguilar': 'CV Labs',
     'sheldon hunt': 'Sundial',
     philipdisarro: 'Anastasia Labs',
-    'pritesh gosai': 'Kaizen Crypto',
     'matthew plomin': 'Mehen (Matthew Plomin)',
     'teo petricevic': 'Emurgo',
     cardano2vn: 'Atala Prism',
@@ -1146,6 +1146,16 @@ const TREASURY_BUSINESS_ALIASES = Object.freeze({
     'gimbalabs team': 'Gimbalabs',
     'gimbalabs hk': 'Gimbalabs',
     'gimbalabs official': 'Gimbalabs',
+    intersect: 'IntersectMBO',
+    builderdao: 'Builder Dao',
+    cardanofoundation: 'Cardano Foundation',
+    'catalyst team': 'Catalyst Team',
+    anzens: 'Anzens - USDA',
+    dcspark: 'dcSpark',
+    'snek foundation': 'Snek Foundation',
+    'iagon team': 'Iagon',
+    'atrium lab inc': 'Atrium Lab Inc',
+    'atrium lab inc.': 'Atrium Lab Inc',
     'björn sandmann': 'Blocktrust (Atala PRISM)',
     jschreiner22: 'Snapbrillia',
     'chadle (bbhmm)': 'zenGate Global',
@@ -1153,6 +1163,86 @@ const TREASURY_BUSINESS_ALIASES = Object.freeze({
     'michal porubsky': 'Vacuumlabs',
     'michael yagi': 'MLabs',
     'opshinlanguage lang': 'Opshin'
+});
+
+const TREASURY_BUSINESS_WEBSITES = Object.freeze({
+    '5 AM Earth Foundation': 'https://5am.earth/',
+    'ADA Handle': 'https://adahandle.com',
+    'AdaStat.net': 'https://adastat.net',
+    Amaru: 'https://amaru.global',
+    'Anastasia Labs': 'https://anastasialabs.com',
+    Anvil: 'https://ada-anvil.io',
+    'Anzens - USDA': 'https://projectcatalyst.io/',
+    'Atrium Lab Inc': 'https://www.atriumlab.io',
+    'Atala Prism': 'https://atalaprism.io',
+    'Blink Labs': 'https://blinklabs.io',
+    BloxBean: 'https://bloxbean.com',
+    'Builder Dao': 'https://buildingoncardano.io',
+    'Cardano Foundation': 'https://cardanofoundation.org/',
+    'Cardano Pentad': [
+        'https://intersectmbo.org/',
+        'https://iohk.io/',
+        'https://emurgo.io/',
+        'https://cardanofoundation.org/',
+        'https://midnight.network/'
+    ],
+    Cardanoscan: 'https://cardanoscan.io',
+    'Catalyst Team': 'https://projectcatalyst.io/',
+    CHARLI3: 'https://charli3.io',
+    Cexplorer: 'https://cexplorer.io',
+    'CV Labs': 'https://cvlabs.com',
+    dcSpark: 'https://dcspark.io',
+    'Draper Dragon': 'https://draperdragon.com',
+    'Drip Dropz': 'https://dripdropz.io',
+    EMURGO: 'https://emurgo.io',
+    Empowa: 'https://empowa.io',
+    Eternl: 'https://eternl.io',
+    Flowdesk: 'https://flowdesk.co',
+    FluidTokens: 'https://fluidtokens.com',
+    GameChanger: 'https://gamechanger.finance',
+    Gimbalabs: 'https://gimbalabs.com',
+    'Harmonic Labs': 'https://hackmd.io/',
+    'Input Output Global': 'https://iohk.io',
+    IntersectMBO: 'https://intersectmbo.org',
+    Iagon: 'https://iagon.com',
+    'Lido Nation': 'https://www.lidonation.com',
+    'Liqwid Labs': 'https://liqwid.finance',
+    Maestro: 'https://gomaestro.org',
+    Mehen: 'https://mehen.io',
+    'Mehen (Matthew Plomin)': 'https://mehen.io',
+    MLabs: 'https://mlabs.city',
+    NEWM: 'https://newm.io',
+    NMKR: 'https://www.nmkr.io',
+    Opshin: 'https://opshin.dev',
+    Orcfax: 'https://orcfax.io',
+    Optim: 'https://optim.finance',
+    PyCardano: 'https://pycardano.readthedocs.io',
+    'Rare Network': 'https://rareevo.io',
+    Scalus: 'https://scalus.org',
+    'Snek Foundation': 'https://www.snek.foundation/',
+    Socious: 'https://socious.io',
+    'Socious.io': 'https://socious.io',
+    Strica: 'https://strica.io',
+    SundaeSwap: 'https://sundae.fi',
+    Sundial: 'https://sundialprotocol.io',
+    TxPipe: 'https://txpipe.io',
+    'Tweag by Modus': 'https://www.tweag.io',
+    'UTxO Company / Siban Labs': 'https://sidan.io',
+    Vacuumlabs: 'https://vacuumlabs.com',
+    WingRiders: 'https://www.wingriders.com',
+    zenGate: 'https://zengate.global',
+    'zenGate Global': 'https://zengate.global',
+    zkFold: 'https://zkfold.io'
+});
+
+const TREASURY_BUSINESS_LOGOS = Object.freeze({
+    'Atrium Lab Inc': 'https://www.atriumlab.io/atriumlab-logo.png',
+    'Cardano Foundation': 'cardano_logo_ico.webp?v=20260727-retina',
+    'Snek Foundation': 'https://www.snek.foundation/favicon.ico'
+});
+
+const TREASURY_BUSINESS_LOGOS_BY_DOMAIN = Object.freeze({
+    'cardanofoundation.org': 'cardano_logo_ico.webp?v=20260727-retina'
 });
 
 const TREASURY_BUSINESS_BY_STAKE_ADDRESS = Object.freeze({
@@ -1169,7 +1259,7 @@ const TREASURY_BUSINESS_BY_ACTION_ID = Object.freeze({
     gov_action1zljrlljt9cxlz7ra2nep43nxg0r54wcnrgexyuhuam9ah0ws607qq2vcg4x: 'Tweag by Modus',
     gov_action13tfag48nf94rtjcdq7c06vhkslmxxw9h6c88sl7q5g5nnewcsvlp5u7pqqr: 'Builder Dao',
     gov_action13tfag48nf94rtjcdq7c06vhkslmxxw9h6c88sl7q5g5nnewcsvlpsn5rx0e: 'Cardano Foundation',
-    gov_action13tfag48nf94rtjcdq7c06vhkslmxxw9h6c88sl7q5g5nnewcsvlp730y0dn: 'Anzens',
+    gov_action13tfag48nf94rtjcdq7c06vhkslmxxw9h6c88sl7q5g5nnewcsvlp730y0dn: 'Anzens - USDA',
     gov_action13tfag48nf94rtjcdq7c06vhkslmxxw9h6c88sl7q5g5nnewcsvlpcdq823y: 'Flowdesk',
     gov_action13tfag48nf94rtjcdq7c06vhkslmxxw9h6c88sl7q5g5nnewcsvlqqfgyy3v: 'Anastasia Labs',
     gov_action13tfag48nf94rtjcdq7c06vhkslmxxw9h6c88sl7q5g5nnewcsvlqwtnrdnx: 'zkFold',
@@ -1783,13 +1873,10 @@ function createCatalystFundCard(fund) {
         openCatalystFundOverlay(fund, event.currentTarget);
     });
 
-    const detailItems = [`Not Claimed ${formatCatalystFundAmount(fund, 'not_claimed', true)}`];
-    if (fund.claimed_ada > 0) {
-        detailItems.push(`Original amount ${formatAdaAmount(fund.claimed_ada)}`);
-    }
-    if (fund.not_claimed_ada > 0) {
-        detailItems.push(`Original amount ${formatAdaAmount(fund.not_claimed_ada)}`);
-    }
+    const detailItems = [
+        `Not Claimed ${formatCatalystFundAmount(fund, 'not_claimed', true)}`,
+        createCatalystFundAdaDetail(fund)
+    ].filter(Boolean);
     window.TDSPRuntime?.appendUniversalTileContent?.(card, {
         title: fund.fund_name,
         primaryText: `Claimed ${formatCatalystFundAmount(fund, 'claimed', true)}`,
@@ -1797,6 +1884,21 @@ function createCatalystFundCard(fund) {
         detailItems
     });
     return card;
+}
+
+function createCatalystFundAdaDetail(fund) {
+    const parts = [];
+    if (Number(fund?.claimed_ada) > 0) {
+        parts.push(`Claimed ${formatAdaAmount(fund.claimed_ada, true)}`);
+    }
+    if (Number(fund?.not_claimed_ada) > 0) {
+        parts.push(`Not Claimed ${formatAdaAmount(fund.not_claimed_ada, true)}`);
+    }
+    if (!parts.length) return null;
+    return {
+        text: parts.join(' • '),
+        className: 'governance-card-detail funding-recipient-ada-value'
+    };
 }
 
 async function openCatalystFundOverlay(fund, returnFocus) {
@@ -2055,16 +2157,6 @@ function formatAdaAmount(value, compact = false) {
     }).format(amount)}`;
 }
 
-function appendCatalystAdaAmount(container, proposal, kind) {
-    if (String(proposal?.currency || '').toUpperCase() !== 'ADA') return;
-    const amount = Number(proposal?.[`amount_${kind}`]);
-    if (!Number.isFinite(amount)) return;
-    const secondary = document.createElement('span');
-    secondary.className = 'governance-card-detail';
-    secondary.textContent = `Original ${kind} ${formatAdaAmount(amount)}`;
-    container.appendChild(secondary);
-}
-
 function getCatalystMilestoneProgress(proposal) {
     const progress = proposal?.milestone_progress;
     if (progress && typeof progress === 'object') {
@@ -2232,7 +2324,9 @@ function createCatalystFundingProjectCard(project, group) {
         openCatalystProposalDetailOverlay(project, event.currentTarget);
     });
 
-    const detailItems = [];
+    const detailItems = [
+        `Requested ${formatCatalystFundingAmount(project?.[requestedField], group.currency)}`
+    ];
     if (String(project?.currency || '').toUpperCase() === 'ADA') {
         const requestedAda = Math.max(Number(project?.amount_requested) || 0, 0);
         const receivedAda = Math.min(
@@ -2240,20 +2334,22 @@ function createCatalystFundingProjectCard(project, group) {
             requestedAda
         );
         const isClaimed = group.key === 'claimed';
-        detailItems.push(`${isClaimed ? 'Claimed' : 'Unclaimed'} ${formatAdaAmount(
-            isClaimed
-                ? receivedAda
-                : Math.max(requestedAda - receivedAda, 0)
-        )}`);
+        detailItems.push({
+            text: `${isClaimed ? 'Claimed' : 'Unclaimed'} ${formatAdaAmount(
+                isClaimed
+                    ? receivedAda
+                    : Math.max(requestedAda - receivedAda, 0),
+                true
+            )}`,
+            className: 'governance-card-detail funding-recipient-ada-value'
+        });
     }
-    detailItems.push(`Requested ${formatCatalystFundingAmount(project?.[requestedField], group.currency)}`);
     window.TDSPRuntime?.appendUniversalTileContent?.(openButton, {
         title: project.title,
         primaryText: `${group.label} ${formatCatalystFundingAmount(amount, group.currency)}`,
         contextItems: [`${project.business} • ${project.fund_name}`],
         detailItems
     });
-    appendCatalystAdaAmount(openButton, project, 'requested');
     appendCatalystMilestoneIndicator(openButton, project);
     card.appendChild(openButton);
     appendProposalIdCopyButton(card, project?.id);
@@ -2278,9 +2374,9 @@ function createTreasuryBusinessCard(group) {
     const actionsCount = getTreasuryBusinessActions(group).length;
     const catalystCount = group.catalystProjects.length;
     const projectCount = actionsCount + catalystCount;
-    const card = document.createElement('button');
-    card.type = 'button';
-    card.className = 'governance-card governance-menu-card';
+    const companyUrls = getTreasuryBusinessWebsiteUrls(group);
+    const card = document.createElement('div');
+    card.className = 'governance-card governance-menu-card governance-business-card';
     const teamSearchLabels = [
         group.label,
         ...group.catalystProjects.flatMap(getCatalystTeamSearchTerms)
@@ -2294,7 +2390,11 @@ function createTreasuryBusinessCard(group) {
     card.dataset.searchTeamLabels = teamSearchLabels.join('\n');
     card.dataset.sortName = group.label;
     card.dataset.sortAmount = String(group.value);
-    card.addEventListener('click', event => {
+
+    const openButton = document.createElement('button');
+    openButton.type = 'button';
+    openButton.className = 'governance-card-open';
+    openButton.addEventListener('click', event => {
         openTreasuryBusinessActionsOverlay(group, event.currentTarget);
     });
 
@@ -2303,12 +2403,168 @@ function createTreasuryBusinessCard(group) {
         group.adaValue,
         group.usdPending
     );
-    window.TDSPRuntime?.appendUniversalTileContent?.(card, {
+    window.TDSPRuntime?.appendUniversalTileContent?.(openButton, {
         title: group.label,
         primaryNode: amount,
-        detailItems: [`${projectCount.toLocaleString('en-US')} funded project${projectCount === 1 ? '' : 's'}`]
+        detailItems: [
+            `${projectCount.toLocaleString('en-US')} funded project${projectCount === 1 ? '' : 's'}`
+        ].filter(Boolean)
     });
+    card.appendChild(openButton);
+    const companyLinks = createTreasuryBusinessWebsiteLinks(companyUrls);
+    if (companyLinks) card.appendChild(companyLinks);
+    const companyLogo = createTreasuryBusinessLogo(companyUrls, group.label);
+    if (companyLogo) {
+        card.classList.add('has-company-logo');
+        card.appendChild(companyLogo);
+    }
     return card;
+}
+
+function getTreasuryBusinessWebsiteUrls(group) {
+    const mappedUrl = TREASURY_BUSINESS_WEBSITES[
+        normalizeTreasuryBusinessName(group?.label)
+    ];
+    if (mappedUrl) return normalizeBusinessUrlList(mappedUrl);
+
+    const normalizedLabel = normalizeBusinessDomainText(group?.label);
+    const candidates = [
+        ...(Array.isArray(group?.catalystProjects) ? group.catalystProjects : [])
+    ]
+        .map(project => project?.website)
+        .map(value => String(value || '').trim())
+        .filter(Boolean);
+    const matchedUrl = candidates.find(url => {
+        const domain = getRootDomainLabel(url);
+        return domain
+            && normalizedLabel
+            && (
+                normalizeBusinessDomainText(domain).includes(normalizedLabel)
+                || normalizedLabel.includes(normalizeBusinessDomainText(domain))
+            );
+    });
+    return normalizeBusinessUrlList(matchedUrl);
+}
+
+function normalizeBusinessUrlList(value) {
+    return (Array.isArray(value) ? value : [value])
+        .map(normalizeExternalUrl)
+        .filter(Boolean);
+}
+
+function createTreasuryBusinessWebsiteLinks(urls) {
+    const normalizedUrls = normalizeBusinessUrlList(urls);
+    if (!normalizedUrls.length) return null;
+    const list = document.createElement('span');
+    list.className = 'governance-business-url-list';
+    normalizedUrls.forEach(url => {
+        const link = document.createElement('a');
+        link.className = 'governance-card-detail governance-business-url';
+        link.href = url;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = getRootDomainLabel(url) || url;
+        link.addEventListener('click', event => {
+            event.preventDefault();
+            event.stopPropagation();
+            if (typeof openExternalSiteWarning === 'function') {
+                openExternalSiteWarning(url, event.currentTarget);
+                return;
+            }
+            window.open(url, '_blank', 'noopener,noreferrer');
+        });
+        list.appendChild(link);
+    });
+    return list;
+}
+
+function createTreasuryBusinessLogo(urls, label) {
+    const normalizedUrls = normalizeBusinessUrlList(urls);
+    if (!normalizedUrls.length) return null;
+    const logos = normalizedUrls.flatMap(url => {
+        const logoData = getTreasuryBusinessLogoData(url, label);
+        return logoData ? [logoData] : [];
+    });
+    if (!logos.length) return null;
+
+    const frame = document.createElement('span');
+    frame.className = `governance-business-logo-frame${logos.length > 1 ? ' governance-business-logo-frame--multi' : ''}`;
+    frame.setAttribute('aria-hidden', 'true');
+    frame.title = `${label || 'Company'} logo`;
+
+    logos.forEach(({ logoUrl, domain, mappedLogo }) => {
+        const logo = document.createElement('img');
+        logo.className = 'governance-business-logo';
+        logo.alt = '';
+        logo.loading = 'lazy';
+        logo.decoding = 'async';
+        logo.src = logoUrl;
+        logo.addEventListener('error', () => {
+            if (mappedLogo) return;
+            if (logo.dataset.fallbackLoaded === 'true') return;
+            logo.dataset.fallbackLoaded = 'true';
+            logo.src = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=96`;
+        });
+        frame.appendChild(logo);
+    });
+
+    return frame;
+}
+
+function getTreasuryBusinessLogoData(url, label) {
+    const normalizedUrl = normalizeExternalUrl(url);
+    if (!normalizedUrl) return null;
+    const normalizedLabel = normalizeTreasuryBusinessName(label);
+    let origin;
+    let domain;
+    try {
+        const parsed = new URL(normalizedUrl);
+        origin = parsed.origin;
+        domain = parsed.hostname.replace(/^www\./i, '');
+    } catch {
+        return null;
+    }
+    if (!origin || !domain) return null;
+    const mappedLogo = TREASURY_BUSINESS_LOGOS[normalizedLabel]
+        || TREASURY_BUSINESS_LOGOS_BY_DOMAIN[domain];
+    return {
+        logoUrl: mappedLogo || `${origin}/favicon.ico`,
+        domain,
+        mappedLogo
+    };
+}
+
+function normalizeExternalUrl(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return null;
+    try {
+        const url = new URL(raw.startsWith('http') ? raw : `https://${raw}`);
+        if (!['https:', 'http:'].includes(url.protocol)) return null;
+        return url.href;
+    } catch {
+        return null;
+    }
+}
+
+function getRootDomainLabel(value) {
+    const normalizedUrl = normalizeExternalUrl(value);
+    if (!normalizedUrl) return '';
+    try {
+        const hostname = new URL(normalizedUrl).hostname.replace(/^www\./i, '');
+        return hostname;
+    } catch {
+        return '';
+    }
+}
+
+function normalizeBusinessDomainText(value) {
+    return String(value || '')
+        .toLowerCase()
+        .replace(/&/g, 'and')
+        .replace(/[^a-z0-9]+/g, '')
+        .replace(/labs?$/g, 'lab')
+        .replace(/foundation$/g, '')
+        .trim();
 }
 
 function createFundingRecipientAmountRow(usdValue, adaValue = null, usdPending = false) {

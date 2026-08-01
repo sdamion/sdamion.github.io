@@ -1946,6 +1946,64 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     white-space: normal;
 }
 
+.governance-business-url {
+    color: var(--accent-strong);
+    text-decoration: none;
+}
+
+.governance-business-url-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+}
+
+.governance-business-url:hover,
+.governance-business-url:focus-visible {
+    text-decoration: underline;
+}
+
+.governance-business-card.has-company-logo {
+    padding-right: 126px;
+}
+
+.governance-business-card.has-company-logo .governance-card-open {
+    padding-right: 0;
+}
+
+.governance-business-logo-frame {
+    position: absolute;
+    top: 50%;
+    right: 16px;
+    display: grid;
+    place-items: center;
+    width: 46px;
+    height: 46px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--overlay-surface-muted);
+    transform: translateY(-50%);
+    pointer-events: none;
+}
+
+.governance-business-logo-frame--multi {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    width: 90px;
+    height: 66px;
+}
+
+.governance-business-logo {
+    display: block;
+    width: 30px;
+    height: 30px;
+    object-fit: contain;
+}
+
+.governance-business-logo-frame--multi .governance-business-logo {
+    width: 24px;
+    height: 24px;
+}
+
 .governance-vote-button,
 .governance-vote-choice,
 .governance-vote-submit,
