@@ -1089,6 +1089,7 @@ function getCatalystBusinessProjects(payload) {
             fund_name: project?.fund_name || null,
             submitters: Array.isArray(project?.submitters) ? project.submitters : [],
             source: project?.source || payload?.source || 'project_catalyst_official',
+            website: project?.website || null,
             source_url: project?.source_url || null
         }];
     });
@@ -1602,6 +1603,7 @@ function getCatalystFundingStatus(payload) {
                 - Number(project.amount_received_usd || 0),
                 0
             ),
+            website: project.website,
             source_url: project.source_url
         }))
     };
@@ -1637,6 +1639,7 @@ function getCatalystFundingProjects(payload) {
             requested_usd: requested,
             claimed_usd: claimed,
             not_claimed_usd: notClaimed,
+            website: project?.website || null,
             source_url: project?.source_url || null
         }];
     });
@@ -2615,15 +2618,25 @@ function renderCatalystProposalDetail(container, proposal) {
     addMarkdownDetailSection(container, 'Project details', getCatalystDetailText(proposal.project_details));
     addMarkdownDetailSection(container, 'Open source', proposal.opensource_description);
 
-    const sourceUrl = proposal.source_url || proposal.website;
-    if (sourceUrl) {
+    const projectWebsite = proposal.website;
+    const sourceUrl = proposal.source_url;
+    if (projectWebsite || sourceUrl) {
         const actions = document.createElement('div');
         actions.className = 'governance-action-buttons';
-        actions.appendChild(createGovernanceProposalActionButton(
-            'Open proposal website',
-            'governance-catalyst-source-button',
-            event => openExternalSiteWarning(sourceUrl, event.currentTarget)
-        ));
+        if (projectWebsite) {
+            actions.appendChild(createGovernanceProposalActionButton(
+                'Open project website',
+                'governance-catalyst-source-button',
+                event => openExternalSiteWarning(projectWebsite, event.currentTarget)
+            ));
+        }
+        if (sourceUrl && sourceUrl !== projectWebsite) {
+            actions.appendChild(createGovernanceProposalActionButton(
+                'Open proposal source',
+                'governance-catalyst-source-button',
+                event => openExternalSiteWarning(sourceUrl, event.currentTarget)
+            ));
+        }
         container.appendChild(actions);
     }
 }
