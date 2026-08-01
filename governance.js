@@ -865,10 +865,7 @@ function getTreasuryAdministratorGroups(withdrawals) {
     const groups = new Map();
     withdrawals.forEach(withdrawal => {
         const address = String(withdrawal?.stake_address || '');
-        const recipientAdministrator = TREASURY_RECIPIENT_ADMINISTRATORS[address] || 'Unknown PRAGMA association';
-        const administrator = recipientAdministrator.startsWith('Amaru')
-            ? 'Amaru'
-            : recipientAdministrator;
+        const administrator = getTreasuryAdministratorName(address);
         const group = groups.get(administrator) || {
             key: administrator,
             label: administrator,
@@ -888,6 +885,14 @@ function getTreasuryAdministratorGroups(withdrawals) {
             ...group,
             color: TREASURY_ADMINISTRATOR_COLORS[index % TREASURY_ADMINISTRATOR_COLORS.length]
         }));
+}
+
+function getTreasuryAdministratorName(address) {
+    const recipientAdministrator = TREASURY_RECIPIENT_ADMINISTRATORS[String(address || '')]
+        || 'Unknown PRAGMA association';
+    return recipientAdministrator.startsWith('Amaru')
+        ? 'PRAGMA Association'
+        : recipientAdministrator;
 }
 
 function openTreasuryAdministratorWithdrawalsOverlay(group, returnFocus) {
@@ -3061,8 +3066,8 @@ function createTreasuryWithdrawalCard(withdrawal) {
 
     const address = String(withdrawal?.stake_address || '');
     if (address) {
-        const administrator = TREASURY_RECIPIENT_ADMINISTRATORS[address];
-        if (administrator) {
+        if (TREASURY_RECIPIENT_ADMINISTRATORS[address]) {
+            const administrator = getTreasuryAdministratorName(address);
             const administratorLine = document.createElement('span');
             administratorLine.className = 'governance-card-detail governance-drep-id-line';
 
