@@ -1185,6 +1185,7 @@ const TREASURY_BUSINESS_ALIASES = Object.freeze({
     'gabriela guerra': 'Wolfram Blockchain Labs',
     'clark alesna': 'SAIB Inc',
     'dj bodden': 'STORM Partners',
+    'andré vanyi-robin': 'Nozama Tech',
     darrello: 'zenGate Global',
     'daniel.friedman': 'zenGate Global',
     'rosen bridge': 'zenGate Global'
