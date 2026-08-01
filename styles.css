@@ -1763,7 +1763,7 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     width: 100%;
     min-width: 0;
     padding: 16px 16px 18px;
-    overflow: hidden;
+    overflow: visible;
     color: var(--text);
     cursor: pointer;
     font: inherit;
@@ -1772,7 +1772,9 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 }
 
 .governance-card-open {
-    display: block;
+    display: grid;
+    align-content: start;
+    gap: 6px;
     width: 100%;
     min-width: 0;
     margin: 0;
@@ -1800,6 +1802,7 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     position: relative;
     min-height: 52px;
     padding-right: 150px;
+    overflow: visible;
 }
 
 .catalyst-milestone-indicator {

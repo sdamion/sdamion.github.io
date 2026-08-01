@@ -2140,13 +2140,16 @@ function createCatalystProposalCard(proposal) {
         openCatalystProposalDetailOverlay(proposal, event.currentTarget);
     });
 
-    appendUniversalFundingTileContent(openButton, {
-        title: proposal?.title || 'Untitled Catalyst proposal',
-        usdValue: proposal?.amount_requested_usd,
-        adaValue: String(proposal?.currency || '').toUpperCase() === 'ADA'
+    const amount = createFundingRecipientAmountRow(
+        proposal?.amount_requested_usd,
+        String(proposal?.currency || '').toUpperCase() === 'ADA'
             ? proposal?.amount_requested
             : null,
-        usdPending: !hasNumericValue(proposal?.amount_requested_usd),
+        !hasNumericValue(proposal?.amount_requested_usd)
+    );
+    window.TDSPRuntime?.appendUniversalTileContent?.(openButton, {
+        title: proposal?.title || 'Untitled Catalyst proposal',
+        primaryNode: amount,
         contextItems: getCatalystTileContext(proposal),
         proposer: proposal?.business
             ? normalizeTreasuryBusinessName(proposal.business)
@@ -2402,11 +2405,14 @@ function createCatalystBusinessProjectCard(project) {
         openCatalystProposalDetailOverlay(project, event.currentTarget);
     });
 
-    appendUniversalFundingTileContent(openButton, {
-        title: project.title,
-        usdValue: project.amount_received_usd,
-        adaValue: project.amount_received_ada,
-        usdPending: !hasNumericValue(project.amount_received_usd),
+    const amount = createFundingRecipientAmountRow(
+        project.amount_received_usd,
+        project.amount_received_ada,
+        !hasNumericValue(project.amount_received_usd)
+    );
+    window.TDSPRuntime?.appendUniversalTileContent?.(openButton, {
+        title: cleanGovernanceText(project.title || 'Untitled project'),
+        primaryNode: amount,
         contextItems: getCatalystTileContext(project),
         proposer: project?.business
             ? normalizeTreasuryBusinessName(project.business)
@@ -2435,21 +2441,6 @@ function getCatalystTileContext(project) {
     const status = (normalizedStatus === 'complete' ? 'completed' : normalizedStatus)
         .replace(/^\w/, character => character.toUpperCase());
     return [status, project?.fund_name].filter(Boolean);
-}
-
-function appendUniversalFundingTileContent(container, options = {}) {
-    const amount = createFundingRecipientAmountRow(
-        options.usdValue,
-        options.adaValue,
-        options.usdPending === true
-    );
-    window.TDSPRuntime?.appendUniversalTileContent?.(container, {
-        title: cleanGovernanceText(options.title || 'Untitled project'),
-        primaryNode: amount,
-        contextItems: options.contextItems || [],
-        proposer: options.proposer,
-        detailItems: options.detailItems || []
-    });
 }
 
 function openCatalystProposalDetailOverlay(project, returnFocus) {
@@ -3057,11 +3048,14 @@ function createTreasuryWithdrawalCard(withdrawal) {
         });
     }
 
-    appendUniversalFundingTileContent(card, {
-        title: withdrawal?.title || 'Conway treasury withdrawal',
-        usdValue: withdrawal?.amount_usd,
-        adaValue: withdrawal?.amount_ada,
-        usdPending: !hasNumericValue(withdrawal?.amount_usd),
+    const amount = createFundingRecipientAmountRow(
+        withdrawal?.amount_usd,
+        withdrawal?.amount_ada,
+        !hasNumericValue(withdrawal?.amount_usd)
+    );
+    window.TDSPRuntime?.appendUniversalTileContent?.(card, {
+        title: cleanGovernanceText(withdrawal?.title || 'Conway treasury withdrawal'),
+        primaryNode: amount,
         contextItems: [`Enacted Epoch ${Number(withdrawal?.enacted_epoch) || '--'}`]
     });
 
