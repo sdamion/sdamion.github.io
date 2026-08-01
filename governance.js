@@ -945,6 +945,7 @@ function getTreasuryBusinessGroups(payload, catalystPayload = catalystBusinessSt
     });
     getCatalystBusinessProjects(catalystPayload).forEach(project => {
         const business = normalizeTreasuryBusinessName(project?.business);
+        if (!business) return;
         const key = business.toLocaleLowerCase('en-US');
         const group = groups.get(key) || {
             key,
@@ -1101,6 +1102,7 @@ const TREASURY_BUSINESS_ALIASES = Object.freeze({
     'yoram ben-zvi (elk gmbh)': '5 AM Earth Foundation',
     'arouet holdings, director n.m.': 'Draper Dragon',
     'chris gianelloni': 'Blink Labs',
+    'aurora gaffney': 'Blink Labs',
     dingo: 'Blink Labs',
     'ryan jones': 'NEWM',
     damon: 'CHARLI3',
@@ -1129,6 +1131,7 @@ const TREASURY_BUSINESS_ALIASES = Object.freeze({
     'janis aguilar': 'CV Labs',
     'sheldon hunt': 'Sundial',
     philipdisarro: 'Anastasia Labs',
+    'pritesh gosai': 'Kaizen Crypto',
     'matthew plomin': 'Mehen (Matthew Plomin)',
     'teo petricevic': 'Emurgo',
     cardano2vn: 'Atala Prism',
@@ -1146,6 +1149,7 @@ const TREASURY_BUSINESS_ALIASES = Object.freeze({
     'gimbalabs team': 'Gimbalabs',
     'gimbalabs hk': 'Gimbalabs',
     'gimbalabs official': 'Gimbalabs',
+    'muesliswap team': 'MuesliSwap',
     intersect: 'IntersectMBO',
     builderdao: 'Builder Dao',
     cardanofoundation: 'Cardano Foundation',
@@ -1165,7 +1169,16 @@ const TREASURY_BUSINESS_ALIASES = Object.freeze({
     'opshinlanguage lang': 'Opshin',
     'piotr godzinski': 'Techstars',
     'shay gamer': 'Hash Point - Shay Gammer',
-    'cody butz': 'Indigo'
+    'cody butz': 'Indigo Labs',
+    'alke gijrath': 'Empowa Project',
+    'alex sierkov': 'Daedalus Turbo - Alex Sierkov',
+    'adrian minswap': 'Minswap Labs',
+    'ahmed amer': 'EMURGO',
+    'rahul konudula': 'Trivolve Tech',
+    'ashish cardanoscan': 'Cardanoscan',
+    darrello: 'zenGate Global',
+    'daniel.friedman': 'zenGate Global',
+    'rosen bridge': 'zenGate Global'
 });
 
 const TREASURY_BUSINESS_WEBSITES = Object.freeze({
@@ -1175,6 +1188,7 @@ const TREASURY_BUSINESS_WEBSITES = Object.freeze({
     Amaru: 'https://amaru.global',
     'Anastasia Labs': 'https://anastasialabs.com',
     Anvil: 'https://ada-anvil.io',
+    'Anvil Development Agency': 'https://ada-anvil.io',
     'Anzens - USDA': 'https://projectcatalyst.io/',
     'Andamio Team': 'https://www.andamio.io/',
     'Atrium Lab Inc': 'https://www.atriumlab.io',
@@ -1193,6 +1207,7 @@ const TREASURY_BUSINESS_WEBSITES = Object.freeze({
     Cardanoscan: 'https://cardanoscan.io',
     'Catalyst Team': 'https://projectcatalyst.io/',
     CHARLI3: 'https://charli3.io',
+    'Clarity Protocol': 'https://www.clarity.community/',
     Cexplorer: 'https://cexplorer.io',
     'CV Labs': 'https://cvlabs.com',
     dcSpark: 'https://dcspark.io',
@@ -1200,24 +1215,29 @@ const TREASURY_BUSINESS_WEBSITES = Object.freeze({
     'Drip Dropz': 'https://dripdropz.io',
     EMURGO: 'https://emurgo.io',
     Empowa: 'https://empowa.io',
+    'Empowa Project': 'https://www.empowa.io/',
     Eternl: 'https://eternl.io',
     Flowdesk: 'https://flowdesk.co',
     FluidTokens: 'https://fluidtokens.com',
     GameChanger: 'https://gamechanger.finance',
     Gimbalabs: 'https://gimbalabs.com',
     'Harmonic Labs': 'https://hackmd.io/',
-    Indigo: 'https://indigoprotocol.io/',
+    'Indigo Labs': 'https://indigoprotocol.io/',
     'Input Output Global': 'https://iohk.io',
     IntersectMBO: 'https://intersectmbo.org',
     Iagon: 'https://iagon.com',
+    'Kaizen Crypto': 'https://www.youtube.com/@KaizenCrypto',
     'Lido Nation': 'https://www.lidonation.com',
     'Liqwid Labs': 'https://liqwid.finance',
     Maestro: 'https://gomaestro.org',
     Mehen: 'https://mehen.io',
     'Mehen (Matthew Plomin)': 'https://mehen.io',
+    'Minswap Labs': 'https://minswap.org/',
     MLabs: 'https://mlabs.city',
+    MuesliSwap: 'https://muesliswap.com',
     NEWM: 'https://newm.io',
     NMKR: 'https://www.nmkr.io',
+    Nucast: 'https://www.nucast.io/',
     Opshin: 'https://opshin.dev',
     Orcfax: 'https://orcfax.io',
     Optim: 'https://optim.finance',
@@ -1230,7 +1250,9 @@ const TREASURY_BUSINESS_WEBSITES = Object.freeze({
     Strica: 'https://strica.io',
     SundaeSwap: 'https://sundae.fi',
     Sundial: 'https://sundialprotocol.io',
+    Taptools: 'https://www.taptools.io/',
     Techstars: 'https://www.techstars.com/',
+    'Trivolve Tech': 'https://trivolvetech.com',
     TxPipe: 'https://txpipe.io',
     'Tweag by Modus': 'https://www.tweag.io',
     'UTxO Company / Siban Labs': 'https://sidan.io',
@@ -1246,7 +1268,9 @@ const TREASURY_BUSINESS_LOGOS = Object.freeze({
     '5 AM Earth Foundation': 'https://5am.earth/logo.png',
     'Atrium Lab Inc': 'https://www.atriumlab.io/atriumlab-logo.png',
     'Cardano Foundation': 'cardano_logo_ico.webp?v=20260727-retina',
-    'Snek Foundation': 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 207.46 196.86%22%3E%3Cpath fill=%22%2374f8d4%22 d=%22M192.79,83.38c-10.74-14.71-34.17-15.39-64.87-15.15-15.69.07-17.73.7-15.25-4.7.01-.03,4.36-9.64,6.59-14.29,3.7-7.7,7.2-14.98,8.84-20.16,2.25-7.12.55-13.95-4.54-18.27-6.2-5.26-15.92-5.56-25.31-.8-24.8,12.32-42.17,25.71-63.79,44.66-25.66,21.64-27.96,43.04-22.62,57.25,4.1,10.82,15.65,17.31,28.86,17.54,17.34-.05,34.41-.15,43.69-.22,4.56.23,6.52-.02,6.27,2.45-1.23,7.53-14.05,37.18-14.05,37.18-3.14,10.55,1.04,21.37,16.78,21.37,11.15.22,30.67-9.4,54.16-24.31,15.8-10.33,25.26-17.84,33.21-26.38,23.26-24.75,18.11-47.33,12.01-56.17ZM172.54,119.2c-10.67,13.78-31.91,27.22-62.61,41.49-5.01,2.26-4.93,1.39-3.82-1.23,5.19-12.01,13.97-33.41,14.4-41.07.37-12.56-4.4-16.37-25.44-17.54-6.55-.3-37.23.24-50.06.24-7.62-.02-12.07-3.06-13.79-7.62-.86-2.3-.8-5,.11-7.94,1.75-5.57,6.56-12.05,13.95-18.52,19.29-16.92,34.96-29.13,55.97-40.1,1.43-.76,6.22-3.15,6.99-3.46,4.18-1.71,7.43-1.87,4.56,4.36-1.63,3.81-13.5,25.62-18.2,37.87-5.95,14.61,4.15,17.1,26.26,16.55,34.3-.85,51.72,1.4,57.6,9.43,5.86,10.36-.68,20.74-5.94,27.53Z%22/%3E%3C/svg%3E'
+    'Kaizen Crypto': 'kaizen-crypto-logo.jpg',
+    'Snek Foundation': 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 207.46 196.86%22%3E%3Cpath fill=%22%2374f8d4%22 d=%22M192.79,83.38c-10.74-14.71-34.17-15.39-64.87-15.15-15.69.07-17.73.7-15.25-4.7.01-.03,4.36-9.64,6.59-14.29,3.7-7.7,7.2-14.98,8.84-20.16,2.25-7.12.55-13.95-4.54-18.27-6.2-5.26-15.92-5.56-25.31-.8-24.8,12.32-42.17,25.71-63.79,44.66-25.66,21.64-27.96,43.04-22.62,57.25,4.1,10.82,15.65,17.31,28.86,17.54,17.34-.05,34.41-.15,43.69-.22,4.56.23,6.52-.02,6.27,2.45-1.23,7.53-14.05,37.18-14.05,37.18-3.14,10.55,1.04,21.37,16.78,21.37,11.15.22,30.67-9.4,54.16-24.31,15.8-10.33,25.26-17.84,33.21-26.38,23.26-24.75,18.11-47.33,12.01-56.17ZM172.54,119.2c-10.67,13.78-31.91,27.22-62.61,41.49-5.01,2.26-4.93,1.39-3.82-1.23,5.19-12.01,13.97-33.41,14.4-41.07.37-12.56-4.4-16.37-25.44-17.54-6.55-.3-37.23.24-50.06.24-7.62-.02-12.07-3.06-13.79-7.62-.86-2.3-.8-5,.11-7.94,1.75-5.57,6.56-12.05,13.95-18.52,19.29-16.92,34.96-29.13,55.97-40.1,1.43-.76,6.22-3.15,6.99-3.46,4.18-1.71,7.43-1.87,4.56,4.36-1.63,3.81-13.5,25.62-18.2,37.87-5.95,14.61,4.15,17.1,26.26,16.55,34.3-.85,51.72,1.4,57.6,9.43,5.86,10.36-.68,20.74-5.94,27.53Z%22/%3E%3C/svg%3E',
+    Taptools: 'https://www.taptools.io/images/logo_black.png'
 });
 
 const TREASURY_BUSINESS_LOGOS_BY_DOMAIN = Object.freeze({
@@ -1307,7 +1331,7 @@ const TREASURY_BUSINESS_BY_ACTION_ID = Object.freeze({
 
 function normalizeTreasuryBusinessName(value) {
     const name = String(value || '').trim();
-    if (!name) return 'Unknown proposer';
+    if (!name) return '';
     return TREASURY_BUSINESS_ALIASES[name.toLowerCase()] || name;
 }
 
@@ -1318,7 +1342,9 @@ function getTreasuryBusinessName(withdrawal) {
             ? normalizeTreasuryBusinessName(withdrawal.business)
             : null)
         || TREASURY_BUSINESS_BY_STAKE_ADDRESS[stakeAddress]
-        || normalizeTreasuryBusinessName(withdrawal?.proposer);
+        || normalizeTreasuryBusinessName(withdrawal?.proposer)
+        || stakeAddress
+        || 'Unknown proposer';
 }
 
 function updateBusinessSummary(payload, catalystPayload = catalystBusinessState) {
