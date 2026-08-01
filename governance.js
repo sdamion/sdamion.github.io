@@ -865,6 +865,7 @@ function getTreasuryAdministratorGroups(withdrawals) {
     const groups = new Map();
     withdrawals.forEach(withdrawal => {
         const recipientAdministrator = getTreasuryWithdrawalAdministrator(withdrawal)
+            || String(withdrawal?.stake_address || '').trim()
             || 'Unknown administrator';
         const administrator = recipientAdministrator.startsWith('Amaru')
             ? 'Amaru'
@@ -892,46 +893,7 @@ function getTreasuryAdministratorGroups(withdrawals) {
 
 function getTreasuryWithdrawalAdministrator(withdrawal) {
     const address = String(withdrawal?.stake_address || '');
-    const mappedAdministrator = TREASURY_RECIPIENT_ADMINISTRATORS[address];
-    if (mappedAdministrator) return mappedAdministrator;
-
-    const proposal = getTreasuryGovernanceProposal(withdrawal);
-    const text = [
-        withdrawal?.business,
-        withdrawal?.proposer,
-        ...(Array.isArray(withdrawal?.proposers) ? withdrawal.proposers : []),
-        proposal?.business,
-        proposal?.ideascale_user,
-        proposal?.proposer,
-        ...(Array.isArray(proposal?.proposers) ? proposal.proposers : []),
-        ...(Array.isArray(proposal?.authors)
-            ? proposal.authors.map(author => author?.name || author)
-            : []),
-        getProposalMetadataText(proposal)
-    ].filter(Boolean).join(' ').toLowerCase();
-
-    if (/\bintersect\b/.test(text)) return 'Intersect';
-    return null;
-}
-
-function getProposalMetadataText(proposal) {
-    const values = [];
-    const visit = value => {
-        if (value === null || value === undefined) return;
-        if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-            values.push(String(value));
-            return;
-        }
-        if (Array.isArray(value)) {
-            value.forEach(visit);
-            return;
-        }
-        if (typeof value === 'object') {
-            Object.values(value).forEach(visit);
-        }
-    };
-    visit(proposal?.meta_json);
-    return values.join(' ');
+    return TREASURY_RECIPIENT_ADMINISTRATORS[address] || null;
 }
 
 function openTreasuryAdministratorWithdrawalsOverlay(group, returnFocus) {
@@ -3092,21 +3054,19 @@ function createTreasuryWithdrawalCard(withdrawal) {
 
     const address = String(withdrawal?.stake_address || '');
     if (address) {
-        const administrator = getTreasuryWithdrawalAdministrator(withdrawal);
-        if (administrator) {
-            const administratorLine = document.createElement('span');
-            administratorLine.className = 'governance-card-detail governance-drep-id-line';
+        const administrator = getTreasuryWithdrawalAdministrator(withdrawal) || address;
+        const administratorLine = document.createElement('span');
+        administratorLine.className = 'governance-card-detail governance-drep-id-line';
 
-            const administratorText = document.createElement('span');
-            administratorText.className = 'governance-drep-id';
-            administratorText.textContent = `Administrator: ${administrator}`;
-            administratorLine.appendChild(administratorText);
-            administratorLine.appendChild(createGovernanceCopyButton(
-                administrator,
-                'administrator'
-            ));
-            card.appendChild(administratorLine);
-        }
+        const administratorText = document.createElement('span');
+        administratorText.className = 'governance-drep-id';
+        administratorText.textContent = `Administrator: ${administrator}`;
+        administratorLine.appendChild(administratorText);
+        administratorLine.appendChild(createGovernanceCopyButton(
+            administrator,
+            'administrator'
+        ));
+        card.appendChild(administratorLine);
     }
 
     return card;
