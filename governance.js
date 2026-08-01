@@ -1209,7 +1209,7 @@ const TREASURY_BUSINESS_WEBSITES = Object.freeze({
     'Anastasia Labs': 'https://anastasialabs.com',
     Anvil: 'https://ada-anvil.io',
     'Anvil Development Agency': 'https://ada-anvil.io',
-    'Anzens - USDA': 'https://projectcatalyst.io/',
+    'Anzens - USDA': 'https://www.anzens.com/',
     'Andamio Team': 'https://www.andamio.io/',
     'Atrium Lab Inc': 'https://www.atriumlab.io',
     'Atala Prism': 'https://atalaprism.io',
