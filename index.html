@@ -73,6 +73,19 @@
                 <div class="menu-bar__side">
                     <span id="menu-epoch" class="menu-epoch nav-status" aria-live="polite">Epoch ...</span>
                     <div class="menu-bar__actions header-links" aria-label="External links">
+                        <div class="site-alerts">
+                            <button class="nav-link nav-button site-alerts-button" id="site-alerts-button" type="button" aria-expanded="false" aria-controls="site-alerts-menu">
+                                Alerts
+                            </button>
+                            <div class="site-alerts-menu" id="site-alerts-menu" hidden>
+                                <strong>Alert Options</strong>
+                                <label><input type="checkbox" id="site-alert-governance" data-alert-topic="governance"> Governance</label>
+                                <label><input type="checkbox" id="site-alert-news" data-alert-topic="news"> News</label>
+                                <label><input type="checkbox" id="site-alert-events" data-alert-topic="events"> Cardano Events</label>
+                                <button id="site-alert-permission" type="button">Enable notifications</button>
+                                <span id="site-alert-status" aria-live="polite">Notifications off</span>
+                            </div>
+                        </div>
                         <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch to dark mode">
                             <span class="theme-toggle-icon theme-toggle-icon--moon" aria-hidden="true">🌙</span>
                             <span class="theme-toggle-icon theme-toggle-icon--sun" aria-hidden="true">☀️</span>
@@ -100,25 +113,25 @@
                         </div>
                     </aside>
                     <div class="price-panel pool-summary">
-                        <div class="pool-summary-clickable" data-price-key="btc_usd" data-price-ticker="BTC" role="button" tabindex="0" aria-label="Show BTC 24 hour price history">
+                        <div class="pool-summary-clickable" data-price-key="btc_usd" data-price-ticker="BTC" role="button" tabindex="0" aria-label="Show BTC 7 day price history">
                             <strong id="btc-price">Loading...</strong>
                             <span class="pool-provider-label"><img class="pool-provider-icon" src="bitcoin-logo.png?v=20260727-retina" alt=""><span class="pool-provider-label-text">BTC</span></span>
-                            <svg class="price-sparkline" data-price-key="btc_usd" viewBox="0 0 100 36" preserveAspectRatio="none" role="img" aria-label="BTC price over the last hour"><polyline points=""></polyline></svg>
+                            <svg class="price-sparkline" data-price-key="btc_usd" viewBox="0 0 100 36" preserveAspectRatio="none" role="img" aria-label="BTC price over the last 7 days"><polyline points=""></polyline></svg>
                         </div>
-                        <div class="pool-summary-clickable" data-price-key="ada_usd" data-price-ticker="ADA" role="button" tabindex="0" aria-label="Show ADA 24 hour price history">
+                        <div class="pool-summary-clickable" data-price-key="ada_usd" data-price-ticker="ADA" role="button" tabindex="0" aria-label="Show ADA 7 day price history">
                             <strong id="ada-price">Loading...</strong>
                             <span class="pool-provider-label"><img class="pool-provider-icon" src="cardano_logo_ico.webp?v=20260727-retina" alt=""><span class="pool-provider-label-text">ADA</span></span>
-                            <svg class="price-sparkline" data-price-key="ada_usd" viewBox="0 0 100 36" preserveAspectRatio="none" role="img" aria-label="ADA price over the last hour"><polyline points=""></polyline></svg>
+                            <svg class="price-sparkline" data-price-key="ada_usd" viewBox="0 0 100 36" preserveAspectRatio="none" role="img" aria-label="ADA price over the last 7 days"><polyline points=""></polyline></svg>
                         </div>
-                        <div class="pool-summary-clickable" data-price-key="strch_usd" data-price-ticker="STRCH" role="button" tabindex="0" aria-label="Show STRCH 24 hour price history">
+                        <div class="pool-summary-clickable" data-price-key="strch_usd" data-price-ticker="STRCH" role="button" tabindex="0" aria-label="Show STRCH 7 day price history">
                             <strong id="strch-price">Loading...</strong>
                             <span class="pool-provider-label"><img class="pool-provider-icon" src="starchCompanyLogo.webp?v=20260727-retina" alt=""><span class="pool-provider-label-text">STRCH</span></span>
-                            <svg class="price-sparkline" data-price-key="strch_usd" viewBox="0 0 100 36" preserveAspectRatio="none" role="img" aria-label="STRCH price over the last hour"><polyline points=""></polyline></svg>
+                            <svg class="price-sparkline" data-price-key="strch_usd" viewBox="0 0 100 36" preserveAspectRatio="none" role="img" aria-label="STRCH price over the last 7 days"><polyline points=""></polyline></svg>
                         </div>
-                        <div class="pool-summary-clickable" data-price-key="night_usd" data-price-ticker="NIGHT" role="button" tabindex="0" aria-label="Show NIGHT 24 hour price history">
+                        <div class="pool-summary-clickable" data-price-key="night_usd" data-price-ticker="NIGHT" role="button" tabindex="0" aria-label="Show NIGHT 7 day price history">
                             <strong id="night-price">Loading...</strong>
                             <span class="pool-provider-label"><img class="pool-provider-icon" src="midnight-logo.png?v=20260727-retina" alt=""><span class="pool-provider-label-text">NIGHT</span></span>
-                            <svg class="price-sparkline" data-price-key="night_usd" viewBox="0 0 100 36" preserveAspectRatio="none" role="img" aria-label="NIGHT price over the last hour"><polyline points=""></polyline></svg>
+                            <svg class="price-sparkline" data-price-key="night_usd" viewBox="0 0 100 36" preserveAspectRatio="none" role="img" aria-label="NIGHT price over the last 7 days"><polyline points=""></polyline></svg>
                         </div>
                     </div>
                 </div>
@@ -259,7 +272,7 @@
                     </div>
                     <div id="starch-miners-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show Starch miners">
                         <strong id="starchMinerCount">Loading...</strong>
-                        <span>Registered Miners</span>
+                        <span id="starchMinerStatus">Miners</span>
                     </div>
                 </div>
                 <p class="small-text">Source: <a href="https://starch.one" target="_blank" rel="noopener noreferrer" aria-label="Starch.one">starch.one</a></p>

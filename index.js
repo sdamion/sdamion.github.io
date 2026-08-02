@@ -1,6 +1,9 @@
 const IS_LOCAL_PREVIEW = window.TDSPRuntime?.isLocalPreview === true;
 const THEME_STORAGE_KEY = 'tdsp-theme';
 const OVERLAY_SORT_STORAGE_KEY = 'tdsp-overlay-sort';
+const SITE_ALERT_SETTINGS_STORAGE_KEY = 'tdsp-site-alert-settings-v1';
+const NEWS_NOTIFICATION_STORAGE_KEY = 'tdsp-news-notification-state-v1';
+const CARDANO_EVENT_NOTIFICATION_STORAGE_KEY = 'tdsp-cardano-event-notification-state-v1';
 const PRICE_API_URL = IS_LOCAL_PREVIEW ? '/__prices_proxy__' : 'https://api.tdsp.online/api/prices';
 const NEWS_API_URL = IS_LOCAL_PREVIEW ? '/__news_proxy__' : 'https://api.tdsp.online/api/news';
 const CARDANO_EVENTS_API_URL = IS_LOCAL_PREVIEW ? '/__events_proxy__' : 'https://api.tdsp.online/api/events';
@@ -25,6 +28,12 @@ const STARCH_POOL_WEBSITES = Object.freeze({
     weed: 'https://x.com/CardanoWEED'
 });
 const notifiedRelayMaintenance = new Set();
+const cardanoEventNotificationTimers = new Map();
+const DEFAULT_SITE_ALERT_SETTINGS = Object.freeze({
+    governance: true,
+    news: true,
+    events: true
+});
 let headerVisibilityObserver = null;
 let poolDelegators = [];
 let mithrilSigners = [];
@@ -34,8 +43,10 @@ let starchPoolStatus = null;
 let cryptoNewsItems = [];
 let latestPricePayload = null;
 let priceHistoryChart = null;
-const PRICE_TILE_WINDOW_MS = 60 * 60 * 1000;
-const PRICE_OVERLAY_WINDOW_MS = 24 * 60 * 60 * 1000;
+const PRICE_CHART_WINDOW_LABEL = '7 days';
+const PRICE_CHART_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+const PRICE_TILE_WINDOW_MS = PRICE_CHART_WINDOW_MS;
+const PRICE_OVERLAY_WINDOW_MS = PRICE_CHART_WINDOW_MS;
 const PRICE_OVERLAY_BUCKET_MS = 5 * 60 * 1000;
 const PRICE_CHART_INTERVALS = Object.freeze([
     { minutes: 5, label: '5 min' },
@@ -60,6 +71,148 @@ function formatUsdPrice(value, decimals) {
         minimumFractionDigits: decimals,
         maximumFractionDigits: decimals
     }).format(number)}`;
+}
+
+function readSiteAlertSettings() {
+    try {
+        const raw = localStorage.getItem(SITE_ALERT_SETTINGS_STORAGE_KEY);
+        const parsed = raw ? JSON.parse(raw) : {};
+        return {
+            ...DEFAULT_SITE_ALERT_SETTINGS,
+            ...Object.fromEntries(
+                Object.keys(DEFAULT_SITE_ALERT_SETTINGS)
+                    .map(key => [key, parsed[key] !== false])
+            )
+        };
+    } catch {
+        return { ...DEFAULT_SITE_ALERT_SETTINGS };
+    }
+}
+
+function writeSiteAlertSettings(settings) {
+    try {
+        localStorage.setItem(SITE_ALERT_SETTINGS_STORAGE_KEY, JSON.stringify({
+            ...DEFAULT_SITE_ALERT_SETTINGS,
+            ...settings
+        }));
+    } catch {}
+}
+
+function getNotificationPermissionState() {
+    if (!('Notification' in window)) return 'unsupported';
+    return Notification.permission;
+}
+
+function isSiteAlertEnabled(topic) {
+    const settings = readSiteAlertSettings();
+    return settings[topic] !== false;
+}
+
+function canSendBrowserNotification(topic) {
+    return getNotificationPermissionState() === 'granted' && isSiteAlertEnabled(topic);
+}
+
+function sendBrowserNotification(title, body, tag, topic) {
+    if (!canSendBrowserNotification(topic)) return;
+    new Notification(title, { body, tag });
+}
+
+function renderSiteAlertsMenu() {
+    const button = document.getElementById('site-alerts-button');
+    const permissionButton = document.getElementById('site-alert-permission');
+    const status = document.getElementById('site-alert-status');
+    if (!button || !permissionButton || !status) return;
+
+    const settings = readSiteAlertSettings();
+    document.querySelectorAll('[data-alert-topic]').forEach(input => {
+        input.checked = settings[input.dataset.alertTopic] !== false;
+    });
+
+    button.classList.remove('is-enabled', 'is-blocked');
+    const permission = getNotificationPermissionState();
+    if (permission === 'granted') {
+        button.classList.add('is-enabled');
+        button.textContent = 'Alerts';
+        permissionButton.textContent = 'Notifications enabled';
+        permissionButton.disabled = true;
+        status.textContent = 'Browser notifications active';
+    } else if (permission === 'denied') {
+        button.classList.add('is-blocked');
+        button.textContent = 'Alerts';
+        permissionButton.textContent = 'Blocked in browser';
+        permissionButton.disabled = true;
+        status.textContent = 'Allow notifications in browser settings';
+    } else if (permission === 'unsupported') {
+        button.classList.add('is-blocked');
+        button.textContent = 'Alerts';
+        permissionButton.textContent = 'Not supported';
+        permissionButton.disabled = true;
+        status.textContent = 'This browser does not support notifications';
+    } else {
+        button.textContent = 'Alerts';
+        permissionButton.textContent = 'Enable notifications';
+        permissionButton.disabled = false;
+        status.textContent = 'Choose topics and enable notifications';
+    }
+}
+
+function initSiteAlertsMenu() {
+    const button = document.getElementById('site-alerts-button');
+    const menu = document.getElementById('site-alerts-menu');
+    const permissionButton = document.getElementById('site-alert-permission');
+    if (!button || !menu || !permissionButton) return;
+
+    const closeMenu = () => {
+        menu.hidden = true;
+        button.setAttribute('aria-expanded', 'false');
+    };
+    const toggleMenu = () => {
+        menu.hidden = !menu.hidden;
+        button.setAttribute('aria-expanded', menu.hidden ? 'false' : 'true');
+        if (!menu.hidden) renderSiteAlertsMenu();
+    };
+
+    button.addEventListener('click', event => {
+        event.stopPropagation();
+        toggleMenu();
+    });
+    menu.addEventListener('click', event => event.stopPropagation());
+    document.addEventListener('click', closeMenu);
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') closeMenu();
+    });
+
+    document.querySelectorAll('[data-alert-topic]').forEach(input => {
+        input.addEventListener('change', () => {
+            const settings = readSiteAlertSettings();
+            settings[input.dataset.alertTopic] = input.checked;
+            writeSiteAlertSettings(settings);
+            renderSiteAlertsMenu();
+        });
+    });
+
+    permissionButton.addEventListener('click', async () => {
+        if (!('Notification' in window) || Notification.permission !== 'default') return;
+        await Notification.requestPermission().catch(() => {});
+        renderSiteAlertsMenu();
+        const settings = readSiteAlertSettings();
+        const testTopic = Object.keys(DEFAULT_SITE_ALERT_SETTINGS).find(topic => settings[topic] !== false);
+        if (!testTopic) return;
+        sendBrowserNotification(
+            'TDSP alerts enabled',
+            'Your selected TDSP alerts are active.',
+            'tdsp-site-alerts-enabled',
+            testTopic
+        );
+    });
+
+    renderSiteAlertsMenu();
+    window.TDSPAlerts = {
+        isEnabled: isSiteAlertEnabled,
+        canSend: canSendBrowserNotification,
+        send: sendBrowserNotification,
+        render: renderSiteAlertsMenu
+    };
 }
 
 function getPriceTrendClass(samples) {
@@ -252,7 +405,7 @@ function openPriceHistoryOverlay(tile) {
         frame.className = 'price-history-chart-frame';
         canvas = document.createElement('canvas');
         canvas.setAttribute('role', 'img');
-        canvas.setAttribute('aria-label', `${ticker}/USD candlestick chart over the last 24 hours`);
+        canvas.setAttribute('aria-label', `${ticker}/USD candlestick chart over the last ${PRICE_CHART_WINDOW_LABEL}`);
         frame.appendChild(canvas);
         body.appendChild(frame);
     } else {
@@ -267,8 +420,8 @@ function openPriceHistoryOverlay(tile) {
         titleId: 'price-history-title',
         titleText: `${ticker} Price`,
         headerMeta: showTradingChart
-            ? `24 hours · 5 min · ${tradingCandles.length.toLocaleString('en-US')} candles`
-            : '24 hours · Price history unavailable',
+            ? `${PRICE_CHART_WINDOW_LABEL} · 5 min · ${tradingCandles.length.toLocaleString('en-US')} candles`
+            : `${PRICE_CHART_WINDOW_LABEL} · Price history unavailable`,
         closeLabel: `Close ${ticker} price history`,
         closeOverlay: closePriceHistoryOverlay,
         returnFocus: tile,
@@ -282,7 +435,7 @@ function openPriceHistoryOverlay(tile) {
             renderPriceTradingChart(canvas, candles, ticker, minutes, priceConfig.decimals);
             const meta = document.querySelector('#price-history-overlay .governance-menu-header-meta');
             const option = PRICE_CHART_INTERVALS.find(item => item.minutes === minutes);
-            if (meta) meta.textContent = `24 hours · ${option?.label || `${minutes} min`} · ${candles.length.toLocaleString('en-US')} candles`;
+            if (meta) meta.textContent = `${PRICE_CHART_WINDOW_LABEL} · ${option?.label || `${minutes} min`} · ${candles.length.toLocaleString('en-US')} candles`;
             intervalSelector?.querySelectorAll('.price-history-interval').forEach(button => {
                 button.setAttribute('aria-pressed', String(Number(button.dataset.intervalMinutes) === minutes));
             });
@@ -454,6 +607,61 @@ function createNewsGroup(items, duplicate = false) {
     return group;
 }
 
+function readNotificationState(storageKey) {
+    try {
+        const raw = localStorage.getItem(storageKey);
+        return raw ? JSON.parse(raw) : null;
+    } catch {
+        return null;
+    }
+}
+
+function writeNotificationState(storageKey, state) {
+    try {
+        localStorage.setItem(storageKey, JSON.stringify(state));
+    } catch {}
+}
+
+function getNewsNotificationId(item) {
+    return String(item?.url || `${item?.source || ''}:${item?.title || ''}:${item?.published_at || ''}`).trim();
+}
+
+function checkCryptoNewsNotifications(items) {
+    if (!Array.isArray(items) || !items.length) return;
+    const nextIds = Array.from(new Set(items.map(getNewsNotificationId).filter(Boolean))).sort();
+    const previousState = readNotificationState(NEWS_NOTIFICATION_STORAGE_KEY);
+    writeNotificationState(NEWS_NOTIFICATION_STORAGE_KEY, {
+        itemIds: nextIds,
+        updatedAt: Date.now()
+    });
+    if (!previousState) return;
+
+    const previousIds = new Set(Array.isArray(previousState.itemIds) ? previousState.itemIds : []);
+    const newItems = items.filter(item => {
+        const id = getNewsNotificationId(item);
+        return id && !previousIds.has(id);
+    });
+    if (!newItems.length) return;
+
+    if (newItems.length === 1) {
+        const item = newItems[0];
+        sendBrowserNotification(
+            'New Cardano news',
+            `${String(item?.source || 'Cardano News').trim()}: ${String(item?.title || 'New article').trim()}`,
+            'tdsp-cardano-news',
+            'news'
+        );
+        return;
+    }
+
+    sendBrowserNotification(
+        'New Cardano news',
+        `${newItems.length.toLocaleString('en-US')} new Cardano news items are available.`,
+        'tdsp-cardano-news',
+        'news'
+    );
+}
+
 function updateCryptoNewsTickerSpeed() {
     const track = document.getElementById('crypto-news-track');
     const group = track?.querySelector('.crypto-news-group:not([aria-hidden="true"])');
@@ -488,6 +696,7 @@ async function fetchCryptoNews() {
         if (!items.length) throw new Error('News API returned no Cardano headlines');
 
         cryptoNewsItems = items;
+        checkCryptoNewsNotifications(items);
         const tickerItems = items.slice(0, 20);
         track.replaceChildren(createNewsGroup(tickerItems), createNewsGroup(tickerItems, true));
         updateCryptoNewsTickerSpeed();
@@ -507,6 +716,89 @@ function parseCardanoEventDate(value) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ''))) return null;
     const date = new Date(`${value}T12:00:00Z`);
     return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function getCardanoEventNotificationId(event) {
+    return String(event?.id || event?.uid || event?.link || `${event?.title || ''}:${event?.start_at || event?.start_date || ''}`).trim();
+}
+
+function getCardanoEventStartMs(event) {
+    if (event?.start_at) {
+        const startAt = Date.parse(event.start_at);
+        if (Number.isFinite(startAt)) return startAt;
+    }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(String(event?.start_date || ''))) {
+        return new Date(`${event.start_date}T09:00:00`).getTime();
+    }
+    return NaN;
+}
+
+function getCardanoEventNotificationBody(event) {
+    const details = [
+        formatCardanoEventDateTime(event),
+        event?.location,
+        event?.organizer
+    ].filter(Boolean);
+    return details.join(' | ') || 'A Cardano event is starting now.';
+}
+
+function notifyCardanoEventStart(event) {
+    const title = String(event?.title || 'Cardano event').trim();
+    sendBrowserNotification(
+        'Cardano event starting',
+        `${title} — ${getCardanoEventNotificationBody(event)}`,
+        `tdsp-cardano-event-${getCardanoEventNotificationId(event)}`,
+        'events'
+    );
+}
+
+function checkCardanoEventNotifications(events) {
+    if (!Array.isArray(events) || !events.length) return;
+    const previousState = readNotificationState(CARDANO_EVENT_NOTIFICATION_STORAGE_KEY) || {};
+    const notifiedIds = new Set(Array.isArray(previousState.notifiedIds) ? previousState.notifiedIds : []);
+    const now = Date.now();
+    const lookbackMs = 20 * 60 * 1000;
+
+    cardanoEventNotificationTimers.forEach(timer => window.clearTimeout(timer));
+    cardanoEventNotificationTimers.clear();
+
+    events.forEach(event => {
+        const id = getCardanoEventNotificationId(event);
+        const startMs = getCardanoEventStartMs(event);
+        if (!id || !Number.isFinite(startMs) || notifiedIds.has(id)) return;
+
+        if (startMs <= now && now - startMs <= lookbackMs) {
+            if (canSendBrowserNotification('events')) {
+                notifiedIds.add(id);
+                notifyCardanoEventStart(event);
+            }
+            return;
+        }
+
+        if (startMs <= now) return;
+
+        const delay = startMs - now;
+        if (delay > 2147483647) return;
+        const timer = window.setTimeout(() => {
+            const latestState = readNotificationState(CARDANO_EVENT_NOTIFICATION_STORAGE_KEY) || {};
+            const latestIds = new Set(Array.isArray(latestState.notifiedIds) ? latestState.notifiedIds : []);
+            if (latestIds.has(id)) return;
+            if (!canSendBrowserNotification('events')) return;
+            latestIds.add(id);
+            writeNotificationState(CARDANO_EVENT_NOTIFICATION_STORAGE_KEY, {
+                notifiedIds: Array.from(latestIds).sort(),
+                updatedAt: Date.now()
+            });
+            notifyCardanoEventStart(event);
+            cardanoEventNotificationTimers.delete(id);
+        }, delay);
+        cardanoEventNotificationTimers.set(id, timer);
+    });
+
+    writeNotificationState(CARDANO_EVENT_NOTIFICATION_STORAGE_KEY, {
+        notifiedIds: Array.from(notifiedIds).sort(),
+        updatedAt: Date.now()
+    });
 }
 
 function formatCardanoEventDate(startValue, endValue) {
@@ -774,6 +1066,7 @@ async function fetchCardanoEvents() {
             .filter(event => String(event?.end_date || event?.start_date || '') >= today)
             .sort((left, right) => String(left?.start_date || '').localeCompare(String(right?.start_date || '')));
         if (!events.length) throw new Error('Events API returned no upcoming events');
+        checkCardanoEventNotifications(events);
         const sourceOrder = ['cardano', 'luma'];
         const groupedEvents = new Map(sourceOrder.map(key => [key, []]));
         events.forEach(event => {
@@ -809,6 +1102,7 @@ async function fetchCardanoEvents() {
 document.addEventListener("DOMContentLoaded", () => {
     initFixedHeaderLayout();
     initExternalLinkWarnings();
+    initSiteAlertsMenu();
     initThemeToggle();
     initPoolCopyButtons();
     initPoolDelegatorsCard();

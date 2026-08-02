@@ -85,10 +85,27 @@ function renderTdspStarchPoolTile() {
 
 function updateStarchDirectoryTiles(payload) {
     const minerCount = document.getElementById('starchMinerCount');
+    const minerStatus = document.getElementById('starchMinerStatus');
     const companyCount = document.getElementById('starchCompanyCount');
     if (minerCount) {
-        const value = Number(payload?.miner_count);
-        minerCount.textContent = Number.isFinite(value) ? value.toLocaleString('en-US') : 'N/A';
+        const registeredCount = Number(payload?.miner_count);
+        const companies = Array.isArray(payload?.companies) ? payload.companies : [];
+        const activeCount = companies.reduce((sum, company) => (
+            sum + (Number(company?.miner_count) || 0)
+        ), 0);
+        const hasMinerStatus = Number.isFinite(registeredCount) && companies.length > 0;
+        if (hasMinerStatus) {
+            const inactiveCount = Math.max(registeredCount - activeCount, 0);
+            minerCount.textContent = `${activeCount.toLocaleString('en-US')} Active`;
+            if (minerStatus) {
+                minerStatus.textContent = `${inactiveCount.toLocaleString('en-US')} Inactive Miners`;
+            }
+        } else {
+            minerCount.textContent = Number.isFinite(registeredCount)
+                ? registeredCount.toLocaleString('en-US')
+                : 'N/A';
+            if (minerStatus) minerStatus.textContent = 'Miners';
+        }
     }
     if (companyCount) {
         const value = Number(payload?.company_count);

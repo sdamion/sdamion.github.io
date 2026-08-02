@@ -40,6 +40,7 @@ const LOCAL_CONSTITUTION_CHAT_FEEDBACK_PROXY_PATH = '/__constitution_chat_feedba
 const LOCAL_CONSTITUTION_DOCUMENT_PROXY_PATH = '/__constitution_document_proxy__';
 const GOVERNANCE_MESH_CDN_URL = 'https://esm.sh/@meshsdk/core@1.9.1?bundle-deps';
 const ACTIVE_REFRESH_INTERVAL_MS = 15 * 60 * 1000;
+const GOVERNANCE_NOTIFICATION_STORAGE_KEY = 'tdsp-governance-notification-state-v1';
 const EPOCH_DURATION_SECONDS = 432000;
 const CARDANO_MAINNET_EPOCH_ZERO_MS = Date.parse('2017-09-23T21:44:51Z');
 const APPROVAL_GRACE_PERIOD_SECONDS = 300;
@@ -3581,6 +3582,7 @@ async function loadGovernanceActions() {
         if (!proposals.length) {
             throw new Error('No governance proposals found in dashboard payload');
         }
+        checkGovernanceNotifications(proposals);
         const grouped = groupGovernanceProposals(proposals);
         governanceGroupsState = grouped;
 
@@ -3615,6 +3617,7 @@ async function refreshActiveGovernanceGroup() {
     governanceState = dashboardPayload;
     updateEpochDisplayFromDashboardPayload(dashboardPayload);
     const proposals = getGovernanceProposalsFromDashboardPayload(dashboardPayload);
+    checkGovernanceNotifications(proposals);
     const grouped = groupGovernanceProposals(proposals);
     const activeProposals = grouped.active;
     governanceGroupsState = grouped;
@@ -3651,6 +3654,141 @@ async function fetchGovernanceDashboardPayload() {
     } catch {
         return fetchJson(fullUrl);
     }
+}
+
+function checkGovernanceNotifications(proposals) {
+    if (!Array.isArray(proposals) || !proposals.length) return;
+
+    const previousState = readGovernanceNotificationState();
+    const nextState = createGovernanceNotificationState(proposals);
+    writeGovernanceNotificationState(nextState);
+    if (!previousState) return;
+
+    const previousIds = new Set(Array.isArray(previousState.proposalIds) ? previousState.proposalIds : []);
+    const newProposals = proposals.filter(proposal => {
+        const id = getProposalNotificationId(proposal);
+        return id && !previousIds.has(id);
+    });
+
+    const previousCommitteeVotes = previousState.committeeVotes && typeof previousState.committeeVotes === 'object'
+        ? previousState.committeeVotes
+        : {};
+    const committeeUpdates = proposals.filter(proposal => {
+        const id = getProposalNotificationId(proposal);
+        if (!id || !previousCommitteeVotes[id]) return false;
+        const previous = previousCommitteeVotes[id];
+        const next = nextState.committeeVotes[id];
+        return next && next !== previous && getCommitteeVoteTotal(next) > getCommitteeVoteTotal(previous);
+    });
+
+    const events = [];
+    newProposals.slice(0, 5).forEach(proposal => {
+        events.push({
+            type: 'new-action',
+            title: 'New governance action',
+            body: getProposalTitle(proposal),
+            proposal
+        });
+    });
+    committeeUpdates.slice(0, 5).forEach(proposal => {
+        events.push({
+            type: 'cc-vote',
+            title: 'CC member vote update',
+            body: getProposalTitle(proposal),
+            proposal
+        });
+    });
+    if (!events.length) return;
+
+    notifyGovernanceEvents(events);
+}
+
+function createGovernanceNotificationState(proposals) {
+    const proposalIds = [];
+    const committeeVotes = {};
+    proposals.forEach(proposal => {
+        const id = getProposalNotificationId(proposal);
+        if (!id) return;
+        proposalIds.push(id);
+        committeeVotes[id] = getProposalCommitteeVoteSignature(proposal);
+    });
+    return {
+        proposalIds: Array.from(new Set(proposalIds)).sort(),
+        committeeVotes,
+        updatedAt: Date.now()
+    };
+}
+
+function readGovernanceNotificationState() {
+    try {
+        const raw = localStorage.getItem(GOVERNANCE_NOTIFICATION_STORAGE_KEY);
+        return raw ? JSON.parse(raw) : null;
+    } catch {
+        return null;
+    }
+}
+
+function writeGovernanceNotificationState(state) {
+    try {
+        localStorage.setItem(GOVERNANCE_NOTIFICATION_STORAGE_KEY, JSON.stringify(state));
+    } catch {}
+}
+
+function getProposalNotificationId(proposal) {
+    return String(proposal?.proposal_id || proposal?.id || proposal?.gov_action_id || '').trim();
+}
+
+function getProposalCommitteeVoteSignature(proposal) {
+    const summary = proposal?.summary || proposal?.vote_summary || proposal?.voteSummary || {};
+    const yes = getNumericVoteField(summary, [
+        'committee_yes_votes_cast',
+        'committee_yes_votes',
+        'committeeYesVotesCast',
+        'committeeYesVotes'
+    ]);
+    const no = getNumericVoteField(summary, [
+        'committee_no_votes_cast',
+        'committee_no_votes',
+        'committeeNoVotesCast',
+        'committeeNoVotes'
+    ]);
+    const abstain = getNumericVoteField(summary, [
+        'committee_abstain_votes_cast',
+        'committee_abstain_votes',
+        'committeeAbstainVotesCast',
+        'committeeAbstainVotes'
+    ]);
+    return `${yes}:${no}:${abstain}`;
+}
+
+function getNumericVoteField(source, keys) {
+    for (const key of keys) {
+        const value = Number(source?.[key]);
+        if (Number.isFinite(value)) return value;
+    }
+    return 0;
+}
+
+function getCommitteeVoteTotal(signature) {
+    return String(signature || '')
+        .split(':')
+        .reduce((sum, value) => sum + (Number(value) || 0), 0);
+}
+
+function notifyGovernanceEvents(events) {
+    const title = events.length === 1 ? events[0].title : 'Governance updates';
+    const body = events.length === 1
+        ? events[0].body
+        : `${events.length.toLocaleString('en-US')} governance updates on TDSP.`;
+    if (window.TDSPAlerts?.send) {
+        window.TDSPAlerts.send(title, body, 'tdsp-governance-updates', 'governance');
+        return;
+    }
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    new Notification(title, {
+        body,
+        tag: 'tdsp-governance-updates'
+    });
 }
 
 function shouldUseLocalDashboardProxy() {

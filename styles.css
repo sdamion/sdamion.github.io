@@ -506,11 +506,94 @@ html {
 }
 
 .menu-bar__actions {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: flex-end;
     flex: 0 0 auto;
     gap: 8px;
+}
+
+.site-alerts {
+    position: relative;
+}
+
+.site-alerts-button {
+    border: 0;
+    background: transparent;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.site-alerts-button.is-enabled {
+    color: #34d399;
+}
+
+.site-alerts-button.is-blocked {
+    color: #fb7185;
+}
+
+.site-alerts-menu {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    z-index: 1200;
+    display: grid;
+    width: min(260px, calc(100vw - 28px));
+    gap: 10px;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--overlay-surface);
+    color: var(--text);
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+}
+
+.site-alerts-menu[hidden] {
+    display: none;
+}
+
+.site-alerts-menu strong {
+    color: var(--accent-strong);
+    font-size: 0.88rem;
+    font-weight: 800;
+}
+
+.site-alerts-menu label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--muted);
+    font-size: 0.84rem;
+    font-weight: 700;
+}
+
+.site-alerts-menu input {
+    accent-color: var(--accent);
+}
+
+.site-alerts-menu button {
+    min-height: 34px;
+    padding: 0 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--control-surface);
+    color: var(--accent-strong);
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 800;
+}
+
+.site-alerts-menu button:hover,
+.site-alerts-menu button:focus-visible {
+    background: var(--control-hover-surface);
+    transform: none;
+}
+
+.site-alerts-menu span {
+    color: var(--muted);
+    font-size: 0.8rem;
+    font-weight: 700;
 }
 
 .theme-toggle {
@@ -3934,6 +4017,11 @@ html[data-theme="dark"] input {
         overflow: visible;
         justify-content: center;
         padding-bottom: 2px;
+    }
+
+    .site-alerts-menu {
+        right: 50%;
+        transform: translateX(50%);
     }
 
     .hero {
