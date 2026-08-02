@@ -3541,6 +3541,38 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
         text-align: left;
     }
 
+    .governance-menu-overlay .overlay-dialog-header {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: flex-start;
+    }
+
+    .governance-menu-overlay .overlay-dialog-header-copy {
+        display: contents;
+    }
+
+    .governance-menu-overlay .overlay-dialog-header-copy > :first-child:not(.governance-drep-title):not(h2):not(.governance-menu-header-meta) {
+        grid-column: 1;
+        grid-row: 1;
+    }
+
+    .governance-menu-overlay .overlay-dialog-header-actions {
+        grid-column: 2;
+        grid-row: 1;
+        justify-self: end;
+    }
+
+    .governance-menu-overlay .overlay-dialog-header :is(.governance-drep-title, h2) {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        overflow-wrap: normal;
+    }
+
+    .governance-menu-overlay .governance-menu-header-meta {
+        grid-column: 1 / -1;
+        grid-row: 3;
+    }
+
     .governance-action-header-context {
         align-items: flex-start;
         gap: 10px;

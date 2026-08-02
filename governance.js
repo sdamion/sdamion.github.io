@@ -2470,6 +2470,7 @@ function createTreasuryBusinessCard(group) {
     card.dataset.searchTeamLabels = teamSearchLabels.join('\n');
     card.dataset.sortName = group.label;
     card.dataset.sortAmount = String(group.value);
+    card.dataset.sortProjects = String(projectCount);
 
     const openButton = document.createElement('button');
     openButton.type = 'button';

@@ -1748,6 +1748,8 @@ const OVERLAY_SORT_DEFINITIONS = Object.freeze([
     { value: 'no-votes-desc', label: 'Most No votes', key: 'sortNoVotes', direction: -1, type: 'number' },
     { value: 'amount-desc', label: 'Highest amount', key: 'sortAmount', direction: -1, type: 'number' },
     { value: 'amount-asc', label: 'Lowest amount', key: 'sortAmount', direction: 1, type: 'number' },
+    { value: 'projects-desc', label: 'Most funded projects', key: 'sortProjects', direction: -1, type: 'number' },
+    { value: 'projects-asc', label: 'Least funded projects', key: 'sortProjects', direction: 1, type: 'number' },
     { value: 'power-desc', label: 'Most power', key: 'sortPower', direction: -1, type: 'number' },
     { value: 'power-asc', label: 'Least power', key: 'sortPower', direction: 1, type: 'number' },
     { value: 'delegators-desc', label: 'Most delegators', key: 'sortDelegators', direction: -1, type: 'number' },
