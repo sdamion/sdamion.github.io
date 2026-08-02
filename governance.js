@@ -41,6 +41,8 @@ const LOCAL_CONSTITUTION_DOCUMENT_PROXY_PATH = '/__constitution_document_proxy__
 const GOVERNANCE_MESH_CDN_URL = 'https://esm.sh/@meshsdk/core@1.9.1?bundle-deps';
 const ACTIVE_REFRESH_INTERVAL_MS = 15 * 60 * 1000;
 const GOVERNANCE_NOTIFICATION_STORAGE_KEY = 'tdsp-governance-notification-state-v1';
+const GOVERNANCE_ACTION_ALERT_YES_THRESHOLD = 67;
+const GOVERNANCE_INFO_ACTION_ALERT_YES_THRESHOLD = 50;
 const EPOCH_DURATION_SECONDS = 432000;
 const CARDANO_MAINNET_EPOCH_ZERO_MS = Date.parse('2017-09-23T21:44:51Z');
 const APPROVAL_GRACE_PERIOD_SECONDS = 300;
@@ -3673,6 +3675,9 @@ function checkGovernanceNotifications(proposals) {
     const previousCommitteeVotes = previousState.committeeVotes && typeof previousState.committeeVotes === 'object'
         ? previousState.committeeVotes
         : {};
+    const previousThresholds = previousState.yesThresholds && typeof previousState.yesThresholds === 'object'
+        ? previousState.yesThresholds
+        : null;
     const committeeUpdates = proposals.filter(proposal => {
         const id = getProposalNotificationId(proposal);
         if (!id || !previousCommitteeVotes[id]) return false;
@@ -3680,6 +3685,15 @@ function checkGovernanceNotifications(proposals) {
         const next = nextState.committeeVotes[id];
         return next && next !== previous && getCommitteeVoteTotal(next) > getCommitteeVoteTotal(previous);
     });
+    const thresholdUpdates = previousThresholds
+        ? proposals.filter(proposal => {
+            const id = getProposalNotificationId(proposal);
+            if (!id || !previousThresholds[id]) return false;
+            const previous = previousThresholds[id];
+            const next = nextState.yesThresholds[id];
+            return next?.passed === true && previous?.passed !== true;
+        })
+        : [];
 
     const events = [];
     newProposals.slice(0, 5).forEach(proposal => {
@@ -3698,6 +3712,17 @@ function checkGovernanceNotifications(proposals) {
             proposal
         });
     });
+    thresholdUpdates.slice(0, 5).forEach(proposal => {
+        const threshold = getGovernanceNotificationThresholdInfo(proposal);
+        const yesPct = formatCompactPercentage(threshold?.yesPct);
+        const thresholdPct = formatCompactPercentage(threshold?.threshold);
+        events.push({
+            type: 'yes-threshold',
+            title: 'Governance yes threshold reached',
+            body: `${getProposalTitle(proposal)} reached ${yesPct} Yes (${thresholdPct} threshold).`,
+            proposal
+        });
+    });
     if (!events.length) return;
 
     notifyGovernanceEvents(events);
@@ -3706,15 +3731,25 @@ function checkGovernanceNotifications(proposals) {
 function createGovernanceNotificationState(proposals) {
     const proposalIds = [];
     const committeeVotes = {};
+    const yesThresholds = {};
     proposals.forEach(proposal => {
         const id = getProposalNotificationId(proposal);
         if (!id) return;
         proposalIds.push(id);
         committeeVotes[id] = getProposalCommitteeVoteSignature(proposal);
+        const threshold = getGovernanceNotificationThresholdInfo(proposal);
+        if (threshold) {
+            yesThresholds[id] = {
+                yesPct: threshold.yesPct,
+                threshold: threshold.threshold,
+                passed: threshold.passed
+            };
+        }
     });
     return {
         proposalIds: Array.from(new Set(proposalIds)).sort(),
         committeeVotes,
+        yesThresholds,
         updatedAt: Date.now()
     };
 }
@@ -3773,6 +3808,29 @@ function getCommitteeVoteTotal(signature) {
     return String(signature || '')
         .split(':')
         .reduce((sum, value) => sum + (Number(value) || 0), 0);
+}
+
+function getGovernanceNotificationThresholdInfo(proposal) {
+    if (!proposal || proposal.dropped_epoch !== null || proposal.expired_epoch !== null) return null;
+    const yesPct = Number(proposal?.votePercentages?.yes);
+    if (!Number.isFinite(yesPct)) return null;
+    const isInfoAction = String(proposal?.proposal_type || '').toLowerCase() === 'infoaction';
+    const threshold = isInfoAction
+        ? GOVERNANCE_INFO_ACTION_ALERT_YES_THRESHOLD
+        : GOVERNANCE_ACTION_ALERT_YES_THRESHOLD;
+    return {
+        yesPct,
+        threshold,
+        passed: yesPct >= threshold
+    };
+}
+
+function formatCompactPercentage(value) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return '0%';
+    return `${number.toLocaleString('en-US', {
+        maximumFractionDigits: number % 1 === 0 ? 0 : 2
+    })}%`;
 }
 
 function notifyGovernanceEvents(events) {
