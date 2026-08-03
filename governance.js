@@ -5835,6 +5835,7 @@ async function prepareGovernanceVote(container, proposal, voteKind, walletInfo) 
         if (!drepInfo || drepInfo.drep_status !== 'registered') {
             throw new Error('The connected wallet DRep is not in the cached registered DRep directory. No transaction was built. If this DRep was just registered, wait for the DRep cache refresh and try again.');
         }
+        const drepName = extractDrepNameFromEntry(drepInfo) || extractDrepNameFromEntry(drepPayload?.metadata);
 
         status.textContent = 'Checking current vote cache...';
         const voteLookup = await fetchOptionalProposalVotesPayload(latestProposal.proposal_id, 8000);
@@ -5846,6 +5847,7 @@ async function prepareGovernanceVote(container, proposal, voteKind, walletInfo) 
             walletName: walletInfo.name,
             drep,
             existingVote,
+            drepName,
             drepActive: drepInfo.active === true
         }, container);
         renderGovernanceVoteReview(container, {
@@ -5859,6 +5861,7 @@ async function prepareGovernanceVote(container, proposal, voteKind, walletInfo) 
             voteLookupWarning: voteLookup.error
                 ? 'Current on-chain vote could not be checked quickly. If you already voted, submitting may replace that vote and charge another network fee.'
                 : '',
+            drepName,
             drepActive: drepInfo.active === true,
             MeshTxBuilder
         });
@@ -6023,12 +6026,15 @@ async function findWalletDrepInDirectory(drep) {
     if (!match) return null;
 
     const drepId = match.drep_id || match.drepId || drep?.dRepIDCip105 || match.id || '';
+    const drepName = extractDrepNameFromEntry(match);
     return {
         drep_id: drepId,
         requested_drep_id: drep?.dRepIDCip105 || drep?.publicKeyHash || '',
         metadata: match.metadata || null,
+        name: drepName || null,
         info: {
             ...match,
+            name: drepName || match.name,
             drep_id: drepId,
             drep_status: match.drep_status || 'registered',
             active: match.active === true
@@ -6132,7 +6138,7 @@ function createGovernanceVoteRationaleFields(context) {
         'Your name',
         'governance-vote-rationale-name',
         'Your public DRep name',
-        ''
+        context.drepName || ''
     );
     const reasonField = createDrepRegistrationTextArea(
         'Reason for this vote (English)',
@@ -6234,27 +6240,21 @@ async function improveGovernanceVoteRationale(context, controls) {
 async function requestGovernanceVoteRationaleImprovement(context, name, reason) {
     const proposal = context.proposal || {};
     const question = [
-        'Improve this DRep vote rationale in clear English.',
-        'Keep the meaning and vote choice unchanged.',
-        'Fix spelling and grammar.',
-        'Make it concise, professional, and suitable as public on-chain transaction metadata.',
-        'Return only the improved rationale text, no heading, no bullets, no explanation.',
-        '',
-        `DRep name: ${name || 'not provided'}`,
-        `Vote choice: ${context.voteKind}`,
-        `Governance action title: ${getProposalTitle(proposal)}`,
-        `Governance action ID: ${proposal.proposal_id || ''}`,
-        `Type: ${formatProposalType(getEffectiveProposalType(proposal))}`,
-        `Epoch: ${proposal.proposed_epoch ?? ''}`,
-        `Expires: ${proposal.expiration ?? ''}`,
-        `Requested ADA: ${getGovernanceProposalRequestedAda(proposal) ?? 'not applicable'}`,
-        '',
-        'Proposal context:',
-        getGovernanceVoteRationaleProposalContext(proposal),
-        '',
-        'Original rationale or pointers:',
-        reason
+        'Improve the selected DRep vote rationale in clear English.',
+        'Treat the supplied original rationale as a hard instruction for the argument, emphasis, and conclusion.',
+        'The original rationale may be written in any language; translate it to English by default.',
+        'Write it in first person as my public DRep rationale explaining why I voted this way.',
+        'The improved rationale must argue for the supplied vote choice, especially when the vote is No or Abstain.',
+        'If the original text is only a proposal summary, turn it into a rationale explaining why that summary led to the supplied vote choice.',
+        'Do not replace the user argument with a generic proposal summary.',
+        'Keep the vote choice unchanged and return only the improved rationale text.'
     ].join('\n');
+    const proposalContext = getGovernanceVoteRationaleProposalContext(proposal);
+    const governanceContinuityNote = [
+        'If relevant to this vote, clearly explain that without enough Constitutional Committee voting,',
+        'Cardano governance can stall and governance actions can remain unconstitutional until either',
+        'a second voting round reaches enough CC votes or the CC size is reduced to 3, which itself also requires a governance vote.'
+    ].join(' ');
 
     const response = await fetch(getConstitutionChatApiUrl(), {
         method: 'POST',
@@ -6270,7 +6270,25 @@ async function requestGovernanceVoteRationaleImprovement(context, name, reason) 
                 ...createGovernanceActionBotContext(proposal),
                 task: 'improve_drep_vote_rationale',
                 vote_choice: context.voteKind,
-                drep_name: name || null
+                drep_name: name || null,
+                original_rationale: reason,
+                proposal_context: proposalContext,
+                rationale_instruction: [
+                    'The original rationale is the source of truth for what the improved rationale must say.',
+                    'Preserve every substantive point from the original rationale, including governance risk, consequences, timing, and required follow-up actions.',
+                    'Accept original rationale input in any language and translate it to English by default.',
+                    'Write the result in first person from the DRep perspective, focused on why this vote choice was made.',
+                    `The rationale must clearly support a ${context.voteKind} vote. Do not write text that sounds like support for a different vote choice.`,
+                    'For a No vote, frame proposal facts as concerns, objections, risks, missing separation, insufficient clarity, or reasons not to approve.',
+                    'For an Abstain vote, frame proposal facts as reasons to withhold support or opposition.',
+                    'If the original rationale is mostly a neutral proposal summary, infer the vote rationale from the selected vote choice and the concerns implied by that summary.',
+                    'Fix spelling and grammar.',
+                    'Make the rationale professional, readable, and suitable as public on-chain transaction metadata.',
+                    'You may use proposal context only to improve accuracy and wording, not to override the original argument.',
+                    'Do not add headings, bullets, or explanations.',
+                    'Keep the improved text under 5000 characters.',
+                    governanceContinuityNote
+                ].join(' ')
             }
         })
     });
@@ -6304,12 +6322,21 @@ function getGovernanceVoteRationaleProposalContext(proposal) {
 }
 
 function cleanGovernanceRationaleSuggestion(value) {
-    return cleanGovernanceText(String(value || '')
+    const text = cleanGovernanceText(String(value || '')
         .replace(/^["“”]+|["“”]+$/g, '')
         .replace(/^improved rationale\s*:?\s*/i, '')
         .replace(/\n*if this answer was useful[\s\S]*$/i, '')
         .trim()
-    ).slice(0, 5000);
+    );
+    return appendAiImprovedRationaleMarker(text).slice(0, 5000);
+}
+
+function appendAiImprovedRationaleMarker(value) {
+    const text = String(value || '').trim();
+    const marker = '!! AI improved rationale !!';
+    if (!text) return marker;
+    if (text.toLowerCase().includes(marker.toLowerCase())) return text;
+    return `${text}\n\n${marker}`;
 }
 
 function createGovernanceVoteRationaleMetadata(context, authorName, reason) {
@@ -6320,8 +6347,6 @@ function createGovernanceVoteRationaleMetadata(context, authorName, reason) {
     if (!cleanReason) throw new Error('Enter the reason for this vote in English or leave the rationale fields empty.');
 
     const proposal = context.proposal || {};
-    const voteSummary = proposal.voteSummary || {};
-    const body = proposal.meta_json?.body || {};
     const metadata = {
         app: 'TDSP',
         standard: 'CIP-1694 vote rationale',
@@ -6338,29 +6363,18 @@ function createGovernanceVoteRationaleMetadata(context, authorName, reason) {
         gov_action_title: getProposalTitle(proposal),
         gov_action_type: formatProposalType(getEffectiveProposalType(proposal)),
         gov_action_tx_hash: proposal.proposal_tx_hash || '',
-        gov_action_tx_index: normalizeNullableNumber(proposal.proposal_index),
-        proposed_epoch: normalizeNullableNumber(proposal.proposed_epoch),
-        expires_epoch: normalizeNullableNumber(proposal.expiration),
-        ratified_epoch: normalizeNullableNumber(proposal.ratified_epoch),
-        enacted_epoch: normalizeNullableNumber(proposal.enacted_epoch),
-        requested_amount_ada: getGovernanceProposalRequestedAda(proposal),
-        requested_amount_usd: normalizeNullableNumber(proposal.amount_usd || proposal.requested_amount_usd),
-        proposal_metadata_url: proposal.meta_url || proposal.metadata_url || '',
-        proposal_abstract: truncateOnchainMetadataText(body.abstract || proposal.abstract || ''),
-        proposal_rationale: truncateOnchainMetadataText(body.rationale || proposal.rationale || ''),
-        proposal_motivation: truncateOnchainMetadataText(body.motivation || proposal.motivation || ''),
-        drep_yes_pct: normalizeNullableNumber(proposal.votePercentages?.yes),
-        drep_no_pct: normalizeNullableNumber(proposal.votePercentages?.no),
-        drep_abstain_pct: normalizeNullableNumber(proposal.votePercentages?.abstain),
-        drep_yes_votes: normalizeNullableNumber(voteSummary.drep_yes_votes_cast),
-        drep_no_votes: normalizeNullableNumber(voteSummary.drep_no_votes_cast),
-        drep_abstain_votes: normalizeNullableNumber(voteSummary.drep_abstain_votes_cast),
-        drep_yes_vote_power: normalizeNullableNumber(voteSummary.drep_yes_vote_power),
-        drep_no_vote_power: normalizeNullableNumber(voteSummary.drep_no_vote_power),
-        drep_abstain_vote_power: normalizeNullableNumber(voteSummary.drep_abstain_vote_power)
+        gov_action_tx_index: normalizeOnchainMetadataNumber(proposal.proposal_index)
     };
 
     return chunkGovernanceMetadataStrings(removeEmptyRationaleValues(metadata));
+}
+
+function normalizeOnchainMetadataNumber(value) {
+    if (value === null || value === undefined || value === '') return null;
+    const number = Number(value);
+    if (!Number.isFinite(number)) return null;
+    if (Number.isInteger(number) && Number.isSafeInteger(number)) return number;
+    return String(value);
 }
 
 function normalizeNullableNumber(value) {
