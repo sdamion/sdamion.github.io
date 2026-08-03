@@ -854,15 +854,10 @@ function createTreasuryAdministratorChart(withdrawals) {
     }));
 
     const legend = document.createElement('div');
-    legend.className = 'governance-vote-legend';
+    legend.className = 'governance-list governance-action-group-list';
     groups.forEach(group => {
         const percentage = total > 0 ? (group.value / total) * 100 : 0;
-        legend.appendChild(createTreasuryAdministratorStatBox(group, {
-            label: group.label,
-            detail: `${group.withdrawals.length.toLocaleString('en-US')} withdrawals • ${formatCatalystCurrencyAmount(group.value, 'USD', true)} • ${formatPercentage(percentage)}`,
-            color: group.color,
-            onClick: event => openTreasuryAdministratorWithdrawalsOverlay(group, event.currentTarget)
-        }));
+        legend.appendChild(createTreasuryAdministratorCard(group, percentage));
     });
 
     layout.appendChild(legend);
@@ -871,39 +866,50 @@ function createTreasuryAdministratorChart(withdrawals) {
     return section;
 }
 
-function createTreasuryAdministratorStatBox(group, options) {
-    const element = createGovernanceStatBox({ ...options, onClick: null });
-    if (typeof options?.onClick === 'function') {
-        element.classList.add('is-clickable');
-        element.setAttribute('role', 'button');
-        element.tabIndex = 0;
-        element.setAttribute('aria-haspopup', 'dialog');
-        element.addEventListener('click', event => {
-            if (event.target.closest('a, button')) return;
-            options.onClick(event);
-        });
-        element.addEventListener('keydown', event => {
-            if (!['Enter', ' '].includes(event.key)) return;
-            event.preventDefault();
-            options.onClick(event);
-        });
-    }
+function createTreasuryAdministratorCard(group, percentage) {
     const companyUrls = getTreasuryBusinessWebsiteUrls({
         ...group,
         catalystProjects: []
     });
+    const card = document.createElement('div');
+    card.className = 'governance-card governance-menu-card governance-business-card';
+    card.dataset.searchText = [
+        group.label,
+        ...group.withdrawals.flatMap(withdrawal => (
+            Array.isArray(withdrawal?.proposers) ? withdrawal.proposers : []
+        ))
+    ].filter(Boolean).join(' ');
+    card.dataset.sortName = group.label;
+    card.dataset.sortAmount = String(group.value);
+    card.dataset.sortProjects = String(group.withdrawals.length);
+
+    const openButton = document.createElement('button');
+    openButton.type = 'button';
+    openButton.className = 'governance-card-open';
+    openButton.addEventListener('click', event => {
+        openTreasuryAdministratorWithdrawalsOverlay(group, event.currentTarget);
+    });
+
+    const amount = createFundingRecipientAmountRow(group.value, group.adaValue, false);
+    window.TDSPRuntime?.appendUniversalTileContent?.(openButton, {
+        title: group.label,
+        primaryNode: amount,
+        detailItems: [
+            `${group.withdrawals.length.toLocaleString('en-US')} withdrawal${group.withdrawals.length === 1 ? '' : 's'}`,
+            formatPercentage(percentage)
+        ]
+    });
+    card.appendChild(openButton);
+
     const companyLinks = createTreasuryBusinessWebsiteLinks(companyUrls);
-    if (companyLinks) {
-        const copy = element.querySelector('.governance-vote-legend-copy');
-        (copy || element).appendChild(companyLinks);
-    }
+    if (companyLinks) card.appendChild(companyLinks);
 
     const companyLogo = createTreasuryBusinessLogo(companyUrls, group?.label);
     if (companyLogo) {
-        element.classList.add('governance-business-card', 'has-company-logo');
-        element.appendChild(companyLogo);
+        card.classList.add('has-company-logo');
+        card.appendChild(companyLogo);
     }
-    return element;
+    return card;
 }
 
 function getTreasuryAdministratorGroups(withdrawals) {
