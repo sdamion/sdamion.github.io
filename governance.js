@@ -352,6 +352,7 @@ function setupConstitutionChat(panel, context = null) {
     const status = panel?.querySelector('#constitution-chat-status');
     if (!form || !input || !messages || !submit || !newQuestion || !status) return;
     const conversation = [];
+    let pendingNewChatSubmit = false;
 
     const clearConversation = () => {
         conversation.length = 0;
@@ -370,6 +371,7 @@ function setupConstitutionChat(panel, context = null) {
     input.addEventListener('keydown', event => {
         if (event.key === 'Enter' && !event.shiftKey) {
             event.preventDefault();
+            pendingNewChatSubmit = true;
             form.requestSubmit(newQuestion);
         }
     });
@@ -380,7 +382,8 @@ function setupConstitutionChat(panel, context = null) {
     form.addEventListener('submit', async event => {
         event.preventDefault();
         const question = input.value.replace(/\s+/g, ' ').trim();
-        const startsNewConversation = event.submitter === newQuestion;
+        const startsNewConversation = pendingNewChatSubmit || event.submitter === newQuestion;
+        pendingNewChatSubmit = false;
         if (!question || submit.disabled || newQuestion.disabled) return;
 
         if (startsNewConversation) {
