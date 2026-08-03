@@ -61,7 +61,7 @@ const DREP_STATS_EXCLUDED_PROPOSAL_IDS = new Set([
 const TREASURY_RECIPIENT_ADMINISTRATORS = Object.freeze({
     stake17xzc8pt7fgf0lc0x7eq6z7z6puhsxmzktna7dluahrj6g6ghh5qjr: 'Intersect Treasury Reserve Smart Contract',
     stake1784sdxt6jjennmstphgdu7l7c2scf5d02a6cve2dgn5s2kq5u3j9v: 'Intersect Treasury Reserve Smart Contract',
-    stake17x3n2krrld46qms4f4hzqqxzjgaf59u3fecvl6eh8scmaacjqmvjw: 'Harmonic Laboratories',
+    stake17x3n2krrld46qms4f4hzqqxzjgaf59u3fecvl6eh8scmaacjqmvjw: 'Harmonic Labs',
     stake1790c5a0h3qwkxquehkdg746ccaa3hdfzgp7ckx6wzdpp7lq6ysdg0: 'Blink Labs',
     stake17x2x5cv4nlwptph8kxvnyw93pp2sp54dk54dpfp2ax7fkggaj3ty4: 'UTxO Company / Siban Labs',
     stake1u99m2kxsvdwlulg4l6qwjrpvayzrzwk0fugnvu3uklfqtws257z0g: 'Orion Fund / Arouet Holdings',
