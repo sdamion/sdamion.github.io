@@ -1256,8 +1256,46 @@ const TREASURY_BUSINESS_ALIASES = Object.freeze({
 });
 
 const CATALYST_TEAM_MEMBER_DISPLAY_ALIASES = Object.freeze({
+    'abrahamkakooza': 'Abraham Kakooza',
+    'abezawodni': 'Abezaw Odni',
+    'afrocharts': 'Afro Charts',
+    'alexander.cimpeanu': 'Alexander Cimpeanu',
+    'allisonfromm': 'Allison Fromm',
+    'altimario': 'Alti Mario',
+    'attstar-jh': 'Att Star-JH',
+    'attstar-jp': 'Att Star-JP',
+    'berkatalay': 'Berk Atalay',
+    'bezawitshewarega': 'Bezawit Shewarega',
+    'bigirishlion': 'Big Irish Lion',
+    'chrisasia': 'Chris Asia',
+    'christinemohan': 'Christine Mohan',
+    'daniel.friedman': 'Daniel Friedman',
+    'elraulito': 'El Raulito',
+    'frankalbanese': 'Frank Albanese',
+    'gurcancitil': 'Gurcan Citil',
+    'henrik.metsamaki': 'Henrik Metsamaki',
+    'itsdave_ada': 'Its Dave_ADA',
+    'jamesarthur': 'James Arthur',
+    'jonas.weinberger': 'Jonas Weinberger',
+    'juanitajaramillorivillas': 'Juanita Jaramillo Rivillas',
+    'lloydduhon': 'Lloyd Duhon',
+    'lovegrovegeorge': 'Lovegrove George',
+    'makotoharada': 'Makoto Harada',
+    'martinfalcone': 'Martin Falcone',
+    'mearaftadewos': 'Mearaf Tadewos',
+    'michal.petro': 'Michal Petro',
+    'nadiahopkins': 'Nadia Hopkins',
+    'nathansamson': 'Nathan Samson',
+    'natdwamena': 'Nat Dwamena',
+    'nicoarqueros': 'Nico Arqueros',
+    'nikodemzegzda': 'Nikodem Zegzda',
+    'petr.smelik': 'Petr Smelik',
     philipdisarro: 'Philip Disarro',
-    'philip disarro': 'Philip Disarro'
+    'philip disarro': 'Philip Disarro',
+    'rodolfo.miranda': 'Rodolfo Miranda',
+    'sonia.marotta': 'Sonia Marotta',
+    'thomas.ford': 'Thomas Ford',
+    'viktor.rko': 'Viktor Rko'
 });
 
 function normalizeCatalystTeamMemberDisplayName(value) {
