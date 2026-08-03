@@ -2068,6 +2068,16 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     text-decoration: none;
 }
 
+.governance-business-cache-link {
+    appearance: none;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+}
+
 .governance-business-url-list {
     display: flex;
     flex-wrap: wrap;

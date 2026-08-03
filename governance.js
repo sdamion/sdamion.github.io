@@ -1333,7 +1333,6 @@ const TREASURY_BUSINESS_WEBSITES = Object.freeze({
     NMKR: 'https://www.nmkr.io',
     NFTCDN: 'https://nftcdn.io/',
     Nucast: 'https://www.nucast.io/',
-    'Orion Fund / Arouet Holdings': 'https://forum.cardano.org/t/cardano-x-draper-dragon-orion-fund-faq/153797',
     'Mesh JS SDK': 'https://meshjs.dev/',
     Opshin: 'https://opshin.dev',
     Orcfax: 'https://orcfax.io',
@@ -2614,10 +2613,23 @@ function normalizeBusinessUrlList(value) {
 
 function createTreasuryBusinessWebsiteLinks(urls, label = '') {
     const normalizedUrls = normalizeBusinessUrlList(urls);
-    if (!normalizedUrls.length) return null;
     const contentKey = TREASURY_BUSINESS_CONTENT_KEYS[normalizeTreasuryBusinessName(label)];
+    if (!normalizedUrls.length && !contentKey) return null;
     const list = document.createElement('span');
     list.className = 'governance-business-url-list';
+    if (contentKey) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'governance-card-detail governance-business-url governance-business-cache-link';
+        button.textContent = 'Cached source data';
+        button.addEventListener('click', event => {
+            event.preventDefault();
+            event.stopPropagation();
+            openTreasuryBusinessContentOverlay(contentKey, label, event.currentTarget);
+        });
+        list.appendChild(button);
+        return list;
+    }
     normalizedUrls.forEach(url => {
         const link = document.createElement('a');
         link.className = 'governance-card-detail governance-business-url';
@@ -2628,10 +2640,6 @@ function createTreasuryBusinessWebsiteLinks(urls, label = '') {
         link.addEventListener('click', event => {
             event.preventDefault();
             event.stopPropagation();
-            if (contentKey) {
-                openTreasuryBusinessContentOverlay(contentKey, label, url, event.currentTarget);
-                return;
-            }
             if (typeof openExternalSiteWarning === 'function') {
                 openExternalSiteWarning(url, event.currentTarget);
                 return;
@@ -2643,7 +2651,7 @@ function createTreasuryBusinessWebsiteLinks(urls, label = '') {
     return list;
 }
 
-function openTreasuryBusinessContentOverlay(key, label, sourceUrl, returnFocus) {
+function openTreasuryBusinessContentOverlay(key, label, returnFocus) {
     const normalizedLabel = normalizeTreasuryBusinessName(label) || 'Treasury recipient';
     removeGovernanceMenuOverlay('governance-treasury-business-content-overlay', false);
     const overlay = createGovernanceMenuOverlay({
@@ -2669,23 +2677,6 @@ function openTreasuryBusinessContentOverlay(key, label, sourceUrl, returnFocus) 
                 ? `Cached source updated ${formatTimestamp(payload.updated_at)}`
                 : 'Cached source';
             overlay.body.innerHTML = '';
-
-            const source = document.createElement('a');
-            source.className = 'governance-card-detail governance-business-url';
-            source.href = payload?.url || sourceUrl;
-            source.target = '_blank';
-            source.rel = 'noopener noreferrer';
-            source.textContent = getRootDomainLabel(source.href) || source.href;
-            source.addEventListener('click', event => {
-                event.preventDefault();
-                event.stopPropagation();
-                if (typeof openExternalSiteWarning === 'function') {
-                    openExternalSiteWarning(source.href, event.currentTarget);
-                    return;
-                }
-                window.open(source.href, '_blank', 'noopener,noreferrer');
-            });
-            overlay.body.appendChild(source);
 
             const content = document.createElement('div');
             content.className = 'governance-business-content-text';
