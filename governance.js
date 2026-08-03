@@ -58,7 +58,7 @@ const DREP_STATS_EXCLUDED_PROPOSAL_IDS = new Set([
 ]);
 const TREASURY_RECIPIENT_ADMINISTRATORS = Object.freeze({
     stake17xzc8pt7fgf0lc0x7eq6z7z6puhsxmzktna7dluahrj6g6ghh5qjr: 'Intersect Treasury Reserve Smart Contract',
-    stake1784sdxt6jjennmstphgdu7l7c2scf5d02a6cve2dgn5s2kq5u3j9v: 'Intersect',
+    stake1784sdxt6jjennmstphgdu7l7c2scf5d02a6cve2dgn5s2kq5u3j9v: 'Intersect Treasury Reserve Smart Contract',
     stake17x3n2krrld46qms4f4hzqqxzjgaf59u3fecvl6eh8scmaacjqmvjw: 'Harmonic Laboratories',
     stake1790c5a0h3qwkxquehkdg746ccaa3hdfzgp7ckx6wzdpp7lq6ysdg0: 'Blink Labs',
     stake17x2x5cv4nlwptph8kxvnyw93pp2sp54dk54dpfp2ax7fkggaj3ty4: 'UTxO Company / Siban Labs',
@@ -893,7 +893,10 @@ function createTreasuryAdministratorStatBox(group, options) {
         catalystProjects: []
     });
     const companyLinks = createTreasuryBusinessWebsiteLinks(companyUrls);
-    if (companyLinks) element.appendChild(companyLinks);
+    if (companyLinks) {
+        const copy = element.querySelector('.governance-vote-legend-copy');
+        (copy || element).appendChild(companyLinks);
+    }
 
     const companyLogo = createTreasuryBusinessLogo(companyUrls, group?.label);
     if (companyLogo) {
@@ -1200,7 +1203,7 @@ const TREASURY_BUSINESS_ALIASES = Object.freeze({
     taptool: 'Taptools',
     cexplorer: 'Cexplorer',
     eryx: 'Eryx',
-    intersect: 'Intersect',
+    intersect: 'Intersect Treasury Reserve Smart Contract',
     builderdao: 'Builder Dao',
     cardanofoundation: 'Cardano Foundation',
     'catalyst team': 'Catalyst Team',
@@ -1294,6 +1297,7 @@ const TREASURY_BUSINESS_WEBSITES = Object.freeze({
     'Input Output Global': 'https://iohk.io',
     Intersect: 'https://intersectmbo.org',
     IntersectMBO: 'https://intersectmbo.org',
+    'Intersect Treasury Reserve Smart Contract': 'https://intersectmbo.org/',
     Iagon: 'https://iagon.com',
     'Kaizen Crypto': 'https://www.youtube.com/@KaizenCrypto',
     'Lido Nation': 'https://www.lidonation.com',
@@ -1361,8 +1365,8 @@ const TREASURY_BUSINESS_LOGOS_BY_DOMAIN = Object.freeze({
 });
 
 const TREASURY_BUSINESS_BY_STAKE_ADDRESS = Object.freeze({
-    stake1784sdxt6jjennmstphgdu7l7c2scf5d02a6cve2dgn5s2kq5u3j9v: 'Intersect',
-    stake17xzc8pt7fgf0lc0x7eq6z7z6puhsxmzktna7dluahrj6g6ghh5qjr: 'Intersect',
+    stake1784sdxt6jjennmstphgdu7l7c2scf5d02a6cve2dgn5s2kq5u3j9v: 'Intersect Treasury Reserve Smart Contract',
+    stake17xzc8pt7fgf0lc0x7eq6z7z6puhsxmzktna7dluahrj6g6ghh5qjr: 'Intersect Treasury Reserve Smart Contract',
     stake17x2x5cv4nlwptph8kxvnyw93pp2sp54dk54dpfp2ax7fkggaj3ty4: 'UTxO Company / Siban Labs',
     stake1u92flcyspwcp92lmgs0p47vdjrrek96l07cv3v6033wddfc8h620a: 'Tastenkunst GmbH'
 });

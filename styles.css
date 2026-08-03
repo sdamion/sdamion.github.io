@@ -2050,6 +2050,10 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     padding-right: 126px;
 }
 
+.governance-vote-legend-item.governance-business-card.has-company-logo {
+    grid-template-columns: 12px minmax(0, 1fr);
+}
+
 .governance-business-card.has-company-logo .governance-card-open {
     padding-right: 0;
 }
