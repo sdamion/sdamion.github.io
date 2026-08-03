@@ -1030,7 +1030,11 @@ function getCatalystTeamSearchTerms(project) {
     ].flatMap(member => typeof member === 'string' ? [member] : [
         member?.name,
         member?.username
-    ]).map(value => String(value || '').trim()).filter(Boolean);
+    ]).flatMap(value => {
+        const raw = String(value || '').trim();
+        const normalized = normalizeCatalystTeamMemberDisplayName(raw);
+        return [raw, normalized].filter(Boolean);
+    });
 }
 
 function getCatalystMultiSearchQueries(normalizedQuery) {
@@ -1250,6 +1254,17 @@ const TREASURY_BUSINESS_ALIASES = Object.freeze({
     'daniel.friedman': 'zenGate Global',
     'rosen bridge': 'zenGate Global'
 });
+
+const CATALYST_TEAM_MEMBER_DISPLAY_ALIASES = Object.freeze({
+    philipdisarro: 'Philip Disarro',
+    'philip disarro': 'Philip Disarro'
+});
+
+function normalizeCatalystTeamMemberDisplayName(value) {
+    const name = String(value || '').trim();
+    if (!name) return '';
+    return CATALYST_TEAM_MEMBER_DISPLAY_ALIASES[name.toLowerCase()] || name;
+}
 
 const TREASURY_BUSINESS_WEBSITES = Object.freeze({
     '5 AM Earth Foundation': 'https://5am.earth/',
@@ -2964,7 +2979,9 @@ function renderCatalystProposalDetail(container, proposal) {
             container,
             'Team',
             proposal.team.map(member => (
-                member.role ? `${member.name} (${member.role})` : member.name
+                member.role
+                    ? `${normalizeCatalystTeamMemberDisplayName(member.name)} (${member.role})`
+                    : normalizeCatalystTeamMemberDisplayName(member.name)
             )).join(', ')
         );
     }
