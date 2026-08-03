@@ -3843,7 +3843,7 @@ function getGovernanceNotificationThresholdInfo(proposal) {
     if (!proposal || proposal.dropped_epoch !== null || proposal.expired_epoch !== null) return null;
     const yesPct = Number(proposal?.votePercentages?.yes);
     if (!Number.isFinite(yesPct)) return null;
-    const isInfoAction = String(proposal?.proposal_type || '').toLowerCase() === 'infoaction';
+    const isInfoAction = String(getEffectiveProposalType(proposal)).toLowerCase() === 'infoaction';
     const threshold = isInfoAction
         ? GOVERNANCE_INFO_ACTION_ALERT_YES_THRESHOLD
         : GOVERNANCE_ACTION_ALERT_YES_THRESHOLD;
@@ -4115,6 +4115,7 @@ function normalizeGovernanceProposal(proposal, linkedSummary = null, container =
         proposal?.proposal_index ?? proposal?.proposalIndex ?? proposal?.tx_index ?? proposal?.action_index
     );
     normalized.proposal_type = proposal?.proposal_type || proposal?.type || proposal?.gov_action_type || 'Governance';
+    normalized.effective_proposal_type = getEffectiveProposalType(normalized);
     normalized.block_time = proposal?.block_time ?? proposal?.created_at ?? proposal?.createdAt ?? proposal?.time ?? 0;
     normalized.proposed_epoch = coerceNullableNumber(proposal?.proposed_epoch ?? proposal?.proposal_epoch ?? proposal?.epoch);
     normalized.expiration = coerceNullableNumber(proposal?.expiration ?? proposal?.expires_epoch ?? proposal?.expired_after_epoch);
@@ -4448,16 +4449,24 @@ function getPercentagesFromVotePower(summary, prefix) {
     };
 }
 
+function getEffectiveProposalType(proposal) {
+    return proposal?.proposal_description?.tag
+        || proposal?.proposal_type
+        || proposal?.type
+        || '';
+}
+
 function usesPoolVoting(proposal) {
-    return proposal?.proposal_type === 'HardForkInitiation'
-        || proposal?.proposal_type === 'ParameterChange';
+    const proposalType = getEffectiveProposalType(proposal);
+    return proposalType === 'HardForkInitiation'
+        || proposalType === 'ParameterChange';
 }
 
 function getGovernanceStatus(proposal) {
     if (meetsGovernanceApprovalThreshold(proposal)) return 'approved';
     if (proposal.dropped_epoch !== null || proposal.expired_epoch !== null) return 'rejected';
     if (proposal.ratified_epoch !== null || proposal.enacted_epoch !== null) return 'approved';
-    if (proposal?.proposal_type === 'InfoAction') return 'info';
+    if (getEffectiveProposalType(proposal) === 'InfoAction') return 'info';
     return 'active';
 }
 
@@ -4788,7 +4797,7 @@ function getActiveTreasuryProposalAskTotal() {
         : [];
 
     return proposals.reduce((sum, proposal) => {
-        if (proposal?.proposal_type !== 'TreasuryWithdrawals') return sum;
+        if (getEffectiveProposalType(proposal) !== 'TreasuryWithdrawals') return sum;
         if (getGovernanceStatus(proposal) !== 'active') return sum;
         return sum + getProposalTotalAskLovelace(proposal);
     }, 0);
@@ -4919,7 +4928,7 @@ function openGovernanceOverlay(proposal, options = {}) {
 
     const type = document.createElement('span');
     type.className = 'governance-type';
-    type.textContent = formatProposalType(proposal.proposal_type);
+    type.textContent = formatProposalType(getEffectiveProposalType(proposal));
 
     const meta = document.createElement('p');
     meta.className = 'governance-action-header-epoch';
@@ -5030,7 +5039,7 @@ function createGovernanceActionBotContext(proposal) {
         kind: 'governance_action',
         id: String(proposal?.proposal_id || '').trim(),
         title: getProposalTitle(proposal),
-        proposal_type: proposal?.proposal_type || null,
+        proposal_type: getEffectiveProposalType(proposal) || null,
         status: getGovernanceStatus(proposal),
         proposed_epoch: proposal?.proposed_epoch ?? null,
         expiration_epoch: proposal?.expiration ?? null,
@@ -5077,7 +5086,7 @@ function openProposalSummaryOverlay(proposal, returnFocus) {
         proposal,
         returnFocus,
         apiUrl: getProposalSummaryApiUrl(proposal?.proposal_id),
-        headerMeta: formatProposalType(proposal?.proposal_type),
+        headerMeta: formatProposalType(getEffectiveProposalType(proposal)),
         rootTitle: getProposalTitle(proposal)
     });
 }
@@ -8857,14 +8866,16 @@ function renderConstitutionalCommitteeVoteTotalsChart(container, stats, options 
 }
 
 function isConstitutionalCommitteeVoteApplicable(proposal) {
-    return proposal?.proposal_type !== 'NewCommittee'
-        && proposal?.proposal_description?.tag !== 'UpdateCommittee';
+    const proposalType = getEffectiveProposalType(proposal);
+    return proposalType !== 'NewCommittee'
+        && proposalType !== 'UpdateCommittee';
 }
 
 function isConstitutionalCommitteeMemberVoteApplicable(proposal) {
+    const proposalType = getEffectiveProposalType(proposal);
     return isConstitutionalCommitteeVoteApplicable(proposal)
-        && proposal?.proposal_type !== 'InfoAction'
-        && proposal?.proposal_type !== 'NoConfidence';
+        && proposalType !== 'InfoAction'
+        && proposalType !== 'NoConfidence';
 }
 
 function isExpiredGovernanceActionForCommitteeStats(proposal) {
@@ -10028,7 +10039,7 @@ function isRenderableImageUrl(url, keyHint = '') {
 function getProposalTitle(proposal) {
     return proposal.meta_json?.body?.title
         || proposal.meta_json?.title
-        || `${formatProposalType(proposal.proposal_type)} governance action`;
+        || `${formatProposalType(getEffectiveProposalType(proposal))} governance action`;
 }
 
 function getProposalMeta(proposal) {
@@ -10126,7 +10137,7 @@ function getActiveInfoActions(proposals) {
     const clockEpoch = Number(getClockEpochSnapshot()?.epoch);
 
     return (Array.isArray(proposals) ? proposals : []).filter(proposal => {
-        if (proposal?.proposal_type !== 'InfoAction') return false;
+        if (getEffectiveProposalType(proposal) !== 'InfoAction') return false;
         if (
             proposal?.ratified_epoch != null
             || proposal?.enacted_epoch != null
