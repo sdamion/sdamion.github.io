@@ -4179,7 +4179,7 @@ function applyDerivedGovernanceStatus(normalized, rawProposal) {
         || ''
     ).toLowerCase();
 
-    if (rawStatus.includes('reject') || rawStatus.includes('drop') || rawStatus.includes('expire')) {
+    if (rawStatus.includes('reject') || rawStatus.includes('drop')) {
         normalized.dropped_epoch = normalized.dropped_epoch ?? normalized.proposed_epoch ?? 0;
         return;
     }
@@ -4485,15 +4485,15 @@ function meetsGovernanceApprovalThreshold(proposal) {
     if (!Number.isFinite(yes)) return false;
     if (!hasPassedExpirationGracePeriod(proposal)) return false;
 
-    if (proposal?.voteDisplay?.source === 'pool') {
-        return yes >= 50;
-    }
+    return yes >= getGovernanceApprovalThreshold(proposal);
+}
 
+function getGovernanceApprovalThreshold(proposal, source = proposal?.voteDisplay?.source) {
+    if (source === 'pool') return 50;
     const proposalType = getEffectiveProposalType(proposal);
-    const threshold = proposalType === 'InfoAction'
+    return proposalType === 'InfoAction'
         ? GOVERNANCE_INFO_ACTION_ALERT_YES_THRESHOLD
         : GOVERNANCE_ACTION_ALERT_YES_THRESHOLD;
-    return yes >= threshold;
 }
 
 function hasPassedExpirationGracePeriod(proposal) {
@@ -4581,7 +4581,7 @@ function createGovernanceCard(proposal, options = {}) {
         votes.className = 'governance-votes vote-neutral';
         votes.textContent = 'Open for live votes';
     } else {
-        votes.className = `governance-votes ${getVoteColorClass(proposal.votePercentages, proposal.voteDisplay?.source)}`;
+        votes.className = `governance-votes ${getVoteColorClass(proposal.votePercentages, proposal.voteDisplay?.source, proposal)}`;
         votes.textContent = formatVotePercentages(proposal.votePercentages, proposal.voteDisplay?.label, proposal.voteSummary, proposal.voteDisplay?.source);
     }
 
@@ -6004,7 +6004,7 @@ function updateGovernanceCardVotes(proposalId, proposal) {
     const votes = card?.querySelector('.governance-votes');
     if (!votes) return;
 
-    votes.className = `governance-votes ${getVoteColorClass(proposal.votePercentages, proposal.voteDisplay?.source)}`;
+    votes.className = `governance-votes ${getVoteColorClass(proposal.votePercentages, proposal.voteDisplay?.source, proposal)}`;
     votes.textContent = formatVotePercentages(proposal.votePercentages, proposal.voteDisplay?.label, proposal.voteSummary, proposal.voteDisplay?.source);
 }
 
@@ -10073,18 +10073,13 @@ function getExpirationText(proposal) {
     return 'No expiration data';
 }
 
-function getVoteColorClass(percentages, source = 'drep') {
+function getVoteColorClass(percentages, source = 'drep', proposal = null) {
     const yes = Number(percentages?.yes);
     if (!Number.isFinite(yes)) return 'vote-neutral';
 
-    if (source === 'pool') {
-        if (yes >= 50) return 'vote-green';
-        if (yes >= 25) return 'vote-orange';
-        return 'vote-red';
-    }
-
-    if (yes >= 67) return 'vote-green';
-    if (yes >= 33.5) return 'vote-orange';
+    const threshold = getGovernanceApprovalThreshold(proposal, source);
+    if (yes >= threshold) return 'vote-green';
+    if (yes >= threshold / 2) return 'vote-orange';
     return 'vote-red';
 }
 
