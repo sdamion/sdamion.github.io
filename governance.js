@@ -11,7 +11,6 @@ const SPO_DIRECTORY_API_URL = 'https://api.tdsp.online/api/spos/directory';
 const SPO_DETAIL_API_BASE_URL = 'https://api.tdsp.online/api/spo';
 const REMOTE_METADATA_API_URL = 'https://api.tdsp.online/api/metadata';
 const TREASURY_API_URL = 'https://api.tdsp.online/api/treasury';
-const TREASURY_BUSINESS_CONTENT_API_BASE_URL = 'https://api.tdsp.online/api/treasury/business-content';
 const CATALYST_BUSINESS_API_URL = 'https://api.tdsp.online/api/catalyst/businesses';
 const CATALYST_PROPOSALS_API_URL = 'https://api.tdsp.online/api/catalyst/proposals';
 const CATALYST_PROPOSAL_DETAIL_API_BASE_URL = 'https://api.tdsp.online/api/catalyst/proposal';
@@ -32,7 +31,6 @@ const LOCAL_SPO_DIRECTORY_PROXY_PATH = '/__spo_directory_proxy__';
 const LOCAL_SPO_DETAIL_PROXY_PATH = '/__spo_detail_proxy__';
 const LOCAL_METADATA_PROXY_PATH = '/__metadata_proxy__';
 const LOCAL_TREASURY_PROXY_PATH = '/__treasury_proxy__';
-const LOCAL_TREASURY_BUSINESS_CONTENT_PROXY_PATH = '/__treasury_business_content_proxy__';
 const LOCAL_CATALYST_BUSINESS_PROXY_PATH = '/__catalyst_business_proxy__';
 const LOCAL_CATALYST_PROPOSALS_PROXY_PATH = '/__catalyst_proposals_proxy__';
 const LOCAL_CATALYST_PROPOSAL_DETAIL_PROXY_PATH = '/__catalyst_proposal_detail_proxy__';
@@ -730,22 +728,6 @@ function fetchCatalystBusinessPayload() {
     return catalystBusinessPromise;
 }
 
-function getTreasuryBusinessContentApiUrl(key) {
-    const safeKey = encodeURIComponent(String(key || '').trim());
-    if (shouldUseLocalDashboardProxy()) {
-        return `${LOCAL_TREASURY_BUSINESS_CONTENT_PROXY_PATH}?key=${safeKey}`;
-    }
-    return `${TREASURY_BUSINESS_CONTENT_API_BASE_URL}/${safeKey}`;
-}
-
-function fetchTreasuryBusinessContent(key) {
-    return fetchJson(getTreasuryBusinessContentApiUrl(key)).catch(error => {
-        if (!shouldUseLocalDashboardProxy()) throw error;
-        const safeKey = encodeURIComponent(String(key || '').trim());
-        return fetchJson(`${TREASURY_BUSINESS_CONTENT_API_BASE_URL}/${safeKey}`);
-    });
-}
-
 function fetchCatalystFundDirectoryPayload() {
     if (!catalystFundDirectoryPromise) {
         const url = getCatalystProposalsApiUrl({ funds: true });
@@ -919,7 +901,7 @@ function createTreasuryAdministratorCard(group, percentage) {
     });
     card.appendChild(openButton);
 
-    const companyLinks = createTreasuryBusinessWebsiteLinks(companyUrls, group.label);
+    const companyLinks = createTreasuryBusinessWebsiteLinks(companyUrls);
     if (companyLinks) card.appendChild(companyLinks);
 
     const companyLogo = createTreasuryBusinessLogo(companyUrls, group?.label);
@@ -1443,10 +1425,6 @@ const TREASURY_BUSINESS_BY_ACTION_ID = Object.freeze({
     gov_action13tfag48nf94rtjcdq7c06vhkslmxxw9h6c88sl7q5g5nnewcsvlqx488pdm: 'Vacuumlabs',
     gov_action1cp0w6zwgwpj98jtu3r2q838lgwmhs6j49l58zx4q05lx220lmzaqqztnljz: 'Cardano Pentad',
     gov_action13tfag48nf94rtjcdq7c06vhkslmxxw9h6c88sl7q5g5nnewcsvlzzy7m65d: 'Opshin'
-});
-
-const TREASURY_BUSINESS_CONTENT_KEYS = Object.freeze({
-    'Orion Fund / Arouet Holdings': 'orion-fund-arouet-holdings'
 });
 
 function normalizeTreasuryBusinessName(value) {
@@ -2576,7 +2554,7 @@ function createTreasuryBusinessCard(group) {
         ].filter(Boolean)
     });
     card.appendChild(openButton);
-    const companyLinks = createTreasuryBusinessWebsiteLinks(companyUrls, group.label);
+    const companyLinks = createTreasuryBusinessWebsiteLinks(companyUrls);
     if (companyLinks) card.appendChild(companyLinks);
     const companyLogo = createTreasuryBusinessLogo(companyUrls, group.label);
     if (companyLogo) {
@@ -2617,24 +2595,11 @@ function normalizeBusinessUrlList(value) {
         .filter(Boolean);
 }
 
-function createTreasuryBusinessWebsiteLinks(urls, label = '') {
+function createTreasuryBusinessWebsiteLinks(urls) {
     const normalizedUrls = normalizeBusinessUrlList(urls);
-    const contentKey = TREASURY_BUSINESS_CONTENT_KEYS[normalizeTreasuryBusinessName(label)];
-    if (!normalizedUrls.length && !contentKey) return null;
+    if (!normalizedUrls.length) return null;
     const list = document.createElement('span');
     list.className = 'governance-business-url-list';
-    if (contentKey) {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'governance-card-detail governance-business-url governance-business-cache-link';
-        button.textContent = 'Arouet Holdings Info';
-        button.addEventListener('click', event => {
-            event.preventDefault();
-            event.stopPropagation();
-            openTreasuryBusinessContentOverlay(contentKey, label, event.currentTarget);
-        });
-        list.appendChild(button);
-    }
     normalizedUrls.forEach(url => {
         const link = document.createElement('a');
         link.className = 'governance-card-detail governance-business-url';
@@ -2654,81 +2619,6 @@ function createTreasuryBusinessWebsiteLinks(urls, label = '') {
         list.appendChild(link);
     });
     return list;
-}
-
-function openTreasuryBusinessContentOverlay(key, label, returnFocus) {
-    const normalizedLabel = normalizeTreasuryBusinessName(label) || 'Treasury recipient';
-    removeGovernanceMenuOverlay('governance-treasury-business-content-overlay', false);
-    const overlay = createGovernanceMenuOverlay({
-        id: 'governance-treasury-business-content-overlay',
-        titleText: normalizedLabel,
-        metaText: 'Loading cached source text...',
-        rootTitle: 'Cardano Treasury',
-        returnFocus,
-        overlayClass: 'governance-action-detail-overlay',
-        closeLabel: 'Close treasury recipient source',
-        closeOverlay: restoreFocus => closeTreasuryBusinessContentOverlay(restoreFocus)
-    });
-
-    const loading = document.createElement('p');
-    loading.className = 'governance-card-detail';
-    loading.textContent = 'Loading cached source text...';
-    overlay.body.appendChild(loading);
-
-    fetchTreasuryBusinessContent(key)
-        .then(payload => {
-            overlay.title.textContent = payload?.title || normalizedLabel;
-            overlay.meta.textContent = payload?.updated_at
-                ? `Cached source updated ${formatTimestamp(payload.updated_at)}`
-                : 'Cached source';
-            overlay.body.innerHTML = '';
-
-            const content = document.createElement('div');
-            content.className = 'governance-business-content-text';
-            renderTreasuryBusinessContentText(content, payload?.text || '');
-            overlay.body.appendChild(content);
-        })
-        .catch(() => {
-            overlay.meta.textContent = 'Unavailable';
-            overlay.body.innerHTML = '';
-            const error = document.createElement('p');
-            error.className = 'governance-card-detail';
-            error.textContent = 'Cached source text could not be loaded for Arouet Holdings.';
-            overlay.body.appendChild(error);
-        });
-}
-
-function closeTreasuryBusinessContentOverlay(restoreFocus = true) {
-    removeGovernanceMenuOverlay('governance-treasury-business-content-overlay', restoreFocus);
-}
-
-function renderTreasuryBusinessContentText(container, text) {
-    const blocks = String(text || '').split(/\n{2,}/).map(block => block.trim()).filter(Boolean);
-    blocks.forEach(block => {
-        if (block === '---') {
-            container.appendChild(document.createElement('hr'));
-            return;
-        }
-        if (/^\d+\.\s/.test(block)) {
-            const heading = document.createElement('h3');
-            heading.textContent = block;
-            container.appendChild(heading);
-            return;
-        }
-        if (block.startsWith('- ')) {
-            const list = document.createElement('ul');
-            block.split('\n').map(line => line.replace(/^-\s*/, '').trim()).filter(Boolean).forEach(item => {
-                const li = document.createElement('li');
-                li.textContent = item;
-                list.appendChild(li);
-            });
-            container.appendChild(list);
-            return;
-        }
-        const paragraph = document.createElement('p');
-        paragraph.textContent = block;
-        container.appendChild(paragraph);
-    });
 }
 
 function createTreasuryBusinessLogo(urls, label) {
