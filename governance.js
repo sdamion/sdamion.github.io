@@ -4497,6 +4497,8 @@ function getGovernanceApprovalThreshold(proposal, source = proposal?.voteDisplay
 }
 
 function hasPassedExpirationGracePeriod(proposal) {
+    if (proposal?.expired_epoch !== null && proposal?.expired_epoch !== undefined) return true;
+
     const expirationEpoch = Number(proposal?.expiration);
     if (!Number.isFinite(expirationEpoch)) return false;
 
