@@ -739,7 +739,11 @@ function getTreasuryBusinessContentApiUrl(key) {
 }
 
 function fetchTreasuryBusinessContent(key) {
-    return fetchJson(getTreasuryBusinessContentApiUrl(key));
+    return fetchJson(getTreasuryBusinessContentApiUrl(key)).catch(error => {
+        if (!shouldUseLocalDashboardProxy()) throw error;
+        const safeKey = encodeURIComponent(String(key || '').trim());
+        return fetchJson(`${TREASURY_BUSINESS_CONTENT_API_BASE_URL}/${safeKey}`);
+    });
 }
 
 function fetchCatalystFundDirectoryPayload() {
