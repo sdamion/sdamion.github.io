@@ -1830,6 +1830,40 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     font-weight: 700;
 }
 
+.governance-business-content-text {
+    display: grid;
+    gap: 14px;
+    margin-top: 18px;
+    color: var(--muted);
+    font-size: 1rem;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+
+.governance-business-content-text h3,
+.governance-business-content-text p,
+.governance-business-content-text ul {
+    min-width: 0;
+    margin: 0;
+}
+
+.governance-business-content-text h3 {
+    color: var(--text);
+    font-size: 1rem;
+    line-height: 1.35;
+}
+
+.governance-business-content-text ul {
+    padding-left: 1.2em;
+}
+
+.governance-business-content-text hr {
+    width: 100%;
+    margin: 2px 0;
+    border: 0;
+    border-top: 1px solid var(--line);
+}
+
 .governance-list {
     display: grid;
     gap: 12px;
