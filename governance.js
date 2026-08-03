@@ -2623,7 +2623,7 @@ function createTreasuryBusinessWebsiteLinks(urls, label = '') {
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'governance-card-detail governance-business-url governance-business-cache-link';
-        button.textContent = 'Cached source data';
+        button.textContent = 'Arouet Holdings Info';
         button.addEventListener('click', event => {
             event.preventDefault();
             event.stopPropagation();
@@ -2689,7 +2689,7 @@ function openTreasuryBusinessContentOverlay(key, label, returnFocus) {
             overlay.body.innerHTML = '';
             const error = document.createElement('p');
             error.className = 'governance-card-detail';
-            error.textContent = 'Cached source text could not be loaded.';
+            error.textContent = 'Cached source text could not be loaded for Arouet Holdings.';
             overlay.body.appendChild(error);
         });
 }
