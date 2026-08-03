@@ -4489,7 +4489,11 @@ function meetsGovernanceApprovalThreshold(proposal) {
         return yes >= 50;
     }
 
-    return yes >= 67;
+    const proposalType = getEffectiveProposalType(proposal);
+    const threshold = proposalType === 'InfoAction'
+        ? GOVERNANCE_INFO_ACTION_ALERT_YES_THRESHOLD
+        : GOVERNANCE_ACTION_ALERT_YES_THRESHOLD;
+    return yes >= threshold;
 }
 
 function hasPassedExpirationGracePeriod(proposal) {
