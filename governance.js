@@ -155,6 +155,7 @@ function setupConstitutionAssistantCard() {
 }
 
 function openConstitutionAssistantOverlay(context = null, returnFocus = document.getElementById('tdspbot-open')) {
+    const isContextualAssistant = Boolean(context);
     const panel = createConstitutionChatPanel(context);
     createGovernanceMenuOverlay({
         id: 'constitution-assistant-overlay',
@@ -165,7 +166,8 @@ function openConstitutionAssistantOverlay(context = null, returnFocus = document
         bodyNodes: [panel],
         dialogClass: 'governance-constitution-chat-dialog',
         closeOnBackdrop: false,
-        showBack: false,
+        showBack: isContextualAssistant,
+        showClose: !isContextualAssistant,
         enableSearch: false,
         returnFocus
     });
@@ -215,7 +217,7 @@ function createConstitutionChatPanel(context = null) {
     input.id = 'constitution-chat-question';
     input.name = 'question';
     input.rows = 1;
-    input.maxLength = 600;
+    input.maxLength = 5000;
     input.autocomplete = 'off';
     input.placeholder = 'Search Cardano data or ask about the Constitution';
     input.required = true;
@@ -250,11 +252,7 @@ function createConstitutionChatPanel(context = null) {
     if (context?.title || context?.id) {
         const contextLine = document.createElement('p');
         contextLine.className = 'constitution-chat-note';
-        contextLine.textContent = [
-            getConstitutionChatContextLabel(context),
-            context?.title,
-            context?.id
-        ].filter(Boolean).join(' • ');
+        contextLine.textContent = getConstitutionChatContextDisplayParts(context).join(' • ');
         panel.appendChild(contextLine);
     }
 
@@ -265,8 +263,20 @@ function createConstitutionChatPanel(context = null) {
 function getConstitutionChatContextLabel(context) {
     if (context?.kind === 'catalyst_proposal') return 'Catalyst proposal context';
     if (context?.kind === 'governance_action') return 'Governance action context';
+    if (context?.kind === 'governance_vote') return 'DRep vote context';
+    if (context?.kind === 'funding_recipient') return 'Catalyst/Treasury recipient context';
     if (context?.section) return `${context.section} context`;
     return 'Website context';
+}
+
+function getConstitutionChatContextDisplayParts(context) {
+    return [
+        getConstitutionChatContextLabel(context),
+        context?.title || context?.recipient || context?.menu,
+        context?.vote_choice ? `Vote ${context.vote_choice}` : null,
+        context?.id,
+        context?.summary
+    ].filter(Boolean);
 }
 
 function setupConstitutionDocument() {
@@ -783,7 +793,8 @@ async function openTreasuryOverlay() {
         closeLabel: 'Close Cardano treasury',
         closeOverlay: closeTreasuryOverlay,
         bodyNodes: [content],
-        headerMeta: treasuryState ? getTreasuryHeaderAmount(treasuryState) : 'Loading...'
+        headerMeta: treasuryState ? getTreasuryHeaderAmount(treasuryState) : 'Loading...',
+        botContext: createTreasuryBotContext(treasuryState)
     });
 
     try {
@@ -791,6 +802,7 @@ async function openTreasuryOverlay() {
         treasuryState = payload;
         if (!content.isConnected) return;
         renderTreasuryDetails(content, payload);
+        updateGovernanceOverlayBotContext('governance-treasury-overlay', createTreasuryBotContext(payload), content);
         updateGovernanceMenuHeaderMeta(
             'governance-treasury-overlay',
             getTreasuryHeaderAmount(payload),
@@ -963,7 +975,8 @@ function openTreasuryAdministratorWithdrawalsOverlay(group, returnFocus) {
         bodyNodes: [panel],
         headerMeta: `${group.withdrawals.length.toLocaleString('en-US')} withdrawals • ${formatCatalystCurrencyAmount(group.value, 'USD', true)}`,
         overlayClass: 'governance-action-detail-overlay',
-        returnFocus
+        returnFocus,
+        botContext: createTreasuryAdministratorBotContext(group)
     });
 }
 
@@ -1584,7 +1597,11 @@ async function openBusinessOverlay(returnFocus = document.activeElement) {
         rootTitle: 'Catalyst/Treasury Recipients',
         defaultSort: 'amount-desc',
         searchPlaceholder: 'Search proposers or team members, separated by commas',
-        onSearch: renderRecipients
+        onSearch: renderRecipients,
+        botContext: createWebsiteSectionBotContext('Catalyst/Treasury Recipients', {
+            title: 'Catalyst/Treasury Recipients',
+            summary: 'Funding recipients from Catalyst and enacted treasury withdrawals'
+        })
     });
 
     try {
@@ -1599,6 +1616,16 @@ async function openBusinessOverlay(returnFocus = document.activeElement) {
         directoryReady = true;
         renderedSignature = '';
         renderRecipients('');
+        updateGovernanceOverlayBotContext(
+            'governance-business-overlay',
+            createWebsiteSectionBotContext('Catalyst/Treasury Recipients', {
+                title: 'Catalyst/Treasury Recipients',
+                count: groups.length,
+                amount_usd: getFundingRecipientUsdTotals(groups).received,
+                summary: `${groups.length.toLocaleString('en-US')} recipients`
+            }),
+            panel
+        );
         updateBusinessSummary(payload, catalystPayload);
     } catch {
         if (!panel.isConnected) return;
@@ -1998,7 +2025,11 @@ async function openCatalystFundsOverlay(returnFocus = document.activeElement) {
         rootTitle: 'Catalyst Proposals',
         defaultSort: 'fund-desc',
         searchPlaceholder: 'Search proposers or team members, separated by commas',
-        onSearch: renderDirectory
+        onSearch: renderDirectory,
+        botContext: createWebsiteSectionBotContext('Catalyst', {
+            title: 'Catalyst Proposals',
+            summary: 'Funded Catalyst proposal directory'
+        })
     });
 
     try {
@@ -2013,6 +2044,17 @@ async function openCatalystFundsOverlay(returnFocus = document.activeElement) {
         proposals = Array.isArray(proposalPayload?.proposals)
             ? proposalPayload.proposals
             : [];
+        updateGovernanceOverlayBotContext(
+            'governance-catalyst-funds-overlay',
+            createWebsiteSectionBotContext('Catalyst', {
+                title: 'Catalyst Proposals',
+                count: proposals.length,
+                amount_usd: getCatalystProposalUsdTotals(proposals).asked,
+                root: 'Catalyst Proposals',
+                summary: `${funds.length.toLocaleString('en-US')} funds • ${proposals.length.toLocaleString('en-US')} proposals`
+            }),
+            panel
+        );
         fundingChart = createCatalystProposalFundingOverview(
             funds,
             proposals,
@@ -2116,7 +2158,8 @@ async function openCatalystFundOverlay(fund, returnFocus) {
         overlayClass: 'governance-action-detail-overlay',
         returnFocus,
         rootTitle: 'Catalyst Proposals',
-        enableSearch: false
+        enableSearch: false,
+        botContext: createCatalystFundBotContext(fund)
     });
 
     try {
@@ -2161,6 +2204,15 @@ async function openCatalystFundOverlay(fund, returnFocus) {
         updateGovernanceMenuHeaderMeta(
             'governance-catalyst-fund-overlay',
             `${proposals.length.toLocaleString('en-US')} proposals • Claimed ${formatCatalystFundAmount(fund, 'claimed', true)} • Not Claimed ${formatCatalystFundAmount(fund, 'not_claimed', true)}`,
+            panel
+        );
+        updateGovernanceOverlayBotContext(
+            'governance-catalyst-fund-overlay',
+            {
+                ...createCatalystFundBotContext(fund),
+                count: proposals.length,
+                proposal_count: proposals.length
+            },
             panel
         );
     } catch (loadError) {
@@ -2487,7 +2539,15 @@ function openCatalystFundingProjectsOverlay(group, returnFocus) {
         overlayClass: 'governance-action-detail-overlay',
         returnFocus,
         rootTitle: group.rootTitle || 'Catalyst/Treasury Recipients',
-        defaultSort: 'fund-asc'
+        defaultSort: 'fund-asc',
+        botContext: createWebsiteSectionBotContext('Catalyst', {
+            title: group.label,
+            count: group.projects.length,
+            amount_usd: Number(group.value),
+            amount_ada: Number(group.adaValue),
+            root: group.rootTitle || 'Catalyst/Treasury Recipients',
+            summary: `${group.projects.length.toLocaleString('en-US')} projects`
+        })
     });
 }
 
@@ -2834,7 +2894,8 @@ function openTreasuryBusinessActionsOverlay(group, returnFocus) {
         overlayClass: 'governance-action-detail-overlay',
         returnFocus,
         rootTitle: 'Catalyst/Treasury Recipients',
-        defaultSort: 'newest'
+        defaultSort: 'newest',
+        botContext: createFundingRecipientBotContext(group)
     });
 }
 
@@ -3427,7 +3488,15 @@ function openTreasuryEpochActionsOverlay(epoch, withdrawals, returnFocus) {
         bodyNodes: [panel],
         headerMeta: `${proposals.length.toLocaleString('en-US')} actions`,
         overlayClass: 'governance-action-detail-overlay',
-        returnFocus
+        returnFocus,
+        botContext: createGovernanceActionGroupBotContext(
+            `Treasury withdrawals - Epoch ${epoch}`,
+            proposals,
+            {
+                status: `Epoch ${epoch}`,
+                rootTitle: 'Cardano Treasury'
+            }
+        )
     });
 }
 
@@ -4756,7 +4825,13 @@ function createGovernanceOverlayBotContext(options = {}) {
         section,
         title,
         menu: title,
-        root: String(options.rootTitle || title).trim()
+        root: String(options.rootTitle || title).trim(),
+        overlay_id: options.id || null,
+        header: String(options.headerMeta || '').trim() || null,
+        summary: [
+            title,
+            options.headerMeta
+        ].filter(Boolean).join(' • ')
     };
 }
 
@@ -4796,7 +4871,11 @@ function openGovernanceActionGroupOverlay(groupKey, titleText, emptyMessage, roo
         closeOverlay: closeGovernanceActionGroupOverlay,
         bodyNodes: [panel],
         headerMeta: `${proposals.length.toLocaleString('en-US')} actions`,
-        rootTitle
+        rootTitle,
+        botContext: createGovernanceActionGroupBotContext(titleText, proposals, {
+            groupKey,
+            rootTitle
+        })
     });
 }
 
@@ -4818,7 +4897,11 @@ function openGovernanceStatusActionsOverlay(titleText, proposals, returnFocus, s
         bodyNodes: [panel],
         headerMeta: `${statusText ? `${statusText} • ` : ''}${proposals.length.toLocaleString('en-US')} actions`,
         overlayClass: 'governance-action-detail-overlay',
-        returnFocus
+        returnFocus,
+        botContext: createGovernanceActionGroupBotContext(titleText, proposals, {
+            status: statusText,
+            rootTitle: titleText
+        })
     });
 }
 
@@ -5080,6 +5163,7 @@ function openGovernanceOverlay(proposal, options = {}) {
         overlayClass: 'governance-action-detail-overlay',
         titleTag: 'h2',
         returnFocus: options.returnFocus,
+        showClose: options.showClose !== false,
         botContext: createGovernanceActionBotContext(proposal)
     });
     loadProposalVoteDetails(proposal, voteDetailsContainer).catch(() => {
@@ -5165,6 +5249,23 @@ function createGovernanceActionBotContext(proposal) {
     };
 }
 
+function createGovernanceVoteBotContext(proposal, details = {}) {
+    return {
+        ...createGovernanceActionBotContext(proposal),
+        kind: 'governance_vote',
+        title: `Cast DRep vote: ${getProposalTitle(proposal)}`,
+        vote_choice: details.voteKind || null,
+        wallet: details.walletName || null,
+        drep_id: details.drep?.dRepIDCip105 || null,
+        drep_key_hash: details.drep?.publicKeyHash || null,
+        current_vote: details.existingVote || null,
+        drep_active: details.drepActive === true,
+        summary: details.voteKind
+            ? `Casting ${details.voteKind} as DRep`
+            : 'Preparing DRep vote'
+    };
+}
+
 function createCatalystProposalBotContext(proposal) {
     return {
         kind: 'catalyst_proposal',
@@ -5176,6 +5277,154 @@ function createCatalystProposalBotContext(proposal) {
         requested_usd: proposal?.amount_requested_usd ?? null,
         received_usd: proposal?.amount_received_usd ?? null
     };
+}
+
+function createFundingRecipientBotContext(group) {
+    const actions = getTreasuryBusinessActions(group);
+    const catalystProjects = Array.isArray(group?.catalystProjects) ? group.catalystProjects : [];
+    return {
+        kind: 'funding_recipient',
+        section: 'Catalyst/Treasury Recipients',
+        recipient: group?.label || '',
+        title: group?.label || 'Funding recipient',
+        id: group?.key || group?.label || '',
+        amount_usd: Number(group?.value) || null,
+        amount_ada: Number(group?.adaValue) || null,
+        treasury_withdrawals: actions.length,
+        catalyst_projects: catalystProjects.length,
+        funded_projects: actions.length + catalystProjects.length,
+        websites: getTreasuryBusinessWebsiteUrls(group),
+        summary: `${(actions.length + catalystProjects.length).toLocaleString('en-US')} funded projects`
+    };
+}
+
+function createWebsiteSectionBotContext(section, details = {}) {
+    return {
+        kind: 'site_section',
+        section,
+        title: details.title || section,
+        menu: details.menu || details.title || section,
+        id: details.id || null,
+        count: hasFiniteDetailNumber(details.count) ? Number(details.count) : null,
+        amount_usd: hasFiniteDetailNumber(details.amount_usd) ? Number(details.amount_usd) : null,
+        amount_ada: hasFiniteDetailNumber(details.amount_ada) ? Number(details.amount_ada) : null,
+        status: details.status || null,
+        root: details.root || section,
+        summary: details.summary || null
+    };
+}
+
+function hasFiniteDetailNumber(value) {
+    return value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));
+}
+
+function createGovernanceActionGroupBotContext(titleText, proposals = [], details = {}) {
+    const actions = Array.isArray(proposals) ? proposals : [];
+    return createWebsiteSectionBotContext('Gov Actions', {
+        title: titleText,
+        id: details.groupKey || details.status || null,
+        count: actions.length,
+        status: details.status || null,
+        root: details.rootTitle || 'Cardano Governance',
+        summary: [
+            `${actions.length.toLocaleString('en-US')} governance actions`,
+            details.status || null
+        ].filter(Boolean).join(' • ')
+    });
+}
+
+function createTreasuryBotContext(payload = treasuryState) {
+    const withdrawals = getTreasuryWithdrawals(payload || {});
+    return createWebsiteSectionBotContext('Treasury', {
+        title: 'Cardano Treasury',
+        count: withdrawals.length,
+        amount_ada: Number(payload?.treasury_ada ?? payload?.treasury?.amount_ada),
+        amount_usd: Number(payload?.treasury_usd ?? payload?.treasury?.amount_usd),
+        summary: `${withdrawals.length.toLocaleString('en-US')} enacted withdrawals`
+    });
+}
+
+function createTreasuryAdministratorBotContext(group) {
+    return createWebsiteSectionBotContext('Treasury', {
+        title: group?.label || 'Treasury administrator',
+        id: group?.key || group?.label || null,
+        count: Array.isArray(group?.withdrawals) ? group.withdrawals.length : 0,
+        amount_usd: Number(group?.value),
+        amount_ada: Number(group?.adaValue),
+        root: 'Cardano Treasury',
+        summary: `${(group?.withdrawals?.length || 0).toLocaleString('en-US')} withdrawals`
+    });
+}
+
+function createCatalystFundBotContext(fund) {
+    return createWebsiteSectionBotContext('Catalyst', {
+        title: fund?.fund_name || 'Catalyst fund',
+        id: fund?.fund_name || null,
+        count: Number(fund?.proposal_count),
+        amount_usd: Number(fund?.requested_amount),
+        amount_ada: Number(fund?.requested_ada),
+        root: 'Catalyst Proposals',
+        summary: [
+            `${Number(fund?.proposal_count || 0).toLocaleString('en-US')} proposals`,
+            `claimed ${formatCatalystFundAmount(fund, 'claimed', true)}`,
+            `not claimed ${formatCatalystFundAmount(fund, 'not_claimed', true)}`
+        ].join(' • ')
+    });
+}
+
+function createDrepBotContext(drep, details = {}) {
+    return createWebsiteSectionBotContext('DReps', {
+        title: drep?.name || details.title || 'DRep',
+        id: drep?.id || details.id || null,
+        count: details.count,
+        amount_ada: Number(drep?.votingPower) / 1_000_000,
+        status: drep?.active === true ? 'Active' : drep?.active === false ? 'Inactive' : details.status,
+        root: 'DReps',
+        summary: [
+            drep?.active === true ? 'Active DRep' : drep?.active === false ? 'Inactive DRep' : null,
+            Number.isFinite(Number(drep?.votingPower)) ? `Voting power ${formatCompactAdaFromLovelace(drep.votingPower)}` : null,
+            Number.isFinite(Number(details.count)) ? `${Number(details.count).toLocaleString('en-US')} actions` : null
+        ].filter(Boolean).join(' • ')
+    });
+}
+
+function createSpoBotContext(spo, details = {}) {
+    return createWebsiteSectionBotContext('SPOs', {
+        title: getSpoDisplayName(spo || {}),
+        id: spo?.pool_id || details.id || null,
+        count: details.count,
+        amount_ada: Number(spo?.delegated_lovelace) / 1_000_000,
+        status: getSpoCloudHostingType(spo || {}) === 'cloud-spo' ? 'Cloud SPO' : 'SPO',
+        root: 'SPOs',
+        summary: [
+            spo?.ticker ? `Ticker ${spo.ticker}` : null,
+            Number.isFinite(Number(spo?.delegated_lovelace)) ? `Delegation ${formatCompactAdaFromLovelace(spo.delegated_lovelace)}` : null,
+            Number.isFinite(Number(spo?.delegator_count)) ? `${Number(spo.delegator_count).toLocaleString('en-US')} delegators` : null,
+            getSpoCloudServiceText(spo || {})
+        ].filter(Boolean).join(' • ')
+    });
+}
+
+function createCommitteeMemberBotContext(member, details = {}) {
+    return createWebsiteSectionBotContext('CC Members', {
+        title: member?.name || 'Constitutional Committee Member',
+        id: member?.id || null,
+        count: details.count,
+        status: member?.status || null,
+        root: 'CC Members',
+        summary: [
+            member?.expiresEpoch ? `expires epoch ${member.expiresEpoch}` : null,
+            Number.isFinite(Number(details.count)) ? `${Number(details.count).toLocaleString('en-US')} actions` : null
+        ].filter(Boolean).join(' • ')
+    });
+}
+
+function updateGovernanceOverlayBotContext(id, context, contextElement = null) {
+    const contextualOverlay = contextElement?.closest?.('.governance-menu-overlay');
+    const overlay = contextualOverlay?.dataset.governanceOverlayId === id
+        ? contextualOverlay
+        : getTopGovernanceMenuOverlay(id);
+    if (overlay && context) overlay.governanceBotContext = context;
 }
 
 function getConstitutionChatRequestContext(context) {
@@ -5197,13 +5446,14 @@ function createGovernanceProposalActionButton(label, className, onClick) {
     return button;
 }
 
-function openProposalSummaryOverlay(proposal, returnFocus) {
+function openProposalSummaryOverlay(proposal, returnFocus, options = {}) {
     openUniversalProposalSummaryOverlay({
         proposal,
         returnFocus,
         apiUrl: getProposalSummaryApiUrl(proposal?.proposal_id),
         headerMeta: formatProposalType(getEffectiveProposalType(proposal)),
-        rootTitle: getProposalTitle(proposal)
+        rootTitle: getProposalTitle(proposal),
+        showClose: options.showClose
     });
 }
 
@@ -5222,7 +5472,8 @@ function openUniversalProposalSummaryOverlay({
     returnFocus,
     apiUrl,
     headerMeta,
-    rootTitle
+    rootTitle,
+    showClose
 }) {
     const content = document.createElement('div');
     content.className = 'governance-proposal-summary governance-menu-card';
@@ -5238,7 +5489,13 @@ function openUniversalProposalSummaryOverlay({
         headerMeta,
         overlayClass: 'governance-action-detail-overlay',
         returnFocus,
-        rootTitle
+        rootTitle,
+        showClose,
+        botContext: proposal?.proposal_id
+            ? createGovernanceActionBotContext(proposal)
+            : proposal?.id
+                ? createCatalystProposalBotContext(proposal)
+                : undefined
     });
 
     loadProposalSummary(apiUrl, content).catch(() => {
@@ -5442,7 +5699,8 @@ function openGovernanceVoteOverlay(proposal, returnFocus) {
         headerMeta: getProposalMeta(proposal),
         overlayClass: 'governance-action-detail-overlay',
         returnFocus,
-        rootTitle: getProposalTitle(proposal)
+        rootTitle: getProposalTitle(proposal),
+        botContext: createGovernanceVoteBotContext(proposal)
     });
 
     renderGovernanceVoteChoice(content, proposal);
@@ -5483,6 +5741,7 @@ function renderGovernanceVoteChoice(container, proposal) {
 
 async function renderGovernanceVoteWallets(container, proposal, voteKind) {
     container.replaceChildren();
+    updateGovernanceVoteBotContext(proposal, { voteKind }, container);
     appendGovernanceVoteStatus(container, `Selected vote: ${voteKind}. Detecting CIP-95 wallets...`);
 
     try {
@@ -5570,20 +5829,25 @@ async function prepareGovernanceVote(container, proposal, voteKind, walletInfo) 
             throw new Error('This wallet did not provide CIP-95 DRep access. No transaction was built.');
         }
 
-        status.textContent = 'Verifying DRep registration and current vote...';
-        const [drepPayload, votesPayload] = await Promise.all([
-            fetchWalletDrepDetails(drep),
-            fetchProposalVotesPayload(latestProposal.proposal_id)
-        ]);
+        status.textContent = 'Verifying DRep registration...';
+        const drepPayload = await fetchWalletDrepDetails(drep, { allowDetailLookup: false });
         const drepInfo = drepPayload?.info;
         if (!drepInfo || drepInfo.drep_status !== 'registered') {
-            throw new Error('The connected wallet does not represent a registered DRep in the cached Koios data. No transaction was built.');
-        }
-        if (!votesPayload?.votes?.dreps) {
-            throw new Error('The current DRep votes could not be verified. No transaction was built.');
+            throw new Error('The connected wallet DRep is not in the cached registered DRep directory. No transaction was built. If this DRep was just registered, wait for the DRep cache refresh and try again.');
         }
 
-        const existingVote = findExistingDrepVote(votesPayload, drep);
+        status.textContent = 'Checking current vote cache...';
+        const voteLookup = await fetchOptionalProposalVotesPayload(latestProposal.proposal_id, 8000);
+        const existingVote = voteLookup.payload?.votes?.dreps
+            ? findExistingDrepVote(voteLookup.payload, drep)
+            : null;
+        updateGovernanceVoteBotContext(latestProposal, {
+            voteKind,
+            walletName: walletInfo.name,
+            drep,
+            existingVote,
+            drepActive: drepInfo.active === true
+        }, container);
         renderGovernanceVoteReview(container, {
             proposal: latestProposal,
             voteKind,
@@ -5592,6 +5856,9 @@ async function prepareGovernanceVote(container, proposal, voteKind, walletInfo) 
             drep,
             actionRef,
             existingVote,
+            voteLookupWarning: voteLookup.error
+                ? 'Current on-chain vote could not be checked quickly. If you already voted, submitting may replace that vote and charge another network fee.'
+                : '',
             drepActive: drepInfo.active === true,
             MeshTxBuilder
         });
@@ -5601,6 +5868,16 @@ async function prepareGovernanceVote(container, proposal, voteKind, walletInfo) 
         container.replaceChildren();
         appendGovernanceVoteStatus(container, error?.message || 'DRep voting could not be prepared. No transaction was built.', true);
         appendGovernanceVoteChangeButton(container, proposal);
+    }
+}
+
+function updateGovernanceVoteBotContext(proposal, details = {}, contextElement = null) {
+    const contextualOverlay = contextElement?.closest?.('.governance-menu-overlay');
+    const overlay = contextualOverlay?.dataset.governanceOverlayId === 'governance-vote-overlay'
+        ? contextualOverlay
+        : getTopGovernanceMenuOverlay('governance-vote-overlay');
+    if (overlay) {
+        overlay.governanceBotContext = createGovernanceVoteBotContext(proposal, details);
     }
 }
 
@@ -5700,7 +5977,11 @@ function getWalletDrepIdentifiers(drep) {
     ].map(normalizeGovernanceIdentifier).filter(Boolean))];
 }
 
-async function fetchWalletDrepDetails(drep) {
+async function fetchWalletDrepDetails(drep, options = {}) {
+    const cachedDirectoryPayload = await findWalletDrepInDirectory(drep).catch(() => null);
+    if (cachedDirectoryPayload?.info) return cachedDirectoryPayload;
+    if (options.allowDetailLookup === false) return null;
+
     const identifiers = getWalletDrepIdentifiers(drep);
     let fallbackPayload = null;
     let lastError = null;
@@ -5720,6 +6001,42 @@ async function fetchWalletDrepDetails(drep) {
     return null;
 }
 
+async function findWalletDrepInDirectory(drep) {
+    const identifiers = new Set();
+    getWalletDrepIdentifiers(drep).forEach(identifier => {
+        const normalized = normalizeGovernanceIdentifier(identifier);
+        const shortened = shortenDrepIdentifier(normalized);
+        if (normalized) identifiers.add(normalized);
+        if (shortened) identifiers.add(shortened);
+    });
+    if (!identifiers.size) return null;
+
+    const payload = await fetchDrepInfoPayload();
+    const match = unwrapDrepEntries(payload).find(entry => {
+        const entryIdentifiers = getDrepEntryIdentifiers(entry);
+        return entryIdentifiers.some(identifier => {
+            const normalized = normalizeGovernanceIdentifier(identifier);
+            const shortened = shortenDrepIdentifier(normalized);
+            return identifiers.has(normalized) || identifiers.has(shortened);
+        });
+    });
+    if (!match) return null;
+
+    const drepId = match.drep_id || match.drepId || drep?.dRepIDCip105 || match.id || '';
+    return {
+        drep_id: drepId,
+        requested_drep_id: drep?.dRepIDCip105 || drep?.publicKeyHash || '',
+        metadata: match.metadata || null,
+        info: {
+            ...match,
+            drep_id: drepId,
+            drep_status: match.drep_status || 'registered',
+            active: match.active === true
+        },
+        source: 'drep_directory_cache'
+    };
+}
+
 function renderGovernanceVoteReview(container, context) {
     container.replaceChildren();
     const review = document.createElement('div');
@@ -5731,10 +6048,18 @@ function renderGovernanceVoteReview(container, context) {
     addDetailRow(review, 'Vote', context.voteKind);
     addDetailRow(review, 'Wallet', context.walletName);
     if (context.existingVote) addDetailRow(review, 'Current on-chain vote', context.existingVote);
+    if (context.voteLookupWarning) addDetailRow(review, 'Current vote check', context.voteLookupWarning);
+    review.appendChild(createGovernanceVoteReviewLinks(context));
+
+    const isSameVote = context.existingVote === context.voteKind;
+    let rationale = null;
+    if (!isSameVote) {
+        rationale = createGovernanceVoteRationaleFields(context);
+        review.appendChild(rationale.wrapper);
+    }
 
     const warning = document.createElement('p');
     warning.className = 'governance-vote-review-warning';
-    const isSameVote = context.existingVote === context.voteKind;
     warning.textContent = isSameVote
         ? `The cached on-chain data already shows a ${context.voteKind} vote from this DRep. No transaction will be built, avoiding another network fee.`
         : context.existingVote
@@ -5747,10 +6072,372 @@ function renderGovernanceVoteReview(container, context) {
         submit.type = 'button';
         submit.className = 'governance-vote-submit';
         submit.textContent = `Continue with ${context.voteKind}`;
-        submit.addEventListener('click', () => submitGovernanceVote(container, context, submit));
+        submit.addEventListener('click', () => {
+            let rationaleMetadata;
+            try {
+                rationaleMetadata = createGovernanceVoteRationaleMetadata(
+                    context,
+                    rationale?.nameInput.value,
+                    rationale?.reasonInput.value
+                );
+            } catch (error) {
+                appendGovernanceVoteStatus(container, error?.message || 'Vote rationale is invalid.', true);
+                return;
+            }
+            submitGovernanceVote(container, { ...context, rationaleMetadata }, submit);
+        });
         container.appendChild(submit);
     }
     appendGovernanceVoteChangeButton(container, context.proposal);
+}
+
+function createGovernanceVoteReviewLinks(context) {
+    const actions = document.createElement('div');
+    actions.className = 'governance-action-buttons governance-vote-review-links';
+    actions.append(
+        createGovernanceProposalActionButton(
+            'Summary',
+            'governance-summary-button',
+            event => openProposalSummaryOverlay(context.proposal, event.currentTarget, { showClose: false })
+        ),
+        createGovernanceProposalActionButton(
+            'Full gov action',
+            'governance-full-action-button',
+            event => openGovernanceOverlay(context.proposal, {
+                returnFocus: event.currentTarget,
+                showClose: false
+            })
+        )
+    );
+    return actions;
+}
+
+function createGovernanceVoteRationaleFields(context) {
+    const wrapper = document.createElement('section');
+    wrapper.className = 'governance-vote-rationale';
+    const title = document.createElement('strong');
+    title.textContent = 'On-chain rationale (optional)';
+    const help = document.createElement('p');
+    help.className = 'small-text governance-drep-registration-help';
+    help.textContent = 'Your rationale can be up to 5000 characters and will be included as Cardano transaction metadata in this vote transaction. Long text is split into 64-byte chunks automatically.';
+
+    const drepField = createDrepRegistrationField(
+        'DRep key',
+        'governance-vote-rationale-drep',
+        '',
+        context.drep.dRepIDCip105 || ''
+    );
+    drepField.input.readOnly = true;
+    const nameField = createDrepRegistrationField(
+        'Your name',
+        'governance-vote-rationale-name',
+        'Your public DRep name',
+        ''
+    );
+    const reasonField = createDrepRegistrationTextArea(
+        'Reason for this vote (English)',
+        'governance-vote-rationale-reason',
+        `I voted ${context.voteKind} because...`,
+        ''
+    );
+    reasonField.input.maxLength = 5000;
+    reasonField.input.rows = 6;
+
+    const output = document.createElement('div');
+    output.className = 'governance-vote-rationale-output';
+    output.hidden = true;
+    const assistantActions = document.createElement('div');
+    assistantActions.className = 'governance-action-buttons governance-vote-rationale-actions';
+    const improveButton = createGovernanceProposalActionButton(
+        'TDSPBot improve rationale',
+        'governance-tdspbot-button',
+        () => improveGovernanceVoteRationale(context, {
+            nameInput: nameField.input,
+            reasonInput: reasonField.input,
+            output
+        })
+    );
+    assistantActions.appendChild(improveButton);
+
+    wrapper.append(
+        title,
+        help,
+        drepField.wrapper,
+        nameField.wrapper,
+        reasonField.wrapper,
+        assistantActions,
+        output
+    );
+    return {
+        wrapper,
+        nameInput: nameField.input,
+        reasonInput: reasonField.input
+    };
+}
+
+async function improveGovernanceVoteRationale(context, controls) {
+    const name = cleanGovernanceText(String(controls.nameInput?.value || '').trim());
+    const reason = cleanGovernanceText(String(controls.reasonInput?.value || '').trim());
+    const output = controls.output;
+    if (!output) return;
+    output.hidden = false;
+    output.replaceChildren();
+    const status = document.createElement('p');
+    status.className = 'small-text governance-vote-rationale-status';
+    status.textContent = reason
+        ? 'TDSPBot is improving your rationale...'
+        : 'Add your reason or pointers first, then TDSPBot can improve it.';
+    output.appendChild(status);
+    if (!reason) return;
+
+    try {
+        const answer = await requestGovernanceVoteRationaleImprovement(context, name, reason);
+        if (!output.isConnected) return;
+        const improved = cleanGovernanceRationaleSuggestion(answer);
+        output.replaceChildren();
+
+        const label = document.createElement('strong');
+        label.textContent = 'Improved rationale';
+        const improvedField = createDrepRegistrationTextArea(
+            'Improved rationale',
+            'governance-vote-rationale-improved',
+            '',
+            improved
+        );
+        improvedField.wrapper.querySelector('label')?.remove();
+        improvedField.input.rows = 7;
+        improvedField.input.maxLength = 5000;
+
+        const useButton = document.createElement('button');
+        useButton.type = 'button';
+        useButton.className = 'governance-vote-secondary';
+        useButton.textContent = 'Use improved rationale';
+        useButton.addEventListener('click', () => {
+            controls.reasonInput.value = improvedField.input.value;
+            controls.reasonInput.dispatchEvent(new Event('input', { bubbles: true }));
+            status.textContent = 'Improved rationale copied into your original rationale field. Review it before continuing.';
+            output.prepend(status);
+        });
+
+        const note = document.createElement('p');
+        note.className = 'small-text governance-vote-rationale-status';
+        note.textContent = 'Review this text carefully. It will only be used when you copy it into the original rationale field and continue.';
+
+        output.append(label, improvedField.wrapper, useButton, note);
+    } catch (error) {
+        if (!output.isConnected) return;
+        status.classList.add('is-error');
+        status.textContent = error?.message || 'TDSPBot could not improve the rationale right now.';
+    }
+}
+
+async function requestGovernanceVoteRationaleImprovement(context, name, reason) {
+    const proposal = context.proposal || {};
+    const question = [
+        'Improve this DRep vote rationale in clear English.',
+        'Keep the meaning and vote choice unchanged.',
+        'Fix spelling and grammar.',
+        'Make it concise, professional, and suitable as public on-chain transaction metadata.',
+        'Return only the improved rationale text, no heading, no bullets, no explanation.',
+        '',
+        `DRep name: ${name || 'not provided'}`,
+        `Vote choice: ${context.voteKind}`,
+        `Governance action title: ${getProposalTitle(proposal)}`,
+        `Governance action ID: ${proposal.proposal_id || ''}`,
+        `Type: ${formatProposalType(getEffectiveProposalType(proposal))}`,
+        `Epoch: ${proposal.proposed_epoch ?? ''}`,
+        `Expires: ${proposal.expiration ?? ''}`,
+        `Requested ADA: ${getGovernanceProposalRequestedAda(proposal) ?? 'not applicable'}`,
+        '',
+        'Proposal context:',
+        getGovernanceVoteRationaleProposalContext(proposal),
+        '',
+        'Original rationale or pointers:',
+        reason
+    ].join('\n');
+
+    const response = await fetch(getConstitutionChatApiUrl(), {
+        method: 'POST',
+        headers: {
+            accept: 'application/json',
+            'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+            question,
+            history: [],
+            stream: false,
+            context: {
+                ...createGovernanceActionBotContext(proposal),
+                task: 'improve_drep_vote_rationale',
+                vote_choice: context.voteKind,
+                drep_name: name || null
+            }
+        })
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || `TDSPBot returned ${response.status}`);
+    const answer = String(payload.answer || '').trim();
+    if (!answer) throw new Error('TDSPBot returned an empty rationale.');
+    return answer;
+}
+
+function getGovernanceVoteRationaleProposalContext(proposal) {
+    const body = proposal?.meta_json?.body || proposal?.metadata?.body || {};
+    return [
+        body.abstract,
+        body.problem_statement,
+        body.problem,
+        body.motivation,
+        body.rationale,
+        body.solution,
+        body.deliverables,
+        proposal?.abstract,
+        proposal?.rationale,
+        proposal?.motivation,
+        proposal?.summary
+    ]
+        .map(value => cleanGovernanceText(String(value || '').trim()))
+        .filter(Boolean)
+        .join('\n\n')
+        .slice(0, 5000)
+        || 'No proposal body text is available in the current page data.';
+}
+
+function cleanGovernanceRationaleSuggestion(value) {
+    return cleanGovernanceText(String(value || '')
+        .replace(/^["“”]+|["“”]+$/g, '')
+        .replace(/^improved rationale\s*:?\s*/i, '')
+        .replace(/\n*if this answer was useful[\s\S]*$/i, '')
+        .trim()
+    ).slice(0, 5000);
+}
+
+function createGovernanceVoteRationaleMetadata(context, authorName, reason) {
+    const cleanName = cleanGovernanceText(String(authorName || '').trim());
+    const cleanReason = cleanGovernanceText(String(reason || '').trim());
+    if (!cleanName && !cleanReason) return null;
+    if (!cleanName) throw new Error('Enter your public DRep name or leave the rationale fields empty.');
+    if (!cleanReason) throw new Error('Enter the reason for this vote in English or leave the rationale fields empty.');
+
+    const proposal = context.proposal || {};
+    const voteSummary = proposal.voteSummary || {};
+    const body = proposal.meta_json?.body || {};
+    const metadata = {
+        app: 'TDSP',
+        standard: 'CIP-1694 vote rationale',
+        version: 1,
+        created_at: new Date().toISOString(),
+        voter_role: 'DRep',
+        voter_name: cleanName,
+        drep_id: context.drep.dRepIDCip105 || '',
+        drep_key_hash: context.drep.publicKeyHash || '',
+        vote: context.voteKind,
+        previous_vote: context.existingVote || '',
+        rationale: cleanReason,
+        gov_action_id: proposal.proposal_id || '',
+        gov_action_title: getProposalTitle(proposal),
+        gov_action_type: formatProposalType(getEffectiveProposalType(proposal)),
+        gov_action_tx_hash: proposal.proposal_tx_hash || '',
+        gov_action_tx_index: normalizeNullableNumber(proposal.proposal_index),
+        proposed_epoch: normalizeNullableNumber(proposal.proposed_epoch),
+        expires_epoch: normalizeNullableNumber(proposal.expiration),
+        ratified_epoch: normalizeNullableNumber(proposal.ratified_epoch),
+        enacted_epoch: normalizeNullableNumber(proposal.enacted_epoch),
+        requested_amount_ada: getGovernanceProposalRequestedAda(proposal),
+        requested_amount_usd: normalizeNullableNumber(proposal.amount_usd || proposal.requested_amount_usd),
+        proposal_metadata_url: proposal.meta_url || proposal.metadata_url || '',
+        proposal_abstract: truncateOnchainMetadataText(body.abstract || proposal.abstract || ''),
+        proposal_rationale: truncateOnchainMetadataText(body.rationale || proposal.rationale || ''),
+        proposal_motivation: truncateOnchainMetadataText(body.motivation || proposal.motivation || ''),
+        drep_yes_pct: normalizeNullableNumber(proposal.votePercentages?.yes),
+        drep_no_pct: normalizeNullableNumber(proposal.votePercentages?.no),
+        drep_abstain_pct: normalizeNullableNumber(proposal.votePercentages?.abstain),
+        drep_yes_votes: normalizeNullableNumber(voteSummary.drep_yes_votes_cast),
+        drep_no_votes: normalizeNullableNumber(voteSummary.drep_no_votes_cast),
+        drep_abstain_votes: normalizeNullableNumber(voteSummary.drep_abstain_votes_cast),
+        drep_yes_vote_power: normalizeNullableNumber(voteSummary.drep_yes_vote_power),
+        drep_no_vote_power: normalizeNullableNumber(voteSummary.drep_no_vote_power),
+        drep_abstain_vote_power: normalizeNullableNumber(voteSummary.drep_abstain_vote_power)
+    };
+
+    return chunkGovernanceMetadataStrings(removeEmptyRationaleValues(metadata));
+}
+
+function normalizeNullableNumber(value) {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : null;
+}
+
+function truncateOnchainMetadataText(value, maxLength = 700) {
+    const text = cleanGovernanceText(String(value || '').trim());
+    if (text.length <= maxLength) return text;
+    return `${text.slice(0, maxLength - 1).trim()}…`;
+}
+
+function getGovernanceProposalRequestedAda(proposal) {
+    const candidates = [
+        proposal?.amount_ada,
+        proposal?.requested_amount_ada,
+        proposal?.total_amount_ada,
+        proposal?.withdrawal_amount_ada
+    ];
+    const lovelaceCandidates = [
+        proposal?.amount_lovelace,
+        proposal?.requested_amount_lovelace,
+        proposal?.total_amount_lovelace,
+        proposal?.withdrawal_amount_lovelace
+    ];
+
+    const ada = candidates.map(Number).find(Number.isFinite);
+    if (Number.isFinite(ada)) return ada;
+    const lovelace = lovelaceCandidates.map(Number).find(Number.isFinite);
+    return Number.isFinite(lovelace) ? lovelace / 1_000_000 : null;
+}
+
+function removeEmptyRationaleValues(value) {
+    if (Array.isArray(value)) {
+        return value
+            .map(removeEmptyRationaleValues)
+            .filter(item => item !== null && item !== undefined && item !== '');
+    }
+    if (value && typeof value === 'object') {
+        return Object.fromEntries(Object.entries(value)
+            .map(([key, entry]) => [key, removeEmptyRationaleValues(entry)])
+            .filter(([, entry]) => {
+                if (entry === null || entry === undefined || entry === '') return false;
+                if (Array.isArray(entry) && !entry.length) return false;
+                return !(typeof entry === 'object' && !Array.isArray(entry) && !Object.keys(entry).length);
+            }));
+    }
+    return value;
+}
+
+function chunkGovernanceMetadataStrings(value) {
+    if (typeof value === 'string') return chunkUtf8String(value, 64);
+    if (Array.isArray(value)) return value.map(chunkGovernanceMetadataStrings);
+    if (value && typeof value === 'object') {
+        return Object.fromEntries(Object.entries(value)
+            .map(([key, entry]) => [key, chunkGovernanceMetadataStrings(entry)]));
+    }
+    return value;
+}
+
+function chunkUtf8String(value, maxBytes) {
+    const text = String(value || '');
+    if (!text) return '';
+    const chunks = [];
+    let chunk = '';
+    for (const character of text) {
+        const next = `${chunk}${character}`;
+        if (new TextEncoder().encode(next).length > maxBytes) {
+            if (chunk) chunks.push(chunk);
+            chunk = character;
+        } else {
+            chunk = next;
+        }
+    }
+    if (chunk) chunks.push(chunk);
+    return chunks.length <= 1 ? chunks[0] || '' : chunks;
 }
 
 async function submitGovernanceVote(container, context, submitButton) {
@@ -5768,17 +6455,23 @@ async function submitGovernanceVote(container, context, submitButton) {
         if (!utxos?.length || !changeAddress) throw new Error('No spendable wallet UTxO was found for the network fee.');
 
         const txBuilder = new context.MeshTxBuilder({ verbose: false });
-        const unsignedTx = await txBuilder
+        let voteTx = txBuilder
             .vote(
                 { type: 'DRep', drepId: context.drep.dRepIDCip105 },
                 context.actionRef,
                 { voteKind: context.voteKind }
-            )
+            );
+        if (context.rationaleMetadata) {
+            voteTx = voteTx.metadataValue(1694, context.rationaleMetadata);
+        }
+        const unsignedTx = await voteTx
             .selectUtxosFrom(utxos)
             .changeAddress(changeAddress)
             .complete();
 
-        status.textContent = 'Check the governance action, vote and fee in your wallet before signing.';
+        status.textContent = context.rationaleMetadata
+            ? 'Check the governance action, vote, on-chain rationale metadata and fee in your wallet before signing.'
+            : 'Check the governance action, vote and fee in your wallet before signing.';
         const signedTx = await context.wallet.signTx(unsignedTx, false);
         status.textContent = 'Submitting the signed vote transaction...';
         const txHash = await context.wallet.submitTx(signedTx);
@@ -6072,6 +6765,28 @@ async function fetchProposalVotesPayload(proposalId) {
     }
 }
 
+async function fetchOptionalProposalVotesPayload(proposalId, timeoutMs = 8000) {
+    try {
+        const payload = await withTimeout(
+            fetchProposalVotesPayload(proposalId),
+            timeoutMs,
+            `Current vote lookup timed out after ${timeoutMs}ms`
+        );
+        return { payload, error: null };
+    } catch (error) {
+        console.warn('Optional DRep current vote lookup failed', error);
+        return { payload: null, error };
+    }
+}
+
+function withTimeout(promise, timeoutMs, message) {
+    let timeoutId;
+    const timeout = new Promise((_, reject) => {
+        timeoutId = window.setTimeout(() => reject(new Error(message)), timeoutMs);
+    });
+    return Promise.race([promise, timeout]).finally(() => window.clearTimeout(timeoutId));
+}
+
 function mergeProposalVoteDetails(proposal, payload) {
     const detail = extractProposalVoteDetail(payload, proposal.proposal_id);
     if (!detail && !payload?.votes?.dreps) return proposal;
@@ -6315,7 +7030,14 @@ function openSpoVotesOverlay(item, returnFocus) {
         bodyNodes: [panel],
         headerMeta: `${votes.length.toLocaleString('en-US')} SPOs`,
         overlayClass: 'governance-nested-overlay',
-        returnFocus
+        returnFocus,
+        botContext: createWebsiteSectionBotContext('SPOs', {
+            title: `SPO ${item.label} votes`,
+            count: votes.length,
+            status: item.label,
+            root: 'Gov Actions',
+            summary: `${votes.length.toLocaleString('en-US')} SPO ${item.label} votes`
+        })
     });
 }
 
@@ -6535,7 +7257,15 @@ function openDrepVotesOverlay(item, drepVotes, returnFocus) {
         bodyNodes: [panel],
         headerMeta: `${Number.isFinite(Number(item.count)) ? Number(item.count).toLocaleString('en-US') : 0} entries`,
         overlayClass: 'governance-nested-overlay',
-        returnFocus
+        returnFocus,
+        botContext: createWebsiteSectionBotContext('DReps', {
+            title: item.label,
+            count: Number(item.count) || 0,
+            amount_ada: Number(item.displayValue ?? item.value) / 1_000_000,
+            status: item.label,
+            root: 'Gov Actions',
+            summary: `${Number(item.count) || 0} DRep entries`
+        })
     });
 }
 
@@ -6565,7 +7295,13 @@ function openDrepDirectoryOverlay() {
         closeLabel: 'Close DRep directory',
         closeOverlay: closeDrepDirectoryOverlay,
         bodyNodes: [becomeDrep, panel],
-        headerMeta: 'Loading DReps…'
+        headerMeta: 'Loading DReps…',
+        botContext: createWebsiteSectionBotContext('DReps', {
+            title: 'DReps',
+            count: drepDirectoryState?.dreps?.length || drepDirectoryState?.count || null,
+            amount_ada: Number(drepDirectoryState?.totalVotingPower || drepDirectoryState?.total_voting_power) / 1_000_000,
+            summary: 'Registered DRep directory'
+        })
     });
 
     loadDrepDirectoryOverlay(panel).catch(() => {
@@ -6599,7 +7335,13 @@ function openSpoDirectoryOverlay() {
         bodyNodes: [panel],
         headerMeta: spoDirectoryState
             ? `${spoDirectoryState.count.toLocaleString('en-US')} SPOs`
-            : 'Loading SPOs...'
+            : 'Loading SPOs...',
+        botContext: createWebsiteSectionBotContext('SPOs', {
+            title: 'SPOs',
+            count: spoDirectoryState?.count || null,
+            amount_ada: Number(spoDirectoryState?.total_delegated_lovelace) / 1_000_000,
+            summary: 'Registered SPO directory'
+        })
     });
 
     loadSpoDirectory().then(payload => {
@@ -6608,6 +7350,16 @@ function openSpoDirectoryOverlay() {
         updateGovernanceMenuHeaderMeta(
             'governance-spo-directory-overlay',
             `${payload.count.toLocaleString('en-US')} SPOs`,
+            panel
+        );
+        updateGovernanceOverlayBotContext(
+            'governance-spo-directory-overlay',
+            createWebsiteSectionBotContext('SPOs', {
+                title: 'SPOs',
+                count: payload.count,
+                amount_ada: Number(payload.total_delegated_lovelace) / 1_000_000,
+                summary: `${payload.count.toLocaleString('en-US')} registered SPOs`
+            }),
             panel
         );
     }).catch(() => {
@@ -6807,13 +7559,16 @@ function openSpoDetailOverlay(spo, returnFocus) {
         headerMeta: formatCompactAdaFromLovelace(spo.delegated_lovelace),
         overlayClass: 'governance-action-detail-overlay',
         returnFocus,
-        rootTitle: 'SPOs'
+        rootTitle: 'SPOs',
+        botContext: createSpoBotContext(spo)
     });
 
     loadSpoDetail(spo)
         .then(payload => {
             if (!content.isConnected) return;
-            renderSpoDetails(content, payload?.spo || spo);
+            const refreshedSpo = payload?.spo || spo;
+            updateGovernanceOverlayBotContext('governance-spo-detail-overlay', createSpoBotContext(refreshedSpo), content);
+            renderSpoDetails(content, refreshedSpo);
         })
         .catch(() => {
             if (!content.isConnected) return;
@@ -7019,7 +7774,13 @@ function openDrepRegistrationOverlay(returnFocus) {
         headerMeta: 'Cardano Mainnet',
         overlayClass: 'governance-action-detail-overlay',
         returnFocus,
-        rootTitle: 'DReps'
+        rootTitle: 'DReps',
+        botContext: createWebsiteSectionBotContext('DReps', {
+            title: 'Become a DRep',
+            status: 'DRep registration',
+            root: 'DReps',
+            summary: 'Registering a DRep on Cardano Mainnet'
+        })
     });
 
     renderDrepRegistrationForm(content);
@@ -7231,7 +7992,13 @@ function openDrepMetadataBuilderOverlay(profile = {}, returnFocus, onCreated) {
         headerMeta: 'CIP-119',
         overlayClass: 'governance-action-detail-overlay',
         returnFocus,
-        rootTitle: 'DReps'
+        rootTitle: 'DReps',
+        botContext: createWebsiteSectionBotContext('DReps', {
+            title: 'Create DRep metadata',
+            status: 'CIP-119 metadata',
+            root: 'DReps',
+            summary: 'Building DRep metadata JSON-LD'
+        })
     });
 }
 
@@ -7434,20 +8201,24 @@ function validateDrepRegistrationMetadata(rawUrl, rawHash) {
 }
 
 function validateDrepMetadataUrl(rawUrl, options = {}) {
+    return validateGovernanceAnchorUrl(rawUrl, 'Metadata URL', options);
+}
+
+function validateGovernanceAnchorUrl(rawUrl, label = 'Anchor URL', options = {}) {
     const url = String(rawUrl || '').trim();
     if (!url) {
-        if (options.required) throw new Error('Enter the metadata URL before creating its hash.');
+        if (options.required) throw new Error(`Enter the ${label.toLowerCase()} before creating its hash.`);
         return '';
     }
-    if (new TextEncoder().encode(url).length > 128) throw new Error('Metadata URL must be 128 bytes or shorter.');
+    if (new TextEncoder().encode(url).length > 128) throw new Error(`${label} must be 128 bytes or shorter.`);
 
     let protocol = '';
     try {
         protocol = new URL(url).protocol;
     } catch {
-        throw new Error('Enter a valid HTTPS or IPFS metadata URL.');
+        throw new Error(`Enter a valid HTTPS or IPFS ${label.toLowerCase()}.`);
     }
-    if (protocol !== 'https:' && protocol !== 'ipfs:') throw new Error('Metadata URL must use HTTPS or IPFS.');
+    if (protocol !== 'https:' && protocol !== 'ipfs:') throw new Error(`${label} must use HTTPS or IPFS.`);
     return url;
 }
 
@@ -7648,6 +8419,16 @@ async function loadDrepDirectoryOverlay(container) {
         `${dreps.length.toLocaleString('en-US')} DReps`,
         container
     );
+    updateGovernanceOverlayBotContext(
+        'governance-drep-directory-overlay',
+        createWebsiteSectionBotContext('DReps', {
+            title: 'DReps',
+            count: dreps.length,
+            amount_ada: dreps.reduce((sum, drep) => sum + (Number(drep.votingPower) || 0), 0) / 1_000_000,
+            summary: `${dreps.length.toLocaleString('en-US')} registered DReps`
+        }),
+        container
+    );
     renderDrepDirectory(container, dreps);
 }
 
@@ -7798,7 +8579,14 @@ function openDrepStatusListOverlay(titleText, dreps, returnFocus) {
         bodyNodes: [panel],
         headerMeta: `${dreps.length.toLocaleString('en-US')} DReps`,
         overlayClass: 'governance-action-detail-overlay',
-        returnFocus
+        returnFocus,
+        botContext: createWebsiteSectionBotContext('DReps', {
+            title: titleText,
+            count: dreps.length,
+            amount_ada: dreps.reduce((sum, drep) => sum + (Number(drep.votingPower) || 0), 0) / 1_000_000,
+            status: titleText,
+            root: 'DReps'
+        })
     });
 }
 
@@ -7852,7 +8640,8 @@ function openDrepActionHistoryOverlay(drep, returnFocus = null) {
         bodyNodes: [panel],
         headerMeta: formatDrepOverlayHeaderMeta(drep),
         overlayClass: 'governance-action-detail-overlay',
-        returnFocus
+        returnFocus,
+        botContext: createDrepBotContext(drep)
     });
 
     loadDrepDetail(drep)
@@ -7949,6 +8738,11 @@ function renderDrepActionHistory(container, payload, drep) {
     updateGovernanceMenuHeaderMeta(
         'governance-drep-actions-overlay',
         formatDrepOverlayHeaderMeta(drep, rows.length),
+        container
+    );
+    updateGovernanceOverlayBotContext(
+        'governance-drep-actions-overlay',
+        createDrepBotContext(drep, { count: rows.length }),
         container
     );
     const rowsByParticipation = rows.map(row => ({
@@ -8141,7 +8935,12 @@ function openConstitutionalCommitteeOverlay() {
         closeOverlay: closeConstitutionalCommitteeOverlay,
         bodyNodes: [chartPanel, panel],
         headerMeta: `${members.length.toLocaleString('en-US')} members`,
-        rootTitle: 'CC Members'
+        rootTitle: 'CC Members',
+        botContext: createWebsiteSectionBotContext('CC Members', {
+            title: 'CC Members',
+            count: members.length,
+            summary: `${members.length.toLocaleString('en-US')} Constitutional Committee members`
+        })
     });
     fetchCommitteeInfoPayload()
         .then(payload => {
@@ -8151,6 +8950,15 @@ function openConstitutionalCommitteeOverlay() {
             updateGovernanceMenuHeaderMeta(
                 'governance-cc-overlay',
                 `${fetchedMembers.length.toLocaleString('en-US')} members`,
+                panel
+            );
+            updateGovernanceOverlayBotContext(
+                'governance-cc-overlay',
+                createWebsiteSectionBotContext('CC Members', {
+                    title: 'CC Members',
+                    count: fetchedMembers.length,
+                    summary: `${fetchedMembers.length.toLocaleString('en-US')} Constitutional Committee members`
+                }),
                 panel
             );
             if (
@@ -8239,7 +9047,10 @@ function openConstitutionalCommitteeActionsOverlay(member, returnFocus = null) {
         closeOverlay: closeConstitutionalCommitteeActionsOverlay,
         bodyNodes: [panel],
         headerMeta: `${getGovernanceActionsForCommitteeMember(member).length.toLocaleString('en-US')} actions`,
-        returnFocus
+        returnFocus,
+        botContext: createCommitteeMemberBotContext(member, {
+            count: getGovernanceActionsForCommitteeMember(member).length
+        })
     });
 
     const renderFallback = () => loadConstitutionalCommitteeActionVotes(member, panel).catch(() => {
@@ -8640,7 +9451,13 @@ async function loadConstitutionalCommitteeActionVotes(member, container) {
 
     await Promise.all(Array.from({ length: workerCount }, () => worker()));
     if (!container.isConnected) return;
-    updateConstitutionalCommitteeVoteChart(container, results.filter(Boolean), member);
+    const completedResults = results.filter(Boolean);
+    updateGovernanceOverlayBotContext(
+        'governance-cc-actions-overlay',
+        createCommitteeMemberBotContext(member, { count: completedResults.length }),
+        container
+    );
+    updateConstitutionalCommitteeVoteChart(container, completedResults, member);
 }
 
 function findConstitutionalCommitteeVoteForMember(payload, member) {

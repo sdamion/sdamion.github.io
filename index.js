@@ -1845,7 +1845,7 @@ function appendUniversalOverlayHeader(dialog, title, close, leadingNodes = [], m
     actions.className = 'overlay-dialog-header-actions';
     extraActions.filter(Boolean).forEach(action => actions.appendChild(action));
     if (back) actions.appendChild(back);
-    actions.appendChild(close);
+    if (close) actions.appendChild(close);
     header.append(copy, actions);
     dialog.appendChild(header);
 }
@@ -1867,6 +1867,7 @@ function createUniversalOverlay(options) {
         rootTitle = titleText,
         closeOnBackdrop = true,
         closeOnEscape = true,
+        showClose = true,
         showBack = true,
         enableSearch = true,
         defaultSort = '',
@@ -1946,8 +1947,16 @@ function createUniversalOverlay(options) {
     meta.dataset.governanceMenuHeaderMeta = 'true';
     meta.textContent = headerMeta;
 
-    const hasBackTarget = showBack !== false && Boolean(previousTopOverlay);
-    appendUniversalOverlayHeader(dialog, title, close, leadingNodes, meta, hasBackTarget ? back : null, [botButton]);
+    const hasBackTarget = showBack !== false && (Boolean(previousTopOverlay) || showClose === false);
+    appendUniversalOverlayHeader(
+        dialog,
+        title,
+        showClose === false ? null : close,
+        leadingNodes,
+        meta,
+        hasBackTarget ? back : null,
+        [botButton]
+    );
     const body = document.createElement('div');
     body.className = 'overlay-dialog-body';
     bodyNodes.forEach(node => body.appendChild(node));
@@ -1958,7 +1967,7 @@ function createUniversalOverlay(options) {
     document.body.appendChild(overlay);
     setupUniversalOverlayKeyboard();
     syncGovernanceMenuOverlayAccessibility();
-    close.focus();
+    (showClose === false ? back || botButton || dialog : close).focus();
     return { overlay, dialog, body, close, title, meta };
 }
 

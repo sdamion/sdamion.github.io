@@ -2236,6 +2236,28 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     padding: 16px;
 }
 
+.governance-vote-rationale {
+    display: grid;
+    gap: 12px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+}
+
+.governance-vote-review-links,
+.governance-vote-rationale-actions {
+    margin-top: 14px;
+}
+
+.governance-vote-rationale-output {
+    display: grid;
+    gap: 10px;
+}
+
+.governance-vote-rationale-status {
+    margin: 0;
+}
+
 .governance-vote-warning p,
 .governance-vote-review-warning,
 .governance-vote-status {
