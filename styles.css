@@ -2074,7 +2074,7 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     border: 0;
     background: transparent;
     cursor: pointer;
-    font: inherit;
+    font-family: inherit;
     text-align: left;
 }
 
