@@ -1181,6 +1181,7 @@ const TREASURY_BUSINESS_ALIASES = Object.freeze({
     christian: 'Orcfax',
     'janis aguilar': 'CV Labs',
     'sheldon hunt': 'Sundial',
+    'philip disarro': 'Anastasia Labs',
     philipdisarro: 'Anastasia Labs',
     'pritesh gosai': 'Kaizen Crypto',
     'matthew plomin': 'Mehen (Matthew Plomin)',
