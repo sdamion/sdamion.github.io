@@ -459,7 +459,19 @@ function renderPriceTradingChart(canvas, candles, ticker, intervalMinutes = 5, d
     const lineColor = styles.getPropertyValue('--line').trim() || 'rgba(148, 163, 184, 0.25)';
     const risingColor = '#34d399';
     const fallingColor = '#f87171';
-    const timeFormatter = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' });
+    const tickTimeFormatter = new Intl.DateTimeFormat('en-GB', {
+        month: 'short',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+    const tooltipTimeFormatter = new Intl.DateTimeFormat('en-GB', {
+        weekday: 'short',
+        month: 'short',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
     const priceFormatter = value => {
         const number = Number(value);
         if (!Number.isFinite(number)) return 'N/A';
@@ -469,20 +481,19 @@ function renderPriceTradingChart(canvas, candles, ticker, intervalMinutes = 5, d
     const highest = Math.max(...candles.map(candle => candle.high));
     const padding = Math.max(1e-12, (highest - lowest) * 0.05, Math.abs(highest) * 0.002);
     const intervalMs = Math.max(5, Number(intervalMinutes) || 5) * 60 * 1000;
-    const trailingPointCount = Math.max(1, Math.ceil((60 * 60 * 1000) / intervalMs));
-    const chartTimes = candles.map(candle => candle.time);
-    const latestTime = chartTimes.at(-1);
-    for (let index = 1; index <= trailingPointCount; index += 1) {
-        chartTimes.push(latestTime + (index * intervalMs));
-    }
+    const chartEnd = Math.max(Date.now(), candles.at(-1)?.time || Date.now());
+    const chartStart = chartEnd - PRICE_OVERLAY_WINDOW_MS;
 
     const candlestickPlugin = {
         id: `${String(ticker || 'token').toLowerCase()}-candlesticks`,
         afterDatasetsDraw(chart) {
             const { ctx, chartArea, scales } = chart;
             const points = chart.getDatasetMeta(0).data;
-            if (!chartArea || !scales?.y || !points.length) return;
-            const candleWidth = Math.max(2, Math.min(7, (chartArea.width / chartTimes.length) * 0.72));
+            if (!chartArea || !scales?.x || !scales?.y || !points.length) return;
+            const intervalWidth = Math.abs(
+                scales.x.getPixelForValue(chartStart + intervalMs) - scales.x.getPixelForValue(chartStart)
+            );
+            const candleWidth = Math.max(2, Math.min(7, intervalWidth * 0.72));
             ctx.save();
             ctx.beginPath();
             ctx.rect(chartArea.left, chartArea.top, chartArea.width, chartArea.height);
@@ -513,13 +524,9 @@ function renderPriceTradingChart(canvas, candles, ticker, intervalMinutes = 5, d
     priceHistoryChart = new Chart(canvas, {
         type: 'line',
         data: {
-            labels: chartTimes.map(time => timeFormatter.format(time)),
             datasets: [{
                 label: `${ticker}/USD`,
-                data: [
-                    ...candles.map(candle => candle.close),
-                    ...Array(trailingPointCount).fill(null)
-                ],
+                data: candles.map(candle => ({ x: candle.time, y: candle.close })),
                 borderColor: 'transparent',
                 backgroundColor: 'transparent',
                 borderWidth: 0,
@@ -537,9 +544,13 @@ function renderPriceTradingChart(canvas, candles, ticker, intervalMinutes = 5, d
                 legend: { display: false },
                 tooltip: {
                     callbacks: {
-                        title: contexts => contexts[0]?.label || '',
+                        title: contexts => {
+                            const time = Number(contexts[0]?.parsed?.x);
+                            return Number.isFinite(time) ? tooltipTimeFormatter.format(time) : '';
+                        },
                         label: context => {
                             const candle = candles[context.dataIndex];
+                            if (!candle) return '';
                             return [
                                 `Open ${priceFormatter(candle.open)}`,
                                 `High ${priceFormatter(candle.high)}`,
@@ -552,7 +563,15 @@ function renderPriceTradingChart(canvas, candles, ticker, intervalMinutes = 5, d
             },
             scales: {
                 x: {
-                    ticks: { color: mutedColor, maxTicksLimit: 8, maxRotation: 0 },
+                    type: 'linear',
+                    min: chartStart,
+                    max: chartEnd,
+                    ticks: {
+                        color: mutedColor,
+                        maxTicksLimit: 7,
+                        maxRotation: 0,
+                        callback: value => tickTimeFormatter.format(Number(value))
+                    },
                     grid: { color: lineColor }
                 },
                 y: {

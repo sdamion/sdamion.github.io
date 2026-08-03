@@ -224,18 +224,18 @@ function createConstitutionChatPanel(context = null) {
     const submit = document.createElement('button');
     submit.id = 'constitution-chat-submit';
     submit.type = 'submit';
-    submit.className = 'governance-vote-button';
+    submit.className = 'governance-vote-secondary';
     submit.textContent = 'Continue Chat';
     submit.setAttribute('aria-label', 'Continue with conversation history');
     const newQuestion = document.createElement('button');
     newQuestion.id = 'constitution-chat-new-question';
     newQuestion.type = 'submit';
-    newQuestion.className = 'governance-vote-secondary';
+    newQuestion.className = 'governance-vote-button';
     newQuestion.textContent = 'New Chat';
     newQuestion.setAttribute('aria-label', 'Ask a new question without conversation history');
     const formActions = document.createElement('div');
     formActions.className = 'constitution-chat-form-actions';
-    formActions.append(submit, newQuestion);
+    formActions.append(newQuestion, submit);
     form.append(label, input, formActions);
 
     const status = document.createElement('p');
