@@ -40,6 +40,8 @@ const LOCAL_CONSTITUTION_CHAT_FEEDBACK_PROXY_PATH = '/__constitution_chat_feedba
 const LOCAL_CONSTITUTION_DOCUMENT_PROXY_PATH = '/__constitution_document_proxy__';
 const GOVERNANCE_MESH_CDN_URL = 'https://esm.sh/@meshsdk/core@1.9.1?bundle-deps';
 const ACTIVE_REFRESH_INTERVAL_MS = 15 * 60 * 1000;
+const EPOCH_CHANGE_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+const EPOCH_CHANGE_REFRESH_WINDOW_MS = 60 * 60 * 1000;
 const GOVERNANCE_NOTIFICATION_STORAGE_KEY = 'tdsp-governance-notification-state-v1';
 const GOVERNANCE_ACTION_ALERT_YES_THRESHOLD = 67;
 const GOVERNANCE_INFO_ACTION_ALERT_YES_THRESHOLD = 50;
@@ -85,10 +87,13 @@ const SPO_CLOUD_PROVIDER_KEYS = new Set([
 const TDSP_POOL_ID = 'pool1zfd0gl76h3f0ammgp4gu0qvt99qcqkn5a895wv0q779d6p9dz5u';
 const DAMION_DREP_ID = 'drep1yg5gkkyxwwr7d6qflf2qqp6drkp9432h6cvtmun0dqthusqlkz8hj';
 let governanceRefreshTimer = null;
+let epochChangeRefreshTimer = null;
+let epochChangeRefreshStartedAtMs = 0;
 let epochCountdownTimer = null;
 let epochEndsAtMs = null;
 let currentEpochNumber = null;
 let lastActiveRenderSignature = '';
+let treasuryNetChangeLimitLovelace = TREASURY_NET_CHANGE_LIMIT_LOVELACE;
 let governanceState = null;
 let governanceGroupsState = null;
 let committeeInfoState = null;
@@ -3580,6 +3585,7 @@ async function loadGovernanceActions() {
     try {
         const dashboardPayload = await fetchGovernanceDashboardPayload();
         governanceState = dashboardPayload;
+        applyDashboardNclSummary(dashboardPayload);
         const proposals = getGovernanceProposalsFromDashboardPayload(dashboardPayload);
         if (!proposals.length) {
             throw new Error('No governance proposals found in dashboard payload');
@@ -3591,6 +3597,7 @@ async function loadGovernanceActions() {
         renderGovernanceGroupIfPresent(groups.active, grouped.active, 'No active actions found.');
         renderGovernanceGroupIfPresent(groups.approved, grouped.approved, 'No approved actions found.');
         renderGovernanceGroupIfPresent(groups.rejected, grouped.rejected, 'No rejected actions found.');
+        updateTreasuryBudgetBar();
         await updateGovernanceCounts(grouped);
         lastActiveRenderSignature = getGovernanceGroupSignature(grouped.active);
         updateEpochDisplayFromDashboardPayload(dashboardPayload);
@@ -3617,12 +3624,14 @@ async function refreshActiveGovernanceGroup() {
     const dashboardPayload = await fetchGovernanceDashboardPayload().catch(() => null);
     if (!dashboardPayload) return;
     governanceState = dashboardPayload;
+    applyDashboardNclSummary(dashboardPayload);
     updateEpochDisplayFromDashboardPayload(dashboardPayload);
     const proposals = getGovernanceProposalsFromDashboardPayload(dashboardPayload);
     checkGovernanceNotifications(proposals);
     const grouped = groupGovernanceProposals(proposals);
     const activeProposals = grouped.active;
     governanceGroupsState = grouped;
+    updateTreasuryBudgetBar();
 
     const nextSignature = getGovernanceGroupSignature(activeProposals);
     if (nextSignature === lastActiveRenderSignature) return;
@@ -3641,6 +3650,26 @@ function scheduleActiveRefresh() {
         if (document.visibilityState !== 'visible') return;
         refreshActiveGovernanceGroup().catch(() => {});
     }, ACTIVE_REFRESH_INTERVAL_MS);
+}
+
+function schedulePostEpochGovernanceRefresh() {
+    epochChangeRefreshStartedAtMs = Date.now();
+    refreshActiveGovernanceGroup().catch(() => {});
+    treasuryPromise = null;
+    loadTreasuryData().catch(() => {});
+
+    if (epochChangeRefreshTimer !== null) return;
+    epochChangeRefreshTimer = window.setInterval(() => {
+        if (Date.now() - epochChangeRefreshStartedAtMs > EPOCH_CHANGE_REFRESH_WINDOW_MS) {
+            window.clearInterval(epochChangeRefreshTimer);
+            epochChangeRefreshTimer = null;
+            return;
+        }
+        if (document.visibilityState !== 'visible') return;
+        refreshActiveGovernanceGroup().catch(() => {});
+        treasuryPromise = null;
+        loadTreasuryData().catch(() => {});
+    }, EPOCH_CHANGE_REFRESH_INTERVAL_MS);
 }
 
 async function fetchGovernanceDashboardPayload() {
@@ -3944,6 +3973,7 @@ function rollEpochCountdownForward() {
     const elapsedEpochs = Math.max(Math.floor((Date.now() - epochEndsAtMs) / epochDurationMs) + 1, 1);
     epochEndsAtMs += elapsedEpochs * epochDurationMs;
     if (Number.isFinite(currentEpochNumber)) currentEpochNumber += elapsedEpochs;
+    schedulePostEpochGovernanceRefresh();
 
     const remainingSeconds = Math.max(Math.ceil((epochEndsAtMs - Date.now()) / 1000), 0);
     updateEpochCountdownDisplay(remainingSeconds);
@@ -4672,12 +4702,13 @@ function closeGovernanceStatusActionsOverlay() {
 }
 
 function updateTreasuryBudgetBar() {
+    const nclLimit = getTreasuryNetChangeLimitLovelace();
     const usedThisYear = getTreasuryBudgetUsedThisYear();
-    const remaining = Math.max(TREASURY_NET_CHANGE_LIMIT_LOVELACE - usedThisYear, 0);
+    const remaining = Math.max(nclLimit - usedThisYear, 0);
     const activeAskTotal = getActiveTreasuryProposalAskTotal();
     const afterTotalSpend = remaining - activeAskTotal;
 
-    setBudgetBarItem('gov-budget-limit', 'NCL', formatCompactAdaFromLovelace(TREASURY_NET_CHANGE_LIMIT_LOVELACE, { fixedFractionDigits: 2 }));
+    setBudgetBarItem('gov-budget-limit', 'NCL', formatCompactAdaFromLovelace(nclLimit, { fixedFractionDigits: 2 }));
     setBudgetBarItem('gov-budget-used', 'Spend', formatCompactAdaFromLovelace(usedThisYear, { fixedFractionDigits: 2 }));
     setBudgetBarItem(
         'gov-budget-remaining',
@@ -4716,10 +4747,24 @@ function setBudgetBarItem(id, label, amount, isNegative = false, amountTone = ''
 }
 
 function getBudgetAmountTone(value) {
-    const ratio = Number(value) / TREASURY_NET_CHANGE_LIMIT_LOVELACE;
+    const ratio = Number(value) / getTreasuryNetChangeLimitLovelace();
     if (!Number.isFinite(ratio) || ratio < 0.25) return 'red';
     if (ratio < 0.5) return 'orange';
     return 'green';
+}
+
+function getTreasuryNetChangeLimitLovelace() {
+    return Number.isFinite(treasuryNetChangeLimitLovelace) && treasuryNetChangeLimitLovelace > 0
+        ? treasuryNetChangeLimitLovelace
+        : TREASURY_NET_CHANGE_LIMIT_LOVELACE;
+}
+
+function applyDashboardNclSummary(payload) {
+    const ncl = payload?.ncl_summary || payload?.treasury?.ncl || payload?.summaries?.treasury?.ncl || null;
+    const limit = Number(ncl?.limit_lovelace);
+    treasuryNetChangeLimitLovelace = Number.isFinite(limit) && limit > 0
+        ? limit
+        : TREASURY_NET_CHANGE_LIMIT_LOVELACE;
 }
 
 function getTreasuryBudgetUsedThisYear() {
