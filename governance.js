@@ -857,7 +857,7 @@ function createTreasuryAdministratorChart(withdrawals) {
     legend.className = 'governance-vote-legend';
     groups.forEach(group => {
         const percentage = total > 0 ? (group.value / total) * 100 : 0;
-        legend.appendChild(createGovernanceStatBox({
+        legend.appendChild(createTreasuryAdministratorStatBox(group, {
             label: group.label,
             detail: `${group.withdrawals.length.toLocaleString('en-US')} withdrawals • ${formatCatalystCurrencyAmount(group.value, 'USD', true)} • ${formatPercentage(percentage)}`,
             color: group.color,
@@ -869,6 +869,38 @@ function createTreasuryAdministratorChart(withdrawals) {
     section.appendChild(title);
     section.appendChild(layout);
     return section;
+}
+
+function createTreasuryAdministratorStatBox(group, options) {
+    const element = createGovernanceStatBox({ ...options, onClick: null });
+    if (typeof options?.onClick === 'function') {
+        element.classList.add('is-clickable');
+        element.setAttribute('role', 'button');
+        element.tabIndex = 0;
+        element.setAttribute('aria-haspopup', 'dialog');
+        element.addEventListener('click', event => {
+            if (event.target.closest('a, button')) return;
+            options.onClick(event);
+        });
+        element.addEventListener('keydown', event => {
+            if (!['Enter', ' '].includes(event.key)) return;
+            event.preventDefault();
+            options.onClick(event);
+        });
+    }
+    const companyUrls = getTreasuryBusinessWebsiteUrls({
+        ...group,
+        catalystProjects: []
+    });
+    const companyLinks = createTreasuryBusinessWebsiteLinks(companyUrls);
+    if (companyLinks) element.appendChild(companyLinks);
+
+    const companyLogo = createTreasuryBusinessLogo(companyUrls, group?.label);
+    if (companyLogo) {
+        element.classList.add('governance-business-card', 'has-company-logo');
+        element.appendChild(companyLogo);
+    }
+    return element;
 }
 
 function getTreasuryAdministratorGroups(withdrawals) {
