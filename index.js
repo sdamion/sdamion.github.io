@@ -50,9 +50,15 @@ const PRICE_OVERLAY_WINDOW_MS = PRICE_CHART_WINDOW_MS;
 const PRICE_OVERLAY_BUCKET_MS = 5 * 60 * 1000;
 const PRICE_CHART_INTERVALS = Object.freeze([
     { minutes: 5, label: '5 min' },
-    { minutes: 30, label: '30 min' },
-    { minutes: 60, label: '1 hour' }
+    { minutes: 10, label: '10 min' },
+    { minutes: 60, label: '1 hour' },
+    { minutes: 1440, label: '1 day' }
 ]);
+const PRICE_TRADINGVIEW_SYMBOLS = Object.freeze({
+    btc_usd: 'COINBASE:BTCUSD',
+    ada_usd: 'COINBASE:ADAUSD',
+    night_usd: 'KRAKEN:NIGHTUSD'
+});
 const PRICE_TOKEN_CONFIG = Object.freeze({
     btc_usd: { elementId: 'btc-price', decimals: 0 },
     ada_usd: { elementId: 'ada-price', decimals: 3 },
@@ -348,6 +354,56 @@ function aggregatePriceCandles(candles, intervalMinutes) {
     return Array.from(buckets.values()).sort((left, right) => left.time - right.time);
 }
 
+function getTradingViewInterval(intervalMinutes) {
+    const minutes = Number(intervalMinutes);
+    if (minutes >= 1440) return 'D';
+    return String(Math.max(1, minutes || 5));
+}
+
+function renderTradingViewPriceChart(container, symbol, ticker, intervalMinutes = 5) {
+    if (!container?.isConnected || !symbol) return;
+
+    container.textContent = '';
+    const widget = document.createElement('div');
+    widget.className = 'tradingview-widget-container';
+    widget.style.height = '100%';
+    widget.style.width = '100%';
+
+    const widgetBody = document.createElement('div');
+    widgetBody.className = 'tradingview-widget-container__widget';
+    widgetBody.style.height = '100%';
+    widgetBody.style.width = '100%';
+
+    const script = document.createElement('script');
+    script.type = 'text/javascript';
+    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
+    script.async = true;
+    script.textContent = JSON.stringify({
+        autosize: true,
+        symbol,
+        interval: getTradingViewInterval(intervalMinutes),
+        timezone: 'Europe/Amsterdam',
+        theme: 'dark',
+        style: '1',
+        locale: 'en',
+        backgroundColor: '#0b1714',
+        gridColor: 'rgba(148, 163, 184, 0.16)',
+        allow_symbol_change: false,
+        calendar: false,
+        details: false,
+        hide_side_toolbar: true,
+        hide_top_toolbar: false,
+        hide_legend: false,
+        hide_volume: false,
+        save_image: false,
+        support_host: 'https://www.tradingview.com'
+    });
+
+    widget.append(widgetBody, script);
+    container.append(widget);
+    container.setAttribute('aria-label', `${ticker}/USD TradingView chart`);
+}
+
 function initPriceHistoryTiles() {
     document.querySelectorAll('.price-panel > [data-price-key]').forEach(tile => {
         if (tile.dataset.priceHistoryBound === 'true') return;
@@ -368,8 +424,9 @@ function openPriceHistoryOverlay(tile) {
     const key = tile?.dataset.priceKey || '';
     const ticker = tile?.dataset.priceTicker || 'Token';
     const priceConfig = PRICE_TOKEN_CONFIG[key] || { decimals: 4 };
+    const tradingViewSymbol = PRICE_TRADINGVIEW_SYMBOLS[key];
     const tradingCandles = getHistoryOhlcSamples(key);
-    const showTradingChart = tradingCandles.length > 1;
+    const showTradingChart = Boolean(tradingViewSymbol) || tradingCandles.length > 1;
     const body = document.createElement('section');
     body.className = 'governance-chart-panel price-history-chart-panel';
 
@@ -382,7 +439,7 @@ function openPriceHistoryOverlay(tile) {
     body.appendChild(current);
 
     let intervalSelector = null;
-    if (showTradingChart) {
+    if (showTradingChart && !tradingViewSymbol) {
         intervalSelector = document.createElement('div');
         intervalSelector.className = 'price-history-intervals';
         intervalSelector.setAttribute('role', 'group');
@@ -400,13 +457,19 @@ function openPriceHistoryOverlay(tile) {
     }
 
     let canvas = null;
+    let tradingViewFrame = null;
     if (showTradingChart) {
         const frame = document.createElement('div');
         frame.className = 'price-history-chart-frame';
-        canvas = document.createElement('canvas');
-        canvas.setAttribute('role', 'img');
-        canvas.setAttribute('aria-label', `${ticker}/USD candlestick chart over the last ${PRICE_CHART_WINDOW_LABEL}`);
-        frame.appendChild(canvas);
+        if (tradingViewSymbol) {
+            frame.classList.add('is-tradingview');
+            tradingViewFrame = frame;
+        } else {
+            canvas = document.createElement('canvas');
+            canvas.setAttribute('role', 'img');
+            canvas.setAttribute('aria-label', `${ticker}/USD candlestick chart over the last ${PRICE_CHART_WINDOW_LABEL}`);
+            frame.appendChild(canvas);
+        }
         body.appendChild(frame);
     } else {
         const message = document.createElement('p');
@@ -420,7 +483,7 @@ function openPriceHistoryOverlay(tile) {
         titleId: 'price-history-title',
         titleText: `${ticker} Price`,
         headerMeta: showTradingChart
-            ? `${PRICE_CHART_WINDOW_LABEL} · 5 min · ${tradingCandles.length.toLocaleString('en-US')} candles`
+            ? `${PRICE_CHART_WINDOW_LABEL} · ${tradingViewSymbol ? 'TradingView' : `5 min · ${tradingCandles.length.toLocaleString('en-US')} candles`}`
             : `${PRICE_CHART_WINDOW_LABEL} · Price history unavailable`,
         closeLabel: `Close ${ticker} price history`,
         closeOverlay: closePriceHistoryOverlay,
@@ -429,13 +492,22 @@ function openPriceHistoryOverlay(tile) {
         bodyNode: body
     });
 
-    if (canvas) requestAnimationFrame(() => {
+    if (canvas || tradingViewFrame) requestAnimationFrame(() => {
         const renderInterval = minutes => {
-            const candles = aggregatePriceCandles(tradingCandles, minutes);
-            renderPriceTradingChart(canvas, candles, ticker, minutes, priceConfig.decimals);
+            const candles = tradingViewFrame ? [] : aggregatePriceCandles(tradingCandles, minutes);
+            if (tradingViewFrame) {
+                renderTradingViewPriceChart(tradingViewFrame, tradingViewSymbol, ticker, minutes);
+            } else {
+                renderPriceTradingChart(canvas, candles, ticker, minutes, priceConfig.decimals);
+            }
             const meta = document.querySelector('#price-history-overlay .governance-menu-header-meta');
             const option = PRICE_CHART_INTERVALS.find(item => item.minutes === minutes);
-            if (meta) meta.textContent = `${PRICE_CHART_WINDOW_LABEL} · ${option?.label || `${minutes} min`} · ${candles.length.toLocaleString('en-US')} candles`;
+            if (meta) {
+                const sourceLabel = tradingViewFrame
+                    ? 'TradingView'
+                    : `${candles.length.toLocaleString('en-US')} candles`;
+                meta.textContent = `${PRICE_CHART_WINDOW_LABEL} · ${option?.label || `${minutes} min`} · ${sourceLabel}`;
+            }
             intervalSelector?.querySelectorAll('.price-history-interval').forEach(button => {
                 button.setAttribute('aria-pressed', String(Number(button.dataset.intervalMinutes) === minutes));
             });

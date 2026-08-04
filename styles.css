@@ -862,7 +862,7 @@ p {
 
 .price-history-intervals {
     display: inline-grid;
-    grid-template-columns: repeat(3, minmax(72px, 1fr));
+    grid-template-columns: repeat(4, minmax(64px, 1fr));
     gap: 4px;
     margin: 0 0 14px;
     padding: 4px;
@@ -896,6 +896,12 @@ p {
     width: 100%;
     height: 360px;
     min-width: 0;
+}
+
+.price-history-chart-frame.is-tradingview {
+    overflow: hidden;
+    border-radius: 8px;
+    background: var(--bg);
 }
 
 .youtube-video-panel,
@@ -4153,7 +4159,7 @@ html[data-theme="dark"] input {
     .price-history-intervals {
         display: grid;
         width: 100%;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
     }
 
     .governance-list {
