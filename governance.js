@@ -15,6 +15,7 @@ const CATALYST_BUSINESS_API_URL = 'https://api.tdsp.online/api/catalyst/business
 const CATALYST_PROPOSALS_API_URL = 'https://api.tdsp.online/api/catalyst/proposals';
 const CATALYST_PROPOSAL_DETAIL_API_BASE_URL = 'https://api.tdsp.online/api/catalyst/proposal';
 const CATALYST_PROPOSAL_SUMMARY_API_BASE_URL = 'https://api.tdsp.online/api/catalyst/proposal';
+const CIPS_API_URL = 'https://api.tdsp.online/api/cips';
 const CONSTITUTION_CHAT_API_URL = 'https://api.tdsp.online/api/constitution/chat';
 const CONSTITUTION_CHAT_FEEDBACK_API_URL = 'https://api.tdsp.online/api/constitution/chat/feedback';
 const CONSTITUTION_DOCUMENT_API_URL = 'https://api.tdsp.online/api/constitution/document';
@@ -35,6 +36,7 @@ const LOCAL_CATALYST_BUSINESS_PROXY_PATH = '/__catalyst_business_proxy__';
 const LOCAL_CATALYST_PROPOSALS_PROXY_PATH = '/__catalyst_proposals_proxy__';
 const LOCAL_CATALYST_PROPOSAL_DETAIL_PROXY_PATH = '/__catalyst_proposal_detail_proxy__';
 const LOCAL_CATALYST_PROPOSAL_SUMMARY_PROXY_PATH = '/__catalyst_proposal_summary_proxy__';
+const LOCAL_CIPS_PROXY_PATH = '/__cips_proxy__';
 const LOCAL_CONSTITUTION_CHAT_PROXY_PATH = '/__constitution_chat_proxy__';
 const LOCAL_CONSTITUTION_CHAT_FEEDBACK_PROXY_PATH = '/__constitution_chat_feedback_proxy__';
 const LOCAL_CONSTITUTION_DOCUMENT_PROXY_PATH = '/__constitution_document_proxy__';
@@ -117,6 +119,8 @@ let catalystFundDirectoryPromise = null;
 let catalystFundDirectoryState = null;
 let catalystProposalDirectoryPromise = null;
 let catalystProposalDirectoryState = null;
+let cipDirectoryPromise = null;
+let cipDirectoryState = null;
 const catalystProposalDetailsCache = new Map();
 let treasuryHistoryChart = null;
 let governanceMeshPromise = null;
@@ -139,6 +143,7 @@ function initGovernance() {
     setupTreasuryCard();
     setupBusinessCard();
     setupCatalystProposalsCard();
+    setupCipDirectoryCard();
     loadCurrentEpoch();
     loadGovernanceActions();
     loadDrepDirectory().catch(() => {});
@@ -147,6 +152,10 @@ function initGovernance() {
     loadCatalystFundDirectory().catch(() => {
         window.TDSPRuntime.setText('gov-catalyst-proposals-count', 'Unavailable');
         window.TDSPRuntime.setText('gov-catalyst-funds-count', 'Funded total unavailable');
+    });
+    loadCipDirectory().catch(() => {
+        window.TDSPRuntime.setText('gov-cip-count', 'Unavailable');
+        window.TDSPRuntime.setText('gov-cip-status', 'CIP cache unavailable');
     });
 }
 
@@ -262,6 +271,7 @@ function createConstitutionChatPanel(context = null) {
 }
 
 function getConstitutionChatContextLabel(context) {
+    if (context?.kind === 'cip') return 'CIP context';
     if (context?.kind === 'catalyst_proposal') return 'Catalyst proposal context';
     if (context?.kind === 'governance_action') return 'Governance action context';
     if (context?.kind === 'governance_vote') return 'DRep vote context';
@@ -671,6 +681,11 @@ function setupCatalystProposalsCard() {
     bindGovernanceMenuTrigger(card, openCatalystFundsOverlay);
 }
 
+function setupCipDirectoryCard() {
+    const card = document.getElementById('gov-cips-card');
+    bindGovernanceMenuTrigger(card, openCipDirectoryOverlay);
+}
+
 async function loadCatalystFundDirectory() {
     const payload = await fetchCatalystFundDirectoryPayload();
     catalystFundDirectoryState = payload;
@@ -690,6 +705,21 @@ async function loadCatalystFundDirectory() {
     window.TDSPRuntime.setText(
         'gov-catalyst-funds-count',
         `Funded ${formatCatalystCurrencyAmount(fundedUsd, 'USD', true)} • Claimed ${formatCatalystCurrencyAmount(claimedUsd, 'USD', true)}`
+    );
+    return payload;
+}
+
+async function loadCipDirectory() {
+    const payload = await fetchCipDirectoryPayload();
+    cipDirectoryState = payload;
+    const cips = Array.isArray(payload?.cips) ? payload.cips : [];
+    const acceptedCount = cips.filter(cip => /^accepted$/i.test(String(cip?.status || ''))).length;
+    window.TDSPRuntime.setText('gov-cip-count', cips.length.toLocaleString('en-US'));
+    window.TDSPRuntime.setText(
+        'gov-cip-status',
+        acceptedCount
+            ? `${acceptedCount.toLocaleString('en-US')} accepted`
+            : 'Cardano Improvement Proposals'
     );
     return payload;
 }
@@ -780,6 +810,185 @@ function getCatalystProposalsApiUrl(options = {}) {
     const params = new URLSearchParams();
     if (options.fundName) params.set('fund', options.fundName);
     return `${CATALYST_PROPOSALS_API_URL}${params.size ? `?${params.toString()}` : ''}`;
+}
+
+function fetchCipDirectoryPayload() {
+    if (!cipDirectoryPromise) {
+        cipDirectoryPromise = fetchJson(getCipsApiUrl()).catch(error => {
+            cipDirectoryPromise = null;
+            throw error;
+        });
+    }
+    return cipDirectoryPromise;
+}
+
+function getCipsApiUrl() {
+    return shouldUseLocalDashboardProxy() ? LOCAL_CIPS_PROXY_PATH : CIPS_API_URL;
+}
+
+async function openCipDirectoryOverlay(returnFocus = document.activeElement) {
+    const panel = document.createElement('div');
+    panel.className = 'governance-list governance-action-group-list';
+    const loading = document.createElement('p');
+    loading.className = 'small-text';
+    loading.textContent = 'Loading CIPs...';
+    panel.appendChild(loading);
+
+    createGovernanceMenuOverlay({
+        id: 'governance-cips-overlay',
+        titleId: 'governance-cips-title',
+        titleText: 'Cardano Improvement Proposals',
+        closeLabel: 'Close CIPs',
+        closeOverlay: closeCipDirectoryOverlay,
+        bodyNodes: [panel],
+        headerMeta: cipDirectoryState
+            ? `${(cipDirectoryState.cips || []).length.toLocaleString('en-US')} CIPs`
+            : 'Loading...',
+        returnFocus,
+        rootTitle: 'Cardano Governance',
+        defaultSort: 'name-asc',
+        searchPlaceholder: 'Search by CIP number, title, status or text',
+        botContext: createWebsiteSectionBotContext('CIPs', {
+            title: 'Cardano Improvement Proposals',
+            count: Array.isArray(cipDirectoryState?.cips) ? cipDirectoryState.cips.length : null,
+            summary: 'Cardano Improvement Proposals cached from the official CIP repository'
+        })
+    });
+
+    try {
+        const payload = cipDirectoryState || await loadCipDirectory();
+        if (!panel.isConnected) return;
+        const cips = normalizeCipDirectory(payload);
+        panel.replaceChildren();
+        cips.forEach(cip => panel.appendChild(createCipCard(cip)));
+        if (!cips.length) {
+            const empty = document.createElement('p');
+            empty.className = 'small-text';
+            empty.textContent = 'No CIPs are available yet.';
+            panel.appendChild(empty);
+        }
+        updateGovernanceMenuHeaderMeta(
+            'governance-cips-overlay',
+            `${cips.length.toLocaleString('en-US')} CIPs`,
+            panel
+        );
+        updateGovernanceOverlayBotContext(
+            'governance-cips-overlay',
+            createWebsiteSectionBotContext('CIPs', {
+                title: 'Cardano Improvement Proposals',
+                count: cips.length,
+                summary: 'Cardano Improvement Proposals cached from the official CIP repository'
+            }),
+            panel
+        );
+    } catch (error) {
+        console.error('CIPs could not be rendered', error);
+        if (!panel.isConnected) return;
+        panel.replaceChildren();
+        const message = document.createElement('p');
+        message.className = 'small-text';
+        message.textContent = 'CIPs could not be loaded.';
+        panel.appendChild(message);
+    }
+}
+
+function closeCipDirectoryOverlay() {
+    removeGovernanceMenuOverlay('governance-cips-overlay');
+}
+
+function normalizeCipDirectory(payload) {
+    return (Array.isArray(payload?.cips) ? payload.cips : [])
+        .map(cip => ({
+            ...cip,
+            id: String(cip?.id || '').trim(),
+            title: cleanGovernanceText(cip?.title || 'Untitled CIP'),
+            status: cleanGovernanceText(cip?.status || 'Unknown'),
+            category: cleanGovernanceText(cip?.category || ''),
+            authors: Array.isArray(cip?.authors) ? cip.authors.filter(Boolean) : [],
+            abstract: cleanGovernanceText(cip?.abstract || ''),
+            motivation: cleanGovernanceText(cip?.motivation || ''),
+            created_at: cleanGovernanceText(cip?.created_at || ''),
+            source_url: String(cip?.source_url || '').trim(),
+            website_url: String(cip?.website_url || '').trim(),
+            markdown: String(cip?.markdown || '').trim(),
+            number: Number(cip?.number)
+        }))
+        .filter(cip => cip.id)
+        .sort((left, right) => (
+            (Number.isFinite(left.number) ? left.number : Number.MAX_SAFE_INTEGER)
+            - (Number.isFinite(right.number) ? right.number : Number.MAX_SAFE_INTEGER)
+        ));
+}
+
+function createCipCard(cip) {
+    const card = document.createElement('div');
+    card.className = 'governance-card governance-menu-card';
+    card.dataset.searchText = [
+        cip.id,
+        `cip ${cip.number}`,
+        `cip${cip.number}`,
+        cip.title,
+        cip.status,
+        cip.category,
+        cip.authors.join(' '),
+        cip.abstract,
+        cip.motivation
+    ].filter(Boolean).join(' ');
+    card.dataset.sortName = cip.id;
+
+    const openButton = document.createElement('button');
+    openButton.type = 'button';
+    openButton.className = 'governance-card-open';
+    openButton.addEventListener('click', event => openCipDetailOverlay(cip, event.currentTarget));
+
+    window.TDSPRuntime?.appendUniversalTileContent?.(openButton, {
+        title: `${cip.id}: ${cip.title}`,
+        primaryText: cip.status,
+        contextItems: [cip.category, cip.authors.length ? cip.authors.join(', ') : null],
+        detailItems: [
+            cip.abstract || cip.motivation || 'Click to read the CIP explanation.'
+        ]
+    });
+    card.appendChild(openButton);
+
+    const copyButton = createGovernanceCopyButton(cip.id, 'CIP ID');
+    copyButton.classList.add('governance-action-id-copy-button');
+    card.appendChild(copyButton);
+    return card;
+}
+
+function openCipDetailOverlay(cip, returnFocus) {
+    const content = document.createElement('div');
+    content.className = 'governance-detail-content';
+    addDetailRow(content, 'CIP ID', cip.id, { copyLabel: 'CIP ID' });
+    addDetailRow(content, 'Status', cip.status);
+    addDetailRow(content, 'Category', cip.category);
+    addDetailRow(content, 'Authors', cip.authors.join(', '));
+    addDetailRow(content, 'Created', cip.created_at);
+    addDetailRow(content, 'CIP website', cip.website_url);
+    addDetailRow(content, 'Source', cip.source_url);
+    addMarkdownDetailSection(content, 'Abstract', cip.abstract);
+    addMarkdownDetailSection(content, 'Motivation', cip.motivation);
+    addMarkdownDetailSection(content, 'Full CIP text', cip.markdown);
+
+    createGovernanceMenuOverlay({
+        id: 'governance-cip-detail-overlay',
+        titleId: 'governance-cip-detail-title',
+        titleText: `${cip.id}: ${cip.title}`,
+        closeLabel: `Close ${cip.id}`,
+        closeOverlay: closeCipDetailOverlay,
+        bodyNodes: [content],
+        headerMeta: cip.status,
+        overlayClass: 'governance-action-detail-overlay',
+        returnFocus,
+        rootTitle: 'Cardano Improvement Proposals',
+        enableSearch: false,
+        botContext: createCipBotContext(cip)
+    });
+}
+
+function closeCipDetailOverlay() {
+    removeGovernanceMenuOverlay('governance-cip-detail-overlay');
 }
 
 async function openTreasuryOverlay() {
@@ -5288,6 +5497,23 @@ function createCatalystProposalBotContext(proposal) {
         status: proposal?.project_status || proposal?.funding_status || null,
         requested_usd: proposal?.amount_requested_usd ?? null,
         received_usd: proposal?.amount_received_usd ?? null
+    };
+}
+
+function createCipBotContext(cip) {
+    return {
+        kind: 'cip',
+        section: 'CIPs',
+        id: String(cip?.id || '').trim(),
+        title: cip?.title || 'Cardano Improvement Proposal',
+        status: cip?.status || null,
+        category: cip?.category || null,
+        root: 'Cardano Improvement Proposals',
+        summary: [
+            cip?.id || null,
+            cip?.status || null,
+            cip?.abstract || cip?.motivation || null
+        ].filter(Boolean).join(' • ')
     };
 }
 
