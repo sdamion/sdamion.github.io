@@ -50,7 +50,7 @@
     <link rel="stylesheet" href="styles.css?v=20260804-tradingview-prices">
 
     <script src="runtime.js?v=20260804-api-origin-restore" defer></script>
-    <script src="index.js?v=20260804-hide-tv-intervals" defer></script>
+    <script src="index.js?v=20260804-cip-number-sort" defer></script>
 </head>
 <body>
     <header class="site-header" id="site-header">
@@ -296,26 +296,32 @@
                         <span id="gov-treasury-epoch">Treasury Epoch --</span>
                         <span class="governance-summary-subvalue" id="gov-treasury-income">Income ₳ --</span>
                     </div>
+                    <div id="gov-active-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show active governance actions">
+                        <strong id="gov-active-count">0</strong>
+                        <span>Governance Actions</span>
+                        <span class="governance-summary-subvalue funding-recipient-value-row" id="gov-active-ask">
+                            <span>$0</span>
+                            <span class="funding-recipient-ada-value">₳ 0</span>
+                        </span>
+                    </div>
                     <div id="gov-catalyst-proposals-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show Catalyst and Treasury funding">
                         <strong id="gov-catalyst-proposals-count">Loading...</strong>
                         <span>Catalyst/Treasury Funding</span>
                         <span class="governance-summary-subvalue" id="gov-catalyst-funds-count">Loading funded total...</span>
-                    </div>
-                    <div id="gov-active-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show active governance actions">
-                        <strong id="gov-active-count">0</strong>
-                        <span>Governance Actions</span>
-                        <span class="governance-summary-subvalue" id="gov-active-ask">₳ 0</span>
-                    </div>
-                    <div id="gov-rejected-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show rejected governance actions">
-                        <strong id="gov-rejected-count">0</strong>
-                        <span>Rejected Actions</span>
-                        <span class="governance-summary-subvalue" id="gov-rejected-ask">₳ 0</span>
                     </div>
                     <div id="gov-business-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show Catalyst and Treasury recipients">
                         <strong id="gov-business-count">0</strong>
                         <span>Catalyst/Treasury Recipients</span>
                         <span class="governance-summary-subvalue funding-recipient-value-row" id="gov-business-total">
                             <span id="gov-business-total-usd">$0</span>
+                        </span>
+                    </div>
+                    <div id="gov-rejected-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show rejected governance actions">
+                        <strong id="gov-rejected-count">0</strong>
+                        <span>Rejected Actions</span>
+                        <span class="governance-summary-subvalue funding-recipient-value-row" id="gov-rejected-ask">
+                            <span>$0</span>
+                            <span class="funding-recipient-ada-value">₳ 0</span>
                         </span>
                     </div>
                     <div id="gov-drep-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show DRep directory">
@@ -381,7 +387,7 @@
 
     <script src="chart.js"></script>
     <script src="starch.js?v=20260804-api-origin-restore" defer></script>
-    <script src="governance.js?v=20260804-cips-cache" defer></script>
+    <script src="governance.js?v=20260804-cip-number-sort" defer></script>
     <script src="stake.js?v=20260804-api-origin-restore" defer></script>
 </body>
 </html>

@@ -831,7 +831,7 @@ async function openCipDirectoryOverlay(returnFocus = document.activeElement) {
             : 'Loading...',
         returnFocus,
         rootTitle: 'Cardano Governance',
-        defaultSort: 'name-asc',
+        defaultSort: 'cip-asc',
         searchPlaceholder: 'Search by CIP number, title, status or text',
         botContext: createWebsiteSectionBotContext('CIPs', {
             title: 'Cardano Improvement Proposals',
@@ -920,6 +920,7 @@ function createCipCard(cip) {
         cip.motivation
     ].filter(Boolean).join(' ');
     card.dataset.sortName = cip.id;
+    card.dataset.sortCip = String(Number.isFinite(cip.number) ? cip.number : Number.MAX_SAFE_INTEGER);
 
     const openButton = document.createElement('button');
     openButton.type = 'button';
@@ -11462,9 +11463,9 @@ async function updateGovernanceCounts(groups) {
     window.TDSPRuntime.setText('gov-active-count', getCollectionLength(groups.active));
     window.TDSPRuntime.setText('gov-approved-count', getCollectionLength(groups.approved));
     window.TDSPRuntime.setText('gov-rejected-count', getCollectionLength(groups.rejected));
-    window.TDSPRuntime.setText('gov-active-ask', formatGovernanceAskAmount(groups.active));
-    window.TDSPRuntime.setText('gov-approved-ask', formatGovernanceAskAmount(groups.approved));
-    window.TDSPRuntime.setText('gov-rejected-ask', formatGovernanceAskAmount(groups.rejected));
+    renderGovernanceAskAmountTile('gov-active-ask', groups.active);
+    renderGovernanceAskAmountTile('gov-approved-ask', groups.approved);
+    renderGovernanceAskAmountTile('gov-rejected-ask', groups.rejected);
     updateCatalystTreasuryFundingSummary();
     window.TDSPRuntime.setText('gov-committee-count', formatGovernanceCount(
         getConstitutionalCommitteeMemberCount(governanceState, groups)
@@ -12015,6 +12016,42 @@ function formatGovernanceAskAmount(proposals) {
     return totalAsk
         ? formatTileAdaFromLovelace(totalAsk, { fixedFractionDigits: 2 })
         : '₳ 0';
+}
+
+function getGovernanceAskAmountTotals(proposals) {
+    return (Array.isArray(proposals) ? proposals : []).reduce((totals, proposal) => {
+        const lovelace = getProposalTotalAskLovelace(proposal);
+        const ada = Number.isFinite(lovelace) ? lovelace / 1_000_000 : 0;
+        const usd = getApprovedTreasuryFundingUsd(proposal);
+        const hasUsd = Number.isFinite(Number(usd)) && Number(usd) > 0;
+        return {
+            ada: totals.ada + (Number(ada) || 0),
+            usd: totals.usd + (hasUsd ? Number(usd) : 0),
+            usdCount: totals.usdCount + (hasUsd ? 1 : 0)
+        };
+    }, { ada: 0, usd: 0, usdCount: 0 });
+}
+
+function renderGovernanceAskAmountTile(elementId, proposals) {
+    const container = document.getElementById(elementId);
+    if (!container) return;
+
+    const totals = getGovernanceAskAmountTotals(proposals);
+    container.classList.add('funding-recipient-value-row');
+    container.replaceChildren();
+
+    const usd = document.createElement('span');
+    usd.textContent = totals.usdCount
+        ? formatCatalystCurrencyAmount(totals.usd, 'USD', true)
+        : totals.ada > 0
+            ? 'USD updating'
+            : '$0';
+    container.appendChild(usd);
+
+    const ada = document.createElement('span');
+    ada.className = 'funding-recipient-ada-value';
+    ada.textContent = formatAdaAmount(totals.ada, true);
+    container.appendChild(ada);
 }
 
 async function getDrepStats(groups) {

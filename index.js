@@ -2134,6 +2134,8 @@ function storeOverlaySort(options, value) {
 }
 
 const OVERLAY_SORT_DEFINITIONS = Object.freeze([
+    { value: 'cip-asc', label: 'CIP number', key: 'sortCip', direction: 1, type: 'number' },
+    { value: 'cip-desc', label: 'CIP number: Newest', key: 'sortCip', direction: -1, type: 'number' },
     { value: 'newest', label: 'Newest', key: 'sortDate', direction: -1, type: 'number' },
     { value: 'oldest', label: 'Oldest', key: 'sortDate', direction: 1, type: 'number' },
     { value: 'ask-desc', label: 'Most ask', key: 'sortAsk', direction: -1, type: 'number' },
