@@ -4,15 +4,15 @@ const OVERLAY_SORT_STORAGE_KEY = 'tdsp-overlay-sort';
 const SITE_ALERT_SETTINGS_STORAGE_KEY = 'tdsp-site-alert-settings-v1';
 const NEWS_NOTIFICATION_STORAGE_KEY = 'tdsp-news-notification-state-v1';
 const CARDANO_EVENT_NOTIFICATION_STORAGE_KEY = 'tdsp-cardano-event-notification-state-v1';
-const PRICE_API_URL = IS_LOCAL_PREVIEW ? '/__prices_proxy__' : 'https://www.thedutchstakepool.com/api/prices';
-const NEWS_API_URL = IS_LOCAL_PREVIEW ? '/__news_proxy__' : 'https://www.thedutchstakepool.com/api/news';
-const CARDANO_EVENTS_API_URL = IS_LOCAL_PREVIEW ? '/__events_proxy__' : 'https://www.thedutchstakepool.com/api/events';
-const POOL_API_URL = IS_LOCAL_PREVIEW ? '/__pool_proxy__' : 'https://www.thedutchstakepool.com/api/pool';
-const MITHRIL_API_URL = IS_LOCAL_PREVIEW ? '/__mithril_proxy__' : 'https://www.thedutchstakepool.com/api/mithril';
-const ICEBREAKER_API_URL = IS_LOCAL_PREVIEW ? '/__icebreaker_proxy__' : 'https://www.thedutchstakepool.com/api/icebreaker';
-const STARCH_POOL_API_URL = IS_LOCAL_PREVIEW ? '/__starch_pools_proxy__' : 'https://www.thedutchstakepool.com/api/starch/pools';
-const LEADER_SCHEDULE_API_URL = IS_LOCAL_PREVIEW ? '/__leader_schedule_proxy__' : 'https://www.thedutchstakepool.com/api/leader-schedule';
-const DATABASE_STATUS_API_URL = IS_LOCAL_PREVIEW ? '/__sqlite_status_proxy__' : 'https://www.thedutchstakepool.com/api/sqlite/status';
+const PRICE_API_URL = IS_LOCAL_PREVIEW ? '/__prices_proxy__' : 'https://api.tdsp.online/api/prices';
+const NEWS_API_URL = IS_LOCAL_PREVIEW ? '/__news_proxy__' : 'https://api.tdsp.online/api/news';
+const CARDANO_EVENTS_API_URL = IS_LOCAL_PREVIEW ? '/__events_proxy__' : 'https://api.tdsp.online/api/events';
+const POOL_API_URL = IS_LOCAL_PREVIEW ? '/__pool_proxy__' : 'https://api.tdsp.online/api/pool';
+const MITHRIL_API_URL = IS_LOCAL_PREVIEW ? '/__mithril_proxy__' : 'https://api.tdsp.online/api/mithril';
+const ICEBREAKER_API_URL = IS_LOCAL_PREVIEW ? '/__icebreaker_proxy__' : 'https://api.tdsp.online/api/icebreaker';
+const STARCH_POOL_API_URL = IS_LOCAL_PREVIEW ? '/__starch_pools_proxy__' : 'https://api.tdsp.online/api/starch/pools';
+const LEADER_SCHEDULE_API_URL = IS_LOCAL_PREVIEW ? '/__leader_schedule_proxy__' : 'https://api.tdsp.online/api/leader-schedule';
+const DATABASE_STATUS_API_URL = IS_LOCAL_PREVIEW ? '/__sqlite_status_proxy__' : 'https://api.tdsp.online/api/sqlite/status';
 const STARCH_POOL_WEBSITES = Object.freeze({
     '4free': 'https://x.com/4FREE_stakepool',
     a3c: 'https://x.com/A3Cpool_Shawn',
