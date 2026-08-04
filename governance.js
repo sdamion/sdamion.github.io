@@ -105,6 +105,7 @@ const drepMetadataCache = new Map();
 let drepDirectoryPromise = null;
 let drepInfoPromise = null;
 let drepStatsPromise = null;
+let drepDirectoryState = null;
 let spoDirectoryPromise = null;
 let spoDirectoryState = null;
 let committeeInfoPromise = null;
@@ -3710,9 +3711,17 @@ function setupGovernanceSummaryActionCards() {
 
 function bindGovernanceMenuTrigger(element, openMenu) {
     if (!element) return;
+    if (element.dataset.governanceMenuBound === 'true') return;
+    element.dataset.governanceMenuBound = 'true';
     const activate = event => {
+        event?.preventDefault?.();
+        event?.stopPropagation?.();
         element.focus({ preventScroll: true });
-        openMenu(event);
+        try {
+            openMenu(event);
+        } catch (error) {
+            console.error('Governance menu could not be opened.', error);
+        }
     };
     element.addEventListener('click', activate);
     element.addEventListener('keydown', event => {
@@ -8431,6 +8440,11 @@ async function loadDrepDirectoryOverlay(container) {
             || right.votingPower - left.votingPower
             || left.name.localeCompare(right.name)
         );
+    drepDirectoryState = {
+        count: dreps.length,
+        dreps,
+        totalVotingPower: dreps.reduce((sum, drep) => sum + (Number(drep.votingPower) || 0), 0)
+    };
     updateGovernanceMenuHeaderMeta(
         'governance-drep-directory-overlay',
         `${dreps.length.toLocaleString('en-US')} DReps`,
