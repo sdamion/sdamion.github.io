@@ -689,23 +689,7 @@ function setupCipDirectoryCard() {
 async function loadCatalystFundDirectory() {
     const payload = await fetchCatalystFundDirectoryPayload();
     catalystFundDirectoryState = payload;
-    const funds = Array.isArray(payload?.funds) ? payload.funds : [];
-    const fundedUsd = funds.reduce(
-        (total, fund) => total + (Number(fund?.requested_amount) || 0),
-        0
-    );
-    const claimedUsd = funds.reduce(
-        (total, fund) => total + (Number(fund?.claimed_amount) || 0),
-        0
-    );
-    window.TDSPRuntime.setText(
-        'gov-catalyst-proposals-count',
-        Number(payload?.proposal_count || 0).toLocaleString('en-US')
-    );
-    window.TDSPRuntime.setText(
-        'gov-catalyst-funds-count',
-        `Funded ${formatCatalystCurrencyAmount(fundedUsd, 'USD', true)} • Claimed ${formatCatalystCurrencyAmount(claimedUsd, 'USD', true)}`
-    );
+    updateCatalystTreasuryFundingSummary();
     return payload;
 }
 
@@ -746,6 +730,7 @@ async function loadTreasuryData() {
     );
     updateBusinessSummary(payload, catalystPayload);
     if (governanceState) updateTreasuryBudgetBar();
+    updateCatalystTreasuryFundingSummary();
 }
 
 function fetchTreasuryPayload() {
@@ -1308,6 +1293,82 @@ function getCatalystProposalUsdTotals(proposals) {
         asked: totals.asked + (Number(proposal?.amount_requested_usd) || 0),
         received: totals.received + (Number(proposal?.amount_received_usd) || 0)
     }), { asked: 0, received: 0 });
+}
+
+function getCatalystFundTotals(funds) {
+    return (Array.isArray(funds) ? funds : []).reduce((totals, fund) => ({
+        count: totals.count + (Number(fund?.proposal_count) || 0),
+        fundedUsd: totals.fundedUsd + (Number(fund?.requested_amount) || 0),
+        claimedUsd: totals.claimedUsd + (Number(fund?.claimed_amount) || 0),
+        fundedAda: totals.fundedAda + (Number(fund?.requested_ada) || 0),
+        claimedAda: totals.claimedAda + (Number(fund?.claimed_ada) || 0)
+    }), {
+        count: 0,
+        fundedUsd: 0,
+        claimedUsd: 0,
+        fundedAda: 0,
+        claimedAda: 0
+    });
+}
+
+function getApprovedGovernanceFundingActions() {
+    const approved = Array.isArray(governanceGroupsState?.approved)
+        ? governanceGroupsState.approved
+        : [];
+    return approved;
+}
+
+function getApprovedGovernanceFundingTotals(actions = getApprovedGovernanceFundingActions()) {
+    const totals = actions.reduce((runningTotals, proposal) => {
+        const lovelace = getProposalTotalAskLovelace(proposal);
+        const ada = Number.isFinite(lovelace) ? lovelace / 1_000_000 : 0;
+        const usd = getApprovedTreasuryFundingUsd(proposal);
+        const hasUsd = Number.isFinite(Number(usd));
+        return {
+            count: runningTotals.count + 1,
+            usd: runningTotals.usd + (hasUsd ? Number(usd) : 0),
+            ada: runningTotals.ada + (Number(ada) || 0),
+            usdCount: runningTotals.usdCount + (hasUsd ? 1 : 0),
+            usdMissingCount: runningTotals.usdMissingCount + (hasUsd ? 0 : 1)
+        };
+    }, { count: 0, usd: 0, ada: 0, usdCount: 0, usdMissingCount: 0 });
+    return {
+        ...totals,
+        usdPending: totals.usdCount === 0 && totals.ada > 0
+    };
+}
+
+function getApprovedTreasuryFundingUsd(proposal) {
+    const directUsd = Number(proposal?.amount_usd ?? proposal?.requested_usd ?? proposal?.total_amount_usd);
+    if (Number.isFinite(directUsd) && directUsd > 0) return directUsd;
+
+    const withdrawalUsd = getTreasuryWithdrawals(treasuryState || {})
+        .filter(withdrawal => withdrawal?.action_id === proposal?.proposal_id)
+        .reduce((sum, withdrawal) => sum + (Number(withdrawal?.amount_usd) || 0), 0);
+    if (withdrawalUsd > 0) return withdrawalUsd;
+    return NaN;
+}
+
+function updateCatalystTreasuryFundingSummary() {
+    const funds = Array.isArray(catalystFundDirectoryState?.funds)
+        ? catalystFundDirectoryState.funds
+        : [];
+    const catalystTotals = getCatalystFundTotals(funds);
+    const treasuryTotals = getApprovedGovernanceFundingTotals();
+    const totalCount = catalystTotals.count + treasuryTotals.count;
+    const totalUsd = catalystTotals.fundedUsd + treasuryTotals.usd;
+    const totalAda = catalystTotals.fundedAda + treasuryTotals.ada;
+    window.TDSPRuntime.setText(
+        'gov-catalyst-proposals-count',
+        totalCount ? totalCount.toLocaleString('en-US') : '0'
+    );
+    window.TDSPRuntime.setText(
+        'gov-catalyst-funds-count',
+        [
+            `Funded ${formatCatalystCurrencyAmount(totalUsd, 'USD', true)}`,
+            totalAda > 0 ? formatAdaAmount(totalAda, true) : null
+        ].filter(Boolean).join(' • ')
+    );
 }
 
 function getFundingRecipientUsdTotals(groups) {
@@ -1923,7 +1984,7 @@ function createCatalystFundingStatusChart(payload) {
     return section;
 }
 
-function createCatalystProposalFundingOverview(funds, proposals, businessPayload) {
+function createCatalystProposalFundingOverview(funds, proposals, businessPayload, approvedGovernanceActions = []) {
     const detailedProjects = getCatalystFundingProjects(businessPayload);
     const detailsById = new Map(
         detailedProjects.map(project => [String(project?.id || ''), project])
@@ -1971,7 +2032,9 @@ function createCatalystProposalFundingOverview(funds, proposals, businessPayload
     );
     const totalClaimed = claimed > 0 ? claimed : fallbackClaimed;
     const totalUnclaimed = unclaimed > 0 ? unclaimed : fallbackUnclaimed;
-    const total = totalClaimed + totalUnclaimed;
+    const treasuryTotals = getApprovedGovernanceFundingTotals(approvedGovernanceActions);
+    const totalTreasury = Number(treasuryTotals.usd) || 0;
+    const total = totalClaimed + totalUnclaimed + totalTreasury;
     if (total <= 0) return null;
 
     const createGroup = (key, label, value, color, field) => {
@@ -1999,19 +2062,29 @@ function createCatalystProposalFundingOverview(funds, proposals, businessPayload
             amountField: field,
             requestedField: 'requested_usd',
             adaValue,
-            rootTitle: 'Catalyst Proposals'
+            rootTitle: 'Catalyst/Treasury Funding'
         };
     };
     const groups = [
         createGroup('claimed', 'Claimed', totalClaimed, '#34d399', 'claimed_usd'),
-        createGroup('unclaimed', 'Unclaimed', totalUnclaimed, '#fb7185', 'not_claimed_usd')
+        createGroup('unclaimed', 'Unclaimed', totalUnclaimed, '#fb7185', 'not_claimed_usd'),
+        {
+            key: 'approved-governance',
+            label: 'Approved Treasury',
+            value: totalTreasury,
+            color: '#fbbf24',
+            currency: 'USD',
+            actions: approvedGovernanceActions,
+            adaValue: treasuryTotals.ada,
+            rootTitle: 'Catalyst/Treasury Funding'
+        }
     ].filter(group => group.value > 0);
 
     const section = document.createElement('section');
     section.className = 'governance-vote-chart governance-chart-panel';
 
     const title = document.createElement('strong');
-    title.textContent = 'Catalyst proposal funding';
+    title.textContent = 'Catalyst/Treasury funding';
 
     const projectsLabel = document.createElement('span');
     projectsLabel.className = 'governance-card-detail';
@@ -2025,9 +2098,13 @@ function createCatalystProposalFundingOverview(funds, proposals, businessPayload
                 ? formatCatalystCurrencyAmount(segment.value, 'USD', true)
                 : ''
         ),
-        onSegmentClick: (segment, returnFocus) => (
-            openCatalystFundingProjectsOverlay(segment, returnFocus)
-        ),
+        onSegmentClick: (segment, returnFocus) => {
+            if (segment.key === 'approved-governance') {
+                openApprovedGovernanceFundingOverlay(segment.actions || [], returnFocus);
+                return;
+            }
+            openCatalystFundingProjectsOverlay(segment, returnFocus);
+        },
         showSegmentSeparators: true
     }));
 
@@ -2038,7 +2115,13 @@ function createCatalystProposalFundingOverview(funds, proposals, businessPayload
             label: group.label,
             detail: `${formatCatalystCurrencyAmount(group.value, 'USD')} • ${formatPercentage((group.value / total) * 100)}`,
             color: group.color,
-            onClick: event => openCatalystFundingProjectsOverlay(group, event.currentTarget)
+            onClick: event => {
+                if (group.key === 'approved-governance') {
+                    openApprovedGovernanceFundingOverlay(group.actions || [], event.currentTarget);
+                    return;
+                }
+                openCatalystFundingProjectsOverlay(group, event.currentTarget);
+            }
         }));
     });
     layout.appendChild(legend);
@@ -2176,11 +2259,12 @@ async function openCatalystFundsOverlay(returnFocus = document.activeElement) {
     panel.className = 'governance-list governance-action-group-list';
     const loading = document.createElement('p');
     loading.className = 'small-text';
-    loading.textContent = 'Loading Catalyst funds...';
+    loading.textContent = 'Loading Catalyst and Treasury funding...';
     panel.appendChild(loading);
 
     let funds = [];
     let proposals = [];
+    let approvedGovernanceActions = [];
     let fundingChart = null;
     let renderedSignature = '';
     let directoryReady = false;
@@ -2207,20 +2291,25 @@ async function openCatalystFundsOverlay(returnFocus = document.activeElement) {
             });
         } else {
             if (fundingChart) panel.appendChild(fundingChart);
+            if (approvedGovernanceActions.length) {
+                panel.appendChild(createApprovedGovernanceFundingCard(approvedGovernanceActions));
+            }
             funds.forEach(fund => {
                 panel.appendChild(createCatalystFundCard(fund));
             });
-            if (!funds.length) {
+            if (!funds.length && !approvedGovernanceActions.length) {
                 const empty = document.createElement('p');
                 empty.className = 'small-text';
-                empty.textContent = 'No Catalyst funds are available yet.';
+                empty.textContent = 'No Catalyst or Treasury funding data is available yet.';
                 panel.appendChild(empty);
             }
         }
-        const totals = getCatalystProposalUsdTotals(visibleProposals);
+        const totals = showTeamMatches
+            ? getCatalystProposalUsdTotals(visibleProposals)
+            : getCatalystTreasuryFundingOverlayTotals(funds, approvedGovernanceActions);
         updateGovernanceMenuHeaderMeta(
             'governance-catalyst-funds-overlay',
-            `Asked ${formatCatalystCurrencyAmount(totals.asked, 'USD', true)} • Received ${formatCatalystCurrencyAmount(totals.received, 'USD', true)}`,
+            formatCatalystTreasuryFundingHeader(totals),
             panel
         );
         return showTeamMatches;
@@ -2229,19 +2318,19 @@ async function openCatalystFundsOverlay(returnFocus = document.activeElement) {
     createGovernanceMenuOverlay({
         id: 'governance-catalyst-funds-overlay',
         titleId: 'governance-catalyst-funds-title',
-        titleText: 'Catalyst Proposals',
-        closeLabel: 'Close Catalyst funds',
+        titleText: 'Catalyst/Treasury Funding',
+        closeLabel: 'Close Catalyst and Treasury funding',
         closeOverlay: closeCatalystFundsOverlay,
         bodyNodes: [panel],
         headerMeta: 'Loading...',
         returnFocus,
-        rootTitle: 'Catalyst Proposals',
+        rootTitle: 'Catalyst/Treasury Funding',
         defaultSort: 'fund-desc',
         searchPlaceholder: 'Search proposers or team members, separated by commas',
         onSearch: renderDirectory,
-        botContext: createWebsiteSectionBotContext('Catalyst', {
-            title: 'Catalyst Proposals',
-            summary: 'Funded Catalyst proposal directory'
+        botContext: createWebsiteSectionBotContext('Catalyst/Treasury Funding', {
+            title: 'Catalyst/Treasury Funding',
+            summary: 'Funded Catalyst proposals and approved Treasury governance actions'
         })
     });
 
@@ -2257,21 +2346,25 @@ async function openCatalystFundsOverlay(returnFocus = document.activeElement) {
         proposals = Array.isArray(proposalPayload?.proposals)
             ? proposalPayload.proposals
             : [];
+        approvedGovernanceActions = getApprovedGovernanceFundingActions();
+        const overlayTotals = getCatalystTreasuryFundingOverlayTotals(funds, approvedGovernanceActions);
         updateGovernanceOverlayBotContext(
             'governance-catalyst-funds-overlay',
-            createWebsiteSectionBotContext('Catalyst', {
-                title: 'Catalyst Proposals',
-                count: proposals.length,
-                amount_usd: getCatalystProposalUsdTotals(proposals).asked,
-                root: 'Catalyst Proposals',
-                summary: `${funds.length.toLocaleString('en-US')} funds • ${proposals.length.toLocaleString('en-US')} proposals`
+            createWebsiteSectionBotContext('Catalyst/Treasury Funding', {
+                title: 'Catalyst/Treasury Funding',
+                count: overlayTotals.count,
+                amount_usd: overlayTotals.asked,
+                amount_ada: overlayTotals.ada,
+                root: 'Catalyst/Treasury Funding',
+                summary: `${funds.length.toLocaleString('en-US')} funds • ${approvedGovernanceActions.length.toLocaleString('en-US')} approved treasury actions`
             }),
             panel
         );
         fundingChart = createCatalystProposalFundingOverview(
             funds,
             proposals,
-            businessPayload
+            businessPayload,
+            approvedGovernanceActions
         );
         directoryReady = true;
         renderedSignature = '';
@@ -2312,6 +2405,92 @@ function normalizeCatalystFunds(payload) {
     ));
 }
 
+function getCatalystTreasuryFundingOverlayTotals(funds, approvedGovernanceActions) {
+    const catalystTotals = getCatalystFundTotals(funds);
+    const treasuryTotals = getApprovedGovernanceFundingTotals(approvedGovernanceActions);
+    return {
+        count: catalystTotals.count + treasuryTotals.count,
+        asked: catalystTotals.fundedUsd + treasuryTotals.usd,
+        received: catalystTotals.claimedUsd,
+        ada: catalystTotals.fundedAda + treasuryTotals.ada,
+        usdPending: treasuryTotals.usdPending
+    };
+}
+
+function formatCatalystTreasuryFundingHeader(totals) {
+    return [
+        `Funded ${formatCatalystCurrencyAmount(totals?.asked, 'USD', true)}`,
+        Number(totals?.ada) > 0 ? formatAdaAmount(totals.ada, true) : null
+    ].filter(Boolean).join(' • ');
+}
+
+function createApprovedGovernanceFundingCard(actions) {
+    const totals = getApprovedGovernanceFundingTotals(actions);
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'governance-card governance-menu-card';
+    card.dataset.searchText = [
+        'approved actions',
+        'approved governance actions',
+        ...actions.map(getProposalTitle)
+    ].filter(Boolean).join(' ');
+    card.dataset.sortName = 'Approved Governance Actions';
+    card.dataset.sortAmount = String(totals.usd || 0);
+    card.dataset.overlayPinRank = '0';
+    card.addEventListener('click', event => {
+        openApprovedGovernanceFundingOverlay(actions, event.currentTarget);
+    });
+
+    const amount = createFundingRecipientAmountRow(
+        totals.usd,
+        totals.ada,
+        totals.usdPending,
+        { hidePendingUsd: true }
+    );
+    window.TDSPRuntime?.appendUniversalTileContent?.(card, {
+        title: 'Approved Governance Actions',
+        primaryNode: amount,
+        contextItems: [`${actions.length.toLocaleString('en-US')} actions`],
+        detailItems: ['Approved actions; treasury asks counted in totals']
+    });
+    return card;
+}
+
+function openApprovedGovernanceFundingOverlay(actions, returnFocus) {
+    const proposals = Array.isArray(actions) ? actions : getApprovedGovernanceFundingActions();
+    const panel = document.createElement('div');
+    panel.className = 'governance-list governance-action-group-list';
+    renderGovernanceGroup(panel, proposals, 'No approved treasury funding actions found.');
+    const totals = getApprovedGovernanceFundingTotals(proposals);
+    createGovernanceMenuOverlay({
+        id: 'governance-approved-treasury-funding-overlay',
+        titleId: 'governance-approved-treasury-funding-title',
+        titleText: 'Approved Governance Actions',
+        closeLabel: 'Close approved treasury actions',
+        closeOverlay: closeApprovedGovernanceFundingOverlay,
+        bodyNodes: [panel],
+        headerMeta: formatCatalystTreasuryFundingHeader({
+            asked: totals.usd,
+            ada: totals.ada
+        }),
+        returnFocus,
+        rootTitle: 'Catalyst/Treasury Funding',
+        defaultSort: 'ask-desc',
+        botContext: createGovernanceActionGroupBotContext(
+            'Approved Governance Actions',
+            proposals,
+            {
+                status: 'approved',
+                rootTitle: 'Catalyst/Treasury Funding'
+            }
+        )
+    });
+}
+
+function closeApprovedGovernanceFundingOverlay() {
+    removeGovernanceMenuOverlay('governance-approved-treasury-funding-overlay');
+}
+
 function createCatalystFundCard(fund) {
     const card = document.createElement('button');
     card.type = 'button';
@@ -2324,32 +2503,27 @@ function createCatalystFundCard(fund) {
         openCatalystFundOverlay(fund, event.currentTarget);
     });
 
+    const amount = createFundingRecipientAmountRow(
+        fund.claimed_amount,
+        fund.claimed_ada,
+        false
+    );
     const detailItems = [
         `Not Claimed ${formatCatalystFundAmount(fund, 'not_claimed', true)}`,
-        createCatalystFundAdaDetail(fund)
+        Number(fund?.not_claimed_ada) > 0
+            ? {
+                text: `Not Claimed ${formatAdaAmount(fund.not_claimed_ada, true)}`,
+                className: 'governance-card-detail funding-recipient-ada-value'
+            }
+            : null
     ].filter(Boolean);
     window.TDSPRuntime?.appendUniversalTileContent?.(card, {
         title: fund.fund_name,
-        primaryText: `Claimed ${formatCatalystFundAmount(fund, 'claimed', true)}`,
+        primaryNode: amount,
         contextItems: [`${fund.proposal_count.toLocaleString('en-US')} proposals`],
         detailItems
     });
     return card;
-}
-
-function createCatalystFundAdaDetail(fund) {
-    const parts = [];
-    if (Number(fund?.claimed_ada) > 0) {
-        parts.push(`Claimed ${formatAdaAmount(fund.claimed_ada, true)}`);
-    }
-    if (Number(fund?.not_claimed_ada) > 0) {
-        parts.push(`Not Claimed ${formatAdaAmount(fund.not_claimed_ada, true)}`);
-    }
-    if (!parts.length) return null;
-    return {
-        text: parts.join(' • '),
-        className: 'governance-card-detail funding-recipient-ada-value'
-    };
 }
 
 async function openCatalystFundOverlay(fund, returnFocus) {
@@ -2370,7 +2544,7 @@ async function openCatalystFundOverlay(fund, returnFocus) {
         headerMeta: `${fund.proposal_count.toLocaleString('en-US')} proposals`,
         overlayClass: 'governance-action-detail-overlay',
         returnFocus,
-        rootTitle: 'Catalyst Proposals',
+        rootTitle: 'Catalyst/Treasury Funding',
         enableSearch: false,
         botContext: createCatalystFundBotContext(fund)
     });
@@ -3037,16 +3211,18 @@ function normalizeBusinessDomainText(value) {
         .trim();
 }
 
-function createFundingRecipientAmountRow(usdValue, adaValue = null, usdPending = false) {
+function createFundingRecipientAmountRow(usdValue, adaValue = null, usdPending = false, options = {}) {
     const row = document.createElement('span');
     row.className = 'governance-card-amount-row';
 
-    const usdAmount = document.createElement('span');
-    usdAmount.className = 'governance-card-detail governance-treasury-withdrawal-amount';
-    usdAmount.textContent = usdPending
-        ? 'USD updating'
-        : formatCatalystCurrencyAmount(usdValue, 'USD');
-    row.appendChild(usdAmount);
+    if (!(usdPending && options.hidePendingUsd === true)) {
+        const usdAmount = document.createElement('span');
+        usdAmount.className = 'governance-card-detail governance-treasury-withdrawal-amount';
+        usdAmount.textContent = usdPending
+            ? 'USD updating'
+            : formatCatalystCurrencyAmount(usdValue, 'USD');
+        row.appendChild(usdAmount);
+    }
 
     if (Number(adaValue) > 0) {
         const adaAmount = document.createElement('span');
@@ -3904,7 +4080,6 @@ function setupConstitutionalCommitteeCard() {
 function setupGovernanceSummaryActionCards() {
     [
         { id: 'gov-active-card', groupKey: 'active', title: 'Active Governance Actions', tileTitle: 'Governance Actions', emptyMessage: 'No active actions found.' },
-        { id: 'gov-approved-card', groupKey: 'approved', title: 'Approved Governance Actions', tileTitle: 'Approved Actions', emptyMessage: 'No approved actions found.' },
         { id: 'gov-rejected-card', groupKey: 'rejected', title: 'Rejected Governance Actions', tileTitle: 'Rejected Actions', emptyMessage: 'No rejected actions found.' }
     ].forEach(config => {
         const card = document.getElementById(config.id);
@@ -5601,7 +5776,7 @@ function createCatalystFundBotContext(fund) {
         count: Number(fund?.proposal_count),
         amount_usd: Number(fund?.requested_amount),
         amount_ada: Number(fund?.requested_ada),
-        root: 'Catalyst Proposals',
+        root: 'Catalyst/Treasury Funding',
         summary: [
             `${Number(fund?.proposal_count || 0).toLocaleString('en-US')} proposals`,
             `claimed ${formatCatalystFundAmount(fund, 'claimed', true)}`,
@@ -11290,6 +11465,7 @@ async function updateGovernanceCounts(groups) {
     window.TDSPRuntime.setText('gov-active-ask', formatGovernanceAskAmount(groups.active));
     window.TDSPRuntime.setText('gov-approved-ask', formatGovernanceAskAmount(groups.approved));
     window.TDSPRuntime.setText('gov-rejected-ask', formatGovernanceAskAmount(groups.rejected));
+    updateCatalystTreasuryFundingSummary();
     window.TDSPRuntime.setText('gov-committee-count', formatGovernanceCount(
         getConstitutionalCommitteeMemberCount(governanceState, groups)
     ));
