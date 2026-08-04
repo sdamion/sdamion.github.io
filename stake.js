@@ -79,7 +79,7 @@ async function populateWalletList() {
 async function fetchStakeStatus(rewardAddress) {
     const url = IS_LOCAL_STAKE_PREVIEW
         ? `/__stake_status_proxy__?stakeAddress=${encodeURIComponent(rewardAddress)}`
-        : `https://api.tdsp.online/api/stake-status/${encodeURIComponent(rewardAddress)}`;
+        : `https://www.thedutchstakepool.com/api/stake-status/${encodeURIComponent(rewardAddress)}`;
     const errors = [];
 
     for (let round = 1; round <= 2; round++) {

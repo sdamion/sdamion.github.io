@@ -14,13 +14,10 @@
     function isLocalPreviewHostname(hostname) {
         const host = String(hostname || '').trim().toLowerCase().replace(/^\[|\]$/g, '');
         if (!host) return false;
-        if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local')) return true;
+        if (host === 'localhost' || host.endsWith('.localhost')) return true;
         if (host === '::1' || /^127(?:\.\d{1,3}){3}$/.test(host)) return true;
-        if (/^10(?:\.\d{1,3}){3}$/.test(host)) return true;
-        if (/^192\.168(?:\.\d{1,3}){2}$/.test(host)) return true;
-
-        const private172 = host.match(/^172\.(\d{1,2})(?:\.\d{1,3}){2}$/);
-        return Boolean(private172 && Number(private172[1]) >= 16 && Number(private172[1]) <= 31);
+        if (/^192\.168\.(?:1|4)\.\d{1,3}$/.test(host)) return true;
+        return false;
     }
 
     function loadDetail(key, loader, options = {}) {

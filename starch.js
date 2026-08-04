@@ -1,10 +1,10 @@
 const STARCH_IS_LOCAL_PREVIEW = window.TDSPRuntime?.isLocalPreview === true;
 const STARCH_API_BASE_URL = STARCH_IS_LOCAL_PREVIEW
     ? '/__starch_proxy__'
-    : 'https://api.tdsp.online/api/starch';
+    : 'https://www.thedutchstakepool.com/api/starch';
 const STARCH_DIRECTORY_URL = STARCH_IS_LOCAL_PREVIEW
     ? '/__starch_directory_proxy__'
-    : 'https://api.tdsp.online/api/starch/directory/compact';
+    : 'https://www.thedutchstakepool.com/api/starch/directory/compact';
 const TDSP_STARCH_COMPANY_ID = 'B0ADAD';
 
 let starchDirectory = { miners: [], companies: [] };
