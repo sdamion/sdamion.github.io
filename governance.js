@@ -151,7 +151,7 @@ function initGovernance() {
     loadTreasuryData().catch(() => {});
     loadCatalystFundDirectory().catch(() => {
         window.TDSPRuntime.setText('gov-catalyst-proposals-count', 'Unavailable');
-        window.TDSPRuntime.setText('gov-catalyst-funds-count', 'Funded total unavailable');
+        window.TDSPRuntime.setText('gov-catalyst-funds-count', '$0');
     });
     loadCipDirectory().catch(() => {
         window.TDSPRuntime.setText('gov-cip-count', 'Unavailable');
@@ -1357,18 +1357,14 @@ function updateCatalystTreasuryFundingSummary() {
     const catalystTotals = getCatalystFundTotals(funds);
     const treasuryTotals = getApprovedGovernanceFundingTotals();
     const totalCount = catalystTotals.count + treasuryTotals.count;
-    const totalUsd = catalystTotals.fundedUsd + treasuryTotals.usd;
-    const totalAda = catalystTotals.fundedAda + treasuryTotals.ada;
+    const totalUsd = catalystTotals.claimedUsd + treasuryTotals.usd;
     window.TDSPRuntime.setText(
         'gov-catalyst-proposals-count',
         totalCount ? totalCount.toLocaleString('en-US') : '0'
     );
     window.TDSPRuntime.setText(
         'gov-catalyst-funds-count',
-        [
-            `Funded ${formatCatalystCurrencyAmount(totalUsd, 'USD', true)}`,
-            totalAda > 0 ? formatAdaAmount(totalAda, true) : null
-        ].filter(Boolean).join(' • ')
+        formatCatalystCurrencyAmount(totalUsd, 'USD', true)
     );
 }
 
@@ -2354,7 +2350,7 @@ async function openCatalystFundsOverlay(returnFocus = document.activeElement) {
             createWebsiteSectionBotContext('Catalyst/Treasury Funding', {
                 title: 'Catalyst/Treasury Funding',
                 count: overlayTotals.count,
-                amount_usd: overlayTotals.asked,
+                amount_usd: overlayTotals.claimed,
                 amount_ada: overlayTotals.ada,
                 root: 'Catalyst/Treasury Funding',
                 summary: `${funds.length.toLocaleString('en-US')} funds • ${approvedGovernanceActions.length.toLocaleString('en-US')} approved treasury actions`
@@ -2412,17 +2408,20 @@ function getCatalystTreasuryFundingOverlayTotals(funds, approvedGovernanceAction
     return {
         count: catalystTotals.count + treasuryTotals.count,
         asked: catalystTotals.fundedUsd + treasuryTotals.usd,
-        received: catalystTotals.claimedUsd,
-        ada: catalystTotals.fundedAda + treasuryTotals.ada,
+        claimed: catalystTotals.claimedUsd + treasuryTotals.usd,
+        received: catalystTotals.claimedUsd + treasuryTotals.usd,
+        ada: catalystTotals.claimedAda + treasuryTotals.ada,
         usdPending: treasuryTotals.usdPending
     };
 }
 
 function formatCatalystTreasuryFundingHeader(totals) {
-    return [
-        `Funded ${formatCatalystCurrencyAmount(totals?.asked, 'USD', true)}`,
-        Number(totals?.ada) > 0 ? formatAdaAmount(totals.ada, true) : null
-    ].filter(Boolean).join(' • ');
+    const amount = hasNumericValue(totals?.claimed)
+        ? totals.claimed
+        : hasNumericValue(totals?.received)
+            ? totals.received
+            : totals?.asked;
+    return formatCatalystCurrencyAmount(amount, 'USD', true);
 }
 
 function createApprovedGovernanceFundingCard(actions) {
@@ -2471,7 +2470,7 @@ function openApprovedGovernanceFundingOverlay(actions, returnFocus) {
         closeOverlay: closeApprovedGovernanceFundingOverlay,
         bodyNodes: [panel],
         headerMeta: formatCatalystTreasuryFundingHeader({
-            asked: totals.usd,
+            claimed: totals.usd,
             ada: totals.ada
         }),
         returnFocus,
@@ -11463,9 +11462,9 @@ async function updateGovernanceCounts(groups) {
     window.TDSPRuntime.setText('gov-active-count', getCollectionLength(groups.active));
     window.TDSPRuntime.setText('gov-approved-count', getCollectionLength(groups.approved));
     window.TDSPRuntime.setText('gov-rejected-count', getCollectionLength(groups.rejected));
-    renderGovernanceAskAmountTile('gov-active-ask', groups.active);
-    renderGovernanceAskAmountTile('gov-approved-ask', groups.approved);
-    renderGovernanceAskAmountTile('gov-rejected-ask', groups.rejected);
+    window.TDSPRuntime.setText('gov-active-ask', formatGovernanceAskAmount(groups.active));
+    window.TDSPRuntime.setText('gov-approved-ask', formatGovernanceAskAmount(groups.approved));
+    window.TDSPRuntime.setText('gov-rejected-ask', formatGovernanceAskAmount(groups.rejected));
     updateCatalystTreasuryFundingSummary();
     window.TDSPRuntime.setText('gov-committee-count', formatGovernanceCount(
         getConstitutionalCommitteeMemberCount(governanceState, groups)
@@ -12016,42 +12015,6 @@ function formatGovernanceAskAmount(proposals) {
     return totalAsk
         ? formatTileAdaFromLovelace(totalAsk, { fixedFractionDigits: 2 })
         : '₳ 0';
-}
-
-function getGovernanceAskAmountTotals(proposals) {
-    return (Array.isArray(proposals) ? proposals : []).reduce((totals, proposal) => {
-        const lovelace = getProposalTotalAskLovelace(proposal);
-        const ada = Number.isFinite(lovelace) ? lovelace / 1_000_000 : 0;
-        const usd = getApprovedTreasuryFundingUsd(proposal);
-        const hasUsd = Number.isFinite(Number(usd)) && Number(usd) > 0;
-        return {
-            ada: totals.ada + (Number(ada) || 0),
-            usd: totals.usd + (hasUsd ? Number(usd) : 0),
-            usdCount: totals.usdCount + (hasUsd ? 1 : 0)
-        };
-    }, { ada: 0, usd: 0, usdCount: 0 });
-}
-
-function renderGovernanceAskAmountTile(elementId, proposals) {
-    const container = document.getElementById(elementId);
-    if (!container) return;
-
-    const totals = getGovernanceAskAmountTotals(proposals);
-    container.classList.add('funding-recipient-value-row');
-    container.replaceChildren();
-
-    const usd = document.createElement('span');
-    usd.textContent = totals.usdCount
-        ? formatCatalystCurrencyAmount(totals.usd, 'USD', true)
-        : totals.ada > 0
-            ? 'USD updating'
-            : '$0';
-    container.appendChild(usd);
-
-    const ada = document.createElement('span');
-    ada.className = 'funding-recipient-ada-value';
-    ada.textContent = formatAdaAmount(totals.ada, true);
-    container.appendChild(ada);
 }
 
 async function getDrepStats(groups) {
