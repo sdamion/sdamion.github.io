@@ -88,17 +88,23 @@ function updateStarchDirectoryTiles(payload) {
     const minerStatus = document.getElementById('starchMinerStatus');
     const companyCount = document.getElementById('starchCompanyCount');
     if (minerCount) {
+        minerCount.classList.remove('is-online');
+        if (minerStatus) minerStatus.classList.remove('is-offline');
+
         const registeredCount = Number(payload?.miner_count);
-        const companies = Array.isArray(payload?.companies) ? payload.companies : [];
-        const activeCount = companies.reduce((sum, company) => (
-            sum + (Number(company?.miner_count) || 0)
-        ), 0);
-        const hasMinerStatus = Number.isFinite(registeredCount) && companies.length > 0;
+        const onlineCount = Number(payload?.active_miner_count);
+        const offlineCount = Number(payload?.inactive_miner_count);
+        const activeCount = onlineCount;
+        const hasMinerStatus = Number.isFinite(registeredCount) && Number.isFinite(onlineCount);
         if (hasMinerStatus) {
-            const inactiveCount = Math.max(registeredCount - activeCount, 0);
-            minerCount.textContent = `${activeCount.toLocaleString('en-US')} Active`;
+            const inactiveCount = Number.isFinite(offlineCount)
+                ? offlineCount
+                : Math.max(registeredCount - activeCount, 0);
+            minerCount.textContent = `${activeCount.toLocaleString('en-US')} Online Miners`;
+            minerCount.classList.add('is-online');
             if (minerStatus) {
-                minerStatus.textContent = `${inactiveCount.toLocaleString('en-US')} Inactive Miners`;
+                minerStatus.textContent = `${inactiveCount.toLocaleString('en-US')} Offline Miners`;
+                minerStatus.classList.add('is-offline');
             }
         } else {
             minerCount.textContent = Number.isFinite(registeredCount)

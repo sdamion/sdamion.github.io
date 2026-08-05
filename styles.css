@@ -941,6 +941,15 @@ p {
     color: #f87171;
 }
 
+.starch-summary strong.is-online {
+    color: #34d399;
+}
+
+.starch-summary span.is-offline {
+    color: #f87171;
+    font-weight: 700;
+}
+
 .pool-summary .pool-provider-label,
 .starch-summary .pool-provider-label {
     display: inline-flex;
