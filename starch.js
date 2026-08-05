@@ -100,17 +100,27 @@ function updateStarchDirectoryTiles(payload) {
             const inactiveCount = Number.isFinite(offlineCount)
                 ? offlineCount
                 : Math.max(registeredCount - activeCount, 0);
-            minerCount.textContent = `${activeCount.toLocaleString('en-US')} Online Miners`;
-            minerCount.classList.add('is-online');
+            minerCount.textContent = registeredCount.toLocaleString('en-US');
+            minerCount.classList.remove('is-online');
             if (minerStatus) {
-                minerStatus.textContent = `${inactiveCount.toLocaleString('en-US')} Offline Miners`;
-                minerStatus.classList.add('is-offline');
+                minerStatus.textContent = '';
+                minerStatus.classList.remove('is-offline');
+                minerStatus.classList.add('starch-miner-status-lines');
+                const labelText = document.createElement('span');
+                labelText.textContent = 'Miners';
+                const offlineText = document.createElement('span');
+                offlineText.className = 'starch-miner-offline-count';
+                offlineText.textContent = `Offline ${inactiveCount.toLocaleString('en-US')}`;
+                minerStatus.append(labelText, offlineText);
             }
         } else {
             minerCount.textContent = Number.isFinite(registeredCount)
                 ? registeredCount.toLocaleString('en-US')
                 : 'N/A';
-            if (minerStatus) minerStatus.textContent = 'Miners';
+            if (minerStatus) {
+                minerStatus.classList.remove('starch-miner-status-lines');
+                minerStatus.textContent = 'Miners';
+            }
         }
     }
     if (companyCount) {

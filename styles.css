@@ -950,6 +950,22 @@ p {
     font-weight: 700;
 }
 
+.starch-summary span.starch-miner-status-lines {
+    color: var(--muted);
+}
+
+.starch-summary span.starch-miner-status-lines span {
+    color: var(--muted);
+    display: block;
+    margin-top: 0;
+}
+
+.starch-summary span.starch-miner-status-lines .starch-miner-offline-count {
+    color: #f87171;
+    font-weight: 700;
+    margin-top: 2px;
+}
+
 .pool-summary .pool-provider-label,
 .starch-summary .pool-provider-label {
     display: inline-flex;
