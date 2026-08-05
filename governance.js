@@ -4065,6 +4065,9 @@ function formatTreasuryTimestamp(value) {
 function setupDrepDirectoryCard() {
     const card = document.getElementById('gov-drep-card');
     bindGovernanceMenuTrigger(card, openDrepDirectoryOverlay);
+
+    const top10Card = document.getElementById('gov-drep-top10-card');
+    bindGovernanceMenuTrigger(top10Card, openTopDrepPowerOverlay);
 }
 
 function setupSpoDirectoryCard() {
@@ -8997,6 +9000,328 @@ function createDrepDirectoryLegendItem(group, totalPower) {
     });
 }
 
+async function openTopDrepPowerOverlay(returnFocus = document.activeElement) {
+    const panel = document.createElement('div');
+    panel.className = 'governance-drep-directory-list';
+    const loading = document.createElement('p');
+    loading.className = 'small-text';
+    loading.textContent = 'Loading top 10 DReps...';
+    panel.appendChild(loading);
+
+    createGovernanceMenuOverlay({
+        id: 'governance-drep-top10-overlay',
+        titleId: 'governance-drep-top10-title',
+        titleText: 'Top 10 DReps',
+        closeLabel: 'Close top 10 DReps',
+        closeOverlay: closeTopDrepPowerOverlay,
+        bodyNodes: [panel],
+        headerMeta: 'Loading...',
+        overlayClass: 'governance-action-detail-overlay',
+        returnFocus,
+        defaultSort: 'power-desc',
+        botContext: createWebsiteSectionBotContext('DReps', {
+            title: 'Top 10 DReps',
+            root: 'DReps',
+            summary: 'Top 10 DReps by voting power'
+        })
+    });
+
+    try {
+        const [infoPayload, directory] = await Promise.all([
+            fetchDrepInfoPayload(),
+            loadDrepDirectory()
+        ]);
+        if (!panel.isConnected) return;
+
+        const uniqueDreps = new Map();
+        unwrapDrepEntries(infoPayload).forEach(entry => {
+            const identifiers = getDrepEntryIdentifiers(entry);
+            const primaryIdentifier = identifiers[0];
+            if (!primaryIdentifier || uniqueDreps.has(primaryIdentifier)) return;
+            const name = identifiers
+                .map(identifier => directory.get(identifier) || directory.get(shortenDrepIdentifier(identifier)))
+                .find(Boolean) || extractDrepNameFromEntry(entry) || primaryIdentifier;
+            uniqueDreps.set(primaryIdentifier, {
+                id: primaryIdentifier,
+                searchIds: identifiers.join(' '),
+                name,
+                votingPower: getDrepEntryVotingPower(entry),
+                active: entry?.active === true
+            });
+        });
+
+        const topDreps = Array.from(uniqueDreps.values())
+            .sort((left, right) =>
+                (Number(right.votingPower) || 0) - (Number(left.votingPower) || 0)
+                || left.name.localeCompare(right.name)
+            )
+            .slice(0, 10);
+        const top10Power = topDreps.reduce((sum, drep) => sum + (Number(drep.votingPower) || 0), 0);
+        const detailPayloads = await Promise.all(topDreps.map(drep => loadDrepDetail(drep).catch(error => ({ error }))));
+        renderTopDrepVoteMatrix(panel, topDreps, detailPayloads);
+        updateGovernanceMenuHeaderMeta(
+            'governance-drep-top10-overlay',
+            `${formatTileAdaFromLovelace(top10Power, { fixedFractionDigits: 2 })} voting power`,
+            panel
+        );
+        updateGovernanceOverlayBotContext(
+            'governance-drep-top10-overlay',
+            createWebsiteSectionBotContext('DReps', {
+                title: 'Top 10 DReps',
+                count: topDreps.length,
+                amount_ada: top10Power / 1_000_000,
+                root: 'DReps',
+                summary: `Top 10 DReps represent ${formatTileAdaFromLovelace(top10Power, { fixedFractionDigits: 2 })} voting power`
+            }),
+            panel
+        );
+        renderDrepSummaryStats({
+            count: uniqueDreps.size,
+            totalPower: Array.from(uniqueDreps.values()).reduce((sum, drep) => sum + (Number(drep.votingPower) || 0), 0),
+            activeCount: Array.from(uniqueDreps.values()).filter(drep => drep.active).length,
+            inactiveCount: uniqueDreps.size - Array.from(uniqueDreps.values()).filter(drep => drep.active).length,
+            top10Power
+        });
+    } catch (error) {
+        console.error('Top 10 DReps could not be loaded', error);
+        if (!panel.isConnected) return;
+        panel.replaceChildren();
+        const message = document.createElement('p');
+        message.className = 'small-text';
+        message.textContent = 'Top 10 DRep data could not be loaded.';
+        panel.appendChild(message);
+    }
+}
+
+function closeTopDrepPowerOverlay() {
+    removeGovernanceMenuOverlay('governance-drep-top10-overlay');
+}
+
+function renderTopDrepVoteMatrix(container, dreps, detailPayloads) {
+    container.textContent = '';
+    const drepDetails = (Array.isArray(dreps) ? dreps : []).map((drep, index) => {
+        const payload = detailPayloads?.[index] || {};
+        const refreshed = payload?.error ? drep : mergeDrepDetail(drep, payload);
+        const voteStats = payload?.vote_stats || {};
+        const actionsById = new Map((Array.isArray(voteStats.actions) ? voteStats.actions : [])
+            .map(action => [String(action?.proposal_id || ''), action]));
+        return {
+            ...refreshed,
+            voteStats,
+            actionsById,
+            registrationTime: Number(voteStats.registration_time),
+            eligibility: voteStats?.eligibility && typeof voteStats.eligibility === 'object'
+                ? voteStats.eligibility
+                : null
+        };
+    });
+
+    if (!drepDetails.length) {
+        const message = document.createElement('p');
+        message.className = 'small-text';
+        message.textContent = 'No top DRep data available.';
+        container.appendChild(message);
+        return;
+    }
+
+    const intro = document.createElement('div');
+    intro.className = 'governance-top-drep-vote-intro';
+    intro.textContent = 'Each card shows how the top 10 DReps voted. The same-vote line groups DReps by vote choice.';
+    container.appendChild(intro);
+
+    const proposals = getGovernanceActionsForCommitteeOverview()
+        .filter(proposal => !isGovernanceActionExcludedFromDrepStats(proposal))
+        .sort((left, right) => (Number(right.block_time) || 0) - (Number(left.block_time) || 0));
+
+    const correlationChart = createTopDrepVoteCorrelationChart(drepDetails, proposals);
+    if (correlationChart) container.appendChild(correlationChart);
+
+    proposals.forEach(proposal => {
+        const rows = drepDetails.map(drep => {
+            const applicable = isGovernanceActionApplicableToDrep(
+                proposal,
+                drep.registrationTime,
+                drep.eligibility
+            );
+            const action = drep.actionsById.get(String(proposal.proposal_id || '')) || null;
+            const isClosed = isExpiredGovernanceActionForCommitteeStats(proposal);
+            const choice = action
+                ? formatVoteChoice(action?.vote || action?.vote_bucket)
+                : applicable
+                    ? isClosed ? 'Not voted' : 'Not voted yet'
+                    : 'Not applicable';
+            return { drep, choice };
+        });
+
+        const card = document.createElement('div');
+        card.className = 'governance-card governance-menu-card governance-top-drep-vote-card';
+        card.dataset.searchText = [
+            getProposalTitle(proposal),
+            proposal?.proposal_id,
+            ...rows.flatMap(row => [row.drep?.name, row.choice])
+        ].filter(Boolean).join(' ');
+        card.dataset.sortName = getProposalTitle(proposal);
+        card.dataset.sortDate = String(Number(proposal?.block_time) || 0);
+
+        const header = document.createElement('button');
+        header.type = 'button';
+        header.className = 'governance-card-open governance-top-drep-vote-action';
+        header.addEventListener('click', event => openGovernanceOverlay(proposal, { returnFocus: event.currentTarget }));
+        window.TDSPRuntime?.appendUniversalTileContent?.(header, {
+            title: getProposalTitle(proposal),
+            titleClassName: 'governance-title',
+            primaryText: formatProposalType(getEffectiveProposalType(proposal)),
+            detailItems: [getProposalMeta(proposal)]
+        });
+        card.appendChild(header);
+
+        const sameLine = document.createElement('div');
+        sameLine.className = 'governance-top-drep-same-line';
+        sameLine.textContent = formatTopDrepSameVoteLine(rows);
+        card.appendChild(sameLine);
+
+        const grid = document.createElement('div');
+        grid.className = 'governance-top-drep-vote-grid';
+        rows.forEach(row => grid.appendChild(createTopDrepVoteChip(row.drep, row.choice)));
+        card.appendChild(grid);
+        container.appendChild(card);
+    });
+
+    if (proposals.length) installOverlaySearch(container.closest('.overlay-dialog-body'), {
+        defaultSort: 'newest',
+        searchPlaceholder: 'Search action, DRep name or vote choice'
+    });
+}
+
+
+function createTopDrepVoteCorrelationChart(drepDetails, proposals) {
+    const stats = calculateTopDrepVoteCorrelations(drepDetails, proposals);
+    if (!stats.length) return null;
+
+    const section = document.createElement('section');
+    section.className = 'governance-vote-chart governance-chart-panel governance-top-drep-correlation-chart';
+
+    const title = document.createElement('strong');
+    title.textContent = 'Vote Sync';
+
+    const list = document.createElement('div');
+    list.className = 'governance-top-drep-correlation-list';
+
+    stats.forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'governance-top-drep-correlation-row';
+        row.dataset.searchText = [item.name, item.bestMatchName].filter(Boolean).join(' ');
+
+        const label = document.createElement('div');
+        label.className = 'governance-top-drep-correlation-label';
+        const name = document.createElement('strong');
+        name.textContent = item.name;
+        const detail = document.createElement('span');
+        detail.textContent = item.bestMatchName
+            ? 'Most in sync with ' + item.bestMatchName + ' - ' + formatPercentage(item.bestMatchPercent) + ' over ' + item.bestMatchComparable + ' shared votes'
+            : 'No shared explicit votes found';
+        label.append(name, detail);
+
+        const meter = document.createElement('div');
+        meter.className = 'governance-top-drep-correlation-meter';
+        const fill = document.createElement('span');
+        fill.style.width = Math.max(0, Math.min(100, item.averagePercent)) + '%';
+        meter.appendChild(fill);
+
+        const value = document.createElement('strong');
+        value.className = 'governance-top-drep-correlation-value';
+        value.textContent = formatPercentage(item.averagePercent);
+
+        row.append(label, meter, value);
+        list.appendChild(row);
+    });
+
+    section.append(title, list);
+    return section;
+}
+
+function calculateTopDrepVoteCorrelations(drepDetails, proposals) {
+    const explicitChoices = new Set(['Yes', 'No', 'Abstain']);
+    const votesByDrep = (Array.isArray(drepDetails) ? drepDetails : []).map(drep => {
+        const votes = new Map();
+        (Array.isArray(proposals) ? proposals : []).forEach(proposal => {
+            const action = drep.actionsById?.get(String(proposal?.proposal_id || '')) || null;
+            const choice = action ? formatVoteChoice(action?.vote || action?.vote_bucket) : '';
+            if (explicitChoices.has(choice)) votes.set(String(proposal?.proposal_id || ''), choice);
+        });
+        return { drep, votes };
+    });
+
+    return votesByDrep.map((current, index) => {
+        const comparisons = votesByDrep
+            .filter((_, otherIndex) => otherIndex !== index)
+            .map(other => {
+                let same = 0;
+                let comparable = 0;
+                current.votes.forEach((choice, proposalId) => {
+                    const otherChoice = other.votes.get(proposalId);
+                    if (!otherChoice) return;
+                    comparable += 1;
+                    if (otherChoice === choice) same += 1;
+                });
+                return {
+                    name: other.drep?.name || 'DRep',
+                    same,
+                    comparable,
+                    percent: comparable > 0 ? (same / comparable) * 100 : 0
+                };
+            })
+            .filter(item => item.comparable > 0)
+            .sort((left, right) => right.percent - left.percent || right.comparable - left.comparable);
+        const comparableTotal = comparisons.reduce((sum, item) => sum + item.comparable, 0);
+        const sameTotal = comparisons.reduce((sum, item) => sum + item.same, 0);
+        const best = comparisons[0] || null;
+        return {
+            name: current.drep?.name || 'DRep',
+            averagePercent: comparableTotal > 0 ? (sameTotal / comparableTotal) * 100 : 0,
+            bestMatchName: best?.name || '',
+            bestMatchPercent: best?.percent || 0,
+            bestMatchComparable: best?.comparable || 0
+        };
+    }).sort((left, right) => right.averagePercent - left.averagePercent || left.name.localeCompare(right.name));
+}
+
+function formatTopDrepSameVoteLine(rows) {
+    const counts = rows.reduce((totals, row) => {
+        const key = row.choice || 'Unknown';
+        totals.set(key, (totals.get(key) || 0) + 1);
+        return totals;
+    }, new Map());
+    const order = ['Yes', 'No', 'Abstain', 'Not voted', 'Not voted yet', 'Not applicable', 'Unknown'];
+    const parts = order
+        .filter(key => counts.has(key))
+        .map(key => `${key}: ${counts.get(key)}`);
+    return parts.length ? parts.join(' • ') : 'No vote data';
+}
+
+function createTopDrepVoteChip(drep, choice) {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = `governance-top-drep-vote-chip ${getTopDrepVoteChoiceClass(choice)}`;
+    chip.addEventListener('click', event => openDrepActionHistoryOverlay(drep, event.currentTarget));
+
+    const name = document.createElement('strong');
+    name.textContent = drep?.name || 'DRep';
+    const vote = document.createElement('span');
+    vote.textContent = choice || 'Unknown';
+    chip.append(name, vote);
+    return chip;
+}
+
+function getTopDrepVoteChoiceClass(choice) {
+    if (choice === 'Yes') return 'is-yes';
+    if (choice === 'No' || choice === 'Not voted') return 'is-no';
+    if (choice === 'Abstain') return 'is-abstain';
+    if (choice === 'Not voted yet') return 'is-pending';
+    if (choice === 'Not applicable') return 'is-muted';
+    return 'is-unknown';
+}
+
 function openDrepStatusListOverlay(titleText, dreps, returnFocus) {
     const panel = document.createElement('div');
     panel.className = 'governance-drep-directory-list';
@@ -11521,13 +11846,37 @@ function getDashboardDrepStats(payload) {
     const activeCount = Number(summary.active_count ?? summary.activeCount);
     const inactiveCount = Number(summary.inactive_count ?? summary.inactiveCount);
     const totalPower = Number(summary.total_voting_power ?? summary.totalVotingPower ?? summary.total_power);
+    const top10Power = Number(summary.top10_voting_power ?? summary.top10VotingPower ?? summary.top_10_voting_power);
     if (![count, activeCount, inactiveCount, totalPower].every(Number.isFinite)) return null;
-    return { count, activeCount, inactiveCount, totalPower };
+    return {
+        count,
+        activeCount,
+        inactiveCount,
+        totalPower,
+        top10Power: Number.isFinite(top10Power) ? top10Power : null
+    };
 }
 
 function renderDrepSummaryStats(stats) {
     window.TDSPRuntime.setText('gov-drep-count', stats.count.toLocaleString('en-US'));
     window.TDSPRuntime.setText('gov-drep-total-power', `Voting Power ${formatTileAdaFromLovelace(stats.totalPower, { fixedFractionDigits: 2 })}`);
+    renderDrepTop10PowerTile(stats);
+    window.TDSPRuntime.setText('gov-drep-top10-count', 'Voting Power');
+}
+
+function renderDrepTop10PowerTile(stats) {
+    const element = document.getElementById('gov-drep-top10-power');
+    if (!element || !Number.isFinite(Number(stats?.top10Power))) return;
+
+    element.replaceChildren(document.createTextNode(formatTileAdaFromLovelace(stats.top10Power, { fixedFractionDigits: 2 })));
+    const totalPower = Number(stats?.totalPower);
+    const top10Power = Number(stats.top10Power);
+    if (!Number.isFinite(totalPower) || totalPower <= 0) return;
+
+    const percentage = document.createElement('span');
+    percentage.className = 'governance-summary-inline-percent';
+    percentage.textContent = formatPercentage((top10Power / totalPower) * 100);
+    element.appendChild(percentage);
 }
 
 function getConstitutionalCommitteeMemberCount(payload, groups = null) {
@@ -12027,7 +12376,8 @@ async function getDrepStats(groups) {
         count: baseStats.count,
         totalPower: baseStats.totalPower,
         activeCount: baseStats.activeCount,
-        inactiveCount: baseStats.inactiveCount
+        inactiveCount: baseStats.inactiveCount,
+        top10Power: baseStats.top10Power
     };
 }
 
@@ -12054,11 +12404,18 @@ async function fetchDrepStats() {
         if (value.active) activeCount += 1;
     });
 
+    const top10Power = Array.from(uniqueDreps.values())
+        .map(value => Number(value.votingPower) || 0)
+        .sort((left, right) => right - left)
+        .slice(0, 10)
+        .reduce((sum, votingPower) => sum + votingPower, 0);
+
     return {
         count: uniqueDreps.size,
         totalPower,
         activeCount,
-        inactiveCount: uniqueDreps.size - activeCount
+        inactiveCount: uniqueDreps.size - activeCount,
+        top10Power
     };
 }
 
