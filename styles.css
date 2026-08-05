@@ -4371,7 +4371,7 @@ html[data-theme="dark"] input {
     padding: 6px;
     display: grid;
     gap: 10px;
-    grid-template-columns: minmax(0, 1.4fr) minmax(90px, 1fr) auto;
+    grid-template-columns: minmax(0, 1.4fr) minmax(90px, 1fr) 72px;
 }
 
 .governance-top-drep-correlation-label {
@@ -4415,6 +4415,9 @@ html[data-theme="dark"] input {
 .governance-top-drep-correlation-value {
     color: var(--accent-strong);
     font-size: 0.84rem;
+    font-variant-numeric: tabular-nums;
+    justify-self: end;
+    text-align: right;
     white-space: nowrap;
 }
 
