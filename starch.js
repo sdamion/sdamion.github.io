@@ -141,12 +141,7 @@ function bindStarchDirectoryTile(cardId, type, title) {
     const card = document.getElementById(cardId);
     if (!card) return;
     const open = () => openStarchDirectoryOverlay(type, title, card);
-    card.addEventListener('click', open);
-    card.addEventListener('keydown', event => {
-        if (event.key !== 'Enter' && event.key !== ' ') return;
-        event.preventDefault();
-        open();
-    });
+    window.TDSPRuntime?.bindActivation?.(card, open);
 }
 
 function openStarchDirectoryOverlay(type, title, returnFocus) {
@@ -233,12 +228,7 @@ function createStarchDirectoryCard(record, type) {
         const open = () => {
             openExternalSiteWarning(`https://starch.one/miner/${encodeURIComponent(id)}`, row);
         };
-        row.addEventListener('click', open);
-        row.addEventListener('keydown', event => {
-            if (event.key !== 'Enter' && event.key !== ' ') return;
-            event.preventDefault();
-            open();
-        });
+        window.TDSPRuntime?.bindActivation?.(row, open);
     }
 
     return row;
@@ -277,12 +267,7 @@ function createStarchCompanyDirectoryCard(record, id) {
     appendStarchDirectoryIdLine(row, id, 'Company ID');
 
     const open = () => openStarchCompanyOverlay(record, row);
-    row.addEventListener('click', open);
-    row.addEventListener('keydown', event => {
-        if (event.key !== 'Enter' && event.key !== ' ') return;
-        event.preventDefault();
-        open();
-    });
+    window.TDSPRuntime?.bindActivation?.(row, open);
     window.TDSPRuntime?.bindDetailPreload?.(
         row,
         `starch:${id.toUpperCase()}`,

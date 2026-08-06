@@ -123,6 +123,16 @@
         return element?.closest?.(selector) || null;
     }
 
+    function bindActivation(element, handler) {
+        if (!(element instanceof HTMLElement) || typeof handler !== 'function') return;
+        element.addEventListener('click', event => handler(event));
+        element.addEventListener('keydown', event => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault();
+            handler(event);
+        });
+    }
+
     function bindIntentLoad(selectors, loader, options = {}) {
         const selectorList = normalizeSelectorList(selectors);
         if (!selectorList.length || typeof loader !== 'function') return;
@@ -253,6 +263,7 @@
         loadScript,
         bindDetailPreload,
         closestTarget,
+        bindActivation,
         bindIntentLoad,
         bindViewportLoad,
         scheduleIdle,
