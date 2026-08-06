@@ -1,5 +1,5 @@
 (function () {
-    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260806-small-text-helper';
+    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260806-shorten-middle';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
         '#drep',

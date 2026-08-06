@@ -278,6 +278,15 @@
         return String(value || '').replace(/\n{3,}/g, '\n\n').trim();
     }
 
+    function shortenMiddle(value, options = {}) {
+        const text = String(value || '').trim();
+        const front = Number.isInteger(options.front) ? options.front : 20;
+        const back = Number.isInteger(options.back) ? options.back : 10;
+        const minLength = Number.isInteger(options.minLength) ? options.minLength : front + back + 4;
+        if (text.length <= minLength) return text;
+        return `${text.slice(0, front)}...${text.slice(-back)}`;
+    }
+
     function createSmallText(text, options = {}) {
         const element = document.createElement(options.tagName || 'p');
         element.className = options.className || 'small-text';
@@ -353,6 +362,7 @@
         copyText,
         bindCopyButton,
         createSmallText,
+        shortenMiddle,
         appendUniversalTileContent
     });
 }());

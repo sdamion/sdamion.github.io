@@ -4111,9 +4111,7 @@ function createTreasuryWithdrawalCard(withdrawal) {
 }
 
 function shortenGovernanceAddress(address) {
-    const value = String(address || '').trim();
-    if (value.length <= 34) return value;
-    return `${value.slice(0, 20)}...${value.slice(-10)}`;
+    return window.TDSPRuntime.shortenMiddle(address);
 }
 
 function getTreasuryLovelace(payload) {
@@ -4398,9 +4396,7 @@ function formatDrepDelegatorAda(lovelace) {
 }
 
 function shortenDrepStakeAddress(address) {
-    const text = String(address || '');
-    if (text.length <= 34) return text;
-    return `${text.slice(0, 20)}...${text.slice(-10)}`;
+    return window.TDSPRuntime.shortenMiddle(address);
 }
 
 function setupSpoDirectoryCard() {

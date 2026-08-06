@@ -2644,8 +2644,7 @@ function formatDelegatorAda(lovelace) {
 }
 
 function shortenStakeAddress(address) {
-    if (address.length <= 34) return address;
-    return `${address.slice(0, 20)}...${address.slice(-10)}`;
+    return window.TDSPRuntime.shortenMiddle(address);
 }
 
 function initPoolCopyButtons() {
