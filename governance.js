@@ -4374,11 +4374,7 @@ function createTdspDrepDelegatorRow(delegator, index) {
 }
 
 function getDrepDelegatorAmount(delegator) {
-    try {
-        return BigInt(String(delegator?.amount_lovelace ?? delegator?.amount ?? delegator?.lovelace ?? '0'));
-    } catch {
-        return 0n;
-    }
+    return window.TDSPRuntime.getLovelaceAmount(delegator);
 }
 
 function compareBigIntDescending(left, right) {

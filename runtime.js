@@ -224,6 +224,11 @@
         }).format(Number(numericValue))}`;
     }
 
+    function getLovelaceAmount(record, keys = ['amount_lovelace', 'amount', 'lovelace']) {
+        const source = keys.map(key => record?.[key]).find(value => value !== undefined && value !== null && value !== '');
+        return parseLovelaceBigInt(source) ?? 0n;
+    }
+
     function formatAdaFromLovelace(value, options = {}) {
         const number = Number(value);
         if (!Number.isFinite(number)) return options.fallback || 'N/A';
@@ -379,6 +384,7 @@
         setBinaryStatusClasses,
         formatInteger,
         formatLovelaceAmount,
+        getLovelaceAmount,
         formatAdaFromLovelace,
         formatPercentageValue,
         setText,

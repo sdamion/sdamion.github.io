@@ -2527,11 +2527,7 @@ function createMithrilSignersList() {
 }
 
 function getMithrilSignerStake(signer) {
-    try {
-        return BigInt(String(signer?.stake_lovelace ?? '0'));
-    } catch (error) {
-        return 0n;
-    }
+    return window.TDSPRuntime.getLovelaceAmount(signer, ['stake_lovelace']);
 }
 
 function createPoolDelegatorsList() {
@@ -2626,11 +2622,7 @@ function createPoolOverlayRow({ title = '', titleClassName = '', details = [] })
 }
 
 function getDelegatorAmount(delegator) {
-    try {
-        return BigInt(String(delegator?.amount_lovelace ?? delegator?.amount ?? '0'));
-    } catch (error) {
-        return 0n;
-    }
+    return window.TDSPRuntime.getLovelaceAmount(delegator, ['amount_lovelace', 'amount']);
 }
 
 function formatDelegatorAda(lovelace) {
