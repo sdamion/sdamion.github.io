@@ -22,9 +22,7 @@
     function initStakeLoader() {
         window.TDSPStake = Object.freeze({ load: loadStakeScript });
 
-        document.addEventListener('pointerdown', event => {
-            if (event.target.closest(STAKE_TRIGGER_SELECTOR)) loadStakeScript();
-        }, { passive: true });
+        window.TDSPRuntime.bindIntentLoad(STAKE_TRIGGER_SELECTOR, loadStakeScript, { events: ['pointerdown'] });
 
         document.addEventListener('click', event => {
             const trigger = event.target.closest(STAKE_TRIGGER_SELECTOR);

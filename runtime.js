@@ -113,6 +113,41 @@
         preloadObserver?.observe(element);
     }
 
+    function normalizeSelectorList(selectors) {
+        return Array.isArray(selectors) ? selectors.filter(Boolean) : [selectors].filter(Boolean);
+    }
+
+    function bindIntentLoad(selectors, loader, options = {}) {
+        const selectorList = normalizeSelectorList(selectors);
+        if (!selectorList.length || typeof loader !== 'function') return;
+        const selector = selectorList.join(',');
+        const events = Array.isArray(options.events) && options.events.length ? options.events : ['pointerdown', 'focusin'];
+
+        events.forEach(eventName => {
+            document.addEventListener(eventName, event => {
+                if (event.target.closest(selector)) loader();
+            }, eventName === 'focusin' ? undefined : { passive: true });
+        });
+    }
+
+    function bindViewportLoad(selectors, loader, options = {}) {
+        const selectorList = normalizeSelectorList(selectors);
+        if (!selectorList.length || typeof loader !== 'function' || !('IntersectionObserver' in window)) return;
+
+        const targets = selectorList
+            .map(selector => document.querySelector(selector))
+            .filter(Boolean);
+        if (!targets.length) return;
+
+        const observer = new IntersectionObserver(entries => {
+            if (!entries.some(entry => entry.isIntersecting)) return;
+            observer.disconnect();
+            loader();
+        }, { rootMargin: options.rootMargin || '400px 0px' });
+
+        targets.forEach(target => observer.observe(target));
+    }
+
     function onReady(callback) {
         if (typeof callback !== 'function') return;
         if (document.readyState === 'loading') {
@@ -201,6 +236,8 @@
         loadDetail,
         loadScript,
         bindDetailPreload,
+        bindIntentLoad,
+        bindViewportLoad,
         onReady,
         setText,
         copyText,

@@ -35,9 +35,7 @@
     }
 
     function installInteractionTriggers() {
-        document.addEventListener('pointerdown', event => {
-            if (event.target.closest(STARCH_TRIGGER_SELECTORS.join(','))) loadStarchScript();
-        }, { passive: true });
+        window.TDSPRuntime.bindIntentLoad(STARCH_TRIGGER_SELECTORS, loadStarchScript, { events: ['pointerdown'] });
 
         document.addEventListener('click', event => {
             if (!activateStarchTarget(event.target)) return;
@@ -53,26 +51,10 @@
         }, true);
     }
 
-    function installViewportTrigger() {
-        if (!('IntersectionObserver' in window)) return;
-        const targets = STARCH_TARGET_SELECTORS
-            .map(selector => document.querySelector(selector))
-            .filter(Boolean);
-        if (!targets.length) return;
-
-        const observer = new IntersectionObserver(entries => {
-            if (!entries.some(entry => entry.isIntersecting)) return;
-            observer.disconnect();
-            loadStarchScript();
-        }, { rootMargin: '500px 0px' });
-
-        targets.forEach(target => observer.observe(target));
-    }
-
     function initStarchLoader() {
         window.TDSPStarch = Object.freeze({ load: loadStarchScript });
         installInteractionTriggers();
-        installViewportTrigger();
+        window.TDSPRuntime.bindViewportLoad(STARCH_TARGET_SELECTORS, loadStarchScript, { rootMargin: '500px 0px' });
     }
 
     window.TDSPRuntime.onReady(initStarchLoader);

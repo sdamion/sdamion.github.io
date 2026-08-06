@@ -28,40 +28,9 @@
         window.setTimeout(loadGovernanceScript, 6000);
     }
 
-    function installInteractionTriggers() {
-        document.addEventListener('pointerdown', event => {
-            if (event.target.closest(GOVERNANCE_TRIGGER_SELECTORS.join(','))) {
-                loadGovernanceScript();
-            }
-        }, { passive: true });
-
-        document.addEventListener('focusin', event => {
-            if (event.target.closest(GOVERNANCE_TRIGGER_SELECTORS.join(','))) {
-                loadGovernanceScript();
-            }
-        });
-    }
-
-    function installViewportTrigger() {
-        if (!('IntersectionObserver' in window)) return;
-
-        const targets = GOVERNANCE_TARGET_SELECTORS
-            .map(selector => document.querySelector(selector))
-            .filter(Boolean);
-        if (!targets.length) return;
-
-        const observer = new IntersectionObserver(entries => {
-            if (!entries.some(entry => entry.isIntersecting)) return;
-            observer.disconnect();
-            loadGovernanceScript();
-        }, { rootMargin: '400px 0px' });
-
-        targets.forEach(target => observer.observe(target));
-    }
-
     function initGovernanceLoader() {
-        installInteractionTriggers();
-        installViewportTrigger();
+        window.TDSPRuntime.bindIntentLoad(GOVERNANCE_TRIGGER_SELECTORS, loadGovernanceScript);
+        window.TDSPRuntime.bindViewportLoad(GOVERNANCE_TARGET_SELECTORS, loadGovernanceScript, { rootMargin: '400px 0px' });
         scheduleIdleLoad();
     }
 
