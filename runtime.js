@@ -278,6 +278,13 @@
         return String(value || '').replace(/\n{3,}/g, '\n\n').trim();
     }
 
+    function createSmallText(text, options = {}) {
+        const element = document.createElement(options.tagName || 'p');
+        element.className = options.className || 'small-text';
+        element.textContent = String(text || '');
+        return element;
+    }
+
     function appendUniversalTileContent(container, options = {}) {
         if (!(container instanceof HTMLElement)) return;
 
@@ -345,6 +352,7 @@
         setText,
         copyText,
         bindCopyButton,
+        createSmallText,
         appendUniversalTileContent
     });
 }());

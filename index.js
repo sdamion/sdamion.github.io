@@ -807,9 +807,7 @@ async function fetchCryptoNews() {
         document.fonts?.ready.then(updateCryptoNewsTickerSpeed).catch(() => {});
     } catch (error) {
         console.error('Crypto news could not be loaded', error);
-        const message = document.createElement('span');
-        message.className = 'crypto-news-message';
-        message.textContent = 'Cardano news temporarily unavailable';
+        const message = window.TDSPRuntime.createSmallText('Cardano news temporarily unavailable', { tagName: 'span', className: 'crypto-news-message' });
         track.replaceChildren(message);
         track.classList.remove('is-scrolling');
     }
@@ -1265,9 +1263,7 @@ async function fetchCardanoEvents() {
         container.replaceChildren(summary);
     } catch (error) {
         console.error('Cardano events could not be loaded', error);
-        const message = document.createElement('p');
-        message.className = 'small-text';
-        message.textContent = 'Upcoming Cardano events are temporarily unavailable.';
+        const message = window.TDSPRuntime.createSmallText('Upcoming Cardano events are temporarily unavailable.');
         container.replaceChildren(message);
     }
 }
@@ -1764,9 +1760,7 @@ function renderPoolStatus(pool) {
 
     relaysEl.textContent = '';
     if (!relays.length) {
-        const message = document.createElement('p');
-        message.className = 'small-text';
-        message.textContent = 'No relay data available.';
+        const message = window.TDSPRuntime.createSmallText('No relay data available.');
         relaysEl.appendChild(message);
         return;
     }
@@ -2490,9 +2484,7 @@ function createMithrilSignersList() {
     list.className = 'pool-delegator-list';
 
     if (!mithrilSigners.length) {
-        const message = document.createElement('p');
-        message.className = 'small-text';
-        message.textContent = 'Active Mithril signer data is not available yet.';
+        const message = window.TDSPRuntime.createSmallText('Active Mithril signer data is not available yet.');
         list.appendChild(message);
         return list;
     }
@@ -2547,9 +2539,7 @@ function createPoolDelegatorsList() {
     list.className = 'pool-delegator-list';
 
     if (!poolDelegators.length) {
-        const message = document.createElement('p');
-        message.className = 'small-text';
-        message.textContent = 'Delegator details are not available yet.';
+        const message = window.TDSPRuntime.createSmallText('Delegator details are not available yet.');
         list.appendChild(message);
         return list;
     }
