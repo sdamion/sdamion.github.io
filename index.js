@@ -1163,8 +1163,23 @@ function closeCardanoEventOverlay(restoreFocus = true) {
 
 const periodicRefreshPromises = new Map();
 
+function isRefreshTargetNearViewport(selector) {
+    if (!selector) return true;
+    const target = document.querySelector(selector);
+    if (!target) return true;
+    const margin = Math.max(window.innerHeight * 0.75, 600);
+    const rect = target.getBoundingClientRect();
+    return rect.top <= window.innerHeight + margin && rect.bottom >= -margin;
+}
+
+function shouldRunRefreshTask(options = {}) {
+    if (document.hidden && options.force !== true && options.runWhenHidden !== true) return false;
+    if (options.force === true) return true;
+    return isRefreshTargetNearViewport(options.selector);
+}
+
 function runPeriodicRefresh(key, callback, options = {}) {
-    if (document.hidden && options.force !== true && options.runWhenHidden !== true) return null;
+    if (!shouldRunRefreshTask(options)) return null;
     if (periodicRefreshPromises.has(key)) return periodicRefreshPromises.get(key);
 
     const promise = Promise.resolve()
@@ -1186,7 +1201,40 @@ function setPeriodicRefresh(key, callback, intervalMs, options = {}) {
 
 function refreshVisibleTasks(tasks) {
     tasks.forEach(task => {
-        runPeriodicRefresh(task.key, task.callback, { ...task.options, force: true });
+        runPeriodicRefresh(task.key, task.callback, task.options || {});
+    });
+}
+
+function installRefreshTaskObservers(tasks) {
+    if (!('IntersectionObserver' in window)) {
+        refreshVisibleTasks(tasks.map(task => ({ ...task, options: { ...task.options, force: true } })));
+        return;
+    }
+
+    const observed = new Map();
+    const observer = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+            if (!entry.isIntersecting) return;
+            const selector = entry.target.dataset.refreshSelector;
+            const matchingTasks = observed.get(selector) || [];
+            matchingTasks.forEach(task => runPeriodicRefresh(task.key, task.callback, {
+                ...task.options,
+                force: true
+            }));
+        });
+    }, { rootMargin: '700px 0px' });
+
+    tasks.forEach(task => {
+        const selector = task.options?.selector;
+        if (!selector) return;
+        if (!observed.has(selector)) {
+            const target = document.querySelector(selector);
+            if (!target) return;
+            target.dataset.refreshSelector = selector;
+            observed.set(selector, []);
+            observer.observe(target);
+        }
+        observed.get(selector).push(task);
     });
 }
 
@@ -1251,14 +1299,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const refreshTasks = [
         { key: 'prices', callback: () => fetchPrices({ force: true }), interval: 30000 },
         { key: 'news', callback: fetchCryptoNews, interval: 300000 },
-        { key: 'events', callback: fetchCardanoEvents, interval: 900000 },
-        { key: 'pool', callback: fetchPoolStatus, interval: 300000 },
-        { key: 'mithril', callback: fetchMithrilStatus, interval: 300000 },
-        { key: 'icebreaker', callback: fetchIcebreakerStatus, interval: 300000 },
-        { key: 'starch-pools', callback: fetchStarchPoolStatus, interval: 300000 },
-        { key: 'leader-schedule', callback: fetchLeaderSchedule, interval: 300000 },
+        { key: 'events', callback: fetchCardanoEvents, interval: 900000, options: { selector: '#calendar' } },
+        { key: 'pool', callback: fetchPoolStatus, interval: 300000, options: { selector: '#pool' } },
+        { key: 'mithril', callback: fetchMithrilStatus, interval: 300000, options: { selector: '#pool' } },
+        { key: 'icebreaker', callback: fetchIcebreakerStatus, interval: 300000, options: { selector: '#pool' } },
+        { key: 'starch-pools', callback: fetchStarchPoolStatus, interval: 300000, options: { selector: '#pool' } },
+        { key: 'leader-schedule', callback: fetchLeaderSchedule, interval: 300000, options: { selector: '#pool' } },
         { key: 'database-status', callback: fetchDatabaseStatus, interval: 300000 }
     ];
+    installRefreshTaskObservers(refreshTasks);
     refreshVisibleTasks(refreshTasks);
     refreshTasks.forEach(task => {
         setPeriodicRefresh(task.key, task.callback, task.interval, task.options);
