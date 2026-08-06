@@ -1,30 +1,12 @@
 (function () {
     const STAKE_SCRIPT_SRC = 'stake.js?v=20260806-lazy-stake';
     const STAKE_TRIGGER_SELECTOR = '[data-stake-open]';
-    let stakeScriptPromise = null;
-
     function loadStakeScript() {
-        if (window.TDSPStakeReady === true) return Promise.resolve();
-        if (stakeScriptPromise) return stakeScriptPromise;
-
-        stakeScriptPromise = new Promise((resolve, reject) => {
-            const existing = document.querySelector('script[data-stake-main]');
-            if (existing) {
-                existing.addEventListener('load', resolve, { once: true });
-                existing.addEventListener('error', reject, { once: true });
-                return;
-            }
-
-            const script = document.createElement('script');
-            script.src = STAKE_SCRIPT_SRC;
-            script.defer = true;
-            script.dataset.stakeMain = 'true';
-            script.addEventListener('load', resolve, { once: true });
-            script.addEventListener('error', reject, { once: true });
-            document.head.appendChild(script);
+        return window.TDSPRuntime.loadScript(STAKE_SCRIPT_SRC, {
+            datasetName: 'stakeMain',
+            selector: 'script[data-stake-main]',
+            ready: () => (window.TDSPStakeReady === true ? true : null)
         });
-
-        return stakeScriptPromise;
     }
 
     function openStakeFromTrigger(trigger) {

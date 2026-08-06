@@ -10,30 +10,12 @@
         '#starch-miners-card',
         '#pool-starch-status-card'
     ];
-    let starchScriptPromise = null;
-
     function loadStarchScript() {
-        if (window.TDSPStarchReady === true) return Promise.resolve();
-        if (starchScriptPromise) return starchScriptPromise;
-
-        starchScriptPromise = new Promise((resolve, reject) => {
-            const existing = document.querySelector('script[data-starch-main]');
-            if (existing) {
-                existing.addEventListener('load', resolve, { once: true });
-                existing.addEventListener('error', reject, { once: true });
-                return;
-            }
-
-            const script = document.createElement('script');
-            script.src = STARCH_SCRIPT_SRC;
-            script.defer = true;
-            script.dataset.starchMain = 'true';
-            script.addEventListener('load', resolve, { once: true });
-            script.addEventListener('error', reject, { once: true });
-            document.head.appendChild(script);
+        return window.TDSPRuntime.loadScript(STARCH_SCRIPT_SRC, {
+            datasetName: 'starchMain',
+            selector: 'script[data-starch-main]',
+            ready: () => (window.TDSPStarchReady === true ? true : null)
         });
-
-        return starchScriptPromise;
     }
 
     function activateStarchTarget(target) {

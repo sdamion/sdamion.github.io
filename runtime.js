@@ -53,6 +53,54 @@
         return promise;
     }
 
+    function loadScript(src, options = {}) {
+        const scriptSrc = String(src || '').trim();
+        if (!scriptSrc) {
+            return Promise.reject(new Error('A script source is required'));
+        }
+
+        if (typeof options.ready === 'function') {
+            const readyValue = options.ready();
+            if (readyValue) return Promise.resolve(readyValue);
+        }
+
+        const cacheKey = `script:${scriptSrc}`;
+        const current = detailCache.get(cacheKey);
+        if (current) return current.promise;
+
+        const selector = options.selector || (options.datasetKey ? `script[data-${options.datasetKey}]` : `script[src=\"${scriptSrc}\"]`);
+        const promise = new Promise((resolve, reject) => {
+            const resolveLoaded = script => {
+                if (script instanceof HTMLElement) script.dataset.tdspLoaded = 'true';
+                resolve(typeof options.ready === 'function' ? options.ready() : undefined);
+            };
+            const existing = document.querySelector(selector);
+            if (existing) {
+                if (existing.dataset.tdspLoaded === 'true') {
+                    resolveLoaded(existing);
+                    return;
+                }
+                existing.addEventListener('load', () => resolveLoaded(existing), { once: true });
+                existing.addEventListener('error', reject, { once: true });
+                return;
+            }
+
+            const script = document.createElement('script');
+            script.src = scriptSrc;
+            script.defer = options.defer !== false;
+            if (options.datasetName) script.dataset[options.datasetName] = 'true';
+            script.addEventListener('load', () => resolveLoaded(script), { once: true });
+            script.addEventListener('error', reject, { once: true });
+            document.head.appendChild(script);
+        }).catch(error => {
+            if (detailCache.get(cacheKey)?.promise === promise) detailCache.delete(cacheKey);
+            throw error;
+        });
+
+        detailCache.set(cacheKey, { loadedAt: Date.now(), promise });
+        return promise;
+    }
+
     function bindDetailPreload(element, key, loader) {
         if (!(element instanceof HTMLElement)) return;
         const preload = () => {
@@ -142,6 +190,7 @@
         isLocalPreview: isLocalPreviewHostname(window.location.hostname),
         isLocalPreviewHostname,
         loadDetail,
+        loadScript,
         bindDetailPreload,
         setText,
         copyText,

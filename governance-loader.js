@@ -12,29 +12,12 @@
         '#tdspbot-open',
         '#site-alerts-button'
     ];
-    let governanceScriptPromise = null;
-
     function loadGovernanceScript() {
-        if (governanceScriptPromise) return governanceScriptPromise;
-
-        governanceScriptPromise = new Promise((resolve, reject) => {
-            const existing = document.querySelector('script[data-governance-main]');
-            if (existing) {
-                existing.addEventListener('load', resolve, { once: true });
-                existing.addEventListener('error', reject, { once: true });
-                return;
-            }
-
-            const script = document.createElement('script');
-            script.src = GOVERNANCE_SCRIPT_SRC;
-            script.defer = true;
-            script.dataset.governanceMain = 'true';
-            script.addEventListener('load', resolve, { once: true });
-            script.addEventListener('error', reject, { once: true });
-            document.head.appendChild(script);
+        return window.TDSPRuntime.loadScript(GOVERNANCE_SCRIPT_SRC, {
+            datasetName: 'governanceMain',
+            selector: 'script[data-governance-main]',
+            ready: () => (null ? true : null)
         });
-
-        return governanceScriptPromise;
     }
 
     function scheduleIdleLoad() {
