@@ -4463,12 +4463,7 @@ function bindGovernanceMenuTrigger(element, openMenu) {
             console.error('Governance menu could not be opened.', error);
         }
     };
-    element.addEventListener('click', activate);
-    element.addEventListener('keydown', event => {
-        if (event.key !== 'Enter' && event.key !== ' ') return;
-        event.preventDefault();
-        activate(event);
-    });
+    window.TDSPRuntime?.bindActivation?.(element, activate);
 }
 
 function removeDrepPowerSplitCard() {
@@ -11746,12 +11741,7 @@ function createPieChartSvg(segments, chart, options = {}) {
         );
         if (isClickable) {
             interactiveSegment.classList.add('is-clickable');
-            interactiveSegment.addEventListener('click', event => {
-                options.onSegmentClick(segment, event.currentTarget);
-            });
-            interactiveSegment.addEventListener('keydown', event => {
-                if (event.key !== 'Enter' && event.key !== ' ') return;
-                event.preventDefault();
+            window.TDSPRuntime?.bindActivation?.(interactiveSegment, event => {
                 options.onSegmentClick(segment, event.currentTarget);
             });
         }

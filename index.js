@@ -1422,12 +1422,7 @@ function createCryptoNewsList() {
             const openArticle = () => youtubeVideoId
                 ? openYouTubeVideoOverlay(youtubeVideoId, item.title, row)
                 : openExternalSiteWarning(url.href, row);
-            row.addEventListener('click', openArticle);
-            row.addEventListener('keydown', event => {
-                if (event.key !== 'Enter' && event.key !== ' ') return;
-                event.preventDefault();
-                openArticle();
-            });
+            window.TDSPRuntime?.bindActivation?.(row, openArticle);
         }
         list.appendChild(row);
     });
@@ -2485,12 +2480,7 @@ function createStarchPoolsList() {
         row.tabIndex = 0;
         row.setAttribute('role', 'link');
         row.setAttribute('aria-label', `Open ${poolName} website`);
-        row.addEventListener('click', openWebsite);
-        row.addEventListener('keydown', event => {
-            if (event.key !== 'Enter' && event.key !== ' ') return;
-            event.preventDefault();
-            openWebsite();
-        });
+        window.TDSPRuntime?.bindActivation?.(row, openWebsite);
         list.appendChild(row);
     });
 

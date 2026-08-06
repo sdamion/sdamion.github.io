@@ -124,7 +124,7 @@
     }
 
     function bindActivation(element, handler) {
-        if (!(element instanceof HTMLElement) || typeof handler !== 'function') return;
+        if (!(element instanceof Element) || typeof handler !== 'function') return;
         element.addEventListener('click', event => handler(event));
         element.addEventListener('keydown', event => {
             if (event.key !== 'Enter' && event.key !== ' ') return;
