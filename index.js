@@ -1735,8 +1735,8 @@ async function fetchLeaderSchedule() {
 
 function renderLeaderSchedule(schedule) {
     const leadership = Array.isArray(schedule?.leadership) ? schedule.leadership : [];
-    window.TDSPRuntime.setText('leader-schedule-count', formatInteger(schedule?.slotCount ?? leadership.length));
-    window.TDSPRuntime.setText('leader-schedule-meta', `Possible blocks · Epoch ${formatInteger(schedule?.epoch)}`);
+    window.TDSPRuntime.setText('leader-schedule-count', window.TDSPRuntime.formatInteger(schedule?.slotCount ?? leadership.length));
+    window.TDSPRuntime.setText('leader-schedule-meta', `Possible blocks · Epoch ${window.TDSPRuntime.formatInteger(schedule?.epoch)}`);
 }
 
 function renderLeaderScheduleError() {
@@ -1746,7 +1746,7 @@ function renderLeaderScheduleError() {
 
 function renderPoolStatus(pool) {
     poolDelegators = Array.isArray(pool?.delegators) ? [...pool.delegators] : [];
-    window.TDSPRuntime.setText('pool-delegators', formatInteger(pool?.delegator_count));
+    window.TDSPRuntime.setText('pool-delegators', window.TDSPRuntime.formatInteger(pool?.delegator_count));
     window.TDSPRuntime.setText('pool-live-stake', formatAdaFromLovelace(pool?.live_stake_lovelace));
     window.TDSPRuntime.setText('pool-saturation', formatPoolSaturation(pool?.saturation_pct ?? pool?.raw?.live_saturation));
     window.TDSPRuntime.setText('pool-pledge', formatAdaFromLovelace(pool?.pledge_lovelace ?? pool?.raw?.pledge));
@@ -2683,11 +2683,6 @@ function notifyRelayMaintenance(downRelays) {
         body: `${newDownRelays.map(item => item.label).join(', ')} down for maintenance.`,
         tag: 'tdsp-relay-maintenance'
     });
-}
-
-function formatInteger(value) {
-    const number = Number(value);
-    return Number.isFinite(number) ? new Intl.NumberFormat('en-US').format(number) : 'N/A';
 }
 
 function formatAdaFromLovelace(value) {

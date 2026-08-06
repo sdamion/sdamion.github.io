@@ -197,6 +197,11 @@
         });
     }
 
+    function formatInteger(value, fallback = 'N/A') {
+        const number = Number(value);
+        return Number.isFinite(number) ? new Intl.NumberFormat('en-US').format(number) : fallback;
+    }
+
     function setText(id, value) {
         const element = document.getElementById(id);
         if (element) element.textContent = String(value);
@@ -318,6 +323,7 @@
         onReady,
         setStatusClasses,
         setBinaryStatusClasses,
+        formatInteger,
         setText,
         copyText,
         bindCopyButton,
