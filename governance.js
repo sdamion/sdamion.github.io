@@ -4362,19 +4362,7 @@ function createTdspDrepDelegatorRow(delegator, index) {
     copy.type = 'button';
     copy.textContent = '⧉';
     copy.setAttribute('aria-label', `Copy DRep delegator stake address ${index + 1}`);
-    copy.addEventListener('click', async event => {
-        event.stopPropagation();
-        const original = copy.textContent;
-        try {
-            await window.TDSPRuntime.copyText(address);
-            copy.textContent = 'Copied';
-        } catch {
-            copy.textContent = 'Copy failed';
-        }
-        setTimeout(() => {
-            copy.textContent = original;
-        }, 1400);
-    });
+    window.TDSPRuntime?.bindCopyButton?.(copy, address, { preventDefault: false });
 
     const amount = document.createElement('span');
     amount.className = 'pool-delegator-amount';

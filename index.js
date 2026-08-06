@@ -1542,18 +1542,7 @@ function getExternalSiteWarning(returnFocus = document.activeElement) {
     copyUrl.className = 'external-site-warning-copy';
     copyUrl.textContent = 'Copy';
     copyUrl.setAttribute('aria-label', 'Copy external URL');
-    copyUrl.addEventListener('click', async () => {
-        if (!pendingExternalUrl) return;
-        try {
-            await window.TDSPRuntime.copyText(pendingExternalUrl);
-            copyUrl.textContent = 'Copied';
-        } catch {
-            copyUrl.textContent = 'Copy failed';
-        }
-        setTimeout(() => {
-            copyUrl.textContent = 'Copy';
-        }, 1400);
-    });
+    window.TDSPRuntime?.bindCopyButton?.(copyUrl, () => pendingExternalUrl);
     urlRow.append(host, copyUrl);
 
     const actions = document.createElement('div');
@@ -2526,18 +2515,7 @@ function createMithrilSignersList() {
             copy.type = 'button';
             copy.textContent = '⧉';
             copy.setAttribute('aria-label', `Copy Mithril signer pool ID ${index + 1}`);
-            copy.addEventListener('click', async () => {
-                const original = copy.textContent;
-                try {
-                    await window.TDSPRuntime.copyText(poolId);
-                    copy.textContent = 'Copied';
-                } catch (error) {
-                    copy.textContent = 'Copy failed';
-                }
-                setTimeout(() => {
-                    copy.textContent = original;
-                }, 1400);
-            });
+            window.TDSPRuntime?.bindCopyButton?.(copy, poolId, { preventDefault: false, stopPropagation: false });
             idLine.appendChild(copy);
         }
 
@@ -2600,20 +2578,7 @@ function createPoolDelegatorsList() {
         copy.textContent = '⧉';
         copy.dataset.copyValue = address;
         copy.setAttribute('aria-label', `Copy stake address ${index + 1}`);
-        copy.addEventListener('click', async () => {
-            const original = copy.textContent;
-            const fullAddress = copy.dataset.copyValue;
-            try {
-                if (!fullAddress) throw new Error('Missing stake address');
-                await window.TDSPRuntime.copyText(fullAddress);
-                copy.textContent = 'Copied';
-            } catch (error) {
-                copy.textContent = 'Copy failed';
-            }
-            setTimeout(() => {
-                copy.textContent = original;
-            }, 1400);
-        });
+        window.TDSPRuntime?.bindCopyButton?.(copy, button => button.dataset.copyValue, { preventDefault: false, stopPropagation: false });
 
         const amount = document.createElement('span');
         amount.className = 'pool-delegator-amount';
@@ -2696,28 +2661,11 @@ function shortenStakeAddress(address) {
 
 function initPoolCopyButtons() {
     document.querySelectorAll('[data-copy-target]').forEach(button => {
-        button.addEventListener('click', async () => {
+        window.TDSPRuntime?.bindCopyButton?.(button, () => {
             const target = document.getElementById(button.dataset.copyTarget);
             const value = target?.textContent?.trim();
-            if (!value || value === '...' || value === 'N/A') return;
-
-            const originalLabel = button.textContent;
-            const originalAriaLabel = button.getAttribute('aria-label') || '';
-            try {
-                await window.TDSPRuntime.copyText(value);
-                button.textContent = 'Copied';
-                button.setAttribute('aria-label', `Copied ${value}`);
-                setTimeout(() => {
-                    button.textContent = originalLabel;
-                    button.setAttribute('aria-label', originalAriaLabel);
-                }, 1400);
-            } catch (error) {
-                button.textContent = 'Copy failed';
-                setTimeout(() => {
-                    button.textContent = originalLabel;
-                }, 1400);
-            }
-        });
+            return value && value !== '...' && value !== 'N/A' ? value : '';
+        }, { skipEmpty: true });
     });
 }
 

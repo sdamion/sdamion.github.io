@@ -217,7 +217,10 @@
             const copyValue = typeof value === 'function' ? value(button, event) : value;
 
             try {
-                if (!copyValue) throw new Error('Missing copy value');
+                if (!copyValue) {
+                    if (options.skipEmpty === true) return;
+                    throw new Error('Missing copy value');
+                }
                 await copyText(copyValue);
                 button.textContent = options.copiedText || 'Copied';
                 if (options.copiedAriaLabel) {
