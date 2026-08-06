@@ -12874,34 +12874,7 @@ function formatPercentage(value) {
 }
 
 function formatCompactAdaFromLovelace(value, options = {}) {
-    const lovelace = Number(value);
-    if (!Number.isFinite(lovelace)) return value;
-
-    const ada = lovelace / 1_000_000;
-    const absAda = Math.abs(ada);
-    const fixedFractionDigits = Number.isInteger(options.fixedFractionDigits) ? options.fixedFractionDigits : null;
-    const compactUnits = [
-        { value: 1_000_000_000_000, suffix: 'T' },
-        { value: 1_000_000_000, suffix: 'B' },
-        { value: 1_000_000, suffix: 'M' },
-        { value: 1_000, suffix: 'K' }
-    ];
-
-    for (const unit of compactUnits) {
-        if (absAda >= unit.value) {
-            const compactValue = ada / unit.value;
-            const digits = fixedFractionDigits ?? (Math.abs(compactValue) >= 100 ? 0 : Math.abs(compactValue) >= 10 ? 1 : 2);
-            const formattedValue = fixedFractionDigits === null
-                ? compactValue.toFixed(digits).replace(/\.0+$|(\.\d*[1-9])0+$/, '$1')
-                : compactValue.toFixed(digits);
-            return `₳ ${formattedValue}${unit.suffix}`;
-        }
-    }
-
-    return `₳ ${ada.toLocaleString('en-US', {
-        minimumFractionDigits: fixedFractionDigits ?? 0,
-        maximumFractionDigits: fixedFractionDigits ?? 2
-    })}`;
+    return window.TDSPRuntime.formatCompactAdaFromLovelace(value, options);
 }
 
 function formatTileAdaText(value) {
