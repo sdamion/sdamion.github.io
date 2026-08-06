@@ -183,6 +183,20 @@
         callback();
     }
 
+    function setStatusClasses(element, states = {}) {
+        if (!element) return;
+        element.classList.toggle('is-active', states.active === true);
+        element.classList.toggle('is-warning', states.warning === true);
+        element.classList.toggle('is-inactive', states.inactive === true);
+    }
+
+    function setBinaryStatusClasses(element, active) {
+        setStatusClasses(element, {
+            active: active === true,
+            inactive: active === false
+        });
+    }
+
     function setText(id, value) {
         const element = document.getElementById(id);
         if (element) element.textContent = String(value);
@@ -302,6 +316,8 @@
         bindViewportLoad,
         scheduleIdle,
         onReady,
+        setStatusClasses,
+        setBinaryStatusClasses,
         setText,
         copyText,
         bindCopyButton,
