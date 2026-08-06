@@ -4226,12 +4226,13 @@ function createTdspDrepDelegatorRow(delegator, index) {
     content.className = 'pool-delegator-content';
 
     const address = String(delegator?.stake_address || delegator?.stakeAddress || 'Unknown stake address');
+    const adaHandle = String(delegator?.ada_handle || '').trim();
     const addressLine = document.createElement('div');
     addressLine.className = 'pool-delegator-address-line';
 
     const addressText = document.createElement('strong');
-    addressText.className = 'pool-delegator-address';
-    addressText.textContent = shortenDrepStakeAddress(address);
+    addressText.className = `pool-delegator-address${adaHandle ? ' pool-delegator-handle' : ''}`;
+    addressText.textContent = adaHandle || shortenDrepStakeAddress(address);
     addressText.title = address;
 
     const copy = document.createElement('button');
