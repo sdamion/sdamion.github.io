@@ -15,6 +15,7 @@ const SPO_DIRECTORY_API_URL = 'https://api.tdsp.online/api/spos/directory';
 const SPO_DETAIL_API_BASE_URL = 'https://api.tdsp.online/api/spo';
 const REMOTE_METADATA_API_URL = 'https://api.tdsp.online/api/metadata';
 const TREASURY_API_URL = 'https://api.tdsp.online/api/treasury';
+const TREASURY_ADMINISTRATORS_API_URL = 'https://api.tdsp.online/api/treasury/administrators';
 const CATALYST_BUSINESS_API_URL = 'https://api.tdsp.online/api/catalyst/businesses';
 const FUNDING_RECIPIENTS_API_URL = 'https://api.tdsp.online/api/funding/recipients';
 const CATALYST_PROPOSALS_API_URL = 'https://api.tdsp.online/api/catalyst/proposals';
@@ -39,6 +40,7 @@ const LOCAL_SPO_DIRECTORY_PROXY_PATH = '/__spo_directory_proxy__';
 const LOCAL_SPO_DETAIL_PROXY_PATH = '/__spo_detail_proxy__';
 const LOCAL_METADATA_PROXY_PATH = '/__metadata_proxy__';
 const LOCAL_TREASURY_PROXY_PATH = '/__treasury_proxy__';
+const LOCAL_TREASURY_ADMINISTRATORS_PROXY_PATH = '/__treasury_administrators_proxy__';
 const LOCAL_CATALYST_BUSINESS_PROXY_PATH = '/__catalyst_business_proxy__';
 const LOCAL_FUNDING_RECIPIENTS_PROXY_PATH = '/__funding_recipients_proxy__';
 const LOCAL_CATALYST_PROPOSALS_PROXY_PATH = '/__catalyst_proposals_proxy__';
@@ -124,6 +126,8 @@ let spoDirectoryPromise = null;
 let spoDirectoryState = null;
 let committeeInfoPromise = null;
 let treasuryPromise = null;
+let treasuryAdministratorsPromise = null;
+let treasuryAdministratorsState = null;
 let treasuryState = null;
 let catalystBusinessPromise = null;
 let fundingRecipientsPromise = null;
@@ -760,6 +764,22 @@ function fetchTreasuryPayload() {
     return treasuryPromise;
 }
 
+function fetchTreasuryAdministratorsPayload() {
+    if (!treasuryAdministratorsPromise) {
+        const url = shouldUseLocalDashboardProxy()
+            ? LOCAL_TREASURY_ADMINISTRATORS_PROXY_PATH
+            : TREASURY_ADMINISTRATORS_API_URL;
+        treasuryAdministratorsPromise = fetchJson(url).then(payload => {
+            treasuryAdministratorsState = payload;
+            return payload;
+        }).catch(error => {
+            treasuryAdministratorsPromise = null;
+            throw error;
+        });
+    }
+    return treasuryAdministratorsPromise;
+}
+
 function fetchCatalystBusinessPayload() {
     if (!catalystBusinessPromise) {
         const url = shouldUseLocalDashboardProxy()
@@ -1032,7 +1052,7 @@ async function openTreasuryOverlay() {
         const payload = treasuryState || await fetchTreasuryPayload();
         treasuryState = payload;
         if (!content.isConnected) return;
-        renderTreasuryDetails(content, payload);
+        await renderTreasuryDetails(content, payload);
         updateGovernanceOverlayBotContext('governance-treasury-overlay', createTreasuryBotContext(payload), content);
         updateGovernanceMenuHeaderMeta(
             'governance-treasury-overlay',
@@ -1057,7 +1077,7 @@ function closeTreasuryOverlay() {
     removeGovernanceMenuOverlay('governance-treasury-overlay');
 }
 
-function renderTreasuryDetails(container, payload) {
+async function renderTreasuryDetails(container, payload) {
     container.textContent = '';
     addDetailRow(container, 'Updated', formatTreasuryTimestamp(payload?.updated_at));
 
@@ -1073,11 +1093,20 @@ function renderTreasuryDetails(container, payload) {
         return;
     }
 
-    container.appendChild(createTreasuryAdministratorChart(treasuryWithdrawals));
+    const administratorPayload = await fetchTreasuryAdministratorsPayload().catch(() => null);
+    const administratorGroups = Array.isArray(administratorPayload?.groups)
+        ? administratorPayload.groups
+        : getTreasuryAdministratorGroups(treasuryWithdrawals);
+    container.appendChild(createTreasuryAdministratorChart(administratorGroups));
 }
 
-function createTreasuryAdministratorChart(withdrawals) {
-    const groups = getTreasuryAdministratorGroups(withdrawals);
+function createTreasuryAdministratorChart(groupsOrWithdrawals) {
+    const groups = Array.isArray(groupsOrWithdrawals?.[0]?.withdrawals)
+        ? groupsOrWithdrawals.map((group, index) => ({
+            ...group,
+            color: group.color || TREASURY_ADMINISTRATOR_COLORS[index % TREASURY_ADMINISTRATOR_COLORS.length]
+        }))
+        : getTreasuryAdministratorGroups(groupsOrWithdrawals);
     const total = groups.reduce((sum, group) => sum + group.value, 0);
     const section = document.createElement('section');
     section.className = 'governance-vote-chart governance-chart-panel';
