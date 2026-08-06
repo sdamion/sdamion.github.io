@@ -1908,7 +1908,7 @@ function closeMithrilSignersOverlay(restoreFocus = true) {
 }
 
 function initStarchPoolCard() {
-    bindStarchPoolCard('pool-starch-status-card', card => openTdspStarchCompanyOverlay(card));
+    bindStarchPoolCard('pool-starch-status-card', card => window.TDSPStarch?.load?.().then(() => window.openTdspStarchCompanyOverlay?.(card)));
     bindStarchPoolCard('starch-pools-card', card => openStarchPoolsOverlay(card));
 }
 

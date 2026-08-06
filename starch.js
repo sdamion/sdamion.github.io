@@ -542,11 +542,19 @@ function shadeColor(color, percent) {
     return `rgb(${Math.round(red)}, ${Math.round(green)}, ${Math.round(blue)})`;
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+function initStarchUi() {
+    if (window.TDSPStarchReady === true) return;
+    window.TDSPStarchReady = true;
     bindStarchDirectoryTile('starch-miners-card', 'miners', 'Miners');
     bindStarchDirectoryTile('starch-companies-card', 'companies', 'Companies');
     fetchStarchDirectory();
     fetchTdspStarchMinerCount();
     setInterval(fetchStarchDirectory, 300000);
     setInterval(fetchTdspStarchMinerCount, 300000);
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initStarchUi, { once: true });
+} else {
+    initStarchUi();
+}
