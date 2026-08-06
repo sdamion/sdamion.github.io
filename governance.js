@@ -4155,18 +4155,14 @@ function getTreasuryHeaderAmount(payload) {
 }
 
 function formatWholeAdaFromLovelace(value) {
-    const lovelace = Number(value);
-    if (!Number.isFinite(lovelace)) return '₳ --';
-    return `₳ ${(lovelace / 1_000_000).toLocaleString('en-US', {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0
-    })}`;
+    return window.TDSPRuntime.formatAdaFromLovelace(value, { fallback: '₳ --' });
 }
 
 function formatFullAdaFromLovelace(value) {
-    const lovelace = Number(value);
-    if (!Number.isFinite(lovelace)) return '';
-    return `₳ ${(lovelace / 1_000_000).toLocaleString('en-US', { maximumFractionDigits: 6 })}`;
+    return window.TDSPRuntime.formatAdaFromLovelace(value, {
+        maximumFractionDigits: 6,
+        fallback: ''
+    });
 }
 
 function formatTreasuryTimestamp(value) {

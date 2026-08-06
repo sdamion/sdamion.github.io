@@ -1,5 +1,5 @@
 (function () {
-    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260807-readable-label';
+    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260807-ada-formatters';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
         '#drep',
