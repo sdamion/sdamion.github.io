@@ -12200,9 +12200,9 @@ function getGovernanceGroupSignature(proposals) {
 }
 
 async function updateGovernanceCounts(groups) {
-    window.TDSPRuntime.setText('gov-active-count', getCollectionLength(groups.active));
-    window.TDSPRuntime.setText('gov-approved-count', getCollectionLength(groups.approved));
-    window.TDSPRuntime.setText('gov-rejected-count', getCollectionLength(groups.rejected));
+    window.TDSPRuntime.setText('gov-active-count', window.TDSPRuntime.getCollectionLength(groups.active));
+    window.TDSPRuntime.setText('gov-approved-count', window.TDSPRuntime.getCollectionLength(groups.approved));
+    window.TDSPRuntime.setText('gov-rejected-count', window.TDSPRuntime.getCollectionLength(groups.rejected));
     window.TDSPRuntime.setText('gov-active-ask', formatGovernanceAskAmount(groups.active));
     window.TDSPRuntime.setText('gov-approved-ask', formatGovernanceAskAmount(groups.approved));
     window.TDSPRuntime.setText('gov-rejected-ask', formatGovernanceAskAmount(groups.rejected));
@@ -12843,10 +12843,6 @@ function getDrepEntryVotingPower(entry) {
         ?? entry?.lovelace;
 
     return window.TDSPRuntime.toFiniteNumber(value);
-}
-
-function getCollectionLength(collection) {
-    return Array.isArray(collection) ? collection.length : collection.length || 0;
 }
 
 function formatProposalType(type) {

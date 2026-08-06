@@ -207,6 +207,10 @@
         return Number.isFinite(number) ? number : fallback;
     }
 
+    function getCollectionLength(collection) {
+        return collection?.length || 0;
+    }
+
     function parseLovelaceBigInt(value) {
         try {
             return BigInt(String(value ?? '0'));
@@ -438,6 +442,7 @@
         setBinaryStatusClasses,
         formatInteger,
         toFiniteNumber,
+        getCollectionLength,
         formatLovelaceAmount,
         getLovelaceAmount,
         formatAdaFromLovelace,
