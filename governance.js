@@ -4078,7 +4078,6 @@ function setupTdspDrepStatsCards() {
     const cards = [
         document.getElementById('tdsp-drep-status-card'),
         document.getElementById('tdsp-drep-delegators-card'),
-        document.getElementById('tdsp-drep-delegation-card'),
         document.getElementById('tdsp-drep-voted-card')
     ].filter(Boolean);
 
