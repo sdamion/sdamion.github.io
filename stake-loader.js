@@ -35,9 +35,5 @@
         }, true);
     }
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initStakeLoader, { once: true });
-    } else {
-        initStakeLoader();
-    }
+    window.TDSPRuntime.onReady(initStakeLoader);
 }());

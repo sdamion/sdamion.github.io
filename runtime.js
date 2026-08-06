@@ -113,6 +113,15 @@
         preloadObserver?.observe(element);
     }
 
+    function onReady(callback) {
+        if (typeof callback !== 'function') return;
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', callback, { once: true });
+            return;
+        }
+        callback();
+    }
+
     function setText(id, value) {
         const element = document.getElementById(id);
         if (element) element.textContent = String(value);
@@ -192,6 +201,7 @@
         loadDetail,
         loadScript,
         bindDetailPreload,
+        onReady,
         setText,
         copyText,
         appendUniversalTileContent

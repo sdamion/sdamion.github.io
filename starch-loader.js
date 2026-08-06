@@ -75,9 +75,5 @@
         installViewportTrigger();
     }
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initStarchLoader, { once: true });
-    } else {
-        initStarchLoader();
-    }
+    window.TDSPRuntime.onReady(initStarchLoader);
 }());

@@ -65,9 +65,5 @@
         scheduleIdleLoad();
     }
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initGovernanceLoader, { once: true });
-    } else {
-        initGovernanceLoader();
-    }
+    window.TDSPRuntime.onReady(initGovernanceLoader);
 }());
