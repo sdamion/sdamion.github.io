@@ -1161,6 +1161,35 @@ function closeCardanoEventOverlay(restoreFocus = true) {
     closePoolMenuOverlay('cardano-event-overlay', restoreFocus);
 }
 
+const periodicRefreshPromises = new Map();
+
+function runPeriodicRefresh(key, callback, options = {}) {
+    if (document.hidden && options.force !== true && options.runWhenHidden !== true) return null;
+    if (periodicRefreshPromises.has(key)) return periodicRefreshPromises.get(key);
+
+    const promise = Promise.resolve()
+        .then(callback)
+        .catch(error => {
+            console.error(`${key} refresh failed`, error);
+            return null;
+        })
+        .finally(() => periodicRefreshPromises.delete(key));
+    periodicRefreshPromises.set(key, promise);
+    return promise;
+}
+
+function setPeriodicRefresh(key, callback, intervalMs, options = {}) {
+    return window.setInterval(() => {
+        runPeriodicRefresh(key, callback, options);
+    }, intervalMs);
+}
+
+function refreshVisibleTasks(tasks) {
+    tasks.forEach(task => {
+        runPeriodicRefresh(task.key, task.callback, { ...task.options, force: true });
+    });
+}
+
 async function fetchCardanoEvents() {
     const container = document.getElementById('cardano-events');
     if (!container) return;
@@ -1218,27 +1247,25 @@ document.addEventListener("DOMContentLoaded", () => {
     initStarchPoolCard();
     initPriceHistoryTiles();
     initCryptoNewsTicker();
-    fetchPrices();
-    fetchCryptoNews();
-    fetchCardanoEvents();
-    fetchPoolStatus();
-    fetchMithrilStatus();
-    fetchIcebreakerStatus();
-    fetchStarchPoolStatus();
-    fetchLeaderSchedule();
-    fetchDatabaseStatus();
-    setInterval(fetchPrices, 30000);
-    document.addEventListener('visibilitychange', () => {
-        if (!document.hidden) fetchPrices({ force: true });
+
+    const refreshTasks = [
+        { key: 'prices', callback: () => fetchPrices({ force: true }), interval: 30000 },
+        { key: 'news', callback: fetchCryptoNews, interval: 300000 },
+        { key: 'events', callback: fetchCardanoEvents, interval: 900000 },
+        { key: 'pool', callback: fetchPoolStatus, interval: 300000 },
+        { key: 'mithril', callback: fetchMithrilStatus, interval: 300000 },
+        { key: 'icebreaker', callback: fetchIcebreakerStatus, interval: 300000 },
+        { key: 'starch-pools', callback: fetchStarchPoolStatus, interval: 300000 },
+        { key: 'leader-schedule', callback: fetchLeaderSchedule, interval: 300000 },
+        { key: 'database-status', callback: fetchDatabaseStatus, interval: 300000 }
+    ];
+    refreshVisibleTasks(refreshTasks);
+    refreshTasks.forEach(task => {
+        setPeriodicRefresh(task.key, task.callback, task.interval, task.options);
     });
-    setInterval(fetchCryptoNews, 300000);
-    setInterval(fetchCardanoEvents, 900000);
-    setInterval(fetchPoolStatus, 300000);
-    setInterval(fetchMithrilStatus, 300000);
-    setInterval(fetchIcebreakerStatus, 300000);
-    setInterval(fetchStarchPoolStatus, 300000);
-    setInterval(fetchLeaderSchedule, 300000);
-    setInterval(fetchDatabaseStatus, 300000);
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) refreshVisibleTasks(refreshTasks);
+    });
     initUI();
 });
 
