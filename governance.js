@@ -7,6 +7,8 @@ const PROPOSAL_DETAIL_API_BASE_URL = 'https://api.tdsp.online/api/proposal';
 const PROPOSAL_SUMMARY_API_BASE_URL = 'https://api.tdsp.online/api/proposal';
 const DREP_INFO_API_URL = 'https://api.tdsp.online/api/dreps/directory';
 const DREP_DETAIL_API_BASE_URL = 'https://api.tdsp.online/api/drep';
+const TDSP_DREP_ID = 'drep1yg5gkkyxwwr7d6qflf2qqp6drkp9432h6cvtmun0dqthusqlkz8hj';
+const TDSP_DREP_FALLBACK_NAME = 'DamionDutch';
 const SPO_DIRECTORY_API_URL = 'https://api.tdsp.online/api/spos/directory';
 const SPO_DETAIL_API_BASE_URL = 'https://api.tdsp.online/api/spo';
 const REMOTE_METADATA_API_URL = 'https://api.tdsp.online/api/metadata';
@@ -124,6 +126,7 @@ let cipDirectoryState = null;
 const catalystProposalDetailsCache = new Map();
 let treasuryHistoryChart = null;
 let governanceMeshPromise = null;
+let tdspDrepStatsPromise = null;
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initGovernance);
@@ -139,6 +142,7 @@ function initGovernance() {
     setupGovernanceSummaryActionCards();
     setupConstitutionalCommitteeCard();
     setupDrepDirectoryCard();
+    setupTdspDrepStatsCards();
     setupSpoDirectoryCard();
     setupTreasuryCard();
     setupBusinessCard();
@@ -4068,6 +4072,233 @@ function setupDrepDirectoryCard() {
 
     const top10Card = document.getElementById('gov-drep-top10-card');
     bindGovernanceMenuTrigger(top10Card, openTopDrepPowerOverlay);
+}
+
+function setupTdspDrepStatsCards() {
+    const cards = [
+        document.getElementById('tdsp-drep-status-card'),
+        document.getElementById('tdsp-drep-delegators-card'),
+        document.getElementById('tdsp-drep-delegation-card'),
+        document.getElementById('tdsp-drep-voted-card')
+    ].filter(Boolean);
+
+    if (!cards.length) return;
+
+    cards.forEach(card => {
+        const open = event => {
+            loadTdspDrepStats()
+                .then(stats => {
+                    if (card.id === 'tdsp-drep-delegators-card') {
+                        openTdspDrepDelegatorsOverlay(stats, event?.currentTarget || card);
+                        return;
+                    }
+                    openDrepActionHistoryOverlay(stats.drep, event?.currentTarget || card);
+                })
+                .catch(error => {
+                    console.error('DamionDutch DRep stats could not be opened.', error);
+                });
+        };
+        bindGovernanceMenuTrigger(card, open);
+        bindGovernanceEntityPreload(card, `drep:${TDSP_DREP_ID}`, () => loadDrepDetail({ id: TDSP_DREP_ID }));
+    });
+
+    loadTdspDrepStats()
+        .then(renderTdspDrepStatsCards)
+        .catch(() => renderTdspDrepStatsUnavailable());
+}
+
+async function loadTdspDrepStats() {
+    if (!tdspDrepStatsPromise) {
+        tdspDrepStatsPromise = Promise.all([
+            fetchDrepInfoPayload().catch(() => null),
+            loadDrepDirectory().catch(() => new Map()),
+            loadDrepDetail({ id: TDSP_DREP_ID, name: TDSP_DREP_FALLBACK_NAME }).catch(() => null)
+        ]).then(([infoPayload, directory, detailPayload]) => {
+            const normalizedTarget = normalizeGovernanceIdentifier(TDSP_DREP_ID);
+            const infoEntry = unwrapDrepEntries(infoPayload).find(entry =>
+                getDrepEntryIdentifiers(entry).some(identifier => normalizeGovernanceIdentifier(identifier) === normalizedTarget)
+            ) || null;
+            const info = detailPayload?.info || infoEntry || {};
+            const metadata = detailPayload?.metadata || infoEntry?.metadata || {};
+            const name = extractDrepNameFromEntry(metadata)
+                || extractDrepNameFromEntry(info)
+                || directory?.get?.(normalizedTarget)
+                || TDSP_DREP_FALLBACK_NAME;
+            const votingPower = getDrepEntryVotingPower(info) || getDrepEntryVotingPower(infoEntry);
+            const delegatorCount = Number(info?.live_delegator_count ?? infoEntry?.live_delegator_count);
+            const voteStats = detailPayload?.vote_stats || {};
+            const votedCount = Number(voteStats.voted_count ?? voteStats.vote_count);
+            const drep = {
+                id: TDSP_DREP_ID,
+                searchIds: getDrepEntryIdentifiers(infoEntry || info).join(' '),
+                name,
+                votingPower,
+                active: info?.active === true
+            };
+
+            const delegators = Array.isArray(detailPayload?.delegators) ? detailPayload.delegators : [];
+            return {
+                drep,
+                delegators,
+                delegatorCount: Number.isFinite(delegatorCount)
+                    ? delegatorCount
+                    : Number(detailPayload?.delegator_count) || (delegators.length || null),
+                votedCount: Number.isFinite(votedCount) ? votedCount : null,
+                voteStats,
+                delegatorsUpdatedAt: detailPayload?.delegators_updated_at || null,
+                delegatorsError: detailPayload?.delegators_error || null
+            };
+        }).catch(error => {
+            tdspDrepStatsPromise = null;
+            throw error;
+        });
+    }
+
+    return tdspDrepStatsPromise;
+}
+
+function renderTdspDrepStatsCards(stats) {
+    const status = stats.drep.active ? 'Active' : 'Inactive';
+    window.TDSPRuntime.setText('tdsp-drep-status', status);
+    window.TDSPRuntime.setText('tdsp-drep-delegators', stats.delegatorCount === null ? 'N/A' : stats.delegatorCount.toLocaleString('en-US'));
+    window.TDSPRuntime.setText('tdsp-drep-delegation', formatTileAdaFromLovelace(stats.drep.votingPower, { fixedFractionDigits: 2 }));
+    window.TDSPRuntime.setText('tdsp-drep-voted', stats.votedCount === null ? 'N/A' : stats.votedCount.toLocaleString('en-US'));
+}
+
+function renderTdspDrepStatsUnavailable() {
+    window.TDSPRuntime.setText('tdsp-drep-status', 'Unavailable');
+    window.TDSPRuntime.setText('tdsp-drep-delegators', 'N/A');
+    window.TDSPRuntime.setText('tdsp-drep-delegation', 'N/A');
+    window.TDSPRuntime.setText('tdsp-drep-voted', 'N/A');
+}
+
+function openTdspDrepDelegatorsOverlay(stats, returnFocus = null) {
+    createGovernanceMenuOverlay({
+        id: 'tdsp-drep-delegators-overlay',
+        titleId: 'tdsp-drep-delegators-title',
+        titleText: `${stats.drep.name} Delegators`,
+        closeLabel: `Close ${stats.drep.name} delegators`,
+        closeOverlay: closeTdspDrepDelegatorsOverlay,
+        bodyNodes: [createTdspDrepDelegatorsList(stats)],
+        headerMeta: `${(stats.delegatorCount || 0).toLocaleString('en-US')} delegators`,
+        returnFocus,
+        botContext: createWebsiteSectionBotContext('DReps', {
+            title: `${stats.drep.name} Delegators`,
+            count: stats.delegatorCount || 0,
+            amount_ada: Number(stats.drep.votingPower || 0) / 1_000_000,
+            root: 'DRep Stats',
+            summary: `${stats.drep.name} DRep delegators`
+        })
+    });
+}
+
+function closeTdspDrepDelegatorsOverlay() {
+    removeGovernanceMenuOverlay('tdsp-drep-delegators-overlay');
+}
+
+function createTdspDrepDelegatorsList(stats) {
+    const list = document.createElement('div');
+    list.className = 'pool-delegator-list';
+
+    const delegators = Array.isArray(stats?.delegators) ? stats.delegators : [];
+    if (!delegators.length) {
+        const message = document.createElement('p');
+        message.className = 'small-text';
+        message.textContent = stats?.delegatorsError
+            ? 'DRep delegator details could not be loaded from Koios yet.'
+            : 'DRep delegator details are not available yet.';
+        list.appendChild(message);
+        return list;
+    }
+
+    [...delegators]
+        .sort((left, right) => compareBigIntDescending(getDrepDelegatorAmount(left), getDrepDelegatorAmount(right)))
+        .forEach((delegator, index) => list.appendChild(createTdspDrepDelegatorRow(delegator, index)));
+
+    return list;
+}
+
+function createTdspDrepDelegatorRow(delegator, index) {
+    const row = document.createElement('div');
+    row.className = 'pool-delegator-row governance-menu-card';
+    row.dataset.sortAmount = getDrepDelegatorAmount(delegator).toString();
+
+    const content = document.createElement('div');
+    content.className = 'pool-delegator-content';
+
+    const address = String(delegator?.stake_address || delegator?.stakeAddress || 'Unknown stake address');
+    const addressLine = document.createElement('div');
+    addressLine.className = 'pool-delegator-address-line';
+
+    const addressText = document.createElement('strong');
+    addressText.className = 'pool-delegator-address';
+    addressText.textContent = shortenDrepStakeAddress(address);
+    addressText.title = address;
+
+    const copy = document.createElement('button');
+    copy.className = 'pool-delegator-copy-button';
+    copy.type = 'button';
+    copy.textContent = '⧉';
+    copy.setAttribute('aria-label', `Copy DRep delegator stake address ${index + 1}`);
+    copy.addEventListener('click', async event => {
+        event.stopPropagation();
+        const original = copy.textContent;
+        try {
+            await window.TDSPRuntime.copyText(address);
+            copy.textContent = 'Copied';
+        } catch {
+            copy.textContent = 'Copy failed';
+        }
+        setTimeout(() => {
+            copy.textContent = original;
+        }, 1400);
+    });
+
+    const amount = document.createElement('span');
+    amount.className = 'pool-delegator-amount';
+    amount.textContent = formatDrepDelegatorAda(getDrepDelegatorAmount(delegator));
+
+    addressLine.append(addressText, copy);
+    content.append(addressLine, amount);
+
+    const epoch = Number(delegator?.active_epoch_no ?? delegator?.epoch_no);
+    if (Number.isFinite(epoch)) {
+        const epochText = document.createElement('span');
+        epochText.className = 'pool-delegator-epoch';
+        epochText.textContent = `Active epoch ${epoch.toLocaleString('en-US')}`;
+        content.appendChild(epochText);
+    }
+
+    row.appendChild(content);
+    return row;
+}
+
+function getDrepDelegatorAmount(delegator) {
+    try {
+        return BigInt(String(delegator?.amount_lovelace ?? delegator?.amount ?? delegator?.lovelace ?? '0'));
+    } catch {
+        return 0n;
+    }
+}
+
+function compareBigIntDescending(left, right) {
+    return left > right ? -1 : left < right ? 1 : 0;
+}
+
+function formatDrepDelegatorAda(lovelace) {
+    const wholeAda = lovelace / 1_000_000n;
+    const fraction = lovelace % 1_000_000n;
+    const value = `${wholeAda}.${fraction.toString().padStart(6, '0')}`;
+    return `₳ ${new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(Number(value))}`;
+}
+
+function shortenDrepStakeAddress(address) {
+    const text = String(address || '');
+    if (text.length <= 34) return text;
+    return `${text.slice(0, 20)}...${text.slice(-10)}`;
 }
 
 function setupSpoDirectoryCard() {
