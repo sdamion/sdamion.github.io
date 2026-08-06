@@ -148,6 +148,16 @@
         targets.forEach(target => observer.observe(target));
     }
 
+    function scheduleIdle(callback, options = {}) {
+        if (typeof callback !== 'function') return;
+        const timeout = Number(options.timeout) > 0 ? Number(options.timeout) : 6000;
+        if ('requestIdleCallback' in window) {
+            window.requestIdleCallback(callback, { timeout });
+            return;
+        }
+        window.setTimeout(callback, timeout);
+    }
+
     function onReady(callback) {
         if (typeof callback !== 'function') return;
         if (document.readyState === 'loading') {
@@ -238,6 +248,7 @@
         bindDetailPreload,
         bindIntentLoad,
         bindViewportLoad,
+        scheduleIdle,
         onReady,
         setText,
         copyText,

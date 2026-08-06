@@ -20,18 +20,10 @@
         });
     }
 
-    function scheduleIdleLoad() {
-        if ('requestIdleCallback' in window) {
-            window.requestIdleCallback(loadGovernanceScript, { timeout: 8000 });
-            return;
-        }
-        window.setTimeout(loadGovernanceScript, 6000);
-    }
-
     function initGovernanceLoader() {
         window.TDSPRuntime.bindIntentLoad(GOVERNANCE_TRIGGER_SELECTORS, loadGovernanceScript);
         window.TDSPRuntime.bindViewportLoad(GOVERNANCE_TARGET_SELECTORS, loadGovernanceScript, { rootMargin: '400px 0px' });
-        scheduleIdleLoad();
+        window.TDSPRuntime.scheduleIdle(loadGovernanceScript, { timeout: 8000 });
     }
 
     window.TDSPRuntime.onReady(initGovernanceLoader);
