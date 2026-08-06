@@ -8,6 +8,7 @@ const PROPOSAL_SUMMARY_API_BASE_URL = 'https://api.tdsp.online/api/proposal';
 const DREP_INFO_API_URL = 'https://api.tdsp.online/api/dreps/directory';
 const DREP_DETAIL_API_BASE_URL = 'https://api.tdsp.online/api/drep';
 const DREP_VOTE_STATS_API_URL = 'https://api.tdsp.online/api/dreps/vote-stats';
+const DREP_CORRELATION_API_URL = 'https://api.tdsp.online/api/dreps/correlation';
 const TDSP_DREP_ID = 'drep1yg5gkkyxwwr7d6qflf2qqp6drkp9432h6cvtmun0dqthusqlkz8hj';
 const TDSP_DREP_FALLBACK_NAME = 'DamionDutch';
 const SPO_DIRECTORY_API_URL = 'https://api.tdsp.online/api/spos/directory';
@@ -32,6 +33,7 @@ const LOCAL_PROPOSAL_SUMMARY_PROXY_PATH = '/__proposal_summary_proxy__';
 const LOCAL_DREP_DIRECTORY_PROXY_PATH = '/__drep_directory_proxy__';
 const LOCAL_DREP_DETAIL_PROXY_PATH = '/__drep_detail_proxy__';
 const LOCAL_DREP_VOTE_STATS_PROXY_PATH = '/__drep_vote_stats_proxy__';
+const LOCAL_DREP_CORRELATION_PROXY_PATH = '/__drep_correlation_proxy__';
 const LOCAL_SPO_DIRECTORY_PROXY_PATH = '/__spo_directory_proxy__';
 const LOCAL_SPO_DETAIL_PROXY_PATH = '/__spo_detail_proxy__';
 const LOCAL_METADATA_PROXY_PATH = '/__metadata_proxy__';
@@ -114,6 +116,8 @@ let drepInfoPromise = null;
 let drepStatsPromise = null;
 let drepDirectoryState = null;
 let drepVoteStatsPayloadPromises = new Map();
+let drepCorrelationPayloadPromise = null;
+let topDrepCorrelationPayload = null;
 let spoDirectoryPromise = null;
 let spoDirectoryState = null;
 let committeeInfoPromise = null;
@@ -9299,6 +9303,24 @@ async function openTopDrepPowerOverlay(returnFocus = document.activeElement) {
             `${formatTileAdaFromLovelace(top10Power, { fixedFractionDigits: 2 })} voting power`,
             panel
         );
+        fetchDrepCorrelationPayload()
+            .then(payload => {
+                topDrepCorrelationPayload = payload;
+                if (panel.isConnected && !renderedFreshVoteMatrix) {
+                    return fetchDrepVoteStatsPayload(topDreps).then(voteStatsPayload => {
+                        if (!panel.isConnected || renderedFreshVoteMatrix || !voteStatsPayload) return;
+                        renderTopDrepVoteMatrix(
+                            panel,
+                            topDreps,
+                            topDreps.map(drep => createCachedDrepVoteDetailPayload(drep, voteStatsPayload))
+                        );
+                    });
+                }
+                return null;
+            })
+            .catch(error => {
+                console.warn('Cached DRep correlation could not be loaded', error);
+            });
         const refreshTopDrepVoteMatrix = () => {
             Promise.all(topDreps.map(drep => loadDrepDetail(drep).catch(error => ({ error }))))
                 .then(detailPayloads => {
@@ -9459,7 +9481,7 @@ function renderTopDrepVoteMatrix(container, dreps, detailPayloads) {
         .filter(proposal => !isGovernanceActionExcludedFromDrepStats(proposal))
         .sort((left, right) => (Number(right.block_time) || 0) - (Number(left.block_time) || 0));
 
-    const correlationChart = createTopDrepVoteCorrelationChart(drepDetails, proposals);
+    const correlationChart = createTopDrepVoteCorrelationChart(topDrepCorrelationPayload, drepDetails);
     if (correlationChart) container.appendChild(correlationChart);
 
     proposals.forEach(proposal => {
@@ -9516,9 +9538,11 @@ function renderTopDrepVoteMatrix(container, dreps, detailPayloads) {
 }
 
 
-function createTopDrepVoteCorrelationChart(drepDetails, proposals) {
-    const stats = calculateTopDrepVoteCorrelations(drepDetails, proposals);
+function createTopDrepVoteCorrelationChart(correlationPayload, drepDetails = []) {
+    const stats = Array.isArray(correlationPayload?.correlations) ? correlationPayload.correlations : [];
     if (!stats.length) return null;
+    const drepsById = new Map((Array.isArray(drepDetails) ? drepDetails : [])
+        .flatMap(drep => getDrepEntryIdentifiers(drep).map(identifier => [normalizeGovernanceIdentifier(identifier), drep])));
 
     const section = document.createElement('section');
     section.className = 'governance-vote-chart governance-chart-panel governance-top-drep-correlation-chart';
@@ -9534,29 +9558,34 @@ function createTopDrepVoteCorrelationChart(drepDetails, proposals) {
         row.className = 'governance-top-drep-correlation-row';
         row.setAttribute('role', 'button');
         row.tabIndex = 0;
-        row.setAttribute('aria-label', 'Open DRep ' + item.name);
-        bindGovernanceMenuTrigger(row, event => openDrepActionHistoryOverlay(item.drep, event.currentTarget));
-        row.dataset.searchText = [item.name, item.bestMatchName].filter(Boolean).join(' ');
+        row.setAttribute('aria-label', 'Open DRep ' + (item.name || 'DRep'));
+        const drep = drepsById.get(normalizeGovernanceIdentifier(item.drep_id)) || {
+            id: item.drep_id,
+            name: item.name,
+            votingPower: item.voting_power
+        };
+        bindGovernanceMenuTrigger(row, event => openDrepActionHistoryOverlay(drep, event.currentTarget));
+        row.dataset.searchText = [item.name, item.best_match_name].filter(Boolean).join(' ');
 
         const label = document.createElement('div');
         label.className = 'governance-top-drep-correlation-label';
         const name = document.createElement('strong');
-        name.textContent = item.name;
+        name.textContent = item.name || 'DRep';
         const detail = document.createElement('span');
-        detail.textContent = item.bestMatchName
-            ? 'Most in sync with ' + item.bestMatchName + ' - ' + formatPercentage(item.bestMatchPercent) + ' (' + item.bestMatchSame + '/' + item.bestMatchComparable + ' shared votes)'
+        detail.textContent = item.best_match_name
+            ? 'Most in sync with ' + item.best_match_name + ' - ' + formatPercentage(item.best_match_percent) + ' (' + Number(item.best_match_same || 0).toLocaleString('en-US') + '/' + Number(item.best_match_comparable || 0).toLocaleString('en-US') + ' shared votes)'
             : 'No shared explicit votes found';
         label.append(name, detail);
 
         const meter = document.createElement('div');
         meter.className = 'governance-top-drep-correlation-meter';
         const fill = document.createElement('span');
-        fill.style.width = Math.max(0, Math.min(100, item.bestMatchPercent)) + '%';
+        fill.style.width = Math.max(0, Math.min(100, Number(item.best_match_percent) || 0)) + '%';
         meter.appendChild(fill);
 
         const value = document.createElement('strong');
         value.className = 'governance-top-drep-correlation-value';
-        value.textContent = formatPercentage(item.bestMatchPercent);
+        value.textContent = formatPercentage(item.best_match_percent);
 
         row.append(label, meter, value);
         list.appendChild(row);
@@ -9564,53 +9593,6 @@ function createTopDrepVoteCorrelationChart(drepDetails, proposals) {
 
     section.append(title, list);
     return section;
-}
-
-function calculateTopDrepVoteCorrelations(drepDetails, proposals) {
-    const comparableChoices = new Set(['Yes', 'No', 'Abstain']);
-    const votesByDrep = (Array.isArray(drepDetails) ? drepDetails : []).map(drep => {
-        const votes = new Map();
-        (Array.isArray(proposals) ? proposals : []).forEach(proposal => {
-            const choice = getTopDrepVoteMatrixChoice(drep, proposal);
-            if (comparableChoices.has(choice)) votes.set(String(proposal?.proposal_id || ''), choice);
-        });
-        return { drep, votes };
-    });
-
-    return votesByDrep.map((current, index) => {
-        const comparisons = votesByDrep
-            .filter((_, otherIndex) => otherIndex !== index)
-            .map(other => {
-                let same = 0;
-                let comparable = 0;
-                current.votes.forEach((choice, proposalId) => {
-                    const otherChoice = other.votes.get(proposalId);
-                    if (!otherChoice) return;
-                    comparable += 1;
-                    if (otherChoice === choice) same += 1;
-                });
-                return {
-                    name: other.drep?.name || 'DRep',
-                    same,
-                    comparable,
-                    percent: comparable > 0 ? (same / comparable) * 100 : 0
-                };
-            })
-            .filter(item => item.comparable > 0)
-            .sort((left, right) => right.percent - left.percent || right.comparable - left.comparable);
-        const comparableTotal = comparisons.reduce((sum, item) => sum + item.comparable, 0);
-        const sameTotal = comparisons.reduce((sum, item) => sum + item.same, 0);
-        const best = comparisons[0] || null;
-        return {
-            drep: current.drep,
-            name: current.drep?.name || 'DRep',
-            averagePercent: comparableTotal > 0 ? (sameTotal / comparableTotal) * 100 : 0,
-            bestMatchName: best?.name || '',
-            bestMatchPercent: best?.percent || 0,
-            bestMatchSame: best?.same || 0,
-            bestMatchComparable: best?.comparable || 0
-        };
-    }).sort((left, right) => right.bestMatchPercent - left.bestMatchPercent || right.bestMatchComparable - left.bestMatchComparable || left.name.localeCompare(right.name));
 }
 
 function getTopDrepVoteMatrixChoice(drep, proposal) {
@@ -11342,6 +11324,23 @@ async function fetchDrepVoteStatsPayload(dreps = []) {
         drepVoteStatsPayloadPromises.set(cacheKey, promise);
     }
     return drepVoteStatsPayloadPromises.get(cacheKey);
+}
+
+function getDrepCorrelationApiUrl() {
+    if (shouldUseLocalDashboardProxy()) {
+        return LOCAL_DREP_CORRELATION_PROXY_PATH;
+    }
+    return DREP_CORRELATION_API_URL;
+}
+
+async function fetchDrepCorrelationPayload() {
+    if (!drepCorrelationPayloadPromise) {
+        drepCorrelationPayloadPromise = fetchJson(getDrepCorrelationApiUrl()).catch(error => {
+            drepCorrelationPayloadPromise = null;
+            throw error;
+        });
+    }
+    return drepCorrelationPayloadPromise;
 }
 
 function getDrepMetadataFetchUrl(url, options = {}) {
