@@ -1753,7 +1753,7 @@ function renderPoolStatus(pool) {
     const relays = Array.isArray(pool?.relays) ? pool.relays : [];
     const upCount = relays.filter(relay => relay.up === true).length;
     setRelayCardStatus(relays.length ? upCount : null, relays.length || null);
-    window.TDSPRuntime.setText('pool-last-updated', formatTimestamp(pool?.updated_at));
+    window.TDSPRuntime.setText('pool-last-updated', window.TDSPRuntime.formatTimestamp(pool?.updated_at));
 
     const relaysEl = document.getElementById('pool-relays');
     if (!relaysEl) return;
@@ -2672,12 +2672,6 @@ function formatPoolSaturation(value) {
     return Number.isFinite(number)
         ? window.TDSPRuntime.formatPercentageValue(number, { minimumFractionDigits: number > 0 && number < 0.01 ? 3 : 0 })
         : 'N/A';
-}
-
-function formatTimestamp(value) {
-    if (!value) return 'Never';
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? 'Never' : date.toLocaleString();
 }
 
 function initThemeToggle() {

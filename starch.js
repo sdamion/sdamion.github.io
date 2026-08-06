@@ -484,8 +484,7 @@ async function renderStarchCompanyChart(canvas, miners, companyId) {
 }
 
 function formatStarchTimestamp(value, stale) {
-    const date = value ? new Date(value) : null;
-    const formatted = date && !Number.isNaN(date.getTime()) ? date.toLocaleString() : 'Never';
+    const formatted = window.TDSPRuntime.formatTimestamp(value);
     return stale ? `${formatted} (cached)` : formatted;
 }
 

@@ -4166,11 +4166,13 @@ function formatFullAdaFromLovelace(value) {
 }
 
 function formatTreasuryTimestamp(value) {
-    const timestamp = Date.parse(value || '');
-    if (!Number.isFinite(timestamp)) return '';
-    return new Date(timestamp).toLocaleString('en-GB', {
-        dateStyle: 'medium',
-        timeStyle: 'short'
+    return window.TDSPRuntime.formatTimestamp(value, {
+        fallback: '',
+        locale: 'en-GB',
+        formatOptions: {
+            dateStyle: 'medium',
+            timeStyle: 'short'
+        }
     });
 }
 

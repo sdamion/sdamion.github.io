@@ -211,6 +211,12 @@
         return collection?.length || 0;
     }
 
+    function formatTimestamp(value, options = {}) {
+        const date = value ? new Date(value) : null;
+        if (!date || Number.isNaN(date.getTime())) return options.fallback ?? 'Never';
+        return date.toLocaleString(options.locale, options.formatOptions);
+    }
+
     function parseLovelaceBigInt(value) {
         try {
             return BigInt(String(value ?? '0'));
@@ -443,6 +449,7 @@
         formatInteger,
         toFiniteNumber,
         getCollectionLength,
+        formatTimestamp,
         formatLovelaceAmount,
         getLovelaceAmount,
         formatAdaFromLovelace,

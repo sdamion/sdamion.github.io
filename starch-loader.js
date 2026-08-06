@@ -1,5 +1,5 @@
 (function () {
-    const STARCH_SCRIPT_SRC = 'starch.js?v=20260807-copy-button';
+    const STARCH_SCRIPT_SRC = 'starch.js?v=20260807-timestamp-helper';
     const STARCH_TARGET_SELECTORS = [
         '#starch',
         '#pool-starch-status-card'
