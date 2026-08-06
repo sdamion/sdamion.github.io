@@ -18,6 +18,7 @@ const TREASURY_API_URL = 'https://api.tdsp.online/api/treasury';
 const TREASURY_ADMINISTRATORS_API_URL = 'https://api.tdsp.online/api/treasury/administrators';
 const CATALYST_BUSINESS_API_URL = 'https://api.tdsp.online/api/catalyst/businesses';
 const FUNDING_RECIPIENTS_API_URL = 'https://api.tdsp.online/api/funding/recipients';
+const FUNDING_OVERVIEW_API_URL = 'https://api.tdsp.online/api/funding/overview';
 const CATALYST_PROPOSALS_API_URL = 'https://api.tdsp.online/api/catalyst/proposals';
 const CATALYST_PROPOSAL_DETAIL_API_BASE_URL = 'https://api.tdsp.online/api/catalyst/proposal';
 const CATALYST_PROPOSAL_SUMMARY_API_BASE_URL = 'https://api.tdsp.online/api/catalyst/proposal';
@@ -43,6 +44,7 @@ const LOCAL_TREASURY_PROXY_PATH = '/__treasury_proxy__';
 const LOCAL_TREASURY_ADMINISTRATORS_PROXY_PATH = '/__treasury_administrators_proxy__';
 const LOCAL_CATALYST_BUSINESS_PROXY_PATH = '/__catalyst_business_proxy__';
 const LOCAL_FUNDING_RECIPIENTS_PROXY_PATH = '/__funding_recipients_proxy__';
+const LOCAL_FUNDING_OVERVIEW_PROXY_PATH = '/__funding_overview_proxy__';
 const LOCAL_CATALYST_PROPOSALS_PROXY_PATH = '/__catalyst_proposals_proxy__';
 const LOCAL_CATALYST_PROPOSAL_DETAIL_PROXY_PATH = '/__catalyst_proposal_detail_proxy__';
 const LOCAL_CATALYST_PROPOSAL_SUMMARY_PROXY_PATH = '/__catalyst_proposal_summary_proxy__';
@@ -131,6 +133,8 @@ let treasuryAdministratorsState = null;
 let treasuryState = null;
 let catalystBusinessPromise = null;
 let fundingRecipientsPromise = null;
+let fundingOverviewPromise = null;
+let fundingOverviewState = null;
 let fundingRecipientsState = null;
 let catalystBusinessState = null;
 let catalystFundDirectoryPromise = null;
@@ -807,6 +811,22 @@ function fetchFundingRecipientsPayload() {
         });
     }
     return fundingRecipientsPromise;
+}
+
+function fetchFundingOverviewPayload() {
+    if (!fundingOverviewPromise) {
+        const url = shouldUseLocalDashboardProxy()
+            ? LOCAL_FUNDING_OVERVIEW_PROXY_PATH
+            : FUNDING_OVERVIEW_API_URL;
+        fundingOverviewPromise = fetchJson(url).then(payload => {
+            fundingOverviewState = payload;
+            return payload;
+        }).catch(error => {
+            fundingOverviewPromise = null;
+            throw error;
+        });
+    }
+    return fundingOverviewPromise;
 }
 
 function fetchCatalystFundDirectoryPayload() {
@@ -2052,7 +2072,7 @@ function createCatalystFundingStatusChart(payload) {
     return section;
 }
 
-function createCatalystProposalFundingOverview(funds, proposals, businessPayload, approvedGovernanceActions = []) {
+function createCatalystProposalFundingOverview(funds, proposals, businessPayload, approvedGovernanceActions = [], overviewPayload = fundingOverviewState) {
     const detailedProjects = getCatalystFundingProjects(businessPayload);
     const detailsById = new Map(
         detailedProjects.map(project => [String(project?.id || ''), project])
@@ -2102,12 +2122,10 @@ function createCatalystProposalFundingOverview(funds, proposals, businessPayload
     const totalUnclaimed = unclaimed > 0 ? unclaimed : fallbackUnclaimed;
     const treasuryTotals = getApprovedGovernanceFundingTotals(approvedGovernanceActions);
     const totalTreasury = Number(treasuryTotals.usd) || 0;
-    const total = totalClaimed + totalUnclaimed + totalTreasury;
-    if (total <= 0) return null;
 
-    const createGroup = (key, label, value, color, field) => {
+    const createGroup = (key, label, value, color, field, adaValueOverride = null) => {
         const matchingProjects = projects.filter(project => Number(project?.[field]) > 0);
-        const adaValue = matchingProjects.reduce((sum, project) => {
+        const adaValue = adaValueOverride ?? matchingProjects.reduce((sum, project) => {
             if (String(project?.currency || '').toUpperCase() !== 'ADA') return sum;
             const requestedAda = Math.max(Number(project?.amount_requested) || 0, 0);
             const receivedAda = Math.min(
@@ -2133,20 +2151,50 @@ function createCatalystProposalFundingOverview(funds, proposals, businessPayload
             rootTitle: 'Catalyst/Treasury Funding'
         };
     };
-    const groups = [
-        createGroup('claimed', 'Claimed', totalClaimed, '#34d399', 'claimed_usd'),
-        createGroup('unclaimed', 'Unclaimed', totalUnclaimed, '#fb7185', 'not_claimed_usd'),
-        {
-            key: 'approved-governance',
-            label: 'Approved Treasury',
-            value: totalTreasury,
-            color: '#fbbf24',
-            currency: 'USD',
-            actions: approvedGovernanceActions,
-            adaValue: treasuryTotals.ada,
-            rootTitle: 'Catalyst/Treasury Funding'
-        }
-    ].filter(group => group.value > 0);
+    const cachedGroups = Array.isArray(overviewPayload?.groups) ? overviewPayload.groups : [];
+    const groups = cachedGroups.length
+        ? cachedGroups.map(group => {
+            const key = String(group?.key || '').trim();
+            if (key === 'approved-governance') {
+                return {
+                    key,
+                    label: group?.label || 'Approved Treasury',
+                    value: Number(group?.value) || 0,
+                    color: group?.color || '#fbbf24',
+                    currency: group?.currency || 'USD',
+                    actions: approvedGovernanceActions,
+                    adaValue: Number(group?.adaValue) || treasuryTotals.ada,
+                    rootTitle: 'Catalyst/Treasury Funding'
+                };
+            }
+            const field = key === 'unclaimed' ? 'not_claimed_usd' : 'claimed_usd';
+            return createGroup(
+                key,
+                group?.label || (key === 'unclaimed' ? 'Unclaimed' : 'Claimed'),
+                Number(group?.value) || 0,
+                group?.color || (key === 'unclaimed' ? '#fb7185' : '#34d399'),
+                field,
+                Number(group?.adaValue) || null
+            );
+        }).filter(group => group.value > 0)
+        : [
+            createGroup('claimed', 'Claimed', totalClaimed, '#34d399', 'claimed_usd'),
+            createGroup('unclaimed', 'Unclaimed', totalUnclaimed, '#fb7185', 'not_claimed_usd'),
+            {
+                key: 'approved-governance',
+                label: 'Approved Treasury',
+                value: totalTreasury,
+                color: '#fbbf24',
+                currency: 'USD',
+                actions: approvedGovernanceActions,
+                adaValue: treasuryTotals.ada,
+                rootTitle: 'Catalyst/Treasury Funding'
+            }
+        ].filter(group => group.value > 0);
+    const total = Number(overviewPayload?.totals?.usd) > 0
+        ? Number(overviewPayload.totals.usd)
+        : groups.reduce((sum, group) => sum + (Number(group.value) || 0), 0);
+    if (total <= 0) return null;
 
     const section = document.createElement('section');
     section.className = 'governance-vote-chart governance-chart-panel';
@@ -2403,10 +2451,11 @@ async function openCatalystFundsOverlay(returnFocus = document.activeElement) {
     });
 
     try {
-        const [payload, proposalPayload, businessPayload] = await Promise.all([
+        const [payload, proposalPayload, businessPayload, fundingOverviewPayload] = await Promise.all([
             catalystFundDirectoryState || loadCatalystFundDirectory(),
             catalystProposalDirectoryState || fetchCatalystProposalDirectoryPayload(),
-            catalystBusinessState || fetchCatalystBusinessPayload().catch(() => null)
+            catalystBusinessState || fetchCatalystBusinessPayload().catch(() => null),
+            fundingOverviewState || fetchFundingOverviewPayload().catch(() => null)
         ]);
         if (!panel.isConnected) return;
         catalystBusinessState = businessPayload;
@@ -2432,7 +2481,8 @@ async function openCatalystFundsOverlay(returnFocus = document.activeElement) {
             funds,
             proposals,
             businessPayload,
-            approvedGovernanceActions
+            approvedGovernanceActions,
+            fundingOverviewPayload
         );
         directoryReady = true;
         renderedSignature = '';
