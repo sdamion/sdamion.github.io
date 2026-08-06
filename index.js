@@ -1657,13 +1657,26 @@ function renderMithrilStatus(payload) {
     setMithrilCardStatus(active ? 'Active' : 'Inactive', active);
 }
 
+function setStatusClasses(element, states = {}) {
+    if (!element) return;
+    element.classList.toggle('is-active', states.active === true);
+    element.classList.toggle('is-warning', states.warning === true);
+    element.classList.toggle('is-inactive', states.inactive === true);
+}
+
+function setBinaryStatusClasses(element, active) {
+    setStatusClasses(element, {
+        active: active === true,
+        inactive: active === false
+    });
+}
+
 function setMithrilCardStatus(label, active) {
     const status = document.getElementById('pool-mithril-status');
     if (!status) return;
 
     status.textContent = label;
-    status.classList.toggle('is-active', active === true);
-    status.classList.toggle('is-inactive', active === false);
+    setBinaryStatusClasses(status, active);
 }
 
 async function fetchIcebreakerStatus() {
@@ -1683,8 +1696,7 @@ function setIcebreakerCardStatus(label, active) {
     if (!status) return;
 
     status.textContent = label;
-    status.classList.toggle('is-active', active === true);
-    status.classList.toggle('is-inactive', active === false);
+    setBinaryStatusClasses(status, active);
 }
 
 async function fetchStarchPoolStatus() {
@@ -1719,8 +1731,7 @@ function setStarchPoolCardStatus(label, active) {
     if (!status) return;
 
     status.textContent = label;
-    status.classList.toggle('is-active', active === true);
-    status.classList.toggle('is-inactive', active === false);
+    setBinaryStatusClasses(status, active);
 }
 
 async function fetchLeaderSchedule() {
@@ -1809,9 +1820,11 @@ function setRelayCardStatus(activeCount, relayCount) {
     meta.textContent = activeCount === null || relayCount === null
         ? 'Relay N/A'
         : `Relay ${activeCount}/${relayCount}`;
-    status.classList.toggle('is-active', activeCount !== null && activeCount >= 2);
-    status.classList.toggle('is-warning', activeCount === 1);
-    status.classList.toggle('is-inactive', activeCount === 0);
+    setStatusClasses(status, {
+        active: activeCount !== null && activeCount >= 2,
+        warning: activeCount === 1,
+        inactive: activeCount === 0
+    });
 }
 
 function initPoolDelegatorsCard() {
