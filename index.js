@@ -493,12 +493,12 @@ function openPriceHistoryOverlay(tile) {
     });
 
     if (canvas || tradingViewFrame) requestAnimationFrame(() => {
-        const renderInterval = minutes => {
+        const renderInterval = async minutes => {
             const candles = tradingViewFrame ? [] : aggregatePriceCandles(tradingCandles, minutes);
             if (tradingViewFrame) {
                 renderTradingViewPriceChart(tradingViewFrame, tradingViewSymbol, ticker, minutes);
             } else {
-                renderPriceTradingChart(canvas, candles, ticker, minutes, priceConfig.decimals);
+                await renderPriceTradingChart(canvas, candles, ticker, minutes, priceConfig.decimals);
             }
             const meta = document.querySelector('#price-history-overlay .governance-menu-header-meta');
             const option = PRICE_CHART_INTERVALS.find(item => item.minutes === minutes);
@@ -522,8 +522,13 @@ function openPriceHistoryOverlay(tile) {
     });
 }
 
-function renderPriceTradingChart(canvas, candles, ticker, intervalMinutes = 5, decimals = 4) {
-    if (typeof Chart !== 'function' || !canvas?.isConnected || candles.length < 2) return;
+async function renderPriceTradingChart(canvas, candles, ticker, intervalMinutes = 5, decimals = 4) {
+    if (!canvas?.isConnected || candles.length < 2) return;
+    const ChartCtor = await window.TDSPCharts?.load?.().catch(error => {
+        console.error(`Chart.js could not be loaded: ${error.message}`);
+        return null;
+    });
+    if (typeof ChartCtor !== 'function' || !canvas.isConnected) return;
     if (priceHistoryChart) priceHistoryChart.destroy();
 
     const styles = getComputedStyle(document.documentElement);
@@ -593,7 +598,7 @@ function renderPriceTradingChart(canvas, candles, ticker, intervalMinutes = 5, d
         }
     };
 
-    priceHistoryChart = new Chart(canvas, {
+    priceHistoryChart = new ChartCtor(canvas, {
         type: 'line',
         data: {
             datasets: [{

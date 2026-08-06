@@ -351,7 +351,7 @@ async function openStarchCompanyOverlay(company, returnFocus, options = {}) {
             renderTdspStarchPoolTile();
         }
         if (!document.getElementById('starch-company-detail-overlay')) return;
-        renderStarchCompanyDetail(content, company, summary, options);
+        await renderStarchCompanyDetail(content, company, summary, options);
     } catch (error) {
         console.error(`Starch company ${companyId} failed: ${error.message}`);
         if (!document.getElementById('starch-company-detail-overlay')) return;
@@ -371,7 +371,7 @@ function closeStarchCompanyOverlay(restoreFocus = true) {
     closePoolMenuOverlay('starch-company-detail-overlay', restoreFocus);
 }
 
-function renderStarchCompanyDetail(content, company, summary, options = {}) {
+async function renderStarchCompanyDetail(content, company, summary, options = {}) {
     const miners = (Array.isArray(summary?.miners) ? summary.miners : [])
         .map(miner => ({
             miner_id: String(miner?.miner_id || ''),
@@ -410,7 +410,7 @@ function renderStarchCompanyDetail(content, company, summary, options = {}) {
     timestamp.textContent = `Last Updated: ${formatStarchTimestamp(summary?.updated_at, summary?.stale === true)}`;
 
     content.append(summaryTiles, idLine, canvas, table, timestamp);
-    renderStarchCompanyChart(canvas, miners, String(company?.id || summary?.team_id || '000000'));
+    await renderStarchCompanyChart(canvas, miners, String(company?.id || summary?.team_id || '000000'));
 }
 
 function createStarchStatTile(value, label) {
@@ -464,17 +464,22 @@ function createStarchMinerTable(miners) {
     return shell;
 }
 
-function renderStarchCompanyChart(canvas, miners, companyId) {
+async function renderStarchCompanyChart(canvas, miners, companyId) {
     if (minerChartInstance) minerChartInstance.destroy();
-    const context = canvas.getContext('2d');
     if (!miners.length) return;
+    const ChartCtor = await window.TDSPCharts?.load?.().catch(error => {
+        console.error(`Chart.js could not be loaded: ${error.message}`);
+        return null;
+    });
+    if (typeof ChartCtor !== 'function' || !canvas?.isConnected) return;
+    const context = canvas.getContext('2d');
     const color = /^[0-9A-F]{6}$/i.test(companyId) ? `#${companyId}` : '#0f766e';
     const hoverColor = shadeColor(color, -20);
     const gradient = context.createLinearGradient(0, 0, 0, 360);
     gradient.addColorStop(0, color);
     gradient.addColorStop(1, hoverColor);
 
-    minerChartInstance = new Chart(context, {
+    minerChartInstance = new ChartCtor(context, {
         type: 'bar',
         data: {
             labels: miners.map(miner => miner.miner_id),

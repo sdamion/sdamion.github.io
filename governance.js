@@ -1102,7 +1102,7 @@ async function renderTreasuryDetails(container, payload) {
     addDetailRow(container, 'Updated', formatTreasuryTimestamp(payload?.updated_at));
 
     const treasuryWithdrawals = getTreasuryWithdrawals(payload);
-    const chart = createTreasuryHistoryChart(payload, treasuryWithdrawals);
+    const chart = await createTreasuryHistoryChart(payload, treasuryWithdrawals);
     if (chart) container.appendChild(chart);
 
     if (!treasuryWithdrawals.length) {
@@ -3734,8 +3734,13 @@ function closeTreasuryBusinessActionsOverlay() {
     removeGovernanceMenuOverlay('governance-business-actions-overlay');
 }
 
-function createTreasuryHistoryChart(payload, withdrawals) {
-    if (typeof Chart !== 'function' || !withdrawals.length) return null;
+async function createTreasuryHistoryChart(payload, withdrawals) {
+    if (!withdrawals.length) return null;
+    const ChartCtor = await window.TDSPCharts?.load?.().catch(error => {
+        console.error(`Chart.js could not be loaded: ${error.message}`);
+        return null;
+    });
+    if (typeof ChartCtor !== 'function') return null;
 
     const withdrawalsByEpoch = new Map();
     withdrawals.forEach(withdrawal => {
@@ -3814,7 +3819,7 @@ function createTreasuryHistoryChart(payload, withdrawals) {
     incomeGradient.addColorStop(0, 'rgba(94, 234, 212, 0.94)');
     incomeGradient.addColorStop(1, 'rgba(20, 184, 166, 0.3)');
 
-    treasuryHistoryChart = new Chart(canvas, {
+    treasuryHistoryChart = new ChartCtor(canvas, {
         data: {
             labels: epochs.map(epoch => `Epoch ${epoch}`),
             datasets: [
