@@ -282,6 +282,18 @@
         })}`;
     }
 
+    function formatAdaText(value) {
+        const text = String(value ?? '').trim();
+        if (/^₳\s*/.test(text)) return text.replace(/^₳\s*/, '₳ ');
+        return /\sADA$/i.test(text)
+            ? `₳ ${text.replace(/\sADA$/i, '')}`
+            : text;
+    }
+
+    function formatTileAdaFromLovelace(value, options = {}) {
+        return formatAdaText(formatCompactAdaFromLovelace(value, options));
+    }
+
     function formatPercentageValue(value, options = {}) {
         const number = Number(value);
         if (!Number.isFinite(number)) return options.fallback || 'N/A';
@@ -461,6 +473,8 @@
         getLovelaceAmount,
         formatAdaFromLovelace,
         formatCompactAdaFromLovelace,
+        formatAdaText,
+        formatTileAdaFromLovelace,
         formatPercentageValue,
         setText,
         copyText,

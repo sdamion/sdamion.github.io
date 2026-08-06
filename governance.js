@@ -742,14 +742,14 @@ async function loadTreasuryData() {
     const treasuryLovelace = getTreasuryLovelace(payload);
     if (!Number.isFinite(treasuryLovelace)) throw new Error('Treasury amount is unavailable');
 
-    window.TDSPRuntime.setText('gov-treasury-amount', formatTileAdaFromLovelace(treasuryLovelace, { fixedFractionDigits: 2 }));
+    window.TDSPRuntime.setText('gov-treasury-amount', window.TDSPRuntime.formatTileAdaFromLovelace(treasuryLovelace, { fixedFractionDigits: 2 }));
     const latestIncome = getTreasuryIncomeLovelace(payload);
     const latestEpoch = getTreasuryEpoch(payload);
     window.TDSPRuntime.setText('gov-treasury-epoch', `Treasury Epoch ${latestEpoch ?? '--'}`);
     window.TDSPRuntime.setText(
         'gov-treasury-income',
         Number.isFinite(latestIncome)
-            ? `Income ${formatTileAdaFromLovelace(latestIncome, { fixedFractionDigits: 2 })}`
+            ? `Income ${window.TDSPRuntime.formatTileAdaFromLovelace(latestIncome, { fixedFractionDigits: 2 })}`
             : 'Income ₳ --'
     );
     updateBusinessSummary(payload, catalystPayload);
@@ -4270,7 +4270,7 @@ function renderTdspDrepStatsCards(stats) {
     const status = stats.drep.active ? 'Active' : 'Inactive';
     window.TDSPRuntime.setText('tdsp-drep-status', status);
     window.TDSPRuntime.setText('tdsp-drep-delegators', stats.delegatorCount === null ? 'N/A' : stats.delegatorCount.toLocaleString('en-US'));
-    window.TDSPRuntime.setText('tdsp-drep-delegation', formatTileAdaFromLovelace(stats.drep.votingPower, { fixedFractionDigits: 2 }));
+    window.TDSPRuntime.setText('tdsp-drep-delegation', window.TDSPRuntime.formatTileAdaFromLovelace(stats.drep.votingPower, { fixedFractionDigits: 2 }));
     window.TDSPRuntime.setText('tdsp-drep-voted', stats.votedCount === null ? 'N/A' : stats.votedCount.toLocaleString('en-US'));
 }
 
@@ -8471,7 +8471,7 @@ async function loadSpoDirectory() {
                 window.TDSPRuntime.setText('gov-spo-count', spoDirectoryState.count.toLocaleString('en-US'));
                 window.TDSPRuntime.setText(
                     'gov-spo-total-delegated',
-                    `Delegated ${formatTileAdaFromLovelace(spoDirectoryState.total_delegated_lovelace || 0)}`
+                    `Delegated ${window.TDSPRuntime.formatTileAdaFromLovelace(spoDirectoryState.total_delegated_lovelace || 0)}`
                 );
                 return spoDirectoryState;
             })
@@ -9372,7 +9372,7 @@ async function openTopDrepPowerOverlay(returnFocus = document.activeElement) {
         renderTopDrepPowerList(panel, topDreps);
         updateGovernanceMenuHeaderMeta(
             'governance-drep-top10-overlay',
-            `${formatTileAdaFromLovelace(top10Power, { fixedFractionDigits: 2 })} voting power`,
+            `${window.TDSPRuntime.formatTileAdaFromLovelace(top10Power, { fixedFractionDigits: 2 })} voting power`,
             panel
         );
         fetchDrepCorrelationPayload()
@@ -9429,7 +9429,7 @@ async function openTopDrepPowerOverlay(returnFocus = document.activeElement) {
                 count: topDreps.length,
                 amount_ada: top10Power / 1_000_000,
                 root: 'DReps',
-                summary: `Top 10 DReps represent ${formatTileAdaFromLovelace(top10Power, { fixedFractionDigits: 2 })} voting power`
+                summary: `Top 10 DReps represent ${window.TDSPRuntime.formatTileAdaFromLovelace(top10Power, { fixedFractionDigits: 2 })} voting power`
             }),
             panel
         );
@@ -12277,7 +12277,7 @@ function getDashboardDrepStats(payload) {
 
 function renderDrepSummaryStats(stats) {
     window.TDSPRuntime.setText('gov-drep-count', stats.count.toLocaleString('en-US'));
-    window.TDSPRuntime.setText('gov-drep-total-power', `Voting Power ${formatTileAdaFromLovelace(stats.totalPower, { fixedFractionDigits: 2 })}`);
+    window.TDSPRuntime.setText('gov-drep-total-power', `Voting Power ${window.TDSPRuntime.formatTileAdaFromLovelace(stats.totalPower, { fixedFractionDigits: 2 })}`);
     renderDrepTop10PowerTile(stats);
     window.TDSPRuntime.setText('gov-drep-top10-count', 'Voting Power');
 }
@@ -12286,7 +12286,7 @@ function renderDrepTop10PowerTile(stats) {
     const element = document.getElementById('gov-drep-top10-power');
     if (!element || !Number.isFinite(Number(stats?.top10Power))) return;
 
-    element.replaceChildren(document.createTextNode(formatTileAdaFromLovelace(stats.top10Power, { fixedFractionDigits: 2 })));
+    element.replaceChildren(document.createTextNode(window.TDSPRuntime.formatTileAdaFromLovelace(stats.top10Power, { fixedFractionDigits: 2 })));
     const totalPower = Number(stats?.totalPower);
     const top10Power = Number(stats.top10Power);
     if (!Number.isFinite(totalPower) || totalPower <= 0) return;
@@ -12780,7 +12780,7 @@ function formatGovernanceAskAmount(proposals) {
         : 0;
 
     return totalAsk
-        ? formatTileAdaFromLovelace(totalAsk, { fixedFractionDigits: 2 })
+        ? window.TDSPRuntime.formatTileAdaFromLovelace(totalAsk, { fixedFractionDigits: 2 })
         : '₳ 0';
 }
 
@@ -12857,16 +12857,4 @@ function formatPercentage(value) {
 
 function formatCompactAdaFromLovelace(value, options = {}) {
     return window.TDSPRuntime.formatCompactAdaFromLovelace(value, options);
-}
-
-function formatTileAdaText(value) {
-    const text = String(value ?? '').trim();
-    if (/^₳\s*/.test(text)) return text.replace(/^₳\s*/, '₳ ');
-    return /\sADA$/i.test(text)
-        ? `₳ ${text.replace(/\sADA$/i, '')}`
-        : text;
-}
-
-function formatTileAdaFromLovelace(value, options = {}) {
-    return formatTileAdaText(formatCompactAdaFromLovelace(value, options));
 }

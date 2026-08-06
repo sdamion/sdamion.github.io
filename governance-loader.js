@@ -1,5 +1,5 @@
 (function () {
-    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260807-search-normalizer';
+    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260807-ada-tile-format';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
         '#drep',
