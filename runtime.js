@@ -337,6 +337,18 @@
         });
     }
 
+    function createCopyButton(value, label, options = {}) {
+        const button = document.createElement('button');
+        button.className = options.className || 'pool-copy-icon-button';
+        button.type = 'button';
+        button.textContent = options.icon || '⧉';
+        const ariaLabel = options.ariaLabel || `Copy ${label}`;
+        button.setAttribute('aria-label', ariaLabel);
+        if (options.title !== false) button.title = options.title || ariaLabel;
+        bindCopyButton(button, value, options.bindOptions || {});
+        return button;
+    }
+
     function cleanTileText(value) {
         return String(value || '').replace(/\n{3,}/g, '\n\n').trim();
     }
@@ -434,6 +446,7 @@
         setText,
         copyText,
         bindCopyButton,
+        createCopyButton,
         createSmallText,
         shortenMiddle,
         formatReadableLabel,

@@ -9746,17 +9746,13 @@ function closeDrepStatusListOverlay() {
 }
 
 function createGovernanceCopyButton(value, label) {
-    const button = document.createElement('button');
-    button.className = 'pool-copy-icon-button governance-drep-copy-button';
-    button.type = 'button';
-    button.textContent = '⧉';
-    button.setAttribute('aria-label', `Copy ${label}`);
-    button.title = `Copy ${label}`;
-    window.TDSPRuntime?.bindCopyButton?.(button, value, {
-        preventDefault: false,
-        copiedAriaLabel: `Copied ${label}`
+    return window.TDSPRuntime.createCopyButton(value, label, {
+        className: 'pool-copy-icon-button governance-drep-copy-button',
+        bindOptions: {
+            preventDefault: false,
+            copiedAriaLabel: `Copied ${label}`
+        }
     });
-    return button;
 }
 
 function openDrepActionHistoryOverlay(drep, returnFocus = null) {

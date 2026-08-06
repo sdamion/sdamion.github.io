@@ -1,5 +1,5 @@
 (function () {
-    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260807-finite-number';
+    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260807-copy-button';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
         '#drep',

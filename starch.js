@@ -490,13 +490,10 @@ function formatStarchTimestamp(value, stale) {
 }
 
 function createStarchCopyButton(value, label) {
-    const button = document.createElement('button');
-    button.className = 'pool-delegator-copy-button';
-    button.type = 'button';
-    button.textContent = '⧉';
-    button.setAttribute('aria-label', `Copy ${label}`);
-    window.TDSPRuntime?.bindCopyButton?.(button, value);
-    return button;
+    return window.TDSPRuntime.createCopyButton(value, label, {
+        className: 'pool-delegator-copy-button',
+        title: false
+    });
 }
 
 function shadeColor(color, percent) {
