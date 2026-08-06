@@ -16,6 +16,7 @@ const SPO_DETAIL_API_BASE_URL = 'https://api.tdsp.online/api/spo';
 const REMOTE_METADATA_API_URL = 'https://api.tdsp.online/api/metadata';
 const TREASURY_API_URL = 'https://api.tdsp.online/api/treasury';
 const CATALYST_BUSINESS_API_URL = 'https://api.tdsp.online/api/catalyst/businesses';
+const FUNDING_RECIPIENTS_API_URL = 'https://api.tdsp.online/api/funding/recipients';
 const CATALYST_PROPOSALS_API_URL = 'https://api.tdsp.online/api/catalyst/proposals';
 const CATALYST_PROPOSAL_DETAIL_API_BASE_URL = 'https://api.tdsp.online/api/catalyst/proposal';
 const CATALYST_PROPOSAL_SUMMARY_API_BASE_URL = 'https://api.tdsp.online/api/catalyst/proposal';
@@ -39,6 +40,7 @@ const LOCAL_SPO_DETAIL_PROXY_PATH = '/__spo_detail_proxy__';
 const LOCAL_METADATA_PROXY_PATH = '/__metadata_proxy__';
 const LOCAL_TREASURY_PROXY_PATH = '/__treasury_proxy__';
 const LOCAL_CATALYST_BUSINESS_PROXY_PATH = '/__catalyst_business_proxy__';
+const LOCAL_FUNDING_RECIPIENTS_PROXY_PATH = '/__funding_recipients_proxy__';
 const LOCAL_CATALYST_PROPOSALS_PROXY_PATH = '/__catalyst_proposals_proxy__';
 const LOCAL_CATALYST_PROPOSAL_DETAIL_PROXY_PATH = '/__catalyst_proposal_detail_proxy__';
 const LOCAL_CATALYST_PROPOSAL_SUMMARY_PROXY_PATH = '/__catalyst_proposal_summary_proxy__';
@@ -124,6 +126,8 @@ let committeeInfoPromise = null;
 let treasuryPromise = null;
 let treasuryState = null;
 let catalystBusinessPromise = null;
+let fundingRecipientsPromise = null;
+let fundingRecipientsState = null;
 let catalystBusinessState = null;
 let catalystFundDirectoryPromise = null;
 let catalystFundDirectoryState = null;
@@ -767,6 +771,22 @@ function fetchCatalystBusinessPayload() {
         });
     }
     return catalystBusinessPromise;
+}
+
+function fetchFundingRecipientsPayload() {
+    if (!fundingRecipientsPromise) {
+        const url = shouldUseLocalDashboardProxy()
+            ? LOCAL_FUNDING_RECIPIENTS_PROXY_PATH
+            : FUNDING_RECIPIENTS_API_URL;
+        fundingRecipientsPromise = fetchJson(url).then(payload => {
+            fundingRecipientsState = payload;
+            return payload;
+        }).catch(error => {
+            fundingRecipientsPromise = null;
+            throw error;
+        });
+    }
+    return fundingRecipientsPromise;
 }
 
 function fetchCatalystFundDirectoryPayload() {
@@ -1808,9 +1828,11 @@ function getTreasuryBusinessName(withdrawal) {
 }
 
 function updateBusinessSummary(payload, catalystPayload = catalystBusinessState) {
-    const groups = getTreasuryBusinessGroups(payload, catalystPayload);
-    const total = groups.reduce((sum, group) => sum + group.value, 0);
-    const usdPending = groups.some(group => group.usdPending);
+    const groups = Array.isArray(fundingRecipientsState?.groups)
+        ? fundingRecipientsState.groups
+        : getTreasuryBusinessGroups(payload, catalystPayload);
+    const total = Number(fundingRecipientsState?.totals?.received_usd) || groups.reduce((sum, group) => sum + group.value, 0);
+    const usdPending = fundingRecipientsState?.totals?.pending === true || groups.some(group => group.usdPending);
     window.TDSPRuntime.setText('gov-business-count', groups.length.toLocaleString('en-US'));
     window.TDSPRuntime.setText(
         'gov-business-total-usd',
@@ -1888,14 +1910,22 @@ async function openBusinessOverlay(returnFocus = document.activeElement) {
     });
 
     try {
-        const [payload, catalystPayload] = await Promise.all([
-            treasuryState || fetchTreasuryPayload(),
-            catalystBusinessState || fetchCatalystBusinessPayload().catch(() => null)
-        ]);
-        treasuryState = payload;
-        catalystBusinessState = catalystPayload;
+        const recipientPayload = await fetchFundingRecipientsPayload().catch(() => null);
+        let payload = treasuryState;
+        let catalystPayload = catalystBusinessState;
+        if (Array.isArray(recipientPayload?.groups)) {
+            groups = recipientPayload.groups;
+            fundingRecipientsState = recipientPayload;
+        } else {
+            [payload, catalystPayload] = await Promise.all([
+                treasuryState || fetchTreasuryPayload(),
+                catalystBusinessState || fetchCatalystBusinessPayload().catch(() => null)
+            ]);
+            treasuryState = payload;
+            catalystBusinessState = catalystPayload;
+            groups = getTreasuryBusinessGroups(payload, catalystPayload);
+        }
         if (!panel.isConnected) return;
-        groups = getTreasuryBusinessGroups(payload, catalystPayload);
         directoryReady = true;
         renderedSignature = '';
         renderRecipients('');
@@ -1904,7 +1934,7 @@ async function openBusinessOverlay(returnFocus = document.activeElement) {
             createWebsiteSectionBotContext('Catalyst/Treasury Recipients', {
                 title: 'Catalyst/Treasury Recipients',
                 count: groups.length,
-                amount_usd: getFundingRecipientUsdTotals(groups).received,
+                amount_usd: Number(recipientPayload?.totals?.received_usd) || getFundingRecipientUsdTotals(groups).received,
                 summary: `${groups.length.toLocaleString('en-US')} recipients`
             }),
             panel
