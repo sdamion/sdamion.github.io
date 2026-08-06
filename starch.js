@@ -165,9 +165,7 @@ function createStarchDirectoryList(records, type, label) {
     const list = document.createElement('div');
     list.className = 'governance-drep-directory-list';
     if (!records.length) {
-        const message = document.createElement('p');
-        message.className = 'governance-empty';
-        message.textContent = `${label} data is not available yet.`;
+        const message = window.TDSPRuntime.createSmallText(`${label} data is not available yet.`, { className: 'governance-empty' });
         list.appendChild(message);
         return list;
     }
@@ -312,9 +310,7 @@ async function openStarchCompanyOverlay(company, returnFocus, options = {}) {
     const companyId = String(company?.id || '').trim().toUpperCase();
     const content = document.createElement('div');
     content.className = 'starch-company-detail';
-    const loading = document.createElement('p');
-    loading.className = 'small-text';
-    loading.textContent = 'Loading company miners...';
+    const loading = window.TDSPRuntime.createSmallText('Loading company miners...');
     content.appendChild(loading);
 
     createPoolMenuOverlay({
@@ -341,9 +337,7 @@ async function openStarchCompanyOverlay(company, returnFocus, options = {}) {
         console.error(`Starch company ${companyId} failed: ${error.message}`);
         if (!document.getElementById('starch-company-detail-overlay')) return;
         content.replaceChildren();
-        const message = document.createElement('p');
-        message.className = 'governance-empty';
-        message.textContent = 'Company miner data could not be loaded.';
+        const message = window.TDSPRuntime.createSmallText('Company miner data could not be loaded.', { className: 'governance-empty' });
         content.appendChild(message);
     }
 }
