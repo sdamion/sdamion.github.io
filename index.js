@@ -42,6 +42,7 @@ let starchPools = [];
 let starchPoolStatus = null;
 let cryptoNewsItems = [];
 let latestPricePayload = null;
+let priceFetchPromise = null;
 let priceHistoryChart = null;
 const PRICE_CHART_WINDOW_LABEL = '7 days';
 const PRICE_CHART_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
@@ -276,24 +277,35 @@ function renderPriceSparklines(history) {
 }
 
 // Fetch and display ADA, BTC, NIGHT, and STRCH prices asynchronously
-async function fetchPrices() {
-    try {
-        const response = await fetch(PRICE_API_URL, { cache: 'no-store' });
-        if (!response.ok) throw new Error(`Price API HTTP Error: ${response.status}`);
-        const prices = await response.json();
-        latestPricePayload = prices;
-        Object.entries(PRICE_TOKEN_CONFIG).forEach(([key, config]) => {
-            window.TDSPRuntime.setText(
-                config.elementId,
-                `${config.prefix || ''}${formatUsdPrice(prices[key], config.decimals)}`
-            );
-        });
-        renderPriceSparklines(prices.history);
-    } catch (error) {
-        console.error('Price data could not be loaded', error);
-        Object.values(PRICE_TOKEN_CONFIG).forEach(config => window.TDSPRuntime.setText(config.elementId, 'N/A'));
-        renderPriceSparklines([]);
-    }
+async function fetchPrices(options = {}) {
+    if (document.hidden && latestPricePayload && options.force !== true) return latestPricePayload;
+    if (priceFetchPromise) return priceFetchPromise;
+
+    priceFetchPromise = (async () => {
+        try {
+            const response = await fetch(PRICE_API_URL, { cache: 'no-store' });
+            if (!response.ok) throw new Error(`Price API HTTP Error: ${response.status}`);
+            const prices = await response.json();
+            latestPricePayload = prices;
+            Object.entries(PRICE_TOKEN_CONFIG).forEach(([key, config]) => {
+                window.TDSPRuntime.setText(
+                    config.elementId,
+                    `${config.prefix || ''}${formatUsdPrice(prices[key], config.decimals)}`
+                );
+            });
+            renderPriceSparklines(prices.history);
+            return prices;
+        } catch (error) {
+            console.error('Price data could not be loaded', error);
+            Object.values(PRICE_TOKEN_CONFIG).forEach(config => window.TDSPRuntime.setText(config.elementId, 'N/A'));
+            renderPriceSparklines([]);
+            return null;
+        } finally {
+            priceFetchPromise = null;
+        }
+    })();
+
+    return priceFetchPromise;
 }
 
 function getHistoryOhlcSamples(priceKey) {
@@ -1216,6 +1228,9 @@ document.addEventListener("DOMContentLoaded", () => {
     fetchLeaderSchedule();
     fetchDatabaseStatus();
     setInterval(fetchPrices, 30000);
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) fetchPrices({ force: true });
+    });
     setInterval(fetchCryptoNews, 300000);
     setInterval(fetchCardanoEvents, 900000);
     setInterval(fetchPoolStatus, 300000);
