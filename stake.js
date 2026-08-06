@@ -238,6 +238,14 @@ function bindStakeControls(root = document) {
     });
 }
 
-bindStakeControls();
-document.addEventListener('DOMContentLoaded', () => bindStakeControls());
+function initStakeUi() {
+    bindStakeControls();
+    window.TDSPStakeReady = true;
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initStakeUi, { once: true });
+} else {
+    initStakeUi();
+}
 document.addEventListener('tdsp:content-loaded', () => bindStakeControls());
