@@ -7,6 +7,7 @@ const PROPOSAL_DETAIL_API_BASE_URL = 'https://api.tdsp.online/api/proposal';
 const PROPOSAL_SUMMARY_API_BASE_URL = 'https://api.tdsp.online/api/proposal';
 const DREP_INFO_API_URL = 'https://api.tdsp.online/api/dreps/directory';
 const DREP_DETAIL_API_BASE_URL = 'https://api.tdsp.online/api/drep';
+const DREP_VOTE_STATS_API_URL = 'https://api.tdsp.online/api/dreps/vote-stats';
 const TDSP_DREP_ID = 'drep1yg5gkkyxwwr7d6qflf2qqp6drkp9432h6cvtmun0dqthusqlkz8hj';
 const TDSP_DREP_FALLBACK_NAME = 'DamionDutch';
 const SPO_DIRECTORY_API_URL = 'https://api.tdsp.online/api/spos/directory';
@@ -30,6 +31,7 @@ const LOCAL_PROPOSAL_DETAIL_PROXY_PATH = '/__proposal_detail_proxy__';
 const LOCAL_PROPOSAL_SUMMARY_PROXY_PATH = '/__proposal_summary_proxy__';
 const LOCAL_DREP_DIRECTORY_PROXY_PATH = '/__drep_directory_proxy__';
 const LOCAL_DREP_DETAIL_PROXY_PATH = '/__drep_detail_proxy__';
+const LOCAL_DREP_VOTE_STATS_PROXY_PATH = '/__drep_vote_stats_proxy__';
 const LOCAL_SPO_DIRECTORY_PROXY_PATH = '/__spo_directory_proxy__';
 const LOCAL_SPO_DETAIL_PROXY_PATH = '/__spo_detail_proxy__';
 const LOCAL_METADATA_PROXY_PATH = '/__metadata_proxy__';
@@ -44,6 +46,7 @@ const LOCAL_CONSTITUTION_CHAT_FEEDBACK_PROXY_PATH = '/__constitution_chat_feedba
 const LOCAL_CONSTITUTION_DOCUMENT_PROXY_PATH = '/__constitution_document_proxy__';
 const GOVERNANCE_MESH_CDN_URL = 'https://esm.sh/@meshsdk/core@1.9.1?bundle-deps';
 const ACTIVE_REFRESH_INTERVAL_MS = 15 * 60 * 1000;
+const DREP_TOP10_BACKGROUND_REFRESH_MAX_AGE_MS = 60 * 60 * 1000;
 const EPOCH_CHANGE_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const EPOCH_CHANGE_REFRESH_WINDOW_MS = 60 * 60 * 1000;
 const GOVERNANCE_NOTIFICATION_STORAGE_KEY = 'tdsp-governance-notification-state-v1';
@@ -110,6 +113,7 @@ let drepDirectoryPromise = null;
 let drepInfoPromise = null;
 let drepStatsPromise = null;
 let drepDirectoryState = null;
+let drepVoteStatsPayloadPromise = null;
 let spoDirectoryPromise = null;
 let spoDirectoryState = null;
 let committeeInfoPromise = null;
@@ -9288,13 +9292,42 @@ async function openTopDrepPowerOverlay(returnFocus = document.activeElement) {
             )
             .slice(0, 10);
         const top10Power = topDreps.reduce((sum, drep) => sum + (Number(drep.votingPower) || 0), 0);
-        const detailPayloads = await Promise.all(topDreps.map(drep => loadDrepDetail(drep).catch(error => ({ error }))));
-        renderTopDrepVoteMatrix(panel, topDreps, detailPayloads);
+        let renderedFreshVoteMatrix = false;
+        renderTopDrepPowerList(panel, topDreps);
         updateGovernanceMenuHeaderMeta(
             'governance-drep-top10-overlay',
             `${formatTileAdaFromLovelace(top10Power, { fixedFractionDigits: 2 })} voting power`,
             panel
         );
+        const refreshTopDrepVoteMatrix = () => {
+            Promise.all(topDreps.map(drep => loadDrepDetail(drep).catch(error => ({ error }))))
+                .then(detailPayloads => {
+                    if (!panel.isConnected) return;
+                    renderedFreshVoteMatrix = true;
+                    renderTopDrepVoteMatrix(panel, topDreps, detailPayloads);
+                })
+                .catch(error => {
+                    console.error('Top 10 DRep vote matrix could not be loaded', error);
+                });
+        };
+        fetchDrepVoteStatsPayload()
+            .then(voteStatsPayload => {
+                if (!panel.isConnected) return;
+                if (voteStatsPayload && !renderedFreshVoteMatrix) {
+                    renderTopDrepVoteMatrix(
+                        panel,
+                        topDreps,
+                        topDreps.map(drep => createCachedDrepVoteDetailPayload(drep, voteStatsPayload))
+                    );
+                }
+                if (isDrepVoteStatsPayloadStale(voteStatsPayload)) {
+                    refreshTopDrepVoteMatrix();
+                }
+            })
+            .catch(error => {
+                console.warn('Cached DRep vote stats could not be loaded', error);
+                refreshTopDrepVoteMatrix();
+            });
         updateGovernanceOverlayBotContext(
             'governance-drep-top10-overlay',
             createWebsiteSectionBotContext('DReps', {
@@ -9326,6 +9359,68 @@ async function openTopDrepPowerOverlay(returnFocus = document.activeElement) {
 
 function closeTopDrepPowerOverlay() {
     removeGovernanceMenuOverlay('governance-drep-top10-overlay');
+}
+
+function isDrepVoteStatsPayloadStale(voteStatsPayload) {
+    const updatedAt = Date.parse(String(
+        voteStatsPayload?.updated_at
+        || voteStatsPayload?.generated_at
+        || voteStatsPayload?.created_at
+        || ''
+    ));
+    return !Number.isFinite(updatedAt)
+        || Date.now() - updatedAt > DREP_TOP10_BACKGROUND_REFRESH_MAX_AGE_MS;
+}
+
+function createCachedDrepVoteDetailPayload(drep, voteStatsPayload) {
+    const statsByDrep = voteStatsPayload?.dreps && typeof voteStatsPayload.dreps === 'object'
+        ? voteStatsPayload.dreps
+        : {};
+    const identifiers = getDrepEntryIdentifiers(drep).map(normalizeGovernanceIdentifier).filter(Boolean);
+    const cachedId = identifiers.find(identifier => statsByDrep[identifier])
+        || identifiers.map(shortenDrepIdentifier).find(identifier => statsByDrep[identifier]);
+    const cachedStats = cachedId ? statsByDrep[cachedId] : null;
+
+    return {
+        drep_id: drep?.id || cachedId || identifiers[0] || '',
+        info: {
+            amount: drep?.votingPower,
+            active: drep?.active === true
+        },
+        metadata: {
+            meta_json: {
+                body: {
+                    givenName: drep?.name || cachedId || identifiers[0] || 'DRep'
+                }
+            }
+        },
+        vote_stats: {
+            source: voteStatsPayload?.source || 'cache',
+            updated_at: voteStatsPayload?.updated_at || null,
+            cached_proposals: voteStatsPayload?.cached_proposals || 0,
+            total_proposals: voteStatsPayload?.total_proposals || 0,
+            ...(cachedStats && typeof cachedStats === 'object' ? cachedStats : {}),
+            vote_count: Number(cachedStats?.vote_count) || 0,
+            actions: Array.isArray(cachedStats?.actions) ? cachedStats.actions : []
+        }
+    };
+}
+
+function renderTopDrepPowerList(container, topDreps) {
+    container.textContent = '';
+    if (!topDreps.length) {
+        const message = document.createElement('p');
+        message.className = 'small-text';
+        message.textContent = 'No top DRep data available.';
+        container.appendChild(message);
+        return;
+    }
+
+    renderDrepDirectory(container, topDreps, { showChart: false });
+    const intro = document.createElement('p');
+    intro.className = 'small-text';
+    intro.textContent = 'Vote sync is loading in the background.';
+    container.prepend(intro);
 }
 
 function renderTopDrepVoteMatrix(container, dreps, detailPayloads) {
@@ -11217,6 +11312,23 @@ function getDrepDetailApiUrl(drepId) {
         return `${LOCAL_DREP_DETAIL_PROXY_PATH}?${params.toString()}`;
     }
     return `${DREP_DETAIL_API_BASE_URL}/${encodeURIComponent(drepId)}`;
+}
+
+function getDrepVoteStatsApiUrl() {
+    if (shouldUseLocalDashboardProxy()) {
+        return LOCAL_DREP_VOTE_STATS_PROXY_PATH;
+    }
+    return DREP_VOTE_STATS_API_URL;
+}
+
+async function fetchDrepVoteStatsPayload() {
+    if (!drepVoteStatsPayloadPromise) {
+        drepVoteStatsPayloadPromise = fetchJson(getDrepVoteStatsApiUrl()).catch(error => {
+            drepVoteStatsPayloadPromise = null;
+            throw error;
+        });
+    }
+    return drepVoteStatsPayloadPromise;
 }
 
 function getDrepMetadataFetchUrl(url, options = {}) {
