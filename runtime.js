@@ -205,6 +205,37 @@
         textArea.remove();
     }
 
+    function bindCopyButton(button, value, options = {}) {
+        if (!(button instanceof HTMLElement)) return;
+        button.addEventListener('keydown', event => event.stopPropagation());
+        button.addEventListener('click', async event => {
+            if (options.preventDefault !== false) event.preventDefault();
+            if (options.stopPropagation !== false) event.stopPropagation();
+
+            const originalLabel = button.textContent;
+            const originalAriaLabel = button.getAttribute('aria-label') || '';
+            const copyValue = typeof value === 'function' ? value(button, event) : value;
+
+            try {
+                if (!copyValue) throw new Error('Missing copy value');
+                await copyText(copyValue);
+                button.textContent = options.copiedText || 'Copied';
+                if (options.copiedAriaLabel) {
+                    button.setAttribute('aria-label', options.copiedAriaLabel);
+                } else if (originalAriaLabel) {
+                    button.setAttribute('aria-label', originalAriaLabel.replace(/^Copy\b/, 'Copied'));
+                }
+            } catch {
+                button.textContent = options.errorText || 'Copy failed';
+            }
+
+            window.setTimeout(() => {
+                button.textContent = originalLabel;
+                if (originalAriaLabel) button.setAttribute('aria-label', originalAriaLabel);
+            }, Number(options.resetMs) > 0 ? Number(options.resetMs) : 1400);
+        });
+    }
+
     function cleanTileText(value) {
         return String(value || '').replace(/\n{3,}/g, '\n\n').trim();
     }
@@ -270,6 +301,7 @@
         onReady,
         setText,
         copyText,
+        bindCopyButton,
         appendUniversalTileContent
     });
 }());

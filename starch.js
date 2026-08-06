@@ -501,19 +501,7 @@ function createStarchCopyButton(value, label) {
     button.type = 'button';
     button.textContent = '⧉';
     button.setAttribute('aria-label', `Copy ${label}`);
-    button.addEventListener('keydown', event => event.stopPropagation());
-    button.addEventListener('click', async event => {
-        event.preventDefault();
-        event.stopPropagation();
-        const original = button.textContent;
-        try {
-            await window.TDSPRuntime.copyText(value);
-            button.textContent = 'Copied';
-        } catch {
-            button.textContent = 'Copy failed';
-        }
-        setTimeout(() => { button.textContent = original; }, 1400);
-    });
+    window.TDSPRuntime?.bindCopyButton?.(button, value);
     return button;
 }
 

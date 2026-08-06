@@ -9791,24 +9791,9 @@ function createGovernanceCopyButton(value, label) {
     button.textContent = '⧉';
     button.setAttribute('aria-label', `Copy ${label}`);
     button.title = `Copy ${label}`;
-    button.addEventListener('keydown', event => event.stopPropagation());
-    button.addEventListener('click', async event => {
-        event.stopPropagation();
-        const originalLabel = button.textContent;
-        const originalAriaLabel = button.getAttribute('aria-label') || '';
-
-        try {
-            await window.TDSPRuntime.copyText(value);
-            button.textContent = 'Copied';
-            button.setAttribute('aria-label', `Copied ${label}`);
-        } catch {
-            button.textContent = 'Copy failed';
-        }
-
-        setTimeout(() => {
-            button.textContent = originalLabel;
-            button.setAttribute('aria-label', originalAriaLabel);
-        }, 1400);
+    window.TDSPRuntime?.bindCopyButton?.(button, value, {
+        preventDefault: false,
+        copiedAriaLabel: `Copied ${label}`
     });
     return button;
 }
