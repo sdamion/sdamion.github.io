@@ -117,6 +117,12 @@
         return Array.isArray(selectors) ? selectors.filter(Boolean) : [selectors].filter(Boolean);
     }
 
+    function closestTarget(target, selector) {
+        if (!selector) return null;
+        const element = target instanceof Element ? target : target?.parentElement;
+        return element?.closest?.(selector) || null;
+    }
+
     function bindIntentLoad(selectors, loader, options = {}) {
         const selectorList = normalizeSelectorList(selectors);
         if (!selectorList.length || typeof loader !== 'function') return;
@@ -125,7 +131,7 @@
 
         events.forEach(eventName => {
             document.addEventListener(eventName, event => {
-                if (event.target.closest(selector)) loader();
+                if (closestTarget(event.target, selector)) loader();
             }, eventName === 'focusin' ? undefined : { passive: true });
         });
     }
@@ -246,6 +252,7 @@
         loadDetail,
         loadScript,
         bindDetailPreload,
+        closestTarget,
         bindIntentLoad,
         bindViewportLoad,
         scheduleIdle,

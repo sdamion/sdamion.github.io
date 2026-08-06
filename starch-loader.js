@@ -20,15 +20,16 @@
 
     function activateStarchTarget(target) {
         if (!target || window.TDSPStarchReady === true) return false;
-        if (!target.closest('#starch-companies-card,#starch-miners-card,#pool-starch-status-card')) return false;
+        const card = window.TDSPRuntime.closestTarget(target, '#starch-companies-card,#starch-miners-card,#pool-starch-status-card');
+        if (!card) return false;
 
         loadStarchScript().then(() => {
-            if (target.closest('#starch-companies-card')) {
-                window.openStarchDirectoryOverlay?.('companies', 'Companies', target.closest('#starch-companies-card'));
-            } else if (target.closest('#starch-miners-card')) {
-                window.openStarchDirectoryOverlay?.('miners', 'Miners', target.closest('#starch-miners-card'));
-            } else if (target.closest('#pool-starch-status-card')) {
-                window.openTdspStarchCompanyOverlay?.(target.closest('#pool-starch-status-card'));
+            if (card.id === 'starch-companies-card') {
+                window.openStarchDirectoryOverlay?.('companies', 'Companies', card);
+            } else if (card.id === 'starch-miners-card') {
+                window.openStarchDirectoryOverlay?.('miners', 'Miners', card);
+            } else if (card.id === 'pool-starch-status-card') {
+                window.openTdspStarchCompanyOverlay?.(card);
             }
         }).catch(error => console.error(`Starch UI could not be loaded: ${error.message}`));
         return true;
