@@ -7589,8 +7589,7 @@ function getVotingSummaryFromProposalVotesPayload(payload) {
             ?? info?.voting_power
             ?? info?.stake
             ?? info?.lovelace;
-        const numericValue = Number(value);
-        return Number.isFinite(numericValue) ? numericValue : 0;
+        return window.TDSPRuntime.toFiniteNumber(value);
     };
 
     const yesVotes = getBucket('yes');
@@ -11099,8 +11098,7 @@ function getDrepVotePowerValue(vote) {
         ?? vote?.stake
         ?? vote?.lovelace;
 
-    const numericValue = Number(value);
-    return Number.isFinite(numericValue) ? numericValue : 0;
+    return window.TDSPRuntime.toFiniteNumber(value);
 }
 
 async function resolveDrepNameFromApi(vote, options = {}) {
@@ -12848,8 +12846,7 @@ function getDrepEntryVotingPower(entry) {
         ?? entry?.stake
         ?? entry?.lovelace;
 
-    const numericValue = Number(value);
-    return Number.isFinite(numericValue) ? numericValue : 0;
+    return window.TDSPRuntime.toFiniteNumber(value);
 }
 
 function getCollectionLength(collection) {

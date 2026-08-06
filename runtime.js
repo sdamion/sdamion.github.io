@@ -202,6 +202,11 @@
         return Number.isFinite(number) ? new Intl.NumberFormat('en-US').format(number) : fallback;
     }
 
+    function toFiniteNumber(value, fallback = 0) {
+        const number = Number(value);
+        return Number.isFinite(number) ? number : fallback;
+    }
+
     function parseLovelaceBigInt(value) {
         try {
             return BigInt(String(value ?? '0'));
@@ -420,6 +425,7 @@
         setStatusClasses,
         setBinaryStatusClasses,
         formatInteger,
+        toFiniteNumber,
         formatLovelaceAmount,
         getLovelaceAmount,
         formatAdaFromLovelace,
