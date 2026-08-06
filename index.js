@@ -2140,13 +2140,6 @@ function createPoolMenuOverlay({
     });
 }
 
-function normalizeOverlaySearchText(value) {
-    return String(value || '')
-        .normalize('NFKD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .toLocaleLowerCase();
-}
-
 function getOverlaySearchCards(body) {
     return Array.from(body.querySelectorAll('.governance-menu-card'))
         .filter(card => !card.parentElement?.closest('.governance-menu-card'));
@@ -2224,7 +2217,7 @@ function getOverlayCardSortName(card) {
         '.governance-cc-member-hash',
         '.governance-no-vote-name'
     ].join(','));
-    return normalizeOverlaySearchText(preferred?.textContent || card.textContent).trim();
+    return window.TDSPRuntime.normalizeSearchText(preferred?.textContent || card.textContent).trim();
 }
 
 function getRelevantOverlaySortOptions(cards) {
@@ -2349,7 +2342,7 @@ function installOverlaySearch(body, {
     body.prepend(searchBar, empty);
 
     const applySearch = () => {
-        const normalizedQuery = normalizeOverlaySearchText(input.value).trim();
+        const normalizedQuery = window.TDSPRuntime.normalizeSearchText(input.value).trim();
         const searchHandled = typeof onSearch === 'function' && onSearch(normalizedQuery) === true;
         const cards = getOverlaySearchCards(body);
         const relevantOptions = getRelevantOverlaySortOptions(cards);
@@ -2372,18 +2365,18 @@ function installOverlaySearch(body, {
         const teamSearchActive = Boolean(normalizedQuery) && cards.some(card => (
             String(card.dataset.searchTeamLabels || '')
                 .split('\n')
-                .map(normalizeOverlaySearchText)
+                .map(window.TDSPRuntime.normalizeSearchText)
                 .some(label => label.trim().includes(normalizedQuery))
         ));
         let visible = 0;
 
         cards.forEach(card => {
-            const searchableText = normalizeOverlaySearchText(
+            const searchableText = window.TDSPRuntime.normalizeSearchText(
                 `${card.textContent || ''} ${card.dataset.searchText || ''}`
             );
             const teamLabels = String(card.dataset.searchTeamLabels || '')
                 .split('\n')
-                .map(normalizeOverlaySearchText)
+                .map(window.TDSPRuntime.normalizeSearchText)
                 .map(label => label.trim())
                 .filter(Boolean);
             const matches = searchHandled
@@ -2581,7 +2574,7 @@ function createPoolDelegatorsList() {
         }
 
         const row = createPoolOverlayRow({ details });
-        row.dataset.sortName = normalizeOverlaySearchText(adaHandle || address);
+        row.dataset.sortName = window.TDSPRuntime.normalizeSearchText(adaHandle || address);
         row.dataset.sortAmount = getDelegatorAmount(delegator).toString();
         if (Number.isFinite(epoch)) row.dataset.sortEpoch = String(epoch);
         list.appendChild(row);

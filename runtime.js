@@ -372,6 +372,13 @@
         return `${text.slice(0, front)}...${text.slice(-back)}`;
     }
 
+    function normalizeSearchText(value) {
+        return String(value || '')
+            .normalize('NFKD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLocaleLowerCase();
+    }
+
     function formatReadableLabel(value, fallback = '') {
         return String(value || fallback)
             .replace(/([a-z])([A-Z])/g, '$1 $2')
@@ -461,6 +468,7 @@
         createCopyButton,
         createSmallText,
         shortenMiddle,
+        normalizeSearchText,
         formatReadableLabel,
         appendUniversalTileContent
     });

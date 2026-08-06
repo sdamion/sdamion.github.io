@@ -1336,12 +1336,12 @@ function getCatalystMultiSearchQueries(normalizedQuery) {
 function matchesCatalystMultiSearch(searchTerms, queries) {
     if (!queries.length) return false;
     const normalizedTerms = searchTerms
-        .map(normalizeOverlaySearchText)
+        .map(window.TDSPRuntime.normalizeSearchText)
         .map(term => term.trim())
         .filter(Boolean);
     const exactBusinessQueries = new Set(
         Object.values(TREASURY_BUSINESS_ALIASES)
-            .map(normalizeOverlaySearchText)
+            .map(window.TDSPRuntime.normalizeSearchText)
             .map(term => term.trim())
             .filter(Boolean)
     );
@@ -8137,7 +8137,7 @@ function renderSpoDirectory(container, spos) {
         const row = document.createElement('div');
         row.className = 'governance-card governance-menu-card governance-cc-member governance-cc-member-clickable governance-spo-directory-card';
         row.dataset.searchText = `${spo.name || ''} ${spo.ticker || ''} ${spo.pool_id || ''}`.trim();
-        row.dataset.sortName = normalizeOverlaySearchText(getSpoDisplayName(spo));
+        row.dataset.sortName = window.TDSPRuntime.normalizeSearchText(getSpoDisplayName(spo));
         row.dataset.sortAmount = String(Number(spo.delegated_lovelace) || 0);
         row.dataset.sortDelegators = String(Number(spo.delegator_count) || 0);
         row.dataset.sortSaturation = String(Number(spo.saturation_pct) || 0);
@@ -9197,7 +9197,7 @@ function renderDrepDirectory(container, dreps, options = {}) {
         const row = document.createElement('div');
         row.className = 'governance-card governance-menu-card governance-cc-member';
         row.dataset.searchText = `${drep.id || ''} ${drep.searchIds || ''}`.trim();
-        row.dataset.sortName = normalizeOverlaySearchText(drep.name);
+        row.dataset.sortName = window.TDSPRuntime.normalizeSearchText(drep.name);
         row.dataset.sortPower = String(Number(drep.votingPower) || 0);
         row.dataset.sortStatus = drep.active ? '1' : '0';
         const pinRank = getDrepPinRank(drep);
@@ -9246,7 +9246,7 @@ function renderDrepDirectory(container, dreps, options = {}) {
 
 function getDrepPinRank(drep) {
     const id = String(drep?.id || '').trim().toLowerCase();
-    const name = normalizeOverlaySearchText(drep?.name).replace(/\s+/g, '');
+    const name = window.TDSPRuntime.normalizeSearchText(drep?.name).replace(/\s+/g, '');
     return id === DAMION_DREP_ID || name === 'damiondutch' ? 0 : Infinity;
 }
 
@@ -9846,7 +9846,7 @@ function updateDrepDirectoryRow(row, drep) {
     if (status) status.textContent = drep.active ? 'Active' : 'Inactive';
     row.classList.toggle('governance-drep-member--active', drep.active);
     row.classList.toggle('governance-drep-member--inactive', !drep.active);
-    row.dataset.sortName = normalizeOverlaySearchText(drep.name);
+    row.dataset.sortName = window.TDSPRuntime.normalizeSearchText(drep.name);
     row.dataset.sortPower = String(Number(drep.votingPower) || 0);
     row.dataset.sortStatus = drep.active ? '1' : '0';
     row.dataset.searchText = `${drep.id || ''} ${drep.name || ''}`.trim();
@@ -10127,7 +10127,7 @@ function renderConstitutionalCommitteeMembers(container, members, emptyMessage =
     enrichedMembers.forEach((member, index) => {
         const row = document.createElement('div');
         row.className = 'governance-card governance-menu-card governance-cc-member';
-        row.dataset.sortName = normalizeOverlaySearchText(member.name || `CC Member ${index + 1}`);
+        row.dataset.sortName = window.TDSPRuntime.normalizeSearchText(member.name || `CC Member ${index + 1}`);
         if (Number.isFinite(Number(member.expiresEpoch))) {
             row.dataset.sortEpoch = String(Number(member.expiresEpoch));
         }

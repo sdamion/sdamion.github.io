@@ -212,7 +212,7 @@ function createStarchDirectoryCard(record, type) {
 
     const row = document.createElement('div');
     row.className = 'governance-card governance-menu-card governance-treasury-withdrawal-card starch-miner-card';
-    row.dataset.sortName = normalizeOverlaySearchText(String(record?.name || 'No Name'));
+    row.dataset.sortName = window.TDSPRuntime.normalizeSearchText(String(record?.name || 'No Name'));
     row.setAttribute('role', id ? 'link' : 'group');
     if (id) row.tabIndex = 0;
     row.setAttribute('aria-label', id ? `Open ${String(record?.name || 'No Name')} on Starch` : String(record?.name || 'No Name'));
@@ -235,7 +235,7 @@ function createStarchDirectoryCard(record, type) {
 function createStarchCompanyDirectoryCard(record, id) {
     const row = document.createElement('div');
     row.className = 'governance-card governance-menu-card governance-treasury-withdrawal-card starch-company-card';
-    row.dataset.sortName = normalizeOverlaySearchText(String(record?.name || 'No Name'));
+    row.dataset.sortName = window.TDSPRuntime.normalizeSearchText(String(record?.name || 'No Name'));
     if (record?.stats_resolved === true) {
         row.dataset.sortBalance = String(Number(record?.balance) || 0);
         row.dataset.sortBlocks = String(Number(record?.weekly_blocks) || 0);
