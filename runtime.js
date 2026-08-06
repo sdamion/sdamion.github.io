@@ -345,6 +345,12 @@
         return `${text.slice(0, front)}...${text.slice(-back)}`;
     }
 
+    function formatReadableLabel(value, fallback = '') {
+        return String(value || fallback)
+            .replace(/([a-z])([A-Z])/g, '$1 $2')
+            .replace(/_/g, ' ');
+    }
+
     function createSmallText(text, options = {}) {
         const element = document.createElement(options.tagName || 'p');
         element.className = options.className || 'small-text';
@@ -424,6 +430,7 @@
         bindCopyButton,
         createSmallText,
         shortenMiddle,
+        formatReadableLabel,
         appendUniversalTileContent
     });
 }());

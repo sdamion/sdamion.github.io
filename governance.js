@@ -12861,9 +12861,7 @@ function getCollectionLength(collection) {
 }
 
 function formatProposalType(type) {
-    return String(type || 'Governance')
-        .replace(/([a-z])([A-Z])/g, '$1 $2')
-        .replace(/_/g, ' ');
+    return window.TDSPRuntime.formatReadableLabel(type, 'Governance');
 }
 
 function formatPercentage(value) {
