@@ -39,10 +39,10 @@
 
     function scheduleIdleLoad() {
         if ('requestIdleCallback' in window) {
-            window.requestIdleCallback(loadGovernanceScript, { timeout: 2500 });
+            window.requestIdleCallback(loadGovernanceScript, { timeout: 8000 });
             return;
         }
-        window.setTimeout(loadGovernanceScript, 1200);
+        window.setTimeout(loadGovernanceScript, 6000);
     }
 
     function installInteractionTriggers() {
