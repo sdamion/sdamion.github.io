@@ -202,6 +202,22 @@
         return Number.isFinite(number) ? new Intl.NumberFormat('en-US').format(number) : fallback;
     }
 
+    function formatAdaFromLovelace(value, options = {}) {
+        const number = Number(value);
+        if (!Number.isFinite(number)) return options.fallback || 'N/A';
+        const maximumFractionDigits = Number.isInteger(options.maximumFractionDigits) ? options.maximumFractionDigits : 0;
+        return `₳ ${new Intl.NumberFormat('en-US', { maximumFractionDigits }).format(number / 1_000_000)}`;
+    }
+
+    function formatPercentageValue(value, options = {}) {
+        const number = Number(value);
+        if (!Number.isFinite(number)) return options.fallback || 'N/A';
+        return `${new Intl.NumberFormat('en-US', {
+            minimumFractionDigits: Number.isInteger(options.minimumFractionDigits) ? options.minimumFractionDigits : 0,
+            maximumFractionDigits: Number.isInteger(options.maximumFractionDigits) ? options.maximumFractionDigits : 2
+        }).format(number)}%`;
+    }
+
     function setText(id, value) {
         const element = document.getElementById(id);
         if (element) element.textContent = String(value);
@@ -324,6 +340,8 @@
         setStatusClasses,
         setBinaryStatusClasses,
         formatInteger,
+        formatAdaFromLovelace,
+        formatPercentageValue,
         setText,
         copyText,
         bindCopyButton,

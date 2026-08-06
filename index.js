@@ -1747,11 +1747,11 @@ function renderLeaderScheduleError() {
 function renderPoolStatus(pool) {
     poolDelegators = Array.isArray(pool?.delegators) ? [...pool.delegators] : [];
     window.TDSPRuntime.setText('pool-delegators', window.TDSPRuntime.formatInteger(pool?.delegator_count));
-    window.TDSPRuntime.setText('pool-live-stake', formatAdaFromLovelace(pool?.live_stake_lovelace));
+    window.TDSPRuntime.setText('pool-live-stake', window.TDSPRuntime.formatAdaFromLovelace(pool?.live_stake_lovelace));
     window.TDSPRuntime.setText('pool-saturation', formatPoolSaturation(pool?.saturation_pct ?? pool?.raw?.live_saturation));
-    window.TDSPRuntime.setText('pool-pledge', formatAdaFromLovelace(pool?.pledge_lovelace ?? pool?.raw?.pledge));
+    window.TDSPRuntime.setText('pool-pledge', window.TDSPRuntime.formatAdaFromLovelace(pool?.pledge_lovelace ?? pool?.raw?.pledge));
     window.TDSPRuntime.setText('pool-margin', formatPoolMargin(pool?.margin ?? pool?.raw?.margin));
-    window.TDSPRuntime.setText('pool-fixed-cost', formatAdaFromLovelace(pool?.fixed_cost_lovelace ?? pool?.raw?.fixed_cost));
+    window.TDSPRuntime.setText('pool-fixed-cost', window.TDSPRuntime.formatAdaFromLovelace(pool?.fixed_cost_lovelace ?? pool?.raw?.fixed_cost));
     window.TDSPRuntime.setText('pool-id', pool?.pool_id || 'N/A');
 
     const relays = Array.isArray(pool?.relays) ? pool.relays : [];
@@ -2685,25 +2685,18 @@ function notifyRelayMaintenance(downRelays) {
     });
 }
 
-function formatAdaFromLovelace(value) {
-    const number = Number(value);
-    if (!Number.isFinite(number)) return 'N/A';
-    return `₳ ${new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(number / 1_000_000)}`;
-}
-
 function formatPoolMargin(value) {
     const number = Number(value);
-    if (!Number.isFinite(number)) return 'N/A';
-    return `${new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(number * 100)}%`;
+    return Number.isFinite(number)
+        ? window.TDSPRuntime.formatPercentageValue(number * 100)
+        : 'N/A';
 }
 
 function formatPoolSaturation(value) {
     const number = Number(value);
-    if (!Number.isFinite(number)) return 'N/A';
-    return `${new Intl.NumberFormat('en-US', {
-        minimumFractionDigits: number > 0 && number < 0.01 ? 3 : 0,
-        maximumFractionDigits: 2
-    }).format(number)}%`;
+    return Number.isFinite(number)
+        ? window.TDSPRuntime.formatPercentageValue(number, { minimumFractionDigits: number > 0 && number < 0.01 ? 3 : 0 })
+        : 'N/A';
 }
 
 function formatTimestamp(value) {
