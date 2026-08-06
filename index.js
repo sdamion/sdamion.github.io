@@ -421,12 +421,7 @@ function initPriceHistoryTiles() {
         if (tile.dataset.priceHistoryBound === 'true') return;
         const open = () => openPriceHistoryOverlay(tile);
         tile.dataset.priceHistoryBound = 'true';
-        tile.addEventListener('click', open);
-        tile.addEventListener('keydown', event => {
-            if (event.key !== 'Enter' && event.key !== ' ') return;
-            event.preventDefault();
-            open();
-        });
+        window.TDSPRuntime?.bindActivation?.(tile, open);
     });
 }
 
@@ -1046,12 +1041,7 @@ function createCardanoEventSourceTile(source, events) {
         tile.appendChild(image);
     }
     const open = () => openCardanoEventSourceOverlay(source, events, tile);
-    tile.addEventListener('click', open);
-    tile.addEventListener('keydown', event => {
-        if (event.key !== 'Enter' && event.key !== ' ') return;
-        event.preventDefault();
-        open();
-    });
+    window.TDSPRuntime?.bindActivation?.(tile, open);
     return tile;
 }
 
@@ -1845,12 +1835,7 @@ function initPoolDelegatorsCard() {
     if (!card || card.dataset.delegatorsBound === 'true') return;
 
     card.dataset.delegatorsBound = 'true';
-    card.addEventListener('click', openPoolDelegatorsOverlay);
-    card.addEventListener('keydown', event => {
-        if (event.key !== 'Enter' && event.key !== ' ') return;
-        event.preventDefault();
-        openPoolDelegatorsOverlay();
-    });
+    window.TDSPRuntime?.bindActivation?.(card, openPoolDelegatorsOverlay);
 }
 
 function openPoolDelegatorsOverlay() {
@@ -1878,12 +1863,7 @@ function initMithrilCard() {
     if (!card || card.dataset.mithrilBound === 'true') return;
 
     card.dataset.mithrilBound = 'true';
-    card.addEventListener('click', openMithrilSignersOverlay);
-    card.addEventListener('keydown', event => {
-        if (event.key !== 'Enter' && event.key !== ' ') return;
-        event.preventDefault();
-        openMithrilSignersOverlay();
-    });
+    window.TDSPRuntime?.bindActivation?.(card, openMithrilSignersOverlay);
 }
 
 function openMithrilSignersOverlay() {
@@ -1918,12 +1898,7 @@ function bindStarchPoolCard(cardId, openOverlay) {
 
     const open = () => openOverlay(card);
     card.dataset.starchPoolBound = 'true';
-    card.addEventListener('click', open);
-    card.addEventListener('keydown', event => {
-        if (event.key !== 'Enter' && event.key !== ' ') return;
-        event.preventDefault();
-        open();
-    });
+    window.TDSPRuntime?.bindActivation?.(card, open);
 }
 
 function openStarchPoolsOverlay(returnFocus = document.activeElement) {
