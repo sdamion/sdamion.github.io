@@ -202,6 +202,28 @@
         return Number.isFinite(number) ? new Intl.NumberFormat('en-US').format(number) : fallback;
     }
 
+    function parseLovelaceBigInt(value) {
+        try {
+            return BigInt(String(value ?? '0'));
+        } catch {
+            return null;
+        }
+    }
+
+    function formatLovelaceAmount(value, options = {}) {
+        const lovelace = parseLovelaceBigInt(value);
+        if (lovelace === null) return options.fallback || 'N/A';
+
+        const decimals = Number.isInteger(options.fractionDigits) ? options.fractionDigits : 2;
+        const wholeAda = lovelace / 1_000_000n;
+        const fraction = lovelace % 1_000_000n;
+        const numericValue = `${wholeAda}.${fraction.toString().padStart(6, '0')}`;
+        return `₳ ${new Intl.NumberFormat('en-US', {
+            minimumFractionDigits: decimals,
+            maximumFractionDigits: decimals
+        }).format(Number(numericValue))}`;
+    }
+
     function formatAdaFromLovelace(value, options = {}) {
         const number = Number(value);
         if (!Number.isFinite(number)) return options.fallback || 'N/A';
@@ -356,6 +378,7 @@
         setStatusClasses,
         setBinaryStatusClasses,
         formatInteger,
+        formatLovelaceAmount,
         formatAdaFromLovelace,
         formatPercentageValue,
         setText,

@@ -4386,13 +4386,7 @@ function compareBigIntDescending(left, right) {
 }
 
 function formatDrepDelegatorAda(lovelace) {
-    const wholeAda = lovelace / 1_000_000n;
-    const fraction = lovelace % 1_000_000n;
-    const value = `${wholeAda}.${fraction.toString().padStart(6, '0')}`;
-    return `₳ ${new Intl.NumberFormat('en-US', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    }).format(Number(value))}`;
+    return window.TDSPRuntime.formatLovelaceAmount(lovelace);
 }
 
 function shortenDrepStakeAddress(address) {
