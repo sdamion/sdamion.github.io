@@ -1,5 +1,5 @@
 (function () {
-    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260807-compact-ada';
+    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260807-percentage';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
         '#drep',

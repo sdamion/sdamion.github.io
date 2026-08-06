@@ -12867,10 +12867,7 @@ function formatProposalType(type) {
 }
 
 function formatPercentage(value) {
-    const number = Number(value);
-    if (!Number.isFinite(number)) return value;
-    const rounded = Math.round(number * 100) / 100;
-    return `${rounded.toLocaleString('en-US')}%`;
+    return window.TDSPRuntime.formatPercentageValue(value, { fallback: value });
 }
 
 function formatCompactAdaFromLovelace(value, options = {}) {
