@@ -113,7 +113,7 @@ let drepDirectoryPromise = null;
 let drepInfoPromise = null;
 let drepStatsPromise = null;
 let drepDirectoryState = null;
-let drepVoteStatsPayloadPromise = null;
+let drepVoteStatsPayloadPromises = new Map();
 let spoDirectoryPromise = null;
 let spoDirectoryState = null;
 let committeeInfoPromise = null;
@@ -9310,7 +9310,7 @@ async function openTopDrepPowerOverlay(returnFocus = document.activeElement) {
                     console.error('Top 10 DRep vote matrix could not be loaded', error);
                 });
         };
-        fetchDrepVoteStatsPayload()
+        fetchDrepVoteStatsPayload(topDreps)
             .then(voteStatsPayload => {
                 if (!panel.isConnected) return;
                 if (voteStatsPayload && !renderedFreshVoteMatrix) {
@@ -11314,21 +11314,34 @@ function getDrepDetailApiUrl(drepId) {
     return `${DREP_DETAIL_API_BASE_URL}/${encodeURIComponent(drepId)}`;
 }
 
-function getDrepVoteStatsApiUrl() {
-    if (shouldUseLocalDashboardProxy()) {
-        return LOCAL_DREP_VOTE_STATS_PROXY_PATH;
-    }
-    return DREP_VOTE_STATS_API_URL;
+function getDrepVoteStatsIds(dreps = []) {
+    return [...new Set((Array.isArray(dreps) ? dreps : [])
+        .flatMap(drep => getDrepEntryIdentifiers(drep))
+        .map(normalizeGovernanceIdentifier)
+        .filter(Boolean))]
+        .slice(0, 50);
 }
 
-async function fetchDrepVoteStatsPayload() {
-    if (!drepVoteStatsPayloadPromise) {
-        drepVoteStatsPayloadPromise = fetchJson(getDrepVoteStatsApiUrl()).catch(error => {
-            drepVoteStatsPayloadPromise = null;
+function getDrepVoteStatsApiUrl(dreps = []) {
+    const ids = getDrepVoteStatsIds(dreps);
+    const params = ids.length ? `?ids=${encodeURIComponent(ids.join(','))}` : '';
+    if (shouldUseLocalDashboardProxy()) {
+        return `${LOCAL_DREP_VOTE_STATS_PROXY_PATH}${params}`;
+    }
+    return `${DREP_VOTE_STATS_API_URL}${params}`;
+}
+
+async function fetchDrepVoteStatsPayload(dreps = []) {
+    const ids = getDrepVoteStatsIds(dreps);
+    const cacheKey = ids.length ? ids.join('|') : 'all';
+    if (!drepVoteStatsPayloadPromises.has(cacheKey)) {
+        const promise = fetchJson(getDrepVoteStatsApiUrl(dreps)).catch(error => {
+            drepVoteStatsPayloadPromises.delete(cacheKey);
             throw error;
         });
+        drepVoteStatsPayloadPromises.set(cacheKey, promise);
     }
-    return drepVoteStatsPayloadPromise;
+    return drepVoteStatsPayloadPromises.get(cacheKey);
 }
 
 function getDrepMetadataFetchUrl(url, options = {}) {
