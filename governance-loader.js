@@ -1,5 +1,5 @@
 (function () {
-    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260806-funding-overview-cache';
+    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260806-small-text-helper';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
         '#drep',

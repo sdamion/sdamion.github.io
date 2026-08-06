@@ -919,9 +919,7 @@ async function openCipDirectoryOverlay(returnFocus = document.activeElement) {
         panel.replaceChildren();
         cips.forEach(cip => panel.appendChild(createCipCard(cip)));
         if (!cips.length) {
-            const empty = document.createElement('p');
-            empty.className = 'small-text';
-            empty.textContent = 'No CIPs are available yet.';
+            const empty = window.TDSPRuntime.createSmallText('No CIPs are available yet.');
             panel.appendChild(empty);
         }
         updateGovernanceMenuHeaderMeta(
@@ -1106,9 +1104,7 @@ async function renderTreasuryDetails(container, payload) {
     if (chart) container.appendChild(chart);
 
     if (!treasuryWithdrawals.length) {
-        const empty = document.createElement('p');
-        empty.className = 'small-text';
-        empty.textContent = 'No enacted treasury withdrawals available.';
+        const empty = window.TDSPRuntime.createSmallText('No enacted treasury withdrawals available.');
         container.appendChild(empty);
         return;
     }
@@ -1923,9 +1919,7 @@ async function openBusinessOverlay(returnFocus = document.activeElement) {
             panel.appendChild(createTreasuryBusinessCard(group));
         });
         if (!visibleGroups.length) {
-            const empty = document.createElement('p');
-            empty.className = 'small-text';
-            empty.textContent = 'No Catalyst/Treasury recipient data is available yet.';
+            const empty = window.TDSPRuntime.createSmallText('No Catalyst/Treasury recipient data is available yet.');
             panel.appendChild(empty);
         }
         const totals = getFundingRecipientUsdTotals(visibleGroups);
@@ -2414,9 +2408,7 @@ async function openCatalystFundsOverlay(returnFocus = document.activeElement) {
                 panel.appendChild(createCatalystFundCard(fund));
             });
             if (!funds.length && !approvedGovernanceActions.length) {
-                const empty = document.createElement('p');
-                empty.className = 'small-text';
-                empty.textContent = 'No Catalyst or Treasury funding data is available yet.';
+                const empty = window.TDSPRuntime.createSmallText('No Catalyst or Treasury funding data is available yet.');
                 panel.appendChild(empty);
             }
         }
