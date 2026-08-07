@@ -20,18 +20,22 @@
         return false;
     }
 
-    async function fetchJson(url, options = {}) {
+    async function fetchResponse(url, options = {}) {
         const response = await fetch(url, options);
-        if (!response.ok) {
-            let detail = '';
-            try {
-                const payload = await response.json();
-                detail = payload?.detail || payload?.error || '';
-            } catch {
-                detail = '';
-            }
-            throw new Error(detail ? `HTTP ${response.status}: ${detail}` : `HTTP ${response.status}`);
+        if (response.ok) return response;
+
+        let detail = '';
+        try {
+            const payload = await response.json();
+            detail = payload?.detail || payload?.error || '';
+        } catch {
+            detail = '';
         }
+        throw new Error(detail ? `HTTP ${response.status}: ${detail}` : `HTTP ${response.status}`);
+    }
+
+    async function fetchJson(url, options = {}) {
+        const response = await fetchResponse(url, options);
         return response.json();
     }
 
@@ -497,6 +501,7 @@
         detailCacheTtlMs: DETAIL_CACHE_TTL_MS,
         isLocalPreview: isLocalPreviewHostname(window.location.hostname),
         isLocalPreviewHostname,
+        fetchResponse,
         fetchJson,
         loadDetail,
         loadScript,

@@ -147,6 +147,7 @@ const catalystProposalDetailsCache = new Map();
 let treasuryHistoryChart = null;
 let governanceMeshPromise = null;
 let tdspDrepStatsPromise = null;
+const fetchResponse = window.TDSPRuntime.fetchResponse;
 const fetchJson = window.TDSPRuntime.fetchJson;
 
 if (document.readyState === 'loading') {
@@ -438,7 +439,7 @@ function setupConstitutionChat(panel, context = null) {
         let pendingAnswerMessage = null;
 
         try {
-            const response = await fetch(getConstitutionChatApiUrl(), {
+            const response = await fetchResponse(getConstitutionChatApiUrl(), {
                 method: 'POST',
                 headers: {
                     accept: 'application/x-ndjson, application/json',
@@ -451,10 +452,6 @@ function setupConstitutionChat(panel, context = null) {
                     context: getConstitutionChatRequestContext(context)
                 })
             });
-            if (!response.ok) {
-                const payload = await response.json().catch(() => ({}));
-                throw new Error(payload.error || `Constitution assistant returned ${response.status}`);
-            }
             const contentType = response.headers.get('content-type') || '';
             let payload;
             let answer = '';
