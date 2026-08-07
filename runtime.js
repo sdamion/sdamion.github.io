@@ -152,6 +152,28 @@
         });
     }
 
+    function bindMenuTrigger(element, handler, options = {}) {
+        if (!(element instanceof Element) || typeof handler !== 'function') return;
+        const datasetKey = options.datasetKey || 'menuBound';
+        if (element.dataset[datasetKey] === 'true') return;
+        element.dataset[datasetKey] = 'true';
+
+        bindActivation(element, event => {
+            if (options.preventDefault !== false) event?.preventDefault?.();
+            if (options.stopPropagation !== false) event?.stopPropagation?.();
+            if (options.focus !== false) element.focus({ preventScroll: true });
+            try {
+                handler(event);
+            } catch (error) {
+                if (typeof options.onError === 'function') {
+                    options.onError(error);
+                    return;
+                }
+                console.error(options.errorMessage || 'Menu could not be opened.', error);
+            }
+        });
+    }
+
     function bindIntentLoad(selectors, loader, options = {}) {
         const selectorList = normalizeSelectorList(selectors);
         if (!selectorList.length || typeof loader !== 'function') return;
@@ -514,6 +536,7 @@
         bindDetailPreload,
         closestTarget,
         bindActivation,
+        bindMenuTrigger,
         bindIntentLoad,
         bindViewportLoad,
         scheduleIdle,

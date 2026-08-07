@@ -1,5 +1,5 @@
 (function () {
-    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260808-unified-menu-openers';
+    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260808-runtime-menu-trigger';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
         '#drep',

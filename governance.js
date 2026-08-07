@@ -147,6 +147,10 @@ let tdspDrepStatsPromise = null;
 const fetchResponse = window.TDSPRuntime.fetchResponse;
 const fetchJson = window.TDSPRuntime.fetchJson;
 const formatCompactAdaFromLovelace = window.TDSPRuntime.formatCompactAdaFromLovelace;
+const bindGovernanceMenuTrigger = (element, openMenu) => window.TDSPRuntime.bindMenuTrigger(element, openMenu, {
+    datasetKey: 'governanceMenuBound',
+    errorMessage: 'Governance menu could not be opened.'
+});
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initGovernance);
@@ -4429,23 +4433,6 @@ function updateNclSummaryCard(nclLimit, remaining) {
         'gov-ncl-balance',
         `Balance ${formatCompactAdaFromLovelace(remaining, { fixedFractionDigits: 2 })}`
     );
-}
-
-function bindGovernanceMenuTrigger(element, openMenu) {
-    if (!element) return;
-    if (element.dataset.governanceMenuBound === 'true') return;
-    element.dataset.governanceMenuBound = 'true';
-    const activate = event => {
-        event?.preventDefault?.();
-        event?.stopPropagation?.();
-        element.focus({ preventScroll: true });
-        try {
-            openMenu(event);
-        } catch (error) {
-            console.error('Governance menu could not be opened.', error);
-        }
-    };
-    window.TDSPRuntime?.bindActivation?.(element, activate);
 }
 
 function removeDrepPowerSplitCard() {
