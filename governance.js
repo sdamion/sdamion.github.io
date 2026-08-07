@@ -155,11 +155,9 @@ if (document.readyState === 'loading') {
 }
 
 function initGovernance() {
-    setupConstitutionAssistantCard();
-    setupConstitutionDocument();
     removeDrepPowerSplitCard();
     ensureEpochCountdownCard();
-    setupStaticGovernanceMenuCards();
+    setupGovernanceMenuCards();
     setupTdspDrepStatsCards();
     loadCurrentEpoch();
     loadGovernanceActions();
@@ -174,11 +172,6 @@ function initGovernance() {
         window.TDSPRuntime.setText('gov-cip-count', 'Unavailable');
         window.TDSPRuntime.setText('gov-cip-status', 'CIP cache unavailable');
     });
-}
-
-function setupConstitutionAssistantCard() {
-    const trigger = document.getElementById('tdspbot-open');
-    bindGovernanceMenuTrigger(trigger, event => openConstitutionAssistantOverlay(null, event.currentTarget));
 }
 
 function openConstitutionAssistantOverlay(context = null, returnFocus = document.getElementById('tdspbot-open')) {
@@ -305,11 +298,6 @@ function getConstitutionChatContextDisplayParts(context) {
         context?.id,
         context?.summary
     ].filter(Boolean);
-}
-
-function setupConstitutionDocument() {
-    const trigger = document.getElementById('constitution-document-open');
-    bindGovernanceMenuTrigger(trigger, openConstitutionDocumentOverlay);
 }
 
 async function openConstitutionDocumentOverlay() {
@@ -672,7 +660,7 @@ function appendConstitutionChatFeedback(message, feedbackId, status) {
     no.addEventListener('click', () => submitFeedback(false));
 }
 
-function setupStaticGovernanceMenuCards() {
+function setupGovernanceMenuCards() {
     [
         ['gov-treasury-card', openTreasuryOverlay],
         ['gov-business-card', openBusinessOverlay],
@@ -694,7 +682,9 @@ function setupStaticGovernanceMenuCards() {
             'Rejected Governance Actions',
             'No rejected actions found.',
             'Rejected Actions'
-        )]
+        )],
+        ['tdspbot-open', event => openConstitutionAssistantOverlay(null, event.currentTarget)],
+        ['constitution-document-open', openConstitutionDocumentOverlay]
     ].forEach(([id, openMenu]) => {
         bindGovernanceMenuTrigger(document.getElementById(id), openMenu);
     });
