@@ -159,7 +159,6 @@ function initGovernance() {
     setupConstitutionDocument();
     removeDrepPowerSplitCard();
     ensureEpochCountdownCard();
-    setupGovernanceSummaryActionCards();
     setupStaticGovernanceMenuCards();
     setupTdspDrepStatsCards();
     loadCurrentEpoch();
@@ -683,7 +682,19 @@ function setupStaticGovernanceMenuCards() {
         ['gov-committee-card', openConstitutionalCommitteeOverlay],
         ['gov-drep-card', openDrepDirectoryOverlay],
         ['gov-drep-top10-card', openTopDrepPowerOverlay],
-        ['gov-ncl-card', event => openNclSummaryOverlay(event?.currentTarget || document.getElementById('gov-ncl-card'))]
+        ['gov-ncl-card', event => openNclSummaryOverlay(event?.currentTarget || document.getElementById('gov-ncl-card'))],
+        ['gov-active-card', () => openGovernanceActionGroupOverlay(
+            'active',
+            'Active Governance Actions',
+            'No active actions found.',
+            'Governance Actions'
+        )],
+        ['gov-rejected-card', () => openGovernanceActionGroupOverlay(
+            'rejected',
+            'Rejected Governance Actions',
+            'No rejected actions found.',
+            'Rejected Actions'
+        )]
     ].forEach(([id, openMenu]) => {
         bindGovernanceMenuTrigger(document.getElementById(id), openMenu);
     });
@@ -4428,22 +4439,6 @@ function updateNclSummaryCard(nclLimit, remaining) {
         'gov-ncl-balance',
         `Balance ${formatCompactAdaFromLovelace(remaining, { fixedFractionDigits: 2 })}`
     );
-}
-
-function setupGovernanceSummaryActionCards() {
-    [
-        { id: 'gov-active-card', groupKey: 'active', title: 'Active Governance Actions', tileTitle: 'Governance Actions', emptyMessage: 'No active actions found.' },
-        { id: 'gov-rejected-card', groupKey: 'rejected', title: 'Rejected Governance Actions', tileTitle: 'Rejected Actions', emptyMessage: 'No rejected actions found.' }
-    ].forEach(config => {
-        const card = document.getElementById(config.id);
-        const open = () => openGovernanceActionGroupOverlay(
-            config.groupKey,
-            config.title,
-            config.emptyMessage,
-            config.tileTitle
-        );
-        bindGovernanceMenuTrigger(card, open);
-    });
 }
 
 function bindGovernanceMenuTrigger(element, openMenu) {
