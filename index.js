@@ -2199,6 +2199,8 @@ const OVERLAY_SORT_DEFINITIONS = Object.freeze([
     { value: 'balance-asc', label: 'Lowest balance', key: 'sortBalance', direction: 1, type: 'number' },
     { value: 'blocks-desc', label: 'Most blocks', key: 'sortBlocks', direction: -1, type: 'number' },
     { value: 'blocks-asc', label: 'Least blocks', key: 'sortBlocks', direction: 1, type: 'number' },
+    { value: 'miners-desc', label: 'Most miners', key: 'sortMiners', direction: -1, type: 'number' },
+    { value: 'miners-asc', label: 'Least miners', key: 'sortMiners', direction: 1, type: 'number' },
     { value: 'epoch-desc', label: 'Latest epoch', key: 'sortEpoch', direction: -1, type: 'number' },
     { value: 'epoch-asc', label: 'Earliest epoch', key: 'sortEpoch', direction: 1, type: 'number' },
     { value: 'fund-desc', label: 'Fund: Newest first', key: 'sortFund', direction: -1, type: 'number' },

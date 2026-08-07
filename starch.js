@@ -252,9 +252,10 @@ function sortStarchDirectoryRecords(records, type) {
             return leftTdsp - rightTdsp;
         }
 
-        const leftHasBalance = Number(left?.balance) > 0;
-        const rightHasBalance = Number(right?.balance) > 0;
-        if (leftHasBalance !== rightHasBalance) return leftHasBalance ? -1 : 1;
+        const totalOrder = (Number(right?.balance) || 0) - (Number(left?.balance) || 0)
+            || (Number(right?.weekly_blocks) || 0) - (Number(left?.weekly_blocks) || 0)
+            || (Number(right?.miner_count) || 0) - (Number(left?.miner_count) || 0);
+        if (totalOrder) return totalOrder;
 
         const nameOrder = String(left?.name || 'No Name').localeCompare(
             String(right?.name || 'No Name'),
@@ -300,6 +301,7 @@ function createStarchCompanyDirectoryCard(record, id) {
     if (record?.stats_resolved === true) {
         row.dataset.sortBalance = String(Number(record?.balance) || 0);
         row.dataset.sortBlocks = String(Number(record?.weekly_blocks) || 0);
+        row.dataset.sortMiners = String(Number(record?.miner_count) || 0);
     }
 
     const companyIds = getStarchCompanyIds(record);
@@ -433,7 +435,17 @@ function mergeStarchCompanySummaries(summaries, companyIds) {
         }
         (Array.isArray(summary?.miners) ? summary.miners : []).forEach(miner => {
             const minerId = String(miner?.miner_id || '').trim();
-            if (minerId) minersById.set(minerId, miner);
+            if (!minerId) return;
+            const current = minersById.get(minerId);
+            minersById.set(minerId, current ? {
+                ...current,
+                balance: (Number(current.balance) || 0) + (Number(miner?.balance) || 0),
+                weekly_blocks: (Number(current.weekly_blocks) || 0) + (Number(miner?.weekly_blocks) || 0),
+                rank: Math.min(
+                    Number.isFinite(Number(current.rank)) ? Number(current.rank) : Infinity,
+                    Number.isFinite(Number(miner?.rank)) ? Number(miner.rank) : Infinity
+                )
+            } : miner);
         });
     });
 
@@ -462,7 +474,12 @@ async function renderStarchCompanyDetail(content, company, summary, options = {}
             rank: Number.isFinite(Number(miner?.rank)) ? Number(miner.rank) : null,
             balance: Number(miner?.balance) || 0,
             weeklyBlocks: Number(miner?.weekly_blocks) || 0
-        }));
+        }))
+        .sort((left, right) => (
+            right.weeklyBlocks - left.weeklyBlocks
+            || right.balance - left.balance
+            || left.miner_id.localeCompare(right.miner_id)
+        ));
     content.replaceChildren();
 
     const summaryTiles = document.createElement('div');
