@@ -1,5 +1,5 @@
 (function () {
-    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260807-shared-stream-fetch';
+    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260807-form-field-ids';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
         '#drep',

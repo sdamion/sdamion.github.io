@@ -377,21 +377,7 @@ function renderTradingViewPriceChart(container, symbol, ticker, intervalMinutes 
     if (!container?.isConnected || !symbol) return;
 
     container.textContent = '';
-    const widget = document.createElement('div');
-    widget.className = 'tradingview-widget-container';
-    widget.style.height = '100%';
-    widget.style.width = '100%';
-
-    const widgetBody = document.createElement('div');
-    widgetBody.className = 'tradingview-widget-container__widget';
-    widgetBody.style.height = '100%';
-    widgetBody.style.width = '100%';
-
-    const script = document.createElement('script');
-    script.type = 'text/javascript';
-    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
-    script.async = true;
-    script.textContent = JSON.stringify({
+    const settings = {
         autosize: true,
         symbol,
         interval: getTradingViewInterval(intervalMinutes),
@@ -410,10 +396,24 @@ function renderTradingViewPriceChart(container, symbol, ticker, intervalMinutes 
         hide_volume: false,
         save_image: false,
         support_host: 'https://www.tradingview.com'
-    });
+    };
+    const widgetUrl = new URL('https://www.tradingview-widget.com/embed-widget/advanced-chart/');
+    widgetUrl.searchParams.set('locale', settings.locale);
+    widgetUrl.hash = encodeURIComponent(JSON.stringify({
+        ...settings,
+        'page-uri': window.location.href
+    }));
 
-    widget.append(widgetBody, script);
-    container.append(widget);
+    const frame = document.createElement('iframe');
+    frame.className = 'tradingview-widget-frame';
+    frame.src = widgetUrl.toString();
+    frame.title = `${ticker}/USD TradingView chart`;
+    frame.lang = settings.locale;
+    frame.loading = 'lazy';
+    frame.setAttribute('scrolling', 'no');
+    frame.setAttribute('frameborder', '0');
+    frame.setAttribute('allowtransparency', 'true');
+    container.append(frame);
     container.setAttribute('aria-label', `${ticker}/USD TradingView chart`);
 }
 
@@ -1894,6 +1894,7 @@ function closeStarchPoolsOverlay(restoreFocus = true) {
 }
 
 let universalOverlaySequence = 0;
+let overlayFieldSequence = 0;
 
 function getTopGovernanceMenuOverlay(id = '') {
     const selector = id
@@ -2297,7 +2298,11 @@ function installOverlaySearch(body, {
     searchBar.className = 'overlay-search-bar';
     searchBar.hidden = true;
 
+    overlayFieldSequence += 1;
+    const fieldScope = body.closest('[id]')?.id || `overlay-field-${overlayFieldSequence}`;
     const input = document.createElement('input');
+    input.id = `${fieldScope}-search`;
+    input.name = 'overlay_search';
     input.className = 'overlay-search-input';
     input.type = 'search';
     input.placeholder = searchPlaceholder;
@@ -2307,6 +2312,8 @@ function installOverlaySearch(body, {
     input.spellcheck = false;
 
     const sort = document.createElement('select');
+    sort.id = `${fieldScope}-sort`;
+    sort.name = 'overlay_sort';
     sort.className = 'overlay-sort-select';
     sort.setAttribute('aria-label', 'Sort overlay results');
     const initialCards = getOverlaySearchCards(body);

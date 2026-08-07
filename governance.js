@@ -1,3 +1,4 @@
+const GOVERNANCE_IS_LOCAL_PREVIEW = window.TDSPRuntime?.isLocalPreview === true;
 const DASHBOARD_API_URL = 'https://api.tdsp.online/api/dashboard';
 const COMPACT_DASHBOARD_API_URL = 'https://api.tdsp.online/api/dashboard/compact';
 const COMMITTEE_INFO_API_URL = 'https://api.tdsp.online/api/committee/directory';
@@ -90,11 +91,6 @@ const TREASURY_RECIPIENT_ADMINISTRATORS = Object.freeze({
     stake178ndhlcfy30t38z0tql64fpg8ply93r37xrgvdagfpsz5nsttyvhp: 'Amaru 2026 contingency multisig',
     stake1u92flcyspwcp92lmgs0p47vdjrrek96l07cv3v6033wddfc8h620a: 'Tastenkunst GmbH'
 });
-const TREASURY_ADMINISTRATOR_COLORS = Object.freeze([
-    '#34d399', '#60a5fa', '#fbbf24', '#fb7185', '#2dd4bf',
-    '#f97316', '#a78bfa', '#22c55e', '#38bdf8', '#eab308',
-    '#f43f5e', '#14b8a6', '#818cf8', '#84cc16', '#f59e0b'
-]);
 const SPO_CLOUD_PROVIDER_KEYS = new Set([
     'aws', 'azure', 'google-cloud', 'oracle-cloud', 'alibaba-cloud',
     'ibm-cloud', 'tencent-cloud', 'huawei-cloud', 'ovh', 'digitalocean',
@@ -372,7 +368,7 @@ function closeConstitutionDocumentOverlay() {
 }
 
 function getConstitutionDocumentApiUrl() {
-    return shouldUseLocalDashboardProxy()
+    return GOVERNANCE_IS_LOCAL_PREVIEW
         ? LOCAL_CONSTITUTION_DOCUMENT_PROXY_PATH
         : CONSTITUTION_DOCUMENT_API_URL;
 }
@@ -533,13 +529,13 @@ function getConstitutionChatHistoryForQuestion(conversation, question) {
 }
 
 function getConstitutionChatApiUrl() {
-    return shouldUseLocalDashboardProxy()
+    return GOVERNANCE_IS_LOCAL_PREVIEW
         ? LOCAL_CONSTITUTION_CHAT_PROXY_PATH
         : CONSTITUTION_CHAT_API_URL;
 }
 
 function getConstitutionChatFeedbackApiUrl() {
-    return shouldUseLocalDashboardProxy()
+    return GOVERNANCE_IS_LOCAL_PREVIEW
         ? LOCAL_CONSTITUTION_CHAT_FEEDBACK_PROXY_PATH
         : CONSTITUTION_CHAT_FEEDBACK_API_URL;
 }
@@ -750,7 +746,7 @@ async function loadTreasuryData() {
 
 function fetchTreasuryPayload() {
     if (!treasuryPromise) {
-        const url = shouldUseLocalDashboardProxy() ? LOCAL_TREASURY_PROXY_PATH : TREASURY_API_URL;
+        const url = GOVERNANCE_IS_LOCAL_PREVIEW ? LOCAL_TREASURY_PROXY_PATH : TREASURY_API_URL;
         treasuryPromise = fetchJson(url).catch(error => {
             treasuryPromise = null;
             throw error;
@@ -761,7 +757,7 @@ function fetchTreasuryPayload() {
 
 function fetchTreasuryAdministratorsPayload() {
     if (!treasuryAdministratorsPromise) {
-        const url = shouldUseLocalDashboardProxy()
+        const url = GOVERNANCE_IS_LOCAL_PREVIEW
             ? LOCAL_TREASURY_ADMINISTRATORS_PROXY_PATH
             : TREASURY_ADMINISTRATORS_API_URL;
         treasuryAdministratorsPromise = fetchJson(url).then(payload => {
@@ -777,7 +773,7 @@ function fetchTreasuryAdministratorsPayload() {
 
 function fetchCatalystBusinessPayload() {
     if (!catalystBusinessPromise) {
-        const url = shouldUseLocalDashboardProxy()
+        const url = GOVERNANCE_IS_LOCAL_PREVIEW
             ? LOCAL_CATALYST_BUSINESS_PROXY_PATH
             : CATALYST_BUSINESS_API_URL;
         catalystBusinessPromise = fetchJson(url).catch(error => {
@@ -790,7 +786,7 @@ function fetchCatalystBusinessPayload() {
 
 function fetchFundingRecipientsPayload() {
     if (!fundingRecipientsPromise) {
-        const url = shouldUseLocalDashboardProxy()
+        const url = GOVERNANCE_IS_LOCAL_PREVIEW
             ? LOCAL_FUNDING_RECIPIENTS_PROXY_PATH
             : FUNDING_RECIPIENTS_API_URL;
         fundingRecipientsPromise = fetchJson(url).then(payload => {
@@ -806,7 +802,7 @@ function fetchFundingRecipientsPayload() {
 
 function fetchFundingOverviewPayload() {
     if (!fundingOverviewPromise) {
-        const url = shouldUseLocalDashboardProxy()
+        const url = GOVERNANCE_IS_LOCAL_PREVIEW
             ? LOCAL_FUNDING_OVERVIEW_PROXY_PATH
             : FUNDING_OVERVIEW_API_URL;
         fundingOverviewPromise = fetchJson(url).then(payload => {
@@ -848,7 +844,7 @@ function fetchCatalystProposalDirectoryPayload() {
 }
 
 function getCatalystProposalsApiUrl(options = {}) {
-    if (shouldUseLocalDashboardProxy()) {
+    if (GOVERNANCE_IS_LOCAL_PREVIEW) {
         const params = new URLSearchParams();
         if (options.funds) params.set('type', 'funds');
         if (options.fundName) params.set('fund', options.fundName);
@@ -871,7 +867,7 @@ function fetchCipDirectoryPayload() {
 }
 
 function getCipsApiUrl() {
-    return shouldUseLocalDashboardProxy() ? LOCAL_CIPS_PROXY_PATH : CIPS_API_URL;
+    return GOVERNANCE_IS_LOCAL_PREVIEW ? LOCAL_CIPS_PROXY_PATH : CIPS_API_URL;
 }
 
 async function openCipDirectoryOverlay(returnFocus = document.activeElement) {
@@ -1104,44 +1100,27 @@ async function renderTreasuryDetails(container, payload) {
     const administratorGroups = Array.isArray(administratorPayload?.groups)
         ? administratorPayload.groups
         : getTreasuryAdministratorGroups(treasuryWithdrawals);
-    container.appendChild(createTreasuryAdministratorChart(administratorGroups));
+    container.appendChild(createTreasuryAdministratorList(administratorGroups));
 }
 
-function createTreasuryAdministratorChart(groupsOrWithdrawals) {
+function createTreasuryAdministratorList(groupsOrWithdrawals) {
     const groups = Array.isArray(groupsOrWithdrawals?.[0]?.withdrawals)
-        ? groupsOrWithdrawals.map((group, index) => ({
-            ...group,
-            color: group.color || TREASURY_ADMINISTRATOR_COLORS[index % TREASURY_ADMINISTRATOR_COLORS.length]
-        }))
+        ? groupsOrWithdrawals
         : getTreasuryAdministratorGroups(groupsOrWithdrawals);
     const total = groups.reduce((sum, group) => sum + group.value, 0);
     const section = document.createElement('section');
-    section.className = 'governance-vote-chart governance-chart-panel';
 
     const title = document.createElement('strong');
     title.textContent = 'Withdrawals by administrator';
 
-    const layout = document.createElement('div');
-    layout.className = 'governance-vote-chart-layout';
-    layout.appendChild(createUniversalPieChart(groups, {
-        labelFormatter: segment => (
-            ((segment.end - segment.start) / 360) >= 0.02
-                ? formatCatalystCurrencyAmount(segment.value, 'USD', true)
-                : ''
-        ),
-        onSegmentClick: (segment, returnFocus) => openTreasuryAdministratorWithdrawalsOverlay(segment, returnFocus)
-    }));
-
-    const legend = document.createElement('div');
-    legend.className = 'governance-list governance-action-group-list';
+    const list = document.createElement('div');
+    list.className = 'governance-list governance-action-group-list';
     groups.forEach(group => {
         const percentage = total > 0 ? (group.value / total) * 100 : 0;
-        legend.appendChild(createTreasuryAdministratorCard(group, percentage));
+        list.appendChild(createTreasuryAdministratorCard(group, percentage));
     });
 
-    layout.appendChild(legend);
-    section.appendChild(title);
-    section.appendChild(layout);
+    section.append(title, list);
     return section;
 }
 
@@ -1214,11 +1193,7 @@ function getTreasuryAdministratorGroups(withdrawals) {
     });
 
     return [...groups.values()]
-        .sort((left, right) => right.value - left.value)
-        .map((group, index) => ({
-            ...group,
-            color: TREASURY_ADMINISTRATOR_COLORS[index % TREASURY_ADMINISTRATOR_COLORS.length]
-        }));
+        .sort((left, right) => right.value - left.value);
 }
 
 function getTreasuryWithdrawalAdministrator(withdrawal) {
@@ -4554,10 +4529,10 @@ function schedulePostEpochGovernanceRefresh() {
 }
 
 async function fetchGovernanceDashboardPayload() {
-    const compactUrl = shouldUseLocalDashboardProxy()
+    const compactUrl = GOVERNANCE_IS_LOCAL_PREVIEW
         ? LOCAL_COMPACT_DASHBOARD_PROXY_PATH
         : COMPACT_DASHBOARD_API_URL;
-    const fullUrl = shouldUseLocalDashboardProxy()
+    const fullUrl = GOVERNANCE_IS_LOCAL_PREVIEW
         ? LOCAL_DASHBOARD_PROXY_PATH
         : DASHBOARD_API_URL;
 
@@ -4759,12 +4734,8 @@ function notifyGovernanceEvents(events) {
     });
 }
 
-function shouldUseLocalDashboardProxy() {
-    return window.TDSPRuntime?.isLocalPreview === true;
-}
-
 function getProposalVotesApiUrl(proposalId) {
-    if (shouldUseLocalDashboardProxy()) {
+    if (GOVERNANCE_IS_LOCAL_PREVIEW) {
         const params = new URLSearchParams({ proposalId });
         return `${LOCAL_PROPOSAL_VOTES_PROXY_PATH}?${params.toString()}`;
     }
@@ -4773,7 +4744,7 @@ function getProposalVotesApiUrl(proposalId) {
 }
 
 function getProposalDetailApiUrl(proposalId) {
-    if (shouldUseLocalDashboardProxy()) {
+    if (GOVERNANCE_IS_LOCAL_PREVIEW) {
         const params = new URLSearchParams({ proposalId });
         return `${LOCAL_PROPOSAL_DETAIL_PROXY_PATH}?${params.toString()}`;
     }
@@ -4782,7 +4753,7 @@ function getProposalDetailApiUrl(proposalId) {
 }
 
 function getProposalSummaryApiUrl(proposalId) {
-    if (shouldUseLocalDashboardProxy()) {
+    if (GOVERNANCE_IS_LOCAL_PREVIEW) {
         const params = new URLSearchParams({ proposalId });
         return `${LOCAL_PROPOSAL_SUMMARY_PROXY_PATH}?${params.toString()}`;
     }
@@ -4790,7 +4761,7 @@ function getProposalSummaryApiUrl(proposalId) {
 }
 
 function getCatalystProposalDetailApiUrl(proposalId) {
-    if (shouldUseLocalDashboardProxy()) {
+    if (GOVERNANCE_IS_LOCAL_PREVIEW) {
         const params = new URLSearchParams({ proposalId });
         return `${LOCAL_CATALYST_PROPOSAL_DETAIL_PROXY_PATH}?${params.toString()}`;
     }
@@ -4798,7 +4769,7 @@ function getCatalystProposalDetailApiUrl(proposalId) {
 }
 
 function getCatalystProposalSummaryApiUrl(proposalId) {
-    if (shouldUseLocalDashboardProxy()) {
+    if (GOVERNANCE_IS_LOCAL_PREVIEW) {
         const params = new URLSearchParams({ proposalId });
         return `${LOCAL_CATALYST_PROPOSAL_SUMMARY_PROXY_PATH}?${params.toString()}`;
     }
@@ -4924,11 +4895,11 @@ function loadCommitteeMemberDetail(member) {
 }
 
 function getCommitteeInfoApiUrl() {
-    return shouldUseLocalDashboardProxy() ? LOCAL_COMMITTEE_PROXY_PATH : COMMITTEE_INFO_API_URL;
+    return GOVERNANCE_IS_LOCAL_PREVIEW ? LOCAL_COMMITTEE_PROXY_PATH : COMMITTEE_INFO_API_URL;
 }
 
 function getCommitteeMemberApiUrl(memberId) {
-    if (shouldUseLocalDashboardProxy()) {
+    if (GOVERNANCE_IS_LOCAL_PREVIEW) {
         const params = new URLSearchParams({ memberId });
         return `${LOCAL_COMMITTEE_MEMBER_PROXY_PATH}?${params.toString()}`;
     }
@@ -8450,11 +8421,11 @@ async function loadSpoDirectory() {
 }
 
 function getSpoDirectoryApiUrl() {
-    return shouldUseLocalDashboardProxy() ? LOCAL_SPO_DIRECTORY_PROXY_PATH : SPO_DIRECTORY_API_URL;
+    return GOVERNANCE_IS_LOCAL_PREVIEW ? LOCAL_SPO_DIRECTORY_PROXY_PATH : SPO_DIRECTORY_API_URL;
 }
 
 function getSpoDetailApiUrl(poolId) {
-    if (shouldUseLocalDashboardProxy()) {
+    if (GOVERNANCE_IS_LOCAL_PREVIEW) {
         const params = new URLSearchParams({ poolId });
         return `${LOCAL_SPO_DETAIL_PROXY_PATH}?${params.toString()}`;
     }
@@ -8713,6 +8684,7 @@ function createDrepRegistrationField(labelText, id, placeholder, value) {
     label.textContent = labelText;
     const input = document.createElement('input');
     input.id = id;
+    input.name = id;
     input.type = 'text';
     input.placeholder = placeholder;
     input.value = value;
@@ -8730,6 +8702,7 @@ function createDrepRegistrationTextArea(labelText, id, placeholder, value) {
     label.textContent = labelText;
     const input = document.createElement('textarea');
     input.id = id;
+    input.name = id;
     input.placeholder = placeholder;
     input.value = value;
     input.maxLength = 1000;
@@ -8744,6 +8717,7 @@ function createDrepRegistrationCheckbox(labelText, id, checked) {
     wrapper.htmlFor = id;
     const input = document.createElement('input');
     input.id = id;
+    input.name = id;
     input.type = 'checkbox';
     input.checked = checked;
     const label = document.createElement('span');
@@ -11293,14 +11267,14 @@ function normalizeMetadataUrl(url) {
 }
 
 function getDrepInfoApiUrl() {
-    if (shouldUseLocalDashboardProxy()) {
+    if (GOVERNANCE_IS_LOCAL_PREVIEW) {
         return `${LOCAL_DREP_DIRECTORY_PROXY_PATH}?type=directory`;
     }
     return DREP_INFO_API_URL;
 }
 
 function getDrepDetailApiUrl(drepId) {
-    if (shouldUseLocalDashboardProxy()) {
+    if (GOVERNANCE_IS_LOCAL_PREVIEW) {
         const params = new URLSearchParams({ drepId });
         return `${LOCAL_DREP_DETAIL_PROXY_PATH}?${params.toString()}`;
     }
@@ -11318,7 +11292,7 @@ function getDrepVoteStatsIds(dreps = []) {
 function getDrepVoteStatsApiUrl(dreps = []) {
     const ids = getDrepVoteStatsIds(dreps);
     const params = ids.length ? `?ids=${encodeURIComponent(ids.join(','))}` : '';
-    if (shouldUseLocalDashboardProxy()) {
+    if (GOVERNANCE_IS_LOCAL_PREVIEW) {
         return `${LOCAL_DREP_VOTE_STATS_PROXY_PATH}${params}`;
     }
     return `${DREP_VOTE_STATS_API_URL}${params}`;
@@ -11338,7 +11312,7 @@ async function fetchDrepVoteStatsPayload(dreps = []) {
 }
 
 function getDrepCorrelationApiUrl() {
-    if (shouldUseLocalDashboardProxy()) {
+    if (GOVERNANCE_IS_LOCAL_PREVIEW) {
         return LOCAL_DREP_CORRELATION_PROXY_PATH;
     }
     return DREP_CORRELATION_API_URL;
@@ -11360,7 +11334,7 @@ function getDrepMetadataFetchUrl(url, options = {}) {
 
     const params = new URLSearchParams({ url: normalizedUrl });
     if (options.refresh) params.set('refresh', '1');
-    if (shouldUseLocalDashboardProxy()) {
+    if (GOVERNANCE_IS_LOCAL_PREVIEW) {
         return `${LOCAL_METADATA_PROXY_PATH}?${params.toString()}`;
     }
     return `${REMOTE_METADATA_API_URL}?${params.toString()}`;
