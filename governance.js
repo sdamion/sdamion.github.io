@@ -5785,7 +5785,7 @@ function openGovernanceOverlay(proposal, options = {}) {
 
     const type = document.createElement('span');
     type.className = 'governance-type';
-    type.textContent = formatProposalType(getEffectiveProposalType(proposal));
+    type.textContent = window.TDSPRuntime.formatReadableLabel(getEffectiveProposalType(proposal), 'Governance');
 
     const meta = document.createElement('p');
     meta.className = 'governance-action-header-epoch';
@@ -6126,7 +6126,7 @@ function openProposalSummaryOverlay(proposal, returnFocus, options = {}) {
         proposal,
         returnFocus,
         apiUrl: getProposalSummaryApiUrl(proposal?.proposal_id),
-        headerMeta: formatProposalType(getEffectiveProposalType(proposal)),
+        headerMeta: window.TDSPRuntime.formatReadableLabel(getEffectiveProposalType(proposal), 'Governance'),
         rootTitle: getProposalTitle(proposal),
         showClose: options.showClose
     });
@@ -7034,7 +7034,7 @@ function createGovernanceVoteRationaleMetadata(context, authorName, reason) {
         rationale: cleanReason,
         gov_action_id: proposal.proposal_id || '',
         gov_action_title: getProposalTitle(proposal),
-        gov_action_type: formatProposalType(getEffectiveProposalType(proposal)),
+        gov_action_type: window.TDSPRuntime.formatReadableLabel(getEffectiveProposalType(proposal), 'Governance'),
         gov_action_tx_hash: proposal.proposal_tx_hash || '',
         gov_action_tx_index: normalizeOnchainMetadataNumber(proposal.proposal_index)
     };
@@ -9522,7 +9522,7 @@ function renderTopDrepVoteMatrix(container, dreps, detailPayloads) {
         window.TDSPRuntime?.appendUniversalTileContent?.(header, {
             title: getProposalTitle(proposal),
             titleClassName: 'governance-title',
-            primaryText: formatProposalType(getEffectiveProposalType(proposal)),
+            primaryText: window.TDSPRuntime.formatReadableLabel(getEffectiveProposalType(proposal), 'Governance'),
             detailItems: [getProposalMeta(proposal)]
         });
         card.appendChild(header);
@@ -12080,7 +12080,7 @@ function isRenderableImageUrl(url, keyHint = '') {
 function getProposalTitle(proposal) {
     return proposal.meta_json?.body?.title
         || proposal.meta_json?.title
-        || `${formatProposalType(getEffectiveProposalType(proposal))} governance action`;
+        || `${window.TDSPRuntime.formatReadableLabel(getEffectiveProposalType(proposal), 'Governance')} governance action`;
 }
 
 function getProposalMeta(proposal) {
@@ -12774,10 +12774,6 @@ function getDrepEntryVotingPower(entry) {
         ?? entry?.lovelace;
 
     return window.TDSPRuntime.toFiniteNumber(value);
-}
-
-function formatProposalType(type) {
-    return window.TDSPRuntime.formatReadableLabel(type, 'Governance');
 }
 
 function formatPercentage(value) {
