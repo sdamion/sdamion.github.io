@@ -691,6 +691,15 @@ html[data-theme="dark"] .theme-toggle:not([data-next-theme]) .theme-toggle-icon-
     min-width: 0;
 }
 
+.hero-brand {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
+    gap: 56px;
+    align-items: center;
+    margin: 28px 0;
+    min-width: 0;
+}
+
 /* Shared Type Treatments */
 .eyebrow {
     margin-bottom: 12px;
@@ -3782,51 +3791,21 @@ select {
 .crypto-news-ticker {
     position: relative;
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     width: 100%;
     min-height: 42px;
-    margin-bottom: 14px;
+    margin: 0;
     overflow: hidden;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    background: var(--governance-card-bg);
-    color: var(--text);
-}
-
-.crypto-news-label {
-    position: relative;
-    z-index: 2;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 42px;
-    padding: 0;
-    border-right: 1px solid var(--line);
-    background: var(--surface);
-    color: var(--accent-strong);
-    font-size: 0;
-    border-top: 0;
-    border-bottom: 0;
-    border-left: 0;
+    border: 0;
     border-radius: 0;
-    font-family: inherit;
+    background: transparent;
+    color: var(--text);
     cursor: pointer;
 }
 
-.crypto-news-label svg {
-    width: 18px;
-    height: 18px;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 1.8;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-}
-
-.crypto-news-label:hover,
-.crypto-news-label:focus-visible {
-    background: var(--control-hover-surface);
-    outline: none;
+.crypto-news-ticker:focus-visible {
+    outline: 2px solid var(--accent-strong);
+    outline-offset: -2px;
 }
 
 .crypto-news-viewport {
@@ -3934,12 +3913,6 @@ select {
         min-height: 34px;
         -webkit-text-size-adjust: 100%;
         text-size-adjust: 100%;
-    }
-
-    .crypto-news-label {
-        width: 34px;
-        padding: 0;
-        font-size: inherit;
     }
 
     .crypto-news-message {
@@ -4115,6 +4088,11 @@ html[data-theme="dark"] input {
         gap: 28px;
     }
 
+    .hero-brand {
+        grid-template-columns: 1fr;
+        gap: 28px;
+    }
+
     .hero-media {
         overflow: hidden;
     }
@@ -4222,7 +4200,7 @@ html[data-theme="dark"] input {
 
 @media (max-width: 700px) {
     html {
-        scroll-padding-top: 62px;
+        scroll-padding-top: calc(var(--site-header-height) + 6px);
     }
 
     .pool-delegator-row {

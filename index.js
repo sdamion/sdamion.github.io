@@ -691,24 +691,15 @@ function createNewsGroup(items, duplicate = false) {
         const title = String(item?.title || '').trim();
         if (!url || !title) return;
 
-        const link = document.createElement('a');
-        link.className = 'crypto-news-item';
-        link.href = url.href;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        const youtubeVideoId = getYouTubeVideoId(url.href);
-        if (youtubeVideoId) {
-            link.dataset.youtubeVideoId = youtubeVideoId;
-            link.dataset.youtubeVideoTitle = title;
-        }
-        if (duplicate) link.tabIndex = -1;
+        const tickerItem = document.createElement('span');
+        tickerItem.className = 'crypto-news-item';
 
         const source = document.createElement('strong');
         source.textContent = String(item?.source || 'Cardano News').trim();
         const headline = document.createElement('span');
         headline.textContent = title;
-        link.append(source, document.createTextNode(' · '), headline);
-        group.append(link);
+        tickerItem.append(source, document.createTextNode(' · '), headline);
+        group.append(tickerItem);
     });
 
     return group;
@@ -1363,10 +1354,10 @@ function initFixedHeaderLayout() {
 }
 
 function initCryptoNewsTicker() {
-    const button = document.getElementById('crypto-news-open');
-    if (!button || button.dataset.newsBound === 'true') return;
-    button.dataset.newsBound = 'true';
-    button.addEventListener('click', () => openCryptoNewsOverlay(button));
+    const ticker = document.getElementById('crypto-news-ticker');
+    if (!ticker || ticker.dataset.newsBound === 'true') return;
+    ticker.dataset.newsBound = 'true';
+    window.TDSPRuntime?.bindActivation?.(ticker, () => openCryptoNewsOverlay(ticker));
     window.addEventListener('resize', updateCryptoNewsTickerSpeed, { passive: true });
 }
 

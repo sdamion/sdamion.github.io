@@ -47,11 +47,11 @@
 
     <!-- Preload Logo -->
     <link rel="preload" href="tdsp_logo.webp?v=20260727-smooth-lines" as="image" type="image/webp">
-    <link rel="stylesheet" href="styles.css?v=20260807-tradingview-corb">
+    <link rel="stylesheet" href="styles.css?v=20260807-header-news-rtl">
 
     <script src="runtime.js?v=20260807-shared-count" defer></script>
     <script src="chart-loader.js?v=20260806-lazy-chart" defer></script>
-    <script src="index.js?v=20260807-tradingview-corb" defer></script>
+    <script src="index.js?v=20260807-header-news-clickable" defer></script>
 </head>
 <body>
     <header class="site-header" id="site-header">
@@ -95,6 +95,13 @@
                     </div>
                 </div>
             </div>
+            <aside id="crypto-news-ticker" class="crypto-news-ticker" role="button" tabindex="0" aria-label="Show all Crypto News">
+                <div class="crypto-news-viewport">
+                    <div id="crypto-news-track" class="crypto-news-track" aria-live="off">
+                        <span class="crypto-news-message">Loading Cardano news...</span>
+                    </div>
+                </div>
+            </aside>
         </div>
     </header>
 
@@ -102,18 +109,15 @@
         <section class="section hero" id="home">
             <div class="section-inner hero-grid">
                 <div class="price-section">
-                    <aside id="crypto-news-ticker" class="crypto-news-ticker" aria-label="Crypto News">
-                        <button id="crypto-news-open" class="crypto-news-label" type="button" aria-label="Show all Crypto News">
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M4 5h16v14H4zM8 9h8M8 13h8M8 17h5" />
-                            </svg>
-                        </button>
-                        <div class="crypto-news-viewport">
-                            <div id="crypto-news-track" class="crypto-news-track" aria-live="off">
-                                <span class="crypto-news-message">Loading Cardano news...</span>
-                            </div>
+                    <div class="hero-brand">
+                        <div class="hero-copy">
+                            <h1>The Dutch Stake Pool</h1>
+                            <p class="lead">Reliable low-fee staking, node operations, and Cardano ecosystem support from the Netherlands.</p>
                         </div>
-                    </aside>
+                        <div class="hero-media">
+                            <img class="hero-logo" src="tdsp_logo.webp?v=20260727-smooth-lines" alt="The Dutch Stake Pool Logo" loading="eager">
+                        </div>
+                    </div>
                     <div class="price-panel pool-summary">
                         <div class="pool-summary-clickable" data-price-key="btc_usd" data-price-ticker="BTC" role="button" tabindex="0" aria-label="Show BTC 7 day price history">
                             <strong id="btc-price">Loading...</strong>
@@ -136,14 +140,6 @@
                             <svg class="price-sparkline" data-price-key="night_usd" viewBox="0 0 100 36" preserveAspectRatio="none" role="img" aria-label="NIGHT price over the last 7 days"><polyline points=""></polyline></svg>
                         </div>
                     </div>
-                </div>
-                <div class="hero-copy">
-                    <p class="eyebrow">Bare-metal Cardano stake pool</p>
-                    <h1>The Dutch Stake Pool</h1>
-                    <p class="lead">Reliable low-fee staking, node operations, and Cardano ecosystem support from the Netherlands.</p>
-                </div>
-                <div class="hero-media">
-                    <img class="hero-logo" src="tdsp_logo.webp?v=20260727-smooth-lines" alt="The Dutch Stake Pool Logo" loading="eager">
                 </div>
             </div>
         </section>
@@ -417,7 +413,7 @@
     </template>
 
     <script src="starch-loader.js?v=20260807-shared-fetch-json" defer></script>
-    <script src="governance-loader.js?v=20260807-shared-proposal-type" defer></script>
+    <script src="governance-loader.js?v=20260807-shared-compact-ada-binding" defer></script>
     <script src="stake-loader.js?v=20260806-lazy-stake" defer></script>
 </body>
 </html>

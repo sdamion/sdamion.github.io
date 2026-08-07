@@ -145,6 +145,7 @@ let governanceMeshPromise = null;
 let tdspDrepStatsPromise = null;
 const fetchResponse = window.TDSPRuntime.fetchResponse;
 const fetchJson = window.TDSPRuntime.fetchJson;
+const formatCompactAdaFromLovelace = window.TDSPRuntime.formatCompactAdaFromLovelace;
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initGovernance);
@@ -12778,8 +12779,4 @@ function getDrepEntryVotingPower(entry) {
 
 function formatPercentage(value) {
     return window.TDSPRuntime.formatPercentageValue(value, { fallback: value });
-}
-
-function formatCompactAdaFromLovelace(value, options = {}) {
-    return window.TDSPRuntime.formatCompactAdaFromLovelace(value, options);
 }
