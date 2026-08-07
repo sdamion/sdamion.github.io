@@ -161,14 +161,9 @@ function initGovernance() {
     ensureEpochCountdownCard();
     setupGovernanceSummaryActionCards();
     setupNclCard();
-    setupConstitutionalCommitteeCard();
+    setupStaticGovernanceMenuCards();
     setupDrepDirectoryCard();
     setupTdspDrepStatsCards();
-    setupSpoDirectoryCard();
-    setupTreasuryCard();
-    setupBusinessCard();
-    setupCatalystProposalsCard();
-    setupCipDirectoryCard();
     loadCurrentEpoch();
     loadGovernanceActions();
     loadDrepDirectory().catch(() => {});
@@ -680,24 +675,17 @@ function appendConstitutionChatFeedback(message, feedbackId, status) {
     no.addEventListener('click', () => submitFeedback(false));
 }
 
-function setupTreasuryCard() {
-    const card = document.getElementById('gov-treasury-card');
-    bindGovernanceMenuTrigger(card, openTreasuryOverlay);
-}
-
-function setupBusinessCard() {
-    const card = document.getElementById('gov-business-card');
-    bindGovernanceMenuTrigger(card, openBusinessOverlay);
-}
-
-function setupCatalystProposalsCard() {
-    const card = document.getElementById('gov-catalyst-proposals-card');
-    bindGovernanceMenuTrigger(card, openCatalystFundsOverlay);
-}
-
-function setupCipDirectoryCard() {
-    const card = document.getElementById('gov-cips-card');
-    bindGovernanceMenuTrigger(card, openCipDirectoryOverlay);
+function setupStaticGovernanceMenuCards() {
+    [
+        ['gov-treasury-card', openTreasuryOverlay],
+        ['gov-business-card', openBusinessOverlay],
+        ['gov-catalyst-proposals-card', openCatalystFundsOverlay],
+        ['gov-cips-card', openCipDirectoryOverlay],
+        ['gov-spo-card', openSpoDirectoryOverlay],
+        ['gov-committee-card', openConstitutionalCommitteeOverlay]
+    ].forEach(([id, openMenu]) => {
+        bindGovernanceMenuTrigger(document.getElementById(id), openMenu);
+    });
 }
 
 async function loadCatalystFundDirectory() {
@@ -4346,16 +4334,6 @@ function compareBigIntDescending(left, right) {
 
 function formatDrepDelegatorAda(lovelace) {
     return window.TDSPRuntime.formatLovelaceAmount(lovelace);
-}
-
-function setupSpoDirectoryCard() {
-    const card = document.getElementById('gov-spo-card');
-    bindGovernanceMenuTrigger(card, openSpoDirectoryOverlay);
-}
-
-function setupConstitutionalCommitteeCard() {
-    const card = document.getElementById('gov-committee-card');
-    bindGovernanceMenuTrigger(card, openConstitutionalCommitteeOverlay);
 }
 
 function setupNclCard() {

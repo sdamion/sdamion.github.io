@@ -1,5 +1,5 @@
 (function () {
-    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260808-ncl-overlay-only';
+    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260808-static-menu-card-bindings';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
         '#drep',
