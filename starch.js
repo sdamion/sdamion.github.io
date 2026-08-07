@@ -83,10 +83,11 @@ function getStarchSummaryUrl(teamId) {
     return `${STARCH_API_BASE_URL}/${encodeURIComponent(teamId)}`;
 }
 
-async function fetchStarchCompanySummary(companyId) {
-    const response = await fetch(getStarchSummaryUrl(companyId), { cache: 'no-store' });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    return response.json();
+function fetchStarchCompanySummary(companyId) {
+    return window.TDSPRuntime.fetchJson(
+        getStarchSummaryUrl(companyId),
+        { cache: 'no-store' }
+    );
 }
 
 function loadStarchCompanySummary(companyId) {
@@ -99,9 +100,7 @@ function loadStarchCompanySummary(companyId) {
 
 async function fetchStarchDirectory() {
     try {
-        const response = await fetch(STARCH_DIRECTORY_URL);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const payload = await response.json();
+        const payload = await window.TDSPRuntime.fetchJson(STARCH_DIRECTORY_URL);
         starchDirectory = {
             miners: Array.isArray(payload?.miners) ? payload.miners : [],
             companies: consolidateStarchCompanies(payload?.companies)
