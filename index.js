@@ -283,9 +283,10 @@ async function fetchPrices(options = {}) {
 
     priceFetchPromise = (async () => {
         try {
-            const response = await fetch(PRICE_API_URL, { cache: 'no-store' });
-            if (!response.ok) throw new Error(`Price API HTTP Error: ${response.status}`);
-            const prices = await response.json();
+            const prices = await window.TDSPRuntime.fetchJson(
+                PRICE_API_URL,
+                { cache: 'no-store' }
+            );
             latestPricePayload = prices;
             Object.entries(PRICE_TOKEN_CONFIG).forEach(([key, config]) => {
                 window.TDSPRuntime.setText(
@@ -783,9 +784,10 @@ async function fetchCryptoNews() {
     if (!track) return;
 
     try {
-        const response = await fetch(NEWS_API_URL, { cache: 'no-store' });
-        if (!response.ok) throw new Error(`News API HTTP Error: ${response.status}`);
-        const payload = await response.json();
+        const payload = await window.TDSPRuntime.fetchJson(
+            NEWS_API_URL,
+            { cache: 'no-store' }
+        );
         const currentYear = new Date().getUTCFullYear();
         const items = (Array.isArray(payload?.items) ? payload.items : [])
             .filter(item => {
@@ -1231,9 +1233,10 @@ async function fetchCardanoEvents() {
     if (!container) return;
 
     try {
-        const response = await fetch(CARDANO_EVENTS_API_URL, { cache: 'no-store' });
-        if (!response.ok) throw new Error(`Events API HTTP Error: ${response.status}`);
-        const payload = await response.json();
+        const payload = await window.TDSPRuntime.fetchJson(
+            CARDANO_EVENTS_API_URL,
+            { cache: 'no-store' }
+        );
         const today = new Date().toISOString().slice(0, 10);
         const events = (Array.isArray(payload?.events) ? payload.events : [])
             .filter(event => String(event?.end_date || event?.start_date || '') >= today)
@@ -1310,9 +1313,10 @@ async function fetchDatabaseStatus() {
     if (!status || !text) return;
 
     try {
-        const response = await fetch(DATABASE_STATUS_API_URL, { cache: 'no-store' });
-        if (!response.ok) throw new Error(`Database status HTTP Error: ${response.status}`);
-        const payload = await response.json();
+        const payload = await window.TDSPRuntime.fetchJson(
+            DATABASE_STATUS_API_URL,
+            { cache: 'no-store' }
+        );
         const recordCount = Number(payload.ai_records);
         status.classList.remove('is-active', 'is-loading', 'is-down');
 
