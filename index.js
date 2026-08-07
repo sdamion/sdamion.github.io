@@ -1274,7 +1274,6 @@ document.addEventListener("DOMContentLoaded", () => {
     initThemeToggle();
     initPoolCopyButtons();
     initPoolMenuCards();
-    initStarchPoolCard();
     initPriceHistoryTiles();
     initCryptoNewsTicker();
 
@@ -1797,7 +1796,13 @@ function setRelayCardStatus(activeCount, relayCount) {
 function initPoolMenuCards() {
     [
         ['pool-delegators-card', openPoolDelegatorsOverlay, 'delegatorsBound'],
-        ['pool-mithril-card', openMithrilSignersOverlay, 'mithrilBound']
+        ['pool-mithril-card', openMithrilSignersOverlay, 'mithrilBound'],
+        [
+            'pool-starch-status-card',
+            event => window.TDSPStarch?.load?.().then(() => window.openTdspStarchCompanyOverlay?.(event.currentTarget)),
+            'starchPoolBound'
+        ],
+        ['starch-pools-card', event => openStarchPoolsOverlay(event.currentTarget), 'starchPoolBound']
     ].forEach(([id, openMenu, datasetKey]) => {
         window.TDSPRuntime?.bindMenuTrigger?.(document.getElementById(id), openMenu, {
             datasetKey,
@@ -1848,20 +1853,6 @@ function openMithrilSignersOverlay() {
 
 function closeMithrilSignersOverlay(restoreFocus = true) {
     closePoolMenuOverlay('pool-mithril-overlay', restoreFocus);
-}
-
-function initStarchPoolCard() {
-    bindStarchPoolCard('pool-starch-status-card', card => window.TDSPStarch?.load?.().then(() => window.openTdspStarchCompanyOverlay?.(card)));
-    bindStarchPoolCard('starch-pools-card', card => openStarchPoolsOverlay(card));
-}
-
-function bindStarchPoolCard(cardId, openOverlay) {
-    const card = document.getElementById(cardId);
-    if (!card || card.dataset.starchPoolBound === 'true') return;
-
-    const open = () => openOverlay(card);
-    card.dataset.starchPoolBound = 'true';
-    window.TDSPRuntime?.bindActivation?.(card, open);
 }
 
 function openStarchPoolsOverlay(returnFocus = document.activeElement) {
