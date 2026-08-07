@@ -1744,9 +1744,9 @@ function renderPoolStatus(pool) {
     poolDelegators = Array.isArray(pool?.delegators) ? [...pool.delegators] : [];
     window.TDSPRuntime.setText('pool-delegators', window.TDSPRuntime.formatInteger(pool?.delegator_count));
     window.TDSPRuntime.setText('pool-live-stake', window.TDSPRuntime.formatAdaFromLovelace(pool?.live_stake_lovelace));
-    window.TDSPRuntime.setText('pool-saturation', formatPoolSaturation(pool?.saturation_pct ?? pool?.raw?.live_saturation));
+    window.TDSPRuntime.setText('pool-saturation', window.TDSPRuntime.formatRatioPercentage(pool?.saturation_pct ?? pool?.raw?.live_saturation, { smallValueFractionDigits: 3 }));
     window.TDSPRuntime.setText('pool-pledge', window.TDSPRuntime.formatAdaFromLovelace(pool?.pledge_lovelace ?? pool?.raw?.pledge));
-    window.TDSPRuntime.setText('pool-margin', formatPoolMargin(pool?.margin ?? pool?.raw?.margin));
+    window.TDSPRuntime.setText('pool-margin', window.TDSPRuntime.formatRatioPercentage(pool?.margin ?? pool?.raw?.margin, { scale: 100 }));
     window.TDSPRuntime.setText('pool-fixed-cost', window.TDSPRuntime.formatAdaFromLovelace(pool?.fixed_cost_lovelace ?? pool?.raw?.fixed_cost));
     window.TDSPRuntime.setText('pool-id', pool?.pool_id || 'N/A');
 
@@ -2651,20 +2651,6 @@ function notifyRelayMaintenance(downRelays) {
         body: `${newDownRelays.map(item => item.label).join(', ')} down for maintenance.`,
         tag: 'tdsp-relay-maintenance'
     });
-}
-
-function formatPoolMargin(value) {
-    const number = Number(value);
-    return Number.isFinite(number)
-        ? window.TDSPRuntime.formatPercentageValue(number * 100)
-        : 'N/A';
-}
-
-function formatPoolSaturation(value) {
-    const number = Number(value);
-    return Number.isFinite(number)
-        ? window.TDSPRuntime.formatPercentageValue(number, { minimumFractionDigits: number > 0 && number < 0.01 ? 3 : 0 })
-        : 'N/A';
 }
 
 function initThemeToggle() {

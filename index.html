@@ -49,9 +49,9 @@
     <link rel="preload" href="tdsp_logo.webp?v=20260727-smooth-lines" as="image" type="image/webp">
     <link rel="stylesheet" href="styles.css?v=20260806-starch-online-miners">
 
-    <script src="runtime.js?v=20260807-runtime-ada-tile-format" defer></script>
+    <script src="runtime.js?v=20260807-runtime-shared-color" defer></script>
     <script src="chart-loader.js?v=20260806-lazy-chart" defer></script>
-    <script src="index.js?v=20260807-runtime-ada-tile-format" defer></script>
+    <script src="index.js?v=20260807-runtime-shared-color" defer></script>
 </head>
 <body>
     <header class="site-header" id="site-header">
@@ -251,6 +251,11 @@
                         <strong class="pool-status-value">Active</strong>
                         <span class="pool-provider-label"><img class="pool-provider-icon" src="realfi-logo.svg" alt="">Realfi SPO</span>
                     </a>
+                    <div id="gov-spo-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show stake pool operator directory">
+                        <strong id="gov-spo-count">0</strong>
+                        <span>SPOs</span>
+                        <span class="governance-summary-subvalue" id="gov-spo-total-delegated">Delegated ₳ 0</span>
+                    </div>
                 </div>
                 <div class="pool-relays" id="pool-relays">
                     <p class="small-text">Loading relay status...</p>
@@ -360,11 +365,6 @@
                         <span>Rejected Actions</span>
                         <span class="governance-summary-subvalue" id="gov-rejected-ask">₳ 0</span>
                     </div>
-                    <div id="gov-spo-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show stake pool operator directory">
-                        <strong id="gov-spo-count">0</strong>
-                        <span>SPOs</span>
-                        <span class="governance-summary-subvalue" id="gov-spo-total-delegated">Delegated ₳ 0</span>
-                    </div>
                     <div id="gov-committee-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show Constitutional Committee members">
                         <strong id="gov-committee-count">0</strong>
                         <span>CC Members</span>
@@ -416,8 +416,8 @@
         <p id="wallet-status" class="wallet-status" role="status" aria-live="polite"></p>
     </template>
 
-    <script src="starch-loader.js?v=20260807-search-normalizer" defer></script>
-    <script src="governance-loader.js?v=20260807-ada-tile-format" defer></script>
+    <script src="starch-loader.js?v=20260807-shared-color" defer></script>
+    <script src="governance-loader.js?v=20260807-spo-card-location" defer></script>
     <script src="stake-loader.js?v=20260806-lazy-stake" defer></script>
 </body>
 </html>

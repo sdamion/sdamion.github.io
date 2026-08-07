@@ -8159,7 +8159,7 @@ function renderSpoDirectory(container, spos) {
             detailItems: [
                 { text: `Cloud Service: ${getSpoCloudServiceText(spo)}`, className: 'governance-card-detail governance-cc-member-meta' },
                 { text: `Delegators: ${Number(spo.delegator_count || 0).toLocaleString('en-US')}`, className: 'governance-card-detail governance-cc-member-meta' },
-                { text: `Saturation: ${formatSpoSaturation(spo.saturation_pct)}`, className: 'governance-card-detail governance-cc-member-meta' },
+                { text: `Saturation: ${window.TDSPRuntime.formatRatioPercentage(spo.saturation_pct, { fallback: '--' })}`, className: 'governance-card-detail governance-cc-member-meta' },
                 idLine
             ]
         });
@@ -8334,11 +8334,11 @@ function renderSpoDetails(container, spo) {
     [
         ['Delegators', Number(spo.delegator_count || 0).toLocaleString('en-US')],
         ['Delegation', formatFullAdaFromLovelace(spo.delegated_lovelace)],
-        ['Saturation', formatSpoSaturation(spo.saturation_pct)],
+        ['Saturation', window.TDSPRuntime.formatRatioPercentage(spo.saturation_pct, { fallback: '--' })],
         ['Cloud Service', getSpoCloudServiceText(spo)],
         ['Pledge', formatFullAdaFromLovelace(spo.pledge_lovelace)],
         ['Fixed cost', formatFullAdaFromLovelace(spo.fixed_cost_lovelace)],
-        ['Margin', formatSpoMargin(spo.margin)]
+        ['Margin', window.TDSPRuntime.formatRatioPercentage(spo.margin, { scale: 100, fallback: '--' })]
     ].forEach(([label, value]) => {
         const card = document.createElement('div');
         card.className = 'governance-spo-detail-stat governance-menu-card';
@@ -8446,16 +8446,6 @@ function getSpoCloudProviders(spo) {
     addProvider(spo?.cloud_provider);
     (Array.isArray(spo?.relays) ? spo.relays : []).forEach(relay => addProvider(relay?.provider));
     return Array.from(providers.values());
-}
-
-function formatSpoMargin(value) {
-    const margin = Number(value);
-    return Number.isFinite(margin) ? formatPercentage(margin * 100) : '--';
-}
-
-function formatSpoSaturation(value) {
-    const saturation = Number(value);
-    return Number.isFinite(saturation) ? formatPercentage(saturation) : '--';
 }
 
 async function loadSpoDirectory() {

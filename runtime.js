@@ -303,6 +303,26 @@
         }).format(number)}%`;
     }
 
+    function formatRatioPercentage(value, options = {}) {
+        const number = Number(value);
+        if (!Number.isFinite(number)) return options.fallback ?? 'N/A';
+        const scaledValue = number * (Number.isFinite(options.scale) ? options.scale : 1);
+        const smallValueDigits = Number.isInteger(options.smallValueFractionDigits)
+            && scaledValue > 0
+            && scaledValue < 0.01
+            ? options.smallValueFractionDigits
+            : undefined;
+        return formatPercentageValue(scaledValue, {
+            minimumFractionDigits: Number.isInteger(options.minimumFractionDigits)
+                ? options.minimumFractionDigits
+                : smallValueDigits,
+            maximumFractionDigits: Number.isInteger(options.maximumFractionDigits)
+                ? options.maximumFractionDigits
+                : smallValueDigits,
+            fallback: options.fallback
+        });
+    }
+
     function setText(id, value) {
         const element = document.getElementById(id);
         if (element) element.textContent = String(value);
@@ -382,6 +402,14 @@
         const minLength = Number.isInteger(options.minLength) ? options.minLength : front + back + 4;
         if (text.length <= minLength) return text;
         return `${text.slice(0, front)}...${text.slice(-back)}`;
+    }
+
+    function adjustHexColor(color, percent) {
+        const red = parseInt(color.substring(1, 3), 16);
+        const green = parseInt(color.substring(3, 5), 16);
+        const blue = parseInt(color.substring(5, 7), 16);
+        const adjust = channel => Math.min(255, Math.max(0, channel + percent * 2.55));
+        return `rgb(${Math.round(adjust(red))}, ${Math.round(adjust(green))}, ${Math.round(adjust(blue))})`;
     }
 
     function normalizeSearchText(value) {
@@ -476,12 +504,14 @@
         formatAdaText,
         formatTileAdaFromLovelace,
         formatPercentageValue,
+        formatRatioPercentage,
         setText,
         copyText,
         bindCopyButton,
         createCopyButton,
         createSmallText,
         shortenMiddle,
+        adjustHexColor,
         normalizeSearchText,
         formatReadableLabel,
         appendUniversalTileContent

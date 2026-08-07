@@ -1,5 +1,5 @@
 (function () {
-    const STARCH_SCRIPT_SRC = 'starch.js?v=20260807-search-normalizer';
+    const STARCH_SCRIPT_SRC = 'starch.js?v=20260807-shared-color';
     const STARCH_TARGET_SELECTORS = [
         '#starch',
         '#pool-starch-status-card'

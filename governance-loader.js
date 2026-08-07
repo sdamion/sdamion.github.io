@@ -1,14 +1,16 @@
 (function () {
-    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260807-ada-tile-format';
+    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260807-ratio-percentage';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
         '#drep',
+        '#gov-spo-card',
         '#tdspbot-open',
         '#site-alerts-button'
     ];
     const GOVERNANCE_TRIGGER_SELECTORS = [
         'a[href="#governance"]',
         'a[href="#drep"]',
+        '#gov-spo-card',
         '#tdspbot-open',
         '#site-alerts-button'
     ];

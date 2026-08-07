@@ -453,7 +453,7 @@ async function renderStarchCompanyChart(canvas, miners, companyId) {
     if (typeof ChartCtor !== 'function' || !canvas?.isConnected) return;
     const context = canvas.getContext('2d');
     const color = /^[0-9A-F]{6}$/i.test(companyId) ? `#${companyId}` : '#0f766e';
-    const hoverColor = shadeColor(color, -20);
+    const hoverColor = window.TDSPRuntime.adjustHexColor(color, -20);
     const gradient = context.createLinearGradient(0, 0, 0, 360);
     gradient.addColorStop(0, color);
     gradient.addColorStop(1, hoverColor);
@@ -493,16 +493,6 @@ function createStarchCopyButton(value, label) {
         className: 'pool-delegator-copy-button',
         title: false
     });
-}
-
-function shadeColor(color, percent) {
-    let red = parseInt(color.substring(1, 3), 16);
-    let green = parseInt(color.substring(3, 5), 16);
-    let blue = parseInt(color.substring(5, 7), 16);
-    red = Math.min(255, Math.max(0, red + percent * 2.55));
-    green = Math.min(255, Math.max(0, green + percent * 2.55));
-    blue = Math.min(255, Math.max(0, blue + percent * 2.55));
-    return `rgb(${Math.round(red)}, ${Math.round(green)}, ${Math.round(blue)})`;
 }
 
 function initStarchUi() {
