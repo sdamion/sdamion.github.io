@@ -397,12 +397,9 @@ function renderTradingViewPriceChart(container, symbol, ticker, intervalMinutes 
         save_image: false,
         support_host: 'https://www.tradingview.com'
     };
-    const widgetUrl = new URL('https://www.tradingview-widget.com/embed-widget/advanced-chart/');
+    const widgetUrl = new URL('https://s.tradingview.com/embed-widget/advanced-chart/');
     widgetUrl.searchParams.set('locale', settings.locale);
-    widgetUrl.hash = encodeURIComponent(JSON.stringify({
-        ...settings,
-        'page-uri': window.location.href
-    }));
+    widgetUrl.hash = encodeURIComponent(JSON.stringify(settings));
 
     const frame = document.createElement('iframe');
     frame.className = 'tradingview-widget-frame';
@@ -466,6 +463,12 @@ function openPriceHistoryOverlay(tile) {
 
     let canvas = null;
     let tradingViewFrame = null;
+    if (tradingViewSymbol) {
+        const warning = document.createElement('p');
+        warning.className = 'tradingview-link-warning';
+        warning.textContent = 'Links in this chart are provided by TradingView. DYOR before opening external links.';
+        body.appendChild(warning);
+    }
     if (showTradingChart) {
         const frame = document.createElement('div');
         frame.className = 'price-history-chart-frame';

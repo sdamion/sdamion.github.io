@@ -911,6 +911,18 @@ p {
     border: 0;
 }
 
+.tradingview-link-warning {
+    margin: 0 0 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--governance-card-bg);
+    color: var(--muted);
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1.45;
+}
+
 .youtube-video-panel,
 .youtube-video-frame {
     width: 100%;
