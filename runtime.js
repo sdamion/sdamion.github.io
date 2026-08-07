@@ -221,6 +221,12 @@
         return Number.isFinite(number) ? new Intl.NumberFormat('en-US').format(number) : fallback;
     }
 
+    function formatCount(value, fallback = '0') {
+        const number = Number(value);
+        if (!Number.isFinite(number)) return fallback;
+        return Math.max(0, Math.round(number)).toLocaleString('en-US');
+    }
+
     function toFiniteNumber(value, fallback = 0) {
         const number = Number(value);
         return Number.isFinite(number) ? number : fallback;
@@ -515,6 +521,7 @@
         setStatusClasses,
         setBinaryStatusClasses,
         formatInteger,
+        formatCount,
         toFiniteNumber,
         getCollectionLength,
         formatTimestamp,

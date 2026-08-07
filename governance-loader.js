@@ -1,5 +1,5 @@
 (function () {
-    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260807-treasury-favicons';
+    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260807-shared-count';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
         '#drep',

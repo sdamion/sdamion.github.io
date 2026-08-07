@@ -12142,12 +12142,12 @@ async function updateGovernanceCounts(groups) {
     window.TDSPRuntime.setText('gov-approved-ask', formatGovernanceAskAmount(groups.approved));
     window.TDSPRuntime.setText('gov-rejected-ask', formatGovernanceAskAmount(groups.rejected));
     updateCatalystTreasuryFundingSummary();
-    window.TDSPRuntime.setText('gov-committee-count', formatGovernanceCount(
+    window.TDSPRuntime.setText('gov-committee-count', window.TDSPRuntime.formatCount(
         getConstitutionalCommitteeMemberCount(governanceState, groups)
     ));
     fetchCommitteeInfoPayload()
         .then(payload => {
-            window.TDSPRuntime.setText('gov-committee-count', formatGovernanceCount(
+            window.TDSPRuntime.setText('gov-committee-count', window.TDSPRuntime.formatCount(
                 getConstitutionalCommitteeMemberCount(payload || governanceState, groups)
             ));
             updateConstitutionalCommitteeQuorumScore(payload);
@@ -12701,10 +12701,6 @@ function getCommitteeVotesCastCountFromSummary(summary) {
     const noVotes = Number(summary.committee_no_votes_cast) || 0;
     const abstainVotes = Number(summary.committee_abstain_votes_cast) || 0;
     return yesVotes + noVotes + abstainVotes;
-}
-
-function formatGovernanceCount(count) {
-    return Number.isFinite(count) && count > 0 ? Math.round(count).toLocaleString('en-US') : '0';
 }
 
 function formatGovernanceAskAmount(proposals) {
