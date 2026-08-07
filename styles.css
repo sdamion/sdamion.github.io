@@ -2437,34 +2437,6 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     font-weight: 700;
 }
 
-.governance-budget-bar {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    margin: 10px 0 18px;
-    font-size: 0.92rem;
-    font-weight: 700;
-}
-
-.governance-budget-bar span {
-    display: inline-flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    align-items: baseline;
-}
-
-.governance-budget-label {
-    color: var(--muted);
-}
-
-.governance-budget-amount {
-    color: var(--accent-strong);
-}
-
-.governance-budget-bar span.is-negative .governance-budget-amount {
-    color: #f87171;
-}
-
 .governance-votes {
     display: block;
     margin-top: 6px;

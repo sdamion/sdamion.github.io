@@ -127,6 +127,7 @@ let treasuryPromise = null;
 let treasuryAdministratorsPromise = null;
 let treasuryAdministratorsState = null;
 let treasuryState = null;
+let governanceNclSummary = null;
 let catalystBusinessPromise = null;
 let fundingRecipientsPromise = null;
 let fundingOverviewPromise = null;
@@ -159,6 +160,7 @@ function initGovernance() {
     removeDrepPowerSplitCard();
     ensureEpochCountdownCard();
     setupGovernanceSummaryActionCards();
+    setupNclCard();
     setupConstitutionalCommitteeCard();
     setupDrepDirectoryCard();
     setupTdspDrepStatsCards();
@@ -741,7 +743,7 @@ async function loadTreasuryData() {
             : 'Income ₳ --'
     );
     updateBusinessSummary(payload, catalystPayload);
-    if (governanceState) updateTreasuryBudgetBar();
+    if (governanceState) updateNclSummaryTile();
     updateCatalystTreasuryFundingSummary();
 }
 
@@ -4356,6 +4358,114 @@ function setupConstitutionalCommitteeCard() {
     bindGovernanceMenuTrigger(card, openConstitutionalCommitteeOverlay);
 }
 
+function setupNclCard() {
+    const card = document.getElementById('gov-ncl-card');
+    bindGovernanceMenuTrigger(card, event => {
+        openNclSummaryOverlay(event?.currentTarget || card);
+    });
+}
+
+function openNclSummaryOverlay(returnFocus) {
+    const values = getNclSummaryValues();
+    const stats = document.createElement('div');
+    stats.className = 'governance-vote-legend';
+    stats.append(
+        createGovernanceStatBox({
+            label: 'NCL',
+            detail: formatNclAdaAmount(values.limit),
+            color: '#5eead4'
+        }),
+        createGovernanceStatBox({
+            label: 'Spend',
+            detail: formatNclAdaAmount(values.spent),
+            color: '#fb7185'
+        }),
+        createGovernanceStatBox({
+            label: 'Balance',
+            detail: formatNclAdaAmount(values.balance),
+            color: '#34d399'
+        }),
+        createGovernanceStatBox({
+            label: 'Net',
+            detail: formatNclAdaAmount(values.net),
+            color: values.net < 0 ? '#fb7185' : '#fbbf24'
+        })
+    );
+
+    const startEpoch = Number(governanceNclSummary?.start_epoch);
+    const endEpoch = Number(governanceNclSummary?.end_epoch);
+    const epochRange = Number.isFinite(startEpoch) && Number.isFinite(endEpoch)
+        ? `Epochs ${startEpoch}-${endEpoch}`
+        : '';
+
+    createGovernanceMenuOverlay({
+        id: 'governance-ncl-overlay',
+        titleId: 'governance-ncl-title',
+        titleText: 'NCL',
+        closeLabel: 'Close NCL',
+        closeOverlay: closeNclSummaryOverlay,
+        bodyNodes: [stats],
+        headerMeta: epochRange,
+        returnFocus,
+        rootTitle: 'Cardano Governance',
+        botContext: createWebsiteSectionBotContext('Treasury', {
+            title: 'Net Change Limit',
+            id: governanceNclSummary?.action_id || 'ncl',
+            amount_ada: values.limit / 1_000_000,
+            status: governanceNclSummary?.applies_now === true ? 'applies now' : null,
+            root: 'Cardano Governance',
+            summary: [
+                `NCL ${formatNclAdaAmount(values.limit)}`,
+                `Spend ${formatNclAdaAmount(values.spent)}`,
+                `Balance ${formatNclAdaAmount(values.balance)}`,
+                `Net ${formatNclAdaAmount(values.net)}`
+            ].join(' | ')
+        })
+    });
+}
+
+function closeNclSummaryOverlay() {
+    removeGovernanceMenuOverlay('governance-ncl-overlay');
+}
+
+function getNclSummaryValues() {
+    const fallbackLimit = getTreasuryNetChangeLimitLovelace();
+    const fallbackSpent = getTreasuryBudgetUsedThisYear();
+    const fallbackBalance = Math.max(fallbackLimit - fallbackSpent, 0);
+    const fallbackNet = fallbackBalance - getActiveTreasuryProposalAskTotal();
+    const finiteOrFallback = (value, fallback) => {
+        const number = Number(value);
+        return Number.isFinite(number) ? number : fallback;
+    };
+
+    return {
+        limit: finiteOrFallback(governanceNclSummary?.limit_lovelace, fallbackLimit),
+        spent: finiteOrFallback(governanceNclSummary?.spent_lovelace, fallbackSpent),
+        balance: finiteOrFallback(governanceNclSummary?.remaining_lovelace, fallbackBalance),
+        net: finiteOrFallback(
+            governanceNclSummary?.projected_all_remaining_lovelace,
+            fallbackNet
+        )
+    };
+}
+
+function formatNclAdaAmount(value) {
+    const amount = Number(value);
+    const prefix = amount < 0 ? '-' : '';
+    return `${prefix}${formatCompactAdaFromLovelace(Math.abs(amount), { fixedFractionDigits: 2 })}`;
+}
+
+function updateNclSummaryCard(nclLimit, remaining) {
+    window.TDSPRuntime.setText(
+        'gov-ncl-amount',
+        formatCompactAdaFromLovelace(nclLimit, { fixedFractionDigits: 2 })
+    );
+    window.TDSPRuntime.setText(
+        'gov-ncl-balance',
+        `Balance ${formatCompactAdaFromLovelace(remaining, { fixedFractionDigits: 2 })}`
+    );
+}
+
 function setupGovernanceSummaryActionCards() {
     [
         { id: 'gov-active-card', groupKey: 'active', title: 'Active Governance Actions', tileTitle: 'Governance Actions', emptyMessage: 'No active actions found.' },
@@ -4446,7 +4556,7 @@ async function loadGovernanceActions() {
         renderGovernanceGroupIfPresent(groups.active, grouped.active, 'No active actions found.');
         renderGovernanceGroupIfPresent(groups.approved, grouped.approved, 'No approved actions found.');
         renderGovernanceGroupIfPresent(groups.rejected, grouped.rejected, 'No rejected actions found.');
-        updateTreasuryBudgetBar();
+        updateNclSummaryTile();
         await updateGovernanceCounts(grouped);
         lastActiveRenderSignature = getGovernanceGroupSignature(grouped.active);
         updateEpochDisplayFromDashboardPayload(dashboardPayload);
@@ -4480,7 +4590,7 @@ async function refreshActiveGovernanceGroup() {
     const grouped = groupGovernanceProposals(proposals);
     const activeProposals = grouped.active;
     governanceGroupsState = grouped;
-    updateTreasuryBudgetBar();
+    updateNclSummaryTile();
 
     const nextSignature = getGovernanceGroupSignature(activeProposals);
     if (nextSignature === lastActiveRenderSignature) return;
@@ -5560,56 +5670,9 @@ function closeGovernanceStatusActionsOverlay() {
     removeGovernanceMenuOverlay('governance-status-actions-overlay');
 }
 
-function updateTreasuryBudgetBar() {
-    const nclLimit = getTreasuryNetChangeLimitLovelace();
-    const usedThisYear = getTreasuryBudgetUsedThisYear();
-    const remaining = Math.max(nclLimit - usedThisYear, 0);
-    const activeAskTotal = getActiveTreasuryProposalAskTotal();
-    const afterTotalSpend = remaining - activeAskTotal;
-
-    setBudgetBarItem('gov-budget-limit', 'NCL', formatCompactAdaFromLovelace(nclLimit, { fixedFractionDigits: 2 }));
-    setBudgetBarItem('gov-budget-used', 'Spend', formatCompactAdaFromLovelace(usedThisYear, { fixedFractionDigits: 2 }));
-    setBudgetBarItem(
-        'gov-budget-remaining',
-        'Balance',
-        formatCompactAdaFromLovelace(remaining, { fixedFractionDigits: 2 }),
-        false,
-        getBudgetAmountTone(remaining)
-    );
-    setBudgetBarItem(
-        'gov-budget-after-spend',
-        'Net',
-        `${afterTotalSpend < 0 ? '-' : ''}${formatCompactAdaFromLovelace(Math.abs(afterTotalSpend), { fixedFractionDigits: 2 })}`,
-        afterTotalSpend < 0,
-        getBudgetAmountTone(afterTotalSpend)
-    );
-}
-
-function setBudgetBarItem(id, label, amount, isNegative = false, amountTone = '') {
-    const element = document.getElementById(id);
-    if (!element) return;
-
-    element.textContent = '';
-    element.classList.toggle('is-negative', isNegative);
-
-    const labelSpan = document.createElement('span');
-    labelSpan.className = 'governance-budget-label';
-    labelSpan.textContent = label;
-
-    const amountSpan = document.createElement('span');
-    amountSpan.className = 'governance-budget-amount';
-    if (amountTone) amountSpan.classList.add(`is-${amountTone}`);
-    amountSpan.textContent = amount;
-
-    element.appendChild(labelSpan);
-    element.appendChild(amountSpan);
-}
-
-function getBudgetAmountTone(value) {
-    const ratio = Number(value) / getTreasuryNetChangeLimitLovelace();
-    if (!Number.isFinite(ratio) || ratio < 0.25) return 'red';
-    if (ratio < 0.5) return 'orange';
-    return 'green';
+function updateNclSummaryTile() {
+    const values = getNclSummaryValues();
+    updateNclSummaryCard(values.limit, values.balance);
 }
 
 function getTreasuryNetChangeLimitLovelace() {
@@ -5620,6 +5683,7 @@ function getTreasuryNetChangeLimitLovelace() {
 
 function applyDashboardNclSummary(payload) {
     const ncl = payload?.ncl_summary || payload?.treasury?.ncl || payload?.summaries?.treasury?.ncl || null;
+    governanceNclSummary = ncl;
     const limit = Number(ncl?.limit_lovelace);
     treasuryNetChangeLimitLovelace = Number.isFinite(limit) && limit > 0
         ? limit
@@ -12160,7 +12224,7 @@ async function updateGovernanceCounts(groups) {
         }
     }
 
-    updateTreasuryBudgetBar();
+    updateNclSummaryTile();
 }
 
 function getActiveInfoActions(proposals) {
