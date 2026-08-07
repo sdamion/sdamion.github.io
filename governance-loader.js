@@ -1,5 +1,5 @@
 (function () {
-    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260807-fetch-json-order';
+    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260807-shared-json-requests';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
         '#drep',

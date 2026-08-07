@@ -344,13 +344,10 @@ async function openConstitutionDocumentOverlay() {
     });
 
     try {
-        const response = await fetch(getConstitutionDocumentApiUrl(), {
+        const payload = await fetchJson(getConstitutionDocumentApiUrl(), {
             headers: { accept: 'application/json' }
         });
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok || !payload.text) {
-            throw new Error(payload.error || `Constitution document returned ${response.status}`);
-        }
+        if (!payload.text) throw new Error('The Constitution document is empty.');
         if (!content.isConnected) return;
         content.textContent = '';
         const documentText = document.createElement('pre');
@@ -657,7 +654,7 @@ function appendConstitutionChatFeedback(message, feedbackId, status) {
         yes.disabled = true;
         no.disabled = true;
         try {
-            const response = await fetch(getConstitutionChatFeedbackApiUrl(), {
+            const payload = await fetchJson(getConstitutionChatFeedbackApiUrl(), {
                 method: 'POST',
                 headers: {
                     accept: 'application/json',
@@ -668,10 +665,6 @@ function appendConstitutionChatFeedback(message, feedbackId, status) {
                     helpful
                 })
             });
-            const payload = await response.json().catch(() => ({}));
-            if (!response.ok) {
-                throw new Error(payload.error || `Feedback returned ${response.status}`);
-            }
             feedback.replaceChildren();
             const result = document.createElement('span');
             result.textContent = helpful
@@ -6970,7 +6963,7 @@ async function requestGovernanceVoteRationaleImprovement(context, name, reason) 
         'a second voting round reaches enough CC votes or the CC size is reduced to 3, which itself also requires a governance vote.'
     ].join(' ');
 
-    const response = await fetch(getConstitutionChatApiUrl(), {
+    const payload = await fetchJson(getConstitutionChatApiUrl(), {
         method: 'POST',
         headers: {
             accept: 'application/json',
@@ -7006,8 +6999,6 @@ async function requestGovernanceVoteRationaleImprovement(context, name, reason) 
             }
         })
     });
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload.error || `TDSPBot returned ${response.status}`);
     const answer = String(payload.answer || '').trim();
     if (!answer) throw new Error('TDSPBot returned an empty rationale.');
     return answer;
@@ -8565,9 +8556,7 @@ function renderDrepRegistrationForm(container, values = {}) {
             const fetchUrl = getDrepMetadataFetchUrl(metadataUrl, { refresh: true });
             if (!fetchUrl) throw new Error('This metadata URL is not supported. Use a public HTTPS or IPFS URL.');
 
-            const response = await fetch(fetchUrl, { cache: 'no-store' });
-            if (!response.ok) throw new Error(`Metadata URL could not be loaded (HTTP ${response.status}).`);
-            const documentData = await response.json();
+            const documentData = await fetchJson(fetchUrl, { cache: 'no-store' });
             if (!documentData || typeof documentData !== 'object' || Array.isArray(documentData)) {
                 throw new Error('The metadata URL did not return a JSON object.');
             }
@@ -11244,10 +11233,7 @@ async function fetchDrepMetadataName(url) {
     const fetchUrl = getDrepMetadataFetchUrl(url);
     if (!fetchUrl) throw new Error('Unsupported DRep metadata URL');
 
-    const response = await fetch(fetchUrl);
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-    const payload = await response.json();
+    const payload = await fetchJson(fetchUrl);
     return extractDrepMetadataName(payload);
 }
 
