@@ -4077,10 +4077,6 @@ function createTreasuryWithdrawalCard(withdrawal) {
     return card;
 }
 
-function shortenGovernanceAddress(address) {
-    return window.TDSPRuntime.shortenMiddle(address);
-}
-
 function getTreasuryLovelace(payload) {
     const value = payload?.treasury_lovelace
         ?? payload?.totals?.treasury
@@ -4309,7 +4305,7 @@ function createTdspDrepDelegatorRow(delegator, index) {
 
     const addressText = document.createElement('strong');
     addressText.className = `pool-delegator-address${adaHandle ? ' pool-delegator-handle' : ''}`;
-    addressText.textContent = adaHandle || shortenDrepStakeAddress(address);
+    addressText.textContent = adaHandle || window.TDSPRuntime.shortenMiddle(address);
     addressText.title = address;
 
     const copy = document.createElement('button');
@@ -4348,10 +4344,6 @@ function compareBigIntDescending(left, right) {
 
 function formatDrepDelegatorAda(lovelace) {
     return window.TDSPRuntime.formatLovelaceAmount(lovelace);
-}
-
-function shortenDrepStakeAddress(address) {
-    return window.TDSPRuntime.shortenMiddle(address);
 }
 
 function setupSpoDirectoryCard() {
@@ -6256,7 +6248,7 @@ function renderGovernanceProposalDetails(container, proposal, options = {}) {
             address,
             {
                 copyLabel: 'treasury stake address',
-                displayValue: shortenGovernanceAddress(address)
+                displayValue: window.TDSPRuntime.shortenMiddle(address)
             }
         );
     });
