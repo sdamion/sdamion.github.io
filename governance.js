@@ -147,6 +147,7 @@ const catalystProposalDetailsCache = new Map();
 let treasuryHistoryChart = null;
 let governanceMeshPromise = null;
 let tdspDrepStatsPromise = null;
+const fetchJson = window.TDSPRuntime.fetchJson;
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initGovernance);
@@ -4896,21 +4897,6 @@ function formatEpochCountdown(totalSeconds) {
         String(minutes).padStart(2, '0'),
         String(remainingSeconds).padStart(2, '0')
     ].join(':');
-}
-
-async function fetchJson(url, options = {}) {
-    const response = await fetch(url, options);
-    if (!response.ok) {
-        let detail = '';
-        try {
-            const payload = await response.json();
-            detail = payload?.detail || payload?.error || '';
-        } catch {
-            detail = '';
-        }
-        throw new Error(detail ? `HTTP ${response.status}: ${detail}` : `HTTP ${response.status}`);
-    }
-    return response.json();
 }
 
 function loadGovernanceEntityDetail(key, loader) {

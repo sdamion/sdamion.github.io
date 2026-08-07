@@ -20,6 +20,21 @@
         return false;
     }
 
+    async function fetchJson(url, options = {}) {
+        const response = await fetch(url, options);
+        if (!response.ok) {
+            let detail = '';
+            try {
+                const payload = await response.json();
+                detail = payload?.detail || payload?.error || '';
+            } catch {
+                detail = '';
+            }
+            throw new Error(detail ? `HTTP ${response.status}: ${detail}` : `HTTP ${response.status}`);
+        }
+        return response.json();
+    }
+
     function loadDetail(key, loader, options = {}) {
         const cacheKey = String(key || '').trim();
         if (!cacheKey || typeof loader !== 'function') {
@@ -482,6 +497,7 @@
         detailCacheTtlMs: DETAIL_CACHE_TTL_MS,
         isLocalPreview: isLocalPreviewHostname(window.location.hostname),
         isLocalPreviewHostname,
+        fetchJson,
         loadDetail,
         loadScript,
         bindDetailPreload,
