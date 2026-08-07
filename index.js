@@ -1621,9 +1621,7 @@ async function fetchPoolStatus() {
     if (!summaryEl || !relaysEl) return;
 
     try {
-        const response = await fetch(POOL_API_URL);
-        if (!response.ok) throw new Error(`Pool API HTTP Error: ${response.status}`);
-        renderPoolStatus(await response.json());
+        renderPoolStatus(await window.TDSPRuntime.fetchJson(POOL_API_URL));
     } catch (error) {
         setRelayCardStatus(null, null);
         relaysEl.textContent = '';
@@ -1636,9 +1634,7 @@ async function fetchPoolStatus() {
 
 async function fetchMithrilStatus() {
     try {
-        const response = await fetch(MITHRIL_API_URL);
-        if (!response.ok) throw new Error(`Mithril API HTTP Error: ${response.status}`);
-        renderMithrilStatus(await response.json());
+        renderMithrilStatus(await window.TDSPRuntime.fetchJson(MITHRIL_API_URL));
     } catch (error) {
         mithrilStatus = null;
         mithrilSigners = [];
@@ -1663,9 +1659,7 @@ function setMithrilCardStatus(label, active) {
 
 async function fetchIcebreakerStatus() {
     try {
-        const response = await fetch(ICEBREAKER_API_URL);
-        if (!response.ok) throw new Error(`Icebreaker API HTTP Error: ${response.status}`);
-        const payload = await response.json();
+        const payload = await window.TDSPRuntime.fetchJson(ICEBREAKER_API_URL);
         const active = payload?.active;
         setIcebreakerCardStatus(active === true ? 'Active' : active === false ? 'Inactive' : 'N/A', active);
     } catch (error) {
@@ -1683,9 +1677,7 @@ function setIcebreakerCardStatus(label, active) {
 
 async function fetchStarchPoolStatus() {
     try {
-        const response = await fetch(STARCH_POOL_API_URL);
-        if (!response.ok) throw new Error(`Starch pool API HTTP Error: ${response.status}`);
-        renderStarchPoolStatus(await response.json());
+        renderStarchPoolStatus(await window.TDSPRuntime.fetchJson(STARCH_POOL_API_URL));
     } catch (error) {
         starchPoolStatus = null;
         starchPools = [];
@@ -1721,9 +1713,7 @@ async function fetchLeaderSchedule() {
     if (!scheduleEl) return;
 
     try {
-        const response = await fetch(LEADER_SCHEDULE_API_URL);
-        if (!response.ok) throw new Error(`Leader schedule HTTP Error: ${response.status}`);
-        renderLeaderSchedule(await response.json());
+        renderLeaderSchedule(await window.TDSPRuntime.fetchJson(LEADER_SCHEDULE_API_URL));
     } catch (error) {
         renderLeaderScheduleError();
     }
