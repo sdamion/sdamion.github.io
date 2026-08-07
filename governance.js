@@ -160,9 +160,7 @@ function initGovernance() {
     removeDrepPowerSplitCard();
     ensureEpochCountdownCard();
     setupGovernanceSummaryActionCards();
-    setupNclCard();
     setupStaticGovernanceMenuCards();
-    setupDrepDirectoryCard();
     setupTdspDrepStatsCards();
     loadCurrentEpoch();
     loadGovernanceActions();
@@ -682,7 +680,10 @@ function setupStaticGovernanceMenuCards() {
         ['gov-catalyst-proposals-card', openCatalystFundsOverlay],
         ['gov-cips-card', openCipDirectoryOverlay],
         ['gov-spo-card', openSpoDirectoryOverlay],
-        ['gov-committee-card', openConstitutionalCommitteeOverlay]
+        ['gov-committee-card', openConstitutionalCommitteeOverlay],
+        ['gov-drep-card', openDrepDirectoryOverlay],
+        ['gov-drep-top10-card', openTopDrepPowerOverlay],
+        ['gov-ncl-card', event => openNclSummaryOverlay(event?.currentTarget || document.getElementById('gov-ncl-card'))]
     ].forEach(([id, openMenu]) => {
         bindGovernanceMenuTrigger(document.getElementById(id), openMenu);
     });
@@ -4129,14 +4130,6 @@ function formatTreasuryTimestamp(value) {
     });
 }
 
-function setupDrepDirectoryCard() {
-    const card = document.getElementById('gov-drep-card');
-    bindGovernanceMenuTrigger(card, openDrepDirectoryOverlay);
-
-    const top10Card = document.getElementById('gov-drep-top10-card');
-    bindGovernanceMenuTrigger(top10Card, openTopDrepPowerOverlay);
-}
-
 function setupTdspDrepStatsCards() {
     const cards = [
         document.getElementById('tdsp-drep-status-card'),
@@ -4334,13 +4327,6 @@ function compareBigIntDescending(left, right) {
 
 function formatDrepDelegatorAda(lovelace) {
     return window.TDSPRuntime.formatLovelaceAmount(lovelace);
-}
-
-function setupNclCard() {
-    const card = document.getElementById('gov-ncl-card');
-    bindGovernanceMenuTrigger(card, event => {
-        openNclSummaryOverlay(event?.currentTarget || card);
-    });
 }
 
 function openNclSummaryOverlay(returnFocus) {

@@ -1,5 +1,5 @@
 (function () {
-    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260808-static-menu-card-bindings';
+    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260808-all-static-menu-bindings';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
         '#drep',
