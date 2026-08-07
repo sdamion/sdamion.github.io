@@ -8071,46 +8071,55 @@ function renderSpoDirectory(container, spos) {
         getSpoPinRank(left) - getSpoPinRank(right)
     );
     const fragment = document.createDocumentFragment();
-    orderedSpos.forEach(spo => {
-        const row = document.createElement('div');
-        row.className = 'governance-card governance-menu-card governance-cc-member governance-cc-member-clickable governance-spo-directory-card';
-        row.dataset.searchText = `${spo.name || ''} ${spo.ticker || ''} ${spo.pool_id || ''}`.trim();
-        row.dataset.sortName = window.TDSPRuntime.normalizeSearchText(getSpoDisplayName(spo));
-        row.dataset.sortAmount = String(Number(spo.delegated_lovelace) || 0);
-        row.dataset.sortDelegators = String(Number(spo.delegator_count) || 0);
-        row.dataset.sortSaturation = String(Number(spo.saturation_pct) || 0);
-        const cloudHostingType = getSpoCloudHostingType(spo);
-        row.dataset.sortCloudSpo = cloudHostingType === 'cloud-spo' ? '1' : '0';
-        row.dataset.sortSpo = cloudHostingType === 'spo' ? '1' : '0';
-        const pinRank = getSpoPinRank(spo);
-        if (Number.isFinite(pinRank)) row.dataset.overlayPinRank = String(pinRank);
-        row.setAttribute('role', 'button');
-        row.tabIndex = 0;
-        row.setAttribute('aria-label', `Show ${getSpoDisplayName(spo)} stake pool details`);
-
-        const idLine = createSpoPoolIdLine(spo.pool_id);
-        window.TDSPRuntime?.appendUniversalTileContent?.(row, {
-            title: getSpoDisplayName(spo),
-            titleClassName: 'governance-title governance-cc-member-hash',
-            primaryText: `Delegation: ${formatCompactAdaFromLovelace(spo.delegated_lovelace)}`,
-            primaryClassName: 'governance-card-detail governance-treasury-withdrawal-amount governance-cc-member-stats',
-            detailItems: [
-                { text: `Cloud Service: ${getSpoCloudServiceText(spo)}`, className: 'governance-card-detail governance-cc-member-meta' },
-                { text: `Delegators: ${Number(spo.delegator_count || 0).toLocaleString('en-US')}`, className: 'governance-card-detail governance-cc-member-meta' },
-                { text: `Saturation: ${window.TDSPRuntime.formatRatioPercentage(spo.saturation_pct, { fallback: '--' })}`, className: 'governance-card-detail governance-cc-member-meta' },
-                idLine
-            ]
-        });
-        row.appendChild(createSpoHostingIcon(cloudHostingType));
-        bindGovernanceMenuTrigger(row, event => openSpoDetailOverlay(spo, event.currentTarget));
-        bindGovernanceEntityPreload(
-            row,
-            `spo:${String(spo.pool_id || '').toLowerCase()}`,
-            () => fetchJson(getSpoDetailApiUrl(spo.pool_id), { cache: 'no-store' })
-        );
-        fragment.appendChild(row);
-    });
+    orderedSpos.forEach(spo => fragment.appendChild(createSpoDirectoryCard(spo)));
     container.appendChild(fragment);
+}
+
+function createSpoDirectoryCard(spo) {
+    const row = document.createElement('div');
+    row.className = 'governance-card governance-menu-card governance-cc-member governance-cc-member-clickable governance-spo-directory-card';
+    row.dataset.searchText = `${spo.name || ''} ${spo.ticker || ''} ${spo.pool_id || ''}`.trim();
+    row.dataset.sortName = window.TDSPRuntime.normalizeSearchText(getSpoDisplayName(spo));
+    row.dataset.sortAmount = String(Number(spo.delegated_lovelace) || 0);
+    row.dataset.sortDelegators = String(Number(spo.delegator_count) || 0);
+    row.dataset.sortSaturation = String(Number(spo.saturation_pct) || 0);
+    const cloudHostingType = getSpoCloudHostingType(spo);
+    row.dataset.sortCloudSpo = cloudHostingType === 'cloud-spo' ? '1' : '0';
+    row.dataset.sortSpo = cloudHostingType === 'spo' ? '1' : '0';
+    const pinRank = getSpoPinRank(spo);
+    if (Number.isFinite(pinRank)) row.dataset.overlayPinRank = String(pinRank);
+    row.setAttribute('role', 'button');
+    row.tabIndex = 0;
+    row.setAttribute('aria-label', `Show ${getSpoDisplayName(spo)} stake pool details`);
+
+    const idLine = createSpoPoolIdLine(spo.pool_id);
+    window.TDSPRuntime?.appendUniversalTileContent?.(row, {
+        title: getSpoDisplayName(spo),
+        titleClassName: 'governance-title governance-cc-member-hash',
+        primaryText: `Delegation: ${formatCompactAdaFromLovelace(spo.delegated_lovelace)}`,
+        primaryClassName: 'governance-card-detail governance-treasury-withdrawal-amount governance-cc-member-stats',
+        detailItems: [
+            { text: `Cloud Service: ${getSpoCloudServiceText(spo)}`, className: 'governance-card-detail governance-cc-member-meta' },
+            { text: `Delegators: ${Number(spo.delegator_count || 0).toLocaleString('en-US')}`, className: 'governance-card-detail governance-cc-member-meta' },
+            { text: `Saturation: ${window.TDSPRuntime.formatRatioPercentage(spo.saturation_pct, { fallback: '--' })}`, className: 'governance-card-detail governance-cc-member-meta' },
+            idLine
+        ]
+    });
+    row.appendChild(createSpoHostingIcon(cloudHostingType));
+    bindGovernanceMenuTrigger(row, event => openSpoDetailOverlay(spo, event.currentTarget));
+    bindGovernanceEntityPreload(
+        row,
+        `spo:${String(spo.pool_id || '').toLowerCase()}`,
+        () => fetchJson(getSpoDetailApiUrl(spo.pool_id), { cache: 'no-store' })
+    );
+    return row;
+}
+
+async function getSpoDirectoryEntry(poolId) {
+    const normalizedPoolId = String(poolId || '').trim().toLowerCase();
+    if (!normalizedPoolId) return null;
+    const directory = await loadSpoDirectory();
+    return directory.spos.find(spo => String(spo?.pool_id || '').trim().toLowerCase() === normalizedPoolId) || null;
 }
 
 function getSpoPinRank(spo) {
@@ -12772,3 +12781,9 @@ function getDrepEntryVotingPower(entry) {
 function formatPercentage(value) {
     return window.TDSPRuntime.formatPercentageValue(value, { fallback: value });
 }
+
+window.TDSPSpoDirectory = Object.freeze({
+    load: loadSpoDirectory,
+    getByPoolId: getSpoDirectoryEntry,
+    createCard: createSpoDirectoryCard
+});

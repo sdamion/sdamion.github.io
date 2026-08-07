@@ -1,5 +1,5 @@
 (function () {
-    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260808-runtime-menu-trigger';
+    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260808-shared-spo-cards';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
         '#drep',
