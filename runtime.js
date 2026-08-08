@@ -153,9 +153,9 @@
         });
     }
 
-    function bindMenuTrigger(element, handler, options = {}) {
+    function bindActionTrigger(element, handler, options = {}) {
         if (!(element instanceof Element) || typeof handler !== 'function') return;
-        const datasetKey = options.datasetKey || 'menuBound';
+        const datasetKey = options.datasetKey || 'actionBound';
         if (element.dataset[datasetKey] === 'true') return;
         element.dataset[datasetKey] = 'true';
 
@@ -170,8 +170,16 @@
                     options.onError(error);
                     return;
                 }
-                console.error(options.errorMessage || 'Menu could not be opened.', error);
+                console.error(options.errorMessage || 'Action could not be completed.', error);
             }
+        });
+    }
+
+    function bindMenuTrigger(element, handler, options = {}) {
+        bindActionTrigger(element, handler, {
+            datasetKey: 'menuBound',
+            errorMessage: 'Menu could not be opened.',
+            ...options
         });
     }
 
@@ -537,6 +545,7 @@
         bindDetailPreload,
         closestTarget,
         bindActivation,
+        bindActionTrigger,
         bindMenuTrigger,
         bindIntentLoad,
         bindViewportLoad,

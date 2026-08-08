@@ -1428,7 +1428,10 @@ function createCryptoNewsList() {
             const openArticle = () => youtubeVideoId
                 ? openYouTubeVideoOverlay(youtubeVideoId, item.title, row)
                 : openExternalSiteWarning(url.href, row);
-            window.TDSPRuntime?.bindActivation?.(row, openArticle);
+            window.TDSPRuntime?.bindActionTrigger?.(row, openArticle, {
+                datasetKey: 'articleBound',
+                errorMessage: 'News item could not be opened.'
+            });
         }
         list.appendChild(row);
     });
@@ -2487,7 +2490,10 @@ function createStarchPoolFallbackCard(pool) {
     row.tabIndex = 0;
     row.setAttribute('role', 'link');
     row.setAttribute('aria-label', `Open ${poolName} website`);
-    window.TDSPRuntime?.bindActivation?.(row, openWebsite);
+    window.TDSPRuntime?.bindActionTrigger?.(row, openWebsite, {
+        datasetKey: 'websiteBound',
+        errorMessage: 'Starch pool website could not be opened.'
+    });
     return row;
 }
 

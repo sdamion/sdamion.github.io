@@ -310,7 +310,10 @@ function createStarchDirectoryCard(record, type) {
         const open = () => {
             openExternalSiteWarning(`https://starch.one/miner/${encodeURIComponent(id)}`, row);
         };
-        window.TDSPRuntime?.bindActivation?.(row, open);
+        window.TDSPRuntime?.bindActionTrigger?.(row, open, {
+            datasetKey: 'minerLinkBound',
+            errorMessage: 'Starch miner page could not be opened.'
+        });
     }
 
     return row;
