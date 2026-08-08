@@ -8167,15 +8167,25 @@ function getSpoPinRank(spo) {
     return poolId === TDSP_POOL_ID || ticker === 'TDSP' ? 0 : Infinity;
 }
 
+function hasSpoAdvertisedRelays(spo) {
+    return (Array.isArray(spo?.relays) && spo.relays.length > 0)
+        || Number(spo?.relay_count) > 0;
+}
+
 function createSpoActivityStatusChart(spos) {
     const groupedSpos = spos.reduce((result, spo) => {
-        const key = spo.active === true ? 'active' : spo.active === false ? 'inactive' : 'unknown';
+        const key = !hasSpoAdvertisedRelays(spo)
+            ? 'noRelays'
+            : spo.active === true
+                ? 'active'
+                : spo.active === false ? 'inactive' : 'unknown';
         result[key].push(spo);
         return result;
-    }, { active: [], inactive: [], unknown: [] });
+    }, { active: [], inactive: [], noRelays: [], unknown: [] });
     const groups = [
-        { key: 'active', label: 'Active', title: 'Active SPOs', color: '#34d399', value: groupedSpos.active.length, spos: groupedSpos.active },
-        { key: 'inactive', label: 'Not actively securing', title: 'SPOs not actively securing the Cardano blockchain', color: '#f87171', value: groupedSpos.inactive.length, spos: groupedSpos.inactive },
+        { key: 'active', label: 'Active Relay', title: 'SPOs with an active relay', color: '#34d399', value: groupedSpos.active.length, spos: groupedSpos.active },
+        { key: 'inactive', label: 'Passive Relay', title: 'SPOs with only passive relays', color: '#f87171', value: groupedSpos.inactive.length, spos: groupedSpos.inactive },
+        { key: 'no-relays', label: 'Unknown Relay', title: 'SPOs with no on-chain relays advertised', color: '#fbbf24', value: groupedSpos.noRelays.length, spos: groupedSpos.noRelays },
         { key: 'unknown', label: 'Status unavailable', title: 'SPO status unavailable', color: '#94a3b8', value: groupedSpos.unknown.length, spos: groupedSpos.unknown }
     ].filter(group => group.value > 0);
 
@@ -8244,19 +8254,21 @@ function closeSpoStatusListOverlay() {
 }
 
 function getSpoActivityLabel(spo) {
-    if (spo?.active === true) return 'Active';
+    if (!hasSpoAdvertisedRelays(spo)) return 'Unknown Relay';
+    if (spo?.active === true) return 'Active Relay';
     if (spo?.active !== false) return 'Status unavailable';
     const reasons = Array.isArray(spo?.inactive_reasons) ? spo.inactive_reasons : [];
     const labels = [];
     if (reasons.includes('pledge_not_met')) labels.push('pledge not met');
     if (reasons.includes('no_active_relay')) {
-        return 'Not actively securing the Cardano blockchain';
+        return 'Passive Relay';
     }
     if (reasons.includes('not_registered')) labels.push('not registered');
     return labels.length ? `Inactive: ${labels.join(', ')}` : 'Inactive';
 }
 
 function getSpoActivityClassName(spo) {
+    if (!hasSpoAdvertisedRelays(spo)) return 'is-warning';
     if (spo?.active === true) return 'is-active';
     if (spo?.active === false) return 'is-inactive';
     return '';
@@ -8404,8 +8416,8 @@ function renderSpoDetails(container, spo) {
                 const status = document.createElement('span');
                 status.className = `pool-status-value ${relay.up ? 'is-active' : 'is-inactive'}`;
                 status.textContent = relay.up
-                    ? 'Active'
-                    : 'Not actively securing the Cardano blockchain';
+                    ? 'Active Relay'
+                    : 'Passive Relay';
                 card.appendChild(status);
             }
             const address = formatSpoRelayAddress(relay);

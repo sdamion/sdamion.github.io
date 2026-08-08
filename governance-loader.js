@@ -1,5 +1,5 @@
 (function () {
-    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260808-spo-detail-no-status';
+    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260808-spo-relay-labels';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
         '#drep',
