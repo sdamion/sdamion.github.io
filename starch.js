@@ -354,8 +354,13 @@ function createStarchCompanyDirectoryCard(record, id) {
         companyIds.length > 1 ? 'Company IDs' : 'Company ID'
     );
 
-    const open = () => openStarchCompanyOverlay(record, row);
-    window.TDSPRuntime?.bindActivation?.(row, open);
+    window.TDSPRuntime?.bindMenuTrigger?.(row, () => openStarchCompanyOverlay(record, row), {
+        datasetKey: 'starchCompanyBound',
+        preventDefault: false,
+        stopPropagation: false,
+        focus: false,
+        errorMessage: 'Starch company could not be opened.'
+    });
     window.TDSPRuntime?.bindDetailPreload?.(
         row,
         `starch:${id.toUpperCase()}`,

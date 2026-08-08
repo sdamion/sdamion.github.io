@@ -1,5 +1,5 @@
 (function () {
-    const STARCH_SCRIPT_SRC = 'starch.js?v=20260808-shared-directory-bindings';
+    const STARCH_SCRIPT_SRC = 'starch.js?v=20260808-shared-company-binding';
     const STARCH_TARGET_SELECTORS = [
         '#starch',
         '#pool-starch-status-card'
