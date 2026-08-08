@@ -1038,7 +1038,10 @@ function createCardanoEventSourceTile(source, events) {
         tile.appendChild(image);
     }
     const open = () => openCardanoEventSourceOverlay(source, events, tile);
-    window.TDSPRuntime?.bindActivation?.(tile, open);
+    window.TDSPRuntime?.bindMenuTrigger?.(tile, open, {
+        datasetKey: 'eventsBound',
+        errorMessage: `${source.name} events could not be opened.`
+    });
     return tile;
 }
 
