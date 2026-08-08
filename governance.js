@@ -8361,7 +8361,6 @@ function renderSpoDetails(container, spo) {
     const stats = document.createElement('div');
     stats.className = 'governance-spo-detail-stats';
     [
-        ['Status', getSpoActivityLabel(spo), getSpoActivityClassName(spo)],
         ['Delegators', Number(spo.delegator_count || 0).toLocaleString('en-US')],
         ['Delegation', formatFullAdaFromLovelace(spo.delegated_lovelace)],
         ['Saturation', window.TDSPRuntime.formatRatioPercentage(spo.saturation_pct, { fallback: '--' })],
