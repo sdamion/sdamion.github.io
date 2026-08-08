@@ -1,5 +1,5 @@
 (function () {
-    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260808-shared-catalyst-card-binding';
+    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260808-shared-treasury-administrator-binding';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
         '#drep',

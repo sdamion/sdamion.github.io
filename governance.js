@@ -1141,8 +1141,11 @@ function createTreasuryAdministratorCard(group, percentage) {
     const openButton = document.createElement('button');
     openButton.type = 'button';
     openButton.className = 'governance-card-open';
-    openButton.addEventListener('click', event => {
+    window.TDSPRuntime?.bindMenuTrigger?.(openButton, event => {
         openTreasuryAdministratorWithdrawalsOverlay(group, event.currentTarget);
+    }, {
+        datasetKey: 'administratorBound',
+        errorMessage: 'Treasury administrator could not be opened.'
     });
 
     const amount = createFundingRecipientAmountRow(group.value, group.adaValue, false);
