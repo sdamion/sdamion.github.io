@@ -1357,8 +1357,13 @@ function initFixedHeaderLayout() {
 function initCryptoNewsTicker() {
     const ticker = document.getElementById('crypto-news-ticker');
     if (!ticker || ticker.dataset.newsBound === 'true') return;
-    ticker.dataset.newsBound = 'true';
-    window.TDSPRuntime?.bindActivation?.(ticker, () => openCryptoNewsOverlay(ticker));
+    window.TDSPRuntime?.bindMenuTrigger?.(ticker, () => openCryptoNewsOverlay(ticker), {
+        datasetKey: 'newsBound',
+        preventDefault: false,
+        stopPropagation: false,
+        focus: false,
+        errorMessage: 'Crypto News could not be opened.'
+    });
     window.addEventListener('resize', updateCryptoNewsTickerSpeed, { passive: true });
 }
 
