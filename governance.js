@@ -8430,7 +8430,6 @@ function renderSpoDetails(container, spo) {
     container.appendChild(relayList);
 }
 
-function formatSpoRelayAddress(relay) {
 function getSpoRelayAddressSummary(spo) {
     return [...new Set(
         (Array.isArray(spo?.relays) ? spo.relays : [])
@@ -8438,6 +8437,7 @@ function getSpoRelayAddressSummary(spo) {
             .filter(Boolean)
     )].join(', ');
 }
+function formatSpoRelayAddress(relay) {
     const host = String(relay?.host || '').trim();
     if (!host) return '';
     const formattedHost = host.includes(':') && !host.startsWith('[') ? `[${host}]` : host;

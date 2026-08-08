@@ -1,5 +1,5 @@
 (function () {
-    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260808-spo-relay-addresses';
+    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260808-spo-relay-addresses-fix';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
         '#drep',
