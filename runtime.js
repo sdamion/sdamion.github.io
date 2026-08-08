@@ -544,7 +544,6 @@
         loadScript,
         bindDetailPreload,
         closestTarget,
-        bindActivation,
         bindActionTrigger,
         bindMenuTrigger,
         bindIntentLoad,
