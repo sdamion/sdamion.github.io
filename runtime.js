@@ -214,16 +214,6 @@
         targets.forEach(target => observer.observe(target));
     }
 
-    function scheduleIdle(callback, options = {}) {
-        if (typeof callback !== 'function') return;
-        const timeout = Number(options.timeout) > 0 ? Number(options.timeout) : 6000;
-        if ('requestIdleCallback' in window) {
-            window.requestIdleCallback(callback, { timeout });
-            return;
-        }
-        window.setTimeout(callback, timeout);
-    }
-
     function onReady(callback) {
         if (typeof callback !== 'function') return;
         if (document.readyState === 'loading') {
@@ -535,9 +525,7 @@
     }
 
     window.TDSPRuntime = Object.freeze({
-        detailCacheTtlMs: DETAIL_CACHE_TTL_MS,
         isLocalPreview: isLocalPreviewHostname(window.location.hostname),
-        isLocalPreviewHostname,
         fetchResponse,
         fetchJson,
         loadDetail,
@@ -548,7 +536,6 @@
         bindMenuTrigger,
         bindIntentLoad,
         bindViewportLoad,
-        scheduleIdle,
         onReady,
         setStatusClasses,
         setBinaryStatusClasses,
@@ -561,12 +548,10 @@
         getLovelaceAmount,
         formatAdaFromLovelace,
         formatCompactAdaFromLovelace,
-        formatAdaText,
         formatTileAdaFromLovelace,
         formatPercentageValue,
         formatRatioPercentage,
         setText,
-        copyText,
         bindCopyButton,
         createCopyButton,
         createSmallText,

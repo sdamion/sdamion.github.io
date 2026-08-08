@@ -8081,7 +8081,7 @@ function closeSpoDirectoryOverlay() {
     removeGovernanceMenuOverlay('governance-spo-directory-overlay');
 }
 
-function renderSpoDirectory(container, spos) {
+function renderSpoDirectory(container, spos, options = {}) {
     container.replaceChildren();
     if (!spos.length) {
         const message = document.createElement('p');
@@ -8091,7 +8091,9 @@ function renderSpoDirectory(container, spos) {
         return;
     }
 
-    container.appendChild(createSpoCloudStatusChart(spos, container));
+    if (options.showChart !== false) {
+        container.appendChild(createSpoCloudStatusChart(spos));
+    }
 
     const orderedSpos = [...spos].sort((left, right) =>
         getSpoPinRank(left) - getSpoPinRank(right)
@@ -8154,14 +8156,14 @@ function getSpoPinRank(spo) {
     return poolId === TDSP_POOL_ID || ticker === 'TDSP' ? 0 : Infinity;
 }
 
-function createSpoCloudStatusChart(spos, directory) {
-    const counts = spos.reduce((result, spo) => {
-        result[getSpoCloudHostingType(spo)] += 1;
+function createSpoCloudStatusChart(spos) {
+    const groupedSpos = spos.reduce((result, spo) => {
+        result[getSpoCloudHostingType(spo)].push(spo);
         return result;
-    }, { 'cloud-spo': 0, spo: 0 });
+    }, { 'cloud-spo': [], spo: [] });
     const groups = [
-        { key: 'cloud-spo', label: 'Cloud SPO', color: '#f87171', value: counts['cloud-spo'] },
-        { key: 'spo', label: 'SPO', color: '#34d399', value: counts.spo }
+        { key: 'cloud-spo', label: 'Cloud SPO', title: 'Cloud SPOs', color: '#f87171', value: groupedSpos['cloud-spo'].length, spos: groupedSpos['cloud-spo'] },
+        { key: 'spo', label: 'SPO', title: 'SPOs', color: '#34d399', value: groupedSpos.spo.length, spos: groupedSpos.spo }
     ];
 
     const section = document.createElement('section');
@@ -8173,7 +8175,12 @@ function createSpoCloudStatusChart(spos, directory) {
     const layout = document.createElement('div');
     layout.className = 'governance-vote-chart-layout';
     const chart = createUniversalPieChart(groups, {
-        labelFormatter: segment => formatPercentage((segment.value / spos.length) * 100)
+        labelFormatter: segment => formatPercentage((segment.value / spos.length) * 100),
+        onSegmentClick: (segment, returnFocus) => openSpoHostingListOverlay(
+            segment.title,
+            segment.spos,
+            returnFocus
+        )
     });
 
     const legend = document.createElement('div');
@@ -8184,7 +8191,7 @@ function createSpoCloudStatusChart(spos, directory) {
             label: group.label,
             detail: `${group.value.toLocaleString('en-US')} SPOs • ${formatPercentage(percentage)}`,
             color: group.color,
-            onClick: () => applySpoCloudSort(directory, `${group.key}-first`)
+            onClick: event => openSpoHostingListOverlay(group.title, group.spos, event.currentTarget)
         }));
     });
 
@@ -8193,17 +8200,34 @@ function createSpoCloudStatusChart(spos, directory) {
     return section;
 }
 
-function applySpoCloudSort(directory, mode) {
-    const body = directory?.closest('.overlay-dialog-body');
-    if (!body) return;
+function openSpoHostingListOverlay(titleText, spos, returnFocus) {
+    const panel = document.createElement('div');
+    panel.className = 'governance-drep-directory-list';
+    renderSpoDirectory(panel, spos, { showChart: false });
 
-    const cards = getOverlaySearchCards(body);
-    sortOverlayCards(body, cards, mode);
+    createGovernanceMenuOverlay({
+        id: 'governance-spo-hosting-overlay',
+        titleId: 'governance-spo-hosting-title',
+        titleText,
+        closeLabel: `Close ${titleText}`,
+        closeOverlay: closeSpoHostingListOverlay,
+        bodyNodes: [panel],
+        headerMeta: `${spos.length.toLocaleString('en-US')} SPOs`,
+        overlayClass: 'governance-action-detail-overlay',
+        returnFocus,
+        defaultSort: 'amount-desc',
+        botContext: createWebsiteSectionBotContext('SPOs', {
+            title: titleText,
+            count: spos.length,
+            amount_ada: spos.reduce((sum, spo) => sum + (Number(spo.delegated_lovelace) || 0), 0) / 1_000_000,
+            status: titleText,
+            root: 'SPOs'
+        })
+    });
+}
 
-    const sort = body.querySelector('.overlay-sort-select');
-    if (!sort || !Array.from(sort.options).some(option => option.value === mode)) return;
-    sort.value = mode;
-    sort.dispatchEvent(new Event('change', { bubbles: true }));
+function closeSpoHostingListOverlay() {
+    removeGovernanceMenuOverlay('governance-spo-hosting-overlay');
 }
 
 function getSpoCloudHostingType(spo) {
