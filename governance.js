@@ -8092,7 +8092,7 @@ function renderSpoDirectory(container, spos, options = {}) {
     }
 
     if (options.showChart !== false) {
-        container.appendChild(createSpoCloudStatusChart(spos));
+        container.appendChild(createSpoActivityStatusChart(spos));
     }
 
     const orderedSpos = [...spos].sort((left, right) =>
@@ -8111,9 +8111,8 @@ function createSpoDirectoryCard(spo) {
     row.dataset.sortAmount = String(Number(spo.delegated_lovelace) || 0);
     row.dataset.sortDelegators = String(Number(spo.delegator_count) || 0);
     row.dataset.sortSaturation = String(Number(spo.saturation_pct) || 0);
+    row.dataset.sortStatus = spo.active === true ? '1' : spo.active === false ? '0' : '';
     const cloudHostingType = getSpoCloudHostingType(spo);
-    row.dataset.sortCloudSpo = cloudHostingType === 'cloud-spo' ? '1' : '0';
-    row.dataset.sortSpo = cloudHostingType === 'spo' ? '1' : '0';
     const pinRank = getSpoPinRank(spo);
     if (Number.isFinite(pinRank)) row.dataset.overlayPinRank = String(pinRank);
     row.setAttribute('role', 'button');
@@ -8127,6 +8126,10 @@ function createSpoDirectoryCard(spo) {
         primaryText: `Delegation: ${formatCompactAdaFromLovelace(spo.delegated_lovelace)}`,
         primaryClassName: 'governance-card-detail governance-treasury-withdrawal-amount governance-cc-member-stats',
         detailItems: [
+            {
+                text: getSpoActivityLabel(spo),
+                className: `governance-card-detail governance-cc-member-meta pool-status-value ${getSpoActivityClassName(spo)}`
+            },
             { text: `Cloud Service: ${getSpoCloudServiceText(spo)}`, className: 'governance-card-detail governance-cc-member-meta' },
             { text: `Delegators: ${Number(spo.delegator_count || 0).toLocaleString('en-US')}`, className: 'governance-card-detail governance-cc-member-meta' },
             { text: `Saturation: ${window.TDSPRuntime.formatRatioPercentage(spo.saturation_pct, { fallback: '--' })}`, className: 'governance-card-detail governance-cc-member-meta' },
@@ -8156,27 +8159,29 @@ function getSpoPinRank(spo) {
     return poolId === TDSP_POOL_ID || ticker === 'TDSP' ? 0 : Infinity;
 }
 
-function createSpoCloudStatusChart(spos) {
+function createSpoActivityStatusChart(spos) {
     const groupedSpos = spos.reduce((result, spo) => {
-        result[getSpoCloudHostingType(spo)].push(spo);
+        const key = spo.active === true ? 'active' : spo.active === false ? 'inactive' : 'unknown';
+        result[key].push(spo);
         return result;
-    }, { 'cloud-spo': [], spo: [] });
+    }, { active: [], inactive: [], unknown: [] });
     const groups = [
-        { key: 'cloud-spo', label: 'Cloud SPO', title: 'Cloud SPOs', color: '#f87171', value: groupedSpos['cloud-spo'].length, spos: groupedSpos['cloud-spo'] },
-        { key: 'spo', label: 'SPO', title: 'SPOs', color: '#34d399', value: groupedSpos.spo.length, spos: groupedSpos.spo }
-    ];
+        { key: 'active', label: 'Active', title: 'Active SPOs', color: '#34d399', value: groupedSpos.active.length, spos: groupedSpos.active },
+        { key: 'inactive', label: 'Not actively securing', title: 'SPOs not actively securing the Cardano blockchain', color: '#f87171', value: groupedSpos.inactive.length, spos: groupedSpos.inactive },
+        { key: 'unknown', label: 'Status unavailable', title: 'SPO status unavailable', color: '#94a3b8', value: groupedSpos.unknown.length, spos: groupedSpos.unknown }
+    ].filter(group => group.value > 0);
 
     const section = document.createElement('section');
     section.className = 'governance-vote-chart governance-chart-panel governance-drep-status-chart';
 
     const title = document.createElement('strong');
-    title.textContent = 'SPO Hosting';
+    title.textContent = 'SPO Status';
 
     const layout = document.createElement('div');
     layout.className = 'governance-vote-chart-layout';
     const chart = createUniversalPieChart(groups, {
         labelFormatter: segment => formatPercentage((segment.value / spos.length) * 100),
-        onSegmentClick: (segment, returnFocus) => openSpoHostingListOverlay(
+        onSegmentClick: (segment, returnFocus) => openSpoStatusListOverlay(
             segment.title,
             segment.spos,
             returnFocus
@@ -8191,7 +8196,7 @@ function createSpoCloudStatusChart(spos) {
             label: group.label,
             detail: `${group.value.toLocaleString('en-US')} SPOs • ${formatPercentage(percentage)}`,
             color: group.color,
-            onClick: event => openSpoHostingListOverlay(group.title, group.spos, event.currentTarget)
+            onClick: event => openSpoStatusListOverlay(group.title, group.spos, event.currentTarget)
         }));
     });
 
@@ -8200,17 +8205,17 @@ function createSpoCloudStatusChart(spos) {
     return section;
 }
 
-function openSpoHostingListOverlay(titleText, spos, returnFocus) {
+function openSpoStatusListOverlay(titleText, spos, returnFocus) {
     const panel = document.createElement('div');
     panel.className = 'governance-drep-directory-list';
     renderSpoDirectory(panel, spos, { showChart: false });
 
     createGovernanceMenuOverlay({
-        id: 'governance-spo-hosting-overlay',
-        titleId: 'governance-spo-hosting-title',
+        id: 'governance-spo-status-overlay',
+        titleId: 'governance-spo-status-title',
         titleText,
         closeLabel: `Close ${titleText}`,
-        closeOverlay: closeSpoHostingListOverlay,
+        closeOverlay: closeSpoStatusListOverlay,
         bodyNodes: [panel],
         headerMeta: `${spos.length.toLocaleString('en-US')} SPOs`,
         overlayClass: 'governance-action-detail-overlay',
@@ -8226,8 +8231,27 @@ function openSpoHostingListOverlay(titleText, spos, returnFocus) {
     });
 }
 
-function closeSpoHostingListOverlay() {
-    removeGovernanceMenuOverlay('governance-spo-hosting-overlay');
+function closeSpoStatusListOverlay() {
+    removeGovernanceMenuOverlay('governance-spo-status-overlay');
+}
+
+function getSpoActivityLabel(spo) {
+    if (spo?.active === true) return 'Active';
+    if (spo?.active !== false) return 'Status unavailable';
+    const reasons = Array.isArray(spo?.inactive_reasons) ? spo.inactive_reasons : [];
+    const labels = [];
+    if (reasons.includes('pledge_not_met')) labels.push('pledge not met');
+    if (reasons.includes('no_active_relay')) {
+        return 'Not actively securing the Cardano blockchain';
+    }
+    if (reasons.includes('not_registered')) labels.push('not registered');
+    return labels.length ? `Inactive: ${labels.join(', ')}` : 'Inactive';
+}
+
+function getSpoActivityClassName(spo) {
+    if (spo?.active === true) return 'is-active';
+    if (spo?.active === false) return 'is-inactive';
+    return '';
 }
 
 function getSpoCloudHostingType(spo) {
@@ -8329,19 +8353,22 @@ function renderSpoDetails(container, spo) {
     const stats = document.createElement('div');
     stats.className = 'governance-spo-detail-stats';
     [
+        ['Status', getSpoActivityLabel(spo), getSpoActivityClassName(spo)],
         ['Delegators', Number(spo.delegator_count || 0).toLocaleString('en-US')],
         ['Delegation', formatFullAdaFromLovelace(spo.delegated_lovelace)],
         ['Saturation', window.TDSPRuntime.formatRatioPercentage(spo.saturation_pct, { fallback: '--' })],
         ['Cloud Service', getSpoCloudServiceText(spo)],
         ['Pledge', formatFullAdaFromLovelace(spo.pledge_lovelace)],
+        ['Live pledge', formatFullAdaFromLovelace(spo.live_pledge_lovelace)],
         ['Fixed cost', formatFullAdaFromLovelace(spo.fixed_cost_lovelace)],
         ['Margin', window.TDSPRuntime.formatRatioPercentage(spo.margin, { scale: 100, fallback: '--' })]
-    ].forEach(([label, value]) => {
+    ].forEach(([label, value, statusClass]) => {
         const card = document.createElement('div');
         card.className = 'governance-spo-detail-stat governance-menu-card';
         window.TDSPRuntime?.appendUniversalTileContent?.(card, {
             title: label,
-            primaryText: value || '--'
+            primaryText: value || '--',
+            primaryClassName: statusClass ? `pool-status-value ${statusClass}` : ''
         });
         stats.appendChild(card);
     });
@@ -8366,6 +8393,14 @@ function renderSpoDetails(container, spo) {
             const title = document.createElement('strong');
             title.textContent = `Relay ${index + 1}`;
             card.appendChild(title);
+            if (typeof relay?.up === 'boolean') {
+                const status = document.createElement('span');
+                status.className = `pool-status-value ${relay.up ? 'is-active' : 'is-inactive'}`;
+                status.textContent = relay.up
+                    ? 'Active'
+                    : 'Not actively securing the Cardano blockchain';
+                card.appendChild(status);
+            }
             const address = formatSpoRelayAddress(relay);
             if (address) {
                 const addressLine = document.createElement('div');

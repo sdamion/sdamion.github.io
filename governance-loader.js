@@ -1,5 +1,5 @@
 (function () {
-    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260808-spo-hosting-selection';
+    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260808-spo-security-status';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
         '#drep',
