@@ -1,5 +1,5 @@
 (function () {
-    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260808-universal-tile-bindings';
+    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260808-ncl-projected-net-label';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
         '#drep',

@@ -4378,7 +4378,7 @@ function openNclSummaryOverlay(returnFocus) {
             color: '#34d399'
         }),
         createGovernanceStatBox({
-            label: 'Net',
+            label: 'Net (if all treasury actions are enacted)',
             detail: formatNclAdaAmount(values.net),
             color: values.net < 0 ? '#fb7185' : '#fbbf24'
         })
@@ -4410,7 +4410,7 @@ function openNclSummaryOverlay(returnFocus) {
                 `NCL ${formatNclAdaAmount(values.limit)}`,
                 `Spend ${formatNclAdaAmount(values.spent)}`,
                 `Balance ${formatNclAdaAmount(values.balance)}`,
-                `Net ${formatNclAdaAmount(values.net)}`
+                `Net if all treasury actions are enacted ${formatNclAdaAmount(values.net)}`
             ].join(' | ')
         })
     });
@@ -11645,8 +11645,11 @@ function createPieChartSvg(segments, chart, options = {}) {
         );
         if (isClickable) {
             interactiveSegment.classList.add('is-clickable');
-            window.TDSPRuntime?.bindActivation?.(interactiveSegment, event => {
+            window.TDSPRuntime?.bindActionTrigger?.(interactiveSegment, event => {
                 options.onSegmentClick(segment, event.currentTarget);
+            }, {
+                datasetKey: 'pieSegmentBound',
+                errorMessage: `${segment.label || 'Chart segment'} details could not be opened.`
             });
         }
 
