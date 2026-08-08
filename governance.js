@@ -2521,8 +2521,10 @@ function createApprovedGovernanceFundingCard(actions) {
     card.dataset.sortName = 'Approved Governance Actions';
     card.dataset.sortAmount = String(totals.usd || 0);
     card.dataset.overlayPinRank = '0';
-    card.addEventListener('click', event => {
+    window.TDSPRuntime?.bindMenuTrigger?.(card, event => {
         openApprovedGovernanceFundingOverlay(actions, event.currentTarget);
+    }, {
+        errorMessage: 'Approved governance actions could not be opened.'
     });
 
     const amount = createFundingRecipientAmountRow(
@@ -2583,8 +2585,11 @@ function createCatalystFundCard(fund) {
     card.dataset.sortName = fund.fund_name;
     card.dataset.sortFund = String(getCatalystFundNumber(fund.fund_name));
     card.dataset.sortAmount = String(fund.requested_amount || 0);
-    card.addEventListener('click', event => {
+    window.TDSPRuntime?.bindMenuTrigger?.(card, event => {
         openCatalystFundOverlay(fund, event.currentTarget);
+    }, {
+        datasetKey: 'fundBound',
+        errorMessage: 'Catalyst fund could not be opened.'
     });
 
     const amount = createFundingRecipientAmountRow(
@@ -3050,8 +3055,10 @@ function createCatalystFundingProjectCard(project, group) {
     const openButton = document.createElement('button');
     openButton.type = 'button';
     openButton.className = 'governance-card-open';
-    openButton.addEventListener('click', event => {
+    window.TDSPRuntime?.bindMenuTrigger?.(openButton, event => {
         openCatalystProposalDetailOverlay(project, event.currentTarget);
+    }, {
+        errorMessage: 'Catalyst funding project could not be opened.'
     });
 
     const detailItems = [
@@ -3125,8 +3132,10 @@ function createTreasuryBusinessCard(group) {
     const openButton = document.createElement('button');
     openButton.type = 'button';
     openButton.className = 'governance-card-open';
-    openButton.addEventListener('click', event => {
+    window.TDSPRuntime?.bindMenuTrigger?.(openButton, event => {
         openTreasuryBusinessActionsOverlay(group, event.currentTarget);
+    }, {
+        errorMessage: 'Funding recipient could not be opened.'
     });
 
     const amount = createFundingRecipientAmountRow(
@@ -3391,8 +3400,10 @@ function createCatalystBusinessProjectCard(project) {
     const openButton = document.createElement('button');
     openButton.type = 'button';
     openButton.className = 'governance-card-open';
-    openButton.addEventListener('click', event => {
+    window.TDSPRuntime?.bindMenuTrigger?.(openButton, event => {
         openCatalystProposalDetailOverlay(project, event.currentTarget);
+    }, {
+        errorMessage: 'Catalyst project could not be opened.'
     });
 
     const amount = createFundingRecipientAmountRow(
@@ -4047,9 +4058,10 @@ function createTreasuryWithdrawalCard(withdrawal) {
     if (proposal) {
         card.type = 'button';
         card.classList.add('governance-treasury-withdrawal-card--clickable');
-        card.addEventListener('click', event => {
-            event.stopPropagation();
+        window.TDSPRuntime?.bindMenuTrigger?.(card, event => {
             openGovernanceOverlay(proposal, { returnFocus: event.currentTarget });
+        }, {
+            errorMessage: 'Treasury withdrawal could not be opened.'
         });
     }
 
@@ -5449,9 +5461,10 @@ function createGovernanceCard(proposal, options = {}) {
     const handleClick = options.onClick || (event => {
         openGovernanceOverlay(proposal, { returnFocus: event.currentTarget });
     });
-    openButton.addEventListener('click', event => {
-        event.stopPropagation();
+    window.TDSPRuntime?.bindMenuTrigger?.(openButton, event => {
         handleClick(event);
+    }, {
+        errorMessage: 'Governance action could not be opened.'
     });
 
     const metadataItems = getActiveGovernanceCardMetadata(proposal);
@@ -7873,7 +7886,9 @@ function createGovernanceStatBox({ label, detail, color, statusClass = '', onCli
     if (onClick) {
         element.type = 'button';
         element.setAttribute('aria-haspopup', 'dialog');
-        element.addEventListener('click', onClick);
+        window.TDSPRuntime?.bindMenuTrigger?.(element, onClick, {
+            errorMessage: `${label} details could not be opened.`
+        });
     }
 
     const swatch = document.createElement('span');
