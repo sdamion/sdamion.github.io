@@ -416,10 +416,13 @@ function renderTradingViewPriceChart(container, symbol, ticker, intervalMinutes 
 
 function initPriceHistoryTiles() {
     document.querySelectorAll('.price-panel > [data-price-key]').forEach(tile => {
-        if (tile.dataset.priceHistoryBound === 'true') return;
-        const open = () => openPriceHistoryOverlay(tile);
-        tile.dataset.priceHistoryBound = 'true';
-        window.TDSPRuntime?.bindActivation?.(tile, open);
+        window.TDSPRuntime?.bindMenuTrigger?.(tile, () => openPriceHistoryOverlay(tile), {
+            datasetKey: 'priceHistoryBound',
+            preventDefault: false,
+            stopPropagation: false,
+            focus: false,
+            errorMessage: 'Price chart could not be opened.'
+        });
     });
 }
 
@@ -1677,6 +1680,7 @@ async function fetchStarchPoolStatus() {
     } catch (error) {
         starchPoolStatus = null;
         starchPools = [];
+        window.TDSPRuntime.setText('starch-pool-count', 'N/A');
     }
 }
 
@@ -1694,6 +1698,7 @@ function renderStarchPoolStatus(payload) {
                 { sensitivity: 'base' }
             );
         });
+    window.TDSPRuntime.setText('starch-pool-count', starchPools.length.toLocaleString('en-US'));
 }
 
 function setStarchPoolCardStatus(label, active) {
@@ -2418,7 +2423,7 @@ function closePoolMenuOverlay(id, restoreFocus = true) {
 
 function createStarchPoolsList() {
     const list = document.createElement('div');
-    list.className = 'pool-delegator-list';
+    list.className = 'pool-delegator-list governance-drep-directory-list';
 
     if (!starchPools.length) {
         const message = document.createElement('p');
@@ -2428,24 +2433,51 @@ function createStarchPoolsList() {
         return list;
     }
 
-    starchPools.forEach(pool => {
-        const row = createPoolOverlayRow({
-            title: pool?.name || 'No Name',
-            titleClassName: 'pool-delegator-handle',
-            details: [String(pool?.ticker || '').toUpperCase() || 'N/A']
-        });
-        const poolName = String(pool?.name || pool?.ticker || 'Starch pool');
-        const openWebsite = () => openExternalSiteWarning(getStarchPoolWebsite(pool), row);
-
-        row.classList.add('starch-pool-link-card');
-        row.tabIndex = 0;
-        row.setAttribute('role', 'link');
-        row.setAttribute('aria-label', `Open ${poolName} website`);
-        window.TDSPRuntime?.bindActivation?.(row, openWebsite);
-        list.appendChild(row);
-    });
+    const pools = [...starchPools];
+    pools.forEach(pool => list.appendChild(createStarchPoolFallbackCard(pool)));
+    hydrateStarchPoolSpoCards(list, pools).catch(() => {});
 
     return list;
+}
+
+async function hydrateStarchPoolSpoCards(list, pools) {
+    const spoDirectory = window.TDSPSpoDirectory;
+    if (!spoDirectory?.load || !spoDirectory?.createCard) return;
+
+    const lookup = createSpoDirectoryLookup(await spoDirectory.load());
+    if (!list.isConnected) return;
+    const fragment = document.createDocumentFragment();
+
+    pools.forEach(pool => {
+        const poolId = String(pool?.pool_id || '').trim().toLowerCase();
+        const poolName = window.TDSPRuntime.normalizeSearchText(pool?.name);
+        const spo = poolId ? lookup.byPoolId.get(poolId) : lookup.byName.get(poolName);
+        fragment.appendChild(spo
+            ? spoDirectory.createCard({
+                ...spo,
+                name: String(pool?.name || spo.name || 'No Name'),
+                ticker: String(pool?.ticker || spo.ticker || '').toUpperCase()
+            })
+            : createStarchPoolFallbackCard(pool));
+    });
+    list.replaceChildren(fragment);
+}
+
+function createStarchPoolFallbackCard(pool) {
+    const row = createPoolOverlayRow({
+        title: pool?.name || 'No Name',
+        titleClassName: 'pool-delegator-handle',
+        details: [String(pool?.ticker || '').toUpperCase() || 'N/A']
+    });
+    const poolName = String(pool?.name || pool?.ticker || 'Starch pool');
+    const openWebsite = () => openExternalSiteWarning(getStarchPoolWebsite(pool), row);
+
+    row.classList.add('starch-pool-link-card');
+    row.tabIndex = 0;
+    row.setAttribute('role', 'link');
+    row.setAttribute('aria-label', `Open ${poolName} website`);
+    window.TDSPRuntime?.bindActivation?.(row, openWebsite);
+    return row;
 }
 
 function getStarchPoolWebsite(pool) {
@@ -2479,22 +2511,30 @@ async function hydrateMithrilSignerSpoCards(list, signers) {
     const spoDirectory = window.TDSPSpoDirectory;
     if (!spoDirectory?.load || !spoDirectory?.createCard) return;
 
-    const payload = await spoDirectory.load();
+    const lookup = createSpoDirectoryLookup(await spoDirectory.load());
     if (!list.isConnected) return;
-    const sposByPoolId = new Map((payload?.spos || []).map(spo => [
-        String(spo?.pool_id || '').trim().toLowerCase(),
-        spo
-    ]));
     const fragment = document.createDocumentFragment();
 
     signers.forEach((signer, index) => {
         const poolId = String(signer?.pool_id || '').trim().toLowerCase();
-        const spo = sposByPoolId.get(poolId);
+        const spo = lookup.byPoolId.get(poolId);
         fragment.appendChild(spo
             ? spoDirectory.createCard(spo)
             : createMithrilSignerFallbackCard(signer, index));
     });
     list.replaceChildren(fragment);
+}
+
+function createSpoDirectoryLookup(payload) {
+    const byPoolId = new Map();
+    const byName = new Map();
+    (payload?.spos || []).forEach(spo => {
+        const poolId = String(spo?.pool_id || '').trim().toLowerCase();
+        const name = window.TDSPRuntime.normalizeSearchText(spo?.name);
+        if (poolId) byPoolId.set(poolId, spo);
+        if (name && !byName.has(name)) byName.set(name, spo);
+    });
+    return { byPoolId, byName };
 }
 
 function createMithrilSignerFallbackCard(signer, index) {
@@ -2770,3 +2810,8 @@ function setupHeaderVisibility() {
         firstLink.classList.add('active');
     }
 }
+
+window.TDSPPrices = Object.freeze({
+    load: fetchPrices,
+    getLatest: () => latestPricePayload
+});

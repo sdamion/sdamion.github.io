@@ -19,6 +19,20 @@ const formatBalance = balance =>
         maximumFractionDigits: 3
     }).format((Number(balance) || 0) / 1_000_000)}M`;
 
+function formatStarchCompanyBalance(balance) {
+    const strchBalance = Number(balance) || 0;
+    const strchText = `${formatBalance(strchBalance)} STRCH`;
+    const prices = window.TDSPPrices?.getLatest?.();
+    const strchUsd = Number(prices?.strch_usd);
+    const adaUsd = Number(prices?.ada_usd);
+    if (!(strchUsd > 0) || !(adaUsd > 0)) return strchText;
+
+    const adaValue = (strchBalance * strchUsd) / adaUsd;
+    return `${strchText} • ${window.TDSPRuntime.formatCompactAdaFromLovelace(adaValue * 1_000_000, {
+        fixedFractionDigits: 2
+    })}`;
+}
+
 function isDefaultStarchCompanyName(name) {
     return /^starch company(?:\s*#?\d+)?$/i.test(String(name || '').trim());
 }
@@ -314,7 +328,7 @@ function createStarchCompanyDirectoryCard(record, id) {
     window.TDSPRuntime?.appendUniversalTileContent?.(row, {
         title: String(record?.name || 'No Name'),
         primaryText: record?.stats_resolved === true
-            ? `Balance ${formatBalance(record.balance)} STRCH`
+            ? `Balance ${formatStarchCompanyBalance(record.balance)}`
             : 'Balance loading...',
         contextItems: [
             record?.stats_resolved === true
@@ -484,7 +498,7 @@ async function renderStarchCompanyDetail(content, company, summary, options = {}
     const summaryTiles = document.createElement('div');
     summaryTiles.className = 'starch-summary starch-company-detail-summary';
     summaryTiles.append(
-        createStarchStatTile(formatBalance(summary?.team_balance), 'Company Balance'),
+        createStarchStatTile(formatStarchCompanyBalance(summary?.team_balance), 'Company Balance'),
         createStarchStatTile(Number(summary?.weekly_blocks || 0).toLocaleString('en-US'), 'Weekly Blocks'),
         createStarchStatTile(
             miners.length.toLocaleString('en-US'),
@@ -628,7 +642,10 @@ function initStarchUi() {
     window.TDSPStarchReady = true;
     bindStarchDirectoryTile('starch-miners-card', 'miners', 'Miners');
     bindStarchDirectoryTile('starch-companies-card', 'companies', 'Companies');
-    fetchStarchDirectory();
+    const pricesReady = typeof window.TDSPPrices?.load === 'function'
+        ? window.TDSPPrices.load().catch(() => null)
+        : Promise.resolve(null);
+    pricesReady.then(fetchStarchDirectory);
     fetchTdspStarchMinerCount();
     setInterval(fetchStarchDirectory, 300000);
     setInterval(fetchTdspStarchMinerCount, 300000);

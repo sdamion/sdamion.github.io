@@ -1,5 +1,5 @@
 (function () {
-    const STARCH_SCRIPT_SRC = 'starch.js?v=20260807-shared-fetch-json';
+    const STARCH_SCRIPT_SRC = 'starch.js?v=20260808-company-ada-value';
     const STARCH_TARGET_SELECTORS = [
         '#starch',
         '#pool-starch-status-card'
