@@ -211,11 +211,20 @@ function updateStarchDirectoryTiles(payload) {
     }
 }
 
-function bindStarchDirectoryTile(cardId, type, title) {
-    const card = document.getElementById(cardId);
-    if (!card) return;
-    const open = () => openStarchDirectoryOverlay(type, title, card);
-    window.TDSPRuntime?.bindActivation?.(card, open);
+function bindStarchDirectoryTiles() {
+    [
+        ['starch-miners-card', 'miners', 'Miners'],
+        ['starch-companies-card', 'companies', 'Companies']
+    ].forEach(([cardId, type, title]) => {
+        const card = document.getElementById(cardId);
+        window.TDSPRuntime?.bindMenuTrigger?.(card, () => openStarchDirectoryOverlay(type, title, card), {
+            datasetKey: 'starchDirectoryBound',
+            preventDefault: false,
+            stopPropagation: false,
+            focus: false,
+            errorMessage: 'Starch directory could not be opened.'
+        });
+    });
 }
 
 function openStarchDirectoryOverlay(type, title, returnFocus) {
@@ -640,8 +649,7 @@ function createStarchCopyButton(value, label) {
 function initStarchUi() {
     if (window.TDSPStarchReady === true) return;
     window.TDSPStarchReady = true;
-    bindStarchDirectoryTile('starch-miners-card', 'miners', 'Miners');
-    bindStarchDirectoryTile('starch-companies-card', 'companies', 'Companies');
+    bindStarchDirectoryTiles();
     const pricesReady = typeof window.TDSPPrices?.load === 'function'
         ? window.TDSPPrices.load().catch(() => null)
         : Promise.resolve(null);
