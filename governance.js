@@ -13,6 +13,7 @@ const DREP_CORRELATION_API_URL = 'https://api.tdsp.online/api/dreps/correlation'
 const TDSP_DREP_ID = 'drep1yg5gkkyxwwr7d6qflf2qqp6drkp9432h6cvtmun0dqthusqlkz8hj';
 const TDSP_DREP_FALLBACK_NAME = 'DamionDutch';
 const SPO_DIRECTORY_API_URL = 'https://api.tdsp.online/api/spos/directory';
+const SPO_RESCAN_STATUS_API_URL = 'https://api.tdsp.online/api/spos/rescan/status';
 const SPO_DETAIL_API_BASE_URL = 'https://api.tdsp.online/api/spo';
 const REMOTE_METADATA_API_URL = 'https://api.tdsp.online/api/metadata';
 const TREASURY_API_URL = 'https://api.tdsp.online/api/treasury';
@@ -39,6 +40,7 @@ const LOCAL_DREP_DETAIL_PROXY_PATH = '/__drep_detail_proxy__';
 const LOCAL_DREP_VOTE_STATS_PROXY_PATH = '/__drep_vote_stats_proxy__';
 const LOCAL_DREP_CORRELATION_PROXY_PATH = '/__drep_correlation_proxy__';
 const LOCAL_SPO_DIRECTORY_PROXY_PATH = '/__spo_directory_proxy__';
+const LOCAL_SPO_RESCAN_STATUS_PROXY_PATH = '/__spo_rescan_status_proxy__';
 const LOCAL_SPO_DETAIL_PROXY_PATH = '/__spo_detail_proxy__';
 const LOCAL_METADATA_PROXY_PATH = '/__metadata_proxy__';
 const LOCAL_TREASURY_PROXY_PATH = '/__treasury_proxy__';
@@ -167,6 +169,7 @@ function initGovernance() {
     loadGovernanceActions();
     loadDrepDirectory().catch(() => {});
     loadSpoDirectory().catch(() => {});
+    pollSpoRescanStatus();
     loadTreasuryData().catch(() => {});
     loadCatalystFundDirectory().catch(() => {
         window.TDSPRuntime.setText('gov-catalyst-proposals-count', 'Unavailable');
@@ -8521,6 +8524,45 @@ async function loadSpoDirectory() {
 
 function getSpoDirectoryApiUrl() {
     return GOVERNANCE_IS_LOCAL_PREVIEW ? LOCAL_SPO_DIRECTORY_PROXY_PATH : SPO_DIRECTORY_API_URL;
+}
+
+function getSpoRescanStatusApiUrl() {
+    return GOVERNANCE_IS_LOCAL_PREVIEW
+        ? LOCAL_SPO_RESCAN_STATUS_PROXY_PATH
+        : SPO_RESCAN_STATUS_API_URL;
+}
+
+function renderSpoRescanStatus(status) {
+    const element = document.getElementById('gov-spo-scan-status');
+    if (!element) return;
+    const checking = status?.status === 'checking';
+    element.hidden = !checking;
+    if (!checking) {
+        element.textContent = '';
+        return;
+    }
+    const phase = status?.phase === 'relay_checks'
+        ? 'relays'
+        : status?.phase === 'pool_details'
+            ? 'pool data'
+            : 'pools';
+    const completed = Number(status?.completed) || 0;
+    const total = Number(status?.total) || 0;
+    element.textContent = total > 0
+        ? `Checking ${phase} ${completed.toLocaleString('en-US')}/${total.toLocaleString('en-US')}`
+        : `Checking ${phase}...`;
+}
+
+async function pollSpoRescanStatus() {
+    let nextDelay = 30000;
+    try {
+        const status = await fetchJson(getSpoRescanStatusApiUrl());
+        renderSpoRescanStatus(status);
+        nextDelay = status?.status === 'checking' ? 3000 : 30000;
+    } catch {
+        renderSpoRescanStatus(null);
+    }
+    window.setTimeout(pollSpoRescanStatus, nextDelay);
 }
 
 function getSpoDetailApiUrl(poolId) {

@@ -1811,6 +1811,10 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     line-height: 1.15;
 }
 
+#gov-spo-scan-status[hidden] {
+    display: none !important;
+}
+
 .funding-recipient-value-row,
 .governance-card-amount-row {
     display: flex !important;
