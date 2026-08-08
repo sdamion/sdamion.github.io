@@ -2939,8 +2939,11 @@ function createCatalystProposalCard(proposal) {
     const openButton = document.createElement('button');
     openButton.type = 'button';
     openButton.className = 'governance-card-open';
-    openButton.addEventListener('click', event => {
+    window.TDSPRuntime?.bindMenuTrigger?.(openButton, event => {
         openCatalystProposalDetailOverlay(proposal, event.currentTarget);
+    }, {
+        datasetKey: 'proposalBound',
+        errorMessage: 'Catalyst proposal could not be opened.'
     });
 
     const amount = createFundingRecipientAmountRow(
