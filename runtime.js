@@ -145,6 +145,7 @@
     function bindActivation(element, handler) {
         if (!(element instanceof Element) || typeof handler !== 'function') return;
         element.addEventListener('click', event => handler(event));
+        if (element.matches('button, a[href], input, select, textarea, summary')) return;
         element.addEventListener('keydown', event => {
             if (event.key !== 'Enter' && event.key !== ' ') return;
             event.preventDefault();

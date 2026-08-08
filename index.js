@@ -983,7 +983,10 @@ function createCardanoEventCard(event) {
         card.classList.add('has-image');
         card.appendChild(image);
     }
-    card.addEventListener('click', () => openCardanoEventOverlay(event, card));
+    window.TDSPRuntime?.bindMenuTrigger?.(card, () => openCardanoEventOverlay(event, card), {
+        datasetKey: 'eventBound',
+        errorMessage: 'Cardano event could not be opened.'
+    });
     return card;
 }
 
