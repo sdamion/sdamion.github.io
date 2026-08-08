@@ -8104,9 +8104,10 @@ function renderSpoDirectory(container, spos, options = {}) {
 }
 
 function createSpoDirectoryCard(spo) {
+    const relayAddressSummary = getSpoRelayAddressSummary(spo);
     const row = document.createElement('div');
     row.className = 'governance-card governance-menu-card governance-cc-member governance-cc-member-clickable governance-spo-directory-card';
-    row.dataset.searchText = `${spo.name || ''} ${spo.ticker || ''} ${spo.pool_id || ''}`.trim();
+    row.dataset.searchText = `${spo.name || ''} ${spo.ticker || ''} ${spo.pool_id || ''} ${relayAddressSummary}`.trim();
     row.dataset.sortName = window.TDSPRuntime.normalizeSearchText(getSpoDisplayName(spo));
     row.dataset.sortAmount = String(Number(spo.delegated_lovelace) || 0);
     row.dataset.sortDelegators = String(Number(spo.delegator_count) || 0);
@@ -8129,6 +8130,10 @@ function createSpoDirectoryCard(spo) {
             {
                 text: getSpoActivityLabel(spo),
                 className: `governance-card-detail governance-cc-member-meta pool-status-value ${getSpoActivityClassName(spo)}`
+            },
+            {
+                text: relayAddressSummary ? `Relays: ${relayAddressSummary}` : 'Relays: not advertised',
+                className: 'governance-card-detail governance-cc-member-meta governance-spo-relay-summary'
             },
             { text: `Cloud Service: ${getSpoCloudServiceText(spo)}`, className: 'governance-card-detail governance-cc-member-meta' },
             { text: `Delegators: ${Number(spo.delegator_count || 0).toLocaleString('en-US')}`, className: 'governance-card-detail governance-cc-member-meta' },
@@ -8426,6 +8431,13 @@ function renderSpoDetails(container, spo) {
 }
 
 function formatSpoRelayAddress(relay) {
+function getSpoRelayAddressSummary(spo) {
+    return [...new Set(
+        (Array.isArray(spo?.relays) ? spo.relays : [])
+            .map(formatSpoRelayAddress)
+            .filter(Boolean)
+    )].join(', ');
+}
     const host = String(relay?.host || '').trim();
     if (!host) return '';
     const formattedHost = host.includes(':') && !host.startsWith('[') ? `[${host}]` : host;
