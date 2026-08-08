@@ -979,7 +979,12 @@ function createCipCard(cip) {
     const openButton = document.createElement('button');
     openButton.type = 'button';
     openButton.className = 'governance-card-open';
-    openButton.addEventListener('click', event => openCipDetailOverlay(cip, event.currentTarget));
+    window.TDSPRuntime?.bindMenuTrigger?.(openButton, event => {
+        openCipDetailOverlay(cip, event.currentTarget);
+    }, {
+        datasetKey: 'cipBound',
+        errorMessage: 'CIP details could not be opened.'
+    });
 
     window.TDSPRuntime?.appendUniversalTileContent?.(openButton, {
         title: `${cip.id}: ${cip.title}`,
