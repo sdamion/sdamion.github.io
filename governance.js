@@ -8183,7 +8183,7 @@ function createSpoActivityStatusChart(spos) {
         return result;
     }, { active: [], inactive: [], noRelays: [], unknown: [] });
     const groups = [
-        { key: 'active', label: 'Active Relay', title: 'SPOs with an active relay', color: '#34d399', value: groupedSpos.active.length, spos: groupedSpos.active },
+        { key: 'active', label: 'Active Relay', title: 'Active Relay', color: '#34d399', value: groupedSpos.active.length, spos: groupedSpos.active },
         { key: 'inactive', label: 'Passive Relay', title: 'SPOs with only passive relays', color: '#f87171', value: groupedSpos.inactive.length, spos: groupedSpos.inactive },
         { key: 'no-relays', label: 'Unknown Relay', title: 'SPOs with no on-chain relays advertised', color: '#fbbf24', value: groupedSpos.noRelays.length, spos: groupedSpos.noRelays },
         { key: 'unknown', label: 'Status unavailable', title: 'SPO status unavailable', color: '#94a3b8', value: groupedSpos.unknown.length, spos: groupedSpos.unknown }
@@ -8199,11 +8199,7 @@ function createSpoActivityStatusChart(spos) {
     layout.className = 'governance-vote-chart-layout';
     const chart = createUniversalPieChart(groups, {
         labelFormatter: segment => formatPercentage((segment.value / spos.length) * 100),
-        onSegmentClick: (segment, returnFocus) => openSpoStatusListOverlay(
-            segment.title,
-            segment.spos,
-            returnFocus
-        )
+        onSegmentClick: (segment, returnFocus) => openSpoStatusGroupOverlay(segment, returnFocus)
     });
 
     const legend = document.createElement('div');
@@ -8214,13 +8210,67 @@ function createSpoActivityStatusChart(spos) {
             label: group.label,
             detail: `${group.value.toLocaleString('en-US')} SPOs • ${formatPercentage(percentage)}`,
             color: group.color,
-            onClick: event => openSpoStatusListOverlay(group.title, group.spos, event.currentTarget)
+            onClick: event => openSpoStatusGroupOverlay(group, event.currentTarget)
         }));
     });
 
     layout.append(chart, legend);
     section.append(title, layout);
     return section;
+}
+
+function openSpoStatusGroupOverlay(group, returnFocus) {
+    if (group?.key === 'unknown') {
+        openSpoStatusListOverlay(group.title, group.spos, returnFocus);
+        return;
+    }
+
+    openSpoHostingOverlay(group, returnFocus);
+}
+
+function openSpoHostingOverlay(statusGroup, returnFocus) {
+    const spos = statusGroup.spos;
+    const cloudSpos = spos.filter(spo => getSpoCloudHostingType(spo) === 'cloud-spo');
+    const nonCloudSpos = spos.filter(spo => getSpoCloudHostingType(spo) !== 'cloud-spo');
+    const groups = [
+        { label: 'Cloud SPO', title: `${statusGroup.label} Cloud SPOs`, color: '#f87171', spos: cloudSpos },
+        { label: 'Non-cloud SPO', title: `${statusGroup.label} Non-cloud SPOs`, color: '#34d399', spos: nonCloudSpos }
+    ];
+    const panel = document.createElement('div');
+    panel.className = 'governance-vote-legend governance-vote-legend--stacked';
+
+    groups.forEach(group => {
+        const percentage = spos.length ? (group.spos.length / spos.length) * 100 : 0;
+        panel.appendChild(createGovernanceStatBox({
+            label: group.label,
+            detail: `${group.spos.length.toLocaleString('en-US')} SPOs • ${formatPercentage(percentage)}`,
+            color: group.color,
+            onClick: event => openSpoStatusListOverlay(group.title, group.spos, event.currentTarget)
+        }));
+    });
+
+    createGovernanceMenuOverlay({
+        id: 'governance-spo-hosting-overlay',
+        titleId: 'governance-spo-hosting-title',
+        titleText: statusGroup.label,
+        closeLabel: `Close ${statusGroup.label} SPO hosting groups`,
+        closeOverlay: closeSpoHostingOverlay,
+        bodyNodes: [panel],
+        headerMeta: `${spos.length.toLocaleString('en-US')} SPOs`,
+        overlayClass: 'governance-action-detail-overlay',
+        returnFocus,
+        botContext: createWebsiteSectionBotContext('SPOs', {
+            title: statusGroup.label,
+            count: spos.length,
+            amount_ada: spos.reduce((sum, spo) => sum + (Number(spo.delegated_lovelace) || 0), 0) / 1_000_000,
+            status: statusGroup.label,
+            root: 'SPOs'
+        })
+    });
+}
+
+function closeSpoHostingOverlay() {
+    removeGovernanceMenuOverlay('governance-spo-hosting-overlay');
 }
 
 function openSpoStatusListOverlay(titleText, spos, returnFocus) {
