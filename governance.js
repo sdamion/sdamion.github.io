@@ -8140,7 +8140,10 @@ function createSpoNakamotoMetricSection(titleText, metric) {
             list.appendChild(createGovernanceStatBox({
                 label: domain.label || domain.id || 'Unknown domain',
                 detail: `${formatCompactAdaFromLovelace(domain.stake_lovelace || 0)} • ${formatPercentage(Number(domain.stake_pct) || 0)} • ${Number(domain.pool_count || 0).toLocaleString('en-US')} SPOs`,
-                color: domain.type === 'cloud_provider' ? '#f87171' : '#34d399'
+                color: domain.type === 'cloud_provider' ? '#f87171' : '#34d399',
+                onClick: Array.isArray(domain?.pool_ids) && domain.pool_ids.length
+                    ? event => openSpoOperatorGroupPools(domain, event.currentTarget)
+                    : null
             }));
         });
         section.appendChild(list);
@@ -8202,6 +8205,26 @@ function openSpoNakamotoMetricOverlay(titleText, metric, returnFocus) {
 
 function closeSpoNakamotoMetricOverlay() {
     removeGovernanceMenuOverlay('spo-nakamoto-metric-overlay');
+}
+
+function getSpoGroupMembers(domain, spos = spoDirectoryState?.spos) {
+    const ids = new Set(
+        (Array.isArray(domain?.pool_ids) ? domain.pool_ids : [])
+            .map(poolId => String(poolId || '').trim().toLowerCase())
+            .filter(Boolean)
+    );
+    return (Array.isArray(spos) ? spos : [])
+        .filter(spo => ids.has(String(spo?.pool_id || '').trim().toLowerCase()));
+}
+
+function openSpoOperatorGroupPools(domain, returnFocus) {
+    const members = getSpoGroupMembers(domain);
+    openSpoStatusListOverlay(
+        `${domain?.label || 'Operator'} Pools`,
+        members,
+        returnFocus,
+        { combineOperators: false }
+    );
 }
 
 function renderSpoNakamotoPanel(panel, payload) {
@@ -8296,12 +8319,78 @@ function renderSpoDirectory(container, spos, options = {}) {
         container.appendChild(createSpoActivityStatusChart(spos));
     }
 
-    const orderedSpos = [...spos].sort((left, right) =>
-        getSpoPinRank(left) - getSpoPinRank(right)
-    );
+    const entries = options.combineOperators === false
+        ? spos.map(spo => ({ type: 'pool', spo }))
+        : createSpoOperatorDirectoryEntries(spos);
+    const orderedEntries = [...entries].sort((left, right) => {
+        const leftMembers = left.type === 'group' ? left.members : [left.spo];
+        const rightMembers = right.type === 'group' ? right.members : [right.spo];
+        const leftPin = Math.min(...leftMembers.map(getSpoPinRank));
+        const rightPin = Math.min(...rightMembers.map(getSpoPinRank));
+        if (leftPin !== rightPin) return leftPin - rightPin;
+        const leftStake = BigInt(String(left.type === 'group' ? left.domain.stake_lovelace : left.spo.delegated_lovelace || '0'));
+        const rightStake = BigInt(String(right.type === 'group' ? right.domain.stake_lovelace : right.spo.delegated_lovelace || '0'));
+        return rightStake > leftStake ? 1 : rightStake < leftStake ? -1 : 0;
+    });
     const fragment = document.createDocumentFragment();
-    orderedSpos.forEach(spo => fragment.appendChild(createSpoDirectoryCard(spo)));
+    orderedEntries.forEach(entry => {
+        fragment.appendChild(entry.type === 'group'
+            ? createSpoOperatorGroupCard(entry.domain, entry.members)
+            : createSpoDirectoryCard(entry.spo));
+    });
     container.appendChild(fragment);
+}
+
+function createSpoOperatorDirectoryEntries(spos) {
+    const byId = new Map(
+        spos.map(spo => [String(spo?.pool_id || '').trim().toLowerCase(), spo])
+    );
+    const claimedIds = new Set();
+    const entries = [];
+    const groups = Array.isArray(spoDirectoryState?.nakamoto?.consensus?.multi_pool_domains)
+        ? spoDirectoryState.nakamoto.consensus.multi_pool_domains
+        : [];
+    groups.forEach(domain => {
+        const members = getSpoGroupMembers(domain, spos);
+        if (members.length < 2) return;
+        members.forEach(spo => claimedIds.add(String(spo.pool_id || '').trim().toLowerCase()));
+        entries.push({ type: 'group', domain, members });
+    });
+    byId.forEach((spo, poolId) => {
+        if (!claimedIds.has(poolId)) entries.push({ type: 'pool', spo });
+    });
+    return entries;
+}
+
+function createSpoOperatorGroupCard(domain, members) {
+    const totalDelegators = members.reduce((sum, spo) => sum + (Number(spo?.delegator_count) || 0), 0);
+    const row = document.createElement('div');
+    row.className = 'governance-card governance-menu-card governance-cc-member governance-cc-member-clickable governance-spo-directory-card';
+    row.dataset.searchText = members.flatMap(spo => [
+        spo?.name,
+        spo?.ticker,
+        spo?.pool_id,
+        getSpoRelayAddressSummary(spo),
+        getSpoRelaySearchText(spo)
+    ]).filter(Boolean).join(' ');
+    row.dataset.sortName = window.TDSPRuntime.normalizeSearchText(domain?.label || 'Operator group');
+    row.dataset.sortAmount = String(Number(domain?.stake_lovelace) || 0);
+    row.dataset.sortDelegators = String(totalDelegators);
+    row.setAttribute('role', 'button');
+    row.tabIndex = 0;
+    row.setAttribute('aria-label', `Show ${domain?.label || 'operator'} combined stake pools`);
+    window.TDSPRuntime?.appendUniversalTileContent?.(row, {
+        title: domain?.label || 'SPO Operator',
+        titleClassName: 'governance-title governance-cc-member-hash',
+        primaryText: `Delegation: ${formatCompactAdaFromLovelace(domain?.stake_lovelace || 0)}`,
+        primaryClassName: 'governance-card-detail governance-treasury-withdrawal-amount governance-cc-member-stats',
+        detailItems: [
+            { text: `${members.length.toLocaleString('en-US')} combined pools`, className: 'governance-card-detail governance-cc-member-meta' },
+            { text: `Delegators: ${totalDelegators.toLocaleString('en-US')}`, className: 'governance-card-detail governance-cc-member-meta' }
+        ]
+    });
+    bindGovernanceMenuTrigger(row, event => openSpoOperatorGroupPools(domain, event.currentTarget));
+    return row;
 }
 
 function createSpoDirectoryCard(spo) {
@@ -8563,7 +8652,10 @@ function openSpoStatusListOverlay(titleText, spos, returnFocus, options = {}) {
     );
     const panel = document.createElement('div');
     panel.className = 'governance-drep-directory-list';
-    renderSpoDirectory(panel, spos, { showChart: false });
+    renderSpoDirectory(panel, spos, {
+        showChart: false,
+        combineOperators: options.combineOperators !== false
+    });
 
     const bodyNodes = [];
     if (options.showCloudProviderChart && spos.length > 0) {
