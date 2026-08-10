@@ -8307,7 +8307,13 @@ function openSpoHostingOverlay(statusGroup, returnFocus) {
     const cloudSpos = spos.filter(spo => getSpoCloudHostingType(spo) === 'cloud-spo');
     const nonCloudSpos = spos.filter(spo => getSpoCloudHostingType(spo) !== 'cloud-spo');
     const groups = [
-        { label: 'Cloud SPO', title: `${statusGroup.label} Cloud SPOs`, color: '#f87171', spos: cloudSpos },
+        {
+            label: 'Cloud SPO',
+            title: `${statusGroup.label} Cloud SPOs`,
+            color: '#f87171',
+            spos: cloudSpos,
+            showCloudProviderChart: statusGroup.key === 'active'
+        },
         { label: 'Non-cloud SPO', title: `${statusGroup.label} Non-cloud SPOs`, color: '#34d399', spos: nonCloudSpos }
     ];
     const panel = document.createElement('div');
@@ -8319,7 +8325,9 @@ function openSpoHostingOverlay(statusGroup, returnFocus) {
             label: group.label,
             detail: `${group.spos.length.toLocaleString('en-US')} SPOs • ${formatPercentage(percentage)}`,
             color: group.color,
-            onClick: event => openSpoStatusListOverlay(group.title, group.spos, event.currentTarget)
+            onClick: event => openSpoStatusListOverlay(group.title, group.spos, event.currentTarget, {
+                showCloudProviderChart: group.showCloudProviderChart === true
+            })
         }));
     });
 
@@ -8329,9 +8337,7 @@ function openSpoHostingOverlay(statusGroup, returnFocus) {
         titleText: statusGroup.label,
         closeLabel: `Close ${statusGroup.label} SPO hosting groups`,
         closeOverlay: closeSpoHostingOverlay,
-        bodyNodes: statusGroup.key === 'active'
-            ? [createSpoCloudProviderChart(spos), panel]
-            : [panel],
+        bodyNodes: [panel],
         headerMeta: `${spos.length.toLocaleString('en-US')} SPOs`,
         overlayClass: 'governance-action-detail-overlay',
         returnFocus,
@@ -8349,10 +8355,16 @@ function closeSpoHostingOverlay() {
     removeGovernanceMenuOverlay('governance-spo-hosting-overlay');
 }
 
-function openSpoStatusListOverlay(titleText, spos, returnFocus) {
+function openSpoStatusListOverlay(titleText, spos, returnFocus, options = {}) {
     const panel = document.createElement('div');
     panel.className = 'governance-drep-directory-list';
     renderSpoDirectory(panel, spos, { showChart: false });
+
+    const bodyNodes = [];
+    if (options.showCloudProviderChart && spos.length > 0) {
+        bodyNodes.push(createSpoCloudProviderChart(spos));
+    }
+    bodyNodes.push(panel);
 
     createGovernanceMenuOverlay({
         id: 'governance-spo-status-overlay',
@@ -8360,7 +8372,7 @@ function openSpoStatusListOverlay(titleText, spos, returnFocus) {
         titleText,
         closeLabel: `Close ${titleText}`,
         closeOverlay: closeSpoStatusListOverlay,
-        bodyNodes: [panel],
+        bodyNodes,
         headerMeta: `${spos.length.toLocaleString('en-US')} SPOs`,
         overlayClass: 'governance-action-detail-overlay',
         returnFocus,

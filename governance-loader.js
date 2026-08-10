@@ -1,5 +1,5 @@
 (function () {
-    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260810-spo-cloud-usage';
+    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260810-spo-cloud-chart-location';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
         '#drep',
