@@ -8106,10 +8106,20 @@ function createSpoNakamotoMetricSection(titleText, metric) {
 
     const summary = document.createElement('div');
     summary.className = 'governance-vote-legend governance-vote-legend--stacked';
+    const coefficient = Number(metric?.coefficient);
+    const available = metric?.available !== false && Number.isFinite(coefficient);
+    const coverage = Number(metric?.coverage_stake_pct);
     summary.appendChild(createGovernanceStatBox({
-        label: `Nakamoto coefficient ${Number(metric?.coefficient || 0).toLocaleString('en-US')}`,
-        detail: `${Number(metric?.coefficient || 0).toLocaleString('en-US')} of ${Number(metric?.domain_count || 0).toLocaleString('en-US')} domains reach ${formatPercentage(Number(metric?.cumulative_stake_pct) || 0)} of stake`,
-        color: '#5eead4'
+        label: available
+            ? `Nakamoto coefficient ${coefficient.toLocaleString('en-US')}`
+            : 'Not available',
+        detail: available
+            ? `${coefficient.toLocaleString('en-US')} of ${Number(metric?.domain_count || 0).toLocaleString('en-US')} domains reach ${formatPercentage(Number(metric?.cumulative_stake_pct) || 0)} of stake`
+            : [
+                metric?.reason || 'This dimension is not available from the current SPO data.',
+                Number.isFinite(coverage) && coverage > 0 ? `Known stake coverage ${formatPercentage(coverage)}` : ''
+            ].filter(Boolean).join(' '),
+        color: available ? '#5eead4' : '#fbbf24'
     }));
     section.appendChild(summary);
 
@@ -8153,10 +8163,17 @@ function renderSpoNakamotoPanel(panel, payload) {
     const note = document.createElement('p');
     note.className = 'small-text';
     note.textContent = `50% stake threshold • ${nakamoto.stake_basis || 'cached SPO stake'}`;
+    const missingMetric = (label) => ({
+        available: false,
+        reason: `${label} requires a refreshed version 2 SPO decentralization cache.`
+    });
     panel.append(
         note,
-        createSpoNakamotoMetricSection('Consensus Nakamoto Coefficient', nakamoto.consensus),
-        createSpoNakamotoMetricSection('Infrastructure Nakamoto Coefficient', nakamoto.infrastructure)
+        createSpoNakamotoMetricSection('Consensus NC', nakamoto.consensus),
+        createSpoNakamotoMetricSection('Relay Operator NC', nakamoto.relay_operator || missingMetric('Relay operator NC')),
+        createSpoNakamotoMetricSection('Hosting-provider NC', nakamoto.infrastructure),
+        createSpoNakamotoMetricSection('Geographic NC', nakamoto.geographic || missingMetric('Geographic NC')),
+        createSpoNakamotoMetricSection('Software/client NC', nakamoto.software || missingMetric('Software/client NC'))
     );
 }
 
@@ -8171,7 +8188,7 @@ function openSpoNakamotoOverlay(returnFocus) {
     createGovernanceMenuOverlay({
         id: 'spo-nakamoto-overlay',
         titleId: 'spo-nakamoto-title',
-        titleText: 'Nakamoto Coefficients',
+        titleText: 'Cardano Decentralization',
         closeLabel: 'Close Nakamoto coefficients',
         closeOverlay: closeSpoNakamotoOverlay,
         bodyNodes: [panel],
@@ -8180,10 +8197,10 @@ function openSpoNakamotoOverlay(returnFocus) {
         returnFocus,
         enableSearch: false,
         botContext: createWebsiteSectionBotContext('SPOs', {
-            title: 'Nakamoto Coefficients',
+            title: 'Cardano Decentralization / Nakamoto Coefficients',
             count: spoDirectoryState?.count || null,
             amount_ada: Number(spoDirectoryState?.nakamoto?.total_stake_lovelace || 0) / 1_000_000,
-            summary: 'Consensus and hosting-provider stake concentration'
+            summary: 'Consensus, relay operator, hosting provider, geographic and software/client concentration'
         })
     });
 
