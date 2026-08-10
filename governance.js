@@ -8220,7 +8220,7 @@ function createSpoActivityStatusChart(spos) {
 }
 
 function openSpoStatusGroupOverlay(group, returnFocus) {
-    if (group?.key === 'unknown') {
+    if (group?.key === 'unknown' || group?.key === 'no-relays') {
         openSpoStatusListOverlay(group.title, group.spos, returnFocus);
         return;
     }
