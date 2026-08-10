@@ -674,6 +674,7 @@ function setupGovernanceMenuCards() {
         ['gov-catalyst-proposals-card', openCatalystFundsOverlay],
         ['gov-cips-card', openCipDirectoryOverlay],
         ['gov-spo-card', openSpoDirectoryOverlay],
+        ['spo-nakamoto-card', event => openSpoNakamotoOverlay(event?.currentTarget)],
         ['gov-committee-card', openConstitutionalCommitteeOverlay],
         ['gov-drep-card', openDrepDirectoryOverlay],
         ['gov-drep-top10-card', openTopDrepPowerOverlay],
@@ -8084,6 +8085,126 @@ function closeSpoDirectoryOverlay() {
     removeGovernanceMenuOverlay('governance-spo-directory-overlay');
 }
 
+function renderSpoNakamotoTile(nakamoto) {
+    const consensus = Number(nakamoto?.consensus?.coefficient);
+    const infrastructure = Number(nakamoto?.infrastructure?.coefficient);
+    window.TDSPRuntime.setText(
+        'spo-nakamoto-values',
+        Number.isFinite(consensus) && Number.isFinite(infrastructure)
+            ? `${consensus.toLocaleString('en-US')} / ${infrastructure.toLocaleString('en-US')}`
+            : '-- / --'
+    );
+}
+
+function createSpoNakamotoMetricSection(titleText, metric) {
+    const section = document.createElement('section');
+    section.className = 'governance-chart-panel';
+
+    const title = document.createElement('strong');
+    title.textContent = titleText;
+    section.appendChild(title);
+
+    const summary = document.createElement('div');
+    summary.className = 'governance-vote-legend governance-vote-legend--stacked';
+    summary.appendChild(createGovernanceStatBox({
+        label: `Nakamoto coefficient ${Number(metric?.coefficient || 0).toLocaleString('en-US')}`,
+        detail: `${Number(metric?.coefficient || 0).toLocaleString('en-US')} of ${Number(metric?.domain_count || 0).toLocaleString('en-US')} domains reach ${formatPercentage(Number(metric?.cumulative_stake_pct) || 0)} of stake`,
+        color: '#5eead4'
+    }));
+    section.appendChild(summary);
+
+    const methodology = document.createElement('p');
+    methodology.className = 'small-text';
+    methodology.textContent = metric?.methodology || '';
+    section.appendChild(methodology);
+
+    const domains = Array.isArray(metric?.threshold_domains) ? metric.threshold_domains : [];
+    if (domains.length) {
+        const domainTitle = document.createElement('strong');
+        domainTitle.textContent = 'Domains reaching the 50% threshold';
+        section.appendChild(domainTitle);
+
+        const list = document.createElement('div');
+        list.className = 'governance-vote-legend governance-vote-legend--stacked';
+        domains.forEach(domain => {
+            list.appendChild(createGovernanceStatBox({
+                label: domain.label || domain.id || 'Unknown domain',
+                detail: `${formatCompactAdaFromLovelace(domain.stake_lovelace || 0)} • ${formatPercentage(Number(domain.stake_pct) || 0)} • ${Number(domain.pool_count || 0).toLocaleString('en-US')} SPOs`,
+                color: domain.type === 'cloud_provider' ? '#f87171' : '#34d399'
+            }));
+        });
+        section.appendChild(list);
+    }
+
+    return section;
+}
+
+function renderSpoNakamotoPanel(panel, payload) {
+    panel.replaceChildren();
+    const nakamoto = payload?.nakamoto;
+    if (!nakamoto?.consensus || !nakamoto?.infrastructure) {
+        const message = document.createElement('p');
+        message.className = 'small-text';
+        message.textContent = 'Nakamoto coefficient data is not available yet.';
+        panel.appendChild(message);
+        return;
+    }
+
+    const note = document.createElement('p');
+    note.className = 'small-text';
+    note.textContent = `50% stake threshold • ${nakamoto.stake_basis || 'cached SPO stake'}`;
+    panel.append(
+        note,
+        createSpoNakamotoMetricSection('Consensus Nakamoto Coefficient', nakamoto.consensus),
+        createSpoNakamotoMetricSection('Infrastructure Nakamoto Coefficient', nakamoto.infrastructure)
+    );
+}
+
+function openSpoNakamotoOverlay(returnFocus) {
+    const panel = document.createElement('div');
+    panel.className = 'governance-drep-directory-list';
+    const loading = document.createElement('p');
+    loading.className = 'small-text';
+    loading.textContent = 'Loading Nakamoto coefficients...';
+    panel.appendChild(loading);
+
+    createGovernanceMenuOverlay({
+        id: 'spo-nakamoto-overlay',
+        titleId: 'spo-nakamoto-title',
+        titleText: 'Nakamoto Coefficients',
+        closeLabel: 'Close Nakamoto coefficients',
+        closeOverlay: closeSpoNakamotoOverlay,
+        bodyNodes: [panel],
+        headerMeta: '50% stake threshold',
+        overlayClass: 'governance-action-detail-overlay',
+        returnFocus,
+        enableSearch: false,
+        botContext: createWebsiteSectionBotContext('SPOs', {
+            title: 'Nakamoto Coefficients',
+            count: spoDirectoryState?.count || null,
+            amount_ada: Number(spoDirectoryState?.nakamoto?.total_stake_lovelace || 0) / 1_000_000,
+            summary: 'Consensus and hosting-provider stake concentration'
+        })
+    });
+
+    loadSpoDirectory()
+        .then(payload => {
+            if (panel.isConnected) renderSpoNakamotoPanel(panel, payload);
+        })
+        .catch(() => {
+            if (!panel.isConnected) return;
+            panel.replaceChildren();
+            const message = document.createElement('p');
+            message.className = 'small-text';
+            message.textContent = 'Nakamoto coefficient data could not be loaded.';
+            panel.appendChild(message);
+        });
+}
+
+function closeSpoNakamotoOverlay() {
+    removeGovernanceMenuOverlay('spo-nakamoto-overlay');
+}
+
 function renderSpoDirectory(container, spos, options = {}) {
     container.replaceChildren();
     if (!spos.length) {
@@ -8108,9 +8229,12 @@ function renderSpoDirectory(container, spos, options = {}) {
 
 function createSpoDirectoryCard(spo) {
     const relayAddressSummary = getSpoRelayAddressSummary(spo);
+    const relaySearchText = getSpoRelaySearchText(spo);
     const row = document.createElement('div');
     row.className = 'governance-card governance-menu-card governance-cc-member governance-cc-member-clickable governance-spo-directory-card';
-    row.dataset.searchText = `${spo.name || ''} ${spo.ticker || ''} ${spo.pool_id || ''} ${relayAddressSummary}`.trim();
+    row.dataset.searchText = [spo.name, spo.ticker, spo.pool_id, relayAddressSummary, relaySearchText]
+        .filter(Boolean)
+        .join(' ');
     row.dataset.sortName = window.TDSPRuntime.normalizeSearchText(getSpoDisplayName(spo));
     row.dataset.sortAmount = String(Number(spo.delegated_lovelace) || 0);
     row.dataset.sortDelegators = String(Number(spo.delegator_count) || 0);
@@ -8356,6 +8480,10 @@ function closeSpoHostingOverlay() {
 }
 
 function openSpoStatusListOverlay(titleText, spos, returnFocus, options = {}) {
+    const totalDelegatedLovelace = spos.reduce(
+        (sum, spo) => sum + (Number(spo?.delegated_lovelace) || 0),
+        0
+    );
     const panel = document.createElement('div');
     panel.className = 'governance-drep-directory-list';
     renderSpoDirectory(panel, spos, { showChart: false });
@@ -8373,10 +8501,11 @@ function openSpoStatusListOverlay(titleText, spos, returnFocus, options = {}) {
         closeLabel: `Close ${titleText}`,
         closeOverlay: closeSpoStatusListOverlay,
         bodyNodes,
-        headerMeta: `${spos.length.toLocaleString('en-US')} SPOs`,
+        headerMeta: `${spos.length.toLocaleString('en-US')} SPOs • ${formatCompactAdaFromLovelace(totalDelegatedLovelace)}`,
         overlayClass: 'governance-action-detail-overlay',
         returnFocus,
         defaultSort: 'amount-desc',
+        searchPlaceholder: 'Search by pool, ticker, ID or relay address',
         botContext: createWebsiteSectionBotContext('SPOs', {
             title: titleText,
             count: spos.length,
@@ -8589,6 +8718,23 @@ function getSpoRelayAddressSummary(spo) {
             .filter(Boolean)
     )].join(', ');
 }
+
+function getSpoRelaySearchText(spo) {
+    return (Array.isArray(spo?.relays) ? spo.relays : [])
+        .flatMap(relay => [
+            formatSpoRelayAddress(relay),
+            relay?.host,
+            relay?.hostname,
+            relay?.dns,
+            relay?.address,
+            relay?.ipv4,
+            relay?.ipv6
+        ])
+        .map(value => String(value || '').trim())
+        .filter(Boolean)
+        .join(' ');
+}
+
 function formatSpoRelayAddress(relay) {
     const host = String(relay?.host || '').trim();
     if (!host) return '';
@@ -8676,12 +8822,14 @@ async function loadSpoDirectory() {
                     'gov-spo-total-delegated',
                     `Delegated ${window.TDSPRuntime.formatTileAdaFromLovelace(spoDirectoryState.total_delegated_lovelace || 0)}`
                 );
+                renderSpoNakamotoTile(spoDirectoryState.nakamoto);
                 return spoDirectoryState;
             })
             .catch(error => {
                 spoDirectoryPromise = null;
                 window.TDSPRuntime.setText('gov-spo-count', '--');
                 window.TDSPRuntime.setText('gov-spo-total-delegated', 'Delegated ₳ --');
+                renderSpoNakamotoTile(null);
                 throw error;
             });
     }
