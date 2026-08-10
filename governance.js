@@ -8149,6 +8149,61 @@ function createSpoNakamotoMetricSection(titleText, metric) {
     return section;
 }
 
+function createSpoNakamotoMetricTile(titleText, metric) {
+    const card = document.createElement('div');
+    card.className = 'governance-spo-detail-stat governance-menu-card';
+    card.setAttribute('role', 'button');
+    card.tabIndex = 0;
+    card.setAttribute('aria-label', `Open ${titleText}`);
+
+    const coefficient = Number(metric?.coefficient);
+    const available = metric?.available !== false && Number.isFinite(coefficient);
+    const coverage = Number(metric?.coverage_stake_pct);
+    window.TDSPRuntime?.appendUniversalTileContent?.(card, {
+        title: titleText,
+        primaryText: available ? coefficient.toLocaleString('en-US') : 'Unavailable',
+        primaryClassName: `pool-status-value ${available ? 'is-active' : 'is-warning'}`,
+        detailItems: [
+            available
+                ? `${Number(metric?.domain_count || 0).toLocaleString('en-US')} measured domains`
+                : (metric?.status === 'insufficient_coverage' ? 'Insufficient coverage' : 'Source data unavailable'),
+            Number.isFinite(coverage) && coverage > 0
+                ? `Stake coverage ${formatPercentage(coverage)}`
+                : null
+        ]
+    });
+    window.TDSPRuntime?.bindMenuTrigger?.(card, event => {
+        openSpoNakamotoMetricOverlay(titleText, metric, event.currentTarget);
+    }, {
+        errorMessage: `${titleText} could not be opened.`
+    });
+    return card;
+}
+
+function openSpoNakamotoMetricOverlay(titleText, metric, returnFocus) {
+    createGovernanceMenuOverlay({
+        id: 'spo-nakamoto-metric-overlay',
+        titleId: 'spo-nakamoto-metric-title',
+        titleText,
+        closeLabel: `Close ${titleText}`,
+        closeOverlay: closeSpoNakamotoMetricOverlay,
+        bodyNodes: [createSpoNakamotoMetricSection(titleText, metric)],
+        headerMeta: metric?.available === false ? 'Unavailable' : '50% stake threshold',
+        overlayClass: 'governance-action-detail-overlay',
+        rootTitle: 'Cardano Decentralization',
+        returnFocus,
+        enableSearch: false,
+        botContext: createWebsiteSectionBotContext('SPOs', {
+            title: `${titleText} / Cardano Decentralization`,
+            summary: metric?.methodology || metric?.reason || titleText
+        })
+    });
+}
+
+function closeSpoNakamotoMetricOverlay() {
+    removeGovernanceMenuOverlay('spo-nakamoto-metric-overlay');
+}
+
 function renderSpoNakamotoPanel(panel, payload) {
     panel.replaceChildren();
     const nakamoto = payload?.nakamoto;
@@ -8167,14 +8222,19 @@ function renderSpoNakamotoPanel(panel, payload) {
         available: false,
         reason: `${label} requires a refreshed version 2 SPO decentralization cache.`
     });
-    panel.append(
-        note,
-        createSpoNakamotoMetricSection('Consensus NC', nakamoto.consensus),
-        createSpoNakamotoMetricSection('Relay Operator NC', nakamoto.relay_operator || missingMetric('Relay operator NC')),
-        createSpoNakamotoMetricSection('Hosting-provider NC', nakamoto.infrastructure),
-        createSpoNakamotoMetricSection('Geographic NC', nakamoto.geographic || missingMetric('Geographic NC')),
-        createSpoNakamotoMetricSection('Software/client NC', nakamoto.software || missingMetric('Software/client NC'))
-    );
+    const metrics = [
+        ['Consensus NC', nakamoto.consensus],
+        ['Relay Operator NC', nakamoto.relay_operator || missingMetric('Relay operator NC')],
+        ['Hosting-provider NC', nakamoto.infrastructure],
+        ['Geographic NC', nakamoto.geographic || missingMetric('Geographic NC')],
+        ['Software/client NC', nakamoto.software || missingMetric('Software/client NC')]
+    ];
+    const grid = document.createElement('div');
+    grid.className = 'governance-spo-detail-stats';
+    metrics.forEach(([title, metric]) => {
+        grid.appendChild(createSpoNakamotoMetricTile(title, metric));
+    });
+    panel.append(note, grid);
 }
 
 function openSpoNakamotoOverlay(returnFocus) {

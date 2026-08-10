@@ -1,5 +1,5 @@
 (function () {
-    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260810-decentralization-nc';
+    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260810-decentralization-tiles';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
         '#drep',
