@@ -8228,6 +8228,80 @@ function openSpoStatusGroupOverlay(group, returnFocus) {
     openSpoHostingOverlay(group, returnFocus);
 }
 
+function createSpoCloudProviderChart(spos) {
+    const groupsByService = new Map();
+    spos.forEach(spo => {
+        const providers = getSpoCloudProviders(spo);
+        const key = providers.length === 0
+            ? 'no-cloud'
+            : providers.length === 1
+                ? `provider:${providers[0].id}`
+                : 'multiple-cloud';
+        const label = providers.length === 0
+            ? 'No cloud service'
+            : providers.length === 1
+                ? providers[0].name
+                : 'Multiple cloud services';
+        if (!groupsByService.has(key)) {
+            groupsByService.set(key, { key, label, spos: [] });
+        }
+        groupsByService.get(key).spos.push(spo);
+    });
+
+    const cloudColors = ['#f87171', '#fb7185', '#f97316', '#ef4444', '#e879f9', '#a78bfa', '#fb923c'];
+    let cloudColorIndex = 0;
+    const groups = [...groupsByService.values()]
+        .sort((left, right) => {
+            if (left.key === 'no-cloud') return 1;
+            if (right.key === 'no-cloud') return -1;
+            return left.label.localeCompare(right.label);
+        })
+        .map(group => ({
+            ...group,
+            value: group.spos.length,
+            color: group.key === 'no-cloud'
+                ? '#34d399'
+                : cloudColors[cloudColorIndex++ % cloudColors.length]
+        }));
+
+    const section = document.createElement('section');
+    section.className = 'governance-vote-chart governance-chart-panel governance-drep-status-chart';
+
+    const title = document.createElement('strong');
+    title.textContent = 'Cloud Service Usage';
+
+    const layout = document.createElement('div');
+    layout.className = 'governance-vote-chart-layout';
+    const chart = createUniversalPieChart(groups, {
+        labelFormatter: segment => formatPercentage((segment.value / spos.length) * 100),
+        onSegmentClick: (segment, returnFocus) => openSpoStatusListOverlay(
+            `${segment.label} Active Relay SPOs`,
+            segment.spos,
+            returnFocus
+        )
+    });
+
+    const legend = document.createElement('div');
+    legend.className = 'governance-vote-legend';
+    groups.forEach(group => {
+        const percentage = spos.length ? (group.value / spos.length) * 100 : 0;
+        legend.appendChild(createGovernanceStatBox({
+            label: group.label,
+            detail: `${group.value.toLocaleString('en-US')} SPOs - ${formatPercentage(percentage)}`,
+            color: group.color,
+            onClick: event => openSpoStatusListOverlay(
+                `${group.label} Active Relay SPOs`,
+                group.spos,
+                event.currentTarget
+            )
+        }));
+    });
+
+    layout.append(chart, legend);
+    section.append(title, layout);
+    return section;
+}
+
 function openSpoHostingOverlay(statusGroup, returnFocus) {
     const spos = statusGroup.spos;
     const cloudSpos = spos.filter(spo => getSpoCloudHostingType(spo) === 'cloud-spo');
@@ -8255,7 +8329,9 @@ function openSpoHostingOverlay(statusGroup, returnFocus) {
         titleText: statusGroup.label,
         closeLabel: `Close ${statusGroup.label} SPO hosting groups`,
         closeOverlay: closeSpoHostingOverlay,
-        bodyNodes: [panel],
+        bodyNodes: statusGroup.key === 'active'
+            ? [createSpoCloudProviderChart(spos), panel]
+            : [panel],
         headerMeta: `${spos.length.toLocaleString('en-US')} SPOs`,
         overlayClass: 'governance-action-detail-overlay',
         returnFocus,
@@ -8538,9 +8614,12 @@ function getSpoDisplayName(spo) {
 
 function getSpoCloudServiceText(spo) {
     const compactService = firstNonEmptyText(spo?.cloud_service);
-    if (compactService) return compactService;
     const providerNames = getSpoCloudProviders(spo).map(provider => provider.name);
-    return providerNames.length ? providerNames.join(', ') : 'Not identified';
+    const service = compactService || (providerNames.length ? providerNames.join(', ') : '');
+    if (!service) return 'Not identified';
+    return getSpoCloudHostingType(spo) === 'cloud-spo'
+        ? service
+        : `${service} as backup`;
 }
 
 function getSpoCloudProviders(spo) {
@@ -8553,6 +8632,20 @@ function getSpoCloudProviders(spo) {
 
     addProvider(spo?.cloud_provider);
     (Array.isArray(spo?.relays) ? spo.relays : []).forEach(relay => addProvider(relay?.provider));
+    (firstNonEmptyText(spo?.cloud_service) || '')
+        .split(',')
+        .map(name => name.trim())
+        .filter(Boolean)
+        .forEach(name => {
+            const exists = [...providers.values()]
+                .some(provider => provider.name.toLowerCase() === name.toLowerCase());
+            if (!exists) {
+                providers.set(`compact:${name.toLowerCase()}`, {
+                    id: `compact:${name.toLowerCase()}`,
+                    name
+                });
+            }
+        });
     return Array.from(providers.values());
 }
 
