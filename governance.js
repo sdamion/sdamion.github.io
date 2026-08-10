@@ -8464,10 +8464,10 @@ function hasSpoAdvertisedRelays(spo) {
 
 function createSpoActivityStatusChart(spos) {
     const groupedSpos = spos.reduce((result, spo) => {
-        const key = !hasSpoAdvertisedRelays(spo)
-            ? 'noRelays'
-            : spo.active === true
-                ? 'active'
+        const key = spo.active === true
+            ? 'active'
+            : !hasSpoAdvertisedRelays(spo)
+                ? 'noRelays'
                 : spo.active === false ? 'inactive' : 'unknown';
         result[key].push(spo);
         return result;
@@ -8690,8 +8690,9 @@ function closeSpoStatusListOverlay() {
 }
 
 function getSpoActivityLabel(spo) {
-    if (!hasSpoAdvertisedRelays(spo)) return 'Unknown Relay';
+    if (spo?.operator_group_active === true) return 'Active Relay via operator group';
     if (spo?.active === true) return 'Active Relay';
+    if (!hasSpoAdvertisedRelays(spo)) return 'Unknown Relay';
     if (spo?.active !== false) return 'Status unavailable';
     const reasons = Array.isArray(spo?.inactive_reasons) ? spo.inactive_reasons : [];
     const labels = [];
@@ -8704,8 +8705,8 @@ function getSpoActivityLabel(spo) {
 }
 
 function getSpoActivityClassName(spo) {
-    if (!hasSpoAdvertisedRelays(spo)) return 'is-warning';
     if (spo?.active === true) return 'is-active';
+    if (!hasSpoAdvertisedRelays(spo)) return 'is-warning';
     if (spo?.active === false) return 'is-inactive';
     return '';
 }

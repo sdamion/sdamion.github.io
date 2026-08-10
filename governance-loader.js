@@ -1,5 +1,5 @@
 (function () {
-    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260810-spo-operator-groups';
+    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260811-spo-group-activity';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
         '#drep',
