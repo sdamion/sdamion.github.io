@@ -8042,6 +8042,7 @@ function openSpoDirectoryOverlay() {
         closeLabel: 'Close SPO directory',
         closeOverlay: closeSpoDirectoryOverlay,
         bodyNodes: [panel],
+        defaultSort: 'amount-desc',
         headerMeta: spoDirectoryState
             ? `${spoDirectoryState.count.toLocaleString('en-US')} SPOs`
             : 'Loading SPOs...',
