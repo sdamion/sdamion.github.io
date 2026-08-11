@@ -8985,9 +8985,10 @@ async function loadSpoDirectory() {
                 spoDirectoryState = {
                     ...payload,
                     count: Number.isFinite(Number(payload?.count)) ? Number(payload.count) : spos.length,
+                    operatorCount: getSpoOperatorCount(payload, spos.length),
                     spos
                 };
-                window.TDSPRuntime.setText('gov-spo-count', spoDirectoryState.count.toLocaleString('en-US'));
+                window.TDSPRuntime.setText('gov-spo-count', spoDirectoryState.operatorCount.toLocaleString('en-US'));
                 window.TDSPRuntime.setText(
                     'gov-spo-total-delegated',
                     `Delegated ${window.TDSPRuntime.formatTileAdaFromLovelace(spoDirectoryState.total_delegated_lovelace || 0)}`
@@ -9004,6 +9005,13 @@ async function loadSpoDirectory() {
             });
     }
     return spoDirectoryPromise;
+}
+
+function getSpoOperatorCount(payload, fallback = 0) {
+    const count = Number(payload?.nakamoto?.consensus?.domain_count);
+    if (Number.isInteger(count) && count >= 0) return count;
+    const rawCount = Number(payload?.count);
+    return Number.isInteger(rawCount) && rawCount >= 0 ? rawCount : fallback;
 }
 
 function getSpoDirectoryApiUrl() {
