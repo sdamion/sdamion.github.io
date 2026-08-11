@@ -1,5 +1,5 @@
 (function () {
-    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260811-spo-ada-power-sort';
+    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260812-spo-name-only';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
         '#drep',

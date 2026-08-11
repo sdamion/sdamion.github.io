@@ -8937,8 +8937,7 @@ function createSpoProviderBadge(provider) {
 
 function getSpoDisplayName(spo) {
     const name = firstNonEmptyText(spo?.name, spo?.ticker, 'No Name');
-    const ticker = firstNonEmptyText(spo?.ticker);
-    return ticker && ticker.toLowerCase() !== name.toLowerCase() ? `${name} - ${ticker}` : name;
+    return name.split(/\s+-\s+/, 1)[0].trim() || name;
 }
 
 function getSpoCloudServiceText(spo) {
