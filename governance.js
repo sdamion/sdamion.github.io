@@ -8105,6 +8105,11 @@ function createSpoNakamotoMetricSection(titleText, metric) {
     title.textContent = titleText;
     section.appendChild(title);
 
+    if (titleText === 'Geographic NC') {
+        const map = createSpoGeographicMap(metric);
+        if (map) section.appendChild(map);
+    }
+
     const summary = document.createElement('div');
     summary.className = 'governance-vote-legend governance-vote-legend--stacked';
     const coefficient = Number(metric?.coefficient);
@@ -8151,6 +8156,55 @@ function createSpoNakamotoMetricSection(titleText, metric) {
     }
 
     return section;
+}
+
+function createSpoGeographicMap(metric) {
+    const points = (Array.isArray(metric?.map_points) ? metric.map_points : [])
+        .filter(point => Number.isFinite(Number(point?.latitude)) && Number.isFinite(Number(point?.longitude)));
+    if (!points.length) return null;
+
+    const figure = document.createElement('figure');
+    figure.className = 'spo-geographic-map';
+    figure.setAttribute('aria-label', `World map with ${points.length.toLocaleString('en-US')} normalized SPO locations`);
+
+    const map = document.createElement('div');
+    map.className = 'spo-geographic-map__canvas';
+    const maxStake = Math.max(...points.map(point => Number(point?.stake_lovelace) || 0), 1);
+    const occupied = new Map();
+    points.forEach(point => {
+        const latitude = Math.max(-90, Math.min(90, Number(point.latitude)));
+        const longitude = Math.max(-180, Math.min(180, Number(point.longitude)));
+        const baseLeft = ((longitude + 180) / 360) * 100;
+        const baseTop = ((90 - latitude) / 180) * 100;
+        const positionKey = `${baseLeft.toFixed(1)}:${baseTop.toFixed(1)}`;
+        const overlap = occupied.get(positionKey) || 0;
+        occupied.set(positionKey, overlap + 1);
+        const angle = overlap * 2.4;
+        const offset = Math.min(1.7, overlap * 0.28);
+
+        const marker = document.createElement('button');
+        marker.type = 'button';
+        marker.className = 'spo-geographic-map__marker';
+        marker.style.left = `calc(${baseLeft}% + ${Math.cos(angle) * offset}rem)`;
+        marker.style.top = `calc(${baseTop}% + ${Math.sin(angle) * offset}rem)`;
+        marker.style.setProperty('--marker-scale', String(0.72 + 0.68 * Math.sqrt((Number(point.stake_lovelace) || 0) / maxStake)));
+        const detail = `${point.label || 'SPO'} • ${point.country || point.country_code || 'Unknown country'} • ${formatCompactAdaFromLovelace(point.stake_lovelace || 0)} • ${Number(point.pool_count || 0).toLocaleString('en-US')} pool${Number(point.pool_count) === 1 ? '' : 's'}`;
+        marker.title = detail;
+        marker.setAttribute('aria-label', detail);
+        window.TDSPRuntime?.bindMenuTrigger?.(marker, event => {
+            openSpoOperatorGroupPools({
+                label: point.label || point.country || 'SPO location',
+                pool_ids: Array.isArray(point.pool_ids) ? point.pool_ids : []
+            }, event.currentTarget);
+        }, { errorMessage: 'SPO location could not be opened.' });
+        map.appendChild(marker);
+    });
+
+    const caption = document.createElement('figcaption');
+    caption.className = 'small-text';
+    caption.textContent = `${points.length.toLocaleString('en-US')} normalized operator locations. Point size represents active stake; select a point to view its SPOs. Map: Natural Earth, CC0.`;
+    figure.append(map, caption);
+    return figure;
 }
 
 function createSpoNakamotoMetricTile(titleText, metric) {

@@ -2640,6 +2640,60 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     box-sizing: border-box;
 }
 
+.spo-geographic-map {
+    width: 100%;
+    margin: 0;
+}
+
+.spo-geographic-map__canvas {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 2 / 1;
+    overflow: hidden;
+    margin-top: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background-color: rgba(94, 234, 212, 0.04);
+    background-image: url('world-map-cc0.png');
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+}
+
+.spo-geographic-map__marker {
+    --marker-scale: 1;
+    position: absolute;
+    width: calc(12px * var(--marker-scale));
+    height: calc(12px * var(--marker-scale));
+    min-width: 8px;
+    min-height: 8px;
+    padding: 0;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    background: #14b8a6;
+    box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.22);
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+}
+
+.spo-geographic-map__marker:is(:hover, :focus-visible) {
+    z-index: 2;
+    background: #5eead4;
+    box-shadow: 0 0 0 5px rgba(94, 234, 212, 0.3);
+}
+
+.spo-geographic-map figcaption {
+    margin-top: 8px;
+}
+
+@media (max-width: 700px) {
+    .spo-geographic-map__marker {
+        width: calc(10px * var(--marker-scale));
+        height: calc(10px * var(--marker-scale));
+        border-width: 1px;
+    }
+}
+
 .governance-vote-chart-layout {
     display: grid;
     gap: 16px;

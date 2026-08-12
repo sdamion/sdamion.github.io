@@ -1,5 +1,5 @@
 (function () {
-    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260812-spo-operator-count';
+    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260812-geographic-nc-map';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
         '#drep',
