@@ -8230,6 +8230,7 @@ function createSpoGeographicMap(metric) {
     const renderView = () => {
         clampView();
         viewport.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.scale})`;
+        viewport.style.setProperty('--map-marker-zoom', String(1 / view.scale));
         map.classList.toggle('is-zoomed', view.scale > 1);
     };
     const setScale = (nextScale, centerX = map.clientWidth / 2, centerY = map.clientHeight / 2) => {

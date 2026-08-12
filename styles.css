@@ -2667,6 +2667,7 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 }
 
 .spo-geographic-map__viewport {
+    --map-marker-zoom: 1;
     position: absolute;
     inset: 0;
     background-image: url('world-map-cc0.png');
@@ -2718,7 +2719,7 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     border-radius: 50%;
     background: #14b8a6;
     box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.22);
-    transform: translate(-50%, -50%);
+    transform: translate(-50%, -50%) scale(var(--map-marker-zoom));
     cursor: pointer;
 }
 
