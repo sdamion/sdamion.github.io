@@ -8165,7 +8165,7 @@ function createSpoGeographicMap(metric) {
 
     const figure = document.createElement('figure');
     figure.className = 'spo-geographic-map';
-    figure.setAttribute('aria-label', `World map with ${points.length.toLocaleString('en-US')} normalized SPO locations`);
+    figure.setAttribute('aria-label', `World map with ${points.length.toLocaleString('en-US')} unique SPO relay locations`);
 
     const map = document.createElement('div');
     map.className = 'spo-geographic-map__canvas';
@@ -8191,12 +8191,13 @@ function createSpoGeographicMap(metric) {
         marker.style.left = `calc(${baseLeft}% + ${Math.cos(angle) * offset}rem)`;
         marker.style.top = `calc(${baseTop}% + ${Math.sin(angle) * offset}rem)`;
         marker.style.setProperty('--marker-scale', String(0.72 + 0.68 * Math.sqrt((Number(point.stake_lovelace) || 0) / maxStake)));
-        const detail = `${point.label || 'SPO'} • ${point.country || point.country_code || 'Unknown country'} • ${formatCompactAdaFromLovelace(point.stake_lovelace || 0)} • ${Number(point.pool_count || 0).toLocaleString('en-US')} pool${Number(point.pool_count) === 1 ? '' : 's'}`;
+        const relayCount = Number(point.relay_count || 1);
+        const detail = `${point.label || 'Relay'} • ${point.country || point.country_code || 'Unknown country'} • ${formatCompactAdaFromLovelace(point.stake_lovelace || 0)} • ${relayCount.toLocaleString('en-US')} relay${relayCount === 1 ? '' : 's'} • ${Number(point.pool_count || 0).toLocaleString('en-US')} pool${Number(point.pool_count) === 1 ? '' : 's'}`;
         marker.title = detail;
         marker.setAttribute('aria-label', detail);
         window.TDSPRuntime?.bindMenuTrigger?.(marker, event => {
             openSpoOperatorGroupPools({
-                label: point.label || point.country || 'SPO location',
+                label: point.label || point.country || 'Relay location',
                 pool_ids: Array.isArray(point.pool_ids) ? point.pool_ids : []
             }, event.currentTarget);
         }, { errorMessage: 'SPO location could not be opened.' });
@@ -8235,7 +8236,7 @@ function createSpoGeographicMap(metric) {
     };
     const setScale = (nextScale, centerX = map.clientWidth / 2, centerY = map.clientHeight / 2) => {
         const previousScale = view.scale;
-        const scale = Math.max(1, Math.min(6, nextScale));
+        const scale = Math.max(1, Math.min(16, nextScale));
         if (scale === previousScale) return;
         const mapX = centerX - map.clientWidth / 2;
         const mapY = centerY - map.clientHeight / 2;
@@ -8250,8 +8251,8 @@ function createSpoGeographicMap(metric) {
         renderView();
     };
     controls.append(
-        makeControl('+', 'Zoom in', () => setScale(view.scale * 1.5)),
-        makeControl('−', 'Zoom out', () => setScale(view.scale / 1.5)),
+        makeControl('+', 'Zoom in', () => setScale(view.scale * 1.4)),
+        makeControl('−', 'Zoom out', () => setScale(view.scale / 1.4)),
         makeControl('↺', 'Reset map', resetView)
     );
     map.appendChild(controls);
@@ -8298,7 +8299,7 @@ function createSpoGeographicMap(metric) {
 
     const caption = document.createElement('figcaption');
     caption.className = 'small-text';
-    caption.textContent = `${points.length.toLocaleString('en-US')} normalized operator locations. Zoom or drag the map; point size represents active stake. Select a point to view its SPOs. Map: Natural Earth, CC0.`;
+    caption.textContent = `${points.length.toLocaleString('en-US')} unique relay IP locations. Zoom or drag the map; point size represents attributed active stake. Select a point to view its SPOs. Map: Natural Earth, CC0.`;
     figure.append(map, caption);
     return figure;
 }

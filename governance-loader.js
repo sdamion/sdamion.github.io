@@ -1,5 +1,5 @@
 (function () {
-    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260812-map-marker-zoom';
+    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260812-map-zoom-16x';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
         '#drep',
