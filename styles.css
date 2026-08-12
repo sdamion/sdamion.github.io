@@ -2651,13 +2651,59 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     aspect-ratio: 2 / 1;
     overflow: hidden;
     margin-top: 12px;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--line);
     border-radius: 8px;
     background-color: rgba(94, 234, 212, 0.04);
+    touch-action: none;
+    cursor: zoom-in;
+}
+
+.spo-geographic-map__canvas.is-zoomed {
+    cursor: grab;
+}
+
+.spo-geographic-map__canvas.is-zoomed:active {
+    cursor: grabbing;
+}
+
+.spo-geographic-map__viewport {
+    position: absolute;
+    inset: 0;
     background-image: url('world-map-cc0.png');
     background-position: center;
     background-repeat: no-repeat;
     background-size: 100% 100%;
+    transform-origin: center;
+    will-change: transform;
+}
+
+.spo-geographic-map__controls {
+    position: absolute;
+    z-index: 4;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    gap: 6px;
+}
+
+.spo-geographic-map__control {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    place-items: center;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    color: var(--text);
+    background: var(--overlay-surface);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.spo-geographic-map__control:is(:hover, :focus-visible) {
+    color: #5eead4;
+    border-color: #5eead4;
 }
 
 .spo-geographic-map__marker {
@@ -3026,6 +3072,11 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 
 .governance-spo-relay-address-line {
     margin: 8px 0 6px;
+}
+
+.governance-spo-relay .governance-spo-relay-location {
+    margin: 6px 0;
+    overflow-wrap: anywhere;
 }
 
 .governance-spo-provider {

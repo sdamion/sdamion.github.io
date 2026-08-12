@@ -8169,6 +8169,9 @@ function createSpoGeographicMap(metric) {
 
     const map = document.createElement('div');
     map.className = 'spo-geographic-map__canvas';
+    const viewport = document.createElement('div');
+    viewport.className = 'spo-geographic-map__viewport';
+    map.appendChild(viewport);
     const maxStake = Math.max(...points.map(point => Number(point?.stake_lovelace) || 0), 1);
     const occupied = new Map();
     points.forEach(point => {
@@ -8197,12 +8200,104 @@ function createSpoGeographicMap(metric) {
                 pool_ids: Array.isArray(point.pool_ids) ? point.pool_ids : []
             }, event.currentTarget);
         }, { errorMessage: 'SPO location could not be opened.' });
-        map.appendChild(marker);
+        viewport.appendChild(marker);
     });
+
+    const controls = document.createElement('div');
+    controls.className = 'spo-geographic-map__controls';
+    const makeControl = (text, label, action) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'spo-geographic-map__control';
+        button.textContent = text;
+        button.title = label;
+        button.setAttribute('aria-label', label);
+        button.addEventListener('click', action);
+        return button;
+    };
+    const view = { scale: 1, x: 0, y: 0 };
+    const pointers = new Map();
+    let dragStart = null;
+    let pinchStart = null;
+    const clampView = () => {
+        const width = map.clientWidth || 1;
+        const height = map.clientHeight || 1;
+        const maxX = width * (view.scale - 1) / 2;
+        const maxY = height * (view.scale - 1) / 2;
+        view.x = Math.max(-maxX, Math.min(maxX, view.x));
+        view.y = Math.max(-maxY, Math.min(maxY, view.y));
+    };
+    const renderView = () => {
+        clampView();
+        viewport.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.scale})`;
+        map.classList.toggle('is-zoomed', view.scale > 1);
+    };
+    const setScale = (nextScale, centerX = map.clientWidth / 2, centerY = map.clientHeight / 2) => {
+        const previousScale = view.scale;
+        const scale = Math.max(1, Math.min(6, nextScale));
+        if (scale === previousScale) return;
+        const mapX = centerX - map.clientWidth / 2;
+        const mapY = centerY - map.clientHeight / 2;
+        const ratio = scale / previousScale;
+        view.x = mapX - (mapX - view.x) * ratio;
+        view.y = mapY - (mapY - view.y) * ratio;
+        view.scale = scale;
+        renderView();
+    };
+    const resetView = () => {
+        Object.assign(view, { scale: 1, x: 0, y: 0 });
+        renderView();
+    };
+    controls.append(
+        makeControl('+', 'Zoom in', () => setScale(view.scale * 1.5)),
+        makeControl('−', 'Zoom out', () => setScale(view.scale / 1.5)),
+        makeControl('↺', 'Reset map', resetView)
+    );
+    map.appendChild(controls);
+
+    map.addEventListener('wheel', event => {
+        event.preventDefault();
+        const bounds = map.getBoundingClientRect();
+        setScale(view.scale * (event.deltaY < 0 ? 1.22 : 1 / 1.22), event.clientX - bounds.left, event.clientY - bounds.top);
+    }, { passive: false });
+    map.addEventListener('pointerdown', event => {
+        if (event.target.closest('.spo-geographic-map__marker, .spo-geographic-map__controls')) return;
+        map.setPointerCapture(event.pointerId);
+        pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        if (pointers.size === 1) {
+            dragStart = { x: event.clientX, y: event.clientY, viewX: view.x, viewY: view.y };
+        } else if (pointers.size === 2) {
+            const [first, second] = [...pointers.values()];
+            pinchStart = {
+                distance: Math.hypot(second.x - first.x, second.y - first.y),
+                scale: view.scale
+            };
+        }
+    });
+    map.addEventListener('pointermove', event => {
+        if (!pointers.has(event.pointerId)) return;
+        pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        if (pointers.size === 2 && pinchStart) {
+            const [first, second] = [...pointers.values()];
+            const distance = Math.hypot(second.x - first.x, second.y - first.y);
+            setScale(pinchStart.scale * distance / Math.max(1, pinchStart.distance));
+        } else if (pointers.size === 1 && dragStart && view.scale > 1) {
+            view.x = dragStart.viewX + event.clientX - dragStart.x;
+            view.y = dragStart.viewY + event.clientY - dragStart.y;
+            renderView();
+        }
+    });
+    const releasePointer = event => {
+        pointers.delete(event.pointerId);
+        dragStart = null;
+        pinchStart = null;
+    };
+    map.addEventListener('pointerup', releasePointer);
+    map.addEventListener('pointercancel', releasePointer);
 
     const caption = document.createElement('figcaption');
     caption.className = 'small-text';
-    caption.textContent = `${points.length.toLocaleString('en-US')} normalized operator locations. Point size represents active stake; select a point to view its SPOs. Map: Natural Earth, CC0.`;
+    caption.textContent = `${points.length.toLocaleString('en-US')} normalized operator locations. Zoom or drag the map; point size represents active stake. Select a point to view its SPOs. Map: Natural Earth, CC0.`;
     figure.append(map, caption);
     return figure;
 }
@@ -8922,6 +9017,13 @@ function renderSpoDetails(container, spo) {
                 addressLine.append(addressText, createGovernanceCopyButton(address, `Relay ${index + 1} address`));
                 card.appendChild(addressLine);
             }
+            const location = formatSpoRelayLocation(relay);
+            if (location) {
+                const locationLine = document.createElement('span');
+                locationLine.className = 'governance-spo-relay-location';
+                locationLine.textContent = `Location: ${location}`;
+                card.appendChild(locationLine);
+            }
             const provider = relay?.provider || spo.cloud_provider;
             if (provider) {
                 card.appendChild(createSpoProviderBadge(provider));
@@ -8934,6 +9036,29 @@ function renderSpoDetails(container, spo) {
         });
     }
     container.appendChild(relayList);
+}
+
+function formatSpoRelayLocation(relay) {
+    const locations = (Array.isArray(relay?.geolocation) ? relay.geolocation : [])
+        .map(location => [location?.city, location?.region, location?.country || location?.country_code]
+            .map(value => String(value || '').trim())
+            .filter(Boolean)
+            .filter((value, index, values) => values.indexOf(value) === index)
+            .join(', '))
+        .filter(Boolean);
+    if (locations.length) return [...new Set(locations)].join(' / ');
+
+    const countries = (Array.isArray(relay?.whois) ? relay.whois : [])
+        .map(entry => String(entry?.country || '').trim().toUpperCase())
+        .filter(Boolean)
+        .map(code => {
+            try {
+                return new Intl.DisplayNames(['en'], { type: 'region' }).of(code) || code;
+            } catch {
+                return code;
+            }
+        });
+    return [...new Set(countries)].join(' / ');
 }
 
 function getSpoRelayAddressSummary(spo) {
