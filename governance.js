@@ -8159,8 +8159,51 @@ function createSpoNakamotoMetricSection(titleText, metric) {
 }
 
 function createSpoGeographicMap(metric) {
-    const points = (Array.isArray(metric?.map_points) ? metric.map_points : [])
+    const rawPoints = (Array.isArray(metric?.map_points) ? metric.map_points : [])
         .filter(point => Number.isFinite(Number(point?.latitude)) && Number.isFinite(Number(point?.longitude)));
+    const locationGroups = new Map();
+    rawPoints.forEach(point => {
+        const latitude = Math.max(-90, Math.min(90, Number(point.latitude)));
+        const longitude = Math.max(-180, Math.min(180, Number(point.longitude)));
+        const key = `${latitude.toFixed(6)}:${longitude.toFixed(6)}`;
+        const existing = locationGroups.get(key) || {
+            ...point,
+            latitude,
+            longitude,
+            poolIds: new Set(),
+            relay_count: 0,
+            stake_lovelace: 0
+        };
+        (Array.isArray(point.pool_ids) ? point.pool_ids : [])
+            .map(poolId => String(poolId || '').trim())
+            .filter(Boolean)
+            .forEach(poolId => existing.poolIds.add(poolId));
+        existing.relay_count += Math.max(1, Number(point.relay_count) || 1);
+        existing.stake_lovelace = Math.max(
+            Number(existing.stake_lovelace) || 0,
+            Number(point.stake_lovelace) || 0
+        );
+        locationGroups.set(key, existing);
+    });
+    const points = [...locationGroups.values()].map(point => {
+        const poolIds = [...point.poolIds];
+        const poolCount = poolIds.length || Number(point.pool_count) || 0;
+        const members = getSpoGroupMembers({ pool_ids: poolIds });
+        const groupedStakeLovelace = members.reduce(
+            (sum, spo) => sum + (Number(spo?.delegated_lovelace) || 0),
+            0
+        );
+        const { poolIds: unusedPoolIds, ...location } = point;
+        return {
+            ...location,
+            pool_ids: poolIds,
+            pool_count: poolCount,
+            stake_lovelace: groupedStakeLovelace || Number(point.stake_lovelace) || 0,
+            label: poolCount > 1
+                ? `${poolCount.toLocaleString('en-US')} SPOs at this location`
+                : point.label
+        };
+    });
     if (!points.length) return null;
 
     const figure = document.createElement('figure');
@@ -8172,36 +8215,49 @@ function createSpoGeographicMap(metric) {
     const viewport = document.createElement('div');
     viewport.className = 'spo-geographic-map__viewport';
     map.appendChild(viewport);
+    const markerLayer = document.createElement('div');
+    markerLayer.className = 'spo-geographic-map__markers';
+    map.appendChild(markerLayer);
     const maxStake = Math.max(...points.map(point => Number(point?.stake_lovelace) || 0), 1);
-    const occupied = new Map();
+    const markers = [];
     points.forEach(point => {
         const latitude = Math.max(-90, Math.min(90, Number(point.latitude)));
         const longitude = Math.max(-180, Math.min(180, Number(point.longitude)));
         const baseLeft = ((longitude + 180) / 360) * 100;
         const baseTop = ((90 - latitude) / 180) * 100;
-        const positionKey = `${baseLeft.toFixed(1)}:${baseTop.toFixed(1)}`;
-        const overlap = occupied.get(positionKey) || 0;
-        occupied.set(positionKey, overlap + 1);
-        const angle = overlap * 2.4;
-        const offset = Math.min(1.7, overlap * 0.28);
 
         const marker = document.createElement('button');
         marker.type = 'button';
         marker.className = 'spo-geographic-map__marker';
-        marker.style.left = `calc(${baseLeft}% + ${Math.cos(angle) * offset}rem)`;
-        marker.style.top = `calc(${baseTop}% + ${Math.sin(angle) * offset}rem)`;
-        marker.style.setProperty('--marker-scale', String(0.72 + 0.68 * Math.sqrt((Number(point.stake_lovelace) || 0) / maxStake)));
+        const containsTdsp = (Array.isArray(point.pool_ids) ? point.pool_ids : [])
+            .some(poolId => String(poolId || '').trim().toLowerCase() === TDSP_POOL_ID);
+        if (containsTdsp) marker.classList.add('spo-geographic-map__marker--tdsp');
+        marker.style.left = `${baseLeft}%`;
+        marker.style.top = `${baseTop}%`;
+        const stakeRatio = Math.sqrt((Number(point.stake_lovelace) || 0) / maxStake);
+        marker.style.setProperty('--marker-size', `${10 + Math.round(stakeRatio * 3) * 2}px`);
         const relayCount = Number(point.relay_count || 1);
-        const detail = `${point.label || 'Relay'} • ${point.country || point.country_code || 'Unknown country'} • ${formatCompactAdaFromLovelace(point.stake_lovelace || 0)} • ${relayCount.toLocaleString('en-US')} relay${relayCount === 1 ? '' : 's'} • ${Number(point.pool_count || 0).toLocaleString('en-US')} pool${Number(point.pool_count) === 1 ? '' : 's'}`;
+        const detail = `${containsTdsp ? 'TDSP • ' : ''}${point.label || 'Relay'} • ${point.country || point.country_code || 'Unknown country'} • ${formatCompactAdaFromLovelace(point.stake_lovelace || 0)} • ${relayCount.toLocaleString('en-US')} relay${relayCount === 1 ? '' : 's'} • ${Number(point.pool_count || 0).toLocaleString('en-US')} pool${Number(point.pool_count) === 1 ? '' : 's'}`;
         marker.title = detail;
         marker.setAttribute('aria-label', detail);
         window.TDSPRuntime?.bindMenuTrigger?.(marker, event => {
-            openSpoOperatorGroupPools({
+            const location = {
                 label: point.label || point.country || 'Relay location',
                 pool_ids: Array.isArray(point.pool_ids) ? point.pool_ids : []
-            }, event.currentTarget);
+            };
+            const members = getSpoGroupMembers(location);
+            if (members.length === 1) {
+                openSpoDetailOverlay(members[0], event.currentTarget);
+                return;
+            }
+            openSpoOperatorGroupPools(location, event.currentTarget);
         }, { errorMessage: 'SPO location could not be opened.' });
-        viewport.appendChild(marker);
+        markerLayer.appendChild(marker);
+        markers.push({
+            element: marker,
+            x: baseLeft / 100,
+            y: baseTop / 100
+        });
     });
 
     const controls = document.createElement('div');
@@ -8231,7 +8287,16 @@ function createSpoGeographicMap(metric) {
     const renderView = () => {
         clampView();
         viewport.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.scale})`;
-        viewport.style.setProperty('--map-marker-zoom', String(1 / view.scale));
+        const width = map.clientWidth || 1;
+        const height = map.clientHeight || 1;
+        const pixelRatio = window.devicePixelRatio || 1;
+        const snapToDevicePixel = value => Math.round(value * pixelRatio) / pixelRatio;
+        markers.forEach(marker => {
+            const screenX = width / 2 + (marker.x * width - width / 2) * view.scale + view.x;
+            const screenY = height / 2 + (marker.y * height - height / 2) * view.scale + view.y;
+            marker.element.style.left = `${snapToDevicePixel(screenX)}px`;
+            marker.element.style.top = `${snapToDevicePixel(screenY)}px`;
+        });
         map.classList.toggle('is-zoomed', view.scale > 1);
     };
     const setScale = (nextScale, centerX = map.clientWidth / 2, centerY = map.clientHeight / 2) => {
@@ -8296,10 +8361,13 @@ function createSpoGeographicMap(metric) {
     };
     map.addEventListener('pointerup', releasePointer);
     map.addEventListener('pointercancel', releasePointer);
+    const resizeObserver = new ResizeObserver(renderView);
+    resizeObserver.observe(map);
+    requestAnimationFrame(renderView);
 
     const caption = document.createElement('figcaption');
     caption.className = 'small-text';
-    caption.textContent = `${points.length.toLocaleString('en-US')} unique relay IP locations. Zoom or drag the map; point size represents attributed active stake. Select a point to view its SPOs. Map: Natural Earth, CC0.`;
+    caption.textContent = `${points.length.toLocaleString('en-US')} unique relay locations from ${rawPoints.length.toLocaleString('en-US')} relay IP records. Zoom or drag the map; point size represents attributed active stake. Select a shared location to view all SPOs there. Map: Natural Earth, CC0.`;
     figure.append(map, caption);
     return figure;
 }
@@ -8528,6 +8596,8 @@ function createSpoOperatorGroupCard(domain, members) {
     row.dataset.sortName = window.TDSPRuntime.normalizeSearchText(domain?.label || 'Operator group');
     row.dataset.sortAmount = String(Number(domain?.stake_lovelace) || 0);
     row.dataset.sortDelegators = String(totalDelegators);
+    const pinRank = Math.min(...members.map(getSpoPinRank));
+    if (Number.isFinite(pinRank)) row.dataset.overlayPinRank = String(pinRank);
     row.setAttribute('role', 'button');
     row.tabIndex = 0;
     row.setAttribute('aria-label', `Show ${domain?.label || 'operator'} combined stake pools`);

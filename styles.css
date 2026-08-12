@@ -2667,7 +2667,6 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 }
 
 .spo-geographic-map__viewport {
-    --map-marker-zoom: 1;
     position: absolute;
     inset: 0;
     background-image: url('world-map-cc0.svg');
@@ -2676,6 +2675,14 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     background-size: 100% 100%;
     transform-origin: center;
     will-change: transform;
+}
+
+.spo-geographic-map__markers {
+    position: absolute;
+    z-index: 2;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
 }
 
 .spo-geographic-map__controls {
@@ -2708,10 +2715,10 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 }
 
 .spo-geographic-map__marker {
-    --marker-scale: 1;
+    --marker-size: 12px;
     position: absolute;
-    width: calc(12px * var(--marker-scale));
-    height: calc(12px * var(--marker-scale));
+    width: var(--marker-size);
+    height: var(--marker-size);
     min-width: 8px;
     min-height: 8px;
     padding: 0;
@@ -2719,7 +2726,8 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     border-radius: 50%;
     background: #14b8a6;
     box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.22);
-    transform: translate(-50%, -50%) scale(var(--map-marker-zoom));
+    transform: translate(-50%, -50%);
+    pointer-events: auto;
     cursor: pointer;
 }
 
@@ -2729,15 +2737,51 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     box-shadow: 0 0 0 5px rgba(94, 234, 212, 0.3);
 }
 
+.spo-geographic-map__marker--tdsp {
+    z-index: 3;
+    display: grid;
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+    min-height: 22px;
+    place-items: center;
+    border: 0;
+    color: #f59e0b;
+    background: transparent;
+    box-shadow: none;
+    font-size: 22px;
+    line-height: 1;
+}
+
+.spo-geographic-map__marker--tdsp::before {
+    content: "\2605";
+}
+
+.spo-geographic-map__marker--tdsp:is(:hover, :focus-visible) {
+    color: #fbbf24;
+    background: transparent;
+    filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.8));
+    box-shadow: none;
+}
+
 .spo-geographic-map figcaption {
     margin-top: 8px;
 }
 
 @media (max-width: 700px) {
     .spo-geographic-map__marker {
-        width: calc(10px * var(--marker-scale));
-        height: calc(10px * var(--marker-scale));
+        width: calc(var(--marker-size) - 2px);
+        height: calc(var(--marker-size) - 2px);
         border-width: 1px;
+    }
+
+    .spo-geographic-map__marker--tdsp {
+        width: 20px;
+        height: 20px;
+        min-width: 20px;
+        min-height: 20px;
+        border-width: 0;
+        font-size: 20px;
     }
 }
 
