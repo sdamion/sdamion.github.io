@@ -4460,6 +4460,27 @@ function updateNclSummaryCard(nclLimit, remaining) {
         'gov-ncl-balance',
         `Balance ${formatCompactAdaFromLovelace(remaining, { fixedFractionDigits: 2 })}`
     );
+    updateNclEpochCountdown();
+}
+
+function updateNclEpochCountdown() {
+    const element = document.getElementById('gov-ncl-epochs-left');
+    if (!element) return;
+
+    const currentEpoch = Number(getClockEpochSnapshot()?.epoch);
+    const endEpoch = Number(governanceNclSummary?.end_epoch);
+    if (!Number.isFinite(currentEpoch) || !Number.isFinite(endEpoch)) {
+        element.textContent = 'Reset in -- epochs';
+        element.removeAttribute('title');
+        return;
+    }
+
+    const resetEpoch = Math.trunc(endEpoch) + 1;
+    const epochsLeft = Math.max(resetEpoch - Math.trunc(currentEpoch), 0);
+    element.textContent = epochsLeft === 0
+        ? 'Reset due'
+        : `Reset in ${epochsLeft} epoch${epochsLeft === 1 ? '' : 's'}`;
+    element.title = `Next NCL period starts in epoch ${resetEpoch}`;
 }
 
 function removeDrepPowerSplitCard() {
@@ -4891,6 +4912,7 @@ function rollEpochCountdownForward() {
     const elapsedEpochs = Math.max(Math.floor((Date.now() - epochEndsAtMs) / epochDurationMs) + 1, 1);
     epochEndsAtMs += elapsedEpochs * epochDurationMs;
     if (Number.isFinite(currentEpochNumber)) currentEpochNumber += elapsedEpochs;
+    updateNclEpochCountdown();
     schedulePostEpochGovernanceRefresh();
 
     const remainingSeconds = Math.max(Math.ceil((epochEndsAtMs - Date.now()) / 1000), 0);

@@ -1,5 +1,5 @@
 (function () {
-    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260813-relay-city-map';
+    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260813-ncl-epoch-countdown';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
         '#drep',
