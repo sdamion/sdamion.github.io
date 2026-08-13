@@ -8237,12 +8237,17 @@ function createSpoGeographicMap(metric) {
         const stakeRatio = Math.sqrt((Number(point.stake_lovelace) || 0) / maxStake);
         marker.style.setProperty('--marker-size', `${10 + Math.round(stakeRatio * 3) * 2}px`);
         const relayCount = Number(point.relay_count || 1);
-        const detail = `${containsTdsp ? 'TDSP • ' : ''}${point.label || 'Relay'} • ${point.country || point.country_code || 'Unknown country'} • ${formatCompactAdaFromLovelace(point.stake_lovelace || 0)} • ${relayCount.toLocaleString('en-US')} relay${relayCount === 1 ? '' : 's'} • ${Number(point.pool_count || 0).toLocaleString('en-US')} pool${Number(point.pool_count) === 1 ? '' : 's'}`;
+        const locationLabel = [point.city, point.region, point.country || point.country_code]
+            .map(value => String(value || '').trim())
+            .filter(Boolean)
+            .filter((value, index, values) => values.indexOf(value) === index)
+            .join(', ') || 'Unknown location';
+        const detail = `${containsTdsp ? 'TDSP • ' : ''}${point.label || 'Relay'} • ${locationLabel} • ${formatCompactAdaFromLovelace(point.stake_lovelace || 0)} • ${relayCount.toLocaleString('en-US')} relay${relayCount === 1 ? '' : 's'} • ${Number(point.pool_count || 0).toLocaleString('en-US')} pool${Number(point.pool_count) === 1 ? '' : 's'}`;
         marker.title = detail;
         marker.setAttribute('aria-label', detail);
         window.TDSPRuntime?.bindMenuTrigger?.(marker, event => {
             const location = {
-                label: point.label || point.country || 'Relay location',
+                label: locationLabel,
                 pool_ids: Array.isArray(point.pool_ids) ? point.pool_ids : []
             };
             const members = getSpoGroupMembers(location);
