@@ -3480,17 +3480,19 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 }
 
 .overlay-search-bar {
-    position: sticky;
-    top: 0;
-    z-index: 4;
+    position: static;
+    z-index: auto;
+    flex: 0 0 auto;
     display: grid;
     grid-template-columns: minmax(180px, 1fr) auto auto;
     align-items: center;
     gap: 10px;
-    margin: 0 0 16px;
-    padding: 8px;
-    border: 1px solid var(--line);
-    border-radius: 8px;
+    width: 100%;
+    margin: 0;
+    padding: 8px 18px;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    border-radius: 0;
     background: var(--overlay-surface);
 }
 
@@ -3805,8 +3807,8 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 
     .overlay-search-bar {
         grid-template-columns: minmax(0, 1fr) auto;
-        margin-bottom: 12px;
-        padding: 6px;
+        margin: 0;
+        padding: 8px 14px;
     }
 
     .overlay-search-input {

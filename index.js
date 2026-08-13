@@ -2292,7 +2292,10 @@ function installOverlaySearch(body, {
     searchPlaceholder = 'Search by name, ID, title or status',
     onSearch = null
 } = {}) {
-    if (!body || body.querySelector(':scope > .overlay-search-bar')) return;
+    if (!body || body.dataset.overlaySearchInstalled === 'true') return;
+    const existingDialog = body.closest('.governance-dialog');
+    if (existingDialog?.querySelector(':scope > .overlay-search-bar')) return;
+    body.dataset.overlaySearchInstalled = 'true';
 
     const searchBar = document.createElement('div');
     searchBar.className = 'overlay-search-bar';
@@ -2342,7 +2345,20 @@ function installOverlaySearch(body, {
     empty.hidden = true;
 
     searchBar.append(input, sort, count);
-    body.prepend(searchBar, empty);
+    body.prepend(empty);
+    const placeSearchBar = () => {
+        const dialog = body.closest('.governance-dialog');
+        if (!dialog) {
+            if (searchBar.parentNode !== body) body.prepend(searchBar);
+            return;
+        }
+        const scrollBody = dialog.querySelector(':scope > .overlay-dialog-body');
+        if (searchBar.parentNode !== dialog || searchBar.nextElementSibling !== scrollBody) {
+            dialog.insertBefore(searchBar, scrollBody || null);
+        }
+    };
+    placeSearchBar();
+    queueMicrotask(placeSearchBar);
 
     const applySearch = () => {
         const normalizedQuery = window.TDSPRuntime.normalizeSearchText(input.value).trim();
