@@ -1,5 +1,5 @@
 (function () {
-    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260812-tdsp-map-star';
+    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260813-netcup-provider';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
         '#drep',

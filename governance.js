@@ -96,7 +96,7 @@ const TREASURY_RECIPIENT_ADMINISTRATORS = Object.freeze({
 const SPO_CLOUD_PROVIDER_KEYS = new Set([
     'aws', 'azure', 'google-cloud', 'oracle-cloud', 'alibaba-cloud',
     'ibm-cloud', 'tencent-cloud', 'huawei-cloud', 'ovh', 'digitalocean',
-    'hetzner', 'akamai', 'vultr', 'scaleway', 'contabo'
+    'netcup', 'hetzner', 'akamai', 'vultr', 'scaleway', 'contabo'
 ]);
 const TDSP_POOL_ID = 'pool1zfd0gl76h3f0ammgp4gu0qvt99qcqkn5a895wv0q779d6p9dz5u';
 const DAMION_DREP_ID = 'drep1yg5gkkyxwwr7d6qflf2qqp6drkp9432h6cvtmun0dqthusqlkz8hj';
