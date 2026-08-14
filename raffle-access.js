@@ -19,6 +19,7 @@ const SESSION_KEY = `tdsp-raffle-session-${ROLE}`;
 
 let meshPromise = null;
 let sessionToken = sessionStorage.getItem(SESSION_KEY) || '';
+let raffleOverlayReturnFocus = null;
 
 function loadMesh() {
     if (!meshPromise) meshPromise = import(MESH_CDN_URL);
@@ -104,6 +105,22 @@ function showAuthenticatedUi(authenticated) {
     const protectedArea = document.getElementById('raffle-protected');
     if (access) access.hidden = authenticated;
     if (protectedArea) protectedArea.hidden = !authenticated;
+}
+
+function setRaffleOverlay(open) {
+    const overlay = document.getElementById('raffle-overlay');
+    if (!overlay) return;
+    if (open) {
+        raffleOverlayReturnFocus = document.activeElement;
+        overlay.hidden = false;
+        document.body.classList.add('raffle-overlay-open');
+        document.getElementById('raffle-overlay-close')?.focus();
+        return;
+    }
+    overlay.hidden = true;
+    document.body.classList.remove('raffle-overlay-open');
+    raffleOverlayReturnFocus?.focus?.();
+    raffleOverlayReturnFocus = null;
 }
 
 async function getWalletAddresses(wallet, method) {
@@ -326,6 +343,7 @@ async function submitDraw(event) {
 }
 
 function logout() {
+    setRaffleOverlay(false);
     sessionToken = '';
     sessionStorage.removeItem(SESSION_KEY);
     showAuthenticatedUi(false);
@@ -338,6 +356,11 @@ async function init() {
         populateWallets().catch(error => setStatus(error.message, true));
     });
     document.getElementById('raffle-logout')?.addEventListener('click', logout);
+    document.getElementById('raffle-open')?.addEventListener('click', () => setRaffleOverlay(true));
+    document.getElementById('raffle-overlay-close')?.addEventListener('click', () => setRaffleOverlay(false));
+    document.getElementById('raffle-overlay')?.addEventListener('click', event => {
+        if (event.target === event.currentTarget) setRaffleOverlay(false);
+    });
     document.getElementById('raffle-draw-form')?.addEventListener('submit', submitDraw);
     if (sessionToken) {
         try {
@@ -349,6 +372,12 @@ async function init() {
     }
     showAuthenticatedUi(false);
 }
+
+document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && !document.getElementById('raffle-overlay')?.hidden) {
+        setRaffleOverlay(false);
+    }
+});
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
 else init();

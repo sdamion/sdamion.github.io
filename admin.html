@@ -8,22 +8,23 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://esm.sh; style-src 'self' https://fonts.googleapis.com; connect-src 'self' https://api.tdsp.online https://esm.sh; img-src 'self' data:; font-src 'self' https://fonts.gstatic.com; frame-ancestors 'none'; form-action 'self'">
     <meta name="referrer" content="no-referrer">
     <title>Admin Area | The Dutch Stake Pool</title>
-    <link rel="icon" href="tdsp_logo_ico.webp" type="image/webp">
+    <link rel="icon" href="tdsp_logo.webp" type="image/webp">
     <link rel="stylesheet" href="styles.css?v=20260813-static-overlay-search">
-    <link rel="stylesheet" href="raffle.css?v=20260814-raffle-access">
+    <link rel="stylesheet" href="raffle.css?v=20260815-universal-raffle-ui">
     <script src="runtime.js?v=20260808-runtime-export-cleanup" defer></script>
-    <script src="raffle-access.js?v=20260814-raffle-access" defer></script>
+    <script src="raffle-access.js?v=20260815-universal-raffle-ui" defer></script>
 </head>
 <body class="raffle-page" data-raffle-role="admin">
-    <header class="raffle-header">
-        <a class="raffle-brand" href="index.html" aria-label="The Dutch Stake Pool home">
-            <img src="tdsp_logo_ico.webp?v=20260727-smooth-lines" alt="" width="44" height="44">
-            <span>The Dutch Stake Pool</span>
-        </a>
-        <nav aria-label="Raffle navigation">
-            <a href="delegators.html">Delegators</a>
-            <a aria-current="page" href="admin.html">Admin Area</a>
-        </nav>
+    <header class="site-header raffle-site-header">
+        <div class="header-inner">
+            <div class="menu-bar">
+                <nav class="menu-bar__nav nav" aria-label="Raffle navigation">
+                    <a class="nav-link nav-home-link" href="index.html">Home</a>
+                    <a class="nav-link" href="delegators.html">Delegators</a>
+                    <a class="nav-link active" aria-current="page" href="admin.html">Admin Area</a>
+                </nav>
+            </div>
+        </div>
     </header>
 
     <main class="raffle-main">
@@ -55,28 +56,49 @@
                 </div>
             </div>
             <p class="small-text" id="raffle-snapshot-time">Pool snapshot unavailable</p>
-
-            <form class="governance-menu-card raffle-form" id="raffle-draw-form">
-                <h2>Draw and Publish</h2>
-                <label for="raffle-title">Raffle title</label>
-                <input id="raffle-title" name="title" maxlength="120" required>
-                <label for="raffle-prize">Prize</label>
-                <input id="raffle-prize" name="prize" maxlength="120" placeholder="For example: 100 ADA">
-                <label for="raffle-notes">Public notes</label>
-                <textarea id="raffle-notes" name="notes" maxlength="500" rows="4"></textarea>
-                <label class="raffle-confirm" for="raffle-confirm">
-                    <input id="raffle-confirm" name="confirmation" type="checkbox" required>
-                    Publish this auditable result to verified TDSP delegators.
-                </label>
-                <button class="raffle-primary" type="submit">Draw and Publish Winner</button>
-            </form>
-
-            <div class="raffle-section-heading">
-                <h2>Published Raffles</h2>
-            </div>
-            <div class="raffle-draws" id="raffle-draws"></div>
+            <button class="governance-menu-card raffle-open-tile" id="raffle-open" type="button">
+                <strong>Raffles</strong>
+                <span>Draw, publish and review raffle results</span>
+            </button>
         </section>
         <p id="raffle-status" class="wallet-status raffle-status" role="status" aria-live="polite" hidden></p>
     </main>
+
+    <div class="governance-overlay governance-menu-overlay raffle-overlay" id="raffle-overlay" role="dialog" aria-modal="true" aria-labelledby="raffle-overlay-title" hidden>
+        <section class="governance-dialog raffle-dialog">
+            <header class="overlay-dialog-header">
+                <div class="overlay-dialog-header-copy">
+                    <p class="eyebrow">Admin Area</p>
+                    <h2 id="raffle-overlay-title">Raffles</h2>
+                </div>
+                <div class="overlay-dialog-header-actions">
+                    <button class="governance-close" id="raffle-overlay-close" type="button" aria-label="Close Raffles">
+                        <span class="governance-close-icon" aria-hidden="true"></span>
+                    </button>
+                </div>
+            </header>
+            <div class="overlay-dialog-body raffle-overlay-body">
+                <form class="governance-menu-card raffle-form" id="raffle-draw-form">
+                    <h2>Draw and Publish</h2>
+                    <label for="raffle-title">Raffle title</label>
+                    <input id="raffle-title" name="title" maxlength="120" required>
+                    <label for="raffle-prize">Prize</label>
+                    <input id="raffle-prize" name="prize" maxlength="120" placeholder="For example: 100 ADA">
+                    <label for="raffle-notes">Public notes</label>
+                    <textarea id="raffle-notes" name="notes" maxlength="500" rows="4"></textarea>
+                    <label class="raffle-confirm" for="raffle-confirm">
+                        <input id="raffle-confirm" name="confirmation" type="checkbox" required>
+                        Publish this auditable result to verified TDSP delegators.
+                    </label>
+                    <button class="raffle-primary" type="submit">Draw and Publish Winner</button>
+                </form>
+
+                <div class="raffle-section-heading">
+                    <h2>Published Raffles</h2>
+                </div>
+                <div class="raffle-draws" id="raffle-draws"></div>
+            </div>
+        </section>
+    </div>
 </body>
 </html>
