@@ -1,6 +1,7 @@
 const MESH_CDN_URL = 'https://esm.sh/@meshsdk/core@1.9.1?bundle-deps';
 const ADMIN_ADDRESS = 'addr1qy93p0cfydj548ayt6mh2z572ly4n4s9yaxwzrht2rzc3urjvlyhltxc0287yacjhg8syg4w3dyg3jal6ltksfuc483sel7r8c';
 const ADMIN_STAKE_ADDRESS = 'stake1u9ex0jtl4nv84rlzwuft5rczy2hgkjygewla04mgy7v2nccx4p4yr';
+const RAFFLE_METADATA_LABEL = 8675309;
 const ROLE = document.body.dataset.raffleRole === 'admin' ? 'admin' : 'delegator';
 const IS_LOCAL = window.TDSPRuntime?.isLocalPreview === true;
 const ENDPOINTS = IS_LOCAL ? {
@@ -8,12 +9,14 @@ const ENDPOINTS = IS_LOCAL ? {
     verify: '/__raffle_auth_verify_proxy__',
     admin: '/__raffle_admin_proxy__',
     draw: '/__raffle_admin_draw_proxy__',
+    anchor: '/__raffle_admin_anchor_proxy__',
     delegator: '/__raffle_delegator_proxy__'
 } : {
     challenge: 'https://api.tdsp.online/api/raffle/auth/challenge',
     verify: 'https://api.tdsp.online/api/raffle/auth/verify',
     admin: 'https://api.tdsp.online/api/raffle/admin',
     draw: 'https://api.tdsp.online/api/raffle/admin/draw',
+    anchor: 'https://api.tdsp.online/api/raffle/admin/anchor',
     delegator: 'https://api.tdsp.online/api/raffle/delegator'
 };
 const SESSION_KEY = `tdsp-raffle-session-${ROLE}`;
@@ -22,6 +25,7 @@ const ADMIN_SESSION_KEY = 'tdsp-raffle-session-admin';
 let meshPromise = null;
 let sessionToken = sessionStorage.getItem(SESSION_KEY) || '';
 let raffleOverlayReturnFocus = null;
+let adminTransactionWallet = null;
 
 function loadMesh() {
     if (!meshPromise) meshPromise = import(MESH_CDN_URL);
@@ -100,6 +104,56 @@ function addressLine(address, label = 'stake address') {
     text.title = address;
     line.append(text, createCopyButton(address, label));
     return line;
+}
+
+function splitMetadataText(value, maxBytes = 64) {
+    const chunks = [];
+    let chunk = '';
+    for (const character of String(value || '')) {
+        const next = `${chunk}${character}`;
+        if (new TextEncoder().encode(next).length > maxBytes) {
+            if (chunk) chunks.push(chunk);
+            chunk = character;
+        } else {
+            chunk = next;
+        }
+    }
+    if (chunk) chunks.push(chunk);
+    return chunks.length <= 1 ? chunks[0] || '' : chunks;
+}
+
+function buildRaffleMetadata(draw) {
+    const metadata = {
+        app: 'TDSP',
+        type: 'delegator_raffle_result',
+        version: 1,
+        raffle_id: draw.id,
+        title: splitMetadataText(draw.title),
+        published_at: draw.published_at,
+        pool_id: draw.pool_id,
+        winner_stake_address: splitMetadataText(draw.winner?.stake_address),
+        winner_handle: splitMetadataText(draw.winner?.ada_handle),
+        eligible_count: Number(draw.eligible_count),
+        total_eligible_lovelace: String(draw.total_eligible_lovelace || '0'),
+        snapshot_sha256: draw.snapshot_sha256,
+        selection_entropy: draw.selection_entropy,
+        selection_index: Number(draw.selection_index)
+    };
+    return Object.fromEntries(Object.entries(metadata).filter(([, value]) => (
+        value !== null &&
+        value !== undefined &&
+        value !== '' &&
+        (typeof value !== 'number' || Number.isFinite(value))
+    )));
+}
+
+function cardanoscanTransactionLink(txHash) {
+    const link = document.createElement('a');
+    link.href = `https://cardanoscan.io/transaction/${encodeURIComponent(txHash)}`;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.textContent = 'View transaction on Cardanoscan';
+    return link;
 }
 
 function showAuthenticatedUi(authenticated) {
@@ -205,14 +259,124 @@ async function connectWallet(walletInfo) {
     }
     const addresses = new Set([...used, ...unused, changeAddress].filter(Boolean));
     if (addresses.has(ADMIN_ADDRESS)) {
+        adminTransactionWallet = wallet;
         await authenticateAddress(wallet, ADMIN_ADDRESS);
         return;
     }
     if (rewards.includes(ADMIN_STAKE_ADDRESS)) {
+        adminTransactionWallet = wallet;
         await authenticateAddress(wallet, ADMIN_STAKE_ADDRESS);
         return;
     }
     throw new Error('This wallet does not contain the authorized Admin Area credential.');
+}
+
+async function walletHasAdminCredential(wallet) {
+    const [used, unused, rewards] = await Promise.all([
+        getWalletAddresses(wallet, 'getUsedAddresses'),
+        getWalletAddresses(wallet, 'getUnusedAddresses'),
+        getWalletAddresses(wallet, 'getRewardAddresses')
+    ]);
+    let changeAddress = '';
+    try {
+        changeAddress = String(await wallet.getChangeAddress()).toLowerCase();
+    } catch {
+        changeAddress = '';
+    }
+    return rewards.includes(ADMIN_STAKE_ADDRESS) || [...used, ...unused, changeAddress].includes(ADMIN_ADDRESS);
+}
+
+async function recordSubmittedRaffleProof(draw, txHash) {
+    const payload = await authorizedRequest(ENDPOINTS.anchor, {
+        method: 'POST',
+        body: JSON.stringify({ draw_id: draw.id, tx_hash: txHash })
+    });
+    sessionStorage.removeItem(`tdsp-raffle-anchor-${draw.id}`);
+    return payload.draw;
+}
+
+async function submitRaffleProofTransaction(draw, button, status) {
+    button.disabled = true;
+    const pendingKey = `tdsp-raffle-anchor-${draw.id}`;
+    try {
+        const pendingHash = sessionStorage.getItem(pendingKey);
+        if (pendingHash && /^[0-9a-f]{64}$/i.test(pendingHash)) {
+            status.textContent = 'Recording the previously submitted transaction ID...';
+            await recordSubmittedRaffleProof(draw, pendingHash);
+        } else {
+            if (!adminTransactionWallet) throw new Error('Choose the admin wallet first.');
+            status.textContent = 'Building the on-chain raffle proof transaction...';
+            const utxos = await adminTransactionWallet.getUtxos();
+            const changeAddress = await adminTransactionWallet.getChangeAddress();
+            if (!utxos?.length || !changeAddress) throw new Error('No spendable wallet UTxO was found for the network fee.');
+            const { MeshTxBuilder } = await loadMesh();
+            const unsignedTx = await new MeshTxBuilder({ verbose: false })
+                .metadataValue(RAFFLE_METADATA_LABEL, buildRaffleMetadata(draw))
+                .selectUtxosFrom(utxos)
+                .changeAddress(changeAddress)
+                .complete();
+            status.textContent = 'Verify the raffle proof metadata and network fee in your wallet before signing.';
+            const signedTx = await adminTransactionWallet.signTx(unsignedTx, false);
+            status.textContent = 'Submitting the signed transaction...';
+            const txHash = String(await adminTransactionWallet.submitTx(signedTx)).toLowerCase();
+            if (!/^[0-9a-f]{64}$/.test(txHash)) throw new Error('The wallet returned an invalid transaction ID.');
+            sessionStorage.setItem(pendingKey, txHash);
+            status.textContent = 'Transaction submitted. Recording its transaction ID with the raffle...';
+            await recordSubmittedRaffleProof(draw, txHash);
+        }
+        setStatus('The raffle result now has an on-chain transaction proof.');
+        renderAdmin(await authorizedRequest(ENDPOINTS.admin));
+    } catch (error) {
+        status.textContent = error?.info || error?.message || 'The on-chain raffle proof could not be submitted.';
+        status.classList.add('is-error');
+        button.disabled = false;
+    }
+}
+
+async function chooseRaffleTransactionWallet(draw, button, status, choices) {
+    choices.replaceChildren();
+    button.disabled = true;
+    try {
+        const { BrowserWallet } = await loadMesh();
+        const wallets = BrowserWallet.getInstalledWallets();
+        if (!wallets.length) throw new Error('No CIP-30 Cardano wallet extension was detected.');
+        const intro = document.createElement('p');
+        intro.className = 'small-text';
+        intro.textContent = 'Choose the authorized wallet that will pay the Cardano network fee.';
+        choices.appendChild(intro);
+        wallets.forEach(walletInfo => {
+            const walletButton = document.createElement('button');
+            walletButton.type = 'button';
+            walletButton.className = 'wallet-option';
+            const icon = document.createElement('img');
+            icon.src = walletInfo.icon;
+            icon.alt = '';
+            const label = document.createElement('span');
+            label.textContent = walletInfo.name;
+            walletButton.append(icon, label);
+            walletButton.addEventListener('click', async () => {
+                walletButton.disabled = true;
+                try {
+                    const wallet = await BrowserWallet.enable(walletInfo.id);
+                    if (await wallet.getNetworkId() !== 1) throw new Error('Switch your wallet to Cardano Mainnet.');
+                    if (!await walletHasAdminCredential(wallet)) throw new Error('This wallet does not contain the authorized admin stake credential.');
+                    adminTransactionWallet = wallet;
+                    choices.replaceChildren();
+                    await submitRaffleProofTransaction(draw, button, status);
+                } catch (error) {
+                    status.textContent = error?.info || error?.message || 'Wallet connection failed.';
+                    status.classList.add('is-error');
+                    walletButton.disabled = false;
+                    button.disabled = false;
+                }
+            });
+            choices.appendChild(walletButton);
+        });
+    } catch (error) {
+        status.textContent = error.message;
+        status.classList.add('is-error');
+        button.disabled = false;
+    }
 }
 
 async function populateWallets() {
@@ -277,7 +441,44 @@ function createDrawCard(draw, viewerAddress = null) {
     proofText.className = 'small-text';
     proofText.textContent = `${draw.eligible_count.toLocaleString('en-US')} eligible delegators · index ${draw.selection_index}`;
     proof.append(summary, proofText, addressLine(draw.snapshot_sha256, 'snapshot hash'), addressLine(draw.selection_entropy, 'selection entropy'));
+    if (draw.on_chain_tx_hash) {
+        const onChain = document.createElement('div');
+        onChain.className = 'raffle-on-chain-proof';
+        const onChainTitle = document.createElement('strong');
+        onChainTitle.textContent = 'On-chain proof';
+        const label = document.createElement('p');
+        label.className = 'small-text';
+        label.textContent = `Metadata label ${draw.on_chain_metadata_label || RAFFLE_METADATA_LABEL}`;
+        onChain.append(onChainTitle, label, addressLine(draw.on_chain_tx_hash, 'transaction ID'), cardanoscanTransactionLink(draw.on_chain_tx_hash));
+        proof.appendChild(onChain);
+    }
     card.appendChild(proof);
+    if (ROLE === 'admin' && !draw.on_chain_tx_hash) {
+        const onChainActions = document.createElement('div');
+        onChainActions.className = 'raffle-on-chain-actions';
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'raffle-primary';
+        button.textContent = 'Publish proof on-chain';
+        const help = document.createElement('p');
+        help.className = 'small-text';
+        help.textContent = 'Creates a Cardano Mainnet transaction containing the draw proof and charges a network fee.';
+        const status = document.createElement('p');
+        status.className = 'raffle-inline-status';
+        status.setAttribute('role', 'status');
+        const choices = document.createElement('div');
+        choices.className = 'wallet-list raffle-wallet-list';
+        button.addEventListener('click', () => {
+            status.classList.remove('is-error');
+            if (adminTransactionWallet || sessionStorage.getItem(`tdsp-raffle-anchor-${draw.id}`)) {
+                submitRaffleProofTransaction(draw, button, status);
+            } else {
+                chooseRaffleTransactionWallet(draw, button, status, choices);
+            }
+        });
+        onChainActions.append(button, help, status, choices);
+        card.appendChild(onChainActions);
+    }
     if (viewerAddress && draw.winner?.stake_address === viewerAddress) card.dataset.winner = 'true';
     return card;
 }
@@ -318,6 +519,7 @@ async function loadProtectedArea() {
     try {
         const payload = await authorizedRequest(endpoint);
         showAuthenticatedUi(true);
+        document.body.classList.remove('raffle-auth-gate-pending');
         if (ROLE === 'admin') renderAdmin(payload);
         else renderDelegator(payload);
     } catch (error) {
@@ -364,6 +566,10 @@ function logout() {
 }
 
 async function init() {
+    if (ROLE === 'admin' && !sessionToken) {
+        window.location.replace('delegators.html');
+        return;
+    }
     document.getElementById('raffle-connect')?.addEventListener('click', () => {
         populateWallets().catch(error => setStatus(error.message, true));
     });
@@ -379,9 +585,14 @@ async function init() {
             await loadProtectedArea();
             return;
         } catch {
+            if (ROLE === 'admin') {
+                window.location.replace('delegators.html');
+                return;
+            }
             setStatus('Your previous wallet session expired. Sign a new challenge to continue.');
         }
     }
+    document.body.classList.remove('raffle-auth-gate-pending');
     showAuthenticatedUi(false);
 }
 

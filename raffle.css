@@ -5,6 +5,10 @@
     color: var(--text);
 }
 
+.raffle-page.raffle-auth-gate-pending {
+    visibility: hidden;
+}
+
 .raffle-page [hidden] {
     display: none !important;
 }
@@ -16,7 +20,7 @@
 .raffle-main {
     width: min(1120px, calc(100% - 36px));
     margin: 0 auto;
-    padding: 102px 0 72px;
+    padding: 34px 0 72px;
 }
 
 .raffle-shell {
@@ -272,6 +276,34 @@
 .raffle-draw-card details[open] {
     display: grid;
     gap: 8px;
+}
+
+.raffle-on-chain-proof,
+.raffle-on-chain-actions {
+    display: grid;
+    gap: 8px;
+    min-width: 0;
+    padding-top: 12px;
+    border-top: 1px solid var(--line);
+}
+
+.raffle-on-chain-proof :is(p, a),
+.raffle-on-chain-actions p {
+    overflow-wrap: anywhere;
+}
+
+.raffle-inline-status {
+    margin: 0;
+    color: var(--muted);
+    font-weight: 700;
+}
+
+.raffle-inline-status:empty {
+    display: none;
+}
+
+.raffle-inline-status.is-error {
+    color: #fb7185;
 }
 
 .raffle-identity,

@@ -161,11 +161,13 @@ if (document.readyState === 'loading') {
 }
 
 function initGovernance() {
+    setupGovernanceMenuCards();
+    loadCurrentEpoch();
+    const hasGovernanceDashboard = Boolean(document.querySelector('#governance, #drep, #gov-spo-card'));
+    if (!hasGovernanceDashboard) return;
     removeDrepPowerSplitCard();
     ensureEpochCountdownCard();
-    setupGovernanceMenuCards();
     setupTdspDrepStatsCards();
-    loadCurrentEpoch();
     loadGovernanceActions();
     loadDrepDirectory().catch(() => {});
     loadSpoDirectory().catch(() => {});
@@ -694,7 +696,9 @@ function setupGovernanceMenuCards() {
         ['tdspbot-open', event => openConstitutionAssistantOverlay(null, event.currentTarget)],
         ['constitution-document-open', openConstitutionDocumentOverlay]
     ].forEach(([id, openMenu]) => {
-        bindGovernanceMenuTrigger(document.getElementById(id), openMenu);
+        const element = document.getElementById(id);
+        if (id === 'tdspbot-open' && element?.dataset.siteBotBound === 'true') return;
+        bindGovernanceMenuTrigger(element, openMenu);
     });
 }
 

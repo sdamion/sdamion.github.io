@@ -2738,7 +2738,8 @@ function notifyRelayMaintenance(downRelays) {
 
 function initThemeToggle() {
     const toggle = document.getElementById('theme-toggle');
-    if (!toggle) return;
+    if (!toggle || toggle.dataset.themeBound === 'true') return;
+    toggle.dataset.themeBound = 'true';
 
     applyStoredTheme();
     syncThemeToggle(toggle);
