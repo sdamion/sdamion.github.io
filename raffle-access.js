@@ -558,7 +558,7 @@ async function submitExclusions(event) {
     status.textContent = 'Saving exclusions...';
     try {
         await authorizedRequest(ENDPOINTS.exclusions, {
-            method: 'PUT',
+            method: 'POST',
             body: JSON.stringify({ stake_addresses: stakeAddresses })
         });
         const payload = await authorizedRequest(ENDPOINTS.admin);
