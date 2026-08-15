@@ -162,7 +162,7 @@
     font-weight: 800;
 }
 
-.raffle-form :is(input:not([type="checkbox"]), textarea) {
+.raffle-form :is(input:not([type="checkbox"]):not([type="radio"]), textarea) {
     width: 100%;
     min-width: 0;
     padding: 11px 12px;
@@ -188,7 +188,7 @@
     font-size: 0.9rem;
 }
 
-.raffle-confirm input {
+.raffle-confirm :is(input[type="checkbox"], input[type="radio"]) {
     flex: 0 0 auto;
     margin-top: 3px;
 }

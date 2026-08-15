@@ -9,6 +9,7 @@ const ENDPOINTS = IS_LOCAL ? {
     verify: '/__raffle_auth_verify_proxy__',
     admin: '/__raffle_admin_proxy__',
     draw: '/__raffle_admin_draw_proxy__',
+    exclusions: '/__raffle_admin_exclusions_proxy__',
     anchor: '/__raffle_admin_anchor_proxy__',
     delegator: '/__raffle_delegator_proxy__'
 } : {
@@ -16,6 +17,7 @@ const ENDPOINTS = IS_LOCAL ? {
     verify: 'https://api.tdsp.online/api/raffle/auth/verify',
     admin: 'https://api.tdsp.online/api/raffle/admin',
     draw: 'https://api.tdsp.online/api/raffle/admin/draw',
+    exclusions: 'https://api.tdsp.online/api/raffle/admin/exclusions',
     anchor: 'https://api.tdsp.online/api/raffle/admin/anchor',
     delegator: 'https://api.tdsp.online/api/raffle/delegator'
 };
@@ -27,8 +29,10 @@ let sessionToken = sessionStorage.getItem(SESSION_KEY) || '';
 let raffleOverlayReturnFocus = null;
 let adminTransactionWallet = null;
 let raffleAnchorSupported = false;
+let raffleExclusionsSupported = false;
 
 const RAFFLE_ANCHOR_UNAVAILABLE = 'On-chain proof is not available in the running Koios proxy yet. Pull the latest proxy image and restart the container, then reload this page.';
+const RAFFLE_EXCLUSIONS_UNAVAILABLE = 'Stake key exclusions are not available in the running Koios proxy yet. Pull the latest proxy image and restart the container, then reload this page.';
 
 function loadMesh() {
     if (!meshPromise) meshPromise = import(MESH_CDN_URL);
@@ -513,12 +517,60 @@ function renderDraws(draws, viewerAddress = null) {
 
 function renderAdmin(payload) {
     raffleAnchorSupported = payload.capabilities?.on_chain_proof === true;
+    raffleExclusionsSupported = payload.capabilities?.stake_key_exclusions === true;
+    const exclusions = Array.isArray(payload.excluded_stake_addresses) ? payload.excluded_stake_addresses : [];
+    const exclusionsInput = document.getElementById('raffle-excluded-stake-keys');
+    if (exclusionsInput) exclusionsInput.value = exclusions.join('\n');
+    const exclusionsCount = document.getElementById('raffle-exclusions-count');
+    if (exclusionsCount) exclusionsCount.textContent = `${exclusions.length.toLocaleString('en-US')} stake ${exclusions.length === 1 ? 'key' : 'keys'} excluded`;
+    const exclusionsForm = document.getElementById('raffle-exclusions-form');
+    const exclusionsSubmit = exclusionsForm?.querySelector('button[type="submit"]');
+    if (exclusionsSubmit) exclusionsSubmit.disabled = !raffleExclusionsSupported;
+    const exclusionsStatus = document.getElementById('raffle-exclusions-status');
+    if (exclusionsStatus && !raffleExclusionsSupported) {
+        exclusionsStatus.textContent = RAFFLE_EXCLUSIONS_UNAVAILABLE;
+        exclusionsStatus.classList.add('is-error');
+    }
     document.getElementById('raffle-eligible-count').textContent = Number(payload.pool?.eligible_count || 0).toLocaleString('en-US');
     document.getElementById('raffle-total-stake').textContent = formatAda(payload.pool?.total_eligible_lovelace);
     document.getElementById('raffle-snapshot-time').textContent = payload.pool?.updated_at
         ? `Pool snapshot ${formatDate(payload.pool.updated_at)}`
         : 'Pool snapshot time unavailable';
     renderDraws(payload.draws || []);
+}
+
+async function submitExclusions(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const submit = form.querySelector('button[type="submit"]');
+    const status = document.getElementById('raffle-exclusions-status');
+    const stakeAddresses = String(form.elements.stake_addresses.value || '')
+        .split(/[\r\n,]+/)
+        .map(value => value.trim())
+        .filter(Boolean);
+    if (!raffleExclusionsSupported) {
+        status.textContent = RAFFLE_EXCLUSIONS_UNAVAILABLE;
+        status.classList.add('is-error');
+        return;
+    }
+    submit.disabled = true;
+    status.classList.remove('is-error');
+    status.textContent = 'Saving exclusions...';
+    try {
+        await authorizedRequest(ENDPOINTS.exclusions, {
+            method: 'PUT',
+            body: JSON.stringify({ stake_addresses: stakeAddresses })
+        });
+        const payload = await authorizedRequest(ENDPOINTS.admin);
+        renderAdmin(payload);
+        const savedCount = Array.isArray(payload.excluded_stake_addresses) ? payload.excluded_stake_addresses.length : 0;
+        status.textContent = `${savedCount.toLocaleString('en-US')} stake ${savedCount === 1 ? 'key' : 'keys'} excluded from future draws.`;
+    } catch (error) {
+        status.textContent = error?.message || 'The exclusions could not be saved.';
+        status.classList.add('is-error');
+    } finally {
+        submit.disabled = false;
+    }
 }
 
 function renderDelegator(payload) {
@@ -611,6 +663,7 @@ async function init() {
         if (event.target === event.currentTarget) setRaffleOverlay(false);
     });
     document.getElementById('raffle-draw-form')?.addEventListener('submit', submitDraw);
+    document.getElementById('raffle-exclusions-form')?.addEventListener('submit', submitExclusions);
     if (sessionToken) {
         try {
             await loadProtectedArea();
