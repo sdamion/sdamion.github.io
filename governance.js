@@ -4317,29 +4317,49 @@ function createTdspDrepDelegatorRow(delegator, index) {
     const content = document.createElement('div');
     content.className = 'pool-delegator-content';
 
-    const address = String(delegator?.stake_address || delegator?.stakeAddress || 'Unknown stake address');
     const adaHandle = String(delegator?.ada_handle || '').trim();
+    const walletAddresses = window.TDSPRuntime.getDelegatorWalletAddresses(delegator);
+    const walletAddress = walletAddresses[0] || '';
     const addressLine = document.createElement('div');
     addressLine.className = 'pool-delegator-address-line';
 
     const addressText = document.createElement('strong');
     addressText.className = `pool-delegator-address${adaHandle ? ' pool-delegator-handle' : ''}`;
-    addressText.textContent = adaHandle || window.TDSPRuntime.shortenMiddle(address);
-    addressText.title = address;
-
-    const copy = document.createElement('button');
-    copy.className = 'pool-delegator-copy-button';
-    copy.type = 'button';
-    copy.textContent = '⧉';
-    copy.setAttribute('aria-label', `Copy DRep delegator stake address ${index + 1}`);
-    window.TDSPRuntime?.bindCopyButton?.(copy, address, { preventDefault: false });
+    addressText.textContent = adaHandle || (walletAddress
+        ? window.TDSPRuntime.shortenMiddle(walletAddress)
+        : 'Wallet address unavailable');
+    if (walletAddress) addressText.title = walletAddress;
 
     const amount = document.createElement('span');
     amount.className = 'pool-delegator-amount';
     amount.textContent = formatDrepDelegatorAda(getDrepDelegatorAmount(delegator));
 
-    addressLine.append(addressText, copy);
+    addressLine.appendChild(addressText);
+    if (walletAddress) {
+        const copy = document.createElement('button');
+        copy.className = 'pool-delegator-copy-button';
+        copy.type = 'button';
+        copy.textContent = '⧉';
+        copy.setAttribute('aria-label', `Copy DRep delegator wallet address ${index + 1}`);
+        window.TDSPRuntime?.bindCopyButton?.(copy, walletAddress, { preventDefault: false });
+        addressLine.appendChild(copy);
+    }
     content.append(addressLine, amount);
+
+    if (adaHandle && walletAddress) {
+        const walletText = document.createElement('span');
+        walletText.className = 'pool-delegator-wallet-address';
+        walletText.textContent = window.TDSPRuntime.shortenMiddle(walletAddress);
+        walletText.title = walletAddress;
+        content.appendChild(walletText);
+    }
+
+    if (walletAddresses.length > 1) {
+        const addressCount = document.createElement('span');
+        addressCount.className = 'pool-delegator-epoch';
+        addressCount.textContent = `${walletAddresses.length.toLocaleString('en-US')} linked wallet addresses`;
+        content.appendChild(addressCount);
+    }
 
     const epoch = Number(delegator?.active_epoch_no ?? delegator?.epoch_no);
     if (Number.isFinite(epoch)) {
@@ -4349,6 +4369,8 @@ function createTdspDrepDelegatorRow(delegator, index) {
         content.appendChild(epochText);
     }
 
+    row.dataset.sortName = window.TDSPRuntime.normalizeSearchText(adaHandle || walletAddress);
+    row.dataset.searchText = window.TDSPRuntime.getDelegatorSearchText(delegator);
     row.appendChild(content);
     return row;
 }

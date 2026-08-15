@@ -1,5 +1,5 @@
 (function () {
-    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260815-shared-site-controls';
+    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260815-delegator-wallets';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
         '#drep',

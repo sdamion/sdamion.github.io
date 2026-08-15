@@ -1144,6 +1144,13 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     font-weight: 800;
 }
 
+.pool-delegator-wallet-address {
+    color: var(--muted);
+    font-size: 0.82rem;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
 .pool-delegator-epoch {
     color: var(--muted);
     font-size: 0.82rem;

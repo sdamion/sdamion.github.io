@@ -465,6 +465,28 @@
             .toLocaleLowerCase();
     }
 
+    function getDelegatorWalletAddresses(delegator) {
+        const candidates = [
+            delegator?.registered_payment_address,
+            delegator?.wallet_address,
+            delegator?.payment_address,
+            ...(Array.isArray(delegator?.payment_addresses) ? delegator.payment_addresses : []),
+            ...(Array.isArray(delegator?.wallet_addresses) ? delegator.wallet_addresses : [])
+        ];
+        return [...new Set(candidates
+            .map(address => String(address || '').trim())
+            .filter(address => /^addr(?:_test)?1[0-9a-z]+$/i.test(address)))];
+    }
+
+    function getDelegatorSearchText(delegator) {
+        return [
+            delegator?.ada_handle,
+            delegator?.stake_address,
+            delegator?.stakeAddress,
+            ...getDelegatorWalletAddresses(delegator)
+        ].filter(Boolean).join(' ');
+    }
+
     function formatReadableLabel(value, fallback = '') {
         return String(value || fallback)
             .replace(/([a-z])([A-Z])/g, '$1 $2')
@@ -558,6 +580,8 @@
         shortenMiddle,
         adjustHexColor,
         normalizeSearchText,
+        getDelegatorWalletAddresses,
+        getDelegatorSearchText,
         formatReadableLabel,
         appendUniversalTileContent
     });

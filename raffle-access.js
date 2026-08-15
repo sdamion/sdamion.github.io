@@ -470,8 +470,14 @@ function createDrawCard(draw, viewerAddress = null) {
     const winnerTitle = document.createElement('strong');
     winnerTitle.textContent = draw.is_winner ? 'You are the winner' : 'Winner';
     const winnerName = document.createElement('span');
-    winnerName.textContent = draw.winner?.ada_handle || 'Stake key';
-    winner.append(winnerTitle, winnerName, addressLine(draw.winner?.stake_address || ''));
+    const winnerWalletAddress = String(draw.winner?.wallet_address || '').trim();
+    winnerName.textContent = draw.winner?.ada_handle || (ROLE === 'admin' ? 'Wallet address' : 'Stake key');
+    const winnerAddress = ROLE === 'admin'
+        ? (winnerWalletAddress
+            ? addressLine(winnerWalletAddress, 'wallet address')
+            : document.createTextNode('Wallet address unavailable'))
+        : addressLine(draw.winner?.stake_address || '', 'stake key');
+    winner.append(winnerTitle, winnerName, winnerAddress);
     card.appendChild(winner);
 
     if (draw.notes) {

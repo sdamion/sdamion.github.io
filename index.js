@@ -2623,30 +2623,48 @@ function createPoolDelegatorsList() {
     });
 
     sortedDelegators.forEach((delegator, index) => {
-        const address = String(delegator?.stake_address || 'Unknown stake address');
         const adaHandle = String(delegator?.ada_handle || '').trim();
+        const walletAddresses = window.TDSPRuntime.getDelegatorWalletAddresses(delegator);
+        const walletAddress = walletAddresses[0] || '';
         const addressLine = document.createElement('div');
         addressLine.className = 'pool-delegator-address-line';
 
         const addressText = document.createElement('strong');
         addressText.className = `pool-delegator-address${adaHandle ? ' pool-delegator-handle' : ''}`;
-        addressText.textContent = adaHandle || shortenStakeAddress(address);
-        addressText.title = address;
-
-        const copy = document.createElement('button');
-        copy.className = 'pool-delegator-copy-button';
-        copy.type = 'button';
-        copy.textContent = '⧉';
-        copy.dataset.copyValue = address;
-        copy.setAttribute('aria-label', `Copy stake address ${index + 1}`);
-        window.TDSPRuntime?.bindCopyButton?.(copy, button => button.dataset.copyValue, { preventDefault: false, stopPropagation: false });
+        addressText.textContent = adaHandle || (walletAddress ? shortenStakeAddress(walletAddress) : 'Wallet address unavailable');
+        if (walletAddress) addressText.title = walletAddress;
 
         const amount = document.createElement('span');
         amount.className = 'pool-delegator-amount';
         amount.textContent = formatDelegatorAda(getDelegatorAmount(delegator));
 
-        addressLine.append(addressText, copy);
+        addressLine.appendChild(addressText);
+        if (walletAddress) {
+            const copy = document.createElement('button');
+            copy.className = 'pool-delegator-copy-button';
+            copy.type = 'button';
+            copy.textContent = '⧉';
+            copy.dataset.copyValue = walletAddress;
+            copy.setAttribute('aria-label', `Copy wallet address ${index + 1}`);
+            window.TDSPRuntime?.bindCopyButton?.(copy, button => button.dataset.copyValue, { preventDefault: false, stopPropagation: false });
+            addressLine.appendChild(copy);
+        }
         const details = [addressLine, amount];
+
+        if (adaHandle && walletAddress) {
+            const walletText = document.createElement('span');
+            walletText.className = 'pool-delegator-wallet-address';
+            walletText.textContent = shortenStakeAddress(walletAddress);
+            walletText.title = walletAddress;
+            details.push(walletText);
+        }
+
+        if (walletAddresses.length > 1) {
+            const addressCount = document.createElement('span');
+            addressCount.className = 'pool-delegator-epoch';
+            addressCount.textContent = `${walletAddresses.length.toLocaleString('en-US')} linked wallet addresses`;
+            details.push(addressCount);
+        }
 
         const epoch = Number(delegator?.active_epoch_no);
         if (Number.isFinite(epoch)) {
@@ -2657,7 +2675,8 @@ function createPoolDelegatorsList() {
         }
 
         const row = createPoolOverlayRow({ details });
-        row.dataset.sortName = window.TDSPRuntime.normalizeSearchText(adaHandle || address);
+        row.dataset.sortName = window.TDSPRuntime.normalizeSearchText(adaHandle || walletAddress);
+        row.dataset.searchText = window.TDSPRuntime.getDelegatorSearchText(delegator);
         row.dataset.sortAmount = getDelegatorAmount(delegator).toString();
         if (Number.isFinite(epoch)) row.dataset.sortEpoch = String(epoch);
         list.appendChild(row);
