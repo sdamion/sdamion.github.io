@@ -33,6 +33,13 @@ let raffleExclusionsSupported = false;
 let raffleExclusionTogglesSupported = false;
 let raffleStakeKeyExclusions = [];
 
+const RAFFLE_ADMIN_VIEW_TITLES = Object.freeze({
+    menu: 'Raffles',
+    draw: 'Draw',
+    exclusions: 'Exclusion List',
+    history: 'History'
+});
+
 const RAFFLE_ANCHOR_UNAVAILABLE = 'On-chain proof is not available in the running Koios proxy yet. Pull the latest proxy image and restart the container, then reload this page.';
 const RAFFLE_EXCLUSIONS_UNAVAILABLE = 'Stake key exclusions are not available in the running Koios proxy yet. Pull the latest proxy image and restart the container, then reload this page.';
 
@@ -172,17 +179,37 @@ function showAuthenticatedUi(authenticated) {
     if (protectedArea) protectedArea.hidden = !authenticated;
 }
 
+function setRaffleAdminView(view = 'menu', { focus = true } = {}) {
+    const normalizedView = Object.hasOwn(RAFFLE_ADMIN_VIEW_TITLES, view) ? view : 'menu';
+    const menu = document.getElementById('raffle-admin-menu');
+    if (menu) menu.hidden = normalizedView !== 'menu';
+    document.querySelectorAll('[data-raffle-view-panel]').forEach(panel => {
+        panel.hidden = panel.dataset.raffleViewPanel !== normalizedView;
+    });
+
+    const title = document.getElementById('raffle-overlay-title');
+    if (title) title.textContent = RAFFLE_ADMIN_VIEW_TITLES[normalizedView];
+    const back = document.getElementById('raffle-overlay-back');
+    if (back) back.hidden = normalizedView === 'menu';
+
+    if (!focus) return;
+    if (normalizedView === 'menu') document.querySelector('[data-raffle-view]')?.focus();
+    else back?.focus();
+}
+
 function setRaffleOverlay(open) {
     const overlay = document.getElementById('raffle-overlay');
     if (!overlay) return;
     if (open) {
         raffleOverlayReturnFocus = document.activeElement;
+        setRaffleAdminView('menu', { focus: false });
         overlay.hidden = false;
         document.body.classList.add('raffle-overlay-open');
-        document.getElementById('raffle-overlay-close')?.focus();
+        document.querySelector('[data-raffle-view]')?.focus();
         return;
     }
     overlay.hidden = true;
+    setRaffleAdminView('menu', { focus: false });
     document.body.classList.remove('raffle-overlay-open');
     raffleOverlayReturnFocus?.focus?.();
     raffleOverlayReturnFocus = null;
@@ -534,6 +561,10 @@ function renderAdmin(payload) {
         const includedCount = raffleStakeKeyExclusions.filter(entry => entry.enabled === false).length;
         exclusionsCount.textContent = `${exclusions.length.toLocaleString('en-US')} excluded · ${includedCount.toLocaleString('en-US')} included in raffles`;
     }
+    const menuExclusionsCount = document.getElementById('raffle-menu-exclusion-count');
+    if (menuExclusionsCount) {
+        menuExclusionsCount.textContent = `${exclusions.length.toLocaleString('en-US')} excluded`;
+    }
     renderExcludedStakeKeys(raffleStakeKeyExclusions);
     const exclusionsForm = document.getElementById('raffle-exclusions-form');
     const exclusionsSubmit = exclusionsForm?.querySelector('button[type="submit"]');
@@ -548,7 +579,12 @@ function renderAdmin(payload) {
     document.getElementById('raffle-snapshot-time').textContent = payload.pool?.updated_at
         ? `Pool snapshot ${formatDate(payload.pool.updated_at)}`
         : 'Pool snapshot time unavailable';
-    renderDraws(payload.draws || []);
+    const draws = Array.isArray(payload.draws) ? payload.draws : [];
+    const menuHistoryCount = document.getElementById('raffle-menu-history-count');
+    if (menuHistoryCount) {
+        menuHistoryCount.textContent = `${draws.length.toLocaleString('en-US')} published raffle${draws.length === 1 ? '' : 's'}`;
+    }
+    renderDraws(draws);
 }
 
 function renderExcludedStakeKeys(excludedDelegators) {
@@ -716,6 +752,7 @@ async function submitDraw(event) {
             setStatus('The raffle result has been published on the website.');
             return;
         }
+        setRaffleAdminView('history', { focus: false });
         setStatus('The raffle result has been published. Complete the wallet step to record its proof on Cardano.');
         const card = [...document.querySelectorAll('[data-raffle-id]')]
             .find(element => element.dataset.raffleId === result.draw?.id);
@@ -752,7 +789,11 @@ async function init() {
     });
     document.getElementById('raffle-logout')?.addEventListener('click', logout);
     document.getElementById('raffle-open')?.addEventListener('click', () => setRaffleOverlay(true));
+    document.getElementById('raffle-overlay-back')?.addEventListener('click', () => setRaffleAdminView('menu'));
     document.getElementById('raffle-overlay-close')?.addEventListener('click', () => setRaffleOverlay(false));
+    document.querySelectorAll('[data-raffle-view]').forEach(tile => {
+        tile.addEventListener('click', () => setRaffleAdminView(tile.dataset.raffleView));
+    });
     document.getElementById('raffle-overlay')?.addEventListener('click', event => {
         if (event.target === event.currentTarget) setRaffleOverlay(false);
     });

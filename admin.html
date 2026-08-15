@@ -10,10 +10,10 @@
     <title>Admin Area | The Dutch Stake Pool</title>
     <link rel="icon" href="tdsp_logo.webp" type="image/webp">
     <link rel="stylesheet" href="styles.css?v=20260813-static-overlay-search">
-    <link rel="stylesheet" href="raffle.css?v=20260815-exclusion-toggle">
+    <link rel="stylesheet" href="raffle.css?v=20260815-admin-menu">
     <script src="runtime.js?v=20260808-runtime-export-cleanup" defer></script>
     <script src="site-controls.js?v=20260815-shared-site-controls" defer></script>
-    <script src="raffle-access.js?v=20260815-exclusion-toggle" defer></script>
+    <script src="raffle-access.js?v=20260815-admin-menu" defer></script>
 </head>
 <body class="raffle-page raffle-auth-gate-pending" data-raffle-role="admin">
     <header class="site-header raffle-site-header" id="site-header">
@@ -94,54 +94,76 @@
                     <h2 id="raffle-overlay-title">Raffles</h2>
                 </div>
                 <div class="overlay-dialog-header-actions">
+                    <button class="governance-back-to-root" id="raffle-overlay-back" type="button" aria-label="Back to Raffles" hidden>&lt;</button>
                     <button class="governance-close" id="raffle-overlay-close" type="button" aria-label="Close Raffles">
                         <span class="governance-close-icon" aria-hidden="true"></span>
                     </button>
                 </div>
             </header>
             <div class="overlay-dialog-body raffle-overlay-body">
-                <form class="governance-menu-card raffle-form" id="raffle-exclusions-form">
-                    <h2>Excluded Stake Keys</h2>
-                    <p class="small-text">Add Cardano Mainnet stake addresses here. You can later disable an exclusion so the saved stake key participates in future raffles again.</p>
-                    <label for="raffle-excluded-stake-keys">Stake addresses</label>
-                    <textarea id="raffle-excluded-stake-keys" name="stake_addresses" rows="5" spellcheck="false" autocomplete="off" placeholder="stake1..."></textarea>
-                    <p class="small-text">Format: enter one complete Mainnet stake address per line. Example:<br><code>stake1uxg7k2rzm28glx8decjmulsxrwwaxrn2t45mcvu5fyfscuc6z2mjz</code><br><code>stake1u...another complete stake address</code><br>Comma-separated addresses are also accepted.</p>
-                    <p class="small-text" id="raffle-exclusions-count">0 stake keys excluded</p>
-                    <div class="raffle-exclusion-list" id="raffle-exclusion-list"></div>
-                    <button class="raffle-secondary" type="submit">Add Exclusions</button>
-                    <p class="raffle-inline-status" id="raffle-exclusions-status" role="status" aria-live="polite"></p>
-                </form>
-
-                <form class="governance-menu-card raffle-form" id="raffle-draw-form">
-                    <h2>Draw and Publish</h2>
-                    <label for="raffle-title">Raffle title</label>
-                    <input id="raffle-title" name="title" maxlength="120" required>
-                    <label for="raffle-prize">Prize</label>
-                    <input id="raffle-prize" name="prize" maxlength="120" placeholder="For example: 100 ADA">
-                    <label for="raffle-notes">Public notes</label>
-                    <textarea id="raffle-notes" name="notes" maxlength="500" rows="4"></textarea>
-                    <label class="raffle-confirm" for="raffle-confirm">
-                        <input id="raffle-confirm" name="confirmation" type="checkbox" required>
-                        Publish this auditable result to verified TDSP delegators.
-                    </label>
-                    <fieldset class="raffle-publish-options">
-                        <legend>Publication method</legend>
-                        <label class="raffle-confirm" for="raffle-publish-website">
-                            <input id="raffle-publish-website" name="publish_mode" type="radio" value="website" checked>
-                            Publish on the website only (no network fee).
-                        </label>
-                        <label class="raffle-confirm" for="raffle-publish-on-chain">
-                            <input id="raffle-publish-on-chain" name="publish_mode" type="radio" value="on_chain">
-                            Publish on the website and record proof on Cardano Mainnet (network fee required).
-                        </label>
-                    </fieldset>
-                    <button class="raffle-primary" type="submit">Draw and Publish Winner</button>
-                </form>
-
-                <div class="raffle-section-heading">
-                    <h2>Published Raffles</h2>
+                <div class="raffle-admin-menu" id="raffle-admin-menu">
+                    <button class="governance-menu-card raffle-open-tile" type="button" data-raffle-view="draw">
+                        <strong>Draw</strong>
+                        <span>Select and publish a raffle winner</span>
+                    </button>
+                    <button class="governance-menu-card raffle-open-tile" type="button" data-raffle-view="exclusions">
+                        <strong>Exclusion List</strong>
+                        <span id="raffle-menu-exclusion-count">0 excluded</span>
+                    </button>
+                    <button class="governance-menu-card raffle-open-tile" type="button" data-raffle-view="history">
+                        <strong>History</strong>
+                        <span id="raffle-menu-history-count">0 published raffles</span>
+                    </button>
                 </div>
-                <div class="raffle-draws" id="raffle-draws"></div>
+
+                <section class="raffle-admin-panel" data-raffle-view-panel="draw" hidden>
+                    <form class="governance-menu-card raffle-form" id="raffle-draw-form">
+                        <h2>Draw and Publish</h2>
+                        <label for="raffle-title">Raffle title</label>
+                        <input id="raffle-title" name="title" maxlength="120" required>
+                        <label for="raffle-prize">Prize</label>
+                        <input id="raffle-prize" name="prize" maxlength="120" placeholder="For example: 100 ADA">
+                        <label for="raffle-notes">Public notes</label>
+                        <textarea id="raffle-notes" name="notes" maxlength="500" rows="4"></textarea>
+                        <label class="raffle-confirm" for="raffle-confirm">
+                            <input id="raffle-confirm" name="confirmation" type="checkbox" required>
+                            Publish this auditable result to verified TDSP delegators.
+                        </label>
+                        <fieldset class="raffle-publish-options">
+                            <legend>Publication method</legend>
+                            <label class="raffle-confirm" for="raffle-publish-website">
+                                <input id="raffle-publish-website" name="publish_mode" type="radio" value="website" checked>
+                                Publish on the website only (no network fee).
+                            </label>
+                            <label class="raffle-confirm" for="raffle-publish-on-chain">
+                                <input id="raffle-publish-on-chain" name="publish_mode" type="radio" value="on_chain">
+                                Publish on the website and record proof on Cardano Mainnet (network fee required).
+                            </label>
+                        </fieldset>
+                        <button class="raffle-primary" type="submit">Draw and Publish Winner</button>
+                    </form>
+                </section>
+
+                <section class="raffle-admin-panel" data-raffle-view-panel="exclusions" hidden>
+                    <form class="governance-menu-card raffle-form" id="raffle-exclusions-form">
+                        <h2>Excluded Stake Keys</h2>
+                        <p class="small-text">Add Cardano Mainnet stake addresses here. You can later disable an exclusion so the saved stake key participates in future raffles again.</p>
+                        <label for="raffle-excluded-stake-keys">Stake addresses</label>
+                        <textarea id="raffle-excluded-stake-keys" name="stake_addresses" rows="5" spellcheck="false" autocomplete="off" placeholder="stake1..."></textarea>
+                        <p class="small-text">Format: enter one complete Mainnet stake address per line. Example:<br><code>stake1uxg7k2rzm28glx8decjmulsxrwwaxrn2t45mcvu5fyfscuc6z2mjz</code><br><code>stake1u...another complete stake address</code><br>Comma-separated addresses are also accepted.</p>
+                        <p class="small-text" id="raffle-exclusions-count">0 stake keys excluded</p>
+                        <div class="raffle-exclusion-list" id="raffle-exclusion-list"></div>
+                        <button class="raffle-secondary" type="submit">Add Exclusions</button>
+                        <p class="raffle-inline-status" id="raffle-exclusions-status" role="status" aria-live="polite"></p>
+                    </form>
+                </section>
+
+                <section class="raffle-admin-panel" data-raffle-view-panel="history" hidden>
+                    <div class="raffle-section-heading">
+                        <h2>Published Raffles</h2>
+                    </div>
+                    <div class="raffle-draws" id="raffle-draws"></div>
+                </section>
             </div>
         </section>
     </div>
