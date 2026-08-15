@@ -10,10 +10,10 @@
     <title>Admin Area | The Dutch Stake Pool</title>
     <link rel="icon" href="tdsp_logo.webp" type="image/webp">
     <link rel="stylesheet" href="styles.css?v=20260813-static-overlay-search">
-    <link rel="stylesheet" href="raffle.css?v=20260815-exclusion-example">
+    <link rel="stylesheet" href="raffle.css?v=20260815-exclusion-toggle">
     <script src="runtime.js?v=20260808-runtime-export-cleanup" defer></script>
     <script src="site-controls.js?v=20260815-shared-site-controls" defer></script>
-    <script src="raffle-access.js?v=20260815-exclusions-post" defer></script>
+    <script src="raffle-access.js?v=20260815-exclusion-toggle" defer></script>
 </head>
 <body class="raffle-page raffle-auth-gate-pending" data-raffle-role="admin">
     <header class="site-header raffle-site-header" id="site-header">
@@ -102,12 +102,13 @@
             <div class="overlay-dialog-body raffle-overlay-body">
                 <form class="governance-menu-card raffle-form" id="raffle-exclusions-form">
                     <h2>Excluded Stake Keys</h2>
-                    <p class="small-text">Enter one Cardano Mainnet stake address per line. These addresses remain able to view published results but are excluded from future draws.</p>
+                    <p class="small-text">Add Cardano Mainnet stake addresses here. You can later disable an exclusion so the saved stake key participates in future raffles again.</p>
                     <label for="raffle-excluded-stake-keys">Stake addresses</label>
                     <textarea id="raffle-excluded-stake-keys" name="stake_addresses" rows="5" spellcheck="false" autocomplete="off" placeholder="stake1..."></textarea>
                     <p class="small-text">Format: enter one complete Mainnet stake address per line. Example:<br><code>stake1uxg7k2rzm28glx8decjmulsxrwwaxrn2t45mcvu5fyfscuc6z2mjz</code><br><code>stake1u...another complete stake address</code><br>Comma-separated addresses are also accepted.</p>
                     <p class="small-text" id="raffle-exclusions-count">0 stake keys excluded</p>
-                    <button class="raffle-secondary" type="submit">Save Exclusions</button>
+                    <div class="raffle-exclusion-list" id="raffle-exclusion-list"></div>
+                    <button class="raffle-secondary" type="submit">Add Exclusions</button>
                     <p class="raffle-inline-status" id="raffle-exclusions-status" role="status" aria-live="polite"></p>
                 </form>
 

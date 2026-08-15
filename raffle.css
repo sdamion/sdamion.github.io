@@ -211,6 +211,67 @@
     font-weight: 700;
 }
 
+.raffle-exclusion-list {
+    display: grid;
+    gap: 8px;
+    min-width: 0;
+}
+
+.raffle-exclusion-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: var(--overlay-surface-muted);
+}
+
+.raffle-exclusion-identity {
+    display: grid;
+    gap: 5px;
+    min-width: 0;
+}
+
+.raffle-exclusion-state {
+    width: fit-content;
+    font-size: 0.82rem;
+    font-weight: 800;
+}
+
+.raffle-exclusion-state.is-excluded {
+    color: #fb7185;
+}
+
+.raffle-exclusion-state.is-included {
+    color: #34d399;
+}
+
+.raffle-exclusion-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.raffle-exclusion-remove,
+.raffle-exclusion-toggle {
+    min-height: 38px;
+    padding: 7px 10px;
+}
+
+@media (max-width: 560px) {
+    .raffle-exclusion-item {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .raffle-exclusion-actions {
+        justify-content: flex-start;
+    }
+}
+
 .raffle-draws {
     display: grid;
     gap: 14px;

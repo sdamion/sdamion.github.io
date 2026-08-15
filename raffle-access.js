@@ -30,6 +30,8 @@ let raffleOverlayReturnFocus = null;
 let adminTransactionWallet = null;
 let raffleAnchorSupported = false;
 let raffleExclusionsSupported = false;
+let raffleExclusionTogglesSupported = false;
+let raffleStakeKeyExclusions = [];
 
 const RAFFLE_ANCHOR_UNAVAILABLE = 'On-chain proof is not available in the running Koios proxy yet. Pull the latest proxy image and restart the container, then reload this page.';
 const RAFFLE_EXCLUSIONS_UNAVAILABLE = 'Stake key exclusions are not available in the running Koios proxy yet. Pull the latest proxy image and restart the container, then reload this page.';
@@ -518,11 +520,21 @@ function renderDraws(draws, viewerAddress = null) {
 function renderAdmin(payload) {
     raffleAnchorSupported = payload.capabilities?.on_chain_proof === true;
     raffleExclusionsSupported = payload.capabilities?.stake_key_exclusions === true;
+    raffleExclusionTogglesSupported = payload.capabilities?.stake_key_exclusion_toggles === true;
     const exclusions = Array.isArray(payload.excluded_stake_addresses) ? payload.excluded_stake_addresses : [];
+    raffleStakeKeyExclusions = Array.isArray(payload.stake_key_exclusions)
+        ? payload.stake_key_exclusions
+        : (Array.isArray(payload.excluded_delegators)
+            ? payload.excluded_delegators.map(entry => ({ ...entry, enabled: true }))
+            : exclusions.map(stakeAddress => ({ stake_address: stakeAddress, enabled: true })));
     const exclusionsInput = document.getElementById('raffle-excluded-stake-keys');
-    if (exclusionsInput) exclusionsInput.value = exclusions.join('\n');
+    if (exclusionsInput) exclusionsInput.value = '';
     const exclusionsCount = document.getElementById('raffle-exclusions-count');
-    if (exclusionsCount) exclusionsCount.textContent = `${exclusions.length.toLocaleString('en-US')} stake ${exclusions.length === 1 ? 'key' : 'keys'} excluded`;
+    if (exclusionsCount) {
+        const includedCount = raffleStakeKeyExclusions.filter(entry => entry.enabled === false).length;
+        exclusionsCount.textContent = `${exclusions.length.toLocaleString('en-US')} excluded · ${includedCount.toLocaleString('en-US')} included in raffles`;
+    }
+    renderExcludedStakeKeys(raffleStakeKeyExclusions);
     const exclusionsForm = document.getElementById('raffle-exclusions-form');
     const exclusionsSubmit = exclusionsForm?.querySelector('button[type="submit"]');
     if (exclusionsSubmit) exclusionsSubmit.disabled = !raffleExclusionsSupported;
@@ -537,6 +549,96 @@ function renderAdmin(payload) {
         ? `Pool snapshot ${formatDate(payload.pool.updated_at)}`
         : 'Pool snapshot time unavailable';
     renderDraws(payload.draws || []);
+}
+
+function renderExcludedStakeKeys(excludedDelegators) {
+    const list = document.getElementById('raffle-exclusion-list');
+    if (!list) return;
+    list.replaceChildren();
+    if (!excludedDelegators.length) {
+        const empty = document.createElement('p');
+        empty.className = 'small-text';
+        empty.textContent = 'No stake keys are excluded.';
+        list.appendChild(empty);
+        return;
+    }
+    excludedDelegators.forEach(entry => {
+        const row = document.createElement('div');
+        row.className = 'raffle-exclusion-item';
+        const identity = document.createElement('div');
+        identity.className = 'raffle-exclusion-identity';
+        const name = document.createElement('strong');
+        name.textContent = entry.ada_handle || 'Stake key';
+        const state = document.createElement('span');
+        state.className = `raffle-exclusion-state ${entry.enabled === false ? 'is-included' : 'is-excluded'}`;
+        state.textContent = entry.enabled === false ? 'Included in raffle' : 'Excluded';
+        identity.append(name, state, addressLine(entry.stake_address));
+        const actions = document.createElement('div');
+        actions.className = 'raffle-exclusion-actions';
+        if (raffleExclusionTogglesSupported) {
+            const toggle = document.createElement('button');
+            toggle.type = 'button';
+            toggle.className = 'raffle-secondary raffle-exclusion-toggle';
+            toggle.textContent = entry.enabled === false ? 'Enable exclusion' : 'Disable exclusion';
+            toggle.addEventListener('click', async () => {
+                toggle.disabled = true;
+                const status = document.getElementById('raffle-exclusions-status');
+                const saved = await saveStakeKeyExclusionConfigs(
+                    raffleStakeKeyExclusions.map(config => config.stake_address === entry.stake_address
+                        ? { ...config, enabled: config.enabled === false }
+                        : config),
+                    status,
+                    entry.enabled === false ? 'Excluding stake key...' : 'Including stake key in future raffles...'
+                );
+                if (!saved) toggle.disabled = false;
+            });
+            actions.appendChild(toggle);
+        }
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'raffle-secondary raffle-exclusion-remove';
+        remove.textContent = 'Remove';
+        remove.setAttribute('aria-label', `Remove ${entry.ada_handle || shorten(entry.stake_address)} from raffle exclusions`);
+        remove.addEventListener('click', async () => {
+            remove.disabled = true;
+            const status = document.getElementById('raffle-exclusions-status');
+            const saved = await saveStakeKeyExclusionConfigs(
+                raffleStakeKeyExclusions.filter(config => config.stake_address !== entry.stake_address),
+                status,
+                'Removing exclusion...'
+            );
+            if (!saved) remove.disabled = false;
+        });
+        actions.appendChild(remove);
+        row.append(identity, actions);
+        list.appendChild(row);
+    });
+}
+
+async function saveStakeKeyExclusionConfigs(configs, status, pendingMessage = 'Saving exclusions...') {
+    status.classList.remove('is-error');
+    status.textContent = pendingMessage;
+    try {
+        await authorizedRequest(ENDPOINTS.exclusions, {
+            method: 'POST',
+            body: JSON.stringify({
+                exclusions: configs.map(config => ({
+                    stake_address: config.stake_address,
+                    enabled: config.enabled !== false
+                })),
+                stake_addresses: configs.filter(config => config.enabled !== false).map(config => config.stake_address)
+            })
+        });
+        const payload = await authorizedRequest(ENDPOINTS.admin);
+        renderAdmin(payload);
+        const savedCount = Array.isArray(payload.excluded_stake_addresses) ? payload.excluded_stake_addresses.length : 0;
+        status.textContent = `${savedCount.toLocaleString('en-US')} stake ${savedCount === 1 ? 'key' : 'keys'} excluded from future draws.`;
+        return payload;
+    } catch (error) {
+        status.textContent = error?.message || 'The exclusions could not be saved.';
+        status.classList.add('is-error');
+        return null;
+    }
 }
 
 async function submitExclusions(event) {
@@ -554,20 +656,12 @@ async function submitExclusions(event) {
         return;
     }
     submit.disabled = true;
-    status.classList.remove('is-error');
-    status.textContent = 'Saving exclusions...';
     try {
-        await authorizedRequest(ENDPOINTS.exclusions, {
-            method: 'POST',
-            body: JSON.stringify({ stake_addresses: stakeAddresses })
+        const configsByAddress = new Map(raffleStakeKeyExclusions.map(config => [config.stake_address, config]));
+        stakeAddresses.forEach(stakeAddress => {
+            configsByAddress.set(stakeAddress, { stake_address: stakeAddress, enabled: true });
         });
-        const payload = await authorizedRequest(ENDPOINTS.admin);
-        renderAdmin(payload);
-        const savedCount = Array.isArray(payload.excluded_stake_addresses) ? payload.excluded_stake_addresses.length : 0;
-        status.textContent = `${savedCount.toLocaleString('en-US')} stake ${savedCount === 1 ? 'key' : 'keys'} excluded from future draws.`;
-    } catch (error) {
-        status.textContent = error?.message || 'The exclusions could not be saved.';
-        status.classList.add('is-error');
+        await saveStakeKeyExclusionConfigs([...configsByAddress.values()], status, 'Adding exclusions...');
     } finally {
         submit.disabled = false;
     }
