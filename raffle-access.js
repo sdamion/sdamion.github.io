@@ -1,5 +1,6 @@
 const MESH_CDN_URL = 'https://esm.sh/@meshsdk/core@1.9.1?bundle-deps';
 const ADMIN_ADDRESS = 'addr1qy93p0cfydj548ayt6mh2z572ly4n4s9yaxwzrht2rzc3urjvlyhltxc0287yacjhg8syg4w3dyg3jal6ltksfuc483sel7r8c';
+const ADMIN_STAKE_ADDRESS = 'stake1u9ex0jtl4nv84rlzwuft5rczy2hgkjygewla04mgy7v2nccx4p4yr';
 const ROLE = document.body.dataset.raffleRole === 'admin' ? 'admin' : 'delegator';
 const IS_LOCAL = window.TDSPRuntime?.isLocalPreview === true;
 const ENDPOINTS = IS_LOCAL ? {
@@ -16,6 +17,7 @@ const ENDPOINTS = IS_LOCAL ? {
     delegator: 'https://api.tdsp.online/api/raffle/delegator'
 };
 const SESSION_KEY = `tdsp-raffle-session-${ROLE}`;
+const ADMIN_SESSION_KEY = 'tdsp-raffle-session-admin';
 
 let meshPromise = null;
 let sessionToken = sessionStorage.getItem(SESSION_KEY) || '';
@@ -190,9 +192,10 @@ async function connectWallet(walletInfo) {
         return;
     }
 
-    const [used, unused] = await Promise.all([
+    const [used, unused, rewards] = await Promise.all([
         getWalletAddresses(wallet, 'getUsedAddresses'),
-        getWalletAddresses(wallet, 'getUnusedAddresses')
+        getWalletAddresses(wallet, 'getUnusedAddresses'),
+        getWalletAddresses(wallet, 'getRewardAddresses')
     ]);
     let changeAddress = '';
     try {
@@ -201,10 +204,15 @@ async function connectWallet(walletInfo) {
         changeAddress = '';
     }
     const addresses = new Set([...used, ...unused, changeAddress].filter(Boolean));
-    if (!addresses.has(ADMIN_ADDRESS)) {
-        throw new Error('This wallet does not contain the authorized Admin Area address.');
+    if (addresses.has(ADMIN_ADDRESS)) {
+        await authenticateAddress(wallet, ADMIN_ADDRESS);
+        return;
     }
-    await authenticateAddress(wallet, ADMIN_ADDRESS);
+    if (rewards.includes(ADMIN_STAKE_ADDRESS)) {
+        await authenticateAddress(wallet, ADMIN_STAKE_ADDRESS);
+        return;
+    }
+    throw new Error('This wallet does not contain the authorized Admin Area credential.');
 }
 
 async function populateWallets() {
@@ -299,6 +307,9 @@ function renderAdmin(payload) {
 function renderDelegator(payload) {
     const identity = document.getElementById('raffle-identity');
     identity.replaceChildren(document.createTextNode('Verified stake key '), addressLine(payload.stake_address));
+    const adminLink = document.getElementById('raffle-admin-link');
+    if (adminLink) adminLink.hidden = payload.is_admin !== true;
+    if (payload.is_admin === true) sessionStorage.setItem(ADMIN_SESSION_KEY, sessionToken);
     renderDraws(payload.draws || [], payload.stake_address);
 }
 
@@ -346,6 +357,7 @@ function logout() {
     setRaffleOverlay(false);
     sessionToken = '';
     sessionStorage.removeItem(SESSION_KEY);
+    sessionStorage.removeItem(ADMIN_SESSION_KEY);
     showAuthenticatedUi(false);
     document.getElementById('raffle-wallet-list').replaceChildren();
     setStatus('Wallet session closed.');
