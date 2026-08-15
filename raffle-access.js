@@ -26,6 +26,9 @@ let meshPromise = null;
 let sessionToken = sessionStorage.getItem(SESSION_KEY) || '';
 let raffleOverlayReturnFocus = null;
 let adminTransactionWallet = null;
+let raffleAnchorSupported = false;
+
+const RAFFLE_ANCHOR_UNAVAILABLE = 'On-chain proof is not available in the running Koios proxy yet. Pull the latest proxy image and restart the container, then reload this page.';
 
 function loadMesh() {
     if (!meshPromise) meshPromise = import(MESH_CDN_URL);
@@ -296,6 +299,11 @@ async function recordSubmittedRaffleProof(draw, txHash) {
 }
 
 async function submitRaffleProofTransaction(draw, button, status) {
+    if (!raffleAnchorSupported) {
+        status.textContent = RAFFLE_ANCHOR_UNAVAILABLE;
+        status.classList.add('is-error');
+        return;
+    }
     button.disabled = true;
     const pendingKey = `tdsp-raffle-anchor-${draw.id}`;
     try {
@@ -327,7 +335,10 @@ async function submitRaffleProofTransaction(draw, button, status) {
         setStatus('The raffle result now has an on-chain transaction proof.');
         renderAdmin(await authorizedRequest(ENDPOINTS.admin));
     } catch (error) {
-        status.textContent = error?.info || error?.message || 'The on-chain raffle proof could not be submitted.';
+        const message = error?.info || error?.message || 'The on-chain raffle proof could not be submitted.';
+        status.textContent = message === 'HTTP 404'
+            ? `${RAFFLE_ANCHOR_UNAVAILABLE} A submitted transaction ID is preserved in this browser and will be registered without creating another transaction.`
+            : message;
         status.classList.add('is-error');
         button.disabled = false;
     }
@@ -407,6 +418,7 @@ async function populateWallets() {
 function createDrawCard(draw, viewerAddress = null) {
     const card = document.createElement('article');
     card.className = `governance-menu-card raffle-draw-card${draw.is_winner ? ' is-winner' : ''}`;
+    card.dataset.raffleId = draw.id;
     const heading = document.createElement('h3');
     heading.textContent = draw.title || 'TDSP Delegator Raffle';
     const date = document.createElement('p');
@@ -458,11 +470,14 @@ function createDrawCard(draw, viewerAddress = null) {
         onChainActions.className = 'raffle-on-chain-actions';
         const button = document.createElement('button');
         button.type = 'button';
-        button.className = 'raffle-primary';
+        button.className = 'raffle-primary raffle-on-chain-button';
         button.textContent = 'Publish proof on-chain';
+        button.disabled = !raffleAnchorSupported;
         const help = document.createElement('p');
         help.className = 'small-text';
-        help.textContent = 'Creates a Cardano Mainnet transaction containing the draw proof and charges a network fee.';
+        help.textContent = raffleAnchorSupported
+            ? 'Creates a Cardano Mainnet transaction containing the draw proof and charges a network fee.'
+            : RAFFLE_ANCHOR_UNAVAILABLE;
         const status = document.createElement('p');
         status.className = 'raffle-inline-status';
         status.setAttribute('role', 'status');
@@ -497,6 +512,7 @@ function renderDraws(draws, viewerAddress = null) {
 }
 
 function renderAdmin(payload) {
+    raffleAnchorSupported = payload.capabilities?.on_chain_proof === true;
     document.getElementById('raffle-eligible-count').textContent = Number(payload.pool?.eligible_count || 0).toLocaleString('en-US');
     document.getElementById('raffle-total-stake').textContent = formatAda(payload.pool?.total_eligible_lovelace);
     document.getElementById('raffle-snapshot-time').textContent = payload.pool?.updated_at
@@ -535,9 +551,11 @@ async function submitDraw(event) {
     const form = event.currentTarget;
     const submit = form.querySelector('button[type="submit"]');
     submit.disabled = true;
+    const publishOnChain = form.elements.publish_mode?.value === 'on_chain';
     setStatus('Selecting and publishing a winner...');
     try {
-        await authorizedRequest(ENDPOINTS.draw, {
+        if (publishOnChain && !raffleAnchorSupported) throw new Error(RAFFLE_ANCHOR_UNAVAILABLE);
+        const result = await authorizedRequest(ENDPOINTS.draw, {
             method: 'POST',
             body: JSON.stringify({
                 title: form.elements.title.value,
@@ -546,8 +564,21 @@ async function submitDraw(event) {
             })
         });
         form.reset();
-        setStatus('The raffle result has been published.');
-        renderAdmin(await authorizedRequest(ENDPOINTS.admin));
+        const payload = await authorizedRequest(ENDPOINTS.admin);
+        renderAdmin(payload);
+        if (!publishOnChain) {
+            setStatus('The raffle result has been published on the website.');
+            return;
+        }
+        setStatus('The raffle result has been published. Complete the wallet step to record its proof on Cardano.');
+        const card = [...document.querySelectorAll('[data-raffle-id]')]
+            .find(element => element.dataset.raffleId === result.draw?.id);
+        const button = card?.querySelector('.raffle-on-chain-button');
+        const status = card?.querySelector('.raffle-inline-status');
+        const choices = card?.querySelector('.raffle-wallet-list');
+        if (!button || !status || !choices) throw new Error('The published raffle could not be prepared for on-chain proof.');
+        if (adminTransactionWallet) await submitRaffleProofTransaction(result.draw, button, status);
+        else await chooseRaffleTransactionWallet(result.draw, button, status, choices);
     } catch (error) {
         setStatus(error.message, true);
     } finally {

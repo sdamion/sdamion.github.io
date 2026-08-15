@@ -193,6 +193,19 @@
     margin-top: 3px;
 }
 
+.raffle-publish-options {
+    display: grid;
+    gap: 0.65rem;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.raffle-publish-options legend {
+    margin-bottom: 0.65rem;
+    font-weight: 700;
+}
+
 .raffle-draws {
     display: grid;
     gap: 14px;
