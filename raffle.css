@@ -157,6 +157,11 @@
     margin: 0 0 6px;
 }
 
+.raffle-form code {
+    overflow-wrap: anywhere;
+    word-break: break-all;
+}
+
 .raffle-form label {
     color: var(--text);
     font-weight: 800;
