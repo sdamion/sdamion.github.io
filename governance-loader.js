@@ -5,7 +5,8 @@
     const GOVERNANCE_PIE_CHART_SCRIPT_SRC = 'governance-pie-chart.js?v=20260817-modular-pie-chart';
     const GOVERNANCE_CIPS_SCRIPT_SRC = 'governance-cips.js?v=20260817-modular-cips';
     const GOVERNANCE_NCL_SCRIPT_SRC = 'governance-ncl.js?v=20260817-ncl-actions';
-    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260817-ncl-actions';
+    const GOVERNANCE_NOTIFICATIONS_SCRIPT_SRC = 'governance-notifications.js?v=20260817-modular-notifications';
+    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260817-modular-notifications';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
         '#drep',
@@ -58,6 +59,12 @@
                 datasetName: 'governanceNcl',
                 selector: 'script[data-governance-ncl]',
                 ready: () => window.TDSPNcl || null
+            })
+        )).then(() => (
+            window.TDSPRuntime.loadScript(GOVERNANCE_NOTIFICATIONS_SCRIPT_SRC, {
+                datasetName: 'governanceNotifications',
+                selector: 'script[data-governance-notifications]',
+                ready: () => window.TDSPGovernanceNotifications || null
             })
         )).then(() => (
             window.TDSPRuntime.loadScript(GOVERNANCE_SCRIPT_SRC, {
