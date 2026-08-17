@@ -99,9 +99,6 @@ const DAMION_DREP_ID = 'drep1yg5gkkyxwwr7d6qflf2qqp6drkp9432h6cvtmun0dqthusqlkz8
 let governanceRefreshTimer = null;
 let epochChangeRefreshTimer = null;
 let epochChangeRefreshStartedAtMs = 0;
-let epochCountdownTimer = null;
-let epochEndsAtMs = null;
-let currentEpochNumber = null;
 let lastActiveRenderSignature = '';
 let governanceState = null;
 let governanceGroupsState = null;
@@ -183,6 +180,14 @@ const governanceNotifications = window.TDSPGovernanceNotifications.create({
     getProposalType: getEffectiveProposalType,
     infoActionThreshold: GOVERNANCE_INFO_ACTION_ALERT_YES_THRESHOLD,
     storageKey: GOVERNANCE_NOTIFICATION_STORAGE_KEY
+});
+const governanceEpochClock = window.TDSPEpochClock.create({
+    epochDurationSeconds: EPOCH_DURATION_SECONDS,
+    epochZeroMs: CARDANO_MAINNET_EPOCH_ZERO_MS,
+    onEpochRollover: () => {
+        updateNclEpochCountdown();
+        schedulePostEpochGovernanceRefresh();
+    }
 });
 
 if (document.readyState === 'loading') {
@@ -3707,88 +3712,15 @@ function getCatalystProposalSummaryApiUrl(proposalId) {
 }
 
 function updateEpochDisplayFromDashboardPayload(payload) {
-    updateEpochCountdownFromMainnetClock();
+    governanceEpochClock.update();
 }
 
 function updateEpochCountdownFromMainnetClock() {
-    const clockEpoch = getClockEpochSnapshot();
-    currentEpochNumber = clockEpoch.epoch;
-    epochEndsAtMs = clockEpoch.endsAtMs;
-    const remainingSeconds = Math.max(Math.ceil((epochEndsAtMs - Date.now()) / 1000), 0);
-    updateEpochCountdownDisplay(remainingSeconds);
-    startEpochCountdownTimer();
+    governanceEpochClock.update();
 }
 
 function getClockEpochSnapshot(nowMs = Date.now()) {
-    const epochDurationMs = EPOCH_DURATION_SECONDS * 1000;
-    const elapsedEpochs = Math.max(Math.floor((nowMs - CARDANO_MAINNET_EPOCH_ZERO_MS) / epochDurationMs), 0);
-    return {
-        epoch: elapsedEpochs,
-        endsAtMs: CARDANO_MAINNET_EPOCH_ZERO_MS + ((elapsedEpochs + 1) * epochDurationMs)
-    };
-}
-
-function startEpochCountdownTimer() {
-    if (epochCountdownTimer !== null) return;
-
-    epochCountdownTimer = window.setInterval(() => {
-        if (!Number.isFinite(epochEndsAtMs)) {
-            updateEpochCountdownDisplay(null);
-            return;
-        }
-        const remainingSeconds = Math.max(Math.ceil((epochEndsAtMs - Date.now()) / 1000), 0);
-        if (remainingSeconds <= 0) {
-            rollEpochCountdownForward();
-            return;
-        }
-        updateEpochCountdownDisplay(remainingSeconds);
-    }, 1000);
-}
-
-function rollEpochCountdownForward() {
-    if (!Number.isFinite(epochEndsAtMs)) {
-        updateEpochCountdownDisplay(null);
-        return;
-    }
-
-    const epochDurationMs = EPOCH_DURATION_SECONDS * 1000;
-    const elapsedEpochs = Math.max(Math.floor((Date.now() - epochEndsAtMs) / epochDurationMs) + 1, 1);
-    epochEndsAtMs += elapsedEpochs * epochDurationMs;
-    if (Number.isFinite(currentEpochNumber)) currentEpochNumber += elapsedEpochs;
-    updateNclEpochCountdown();
-    schedulePostEpochGovernanceRefresh();
-
-    const remainingSeconds = Math.max(Math.ceil((epochEndsAtMs - Date.now()) / 1000), 0);
-    updateEpochCountdownDisplay(remainingSeconds);
-}
-
-function updateEpochCountdownDisplay(remainingSeconds) {
-    const menuEpochElement = document.getElementById('menu-epoch');
-    if (menuEpochElement) {
-        const epochText = Number.isFinite(currentEpochNumber) ? `Epoch ${currentEpochNumber}` : 'Epoch ...';
-        menuEpochElement.textContent = Number.isFinite(remainingSeconds)
-            ? `${epochText} ${formatEpochCountdown(remainingSeconds)} left`
-            : epochText;
-        return;
-    }
-
-    const countdownElement = document.getElementById('gov-epoch-countdown');
-    if (!countdownElement) return;
-    countdownElement.textContent = Number.isFinite(remainingSeconds)
-        ? formatEpochCountdown(remainingSeconds)
-        : '--';
-}
-
-function formatEpochCountdown(totalSeconds) {
-    const seconds = Math.max(Math.floor(totalSeconds), 0);
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const remainingSeconds = seconds % 60;
-    return [
-        String(hours).padStart(2, '0'),
-        String(minutes).padStart(2, '0'),
-        String(remainingSeconds).padStart(2, '0')
-    ].join(':');
+    return governanceEpochClock.getSnapshot(nowMs);
 }
 
 function loadGovernanceEntityDetail(key, loader) {

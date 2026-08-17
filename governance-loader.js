@@ -6,7 +6,8 @@
     const GOVERNANCE_CIPS_SCRIPT_SRC = 'governance-cips.js?v=20260817-modular-cips';
     const GOVERNANCE_NCL_SCRIPT_SRC = 'governance-ncl.js?v=20260817-ncl-actions';
     const GOVERNANCE_NOTIFICATIONS_SCRIPT_SRC = 'governance-notifications.js?v=20260817-modular-notifications';
-    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260817-modular-notifications';
+    const GOVERNANCE_EPOCH_CLOCK_SCRIPT_SRC = 'governance-epoch-clock.js?v=20260817-modular-epoch-clock';
+    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260817-modular-epoch-clock';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
         '#drep',
@@ -65,6 +66,12 @@
                 datasetName: 'governanceNotifications',
                 selector: 'script[data-governance-notifications]',
                 ready: () => window.TDSPGovernanceNotifications || null
+            })
+        )).then(() => (
+            window.TDSPRuntime.loadScript(GOVERNANCE_EPOCH_CLOCK_SCRIPT_SRC, {
+                datasetName: 'governanceEpochClock',
+                selector: 'script[data-governance-epoch-clock]',
+                ready: () => window.TDSPEpochClock || null
             })
         )).then(() => (
             window.TDSPRuntime.loadScript(GOVERNANCE_SCRIPT_SRC, {
