@@ -861,26 +861,11 @@ function getFundingRecipientSearchTerms(group) {
 }
 
 function getCatalystProposalUsdTotals(proposals) {
-    return (Array.isArray(proposals) ? proposals : []).reduce((totals, proposal) => ({
-        asked: totals.asked + (Number(proposal?.amount_requested_usd) || 0),
-        received: totals.received + (Number(proposal?.amount_received_usd) || 0)
-    }), { asked: 0, received: 0 });
+    return governanceCatalystFormat.getProposalUsdTotals(proposals);
 }
 
 function getCatalystFundTotals(funds) {
-    return (Array.isArray(funds) ? funds : []).reduce((totals, fund) => ({
-        count: totals.count + (Number(fund?.proposal_count) || 0),
-        fundedUsd: totals.fundedUsd + (Number(fund?.requested_amount) || 0),
-        claimedUsd: totals.claimedUsd + (Number(fund?.claimed_amount) || 0),
-        fundedAda: totals.fundedAda + (Number(fund?.requested_ada) || 0),
-        claimedAda: totals.claimedAda + (Number(fund?.claimed_ada) || 0)
-    }), {
-        count: 0,
-        fundedUsd: 0,
-        claimedUsd: 0,
-        fundedAda: 0,
-        claimedAda: 0
-    });
+    return governanceCatalystFormat.getFundTotals(funds);
 }
 
 function getApprovedGovernanceFundingActions() {
@@ -1634,50 +1619,16 @@ async function openCatalystFundsOverlay(returnFocus = document.activeElement) {
 }
 
 function normalizeCatalystFunds(payload) {
-    return (Array.isArray(payload?.funds) ? payload.funds : []).flatMap(fund => {
-        const fundName = String(fund?.fund_name || '').trim();
-        const proposalCount = Number(fund?.proposal_count);
-        if (!fundName || !Number.isFinite(proposalCount)) return [];
-        return [{
-            fund_name: fundName,
-            proposal_count: proposalCount,
-            ada_proposal_count: Number(fund?.ada_proposal_count) || 0,
-            funded_project_count: Number(fund?.funded_project_count) || 0,
-            funding_currency: String(fund?.funding_currency || '').toUpperCase() || null,
-            requested_amount: Number(fund?.requested_amount) || 0,
-            claimed_amount: Number(fund?.claimed_amount) || 0,
-            not_claimed_amount: Number(fund?.not_claimed_amount) || 0,
-            requested_ada: Number(fund?.requested_ada) || 0,
-            claimed_ada: Number(fund?.claimed_ada) || 0,
-            not_claimed_ada: Number(fund?.not_claimed_ada) || 0,
-            conversion_missing_count: Number(fund?.conversion_missing_count) || 0,
-        }];
-    }).sort((left, right) => (
-        getCatalystFundNumber(right.fund_name) - getCatalystFundNumber(left.fund_name)
-        || left.fund_name.localeCompare(right.fund_name, 'en-US')
-    ));
+    return governanceCatalystFormat.normalizeFunds(payload);
 }
 
 function getCatalystTreasuryFundingOverlayTotals(funds, approvedGovernanceActions) {
-    const catalystTotals = getCatalystFundTotals(funds);
     const treasuryTotals = getApprovedGovernanceFundingTotals(approvedGovernanceActions);
-    return {
-        count: catalystTotals.count + treasuryTotals.count,
-        asked: catalystTotals.fundedUsd + treasuryTotals.usd,
-        claimed: catalystTotals.claimedUsd + treasuryTotals.usd,
-        received: catalystTotals.claimedUsd + treasuryTotals.usd,
-        ada: catalystTotals.claimedAda + treasuryTotals.ada,
-        usdPending: treasuryTotals.usdPending
-    };
+    return governanceCatalystFormat.getCombinedFundingTotals(funds, treasuryTotals);
 }
 
 function formatCatalystTreasuryFundingHeader(totals) {
-    const amount = hasNumericValue(totals?.claimed)
-        ? totals.claimed
-        : hasNumericValue(totals?.received)
-            ? totals.received
-            : totals?.asked;
-    return formatCatalystCurrencyAmount(amount, 'USD', true);
+    return governanceCatalystFormat.formatFundingHeader(totals);
 }
 
 function createApprovedGovernanceFundingCard(actions) {
