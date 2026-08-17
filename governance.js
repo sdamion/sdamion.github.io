@@ -1016,7 +1016,7 @@ const governanceBusinessLinks = window.TDSPBusinessLinks.create({
     openExternalWarning: openExternalSiteWarning
 });
 const governanceCatalystFormat = window.TDSPCatalystFormat.create({
-    formatAdaAmount,
+    formatAdaAmount: formatCatalystAdaAmount,
     formatCompactAda: formatCompactAdaFromLovelace,
     formatFullAda: formatFullAdaFromLovelace
 });
@@ -1937,58 +1937,21 @@ function formatAdaAmount(value, compact = false) {
     return governanceCatalystFormat.formatAdaAmount(value, compact);
 }
 
-function getCatalystMilestoneProgress(proposal) {
-    const progress = proposal?.milestone_progress;
-    if (progress && typeof progress === 'object') {
-        const total = Math.max(0, Number(progress.total) || 0);
-        const completed = Math.min(total, Math.max(0, Number(progress.completed) || 0));
-        return total > 0 ? { completed, total } : null;
-    }
+function formatCatalystAdaAmount(value, compact = false) {
+    const amount = Number(value);
+    if (!Number.isFinite(amount)) return '₳ --';
+    return `₳ ${new Intl.NumberFormat('en-US', {
+        notation: compact ? 'compact' : 'standard',
+        maximumFractionDigits: compact ? 2 : 6
+    }).format(amount)}`;
+}
 
-    const milestones = proposal?.milestones;
-    if (!milestones || typeof milestones !== 'object') return null;
-    const items = Array.isArray(milestones.items) ? milestones.items : [];
-    const completedFromItems = items.filter(item => (
-        ['complete', 'completed', 'finished'].includes(
-            String(item?.status || '').trim().toLowerCase()
-        )
-    )).length;
-    const completed = Math.max(
-        completedFromItems,
-        Math.max(0, Number(milestones.complete) || 0)
-    );
-    const inProgress = Math.max(0, Number(milestones.in_progress) || 0);
-    const total = Math.max(items.length, completed + inProgress);
-    return total > 0 ? { completed: Math.min(completed, total), total } : null;
+function getCatalystMilestoneProgress(proposal) {
+    return governanceCatalystFormat.getMilestoneProgress(proposal);
 }
 
 function appendCatalystMilestoneIndicator(container, proposal) {
-    const progress = getCatalystMilestoneProgress(proposal);
-    if (!progress) return;
-
-    container.classList.add('has-catalyst-milestones');
-    const indicator = document.createElement('span');
-    indicator.className = 'catalyst-milestone-indicator';
-    indicator.setAttribute(
-        'aria-label',
-        `${progress.completed} of ${progress.total} milestones finished`
-    );
-
-    const bar = document.createElement('span');
-    bar.className = 'catalyst-milestone-bar';
-    for (let index = 0; index < progress.total; index += 1) {
-        const segment = document.createElement('span');
-        segment.className = index < progress.completed
-            ? 'catalyst-milestone-segment is-complete'
-            : 'catalyst-milestone-segment is-unfinished';
-        bar.appendChild(segment);
-    }
-
-    const count = document.createElement('strong');
-    count.className = 'catalyst-milestone-count';
-    count.textContent = `${progress.completed}/${progress.total}`;
-    indicator.append(bar, count);
-    container.appendChild(indicator);
+    governanceCatalystFormat.appendMilestoneIndicator(container, proposal);
 }
 
 function createCatalystProposalCard(proposal) {
@@ -2087,8 +2050,7 @@ function openCatalystFundingProjectsOverlay(group, returnFocus) {
 }
 
 function getCatalystFundNumber(value) {
-    const match = String(value || '').match(/\d+/);
-    return match ? Number(match[0]) : Number.MAX_SAFE_INTEGER;
+    return governanceCatalystFormat.getFundNumber(value);
 }
 
 function createCatalystFundingProjectCard(project, group) {
@@ -2243,25 +2205,7 @@ function normalizeBusinessDomainText(value) {
 }
 
 function createFundingRecipientAmountRow(usdValue, adaValue = null, usdPending = false, options = {}) {
-    const row = document.createElement('span');
-    row.className = 'governance-card-amount-row';
-
-    if (!(usdPending && options.hidePendingUsd === true)) {
-        const usdAmount = document.createElement('span');
-        usdAmount.className = 'governance-card-detail governance-treasury-withdrawal-amount';
-        usdAmount.textContent = usdPending
-            ? 'USD updating'
-            : formatCatalystCurrencyAmount(usdValue, 'USD');
-        row.appendChild(usdAmount);
-    }
-
-    if (Number(adaValue) > 0) {
-        const adaAmount = document.createElement('span');
-        adaAmount.className = 'governance-card-detail funding-recipient-ada-value';
-        adaAmount.textContent = formatAdaAmount(adaValue);
-        row.appendChild(adaAmount);
-    }
-    return row;
+    return governanceCatalystFormat.createFundingAmountRow(usdValue, adaValue, usdPending, options);
 }
 
 function getTreasuryBusinessActions(group) {
