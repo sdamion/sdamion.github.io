@@ -9560,6 +9560,7 @@ function renderDrepActionHistory(container, payload, drep) {
         const rationaleButton = createDrepVoteRationaleButton(action, {
             proposal,
             drepName: drep?.name,
+            drepId: drep?.id,
             voteChoice
         });
         if (rationaleButton) card.appendChild(rationaleButton);
@@ -10680,7 +10681,7 @@ function createDrepVoteRow(vote, context = {}) {
 
 function createDrepVoteRationaleButton(vote, context = {}) {
     if (!vote || !context?.proposal?.proposal_id && !vote?.proposal_id && !vote?.proposalId && !vote?.gov_action_id) return null;
-    if (!getDrepVoteIdentifier(vote)) return null;
+    if (!getDrepVoteIdentifier(vote) && !context?.drepId) return null;
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'governance-vote-secondary governance-rationale-read-button';
@@ -10734,12 +10735,12 @@ function openDrepVoteRationaleOverlay(vote, returnFocus, context = {}) {
     if (!rationale) {
         loadDrepVoteRationale(vote, {
             proposalId,
-            drepId: getDrepVoteIdentifier(vote),
+            drepId: getDrepVoteIdentifier(vote) || context.drepId,
             text,
             content
         }).catch(() => {
             if (!text.isConnected) return;
-            text.textContent = 'No on-chain rationale metadata found for this DRep vote.';
+            text.textContent = 'Vote rationale could not be loaded from the API. The koios-proxy container may need the latest image or this vote has no on-chain rationale metadata.';
         });
     }
 }
