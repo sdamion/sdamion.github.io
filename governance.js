@@ -1019,6 +1019,15 @@ const governanceCatalystCharts = window.TDSPCatalystCharts.create({
     getFundingStatus: getCatalystFundingStatus,
     onOpenFundingProjects: openCatalystFundingProjectsOverlay
 });
+const governanceActionButtons = window.TDSPActionButtons.create({
+    createCatalystContext: createCatalystProposalBotContext,
+    createGovernanceContext: createGovernanceActionBotContext,
+    isGovernanceOpenForVoting: isGovernanceProposalOpenForVoting,
+    onAskBot: openConstitutionAssistantOverlay,
+    onOpenCatalystSummary: openCatalystProposalSummaryOverlay,
+    onOpenGovernanceSummary: openProposalSummaryOverlay,
+    onOpenVote: openGovernanceVoteOverlay
+});
 
 function normalizeCatalystTeamMemberDisplayName(value) {
     return fundingDirectory.normalizeTeamMemberDisplayName(value);
@@ -4225,52 +4234,11 @@ function openGovernanceOverlay(proposal, options = {}) {
 }
 
 function createGovernanceProposalActionButtons(proposal, options = {}) {
-    const actions = document.createElement('div');
-    actions.className = 'governance-action-buttons';
-    if (options.showSummary !== false) {
-        actions.appendChild(createGovernanceProposalActionButton(
-            'Summary',
-            'governance-summary-button',
-            (event) => openProposalSummaryOverlay(proposal, event.currentTarget)
-        ));
-    }
-    if (options.showBot !== false) {
-        actions.appendChild(createGovernanceProposalActionButton(
-            'TDSPBot',
-            'governance-tdspbot-button',
-            (event) => openConstitutionAssistantOverlay(
-                createGovernanceActionBotContext(proposal),
-                event.currentTarget
-            )
-        ));
-    }
-    if (options.showVote !== false && isGovernanceProposalOpenForVoting(proposal)) {
-        actions.appendChild(createGovernanceProposalActionButton(
-            'Vote as DRep',
-            'governance-detail-vote-button',
-            (event) => openGovernanceVoteOverlay(proposal, event.currentTarget)
-        ));
-    }
-    return actions;
+    return governanceActionButtons.createGovernanceButtons(proposal, options);
 }
 
 function createCatalystProposalActionButtons(proposal) {
-    const actions = document.createElement('div');
-    actions.className = 'governance-action-buttons';
-    actions.appendChild(createGovernanceProposalActionButton(
-        'Summary',
-        'governance-summary-button',
-        event => openCatalystProposalSummaryOverlay(proposal, event.currentTarget)
-    ));
-    actions.appendChild(createGovernanceProposalActionButton(
-        'TDSPBot',
-        'governance-tdspbot-button',
-        event => openConstitutionAssistantOverlay(
-            createCatalystProposalBotContext(proposal),
-            event.currentTarget
-        )
-    ));
-    return actions;
+    return governanceActionButtons.createCatalystButtons(proposal);
 }
 
 function createGovernanceActionBotContext(proposal) {
@@ -4490,16 +4458,7 @@ function getConstitutionChatRequestContext(context) {
 }
 
 function createGovernanceProposalActionButton(label, className, onClick) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = `governance-vote-button governance-proposal-action-button ${className}`;
-    button.textContent = label;
-    button.addEventListener('click', event => {
-        event.preventDefault();
-        event.stopPropagation();
-        onClick(event);
-    });
-    return button;
+    return governanceActionButtons.createButton(label, className, onClick);
 }
 
 function openProposalSummaryOverlay(proposal, returnFocus, options = {}) {
