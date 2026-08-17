@@ -1818,6 +1818,40 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     line-height: 1.15;
 }
 
+.drep-ncl-bar {
+    display: grid;
+    gap: 6px;
+    margin-top: 8px;
+    min-width: 0;
+}
+
+.drep-ncl-bar-track {
+    display: flex;
+    width: 100%;
+    height: 8px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.16);
+}
+
+.drep-ncl-bar-fill {
+    display: block;
+    min-width: 0;
+    transition: flex-basis 0.25s ease;
+}
+
+.drep-ncl-bar-fill--spend {
+    background: #34d399;
+}
+
+.drep-ncl-bar-fill--left {
+    background: #fb7185;
+}
+
+.drep-ncl-bar-label {
+    overflow-wrap: anywhere;
+}
+
 #gov-spo-scan-status[hidden] {
     display: none !important;
 }

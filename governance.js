@@ -8746,17 +8746,25 @@ async function submitDrepRegistration(container, context, submitButton) {
 }
 
 async function loadDrepDirectoryOverlay(container) {
-    const [infoPayload, directory] = await Promise.all([
+    const [infoPayload, directory, voteStatsPayload] = await Promise.all([
         fetchDrepInfoPayload(),
-        loadDrepDirectory()
+        loadDrepDirectory(),
+        fetchDrepVoteStatsPayload([]).catch(() => null)
     ]);
     if (!container.isConnected) return;
 
     const uniqueDreps = new Map();
+    const statsByDrep = voteStatsPayload?.dreps && typeof voteStatsPayload.dreps === 'object'
+        ? voteStatsPayload.dreps
+        : {};
     unwrapDrepEntries(infoPayload).forEach(entry => {
         const identifiers = getDrepEntryIdentifiers(entry);
         const primaryIdentifier = identifiers[0];
         if (!primaryIdentifier || uniqueDreps.has(primaryIdentifier)) return;
+        const normalizedIdentifiers = identifiers.map(normalizeGovernanceIdentifier).filter(Boolean);
+        const voteStatsKey = normalizedIdentifiers.find(identifier => statsByDrep[identifier])
+            || normalizedIdentifiers.map(shortenDrepIdentifier).find(identifier => statsByDrep[identifier]);
+        const voteStats = voteStatsKey ? statsByDrep[voteStatsKey] || null : null;
         const name = identifiers
             .map(identifier => directory.get(identifier) || directory.get(shortenDrepIdentifier(identifier)))
             .find(Boolean) || extractDrepNameFromEntry(entry) || primaryIdentifier;
@@ -8765,7 +8773,8 @@ async function loadDrepDirectoryOverlay(container) {
             searchIds: identifiers.join(' '),
             name,
             votingPower: getDrepEntryVotingPower(entry),
-            active: entry?.active === true
+            active: entry?.active === true,
+            voteStats
         });
     });
 
@@ -8820,6 +8829,7 @@ function renderDrepDirectory(container, dreps, options = {}) {
         row.dataset.sortName = window.TDSPRuntime.normalizeSearchText(drep.name);
         row.dataset.sortPower = String(Number(drep.votingPower) || 0);
         row.dataset.sortStatus = drep.active ? '1' : '0';
+        row.dataset.sortNcl = String(getDrepNclSpendValues(drep).spent || 0);
         const pinRank = getDrepPinRank(drep);
         if (Number.isFinite(pinRank)) row.dataset.overlayPinRank = String(pinRank);
 
@@ -8846,6 +8856,7 @@ function renderDrepDirectory(container, dreps, options = {}) {
                     text: drep.active ? 'Active' : 'Inactive',
                     className: 'governance-card-detail governance-drep-member-status'
                 },
+                createDrepNclSpendBar(drep),
                 idLine
             ]
         });
@@ -8862,6 +8873,137 @@ function renderDrepDirectory(container, dreps, options = {}) {
         fragment.appendChild(row);
     });
     container.appendChild(fragment);
+}
+
+function createDrepNclSpendBar(drep) {
+    const bar = document.createElement('div');
+    bar.className = 'drep-ncl-bar';
+
+    const track = document.createElement('div');
+    track.className = 'drep-ncl-bar-track';
+    track.setAttribute('aria-hidden', 'true');
+
+    const spendFill = document.createElement('span');
+    spendFill.className = 'drep-ncl-bar-fill drep-ncl-bar-fill--spend';
+    const leftFill = document.createElement('span');
+    leftFill.className = 'drep-ncl-bar-fill drep-ncl-bar-fill--left';
+    track.append(spendFill, leftFill);
+
+    const label = document.createElement('span');
+    label.className = 'governance-card-detail drep-ncl-bar-label';
+
+    const values = getDrepNclSpendValues(drep);
+    if (!Number.isFinite(values.limit) || values.limit <= 0) {
+        spendFill.style.flexBasis = '0%';
+        leftFill.style.flexBasis = '100%';
+        label.textContent = 'Current NCL unavailable';
+        bar.append(track, label);
+        return bar;
+    }
+
+    const spentPercent = Math.min(Math.max((values.spent / values.limit) * 100, 0), 100);
+    spendFill.style.flexBasis = `${spentPercent}%`;
+    leftFill.style.flexBasis = `${Math.max(100 - spentPercent, 0)}%`;
+    label.textContent = [
+        `DRep Yes NCL ${formatNclAdaAmount(values.spent)}`,
+        `NCL Available ${formatNclAdaAmount(values.left)}`,
+        values.pipeline > 0 ? `Pipeline ${formatNclAdaAmount(values.pipeline)}` : null
+    ].filter(Boolean).join(' • ');
+    bar.title = `${drep?.name || 'DRep'} voted Yes on ${formatNclAdaAmount(values.spent)} of treasury asks in the current NCL period. Current open/ratified NCL pipeline is ${formatNclAdaAmount(values.pipeline)}.`;
+    bar.append(track, label);
+    return bar;
+}
+
+function getDrepNclSpendValues(drep) {
+    const values = getNclSummaryValues();
+    const limit = Number(values?.limit);
+    const spent = getDrepNclYesSpend(drep);
+    return {
+        limit,
+        spent,
+        left: Number.isFinite(limit) ? Math.max(limit - spent, 0) : 0,
+        pipeline: getCurrentNclPipelineAmount()
+    };
+}
+
+function getDrepNclYesSpend(drep) {
+    const actions = Array.isArray(drep?.voteStats?.actions) ? drep.voteStats.actions : [];
+    if (!actions.length) return 0;
+
+    const actionIds = new Set(actions
+        .filter(action => formatVoteChoice(action?.vote || action?.vote_bucket) === 'Yes')
+        .flatMap(getDrepVoteStatsProposalIds)
+        .filter(Boolean));
+    if (!actionIds.size) return 0;
+
+    return getCurrentNclTreasuryActions().reduce((total, proposal) => {
+        if (!getGovernanceProposalIdentifierCandidates(proposal).some(proposalId => actionIds.has(proposalId))) return total;
+        return total + getProposalTotalAskLovelace(proposal);
+    }, 0);
+}
+
+function getDrepVoteStatsProposalIds(action) {
+    return [
+        action?.proposal_id,
+        action?.proposalId,
+        action?.gov_action_id,
+        action?.govActionId,
+        action?.action_id,
+        action?.id
+    ].map(value => String(value || '').trim()).filter(Boolean);
+}
+
+function getCurrentNclTreasuryActions() {
+    const period = governanceNcl.getPeriod();
+    if (!period) return [];
+    const actions = [
+        ...governanceNcl.getSpentActions(),
+        ...governanceNcl.getBalanceActions()
+    ];
+    const seen = new Set();
+    return actions.filter(action => {
+        const id = getGovernanceProposalIdentifierCandidates(action)[0];
+        if (!id || seen.has(id) || !isGovernanceProposalInNclPeriod(action, period)) return false;
+        seen.add(id);
+        return true;
+    });
+}
+
+function getCurrentNclPipelineAmount() {
+    const period = governanceNcl.getPeriod();
+    if (!period) return 0;
+    return governanceNcl.getBalanceActions().reduce((total, proposal) => {
+        if (!isGovernanceProposalInNclPeriod(proposal, period)) return total;
+        return total + getProposalTotalAskLovelace(proposal);
+    }, 0);
+}
+
+function isGovernanceProposalInNclPeriod(proposal, period) {
+    const startEpoch = Number(period?.startEpoch);
+    const endEpoch = Number(period?.endEpoch);
+    if (!Number.isFinite(startEpoch) || !Number.isFinite(endEpoch)) return false;
+
+    return [
+        proposal?.enacted_epoch,
+        proposal?.ratified_epoch,
+        proposal?.proposed_epoch,
+        proposal?.proposal_epoch,
+        proposal?.epoch
+    ].some(value => {
+        const epoch = Number(value);
+        return Number.isFinite(epoch) && epoch >= startEpoch && epoch <= endEpoch;
+    });
+}
+
+function getGovernanceProposalIdentifierCandidates(proposal) {
+    return [
+        proposal?.proposal_id,
+        proposal?.proposalId,
+        proposal?.gov_action_id,
+        proposal?.govActionId,
+        proposal?.action_id,
+        proposal?.id
+    ].map(value => String(value || '').trim()).filter(Boolean);
 }
 
 function getDrepPinRank(drep) {
@@ -9465,7 +9607,8 @@ function mergeDrepDetail(drep, payload) {
         votingPower: hasRefreshedVotingPower && Number.isFinite(refreshedVotingPower)
             ? refreshedVotingPower
             : Number(drep?.votingPower) || 0,
-        active: typeof info?.active === 'boolean' ? info.active : Boolean(drep?.active)
+        active: typeof info?.active === 'boolean' ? info.active : Boolean(drep?.active),
+        voteStats: payload?.vote_stats || drep?.voteStats || null
     };
 }
 
@@ -9477,11 +9620,14 @@ function updateDrepDirectoryRow(row, drep) {
     if (name) name.textContent = drep.name;
     if (power) power.textContent = `Voting power: ${formatCompactAdaFromLovelace(drep.votingPower)}`;
     if (status) status.textContent = drep.active ? 'Active' : 'Inactive';
+    const currentNclBar = row.querySelector('.drep-ncl-bar');
+    if (currentNclBar) currentNclBar.replaceWith(createDrepNclSpendBar(drep));
     row.classList.toggle('governance-drep-member--active', drep.active);
     row.classList.toggle('governance-drep-member--inactive', !drep.active);
     row.dataset.sortName = window.TDSPRuntime.normalizeSearchText(drep.name);
     row.dataset.sortPower = String(Number(drep.votingPower) || 0);
     row.dataset.sortStatus = drep.active ? '1' : '0';
+    row.dataset.sortNcl = String(getDrepNclSpendValues(drep).spent || 0);
     row.dataset.searchText = `${drep.id || ''} ${drep.name || ''}`.trim();
     row.setAttribute('aria-label', `Show votes by ${drep.name}`);
 }

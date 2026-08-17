@@ -2186,6 +2186,8 @@ const OVERLAY_SORT_DEFINITIONS = Object.freeze([
     { value: 'projects-asc', label: 'Least funded projects', key: 'sortProjects', direction: 1, type: 'number' },
     { value: 'power-desc', label: 'Most power', key: 'sortPower', direction: -1, type: 'number' },
     { value: 'power-asc', label: 'Least power', key: 'sortPower', direction: 1, type: 'number' },
+    { value: 'ncl-desc', label: 'Most DRep Yes NCL', key: 'sortNcl', direction: -1, type: 'number' },
+    { value: 'ncl-asc', label: 'Least DRep Yes NCL', key: 'sortNcl', direction: 1, type: 'number' },
     { value: 'delegators-desc', label: 'Most delegators', key: 'sortDelegators', direction: -1, type: 'number' },
     { value: 'delegators-asc', label: 'Least delegators', key: 'sortDelegators', direction: 1, type: 'number' },
     { value: 'saturation-desc', label: 'Highest saturation', key: 'sortSaturation', direction: -1, type: 'number' },

@@ -49,6 +49,16 @@
             };
         }
 
+        function getPeriod() {
+            const startEpoch = Number(summary?.start_epoch);
+            const endEpoch = Number(summary?.end_epoch);
+            if (!Number.isFinite(startEpoch) || !Number.isFinite(endEpoch)) return null;
+            return {
+                startEpoch,
+                endEpoch
+            };
+        }
+
         function getLimitLovelace() {
             return Number.isFinite(limitLovelace) && limitLovelace > 0
                 ? limitLovelace
@@ -229,6 +239,7 @@
             closeOverlay,
             formatAdaAmount,
             getBalanceActions,
+            getPeriod,
             getSpentActions,
             getValues,
             openOverlay,
