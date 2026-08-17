@@ -153,6 +153,20 @@ const bindGovernanceMenuTrigger = (element, openMenu) => window.TDSPRuntime.bind
     datasetKey: 'governanceMenuBound',
     errorMessage: 'Governance menu could not be opened.'
 });
+const governanceCips = window.TDSPCips.create({
+    addDetailRow,
+    addMarkdownDetailSection,
+    cleanText: cleanGovernanceText,
+    createBotContext: createCipBotContext,
+    createCopyButton: createGovernanceCopyButton,
+    createMenuOverlay: createGovernanceMenuOverlay,
+    createSectionBotContext: createWebsiteSectionBotContext,
+    getState: () => cipDirectoryState,
+    loadDirectory: loadCipDirectory,
+    removeMenuOverlay: removeGovernanceMenuOverlay,
+    updateMenuBotContext: updateGovernanceOverlayBotContext,
+    updateMenuHeaderMeta: updateGovernanceMenuHeaderMeta
+});
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initGovernance);
@@ -432,172 +446,19 @@ function getCipsApiUrl() {
 }
 
 async function openCipDirectoryOverlay(returnFocus = document.activeElement) {
-    const panel = document.createElement('div');
-    panel.className = 'governance-list governance-action-group-list';
-    const loading = document.createElement('p');
-    loading.className = 'small-text';
-    loading.textContent = 'Loading CIPs...';
-    panel.appendChild(loading);
-
-    createGovernanceMenuOverlay({
-        id: 'governance-cips-overlay',
-        titleId: 'governance-cips-title',
-        titleText: 'Cardano Improvement Proposals',
-        closeLabel: 'Close CIPs',
-        closeOverlay: closeCipDirectoryOverlay,
-        bodyNodes: [panel],
-        headerMeta: cipDirectoryState
-            ? `${(cipDirectoryState.cips || []).length.toLocaleString('en-US')} CIPs`
-            : 'Loading...',
-        returnFocus,
-        rootTitle: 'Cardano Governance',
-        defaultSort: 'cip-asc',
-        searchPlaceholder: 'Search by CIP number, title, status or text',
-        botContext: createWebsiteSectionBotContext('CIPs', {
-            title: 'Cardano Improvement Proposals',
-            count: Array.isArray(cipDirectoryState?.cips) ? cipDirectoryState.cips.length : null,
-            summary: 'Cardano Improvement Proposals cached from the official CIP repository'
-        })
-    });
-
-    try {
-        const payload = cipDirectoryState || await loadCipDirectory();
-        if (!panel.isConnected) return;
-        const cips = normalizeCipDirectory(payload);
-        panel.replaceChildren();
-        cips.forEach(cip => panel.appendChild(createCipCard(cip)));
-        if (!cips.length) {
-            const empty = window.TDSPRuntime.createSmallText('No CIPs are available yet.');
-            panel.appendChild(empty);
-        }
-        updateGovernanceMenuHeaderMeta(
-            'governance-cips-overlay',
-            `${cips.length.toLocaleString('en-US')} CIPs`,
-            panel
-        );
-        updateGovernanceOverlayBotContext(
-            'governance-cips-overlay',
-            createWebsiteSectionBotContext('CIPs', {
-                title: 'Cardano Improvement Proposals',
-                count: cips.length,
-                summary: 'Cardano Improvement Proposals cached from the official CIP repository'
-            }),
-            panel
-        );
-    } catch (error) {
-        console.error('CIPs could not be rendered', error);
-        if (!panel.isConnected) return;
-        panel.replaceChildren();
-        const message = document.createElement('p');
-        message.className = 'small-text';
-        message.textContent = 'CIPs could not be loaded.';
-        panel.appendChild(message);
-    }
+    return governanceCips.openDirectoryOverlay(returnFocus);
 }
 
 function closeCipDirectoryOverlay() {
-    removeGovernanceMenuOverlay('governance-cips-overlay');
-}
-
-function normalizeCipDirectory(payload) {
-    return (Array.isArray(payload?.cips) ? payload.cips : [])
-        .map(cip => ({
-            ...cip,
-            id: String(cip?.id || '').trim(),
-            title: cleanGovernanceText(cip?.title || 'Untitled CIP'),
-            status: cleanGovernanceText(cip?.status || 'Unknown'),
-            category: cleanGovernanceText(cip?.category || ''),
-            authors: Array.isArray(cip?.authors) ? cip.authors.filter(Boolean) : [],
-            abstract: cleanGovernanceText(cip?.abstract || ''),
-            motivation: cleanGovernanceText(cip?.motivation || ''),
-            created_at: cleanGovernanceText(cip?.created_at || ''),
-            source_url: String(cip?.source_url || '').trim(),
-            website_url: String(cip?.website_url || '').trim(),
-            markdown: String(cip?.markdown || '').trim(),
-            number: Number(cip?.number)
-        }))
-        .filter(cip => cip.id)
-        .sort((left, right) => (
-            (Number.isFinite(left.number) ? left.number : Number.MAX_SAFE_INTEGER)
-            - (Number.isFinite(right.number) ? right.number : Number.MAX_SAFE_INTEGER)
-        ));
-}
-
-function createCipCard(cip) {
-    const card = document.createElement('div');
-    card.className = 'governance-card governance-menu-card';
-    card.dataset.searchText = [
-        cip.id,
-        `cip ${cip.number}`,
-        `cip${cip.number}`,
-        cip.title,
-        cip.status,
-        cip.category,
-        cip.authors.join(' '),
-        cip.abstract,
-        cip.motivation
-    ].filter(Boolean).join(' ');
-    card.dataset.sortName = cip.id;
-    card.dataset.sortCip = String(Number.isFinite(cip.number) ? cip.number : Number.MAX_SAFE_INTEGER);
-
-    const openButton = document.createElement('button');
-    openButton.type = 'button';
-    openButton.className = 'governance-card-open';
-    window.TDSPRuntime?.bindMenuTrigger?.(openButton, event => {
-        openCipDetailOverlay(cip, event.currentTarget);
-    }, {
-        datasetKey: 'cipBound',
-        errorMessage: 'CIP details could not be opened.'
-    });
-
-    window.TDSPRuntime?.appendUniversalTileContent?.(openButton, {
-        title: `${cip.id}: ${cip.title}`,
-        primaryText: cip.status,
-        contextItems: [cip.category, cip.authors.length ? cip.authors.join(', ') : null],
-        detailItems: [
-            cip.abstract || cip.motivation || 'Click to read the CIP explanation.'
-        ]
-    });
-    card.appendChild(openButton);
-
-    const copyButton = createGovernanceCopyButton(cip.id, 'CIP ID');
-    copyButton.classList.add('governance-action-id-copy-button');
-    card.appendChild(copyButton);
-    return card;
+    governanceCips.closeDirectoryOverlay();
 }
 
 function openCipDetailOverlay(cip, returnFocus) {
-    const content = document.createElement('div');
-    content.className = 'governance-detail-content';
-    addDetailRow(content, 'CIP ID', cip.id, { copyLabel: 'CIP ID' });
-    addDetailRow(content, 'Status', cip.status);
-    addDetailRow(content, 'Category', cip.category);
-    addDetailRow(content, 'Authors', cip.authors.join(', '));
-    addDetailRow(content, 'Created', cip.created_at);
-    addDetailRow(content, 'CIP website', cip.website_url);
-    addDetailRow(content, 'Source', cip.source_url);
-    addMarkdownDetailSection(content, 'Abstract', cip.abstract);
-    addMarkdownDetailSection(content, 'Motivation', cip.motivation);
-    addMarkdownDetailSection(content, 'Full CIP text', cip.markdown);
-
-    createGovernanceMenuOverlay({
-        id: 'governance-cip-detail-overlay',
-        titleId: 'governance-cip-detail-title',
-        titleText: `${cip.id}: ${cip.title}`,
-        closeLabel: `Close ${cip.id}`,
-        closeOverlay: closeCipDetailOverlay,
-        bodyNodes: [content],
-        headerMeta: cip.status,
-        overlayClass: 'governance-action-detail-overlay',
-        returnFocus,
-        rootTitle: 'Cardano Improvement Proposals',
-        enableSearch: false,
-        botContext: createCipBotContext(cip)
-    });
+    governanceCips.openDetailOverlay(cip, returnFocus);
 }
 
 function closeCipDetailOverlay() {
-    removeGovernanceMenuOverlay('governance-cip-detail-overlay');
+    governanceCips.closeDetailOverlay();
 }
 
 async function openTreasuryOverlay() {
