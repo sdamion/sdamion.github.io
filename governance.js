@@ -149,6 +149,13 @@ const bindGovernanceMenuTrigger = (element, openMenu) => window.TDSPRuntime.bind
 const governanceCopy = window.TDSPGovernanceCopy.create({
     runtime: window.TDSPRuntime
 });
+const governanceDetailRendering = window.TDSPDetailRendering.create({
+    appendRichText,
+    cleanText: cleanGovernanceText,
+    createCopyButton: createGovernanceCopyButton,
+    renderMarkdown,
+    sanitizeMarkdown: sanitizeGovernanceMarkdown
+});
 const governanceCips = window.TDSPCips.create({
     addDetailRow,
     addMarkdownDetailSection,
@@ -5275,54 +5282,11 @@ async function submitGovernanceVote(container, context, submitButton) {
 }
 
 function addDetailRow(container, label, value, options = {}) {
-    if (value === null || value === undefined || value === '') return;
-    const cleanValue = cleanGovernanceText(String(value));
-    if (!cleanValue) return;
-    const displayValue = options.displayValue === undefined
-        ? cleanValue
-        : cleanGovernanceText(String(options.displayValue));
-
-    const row = document.createElement('div');
-    row.className = 'governance-detail-row';
-
-    const key = document.createElement('strong');
-    key.textContent = label;
-
-    const text = document.createElement('span');
-    appendRichText(text, displayValue);
-
-    row.appendChild(key);
-    row.appendChild(text);
-    if (options.copyLabel) {
-        row.classList.add('governance-detail-row--copyable');
-        const copyButton = createGovernanceCopyButton(
-            String(value),
-            options.copyLabel
-        );
-        copyButton.classList.add('governance-detail-copy-button');
-        row.appendChild(copyButton);
-    }
-    container.appendChild(row);
+    governanceDetailRendering.addDetailRow(container, label, value, options);
 }
 
 function addMarkdownDetailSection(container, label, value) {
-    if (value === null || value === undefined || value === '') return;
-    const cleanValue = sanitizeGovernanceMarkdown(cleanGovernanceText(String(value)));
-    if (!cleanValue) return;
-
-    const section = document.createElement('section');
-    section.className = 'governance-markdown-section';
-
-    const heading = document.createElement('strong');
-    heading.textContent = label;
-
-    const body = document.createElement('div');
-    body.className = 'governance-markdown';
-    renderMarkdown(body, cleanValue);
-
-    section.appendChild(heading);
-    section.appendChild(body);
-    container.appendChild(section);
+    governanceDetailRendering.addMarkdownDetailSection(container, label, value);
 }
 
 function addEmbeddedGovernanceImages(container, proposal, candidates = extractGovernanceImageCandidates(proposal)) {

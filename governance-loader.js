@@ -10,6 +10,7 @@
     const GOVERNANCE_BOT_CONTEXTS_SCRIPT_SRC = 'governance-bot-contexts.js?v=20260817-modular-bot-contexts';
     const GOVERNANCE_PROPOSAL_SUMMARY_SCRIPT_SRC = 'governance-proposal-summary.js?v=20260817-modular-proposal-summary';
     const GOVERNANCE_COPY_SCRIPT_SRC = 'governance-copy.js?v=20260817-modular-copy';
+    const GOVERNANCE_DETAIL_RENDERING_SCRIPT_SRC = 'governance-detail-rendering.js?v=20260817-modular-detail-rendering';
     const GOVERNANCE_CIPS_SCRIPT_SRC = 'governance-cips.js?v=20260817-modular-cips';
     const GOVERNANCE_NCL_SCRIPT_SRC = 'governance-ncl.js?v=20260817-current-ncl-period';
     const GOVERNANCE_NOTIFICATIONS_SCRIPT_SRC = 'governance-notifications.js?v=20260817-modular-notifications';
@@ -23,7 +24,7 @@
     const GOVERNANCE_DREP_TOP10_SCRIPT_SRC = 'governance-drep-top10.js?v=20260817-modular-drep-top10';
     const GOVERNANCE_TDSP_DREP_SCRIPT_SRC = 'governance-tdsp-drep.js?v=20260817-modular-tdsp-drep';
     const GOVERNANCE_PROPOSAL_DISPLAY_SCRIPT_SRC = 'governance-proposal-display.js?v=20260817-modular-proposal-display';
-    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260817-modular-copy';
+    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260817-modular-detail-rendering';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
         '#drep',
@@ -106,6 +107,12 @@
                 datasetName: 'governanceCopy',
                 selector: 'script[data-governance-copy]',
                 ready: () => window.TDSPGovernanceCopy || null
+            })
+        )).then(() => (
+            window.TDSPRuntime.loadScript(GOVERNANCE_DETAIL_RENDERING_SCRIPT_SRC, {
+                datasetName: 'governanceDetailRendering',
+                selector: 'script[data-governance-detail-rendering]',
+                ready: () => window.TDSPDetailRendering || null
             })
         )).then(() => (
             window.TDSPRuntime.loadScript(GOVERNANCE_CIPS_SCRIPT_SRC, {
