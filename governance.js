@@ -197,6 +197,20 @@ const governanceVoteData = window.TDSPVoteData.create({
     pickFirstNumber
 });
 const governanceDrepUtils = window.TDSPDrepUtils.create();
+const governanceDrepVotes = window.TDSPDrepVotes.create({
+    addDetailRow,
+    cleanText: cleanGovernanceText,
+    createBotContext: createGovernanceActionBotContext,
+    createMenuOverlay: createGovernanceMenuOverlay,
+    fetchJson,
+    formatVoteChoice,
+    getDrepIdentifier: getDrepVoteIdentifier,
+    getDrepName: getDrepPrimaryDisplayName,
+    getProposalMeta,
+    getProposalRationaleUrl: getProposalDrepRationaleApiUrl,
+    getProposalTitle,
+    removeMenuOverlay: removeGovernanceMenuOverlay
+});
 const governanceProposalDisplay = window.TDSPProposalDisplay.create({
     formatPercentage,
     getApprovalThreshold: getGovernanceApprovalThreshold,
@@ -9557,7 +9571,7 @@ function renderDrepActionHistory(container, payload, drep) {
                 ? 'DRep not voted'
                 : 'DRep not voted yet';
         card.appendChild(vote);
-        const rationaleButton = createDrepVoteRationaleButton(action, {
+        const rationaleButton = governanceDrepVotes.createRationaleButton(action, {
             proposal,
             drepName: drep?.name,
             drepId: drep?.id,
@@ -10657,7 +10671,7 @@ function createDrepVoteRow(vote, context = {}) {
     copy.appendChild(id);
     row.appendChild(copy);
 
-    const rationaleButton = createDrepVoteRationaleButton(vote, {
+    const rationaleButton = governanceDrepVotes.createRationaleButton(vote, {
         ...context,
         drepName: getDrepPrimaryDisplayName(vote),
         voteChoice: formatVoteChoice(vote?.vote || vote?.vote_bucket)
@@ -10677,187 +10691,6 @@ function createDrepVoteRow(vote, context = {}) {
     }
 
     return { row, name };
-}
-
-function createDrepVoteRationaleButton(vote, context = {}) {
-    if (!vote || !context?.proposal?.proposal_id && !vote?.proposal_id && !vote?.proposalId && !vote?.gov_action_id) return null;
-    if (!getDrepVoteIdentifier(vote) && !context?.drepId) return null;
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'governance-vote-secondary governance-rationale-read-button';
-    button.textContent = 'Rationale';
-    button.addEventListener('click', event => {
-        event.preventDefault();
-        event.stopPropagation();
-        openDrepVoteRationaleOverlay(vote, event.currentTarget, context);
-    });
-    return button;
-}
-
-function openDrepVoteRationaleOverlay(vote, returnFocus, context = {}) {
-    const rationale = getDrepVoteRationaleText(vote);
-    const content = document.createElement('div');
-    content.className = 'governance-menu-card governance-vote-rationale-display';
-    const proposalId = context.proposal?.proposal_id || vote?.gov_action_id || vote?.proposal_id || vote?.proposalId || '';
-
-    addDetailRow(content, 'DRep', context.drepName || getDrepPrimaryDisplayName(vote));
-    addDetailRow(content, 'Vote', context.voteChoice || formatVoteChoice(vote?.vote || vote?.vote_bucket));
-    addDetailRow(content, 'Governance action', context.proposal ? getProposalTitle(context.proposal) : '');
-    addDetailRow(content, 'Action ID', proposalId);
-    addDetailRow(content, 'Transaction', getDrepVoteRationaleTransactionId(vote));
-
-    const title = document.createElement('strong');
-    title.textContent = 'Rationale';
-    const text = document.createElement('p');
-    text.className = 'governance-proposal-summary-text';
-    text.textContent = rationale || 'Loading vote rationale...';
-    content.append(title, text);
-
-    createGovernanceMenuOverlay({
-        id: 'governance-vote-rationale-display-overlay',
-        titleId: 'governance-vote-rationale-display-title',
-        titleText: 'Vote rationale',
-        closeLabel: 'Close vote rationale',
-        closeOverlay: closeDrepVoteRationaleOverlay,
-        bodyNodes: [content],
-        headerMeta: context.proposal ? getProposalMeta(context.proposal) : '',
-        overlayClass: 'governance-action-detail-overlay',
-        returnFocus,
-        botContext: context.proposal
-            ? createGovernanceActionBotContext(context.proposal)
-            : {
-                kind: 'drep_vote_rationale',
-                title: 'Vote rationale',
-                summary: rationale
-            }
-    });
-
-    if (!rationale) {
-        loadDrepVoteRationale(vote, {
-            proposalId,
-            drepId: getDrepVoteIdentifier(vote) || context.drepId,
-            text,
-            content
-        }).catch(() => {
-            if (!text.isConnected) return;
-            text.textContent = 'Vote rationale could not be loaded from the API. The koios-proxy container may need the latest image or this vote has no on-chain rationale metadata.';
-        });
-    }
-}
-
-function closeDrepVoteRationaleOverlay() {
-    removeGovernanceMenuOverlay('governance-vote-rationale-display-overlay');
-}
-
-function getDrepVoteRationaleTransactionId(vote) {
-    return vote?.tx_hash
-        || vote?.txHash
-        || vote?.tx_id
-        || vote?.txId
-        || vote?.vote_tx_hash
-        || vote?.transaction_id
-        || vote?.transactionId
-        || '';
-}
-
-async function loadDrepVoteRationale(vote, { proposalId, drepId, text, content }) {
-    if (!proposalId || !drepId) throw new Error('Missing DRep vote rationale lookup data');
-    const payload = await fetchJson(getProposalDrepRationaleApiUrl(proposalId, drepId), { cache: 'no-store' });
-    if (!text.isConnected) return;
-
-    if (payload?.vote) {
-        const voteRows = Array.from(content.querySelectorAll('.governance-detail-row'));
-        const hasVoteRow = voteRows.some(row => row.textContent.includes('Vote'));
-        if (!hasVoteRow) addDetailRow(content, 'Vote', payload.vote);
-    }
-    if (payload?.vote_tx_hash && !getDrepVoteRationaleTransactionId(vote)) {
-        addDetailRow(content, 'Transaction', payload.vote_tx_hash);
-    }
-
-    vote.vote_tx_hash = payload?.vote_tx_hash || vote.vote_tx_hash;
-    vote.tx_metadata = payload?.metadata || vote.tx_metadata;
-    vote.onchain_metadata = payload?.metadata || vote.onchain_metadata;
-    vote.rationale = payload?.rationale || vote.rationale;
-
-    const rationale = getDrepVoteRationaleText(vote);
-    text.textContent = rationale || 'No on-chain rationale metadata found for this DRep vote.';
-}
-
-function getDrepVoteRationaleText(vote) {
-    const directCandidates = [
-        vote?.rationale,
-        vote?.vote_rationale,
-        vote?.voteRationale,
-        vote?.rationale_text,
-        vote?.rationaleText,
-        vote?.reason,
-        vote?.metadata?.rationale,
-        vote?.tx_metadata?.rationale,
-        vote?.auxiliary_data?.rationale,
-        vote?.onchain_metadata?.rationale,
-        vote?.on_chain_metadata?.rationale,
-        vote?.metadata?.['1694']?.rationale,
-        vote?.tx_metadata?.['1694']?.rationale,
-        vote?.auxiliary_data?.['1694']?.rationale,
-        vote?.onchain_metadata?.['1694']?.rationale,
-        vote?.on_chain_metadata?.['1694']?.rationale
-    ];
-
-    for (const candidate of directCandidates) {
-        const text = normalizeDrepVoteRationaleValue(candidate);
-        if (text) return text;
-    }
-
-    for (const root of [
-        vote?.metadata,
-        vote?.tx_metadata,
-        vote?.auxiliary_data,
-        vote?.onchain_metadata,
-        vote?.on_chain_metadata,
-        vote?.meta_json
-    ]) {
-        const text = findDrepVoteRationaleInObject(root);
-        if (text) return text;
-    }
-
-    return '';
-}
-
-function findDrepVoteRationaleInObject(value, depth = 0) {
-    if (!value || depth > 4 || typeof value !== 'object') return '';
-    if (Object.prototype.hasOwnProperty.call(value, 'rationale')) {
-        const text = normalizeDrepVoteRationaleValue(value.rationale);
-        if (text) return text;
-    }
-
-    const preferredKeys = ['1694', 'metadata', 'tx_metadata', 'auxiliary_data', 'json', 'body', 'data'];
-    for (const key of preferredKeys) {
-        if (!Object.prototype.hasOwnProperty.call(value, key)) continue;
-        const text = findDrepVoteRationaleInObject(value[key], depth + 1);
-        if (text) return text;
-    }
-
-    for (const entry of Object.values(value)) {
-        const text = findDrepVoteRationaleInObject(entry, depth + 1);
-        if (text) return text;
-    }
-    return '';
-}
-
-function normalizeDrepVoteRationaleValue(value) {
-    if (value === null || value === undefined) return '';
-    if (typeof value === 'string') return cleanGovernanceText(value.trim());
-    if (Array.isArray(value)) {
-        if (value.every(entry => typeof entry === 'string')) {
-            return cleanGovernanceText(value.join('').trim());
-        }
-        return cleanGovernanceText(value.map(normalizeDrepVoteRationaleValue).filter(Boolean).join('\n').trim());
-    }
-    if (typeof value === 'object') {
-        if (Object.prototype.hasOwnProperty.call(value, 'text')) return normalizeDrepVoteRationaleValue(value.text);
-        if (Object.prototype.hasOwnProperty.call(value, 'value')) return normalizeDrepVoteRationaleValue(value.value);
-    }
-    return '';
 }
 
 function getDrepFromVote(vote) {

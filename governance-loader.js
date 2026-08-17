@@ -9,8 +9,9 @@
     const GOVERNANCE_EPOCH_CLOCK_SCRIPT_SRC = 'governance-epoch-clock.js?v=20260817-modular-epoch-clock';
     const GOVERNANCE_VOTE_DATA_SCRIPT_SRC = 'governance-vote-data.js?v=20260817-modular-vote-data';
     const GOVERNANCE_DREP_UTILS_SCRIPT_SRC = 'governance-drep-utils.js?v=20260817-modular-drep-utils';
+    const GOVERNANCE_DREP_VOTES_SCRIPT_SRC = 'governance-drep-votes.js?v=20260817-modular-drep-votes';
     const GOVERNANCE_PROPOSAL_DISPLAY_SCRIPT_SRC = 'governance-proposal-display.js?v=20260817-modular-proposal-display';
-    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260817-modular-proposal-display';
+    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260817-modular-drep-votes';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
         '#drep',
@@ -87,6 +88,12 @@
                 datasetName: 'governanceDrepUtils',
                 selector: 'script[data-governance-drep-utils]',
                 ready: () => window.TDSPDrepUtils || null
+            })
+        )).then(() => (
+            window.TDSPRuntime.loadScript(GOVERNANCE_DREP_VOTES_SCRIPT_SRC, {
+                datasetName: 'governanceDrepVotes',
+                selector: 'script[data-governance-drep-votes]',
+                ready: () => window.TDSPDrepVotes || null
             })
         )).then(() => (
             window.TDSPRuntime.loadScript(GOVERNANCE_PROPOSAL_DISPLAY_SCRIPT_SRC, {
