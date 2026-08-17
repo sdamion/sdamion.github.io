@@ -999,6 +999,12 @@ const TREASURY_BUSINESS_ALIASES = fundingDirectory.businessAliases;
 const TREASURY_BUSINESS_WEBSITES = fundingDirectory.businessWebsites;
 const TREASURY_BUSINESS_LOGOS = fundingDirectory.businessLogos;
 const TREASURY_BUSINESS_LOGOS_BY_DOMAIN = fundingDirectory.businessLogosByDomain;
+const governanceBusinessLinks = window.TDSPBusinessLinks.create({
+    businessLogos: TREASURY_BUSINESS_LOGOS,
+    businessLogosByDomain: TREASURY_BUSINESS_LOGOS_BY_DOMAIN,
+    normalizeBusinessName: normalizeTreasuryBusinessName,
+    openExternalWarning: openExternalSiteWarning
+});
 
 function normalizeCatalystTeamMemberDisplayName(value) {
     return fundingDirectory.normalizeTeamMemberDisplayName(value);
@@ -2346,136 +2352,21 @@ function getTreasuryBusinessWebsiteUrls(group) {
     const mappedUrl = TREASURY_BUSINESS_WEBSITES[
         normalizeTreasuryBusinessName(group?.label)
     ];
-    if (mappedUrl) return normalizeBusinessUrlList(mappedUrl);
-
-    const normalizedLabel = normalizeBusinessDomainText(group?.label);
-    const candidates = [
-        ...(Array.isArray(group?.catalystProjects) ? group.catalystProjects : [])
-    ]
-        .map(project => project?.website)
-        .map(value => String(value || '').trim())
-        .filter(Boolean);
-    const matchedUrl = candidates.find(url => {
-        const domain = getRootDomainLabel(url);
-        return domain
-            && normalizedLabel
-            && (
-                normalizeBusinessDomainText(domain).includes(normalizedLabel)
-                || normalizedLabel.includes(normalizeBusinessDomainText(domain))
-            );
+    return governanceBusinessLinks.getWebsiteUrls(group, {
+        mappedUrl,
+        normalizeDomainText: normalizeBusinessDomainText,
+        projectWebsites: [
+            ...(Array.isArray(group?.catalystProjects) ? group.catalystProjects : [])
+        ].map(project => project?.website)
     });
-    return normalizeBusinessUrlList(matchedUrl);
-}
-
-function normalizeBusinessUrlList(value) {
-    return (Array.isArray(value) ? value : [value])
-        .map(normalizeExternalUrl)
-        .filter(Boolean);
 }
 
 function createTreasuryBusinessWebsiteLinks(urls) {
-    const normalizedUrls = normalizeBusinessUrlList(urls);
-    if (!normalizedUrls.length) return null;
-    const list = document.createElement('span');
-    list.className = 'governance-business-url-list';
-    normalizedUrls.forEach(url => {
-        const link = document.createElement('a');
-        link.className = 'governance-card-detail governance-business-url';
-        link.href = url;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        link.textContent = getRootDomainLabel(url) || url;
-        link.addEventListener('click', event => {
-            event.preventDefault();
-            event.stopPropagation();
-            if (typeof openExternalSiteWarning === 'function') {
-                openExternalSiteWarning(url, event.currentTarget);
-                return;
-            }
-            window.open(url, '_blank', 'noopener,noreferrer');
-        });
-        list.appendChild(link);
-    });
-    return list;
+    return governanceBusinessLinks.createWebsiteLinks(urls);
 }
 
 function createTreasuryBusinessLogo(urls, label) {
-    const normalizedUrls = normalizeBusinessUrlList(urls);
-    if (!normalizedUrls.length) return null;
-    const logos = normalizedUrls.flatMap(url => {
-        const logoData = getTreasuryBusinessLogoData(url, label);
-        return logoData ? [logoData] : [];
-    });
-    if (!logos.length) return null;
-
-    const frame = document.createElement('span');
-    frame.className = `governance-business-logo-frame${logos.length > 1 ? ' governance-business-logo-frame--multi' : ''}`;
-    frame.setAttribute('aria-hidden', 'true');
-    frame.title = `${label || 'Company'} logo`;
-
-    logos.forEach(({ logoUrl, domain, mappedLogo }) => {
-        const logo = document.createElement('img');
-        logo.className = 'governance-business-logo';
-        logo.alt = '';
-        logo.loading = 'lazy';
-        logo.decoding = 'async';
-        logo.src = logoUrl;
-        logo.addEventListener('error', () => {
-            if (mappedLogo) return;
-            if (logo.dataset.fallbackLoaded === 'true') return;
-            logo.dataset.fallbackLoaded = 'true';
-            logo.src = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=96`;
-        });
-        frame.appendChild(logo);
-    });
-
-    return frame;
-}
-
-function getTreasuryBusinessLogoData(url, label) {
-    const normalizedUrl = normalizeExternalUrl(url);
-    if (!normalizedUrl) return null;
-    const normalizedLabel = normalizeTreasuryBusinessName(label);
-    let origin;
-    let domain;
-    try {
-        const parsed = new URL(normalizedUrl);
-        origin = parsed.origin;
-        domain = parsed.hostname.replace(/^www\./i, '');
-    } catch {
-        return null;
-    }
-    if (!origin || !domain) return null;
-    const mappedLogo = TREASURY_BUSINESS_LOGOS[normalizedLabel]
-        || TREASURY_BUSINESS_LOGOS_BY_DOMAIN[domain];
-    return {
-        logoUrl: mappedLogo || `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=96`,
-        domain,
-        mappedLogo
-    };
-}
-
-function normalizeExternalUrl(value) {
-    const raw = String(value || '').trim();
-    if (!raw) return null;
-    try {
-        const url = new URL(raw.startsWith('http') ? raw : `https://${raw}`);
-        if (!['https:', 'http:'].includes(url.protocol)) return null;
-        return url.href;
-    } catch {
-        return null;
-    }
-}
-
-function getRootDomainLabel(value) {
-    const normalizedUrl = normalizeExternalUrl(value);
-    if (!normalizedUrl) return '';
-    try {
-        const hostname = new URL(normalizedUrl).hostname.replace(/^www\./i, '');
-        return hostname;
-    } catch {
-        return '';
-    }
+    return governanceBusinessLinks.createLogo(urls, label);
 }
 
 function normalizeBusinessDomainText(value) {
