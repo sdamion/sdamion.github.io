@@ -2,9 +2,154 @@
     function createCatalystChartsModule({
         createPieChart,
         createStatBox,
+        formatCurrency,
         formatMoney,
-        formatPercentage
+        formatPercentage,
+        getFundingStatus,
+        onOpenFundingProjects
     }) {
+        function createFundingStatusChart(payload) {
+            const status = getFundingStatus(payload);
+            if (!status || status.requested <= 0) return null;
+
+            const groups = [
+                {
+                    key: 'claimed',
+                    label: 'Claimed',
+                    value: status.claimed,
+                    color: '#34d399',
+                    currency: 'USD',
+                    projects: status.projects.filter(project => (
+                        Number(project.claimed_usd) > 0
+                    )),
+                    amountField: 'claimed_usd',
+                    requestedField: 'requested_usd'
+                },
+                {
+                    key: 'not-claimed',
+                    label: 'Not Claimed',
+                    value: status.notClaimed,
+                    color: '#fb7185',
+                    currency: 'USD',
+                    projects: status.projects.filter(project => (
+                        Number(project.not_claimed_usd) > 0
+                    )),
+                    amountField: 'not_claimed_usd',
+                    requestedField: 'requested_usd'
+                }
+            ].filter(group => group.value > 0);
+
+            return createFundingChartSection({
+                groups,
+                requested: status.requested,
+                projectCount: status.projectCount,
+                projectLabel: 'in-progress projects',
+                currency: 'USD'
+            });
+        }
+
+        function createCurrencyFundingStatusChart(fund, proposals = []) {
+            const requested = Number(fund.requested_amount) || 0;
+            if (!fund.funding_currency || requested <= 0) return null;
+            const fundingProjects = (Array.isArray(proposals) ? proposals : []).flatMap(project => {
+                const projectRequested = Number(project?.amount_requested_usd);
+                if (
+                    project?.project_status !== 'in_progress'
+                    || !Number.isFinite(projectRequested)
+                    || projectRequested <= 0
+                ) return [];
+                const projectClaimed = Math.min(
+                    Math.max(Number(project?.amount_received_usd) || 0, 0),
+                    projectRequested
+                );
+                return [{
+                    ...project,
+                    requested_amount: projectRequested,
+                    claimed_amount: projectClaimed,
+                    not_claimed_amount: Math.max(projectRequested - projectClaimed, 0)
+                }];
+            });
+            const groups = [
+                {
+                    key: 'claimed',
+                    label: 'Claimed',
+                    value: Number(fund.claimed_amount) || 0,
+                    color: '#34d399',
+                    currency: fund.funding_currency,
+                    projects: fundingProjects.filter(project => project.claimed_amount > 0),
+                    amountField: 'claimed_amount',
+                    requestedField: 'requested_amount'
+                },
+                {
+                    key: 'not-claimed',
+                    label: 'Not Claimed',
+                    value: Number(fund.not_claimed_amount) || 0,
+                    color: '#fb7185',
+                    currency: fund.funding_currency,
+                    projects: fundingProjects.filter(project => project.not_claimed_amount > 0),
+                    amountField: 'not_claimed_amount',
+                    requestedField: 'requested_amount'
+                }
+            ].filter(group => group.value > 0);
+            if (!groups.length) return null;
+
+            return createFundingChartSection({
+                groups,
+                requested,
+                projectCount: fund.funded_project_count,
+                projectLabel: 'in-progress projects',
+                currency: fund.funding_currency
+            });
+        }
+
+        function createFundingChartSection({
+            groups,
+            requested,
+            projectCount,
+            projectLabel,
+            currency
+        }) {
+            if (!Array.isArray(groups) || !groups.length) return null;
+            const section = document.createElement('section');
+            section.className = 'governance-vote-chart governance-chart-panel';
+
+            const title = document.createElement('strong');
+            title.textContent = 'Catalyst funding status';
+
+            const projects = document.createElement('span');
+            projects.className = 'governance-card-detail';
+            projects.textContent = `${Number(projectCount || 0).toLocaleString('en-US')} ${projectLabel}`;
+
+            const layout = document.createElement('div');
+            layout.className = 'governance-vote-chart-layout';
+            layout.appendChild(createPieChart(groups, {
+                labelFormatter: segment => (
+                    ((segment.end - segment.start) / 360) >= 0.03
+                        ? formatCurrency(segment.value, currency, true)
+                        : ''
+                ),
+                onSegmentClick: (segment, returnFocus) => (
+                    onOpenFundingProjects(segment, returnFocus)
+                ),
+                showSegmentSeparators: true
+            }));
+
+            const legend = document.createElement('div');
+            legend.className = 'governance-vote-legend';
+            groups.forEach(group => {
+                legend.appendChild(createStatBox({
+                    label: group.label,
+                    detail: `${formatCurrency(group.value, currency)} • ${formatPercentage((group.value / requested) * 100)}`,
+                    color: group.color,
+                    onClick: event => onOpenFundingProjects(group, event.currentTarget)
+                }));
+            });
+
+            layout.appendChild(legend);
+            section.append(title, projects, layout);
+            return section;
+        }
+
         function createVoteChartSection(voting) {
             if (!voting) return null;
             const voteItems = [
@@ -59,6 +204,8 @@
         }
 
         return Object.freeze({
+            createCurrencyFundingStatusChart,
+            createFundingStatusChart,
             createVoteChartSection
         });
     }

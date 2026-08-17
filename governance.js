@@ -1013,8 +1013,11 @@ const governanceCatalystFormat = window.TDSPCatalystFormat.create({
 const governanceCatalystCharts = window.TDSPCatalystCharts.create({
     createPieChart: createUniversalPieChart,
     createStatBox: createGovernanceStatBox,
+    formatCurrency: formatCatalystCurrencyAmount,
     formatMoney: value => governanceCatalystFormat.formatOfficialMoney(value),
-    formatPercentage
+    formatPercentage,
+    getFundingStatus: getCatalystFundingStatus,
+    onOpenFundingProjects: openCatalystFundingProjectsOverlay
 });
 
 function normalizeCatalystTeamMemberDisplayName(value) {
@@ -1163,76 +1166,7 @@ async function openBusinessOverlay(returnFocus = document.activeElement) {
 }
 
 function createCatalystFundingStatusChart(payload) {
-    const status = getCatalystFundingStatus(payload);
-    if (!status || status.requested <= 0) return null;
-
-    const groups = [
-        {
-            key: 'claimed',
-            label: 'Claimed',
-            value: status.claimed,
-            color: '#34d399',
-            currency: 'USD',
-            projects: status.projects.filter(project => (
-                Number(project.claimed_usd) > 0
-            )),
-            amountField: 'claimed_usd',
-            requestedField: 'requested_usd'
-        },
-        {
-            key: 'not-claimed',
-            label: 'Not Claimed',
-            value: status.notClaimed,
-            color: '#fb7185',
-            currency: 'USD',
-            projects: status.projects.filter(project => (
-                Number(project.not_claimed_usd) > 0
-            )),
-            amountField: 'not_claimed_usd',
-            requestedField: 'requested_usd'
-        }
-    ].filter(group => group.value > 0);
-    const section = document.createElement('section');
-    section.className = 'governance-vote-chart governance-chart-panel';
-
-    const title = document.createElement('strong');
-    title.textContent = 'Catalyst funding status';
-
-    const layout = document.createElement('div');
-    layout.className = 'governance-vote-chart-layout';
-    layout.appendChild(createUniversalPieChart(groups, {
-        labelFormatter: segment => (
-            ((segment.end - segment.start) / 360) >= 0.03
-                ? formatCatalystCurrencyAmount(segment.value, 'USD', true)
-                : ''
-        ),
-        onSegmentClick: (segment, returnFocus) => (
-            openCatalystFundingProjectsOverlay(segment, returnFocus)
-        ),
-        showSegmentSeparators: true
-    }));
-
-    const legend = document.createElement('div');
-    legend.className = 'governance-vote-legend';
-    groups.forEach(group => {
-        const percentage = status.requested > 0
-            ? (group.value / status.requested) * 100
-            : 0;
-        legend.appendChild(createGovernanceStatBox({
-            label: group.label,
-            detail: `${formatCatalystCurrencyAmount(group.value, 'USD')} • ${formatPercentage(percentage)}`,
-            color: group.color,
-            onClick: event => openCatalystFundingProjectsOverlay(group, event.currentTarget)
-        }));
-    });
-
-    const projects = document.createElement('span');
-    projects.className = 'governance-card-detail';
-    projects.textContent = `${status.projectCount.toLocaleString('en-US')} in-progress projects`;
-
-    layout.appendChild(legend);
-    section.append(title, projects, layout);
-    return section;
+    return governanceCatalystCharts.createFundingStatusChart(payload);
 }
 
 function createCatalystProposalFundingOverview(funds, proposals, businessPayload, approvedGovernanceActions = [], overviewPayload = fundingOverviewState) {
@@ -1940,92 +1874,7 @@ function createCatalystFundTotals(fund) {
 }
 
 function createCatalystCurrencyFundingStatusChart(fund, proposals = []) {
-    const requested = Number(fund.requested_amount) || 0;
-    if (!fund.funding_currency || requested <= 0) return null;
-    const fundingProjects = (Array.isArray(proposals) ? proposals : []).flatMap(project => {
-        const projectRequested = Number(project?.amount_requested_usd);
-        if (
-            project?.project_status !== 'in_progress'
-            || !Number.isFinite(projectRequested)
-            || projectRequested <= 0
-        ) return [];
-        const projectClaimed = Math.min(
-            Math.max(Number(project?.amount_received_usd) || 0, 0),
-            projectRequested
-        );
-        return [{
-            ...project,
-            requested_amount: projectRequested,
-            claimed_amount: projectClaimed,
-            not_claimed_amount: Math.max(projectRequested - projectClaimed, 0)
-        }];
-    });
-    const groups = [
-        {
-            key: 'claimed',
-            label: 'Claimed',
-            value: Number(fund.claimed_amount) || 0,
-            color: '#34d399',
-            currency: fund.funding_currency,
-            projects: fundingProjects.filter(project => project.claimed_amount > 0),
-            amountField: 'claimed_amount',
-            requestedField: 'requested_amount'
-        },
-        {
-            key: 'not-claimed',
-            label: 'Not Claimed',
-            value: Number(fund.not_claimed_amount) || 0,
-            color: '#fb7185',
-            currency: fund.funding_currency,
-            projects: fundingProjects.filter(project => project.not_claimed_amount > 0),
-            amountField: 'not_claimed_amount',
-            requestedField: 'requested_amount'
-        }
-    ].filter(group => group.value > 0);
-    if (!groups.length) return null;
-
-    const section = document.createElement('section');
-    section.className = 'governance-vote-chart governance-chart-panel';
-
-    const title = document.createElement('strong');
-    title.textContent = 'Catalyst funding status';
-
-    const projects = document.createElement('span');
-    projects.className = 'governance-card-detail';
-    projects.textContent = `${fund.funded_project_count.toLocaleString('en-US')} in-progress projects`;
-
-    const layout = document.createElement('div');
-    layout.className = 'governance-vote-chart-layout';
-    layout.appendChild(createUniversalPieChart(groups, {
-        labelFormatter: segment => (
-            ((segment.end - segment.start) / 360) >= 0.03
-                ? formatCatalystCurrencyAmount(
-                    segment.value,
-                    fund.funding_currency,
-                    true
-                )
-                : ''
-        ),
-        onSegmentClick: (segment, returnFocus) => (
-            openCatalystFundingProjectsOverlay(segment, returnFocus)
-        ),
-        showSegmentSeparators: true
-    }));
-
-    const legend = document.createElement('div');
-    legend.className = 'governance-vote-legend';
-    groups.forEach(group => {
-        legend.appendChild(createGovernanceStatBox({
-            label: group.label,
-            detail: `${formatCatalystCurrencyAmount(group.value, fund.funding_currency)} • ${formatPercentage((group.value / requested) * 100)}`,
-            color: group.color,
-            onClick: event => openCatalystFundingProjectsOverlay(group, event.currentTarget)
-        }));
-    });
-
-    layout.appendChild(legend);
-    section.append(title, projects, layout);
-    return section;
+    return governanceCatalystCharts.createCurrencyFundingStatusChart(fund, proposals);
 }
 
 function formatCatalystFundAmount(fund, kind, compact = false) {
