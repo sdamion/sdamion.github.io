@@ -220,6 +220,13 @@ const governanceDrepNcl = window.TDSPDrepNcl.create({
     getNclValues: getNclSummaryValues,
     getProposalTotalAsk: getProposalTotalAskLovelace
 });
+const governanceDrepStatus = window.TDSPDrepStatus.create({
+    createPieChart: createUniversalPieChart,
+    createStatBox: createGovernanceStatBox,
+    formatAda: formatCompactAdaFromLovelace,
+    formatPercentage,
+    onGroupClick: openDrepStatusListOverlay
+});
 const governanceProposalDisplay = window.TDSPProposalDisplay.create({
     formatPercentage,
     getApprovalThreshold: getGovernanceApprovalThreshold,
@@ -8827,7 +8834,7 @@ function renderDrepDirectory(container, dreps, options = {}) {
     }
 
     if (options.showChart !== false) {
-        container.appendChild(createDrepDirectoryStatusChart(dreps));
+        container.appendChild(governanceDrepStatus.createChart(dreps));
     }
 
     const fragment = document.createDocumentFragment();
@@ -8888,67 +8895,6 @@ function getDrepPinRank(drep) {
     const id = String(drep?.id || '').trim().toLowerCase();
     const name = window.TDSPRuntime.normalizeSearchText(drep?.name).replace(/\s+/g, '');
     return id === DAMION_DREP_ID || name === 'damiondutch' ? 0 : Infinity;
-}
-
-function createDrepDirectoryStatusChart(dreps) {
-    const activeDreps = dreps.filter(drep => drep.active);
-    const inactiveDreps = dreps.filter(drep => !drep.active);
-    const groups = [
-        {
-            key: 'active',
-            label: 'Active',
-            color: '#34d399',
-            dreps: activeDreps,
-            value: activeDreps.reduce((sum, drep) => sum + drep.votingPower, 0)
-        },
-        {
-            key: 'inactive',
-            label: 'Inactive',
-            color: '#fb7185',
-            dreps: inactiveDreps,
-            value: inactiveDreps.reduce((sum, drep) => sum + drep.votingPower, 0)
-        }
-    ];
-    const totalPower = groups.reduce((sum, group) => sum + group.value, 0);
-
-    const section = document.createElement('section');
-    section.className = 'governance-vote-chart governance-chart-panel governance-drep-status-chart';
-
-    const title = document.createElement('strong');
-    title.textContent = 'DRep Status';
-
-    const layout = document.createElement('div');
-    layout.className = 'governance-vote-chart-layout';
-
-    const chart = createUniversalPieChart(groups, {
-        labelFormatter: segment => formatCompactAdaFromLovelace(segment.value)
-    });
-
-    const legend = document.createElement('div');
-    legend.className = 'governance-vote-legend';
-    groups.forEach(group => {
-        legend.appendChild(createDrepDirectoryLegendItem(group, totalPower));
-    });
-
-    layout.appendChild(chart);
-    layout.appendChild(legend);
-    section.appendChild(title);
-    section.appendChild(layout);
-    return section;
-}
-
-function createDrepDirectoryLegendItem(group, totalPower) {
-    const percentage = totalPower > 0 ? (group.value / totalPower) * 100 : 0;
-    return createGovernanceStatBox({
-        label: group.label,
-        detail: `${group.dreps.length.toLocaleString('en-US')} DReps • ${formatCompactAdaFromLovelace(group.value)} • ${formatPercentage(percentage)}`,
-        color: group.color,
-        onClick: event => openDrepStatusListOverlay(
-            `${group.label} DReps`,
-            group.dreps,
-            event.currentTarget
-        )
-    });
 }
 
 async function openTopDrepPowerOverlay(returnFocus = document.activeElement) {
