@@ -195,10 +195,25 @@
             return '';
         }
 
+        function normalizeOnchainMetadataNumber(value) {
+            if (value === null || value === undefined || value === '') return null;
+            const number = Number(value);
+            if (!Number.isFinite(number)) return null;
+            if (Number.isInteger(number) && Number.isSafeInteger(number)) return number;
+            return String(value);
+        }
+
+        function normalizeNullableNumber(value) {
+            const number = Number(value);
+            return Number.isFinite(number) ? number : null;
+        }
+
         return Object.freeze({
             createRationaleButton,
             getRationaleText,
-            getTransactionId
+            getTransactionId,
+            normalizeNullableNumber,
+            normalizeOnchainMetadataNumber
         });
     }
 

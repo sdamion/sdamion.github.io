@@ -4978,22 +4978,22 @@ async function improveGovernanceVoteRationale(context, controls) {
 
         const label = document.createElement('strong');
         label.textContent = 'Improved rationale';
-        const improvedField = createDrepRegistrationTextArea(
-            'Improved rationale',
-            'governance-vote-rationale-improved',
-            '',
-            improved
-        );
-        improvedField.wrapper.querySelector('label')?.remove();
-        improvedField.input.rows = 7;
-        improvedField.input.maxLength = 5000;
+        const improvedWrapper = document.createElement('div');
+        improvedWrapper.className = 'governance-drep-registration-field';
+        const improvedInput = document.createElement('textarea');
+        improvedInput.id = 'governance-vote-rationale-improved';
+        improvedInput.name = 'governance-vote-rationale-improved';
+        improvedInput.value = improved;
+        improvedInput.rows = 7;
+        improvedInput.maxLength = 5000;
+        improvedWrapper.appendChild(improvedInput);
 
         const useButton = document.createElement('button');
         useButton.type = 'button';
         useButton.className = 'governance-vote-secondary';
         useButton.textContent = 'Use improved rationale';
         useButton.addEventListener('click', () => {
-            controls.reasonInput.value = improvedField.input.value;
+            controls.reasonInput.value = improvedInput.value;
             controls.reasonInput.dispatchEvent(new Event('input', { bubbles: true }));
             status.textContent = 'Improved rationale copied into your original rationale field. Review it before continuing.';
             output.prepend(status);
@@ -5003,7 +5003,7 @@ async function improveGovernanceVoteRationale(context, controls) {
         note.className = 'small-text governance-vote-rationale-status';
         note.textContent = 'Review this text carefully. It will only be used when you copy it into the original rationale field and continue.';
 
-        output.append(label, improvedField.wrapper, useButton, note);
+        output.append(label, improvedWrapper, useButton, note);
     } catch (error) {
         if (!output.isConnected) return;
         status.classList.add('is-error');
@@ -5142,16 +5142,11 @@ function createGovernanceVoteRationaleMetadata(context, authorName, reason) {
 }
 
 function normalizeOnchainMetadataNumber(value) {
-    if (value === null || value === undefined || value === '') return null;
-    const number = Number(value);
-    if (!Number.isFinite(number)) return null;
-    if (Number.isInteger(number) && Number.isSafeInteger(number)) return number;
-    return String(value);
+    return governanceDrepVotes.normalizeOnchainMetadataNumber(value);
 }
 
 function normalizeNullableNumber(value) {
-    const number = Number(value);
-    return Number.isFinite(number) ? number : null;
+    return governanceDrepVotes.normalizeNullableNumber(value);
 }
 
 function truncateOnchainMetadataText(value, maxLength = 700) {
@@ -10044,12 +10039,11 @@ function renderMarkdown(container, markdown) {
 }
 
 function isImageUrl(url) {
-    return /\.(png|jpe?g|gif|webp|avif|svg)(\?.*)?$/i.test(url);
+    return governanceRichText.isImageUrl(url);
 }
 
 function isRenderableImageUrl(url, keyHint = '') {
-    if (isImageUrl(url)) return true;
-    return /(image|img|logo|icon|picture|photo|banner|thumbnail|media|qr|svg)/i.test(keyHint);
+    return governanceRichText.isRenderableImageUrl(url, keyHint);
 }
 
 function getProposalTitle(proposal) {

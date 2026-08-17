@@ -361,10 +361,21 @@
             container.appendChild(element);
         }
 
+        function isImageUrl(url) {
+            return /\.(png|jpe?g|gif|webp|avif|svg)(\?.*)?$/i.test(url);
+        }
+
+        function isRenderableImageUrl(url, keyHint = '') {
+            if (isImageUrl(url)) return true;
+            return /(image|img|logo|icon|picture|photo|banner|thumbnail|media|qr|svg)/i.test(keyHint);
+        }
+
         return Object.freeze({
-            cleanText: cleanGovernanceText,
-            sanitizeMarkdown: sanitizeGovernanceMarkdown,
             appendRichText,
+            cleanText: cleanGovernanceText,
+            isImageUrl,
+            isRenderableImageUrl,
+            sanitizeMarkdown: sanitizeGovernanceMarkdown,
             renderMarkdown
         });
     }
@@ -373,4 +384,3 @@
         create: createGovernanceRichText
     });
 }());
-
