@@ -8,7 +8,8 @@
     const GOVERNANCE_NOTIFICATIONS_SCRIPT_SRC = 'governance-notifications.js?v=20260817-modular-notifications';
     const GOVERNANCE_EPOCH_CLOCK_SCRIPT_SRC = 'governance-epoch-clock.js?v=20260817-modular-epoch-clock';
     const GOVERNANCE_VOTE_DATA_SCRIPT_SRC = 'governance-vote-data.js?v=20260817-modular-vote-data';
-    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260817-modular-vote-data';
+    const GOVERNANCE_DREP_UTILS_SCRIPT_SRC = 'governance-drep-utils.js?v=20260817-modular-drep-utils';
+    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260817-modular-drep-utils';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
         '#drep',
@@ -79,6 +80,12 @@
                 datasetName: 'governanceVoteData',
                 selector: 'script[data-governance-vote-data]',
                 ready: () => window.TDSPVoteData || null
+            })
+        )).then(() => (
+            window.TDSPRuntime.loadScript(GOVERNANCE_DREP_UTILS_SCRIPT_SRC, {
+                datasetName: 'governanceDrepUtils',
+                selector: 'script[data-governance-drep-utils]',
+                ready: () => window.TDSPDrepUtils || null
             })
         )).then(() => (
             window.TDSPRuntime.loadScript(GOVERNANCE_SCRIPT_SRC, {
