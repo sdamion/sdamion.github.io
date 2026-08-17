@@ -1009,8 +1009,10 @@ const governanceCatalystCharts = window.TDSPCatalystCharts.create({
     createPieChart: createUniversalPieChart,
     createStatBox: createGovernanceStatBox,
     formatCurrency: formatCatalystCurrencyAmount,
+    formatFundAmount: formatCatalystFundAmount,
     formatMoney: value => governanceCatalystFormat.formatOfficialMoney(value),
     formatPercentage,
+    getFundingProjects: getCatalystFundingProjects,
     getFundingStatus: getCatalystFundingStatus,
     onOpenFundingProjects: openCatalystFundingProjectsOverlay
 });
@@ -1826,42 +1828,11 @@ async function openCatalystFundOverlay(fund, returnFocus) {
 }
 
 function createCatalystFundFundingPayload(fund, businessPayload) {
-    const projects = getCatalystFundingProjects(businessPayload)
-        .filter(project => project.fund_name === fund.fund_name);
-    return {
-        funding_status: {
-            project_count: fund.funded_project_count,
-            requested_lovelace: fund.requested_lovelace,
-            claimed_lovelace: fund.claimed_lovelace,
-            not_claimed_lovelace: fund.not_claimed_lovelace,
-            rounds: [{
-                fund_name: fund.fund_name,
-                project_count: fund.funded_project_count,
-                requested_lovelace: fund.requested_lovelace,
-                claimed_lovelace: fund.claimed_lovelace,
-                not_claimed_lovelace: fund.not_claimed_lovelace
-            }]
-        },
-        funding_projects: projects
-    };
+    return governanceCatalystCharts.createFundFundingPayload(fund, businessPayload);
 }
 
 function createCatalystFundTotals(fund) {
-    const summary = document.createElement('div');
-    summary.className = 'governance-vote-legend governance-catalyst-fund-totals';
-    summary.append(
-        createGovernanceStatBox({
-            label: 'Claimed',
-            detail: formatCatalystFundAmount(fund, 'claimed'),
-            color: '#34d399'
-        }),
-        createGovernanceStatBox({
-            label: 'Not Claimed',
-            detail: formatCatalystFundAmount(fund, 'not_claimed'),
-            color: '#fb7185'
-        })
-    );
-    return summary;
+    return governanceCatalystCharts.createFundTotals(fund);
 }
 
 function createCatalystCurrencyFundingStatusChart(fund, proposals = []) {

@@ -3,8 +3,10 @@
         createPieChart,
         createStatBox,
         formatCurrency,
+        formatFundAmount,
         formatMoney,
         formatPercentage,
+        getFundingProjects,
         getFundingStatus,
         onOpenFundingProjects
     }) {
@@ -150,6 +152,45 @@
             return section;
         }
 
+        function createFundFundingPayload(fund, businessPayload) {
+            const projects = getFundingProjects(businessPayload)
+                .filter(project => project.fund_name === fund.fund_name);
+            return {
+                funding_status: {
+                    project_count: fund.funded_project_count,
+                    requested_lovelace: fund.requested_lovelace,
+                    claimed_lovelace: fund.claimed_lovelace,
+                    not_claimed_lovelace: fund.not_claimed_lovelace,
+                    rounds: [{
+                        fund_name: fund.fund_name,
+                        project_count: fund.funded_project_count,
+                        requested_lovelace: fund.requested_lovelace,
+                        claimed_lovelace: fund.claimed_lovelace,
+                        not_claimed_lovelace: fund.not_claimed_lovelace
+                    }]
+                },
+                funding_projects: projects
+            };
+        }
+
+        function createFundTotals(fund) {
+            const summary = document.createElement('div');
+            summary.className = 'governance-vote-legend governance-catalyst-fund-totals';
+            summary.append(
+                createStatBox({
+                    label: 'Claimed',
+                    detail: formatFundAmount(fund, 'claimed'),
+                    color: '#34d399'
+                }),
+                createStatBox({
+                    label: 'Not Claimed',
+                    detail: formatFundAmount(fund, 'not_claimed'),
+                    color: '#fb7185'
+                })
+            );
+            return summary;
+        }
+
         function createVoteChartSection(voting) {
             if (!voting) return null;
             const voteItems = [
@@ -205,6 +246,8 @@
 
         return Object.freeze({
             createCurrencyFundingStatusChart,
+            createFundFundingPayload,
+            createFundTotals,
             createFundingStatusChart,
             createVoteChartSection
         });
