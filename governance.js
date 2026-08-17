@@ -237,8 +237,10 @@ const governanceDrepCorrelation = window.TDSPDrepCorrelation.create({
 const governanceDrepTop10 = window.TDSPDrepTop10.create({
     bindOpen: bindGovernanceMenuTrigger,
     formatVoteChoice,
+    getIdentifiers: getDrepEntryIdentifiers,
     isApplicable: isGovernanceActionApplicableToDrep,
     isClosed: isExpiredGovernanceActionForCommitteeStats,
+    normalizeIdentifier: normalizeGovernanceIdentifier,
     onOpenDrep: openDrepActionHistoryOverlay
 });
 const governanceProposalDisplay = window.TDSPProposalDisplay.create({
@@ -8984,7 +8986,7 @@ async function openTopDrepPowerOverlay(returnFocus = document.activeElement) {
                         renderTopDrepVoteMatrix(
                             panel,
                             topDreps,
-                            topDreps.map(drep => createCachedDrepVoteDetailPayload(drep, voteStatsPayload))
+                            topDreps.map(drep => governanceDrepTop10.createCachedVoteDetailPayload(drep, voteStatsPayload))
                         );
                     });
                 }
@@ -9011,10 +9013,13 @@ async function openTopDrepPowerOverlay(returnFocus = document.activeElement) {
                     renderTopDrepVoteMatrix(
                         panel,
                         topDreps,
-                        topDreps.map(drep => createCachedDrepVoteDetailPayload(drep, voteStatsPayload))
+                        topDreps.map(drep => governanceDrepTop10.createCachedVoteDetailPayload(drep, voteStatsPayload))
                     );
                 }
-                if (isDrepVoteStatsPayloadStale(voteStatsPayload)) {
+                if (governanceDrepTop10.isVoteStatsPayloadStale(
+                    voteStatsPayload,
+                    DREP_TOP10_BACKGROUND_REFRESH_MAX_AGE_MS
+                )) {
                     refreshTopDrepVoteMatrix();
                 }
             })
@@ -9053,51 +9058,6 @@ async function openTopDrepPowerOverlay(returnFocus = document.activeElement) {
 
 function closeTopDrepPowerOverlay() {
     removeGovernanceMenuOverlay('governance-drep-top10-overlay');
-}
-
-function isDrepVoteStatsPayloadStale(voteStatsPayload) {
-    const updatedAt = Date.parse(String(
-        voteStatsPayload?.updated_at
-        || voteStatsPayload?.generated_at
-        || voteStatsPayload?.created_at
-        || ''
-    ));
-    return !Number.isFinite(updatedAt)
-        || Date.now() - updatedAt > DREP_TOP10_BACKGROUND_REFRESH_MAX_AGE_MS;
-}
-
-function createCachedDrepVoteDetailPayload(drep, voteStatsPayload) {
-    const statsByDrep = voteStatsPayload?.dreps && typeof voteStatsPayload.dreps === 'object'
-        ? voteStatsPayload.dreps
-        : {};
-    const identifiers = getDrepEntryIdentifiers(drep).map(normalizeGovernanceIdentifier).filter(Boolean);
-    const cachedId = identifiers.find(identifier => statsByDrep[identifier])
-        || identifiers.map(shortenDrepIdentifier).find(identifier => statsByDrep[identifier]);
-    const cachedStats = cachedId ? statsByDrep[cachedId] : null;
-
-    return {
-        drep_id: drep?.id || cachedId || identifiers[0] || '',
-        info: {
-            amount: drep?.votingPower,
-            active: drep?.active === true
-        },
-        metadata: {
-            meta_json: {
-                body: {
-                    givenName: drep?.name || cachedId || identifiers[0] || 'DRep'
-                }
-            }
-        },
-        vote_stats: {
-            source: voteStatsPayload?.source || 'cache',
-            updated_at: voteStatsPayload?.updated_at || null,
-            cached_proposals: voteStatsPayload?.cached_proposals || 0,
-            total_proposals: voteStatsPayload?.total_proposals || 0,
-            ...(cachedStats && typeof cachedStats === 'object' ? cachedStats : {}),
-            vote_count: Number(cachedStats?.vote_count) || 0,
-            actions: Array.isArray(cachedStats?.actions) ? cachedStats.actions : []
-        }
-    };
 }
 
 function renderTopDrepPowerList(container, topDreps) {
@@ -9284,7 +9244,7 @@ function openDrepActionHistoryOverlay(drep, returnFocus = null) {
 
     fetchDrepVoteStatsPayload([drep])
         .then(voteStatsPayload => {
-            renderPayload(createCachedDrepVoteDetailPayload(drep, voteStatsPayload));
+            renderPayload(governanceDrepTop10.createCachedVoteDetailPayload(drep, voteStatsPayload));
         })
         .catch(error => {
             console.warn('Cached DRep vote stats could not be loaded', error);

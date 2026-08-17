@@ -2,8 +2,10 @@
     function createDrepTop10Module({
         bindOpen,
         formatVoteChoice,
+        getIdentifiers,
         isApplicable,
         isClosed,
+        normalizeIdentifier,
         onOpenDrep
     }) {
         function getVoteMatrixChoice(drep, proposal) {
@@ -35,7 +37,10 @@
             const chip = document.createElement('button');
             chip.type = 'button';
             chip.className = `governance-top-drep-vote-chip ${getVoteChoiceClass(choice)}`;
-            bindOpen(chip, event => onOpenDrep(drep, event.currentTarget));
+            bindOpen(chip, event => {
+                event.stopPropagation();
+                onOpenDrep(drep, event.currentTarget);
+            });
 
             const name = document.createElement('strong');
             name.textContent = drep?.name || 'DRep';
@@ -54,10 +59,64 @@
             return 'is-unknown';
         }
 
+        function isVoteStatsPayloadStale(voteStatsPayload, maxAgeMs) {
+            const updatedAt = Date.parse(String(
+                voteStatsPayload?.updated_at
+                || voteStatsPayload?.generated_at
+                || voteStatsPayload?.created_at
+                || ''
+            ));
+            return !Number.isFinite(updatedAt) || Date.now() - updatedAt > maxAgeMs;
+        }
+
+        function createCachedVoteDetailPayload(drep, voteStatsPayload) {
+            const statsByDrep = voteStatsPayload?.dreps && typeof voteStatsPayload.dreps === 'object'
+                ? voteStatsPayload.dreps
+                : {};
+            const identifiers = (typeof getIdentifiers === 'function' ? getIdentifiers(drep) : [])
+                .map(normalizeIdentifier)
+                .filter(Boolean);
+            const cachedId = identifiers.find(identifier => statsByDrep[identifier])
+                || identifiers.map(shortenDrepIdentifier).find(identifier => statsByDrep[identifier]);
+            const cachedStats = cachedId ? statsByDrep[cachedId] : null;
+
+            return {
+                drep_id: drep?.id || cachedId || identifiers[0] || '',
+                info: {
+                    amount: drep?.votingPower,
+                    active: drep?.active === true
+                },
+                metadata: {
+                    meta_json: {
+                        body: {
+                            givenName: drep?.name || cachedId || identifiers[0] || 'DRep'
+                        }
+                    }
+                },
+                vote_stats: {
+                    source: voteStatsPayload?.source || 'cache',
+                    updated_at: voteStatsPayload?.updated_at || null,
+                    cached_proposals: voteStatsPayload?.cached_proposals || 0,
+                    total_proposals: voteStatsPayload?.total_proposals || 0,
+                    ...(cachedStats && typeof cachedStats === 'object' ? cachedStats : {}),
+                    vote_count: Number(cachedStats?.vote_count) || 0,
+                    actions: Array.isArray(cachedStats?.actions) ? cachedStats.actions : []
+                }
+            };
+        }
+
+        function shortenDrepIdentifier(value) {
+            const text = String(value || '');
+            if (text.length <= 24) return text;
+            return `${text.slice(0, 14)}...${text.slice(-8)}`;
+        }
+
         return Object.freeze({
+            createCachedVoteDetailPayload,
             createVoteChip,
             formatSameVoteLine,
-            getVoteMatrixChoice
+            getVoteMatrixChoice,
+            isVoteStatsPayloadStale
         });
     }
 
