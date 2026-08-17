@@ -1,7 +1,8 @@
 (function () {
     const GOVERNANCE_RICH_TEXT_SCRIPT_SRC = 'governance-rich-text.js?v=20260817-modular-rich-text';
     const GOVERNANCE_ASSISTANT_SCRIPT_SRC = 'governance-assistant.js?v=20260817-modular-assistant';
-    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260817-modular-assistant';
+    const GOVERNANCE_FUNDING_DIRECTORY_SCRIPT_SRC = 'governance-funding-directory.js?v=20260817-modular-funding-directory';
+    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260817-modular-funding-directory';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
         '#drep',
@@ -30,6 +31,12 @@
                 datasetName: 'governanceAssistant',
                 selector: 'script[data-governance-assistant]',
                 ready: () => window.TDSPGovernanceAssistant || null
+            })
+        )).then(() => (
+            window.TDSPRuntime.loadScript(GOVERNANCE_FUNDING_DIRECTORY_SCRIPT_SRC, {
+                datasetName: 'governanceFundingDirectory',
+                selector: 'script[data-governance-funding-directory]',
+                ready: () => window.TDSPFundingDirectory || null
             })
         )).then(() => (
             window.TDSPRuntime.loadScript(GOVERNANCE_SCRIPT_SRC, {
