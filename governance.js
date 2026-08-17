@@ -195,6 +195,12 @@ const governanceVoteData = window.TDSPVoteData.create({
     pickFirstNumber
 });
 const governanceDrepUtils = window.TDSPDrepUtils.create();
+const governanceProposalDisplay = window.TDSPProposalDisplay.create({
+    formatPercentage,
+    getApprovalThreshold: getGovernanceApprovalThreshold,
+    getEffectiveProposalType,
+    getGovernanceStatus
+});
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initGovernance);
@@ -10957,60 +10963,27 @@ function isRenderableImageUrl(url, keyHint = '') {
 }
 
 function getProposalTitle(proposal) {
-    return proposal.meta_json?.body?.title
-        || proposal.meta_json?.title
-        || `${window.TDSPRuntime.formatReadableLabel(getEffectiveProposalType(proposal), 'Governance')} governance action`;
+    return governanceProposalDisplay.getTitle(proposal);
 }
 
 function getProposalMeta(proposal) {
-    const parts = [`Epoch ${proposal.proposed_epoch}`];
-    if (proposal.expiration !== null) parts.push(`expires ${proposal.expiration}`);
-    if (proposal.enacted_epoch !== null) parts.push(`enacted ${proposal.enacted_epoch}`);
-    if (proposal.ratified_epoch !== null) parts.push(`ratified ${proposal.ratified_epoch}`);
-    if (proposal.expired_epoch !== null) parts.push(`expired ${proposal.expired_epoch}`);
-    if (proposal.dropped_epoch !== null) parts.push(`dropped ${proposal.dropped_epoch}`);
-    return parts.join(' - ');
+    return governanceProposalDisplay.getMeta(proposal);
 }
 
 function getExpirationText(proposal) {
-    if (proposal.expired_epoch !== null) return `Expired epoch ${proposal.expired_epoch}`;
-    if (proposal.dropped_epoch !== null) return `Dropped epoch ${proposal.dropped_epoch}`;
-    if (proposal.expiration !== null) return `Expires epoch ${proposal.expiration}`;
-    return 'No expiration data';
+    return governanceProposalDisplay.getExpirationText(proposal);
 }
 
 function getVoteColorClass(percentages, source = 'drep', proposal = null) {
-    const yes = Number(percentages?.yes);
-    if (!Number.isFinite(yes)) return 'vote-neutral';
-
-    const threshold = getGovernanceApprovalThreshold(proposal, source);
-    if (yes >= threshold) return 'vote-green';
-    if (yes >= threshold / 2) return 'vote-orange';
-    return 'vote-red';
+    return governanceProposalDisplay.getVoteColorClass(percentages, source, proposal);
 }
 
 function formatVotePercentages(percentages, label = null, summary = null, source = null) {
-    if (!percentages) return '';
-
-    const parts = [
-        `Yes ${formatPercentage(percentages.yes)}`,
-        `No - Not Voted ${formatPercentage(percentages.no)}`
-    ];
-    return parts.join(' | ');
+    return governanceProposalDisplay.formatVotePercentages(percentages, label, summary, source);
 }
 
 function getGovernanceGroupSignature(proposals) {
-    return JSON.stringify(proposals.map(proposal => ({
-        proposal_id: proposal.proposal_id,
-        status: getGovernanceStatus(proposal),
-        expiration: proposal.expiration,
-        ratified_epoch: proposal.ratified_epoch,
-        enacted_epoch: proposal.enacted_epoch,
-        expired_epoch: proposal.expired_epoch,
-        dropped_epoch: proposal.dropped_epoch,
-        voteDisplay: proposal.voteDisplay,
-        votePercentages: proposal.votePercentages
-    })));
+    return governanceProposalDisplay.getGroupSignature(proposals);
 }
 
 async function updateGovernanceCounts(groups) {
