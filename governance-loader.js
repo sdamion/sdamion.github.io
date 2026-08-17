@@ -1,5 +1,7 @@
 (function () {
-    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260815-delegator-wallets';
+    const GOVERNANCE_RICH_TEXT_SCRIPT_SRC = 'governance-rich-text.js?v=20260817-modular-rich-text';
+    const GOVERNANCE_ASSISTANT_SCRIPT_SRC = 'governance-assistant.js?v=20260817-modular-assistant';
+    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260817-modular-assistant';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
         '#drep',
@@ -14,12 +16,28 @@
         '#tdspbot-open',
         '#site-alerts-button'
     ];
-    function loadGovernanceScript() {
-        return window.TDSPRuntime.loadScript(GOVERNANCE_SCRIPT_SRC, {
-            datasetName: 'governanceMain',
-            selector: 'script[data-governance-main]',
-            ready: () => (null ? true : null)
+    function loadGovernanceRichTextScript() {
+        return window.TDSPRuntime.loadScript(GOVERNANCE_RICH_TEXT_SCRIPT_SRC, {
+            datasetName: 'governanceRichText',
+            selector: 'script[data-governance-rich-text]',
+            ready: () => window.TDSPGovernanceRichText || null
         });
+    }
+
+    function loadGovernanceScript() {
+        return loadGovernanceRichTextScript().then(() => (
+            window.TDSPRuntime.loadScript(GOVERNANCE_ASSISTANT_SCRIPT_SRC, {
+                datasetName: 'governanceAssistant',
+                selector: 'script[data-governance-assistant]',
+                ready: () => window.TDSPGovernanceAssistant || null
+            })
+        )).then(() => (
+            window.TDSPRuntime.loadScript(GOVERNANCE_SCRIPT_SRC, {
+                datasetName: 'governanceMain',
+                selector: 'script[data-governance-main]',
+                ready: () => null
+            })
+        ));
     }
 
     function initGovernanceLoader() {
