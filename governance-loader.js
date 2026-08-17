@@ -3,6 +3,7 @@
     const GOVERNANCE_ASSISTANT_SCRIPT_SRC = 'governance-assistant.js?v=20260817-modular-assistant';
     const GOVERNANCE_FUNDING_DIRECTORY_SCRIPT_SRC = 'governance-funding-directory.js?v=20260817-modular-funding-directory';
     const GOVERNANCE_BUSINESS_LINKS_SCRIPT_SRC = 'governance-business-links.js?v=20260817-modular-business-links';
+    const GOVERNANCE_CATALYST_FORMAT_SCRIPT_SRC = 'governance-catalyst-format.js?v=20260817-modular-catalyst-format';
     const GOVERNANCE_PIE_CHART_SCRIPT_SRC = 'governance-pie-chart.js?v=20260817-modular-pie-chart';
     const GOVERNANCE_CIPS_SCRIPT_SRC = 'governance-cips.js?v=20260817-modular-cips';
     const GOVERNANCE_NCL_SCRIPT_SRC = 'governance-ncl.js?v=20260817-current-ncl-period';
@@ -17,7 +18,7 @@
     const GOVERNANCE_DREP_TOP10_SCRIPT_SRC = 'governance-drep-top10.js?v=20260817-modular-drep-top10';
     const GOVERNANCE_TDSP_DREP_SCRIPT_SRC = 'governance-tdsp-drep.js?v=20260817-modular-tdsp-drep';
     const GOVERNANCE_PROPOSAL_DISPLAY_SCRIPT_SRC = 'governance-proposal-display.js?v=20260817-modular-proposal-display';
-    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260817-modular-business-links';
+    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260817-modular-catalyst-format';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
         '#drep',
@@ -58,6 +59,12 @@
                 datasetName: 'governanceBusinessLinks',
                 selector: 'script[data-governance-business-links]',
                 ready: () => window.TDSPBusinessLinks || null
+            })
+        )).then(() => (
+            window.TDSPRuntime.loadScript(GOVERNANCE_CATALYST_FORMAT_SCRIPT_SRC, {
+                datasetName: 'governanceCatalystFormat',
+                selector: 'script[data-governance-catalyst-format]',
+                ready: () => window.TDSPCatalystFormat || null
             })
         )).then(() => (
             window.TDSPRuntime.loadScript(GOVERNANCE_PIE_CHART_SCRIPT_SRC, {

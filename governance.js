@@ -1005,6 +1005,11 @@ const governanceBusinessLinks = window.TDSPBusinessLinks.create({
     normalizeBusinessName: normalizeTreasuryBusinessName,
     openExternalWarning: openExternalSiteWarning
 });
+const governanceCatalystFormat = window.TDSPCatalystFormat.create({
+    formatAdaAmount,
+    formatCompactAda: formatCompactAdaFromLovelace,
+    formatFullAda: formatFullAdaFromLovelace
+});
 
 function normalizeCatalystTeamMemberDisplayName(value) {
     return fundingDirectory.normalizeTeamMemberDisplayName(value);
@@ -2018,38 +2023,15 @@ function createCatalystCurrencyFundingStatusChart(fund, proposals = []) {
 }
 
 function formatCatalystFundAmount(fund, kind, compact = false) {
-    const amount = Number(fund?.[`${kind}_amount`]) || 0;
-    return formatCatalystCurrencyAmount(amount, 'USD', compact);
+    return governanceCatalystFormat.formatFundAmount(fund, kind, compact);
 }
 
 function formatCatalystCurrencyAmount(value, currency, compact = false) {
-    const normalizedCurrency = String(currency || '').trim().toUpperCase();
-    if (!normalizedCurrency || normalizedCurrency === 'MIXED') return '--';
-    if (normalizedCurrency === 'ADA') return formatAdaAmount(value, compact);
-    const amount = Number(value) || 0;
-    const options = {
-        notation: compact ? 'compact' : 'standard',
-        maximumFractionDigits: compact ? 2 : 0
-    };
-
-    try {
-        return new Intl.NumberFormat('en-US', {
-            ...options,
-            style: 'currency',
-            currency: normalizedCurrency
-        }).format(amount);
-    } catch {
-        return `${new Intl.NumberFormat('en-US', options).format(amount)} ${normalizedCurrency}`;
-    }
+    return governanceCatalystFormat.formatCurrencyAmount(value, currency, compact);
 }
 
 function formatCatalystUsdRate(value) {
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 6
-    }).format(Number(value) || 0);
+    return governanceCatalystFormat.formatUsdRate(value);
 }
 
 function hasNumericValue(value) {
@@ -2281,13 +2263,7 @@ function createCatalystFundingProjectCard(project, group) {
 }
 
 function formatCatalystFundingAmount(value, currency = 'ADA', compact = false) {
-    return currency === 'ADA'
-        ? (
-            compact
-                ? formatCompactAdaFromLovelace(value)
-                : formatFullAdaFromLovelace(value)
-        )
-        : formatCatalystCurrencyAmount(value, currency, compact);
+    return governanceCatalystFormat.formatFundingAmount(value, currency, compact);
 }
 
 function closeCatalystFundingProjectsOverlay() {
@@ -2761,18 +2737,11 @@ function createCatalystVoteChartSection(voting) {
 }
 
 function formatCatalystOfficialMoney(value) {
-    const amount = Number(value?.amount);
-    if (!Number.isFinite(amount)) return null;
-    const currency = String(value?.currency || '').replace(/^\$/, '').toUpperCase();
-    return currency === 'ADA'
-        ? formatAdaAmount(amount)
-        : formatCatalystCurrencyAmount(amount, currency || 'USD');
+    return governanceCatalystFormat.formatOfficialMoney(value);
 }
 
 function formatCatalystProposalAmount(proposal, kind) {
-    const amount = Number(proposal?.[`amount_${kind}_usd`]);
-    if (!Number.isFinite(amount)) return null;
-    return formatCatalystCurrencyAmount(amount, 'USD');
+    return governanceCatalystFormat.formatProposalAmount(proposal, kind);
 }
 
 function closeBusinessOverlay() {
