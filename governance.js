@@ -9373,17 +9373,30 @@ function openDrepActionHistoryOverlay(drep, returnFocus = null) {
         botContext: createDrepBotContext(drep)
     });
 
-    loadDrepDetail(drep)
-        .then(payload => {
-            const refreshedDrep = mergeDrepDetail(drep, payload);
-            Object.assign(drep, refreshedDrep);
-            updateDrepDirectoryRow(returnFocus, refreshedDrep);
-            const title = document.getElementById('governance-drep-actions-title');
-            if (title) title.textContent = refreshedDrep.name;
-            renderDrepActionHistory(panel, payload, refreshedDrep);
+    let hasRendered = false;
+    const renderPayload = (payload) => {
+        if (!panel.isConnected) return;
+        const refreshedDrep = mergeDrepDetail(drep, payload);
+        Object.assign(drep, refreshedDrep);
+        updateDrepDirectoryRow(returnFocus, refreshedDrep);
+        const title = document.getElementById('governance-drep-actions-title');
+        if (title) title.textContent = refreshedDrep.name;
+        renderDrepActionHistory(panel, payload, refreshedDrep);
+        hasRendered = true;
+    };
+
+    fetchDrepVoteStatsPayload([drep])
+        .then(voteStatsPayload => {
+            renderPayload(createCachedDrepVoteDetailPayload(drep, voteStatsPayload));
         })
+        .catch(error => {
+            console.warn('Cached DRep vote stats could not be loaded', error);
+        });
+
+    loadDrepDetail(drep)
+        .then(renderPayload)
         .catch(() => {
-            if (!panel.isConnected) return;
+            if (!panel.isConnected || hasRendered) return;
             panel.textContent = '';
             const message = document.createElement('p');
             message.className = 'small-text';
