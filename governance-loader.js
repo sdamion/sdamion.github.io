@@ -14,8 +14,9 @@
     const GOVERNANCE_DREP_STATUS_SCRIPT_SRC = 'governance-drep-status.js?v=20260817-modular-drep-status';
     const GOVERNANCE_DREP_CORRELATION_SCRIPT_SRC = 'governance-drep-correlation.js?v=20260817-modular-drep-correlation';
     const GOVERNANCE_DREP_TOP10_SCRIPT_SRC = 'governance-drep-top10.js?v=20260817-modular-drep-top10';
+    const GOVERNANCE_TDSP_DREP_SCRIPT_SRC = 'governance-tdsp-drep.js?v=20260817-modular-tdsp-drep';
     const GOVERNANCE_PROPOSAL_DISPLAY_SCRIPT_SRC = 'governance-proposal-display.js?v=20260817-modular-proposal-display';
-    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260817-modular-drep-top10';
+    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260817-modular-tdsp-drep';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
         '#drep',
@@ -122,6 +123,12 @@
                 datasetName: 'governanceDrepTop10',
                 selector: 'script[data-governance-drep-top10]',
                 ready: () => window.TDSPDrepTop10 || null
+            })
+        )).then(() => (
+            window.TDSPRuntime.loadScript(GOVERNANCE_TDSP_DREP_SCRIPT_SRC, {
+                datasetName: 'governanceTdspDrep',
+                selector: 'script[data-governance-tdsp-drep]',
+                ready: () => window.TDSPTdspDrep || null
             })
         )).then(() => (
             window.TDSPRuntime.loadScript(GOVERNANCE_PROPOSAL_DISPLAY_SCRIPT_SRC, {
