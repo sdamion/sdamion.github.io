@@ -234,6 +234,13 @@ const governanceDrepCorrelation = window.TDSPDrepCorrelation.create({
     normalizeIdentifier: normalizeGovernanceIdentifier,
     onOpenDrep: openDrepActionHistoryOverlay
 });
+const governanceDrepTop10 = window.TDSPDrepTop10.create({
+    bindOpen: bindGovernanceMenuTrigger,
+    formatVoteChoice,
+    isApplicable: isGovernanceActionApplicableToDrep,
+    isClosed: isExpiredGovernanceActionForCommitteeStats,
+    onOpenDrep: openDrepActionHistoryOverlay
+});
 const governanceProposalDisplay = window.TDSPProposalDisplay.create({
     formatPercentage,
     getApprovalThreshold: getGovernanceApprovalThreshold,
@@ -9151,7 +9158,7 @@ function renderTopDrepVoteMatrix(container, dreps, detailPayloads) {
 
     proposals.forEach(proposal => {
         const rows = drepDetails.map(drep => {
-            const choice = getTopDrepVoteMatrixChoice(drep, proposal);
+            const choice = governanceDrepTop10.getVoteMatrixChoice(drep, proposal);
             return { drep, choice };
         });
 
@@ -9186,12 +9193,12 @@ function renderTopDrepVoteMatrix(container, dreps, detailPayloads) {
 
         const sameLine = document.createElement('div');
         sameLine.className = 'governance-top-drep-same-line';
-        sameLine.textContent = formatTopDrepSameVoteLine(rows);
+        sameLine.textContent = governanceDrepTop10.formatSameVoteLine(rows);
         card.appendChild(sameLine);
 
         const grid = document.createElement('div');
         grid.className = 'governance-top-drep-vote-grid';
-        rows.forEach(row => grid.appendChild(createTopDrepVoteChip(row.drep, row.choice)));
+        rows.forEach(row => grid.appendChild(governanceDrepTop10.createVoteChip(row.drep, row.choice)));
         card.appendChild(grid);
         container.appendChild(card);
     });
@@ -9202,57 +9209,6 @@ function renderTopDrepVoteMatrix(container, dreps, detailPayloads) {
     });
 }
 
-
-function getTopDrepVoteMatrixChoice(drep, proposal) {
-    const applicable = isGovernanceActionApplicableToDrep(
-        proposal,
-        drep?.registrationTime,
-        drep?.eligibility
-    );
-    const action = drep?.actionsById?.get(String(proposal?.proposal_id || '')) || null;
-    if (action) return formatVoteChoice(action?.vote || action?.vote_bucket);
-    if (!applicable) return 'Not applicable';
-    return isExpiredGovernanceActionForCommitteeStats(proposal) ? 'Not voted' : 'Not voted yet';
-}
-
-function formatTopDrepSameVoteLine(rows) {
-    const counts = rows.reduce((totals, row) => {
-        const key = row.choice || 'Unknown';
-        totals.set(key, (totals.get(key) || 0) + 1);
-        return totals;
-    }, new Map());
-    const order = ['Yes', 'No', 'Abstain', 'Not voted', 'Not voted yet', 'Not applicable', 'Unknown'];
-    const parts = order
-        .filter(key => counts.has(key))
-        .map(key => `${key}: ${counts.get(key)}`);
-    return parts.length ? parts.join(' • ') : 'No vote data';
-}
-
-function createTopDrepVoteChip(drep, choice) {
-    const chip = document.createElement('button');
-    chip.type = 'button';
-    chip.className = `governance-top-drep-vote-chip ${getTopDrepVoteChoiceClass(choice)}`;
-    chip.addEventListener('click', event => {
-        event.stopPropagation();
-        openDrepActionHistoryOverlay(drep, event.currentTarget);
-    });
-
-    const name = document.createElement('strong');
-    name.textContent = drep?.name || 'DRep';
-    const vote = document.createElement('span');
-    vote.textContent = choice || 'Unknown';
-    chip.append(name, vote);
-    return chip;
-}
-
-function getTopDrepVoteChoiceClass(choice) {
-    if (choice === 'Yes') return 'is-yes';
-    if (choice === 'No' || choice === 'Not voted') return 'is-no';
-    if (choice === 'Abstain') return 'is-abstain';
-    if (choice === 'Not voted yet') return 'is-pending';
-    if (choice === 'Not applicable') return 'is-muted';
-    return 'is-unknown';
-}
 
 function openDrepStatusListOverlay(titleText, dreps, returnFocus) {
     const panel = document.createElement('div');
