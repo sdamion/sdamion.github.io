@@ -9546,6 +9546,12 @@ function renderDrepActionHistory(container, payload, drep) {
                 ? 'DRep not voted'
                 : 'DRep not voted yet';
         card.appendChild(vote);
+        const rationaleButton = createDrepVoteRationaleButton(action, {
+            proposal,
+            drepName: drep?.name,
+            voteChoice
+        });
+        if (rationaleButton) card.appendChild(rationaleButton);
         container.appendChild(card);
     });
 }
@@ -10639,6 +10645,9 @@ function createDrepVoteRow(vote) {
     copy.appendChild(id);
     row.appendChild(copy);
 
+    const rationaleButton = createDrepVoteRationaleButton(vote);
+    if (rationaleButton) row.appendChild(rationaleButton);
+
     const drep = getDrepFromVote(vote);
     if (drep.id) {
         row.classList.add('governance-cc-member-clickable');
@@ -10652,6 +10661,150 @@ function createDrepVoteRow(vote) {
     }
 
     return { row, name };
+}
+
+function createDrepVoteRationaleButton(vote, context = {}) {
+    if (!getDrepVoteRationaleText(vote)) return null;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'governance-vote-secondary governance-rationale-read-button';
+    button.textContent = 'Rationale';
+    button.addEventListener('click', event => {
+        event.preventDefault();
+        event.stopPropagation();
+        openDrepVoteRationaleOverlay(vote, event.currentTarget, context);
+    });
+    return button;
+}
+
+function openDrepVoteRationaleOverlay(vote, returnFocus, context = {}) {
+    const rationale = getDrepVoteRationaleText(vote);
+    const content = document.createElement('div');
+    content.className = 'governance-menu-card governance-vote-rationale-display';
+
+    addDetailRow(content, 'DRep', context.drepName || getDrepPrimaryDisplayName(vote));
+    addDetailRow(content, 'Vote', context.voteChoice || formatVoteChoice(vote?.vote || vote?.vote_bucket));
+    addDetailRow(content, 'Governance action', context.proposal ? getProposalTitle(context.proposal) : '');
+    addDetailRow(content, 'Action ID', context.proposal?.proposal_id || vote?.gov_action_id || vote?.proposal_id || vote?.proposalId || '');
+    addDetailRow(content, 'Transaction', getDrepVoteRationaleTransactionId(vote));
+
+    const title = document.createElement('strong');
+    title.textContent = 'Rationale';
+    const text = document.createElement('p');
+    text.className = 'governance-proposal-summary-text';
+    text.textContent = rationale || 'No rationale text found for this vote.';
+    content.append(title, text);
+
+    createGovernanceMenuOverlay({
+        id: 'governance-vote-rationale-display-overlay',
+        titleId: 'governance-vote-rationale-display-title',
+        titleText: 'Vote rationale',
+        closeLabel: 'Close vote rationale',
+        closeOverlay: closeDrepVoteRationaleOverlay,
+        bodyNodes: [content],
+        headerMeta: context.proposal ? getProposalMeta(context.proposal) : '',
+        overlayClass: 'governance-action-detail-overlay',
+        returnFocus,
+        botContext: context.proposal
+            ? createGovernanceActionBotContext(context.proposal)
+            : {
+                kind: 'drep_vote_rationale',
+                title: 'Vote rationale',
+                summary: rationale
+            }
+    });
+}
+
+function closeDrepVoteRationaleOverlay() {
+    removeGovernanceMenuOverlay('governance-vote-rationale-display-overlay');
+}
+
+function getDrepVoteRationaleTransactionId(vote) {
+    return vote?.tx_hash
+        || vote?.txHash
+        || vote?.tx_id
+        || vote?.txId
+        || vote?.vote_tx_hash
+        || vote?.transaction_id
+        || vote?.transactionId
+        || '';
+}
+
+function getDrepVoteRationaleText(vote) {
+    const directCandidates = [
+        vote?.rationale,
+        vote?.vote_rationale,
+        vote?.voteRationale,
+        vote?.rationale_text,
+        vote?.rationaleText,
+        vote?.reason,
+        vote?.metadata?.rationale,
+        vote?.tx_metadata?.rationale,
+        vote?.auxiliary_data?.rationale,
+        vote?.onchain_metadata?.rationale,
+        vote?.on_chain_metadata?.rationale,
+        vote?.metadata?.['1694']?.rationale,
+        vote?.tx_metadata?.['1694']?.rationale,
+        vote?.auxiliary_data?.['1694']?.rationale,
+        vote?.onchain_metadata?.['1694']?.rationale,
+        vote?.on_chain_metadata?.['1694']?.rationale
+    ];
+
+    for (const candidate of directCandidates) {
+        const text = normalizeDrepVoteRationaleValue(candidate);
+        if (text) return text;
+    }
+
+    for (const root of [
+        vote?.metadata,
+        vote?.tx_metadata,
+        vote?.auxiliary_data,
+        vote?.onchain_metadata,
+        vote?.on_chain_metadata,
+        vote?.meta_json
+    ]) {
+        const text = findDrepVoteRationaleInObject(root);
+        if (text) return text;
+    }
+
+    return '';
+}
+
+function findDrepVoteRationaleInObject(value, depth = 0) {
+    if (!value || depth > 4 || typeof value !== 'object') return '';
+    if (Object.prototype.hasOwnProperty.call(value, 'rationale')) {
+        const text = normalizeDrepVoteRationaleValue(value.rationale);
+        if (text) return text;
+    }
+
+    const preferredKeys = ['1694', 'metadata', 'tx_metadata', 'auxiliary_data', 'json', 'body', 'data'];
+    for (const key of preferredKeys) {
+        if (!Object.prototype.hasOwnProperty.call(value, key)) continue;
+        const text = findDrepVoteRationaleInObject(value[key], depth + 1);
+        if (text) return text;
+    }
+
+    for (const entry of Object.values(value)) {
+        const text = findDrepVoteRationaleInObject(entry, depth + 1);
+        if (text) return text;
+    }
+    return '';
+}
+
+function normalizeDrepVoteRationaleValue(value) {
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'string') return cleanGovernanceText(value.trim());
+    if (Array.isArray(value)) {
+        if (value.every(entry => typeof entry === 'string')) {
+            return cleanGovernanceText(value.join('').trim());
+        }
+        return cleanGovernanceText(value.map(normalizeDrepVoteRationaleValue).filter(Boolean).join('\n').trim());
+    }
+    if (typeof value === 'object') {
+        if (Object.prototype.hasOwnProperty.call(value, 'text')) return normalizeDrepVoteRationaleValue(value.text);
+        if (Object.prototype.hasOwnProperty.call(value, 'value')) return normalizeDrepVoteRationaleValue(value.value);
+    }
+    return '';
 }
 
 function getDrepFromVote(vote) {
