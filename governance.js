@@ -1930,19 +1930,11 @@ function formatCatalystUsdRate(value) {
 }
 
 function hasNumericValue(value) {
-    return value !== null
-        && value !== undefined
-        && value !== ''
-        && Number.isFinite(Number(value));
+    return governanceCatalystFormat.hasNumericValue(value);
 }
 
 function formatAdaAmount(value, compact = false) {
-    const amount = Number(value);
-    if (!Number.isFinite(amount)) return '₳ --';
-    return `₳ ${new Intl.NumberFormat('en-US', {
-        notation: compact ? 'compact' : 'standard',
-        maximumFractionDigits: compact ? 2 : 6
-    }).format(amount)}`;
+    return governanceCatalystFormat.formatAdaAmount(value, compact);
 }
 
 function getCatalystMilestoneProgress(proposal) {

@@ -1,6 +1,6 @@
 (function () {
     function createCatalystFormatModule({
-        formatAdaAmount,
+        formatAdaAmount: formatAdaValue,
         formatCompactAda,
         formatFullAda
     }) {
@@ -39,6 +39,17 @@
             }).format(Number(value) || 0);
         }
 
+        function hasNumericValue(value) {
+            return value !== null
+                && value !== undefined
+                && value !== ''
+                && Number.isFinite(Number(value));
+        }
+
+        function formatAdaAmount(value, compact = false) {
+            return formatAdaValue(value, compact);
+        }
+
         function formatFundingAmount(value, currency = 'ADA', compact = false) {
             return currency === 'ADA'
                 ? (
@@ -65,12 +76,14 @@
         }
 
         return Object.freeze({
+            formatAdaAmount,
             formatCurrencyAmount,
             formatFundAmount,
             formatFundingAmount,
             formatOfficialMoney,
             formatProposalAmount,
-            formatUsdRate
+            formatUsdRate,
+            hasNumericValue
         });
     }
 
