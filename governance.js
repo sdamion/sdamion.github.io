@@ -146,6 +146,9 @@ const bindGovernanceMenuTrigger = (element, openMenu) => window.TDSPRuntime.bind
     datasetKey: 'governanceMenuBound',
     errorMessage: 'Governance menu could not be opened.'
 });
+const governanceCopy = window.TDSPGovernanceCopy.create({
+    runtime: window.TDSPRuntime
+});
 const governanceCips = window.TDSPCips.create({
     addDetailRow,
     addMarkdownDetailSection,
@@ -2359,11 +2362,7 @@ function createCatalystBusinessProjectCard(project) {
 }
 
 function appendProposalIdCopyButton(card, proposalId) {
-    const id = String(proposalId || '').trim();
-    if (!id) return;
-    const copyButton = createGovernanceCopyButton(id, 'Catalyst proposal ID');
-    copyButton.classList.add('governance-action-id-copy-button');
-    card.appendChild(copyButton);
+    governanceCopy.appendProposalIdButton(card, proposalId);
 }
 
 function getCatalystTileContext(project) {
@@ -8445,13 +8444,7 @@ function closeDrepStatusListOverlay() {
 }
 
 function createGovernanceCopyButton(value, label) {
-    return window.TDSPRuntime.createCopyButton(value, label, {
-        className: 'pool-copy-icon-button governance-drep-copy-button',
-        bindOptions: {
-            preventDefault: false,
-            copiedAriaLabel: `Copied ${label}`
-        }
-    });
+    return governanceCopy.createButton(value, label);
 }
 
 function openDrepActionHistoryOverlay(drep, returnFocus = null) {
