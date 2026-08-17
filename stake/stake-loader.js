@@ -1,5 +1,5 @@
 (function () {
-    const STAKE_SCRIPT_SRC = 'stake.js?v=20260806-lazy-stake';
+    const STAKE_SCRIPT_SRC = 'stake/stake.js?v=20260806-lazy-stake';
     const STAKE_TRIGGER_SELECTOR = '[data-stake-open]';
     function loadStakeScript() {
         return window.TDSPRuntime.loadScript(STAKE_SCRIPT_SRC, {

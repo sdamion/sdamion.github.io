@@ -2,8 +2,8 @@
     const THEME_STORAGE_KEY = 'tdsp-theme';
     const EPOCH_DURATION_MS = 432000 * 1000;
     const CARDANO_MAINNET_EPOCH_ZERO_MS = Date.parse('2017-09-23T21:44:51Z');
-    const MAIN_SCRIPT_SRC = 'index.js?v=20260813-static-overlay-search';
-    const GOVERNANCE_SCRIPT_SRC = 'governance.js?v=20260815-shared-site-controls';
+    const MAIN_SCRIPT_SRC = 'home/index.js?v=20260813-static-overlay-search';
+    const GOVERNANCE_SCRIPT_SRC = 'governance/governance-loader.js?v=20260817-section-folders';
     let epochTimer = null;
 
     function getPreferredTheme() {
@@ -78,8 +78,29 @@
     function loadMainHelpers() {
         return window.TDSPRuntime.loadScript(MAIN_SCRIPT_SRC, {
             datasetName: 'siteMainHelpers',
-            selector: 'script[data-site-main-helpers], script[src^="index.js"]',
+            selector: 'script[data-site-main-helpers], script[src^="home/index.js"]',
             ready: () => typeof window.createUniversalOverlay === 'function'
+        });
+    }
+
+    function waitForGovernanceAssistant(timeoutMs = 10000) {
+        if (typeof window.openConstitutionAssistantOverlay === 'function') {
+            return Promise.resolve(window.openConstitutionAssistantOverlay);
+        }
+
+        return new Promise((resolve, reject) => {
+            const startedAt = Date.now();
+            const timer = window.setInterval(() => {
+                if (typeof window.openConstitutionAssistantOverlay === 'function') {
+                    window.clearInterval(timer);
+                    resolve(window.openConstitutionAssistantOverlay);
+                    return;
+                }
+                if (Date.now() - startedAt > timeoutMs) {
+                    window.clearInterval(timer);
+                    reject(new Error('TDSPBot did not finish loading in time.'));
+                }
+            }, 50);
         });
     }
 
@@ -88,11 +109,12 @@
         try {
             await loadMainHelpers();
             await window.TDSPRuntime.loadScript(GOVERNANCE_SCRIPT_SRC, {
-                datasetName: 'governanceMain',
-                selector: 'script[data-governance-main], script[src^="governance.js"]',
+                datasetName: 'governanceLoader',
+                selector: 'script[data-governance-loader], script[src^="governance/governance-loader.js"]',
                 ready: () => typeof window.openConstitutionAssistantOverlay === 'function'
             });
-            window.openConstitutionAssistantOverlay(null, button);
+            const openAssistant = await waitForGovernanceAssistant();
+            openAssistant(null, button);
         } catch (error) {
             console.error('TDSPBot could not be opened.', error);
         } finally {

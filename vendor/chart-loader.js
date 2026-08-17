@@ -1,5 +1,5 @@
 (function () {
-    const CHART_SCRIPT_SRC = 'chart.js?v=20260806-lazy-chart';
+    const CHART_SCRIPT_SRC = 'vendor/chart.js?v=20260806-lazy-chart';
 
     function loadChartJs() {
         return window.TDSPRuntime.loadScript(CHART_SCRIPT_SRC, {

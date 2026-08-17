@@ -2710,7 +2710,7 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 .spo-geographic-map__viewport {
     position: absolute;
     inset: 0;
-    background-image: url('world-map-cc0.svg');
+    background-image: url('../world-map-cc0.svg');
     background-position: center;
     background-repeat: no-repeat;
     background-size: 100% 100%;
