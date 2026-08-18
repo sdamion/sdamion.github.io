@@ -14,7 +14,7 @@
             section.className = 'governance-vote-chart governance-chart-panel governance-drep-status-chart';
 
             const title = document.createElement('strong');
-            title.textContent = 'DRep Status';
+            title.textContent = 'DamionDutch';
 
             const layout = document.createElement('div');
             layout.className = 'governance-vote-chart-layout';

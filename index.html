@@ -47,7 +47,7 @@
 
     <!-- Preload Logo -->
     <link rel="preload" href="tdsp_logo.webp?v=20260727-smooth-lines" as="image" type="image/webp">
-    <link rel="stylesheet" href="shared/styles.css?v=20260818-theme-toggle-moon-stroke">
+    <link rel="stylesheet" href="shared/styles.css?v=20260818-pool-id-stake-button-light">
 
     <script src="shared/runtime.js?v=20260815-delegator-wallets" defer></script>
     <script src="shared/site-controls.js?v=20260818-theme-toggle-current" defer></script>
@@ -162,6 +162,7 @@
                 <div class="pool-id-line">
                     <span>Pool ID</span>
                     <strong id="pool-id">...</strong>
+                    <button class="pool-id-stake-button" type="button" data-stake-open>Stake Now</button>
                     <button class="pool-copy-icon-button pool-id-copy-button" type="button" data-copy-target="pool-id" aria-label="Copy stake pool ID" title="Copy pool ID">⧉</button>
                 </div>
                 <div class="pool-summary" id="pool-summary" aria-live="polite">
@@ -284,12 +285,13 @@
                 <div class="pool-id-line">
                     <span>DRep ID</span>
                     <strong id="tdsp-drep-id">drep1yg5gkkyxwwr7d6qflf2qqp6drkp9432h6cvtmun0dqthusqlkz8hj</strong>
+                    <button class="pool-id-stake-button" type="button" data-drep-open>Make DRep</button>
                     <button class="pool-copy-icon-button pool-id-copy-button" type="button" data-copy-target="tdsp-drep-id" aria-label="Copy DamionDutch DRep ID" title="Copy DRep ID">⧉</button>
                 </div>
                 <div class="governance-summary" id="drep-stats-summary">
                     <div id="tdsp-drep-status-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show DamionDutch DRep status">
                         <strong id="tdsp-drep-status">Loading...</strong>
-                        <span>DRep Status</span>
+                        <span>DamionDutch</span>
                     </div>
                     <div id="tdsp-drep-delegators-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show DamionDutch DRep delegators">
                         <strong id="tdsp-drep-delegators">Loading...</strong>
@@ -431,6 +433,6 @@
 
     <script src="starch/starch-loader.js?v=20260817-section-folders" defer></script>
     <script src="governance/governance-loader.js?v=20260818-remove-drep-status-ncl" defer></script>
-    <script src="stake/stake-loader.js?v=20260817-section-folders" defer></script>
+    <script src="stake/stake-loader.js?v=20260818-drep-delegation" defer></script>
 </body>
 </html>

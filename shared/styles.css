@@ -1207,7 +1207,7 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     gap: 8px;
     min-width: 0;
     margin: 0;
-    padding: 10px 54px 10px 12px;
+    padding: 10px 146px 10px 12px;
     border: 1px solid var(--line);
     border-radius: 8px;
     background: var(--governance-card-bg);
@@ -1248,6 +1248,29 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     transform: none;
 }
 
+.pool-id-stake-button {
+    position: absolute;
+    top: 50%;
+    right: 44px;
+    min-height: 28px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 6px;
+    background: var(--accent);
+    color: var(--bg);
+    font-size: 0.76rem;
+    font-weight: 800;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.pool-id-stake-button:hover,
+.pool-id-stake-button:focus-visible {
+    background: var(--accent-strong);
+    color: var(--bg);
+    transform: translateY(-50%);
+}
+
 .pool-id-copy-button {
     top: 50%;
     transform: translateY(-50%);
@@ -1255,6 +1278,15 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 
 .pool-id-copy-button:hover {
     transform: translateY(-50%);
+}
+
+.pool-id-stake-button {
+    transform: translateY(-50%);
+}
+
+:root[data-theme="light"] .pool-id-stake-button,
+:root:not([data-theme="dark"]) .pool-id-stake-button {
+    color: #050807;
 }
 
 .pool-relays {

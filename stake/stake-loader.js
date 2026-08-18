@@ -1,6 +1,6 @@
 (function () {
-    const STAKE_SCRIPT_SRC = 'stake/stake.js?v=20260806-lazy-stake';
-    const STAKE_TRIGGER_SELECTOR = '[data-stake-open]';
+    const STAKE_SCRIPT_SRC = 'stake/stake.js?v=20260818-drep-delegation';
+    const STAKE_TRIGGER_SELECTOR = '[data-stake-open], [data-drep-open]';
     function loadStakeScript() {
         return window.TDSPRuntime.loadScript(STAKE_SCRIPT_SRC, {
             datasetName: 'stakeMain',
@@ -11,8 +11,11 @@
 
     function openStakeFromTrigger(trigger) {
         loadStakeScript().then(() => {
-            if (typeof window.openStakeModal !== 'function') return;
-            window.openStakeModal({
+            const open = trigger?.matches?.('[data-drep-open]')
+                ? window.openDrepDelegationModal
+                : window.openStakeModal;
+            if (typeof open !== 'function') return;
+            open({
                 preventDefault() {},
                 currentTarget: trigger
             });
