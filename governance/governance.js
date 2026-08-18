@@ -142,6 +142,51 @@ let tdspDrepStatsPromise = null;
 const fetchResponse = window.TDSPRuntime.fetchResponse;
 const fetchJson = window.TDSPRuntime.fetchJson;
 const formatCompactAdaFromLovelace = window.TDSPRuntime.formatCompactAdaFromLovelace;
+const governanceApi = window.TDSPGovernanceApi.create({
+    isLocalPreview: GOVERNANCE_IS_LOCAL_PREVIEW,
+    endpoints: {
+        dashboard: DASHBOARD_API_URL,
+        compactDashboard: COMPACT_DASHBOARD_API_URL,
+        committeeInfo: COMMITTEE_INFO_API_URL,
+        committeeMemberBase: COMMITTEE_MEMBER_API_BASE_URL,
+        proposalVotesBase: PROPOSAL_VOTES_API_BASE_URL,
+        proposalDetailBase: PROPOSAL_DETAIL_API_BASE_URL,
+        proposalSummaryBase: PROPOSAL_SUMMARY_API_BASE_URL,
+        proposalRationaleBase: PROPOSAL_RATIONALE_API_BASE_URL,
+        drepInfo: DREP_INFO_API_URL,
+        drepDetailBase: DREP_DETAIL_API_BASE_URL,
+        drepVoteStats: DREP_VOTE_STATS_API_URL,
+        drepCorrelation: DREP_CORRELATION_API_URL,
+        spoDirectory: SPO_DIRECTORY_API_URL,
+        spoRescanStatus: SPO_RESCAN_STATUS_API_URL,
+        spoDetailBase: SPO_DETAIL_API_BASE_URL,
+        remoteMetadata: REMOTE_METADATA_API_URL,
+        catalystProposals: CATALYST_PROPOSALS_API_URL,
+        catalystProposalDetailBase: CATALYST_PROPOSAL_DETAIL_API_BASE_URL,
+        catalystProposalSummaryBase: CATALYST_PROPOSAL_SUMMARY_API_BASE_URL,
+        cips: CIPS_API_URL,
+        localDashboard: LOCAL_DASHBOARD_PROXY_PATH,
+        localCompactDashboard: LOCAL_COMPACT_DASHBOARD_PROXY_PATH,
+        localCommittee: LOCAL_COMMITTEE_PROXY_PATH,
+        localCommitteeMember: LOCAL_COMMITTEE_MEMBER_PROXY_PATH,
+        localProposalVotes: LOCAL_PROPOSAL_VOTES_PROXY_PATH,
+        localProposalDetail: LOCAL_PROPOSAL_DETAIL_PROXY_PATH,
+        localProposalSummary: LOCAL_PROPOSAL_SUMMARY_PROXY_PATH,
+        localProposalRationale: LOCAL_PROPOSAL_RATIONALE_PROXY_PATH,
+        localDrepDirectory: LOCAL_DREP_DIRECTORY_PROXY_PATH,
+        localDrepDetail: LOCAL_DREP_DETAIL_PROXY_PATH,
+        localDrepVoteStats: LOCAL_DREP_VOTE_STATS_PROXY_PATH,
+        localDrepCorrelation: LOCAL_DREP_CORRELATION_PROXY_PATH,
+        localSpoDirectory: LOCAL_SPO_DIRECTORY_PROXY_PATH,
+        localSpoRescanStatus: LOCAL_SPO_RESCAN_STATUS_PROXY_PATH,
+        localSpoDetail: LOCAL_SPO_DETAIL_PROXY_PATH,
+        localMetadata: LOCAL_METADATA_PROXY_PATH,
+        localCatalystProposals: LOCAL_CATALYST_PROPOSALS_PROXY_PATH,
+        localCatalystProposalDetail: LOCAL_CATALYST_PROPOSAL_DETAIL_PROXY_PATH,
+        localCatalystProposalSummary: LOCAL_CATALYST_PROPOSAL_SUMMARY_PROXY_PATH,
+        localCips: LOCAL_CIPS_PROXY_PATH
+    }
+});
 const bindGovernanceMenuTrigger = (element, openMenu) => window.TDSPRuntime.bindMenuTrigger(element, openMenu, {
     datasetKey: 'governanceMenuBound',
     errorMessage: 'Governance menu could not be opened.'
@@ -517,16 +562,7 @@ function fetchCatalystProposalDirectoryPayload() {
 }
 
 function getCatalystProposalsApiUrl(options = {}) {
-    if (GOVERNANCE_IS_LOCAL_PREVIEW) {
-        const params = new URLSearchParams();
-        if (options.funds) params.set('type', 'funds');
-        if (options.fundName) params.set('fund', options.fundName);
-        return `${LOCAL_CATALYST_PROPOSALS_PROXY_PATH}?${params.toString()}`;
-    }
-    if (options.funds) return `${CATALYST_PROPOSALS_API_URL}/funds`;
-    const params = new URLSearchParams();
-    if (options.fundName) params.set('fund', options.fundName);
-    return `${CATALYST_PROPOSALS_API_URL}${params.size ? `?${params.toString()}` : ''}`;
+    return governanceApi.catalystProposals(options);
 }
 
 function fetchCipDirectoryPayload() {
@@ -540,7 +576,7 @@ function fetchCipDirectoryPayload() {
 }
 
 function getCipsApiUrl() {
-    return GOVERNANCE_IS_LOCAL_PREVIEW ? LOCAL_CIPS_PROXY_PATH : CIPS_API_URL;
+    return governanceApi.cips();
 }
 
 async function openCipDirectoryOverlay(returnFocus = document.activeElement) {
@@ -3127,17 +3163,10 @@ function schedulePostEpochGovernanceRefresh() {
 }
 
 async function fetchGovernanceDashboardPayload() {
-    const compactUrl = GOVERNANCE_IS_LOCAL_PREVIEW
-        ? LOCAL_COMPACT_DASHBOARD_PROXY_PATH
-        : COMPACT_DASHBOARD_API_URL;
-    const fullUrl = GOVERNANCE_IS_LOCAL_PREVIEW
-        ? LOCAL_DASHBOARD_PROXY_PATH
-        : DASHBOARD_API_URL;
-
     try {
-        return await fetchJson(compactUrl);
+        return await fetchJson(governanceApi.compactDashboard());
     } catch {
-        return fetchJson(fullUrl);
+        return fetchJson(governanceApi.dashboard());
     }
 }
 
@@ -3146,54 +3175,27 @@ function checkGovernanceNotifications(proposals) {
 }
 
 function getProposalVotesApiUrl(proposalId) {
-    if (GOVERNANCE_IS_LOCAL_PREVIEW) {
-        const params = new URLSearchParams({ proposalId });
-        return `${LOCAL_PROPOSAL_VOTES_PROXY_PATH}?${params.toString()}`;
-    }
-
-    return `${PROPOSAL_VOTES_API_BASE_URL}/${encodeURIComponent(proposalId)}/votes`;
+    return governanceApi.proposalVotes(proposalId);
 }
 
 function getProposalDetailApiUrl(proposalId) {
-    if (GOVERNANCE_IS_LOCAL_PREVIEW) {
-        const params = new URLSearchParams({ proposalId });
-        return `${LOCAL_PROPOSAL_DETAIL_PROXY_PATH}?${params.toString()}`;
-    }
-
-    return `${PROPOSAL_DETAIL_API_BASE_URL}/${encodeURIComponent(proposalId)}`;
+    return governanceApi.proposalDetail(proposalId);
 }
 
 function getProposalSummaryApiUrl(proposalId) {
-    if (GOVERNANCE_IS_LOCAL_PREVIEW) {
-        const params = new URLSearchParams({ proposalId });
-        return `${LOCAL_PROPOSAL_SUMMARY_PROXY_PATH}?${params.toString()}`;
-    }
-    return `${PROPOSAL_SUMMARY_API_BASE_URL}/${encodeURIComponent(proposalId)}/summary`;
+    return governanceApi.proposalSummary(proposalId);
 }
 
 function getProposalDrepRationaleApiUrl(proposalId, drepId) {
-    if (GOVERNANCE_IS_LOCAL_PREVIEW) {
-        const params = new URLSearchParams({ proposalId, drepId });
-        return `${LOCAL_PROPOSAL_RATIONALE_PROXY_PATH}?${params.toString()}`;
-    }
-
-    return `${PROPOSAL_RATIONALE_API_BASE_URL}/${encodeURIComponent(proposalId)}/drep/${encodeURIComponent(drepId)}/rationale`;
+    return governanceApi.proposalDrepRationale(proposalId, drepId);
 }
 
 function getCatalystProposalDetailApiUrl(proposalId) {
-    if (GOVERNANCE_IS_LOCAL_PREVIEW) {
-        const params = new URLSearchParams({ proposalId });
-        return `${LOCAL_CATALYST_PROPOSAL_DETAIL_PROXY_PATH}?${params.toString()}`;
-    }
-    return `${CATALYST_PROPOSAL_DETAIL_API_BASE_URL}/${encodeURIComponent(proposalId)}`;
+    return governanceApi.catalystProposalDetail(proposalId);
 }
 
 function getCatalystProposalSummaryApiUrl(proposalId) {
-    if (GOVERNANCE_IS_LOCAL_PREVIEW) {
-        const params = new URLSearchParams({ proposalId });
-        return `${LOCAL_CATALYST_PROPOSAL_SUMMARY_PROXY_PATH}?${params.toString()}`;
-    }
-    return `${CATALYST_PROPOSAL_SUMMARY_API_BASE_URL}/${encodeURIComponent(proposalId)}/summary`;
+    return governanceApi.catalystProposalSummary(proposalId);
 }
 
 function updateEpochDisplayFromDashboardPayload(payload) {
@@ -3243,15 +3245,11 @@ function loadCommitteeMemberDetail(member) {
 }
 
 function getCommitteeInfoApiUrl() {
-    return GOVERNANCE_IS_LOCAL_PREVIEW ? LOCAL_COMMITTEE_PROXY_PATH : COMMITTEE_INFO_API_URL;
+    return governanceApi.committeeInfo();
 }
 
 function getCommitteeMemberApiUrl(memberId) {
-    if (GOVERNANCE_IS_LOCAL_PREVIEW) {
-        const params = new URLSearchParams({ memberId });
-        return `${LOCAL_COMMITTEE_MEMBER_PROXY_PATH}?${params.toString()}`;
-    }
-    return `${COMMITTEE_MEMBER_API_BASE_URL}/${encodeURIComponent(memberId)}`;
+    return governanceApi.committeeMember(memberId);
 }
 
 async function fetchCommitteeInfoPayload() {
@@ -7053,13 +7051,11 @@ function getSpoOperatorCount(payload, fallback = 0) {
 }
 
 function getSpoDirectoryApiUrl() {
-    return GOVERNANCE_IS_LOCAL_PREVIEW ? LOCAL_SPO_DIRECTORY_PROXY_PATH : SPO_DIRECTORY_API_URL;
+    return governanceApi.spoDirectory();
 }
 
 function getSpoRescanStatusApiUrl() {
-    return GOVERNANCE_IS_LOCAL_PREVIEW
-        ? LOCAL_SPO_RESCAN_STATUS_PROXY_PATH
-        : SPO_RESCAN_STATUS_API_URL;
+    return governanceApi.spoRescanStatus();
 }
 
 function renderSpoRescanStatus(status) {
@@ -7096,11 +7092,7 @@ async function pollSpoRescanStatus() {
 }
 
 function getSpoDetailApiUrl(poolId) {
-    if (GOVERNANCE_IS_LOCAL_PREVIEW) {
-        const params = new URLSearchParams({ poolId });
-        return `${LOCAL_SPO_DETAIL_PROXY_PATH}?${params.toString()}`;
-    }
-    return `${SPO_DETAIL_API_BASE_URL}/${encodeURIComponent(poolId)}`;
+    return governanceApi.spoDetail(poolId);
 }
 
 function closeDrepRegistrationOverlay() {
@@ -9651,18 +9643,11 @@ function normalizeMetadataUrl(url) {
 }
 
 function getDrepInfoApiUrl() {
-    if (GOVERNANCE_IS_LOCAL_PREVIEW) {
-        return `${LOCAL_DREP_DIRECTORY_PROXY_PATH}?type=directory`;
-    }
-    return DREP_INFO_API_URL;
+    return governanceApi.drepInfo();
 }
 
 function getDrepDetailApiUrl(drepId) {
-    if (GOVERNANCE_IS_LOCAL_PREVIEW) {
-        const params = new URLSearchParams({ drepId });
-        return `${LOCAL_DREP_DETAIL_PROXY_PATH}?${params.toString()}`;
-    }
-    return `${DREP_DETAIL_API_BASE_URL}/${encodeURIComponent(drepId)}`;
+    return governanceApi.drepDetail(drepId);
 }
 
 function getDrepVoteStatsIds(dreps = []) {
@@ -9675,11 +9660,7 @@ function getDrepVoteStatsIds(dreps = []) {
 
 function getDrepVoteStatsApiUrl(dreps = []) {
     const ids = getDrepVoteStatsIds(dreps);
-    const params = ids.length ? `?ids=${encodeURIComponent(ids.join(','))}` : '';
-    if (GOVERNANCE_IS_LOCAL_PREVIEW) {
-        return `${LOCAL_DREP_VOTE_STATS_PROXY_PATH}${params}`;
-    }
-    return `${DREP_VOTE_STATS_API_URL}${params}`;
+    return governanceApi.drepVoteStats(ids);
 }
 
 async function fetchDrepVoteStatsPayload(dreps = []) {
@@ -9696,10 +9677,7 @@ async function fetchDrepVoteStatsPayload(dreps = []) {
 }
 
 function getDrepCorrelationApiUrl() {
-    if (GOVERNANCE_IS_LOCAL_PREVIEW) {
-        return LOCAL_DREP_CORRELATION_PROXY_PATH;
-    }
-    return DREP_CORRELATION_API_URL;
+    return governanceApi.drepCorrelation();
 }
 
 async function fetchDrepCorrelationPayload() {
@@ -9716,12 +9694,7 @@ function getDrepMetadataFetchUrl(url, options = {}) {
     const normalizedUrl = normalizeMetadataUrl(url);
     if (!isAllowedBrowserMetadataUrl(normalizedUrl)) return '';
 
-    const params = new URLSearchParams({ url: normalizedUrl });
-    if (options.refresh) params.set('refresh', '1');
-    if (GOVERNANCE_IS_LOCAL_PREVIEW) {
-        return `${LOCAL_METADATA_PROXY_PATH}?${params.toString()}`;
-    }
-    return `${REMOTE_METADATA_API_URL}?${params.toString()}`;
+    return governanceApi.metadata(normalizedUrl, options);
 }
 
 function isAllowedBrowserMetadataUrl(url) {

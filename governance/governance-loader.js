@@ -1,5 +1,6 @@
 (function () {
     const GOVERNANCE_RICH_TEXT_SCRIPT_SRC = 'governance/governance-rich-text.js?v=20260818-modular-rich-text-images';
+    const GOVERNANCE_API_SCRIPT_SRC = 'governance/governance-api.js?v=20260818-modular-api';
     const GOVERNANCE_ASSISTANT_SCRIPT_SRC = 'governance/governance-assistant.js?v=20260817-modular-assistant';
     const GOVERNANCE_FUNDING_DIRECTORY_SCRIPT_SRC = 'governance/governance-funding-directory.js?v=20260817-modular-funding-directory';
     const GOVERNANCE_BUSINESS_LINKS_SCRIPT_SRC = 'governance/governance-business-links.js?v=20260818-modular-business-links-domain';
@@ -49,6 +50,12 @@
 
     function loadGovernanceScript() {
         return loadGovernanceRichTextScript().then(() => (
+            window.TDSPRuntime.loadScript(GOVERNANCE_API_SCRIPT_SRC, {
+                datasetName: 'governanceApi',
+                selector: 'script[data-governance-api]',
+                ready: () => window.TDSPGovernanceApi || null
+            })
+        )).then(() => (
             window.TDSPRuntime.loadScript(GOVERNANCE_ASSISTANT_SCRIPT_SRC, {
                 datasetName: 'governanceAssistant',
                 selector: 'script[data-governance-assistant]',
