@@ -437,11 +437,19 @@
     }
 
     .raffle-overlay {
-        padding: 12px;
+        align-items: stretch;
+        justify-items: stretch;
+        padding: 0;
+        place-items: stretch;
     }
 
     .raffle-dialog {
-        max-height: calc(100dvh - 24px);
+        width: 100%;
+        max-width: none;
+        height: 100dvh;
+        max-height: 100dvh;
+        border: 0;
+        border-radius: 0;
     }
 
     .raffle-admin-menu {

@@ -1978,6 +1978,7 @@ function createDelegatorsDashboardBody() {
                             <h2 id="raffle-prizes-title">Prizes</h2>
                         </div>
                         <div class="overlay-dialog-header-actions">
+                            <button class="governance-back-to-root" id="raffle-prizes-back" type="button" aria-label="Back to Dashboard">&lt;</button>
                             <button class="governance-close" id="raffle-prizes-close" type="button" aria-label="Close Prizes">
                                 <span class="governance-close-icon" aria-hidden="true"></span>
                             </button>
@@ -2136,7 +2137,7 @@ function createAdminDashboardBody() {
 
 function loadDelegatorAccessModule() {
     if (window.TDSPDelegatorAccess?.initOverlay) return Promise.resolve(window.TDSPDelegatorAccess);
-    return window.TDSPRuntime.loadScript('delegators/delegator-access.js?v=20260818-raffle-prizes', {
+    return window.TDSPRuntime.loadScript('delegators/delegator-access.js?v=20260818-raffle-prize-images', {
         datasetName: 'delegatorAccess',
         selector: 'script[data-delegator-access]',
         ready: () => window.TDSPDelegatorAccess?.initOverlay ? window.TDSPDelegatorAccess : null

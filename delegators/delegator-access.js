@@ -279,10 +279,26 @@ function formatPrizeLine(asset) {
     return `${amount} ${name}`.trim();
 }
 
+function resolvePrizeImageUrl(value) {
+    const image = String(value || '').trim();
+    if (!image) return '';
+    if (/^(https?:|data:|blob:)/i.test(image)) return image;
+    if (IS_LOCAL && image.startsWith('/api/raffle/prize-image/')) {
+        const file = image.split('/').pop() || '';
+        return `/__raffle_prize_image_proxy__?file=${encodeURIComponent(file)}`;
+    }
+    try {
+        return new URL(image, ENDPOINTS.prizes).href;
+    } catch {
+        return image;
+    }
+}
+
 function createPrizeCard(asset) {
     const card = document.createElement('article');
     card.className = 'governance-menu-card raffle-draw-card';
-    if (asset?.image) card.classList.add('has-prize-image');
+    const imageUrl = resolvePrizeImageUrl(asset?.image);
+    if (imageUrl) card.classList.add('has-prize-image');
 
     const title = document.createElement('strong');
     title.className = 'governance-card-title';
@@ -304,10 +320,10 @@ function createPrizeCard(asset) {
         card.appendChild(link);
     }
 
-    if (asset?.image) {
+    if (imageUrl) {
         const image = document.createElement('img');
         image.className = 'raffle-prize-image';
-        image.src = String(asset.image);
+        image.src = imageUrl;
         image.alt = `${String(asset?.name || asset?.ticker || 'Token')} logo`;
         image.loading = 'lazy';
         image.decoding = 'async';
@@ -1095,6 +1111,7 @@ async function init(options = {}) {
     document.getElementById('raffle-logout')?.addEventListener('click', logout);
     document.getElementById('raffle-open')?.addEventListener('click', () => setRaffleOverlay(true));
     document.getElementById('raffle-prizes-open')?.addEventListener('click', () => setPrizeOverlay(true));
+    document.getElementById('raffle-prizes-back')?.addEventListener('click', () => setPrizeOverlay(false));
     document.getElementById('raffle-prizes-close')?.addEventListener('click', () => setPrizeOverlay(false));
     document.getElementById('raffle-admin-users-open')?.addEventListener('click', () => setRaffleOverlay(true, 'admins'));
     document.getElementById('raffle-overlay-back')?.addEventListener('click', () => {
