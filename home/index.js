@@ -36,6 +36,7 @@ const DEFAULT_SITE_ALERT_SETTINGS = Object.freeze({
 });
 let headerVisibilityObserver = null;
 let poolDelegators = [];
+let delegatorsDashboardMessageHandler = null;
 let mithrilSigners = [];
 let mithrilStatus = null;
 let starchPools = [];
@@ -1883,6 +1884,12 @@ function initPoolMenuCards() {
 
 function openPoolDelegatorsOverlay() {
     closePoolDelegatorsOverlay(false);
+    const delegatorsPageButton = document.createElement('button');
+    delegatorsPageButton.type = 'button';
+    delegatorsPageButton.className = 'governance-overlay-action-button';
+    delegatorsPageButton.textContent = 'Delegators';
+    delegatorsPageButton.setAttribute('aria-label', 'Open delegators dashboard');
+    delegatorsPageButton.addEventListener('click', openDelegatorsDashboardOverlay);
 
     createPoolMenuOverlay({
         id: 'pool-delegators-overlay',
@@ -1893,6 +1900,7 @@ function openPoolDelegatorsOverlay() {
         closeOverlay: closePoolDelegatorsOverlay,
         returnFocus: document.getElementById('pool-delegators-card'),
         rootTitle: 'Delegators',
+        extraActions: [delegatorsPageButton],
         bodyNode: createPoolDelegatorsList()
     });
 }
@@ -1900,6 +1908,289 @@ function openPoolDelegatorsOverlay() {
 function closePoolDelegatorsOverlay(restoreFocus = true) {
     closePoolMenuOverlay('pool-delegators-overlay', restoreFocus);
 }
+
+function createRaffleTemplate(html) {
+    const template = document.createElement('template');
+    template.innerHTML = html.trim();
+    return template.content.firstElementChild;
+}
+
+function createDelegatorsDashboardBody() {
+    return createRaffleTemplate(`
+        <div class="raffle-page raffle-embedded raffle-overlay-page">
+            <main class="raffle-main">
+                <section class="raffle-shell" id="raffle-access">
+                    <p class="eyebrow">TDSP Delegators</p>
+                    <h1>Dashboard</h1>
+                    <p>Sign a one-time wallet challenge with a stake key currently delegated to TDSP. This does not create a transaction or cost ADA.</p>
+                    <button id="raffle-connect" class="raffle-primary" type="button">Connect Delegator Wallet</button>
+                    <div id="raffle-wallet-list" class="wallet-list raffle-wallet-list"></div>
+                </section>
+
+                <section class="raffle-shell" id="raffle-protected" hidden>
+                    <div class="raffle-title-row">
+                        <div>
+                            <p class="eyebrow">Verified TDSP delegator</p>
+                            <h1>Dashboard</h1>
+                        </div>
+                        <button id="raffle-logout" class="raffle-secondary" type="button">Lock</button>
+                    </div>
+                    <div id="raffle-identity" class="governance-menu-card raffle-identity"></div>
+                    <button class="governance-menu-card raffle-open-tile" id="raffle-open" type="button">
+                        <strong class="governance-card-title">Raffles</strong>
+                    </button>
+                </section>
+                <p id="raffle-status" class="wallet-status raffle-status" role="status" aria-live="polite" hidden></p>
+            </main>
+
+            <div class="governance-overlay governance-menu-overlay raffle-overlay" id="raffle-overlay" role="dialog" aria-modal="true" aria-labelledby="raffle-overlay-title" hidden>
+                <section class="governance-dialog raffle-dialog">
+                    <header class="overlay-dialog-header">
+                        <div class="overlay-dialog-header-copy">
+                            <p class="eyebrow">Delegators Area</p>
+                            <h2 id="raffle-overlay-title">Raffles</h2>
+                        </div>
+                        <div class="overlay-dialog-header-actions">
+                            <button class="governance-close" id="raffle-overlay-close" type="button" aria-label="Close Raffles">
+                                <span class="governance-close-icon" aria-hidden="true"></span>
+                            </button>
+                        </div>
+                    </header>
+                    <div class="overlay-dialog-body raffle-overlay-body">
+                        <div class="raffle-section-heading">
+                            <h2>Published Raffles</h2>
+                        </div>
+                        <div class="raffle-draws" id="raffle-draws"></div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    `);
+}
+
+function createAdminDashboardBody() {
+    return createRaffleTemplate(`
+        <div class="raffle-page raffle-embedded raffle-overlay-page">
+            <main class="raffle-main">
+                <section class="raffle-shell" id="raffle-access">
+                    <p class="eyebrow">Restricted</p>
+                    <h1>Admin Area</h1>
+                    <p>Connect the authorized Cardano wallet and sign the one-time access challenge. This does not create a transaction or cost ADA.</p>
+                    <button id="raffle-connect" class="raffle-primary" type="button">Connect Admin Wallet</button>
+                    <div id="raffle-wallet-list" class="wallet-list raffle-wallet-list"></div>
+                </section>
+
+                <section class="raffle-shell" id="raffle-protected" hidden>
+                    <div class="raffle-title-row">
+                        <div>
+                            <p class="eyebrow">Verified administrator</p>
+                            <h1>Admin Area</h1>
+                        </div>
+                        <button id="raffle-logout" class="raffle-secondary" type="button">Lock</button>
+                    </div>
+
+                    <div class="raffle-stats pool-summary">
+                        <div>
+                            <strong id="raffle-eligible-count">0</strong>
+                            <span>Eligible Delegators</span>
+                        </div>
+                        <div>
+                            <strong id="raffle-total-stake">₳ 0</strong>
+                            <span>Total Delegated</span>
+                        </div>
+                    </div>
+                    <p class="small-text" id="raffle-snapshot-time">Pool snapshot unavailable</p>
+                    <button class="governance-menu-card raffle-open-tile" id="raffle-open" type="button">
+                        <strong class="governance-card-title">Raffles</strong>
+                        <span class="governance-card-detail">Draw, publish and review raffle results</span>
+                    </button>
+                </section>
+                <p id="raffle-status" class="wallet-status raffle-status" role="status" aria-live="polite" hidden></p>
+            </main>
+
+            <div class="governance-overlay governance-menu-overlay raffle-overlay" id="raffle-overlay" role="dialog" aria-modal="true" aria-labelledby="raffle-overlay-title" hidden>
+                <section class="governance-dialog raffle-dialog">
+                    <header class="overlay-dialog-header">
+                        <div class="overlay-dialog-header-copy">
+                            <p class="eyebrow">Admin Area</p>
+                            <h2 id="raffle-overlay-title">Raffles</h2>
+                        </div>
+                        <div class="overlay-dialog-header-actions">
+                            <button class="governance-back-to-root" id="raffle-overlay-back" type="button" aria-label="Back to Raffles" hidden>&lt;</button>
+                            <button class="governance-close" id="raffle-overlay-close" type="button" aria-label="Close Raffles">
+                                <span class="governance-close-icon" aria-hidden="true"></span>
+                            </button>
+                        </div>
+                    </header>
+                    <div class="overlay-dialog-body raffle-overlay-body">
+                        <div class="raffle-admin-menu" id="raffle-admin-menu">
+                            <button class="governance-menu-card raffle-open-tile" type="button" data-raffle-view="draw">
+                                <strong class="governance-card-title">Draw</strong>
+                                <span class="governance-card-detail">Select and publish a raffle winner</span>
+                            </button>
+                            <button class="governance-menu-card raffle-open-tile" type="button" data-raffle-view="exclusions">
+                                <strong class="governance-card-title">Exclusion List</strong>
+                                <span class="governance-card-detail" id="raffle-menu-exclusion-count">0 excluded</span>
+                            </button>
+                            <button class="governance-menu-card raffle-open-tile" type="button" data-raffle-view="history">
+                                <strong class="governance-card-title">History</strong>
+                                <span class="governance-card-detail" id="raffle-menu-history-count">0 published raffles</span>
+                            </button>
+                        </div>
+
+                        <section class="raffle-admin-panel" data-raffle-view-panel="draw" hidden>
+                            <form class="governance-menu-card raffle-form" id="raffle-draw-form">
+                                <h2>Draw and Publish</h2>
+                                <label for="raffle-title">Raffle title</label>
+                                <input id="raffle-title" name="title" maxlength="120" required>
+                                <label for="raffle-prize">Prize</label>
+                                <input id="raffle-prize" name="prize" maxlength="120" placeholder="For example: 100 ADA">
+                                <label for="raffle-notes">Public notes</label>
+                                <textarea id="raffle-notes" name="notes" maxlength="500" rows="4"></textarea>
+                                <label class="raffle-confirm" for="raffle-confirm">
+                                    <input id="raffle-confirm" name="confirmation" type="checkbox" required>
+                                    Publish this auditable result to verified TDSP delegators.
+                                </label>
+                                <fieldset class="raffle-publish-options">
+                                    <legend>Publication method</legend>
+                                    <label class="raffle-confirm" for="raffle-publish-website">
+                                        <input id="raffle-publish-website" name="publish_mode" type="radio" value="website" checked>
+                                        Publish on the website only (no network fee).
+                                    </label>
+                                    <label class="raffle-confirm" for="raffle-publish-on-chain">
+                                        <input id="raffle-publish-on-chain" name="publish_mode" type="radio" value="on_chain">
+                                        Publish on the website and record proof on Cardano Mainnet (network fee required).
+                                    </label>
+                                </fieldset>
+                                <button class="raffle-primary" type="submit">Draw and Publish Winner</button>
+                            </form>
+                        </section>
+
+                        <section class="raffle-admin-panel" data-raffle-view-panel="exclusions" hidden>
+                            <form class="governance-menu-card raffle-form" id="raffle-exclusions-form">
+                                <h2>Excluded Stake Keys</h2>
+                                <p class="small-text">Add Cardano Mainnet stake addresses here. You can later disable an exclusion so the saved stake key participates in future raffles again.</p>
+                                <label for="raffle-excluded-stake-keys">Stake addresses</label>
+                                <textarea id="raffle-excluded-stake-keys" name="stake_addresses" rows="5" spellcheck="false" autocomplete="off" placeholder="stake1..."></textarea>
+                                <p class="small-text">Format: enter one complete Mainnet stake address per line. Example:<br><code>stake1uxg7k2rzm28glx8decjmulsxrwwaxrn2t45mcvu5fyfscuc6z2mjz</code><br><code>stake1u...another complete stake address</code><br>Comma-separated addresses are also accepted.</p>
+                                <p class="small-text" id="raffle-exclusions-count">0 stake keys excluded</p>
+                                <div class="raffle-exclusion-list" id="raffle-exclusion-list"></div>
+                                <button class="raffle-secondary" type="submit">Add Exclusions</button>
+                                <p class="raffle-inline-status" id="raffle-exclusions-status" role="status" aria-live="polite"></p>
+                            </form>
+                        </section>
+
+                        <section class="raffle-admin-panel" data-raffle-view-panel="history" hidden>
+                            <div class="raffle-section-heading">
+                                <h2>Published Raffles</h2>
+                            </div>
+                            <div class="raffle-draws" id="raffle-draws"></div>
+                        </section>
+                    </div>
+                </section>
+            </div>
+        </div>
+    `);
+}
+
+function loadDelegatorAccessModule() {
+    if (window.TDSPDelegatorAccess?.initOverlay) return Promise.resolve(window.TDSPDelegatorAccess);
+    return window.TDSPRuntime.loadScript('delegators/delegator-access.js?v=20260818-admin-auto-overlay', {
+        datasetName: 'delegatorAccess',
+        selector: 'script[data-delegator-access]',
+        ready: () => window.TDSPDelegatorAccess?.initOverlay ? window.TDSPDelegatorAccess : null
+    });
+}
+
+function openDelegatorsDashboardOverlay(event) {
+    event?.preventDefault?.();
+    if (getTopGovernanceMenuOverlay('delegators-dashboard-overlay')) return;
+
+    const dashboardBody = createDelegatorsDashboardBody();
+
+    const elements = createUniversalOverlay({
+        id: 'delegators-dashboard-overlay',
+        titleId: 'delegators-dashboard-title',
+        titleText: 'Dashboard',
+        headerMeta: 'TDSP Delegator',
+        closeLabel: 'Close delegators dashboard',
+        closeOverlay: closeDelegatorsDashboardOverlay,
+        returnFocus: event?.currentTarget || document.activeElement,
+        rootTitle: 'Delegators',
+        overlayClass: 'delegators-dashboard-overlay',
+        dialogClass: 'delegators-dashboard-dialog',
+        bodyNodes: [dashboardBody],
+        enableSearch: false
+    });
+
+    delegatorsDashboardMessageHandler = event => {
+        const identity = String(event.detail?.identity || '').trim();
+        elements.meta.textContent = identity ? `TDSP Delegator ${identity}` : 'TDSP Delegator';
+    };
+    window.addEventListener('tdsp:delegator-dashboard-identity', delegatorsDashboardMessageHandler);
+
+    loadDelegatorAccessModule()
+        .then(module => module.initOverlay('delegator'))
+        .catch(error => {
+            const status = dashboardBody.querySelector('#raffle-status');
+            if (status) {
+                status.textContent = error?.message || 'Delegator dashboard could not be loaded.';
+                status.classList.add('is-error');
+                status.hidden = false;
+            }
+        });
+}
+
+function closeDelegatorsDashboardOverlay() {
+    if (delegatorsDashboardMessageHandler) {
+        window.removeEventListener('tdsp:delegator-dashboard-identity', delegatorsDashboardMessageHandler);
+        delegatorsDashboardMessageHandler = null;
+    }
+    window.TDSPRaffleOverlayActive = false;
+    document.body.classList.remove('raffle-overlay-open');
+    closePoolMenuOverlay('delegators-dashboard-overlay');
+}
+
+function openAdminDashboardOverlay(event) {
+    event?.preventDefault?.();
+    if (getTopGovernanceMenuOverlay('admin-dashboard-overlay')) return;
+    closeDelegatorsDashboardOverlay(false);
+
+    const dashboardBody = createAdminDashboardBody();
+    createUniversalOverlay({
+        id: 'admin-dashboard-overlay',
+        titleId: 'admin-dashboard-title',
+        titleText: 'Admin Area',
+        headerMeta: 'TDSP Admin',
+        closeLabel: 'Close admin area',
+        closeOverlay: closeAdminDashboardOverlay,
+        returnFocus: event?.currentTarget || document.activeElement,
+        rootTitle: 'Admin',
+        overlayClass: 'delegators-dashboard-overlay',
+        dialogClass: 'delegators-dashboard-dialog',
+        bodyNodes: [dashboardBody],
+        enableSearch: false
+    });
+
+    loadDelegatorAccessModule()
+        .then(module => module.initOverlay('admin'))
+        .catch(error => {
+            const status = dashboardBody.querySelector('#raffle-status');
+            if (status) {
+                status.textContent = error?.message || 'Admin area could not be loaded.';
+                status.classList.add('is-error');
+                status.hidden = false;
+            }
+        });
+}
+
+function closeAdminDashboardOverlay(restoreFocus = true) {
+    window.TDSPRaffleOverlayActive = false;
+    document.body.classList.remove('raffle-overlay-open');
+    closePoolMenuOverlay('admin-dashboard-overlay', restoreFocus);
+}
+
+window.addEventListener('tdsp:open-admin-dashboard', openAdminDashboardOverlay);
 
 function openMithrilSignersOverlay() {
     closeMithrilSignersOverlay(false);
@@ -2059,7 +2350,8 @@ function createUniversalOverlay(options) {
         onSearch = null,
         uniqueId = false,
         showBotButton = false,
-        botContext = null
+        botContext = null,
+        extraActions = []
     } = options;
 
     const previousTopOverlay = getTopGovernanceMenuOverlay();
@@ -2139,7 +2431,7 @@ function createUniversalOverlay(options) {
         leadingNodes,
         meta,
         hasBackTarget ? back : null,
-        [botButton]
+        [...extraActions, botButton]
     );
     const body = document.createElement('div');
     body.className = 'overlay-dialog-body';
@@ -2167,7 +2459,8 @@ function createPoolMenuOverlay({
     bodyNode,
     closeOnBackdrop = true,
     closeOnEscape = true,
-    defaultSort = ''
+    defaultSort = '',
+    extraActions = []
 }) {
     return createUniversalOverlay({
         id,
@@ -2181,7 +2474,8 @@ function createPoolMenuOverlay({
         bodyNodes: [bodyNode],
         closeOnBackdrop,
         closeOnEscape,
-        defaultSort
+        defaultSort,
+        extraActions
     });
 }
 
@@ -2918,3 +3212,6 @@ window.TDSPPrices = Object.freeze({
     load: fetchPrices,
     getLatest: () => latestPricePayload
 });
+window.getTopGovernanceMenuOverlay = getTopGovernanceMenuOverlay;
+window.syncGovernanceMenuOverlayAccessibility = syncGovernanceMenuOverlayAccessibility;
+window.createUniversalOverlay = createUniversalOverlay;

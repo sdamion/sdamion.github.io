@@ -47,12 +47,13 @@
 
     <!-- Preload Logo -->
     <link rel="preload" href="tdsp_logo.webp?v=20260727-smooth-lines" as="image" type="image/webp">
-    <link rel="stylesheet" href="shared/styles.css?v=20260818-pool-id-stake-button-light">
+    <link rel="stylesheet" href="shared/styles.css?v=20260818-raffle-overlay-module">
+    <link rel="stylesheet" href="delegators/raffle.css?v=20260818-admin-default-tiles">
 
     <script src="shared/runtime.js?v=20260815-delegator-wallets" defer></script>
-    <script src="shared/site-controls.js?v=20260818-theme-toggle-current" defer></script>
+    <script src="shared/site-controls.js?v=20260818-raffle-overlay-module" defer></script>
     <script src="vendor/chart-loader.js?v=20260817-section-folders" defer></script>
-    <script src="home/index.js?v=20260818-theme-toggle-current" defer></script>
+    <script src="home/index.js?v=20260818-raffle-overlay-module" defer></script>
 </head>
 <body>
     <header class="site-header" id="site-header">
@@ -66,7 +67,6 @@
                     <a class="nav-link" href="#governance">Governance</a>
                     <span class="nav-row-break" aria-hidden="true"></span>
                     <a class="nav-link" href="#calendar">Cardano Calendar</a>
-                    <a class="nav-link" href="delegators.html">Delegators</a>
                     <a class="nav-link" href="#stakenow" data-stake-open>Stake Now</a>
                     <a class="nav-link" href="https://twitter.com/DamionDutch" target="_blank" rel="noopener noreferrer">X</a>
                     <button class="nav-link nav-button tdspbot-nav-link" id="tdspbot-open" type="button" aria-label="Open TDSPBot">
@@ -414,7 +414,6 @@
 
     <footer class="site-footer">
         <span>&copy; 2026 The Dutch Stake Pool. All rights reserved.</span>
-        <a href="delegators.html">Delegators</a>
         <span class="nav-db-status is-loading" id="database-status" aria-live="polite">
             <span class="nav-db-status__dot" aria-hidden="true"></span>
             <span id="database-status-text">DB loading</span>
@@ -433,6 +432,6 @@
 
     <script src="starch/starch-loader.js?v=20260817-section-folders" defer></script>
     <script src="governance/governance-loader.js?v=20260818-remove-drep-status-ncl" defer></script>
-    <script src="stake/stake-loader.js?v=20260818-drep-delegation" defer></script>
+    <script src="stake/stake-loader.js?v=20260818-raffle-overlay-module" defer></script>
 </body>
 </html>

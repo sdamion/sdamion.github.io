@@ -17,6 +17,29 @@
     overflow: hidden;
 }
 
+.raffle-page.raffle-embedded {
+    min-height: auto;
+    background: transparent;
+}
+
+.raffle-page.raffle-embedded .raffle-site-header {
+    display: none;
+}
+
+.raffle-page.raffle-embedded .raffle-main {
+    width: 100%;
+    padding: 0;
+}
+
+.raffle-page.raffle-embedded #raffle-access > :is(.eyebrow, h1),
+.raffle-page.raffle-embedded #raffle-protected .raffle-title-row > div {
+    display: none;
+}
+
+.raffle-page.raffle-embedded #raffle-protected .raffle-title-row {
+    justify-content: flex-end;
+}
+
 .raffle-main {
     width: min(1120px, calc(100% - 36px));
     margin: 0 auto;
@@ -98,23 +121,20 @@
 }
 
 .raffle-open-tile {
+    position: relative;
     display: grid;
-    gap: 6px;
+    align-content: start;
+    gap: 8px;
     width: 100%;
+    min-height: 132px;
     min-width: 0;
-    padding: 18px;
-    text-align: left;
-    background: var(--overlay-surface-muted);
+    padding: 16px;
+    overflow: hidden;
     color: var(--text);
+    text-align: left;
     font: inherit;
-}
-
-.raffle-open-tile strong {
-    font-size: 1.2rem;
-}
-
-.raffle-open-tile span {
-    color: var(--muted);
+    cursor: pointer;
+    appearance: none;
 }
 
 .raffle-overlay,
@@ -447,6 +467,11 @@
     .raffle-main {
         width: min(100% - 24px, 1120px);
         padding-top: 88px;
+    }
+
+    .raffle-page.raffle-embedded .raffle-main {
+        width: 100%;
+        padding-top: 0;
     }
 
     .raffle-title-row {

@@ -1,12 +1,26 @@
 (function () {
-    const STAKE_SCRIPT_SRC = 'stake/stake.js?v=20260818-drep-delegation';
+    const MAIN_HELPERS_SCRIPT_SRC = 'home/index.js?v=20260818-raffle-overlay-module';
+    const STAKE_SCRIPT_SRC = 'stake/stake.js?v=20260818-raffle-overlay-module';
     const STAKE_TRIGGER_SELECTOR = '[data-stake-open], [data-drep-open]';
-    function loadStakeScript() {
-        return window.TDSPRuntime.loadScript(STAKE_SCRIPT_SRC, {
-            datasetName: 'stakeMain',
-            selector: 'script[data-stake-main]',
-            ready: () => (window.TDSPStakeReady === true ? true : null)
+    function loadMainHelpers() {
+        return window.TDSPRuntime.loadScript(MAIN_HELPERS_SCRIPT_SRC, {
+            datasetName: 'stakeMainHelpers',
+            selector: 'script[data-site-main-helpers], script[src^="home/index.js"]',
+            ready: () => (
+                typeof window.createUniversalOverlay === 'function'
+                && typeof window.getTopGovernanceMenuOverlay === 'function'
+            ) ? true : null
         });
+    }
+
+    function loadStakeScript() {
+        return loadMainHelpers().then(() => (
+            window.TDSPRuntime.loadScript(STAKE_SCRIPT_SRC, {
+                datasetName: 'stakeMain',
+                selector: 'script[data-stake-main]',
+                ready: () => (window.TDSPStakeReady === true ? true : null)
+            })
+        ));
     }
 
     function openStakeFromTrigger(trigger) {

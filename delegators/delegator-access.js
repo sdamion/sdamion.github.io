@@ -2,7 +2,8 @@ const MESH_CDN_URL = 'https://esm.sh/@meshsdk/core@1.9.1?bundle-deps';
 const ADMIN_ADDRESS = 'addr1qy93p0cfydj548ayt6mh2z572ly4n4s9yaxwzrht2rzc3urjvlyhltxc0287yacjhg8syg4w3dyg3jal6ltksfuc483sel7r8c';
 const ADMIN_STAKE_ADDRESS = 'stake1u9ex0jtl4nv84rlzwuft5rczy2hgkjygewla04mgy7v2nccx4p4yr';
 const RAFFLE_METADATA_LABEL = 8675309;
-const ROLE = document.body.dataset.raffleRole === 'admin' ? 'admin' : 'delegator';
+let ROLE = document.body.dataset.raffleRole === 'admin' ? 'admin' : 'delegator';
+const IS_EMBEDDED = new URLSearchParams(window.location.search).get('embed') === '1';
 const IS_LOCAL = window.TDSPRuntime?.isLocalPreview === true;
 const ENDPOINTS = IS_LOCAL ? {
     challenge: '/__raffle_auth_challenge_proxy__',
@@ -21,10 +22,10 @@ const ENDPOINTS = IS_LOCAL ? {
     anchor: 'https://api.tdsp.online/api/raffle/admin/anchor',
     delegator: 'https://api.tdsp.online/api/raffle/delegator'
 };
-const SESSION_KEY = `tdsp-raffle-session-${ROLE}`;
 const ADMIN_SESSION_KEY = 'tdsp-raffle-session-admin';
 
 let meshPromise = null;
+let SESSION_KEY = `tdsp-raffle-session-${ROLE}`;
 let sessionToken = sessionStorage.getItem(SESSION_KEY) || '';
 let raffleOverlayReturnFocus = null;
 let adminTransactionWallet = null;
@@ -80,6 +81,27 @@ function authorizedRequest(url, options = {}) {
 function shorten(value, head = 16, tail = 10) {
     const text = String(value || '');
     return text.length > head + tail + 3 ? `${text.slice(0, head)}...${text.slice(-tail)}` : text;
+}
+
+function getDelegatorIdentity(payload = {}) {
+    return String(
+        payload.ada_handle
+        || payload.handle
+        || payload.delegator?.ada_handle
+        || payload.delegator?.handle
+        || shorten(payload.stake_address)
+        || ''
+    ).trim();
+}
+
+function postEmbeddedDelegatorIdentity(payload = {}) {
+    const detail = { identity: getDelegatorIdentity(payload) };
+    if (window.TDSPRaffleOverlayActive) {
+        window.dispatchEvent(new CustomEvent('tdsp:delegator-dashboard-identity', { detail }));
+        return;
+    }
+    if (!IS_EMBEDDED || window.parent === window) return;
+    window.parent.postMessage({ type: 'tdsp:delegator-dashboard-identity', ...detail }, window.location.origin);
 }
 
 function formatAda(lovelace) {
@@ -711,10 +733,23 @@ async function submitExclusions(event) {
 
 function renderDelegator(payload) {
     const identity = document.getElementById('raffle-identity');
-    identity.replaceChildren(document.createTextNode('Verified stake key '), addressLine(payload.stake_address));
-    const adminLink = document.getElementById('raffle-admin-link');
-    if (adminLink) adminLink.hidden = payload.is_admin !== true;
-    if (payload.is_admin === true) sessionStorage.setItem(ADMIN_SESSION_KEY, sessionToken);
+    if (IS_EMBEDDED || window.TDSPRaffleOverlayActive) {
+        identity.replaceChildren();
+        identity.hidden = true;
+    } else {
+        identity.hidden = false;
+        identity.replaceChildren(document.createTextNode('Verified stake key '), addressLine(payload.stake_address));
+    }
+    postEmbeddedDelegatorIdentity(payload);
+    if (payload.is_admin === true) {
+        sessionStorage.setItem(ADMIN_SESSION_KEY, sessionToken);
+        if (window.TDSPRaffleOverlayActive) {
+            window.setTimeout(() => {
+                window.dispatchEvent(new CustomEvent('tdsp:open-admin-dashboard'));
+            }, 0);
+            return;
+        }
+    }
     renderDraws(payload.draws || [], payload.stake_address);
 }
 
@@ -781,13 +816,30 @@ function logout() {
     sessionStorage.removeItem(SESSION_KEY);
     sessionStorage.removeItem(ADMIN_SESSION_KEY);
     showAuthenticatedUi(false);
+    postEmbeddedDelegatorIdentity();
     document.getElementById('raffle-wallet-list').replaceChildren();
     setStatus('Wallet session closed.');
 }
 
-async function init() {
-    if (ROLE === 'admin' && !sessionToken) {
-        window.location.replace('delegators.html');
+function setRaffleRole(role) {
+    ROLE = role === 'admin' ? 'admin' : 'delegator';
+    SESSION_KEY = `tdsp-raffle-session-${ROLE}`;
+    sessionToken = sessionStorage.getItem(SESSION_KEY) || '';
+}
+
+async function init(options = {}) {
+    const overlayMode = options.overlay === true;
+    setRaffleRole(options.role || ROLE);
+    window.TDSPRaffleOverlayActive = overlayMode;
+    if (IS_EMBEDDED) {
+        document.body.classList.add('raffle-embedded');
+        postEmbeddedDelegatorIdentity();
+    } else if (!overlayMode && ROLE === 'delegator') {
+        window.location.replace('index.html#pool');
+        return;
+    }
+    if (!overlayMode && ROLE === 'admin' && !sessionToken) {
+        window.location.replace('index.html#pool');
         return;
     }
     document.getElementById('raffle-connect')?.addEventListener('click', () => {
@@ -810,8 +862,8 @@ async function init() {
             await loadProtectedArea();
             return;
         } catch {
-            if (ROLE === 'admin') {
-                window.location.replace('delegators.html');
+            if (!overlayMode && ROLE === 'admin') {
+                window.location.replace('index.html#pool');
                 return;
             }
             setStatus('Your previous wallet session expired. Sign a new challenge to continue.');
@@ -821,11 +873,20 @@ async function init() {
     showAuthenticatedUi(false);
 }
 
+window.TDSPDelegatorAccess = {
+    initOverlay(role) {
+        return init({ role, overlay: true });
+    }
+};
+window.TDSPRaffleAccess = window.TDSPDelegatorAccess;
+
 document.addEventListener('keydown', event => {
     if (event.key === 'Escape' && !document.getElementById('raffle-overlay')?.hidden) {
         setRaffleOverlay(false);
     }
 });
 
-if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
-else init();
+if (document.body.classList.contains('raffle-page')) {
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
+    else init();
+}

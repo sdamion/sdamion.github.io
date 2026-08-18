@@ -4016,6 +4016,7 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 
 .governance-close,
 .governance-back-to-root,
+.governance-overlay-action-button,
 .governance-overlay-bot-button {
     position: static;
     flex: 0 0 auto;
@@ -4068,6 +4069,15 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     font-weight: 700;
 }
 
+.governance-overlay-action-button {
+    display: inline-flex;
+    align-items: center;
+    color: var(--accent-strong);
+    font-size: 0.82rem;
+    font-weight: 800;
+    text-decoration: none;
+}
+
 .governance-overlay-bot-button {
     color: var(--accent-strong);
     font-size: 0.82rem;
@@ -4078,10 +4088,20 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 .governance-close:focus-visible,
 .governance-back-to-root:hover,
 .governance-back-to-root:focus-visible,
+.governance-overlay-action-button:hover,
+.governance-overlay-action-button:focus-visible,
 .governance-overlay-bot-button:hover,
 .governance-overlay-bot-button:focus-visible {
     background: var(--control-hover-surface);
     transform: none;
+}
+
+.delegators-dashboard-dialog {
+    width: min(1120px, calc(100vw - 28px));
+}
+
+.raffle-overlay-page {
+    width: 100%;
 }
 
 @media (max-width: 720px) {

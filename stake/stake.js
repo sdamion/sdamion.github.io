@@ -1,3 +1,4 @@
+(function () {
 const POOL_ID = 'pool1zfd0gl76h3f0ammgp4gu0qvt99qcqkn5a895wv0q779d6p9dz5u';
 const POOL_ID_HEX = '125af47fdabc52feef680d51c7818b2941805a74e9cb4731e0f78add';
 const TARGET_POOL_IDS = new Set([POOL_ID, POOL_ID_HEX]);
@@ -342,11 +343,11 @@ function openStakeModal(event) {
     const elements = createUniversalOverlay({
         id: 'stake-now-overlay',
         titleId: 'stake-now-title',
-        titleText: 'Stake Now',
-        closeLabel: 'Close Stake Now',
+        titleText: 'Stake to TDSP',
+        closeLabel: 'Close Stake to TDSP',
         closeOverlay: closeStakeModal,
         returnFocus: event?.currentTarget || document.activeElement,
-        rootTitle: 'Stake Now',
+        rootTitle: 'Stake to TDSP',
         overlayClass: 'stake-overlay',
         dialogClass: 'wallet-modal-content',
         bodyNodes,
@@ -449,3 +450,4 @@ if (document.readyState === 'loading') {
 document.addEventListener('tdsp:content-loaded', () => bindStakeControls());
 window.openStakeModal = openStakeModal;
 window.openDrepDelegationModal = openDrepDelegationModal;
+}());
