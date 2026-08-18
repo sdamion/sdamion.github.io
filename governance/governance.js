@@ -2101,7 +2101,6 @@ function getTreasuryBusinessWebsiteUrls(group) {
     ];
     return governanceBusinessLinks.getWebsiteUrls(group, {
         mappedUrl,
-        normalizeDomainText: normalizeBusinessDomainText,
         projectWebsites: [
             ...(Array.isArray(group?.catalystProjects) ? group.catalystProjects : [])
         ].map(project => project?.website)
@@ -2114,16 +2113,6 @@ function createTreasuryBusinessWebsiteLinks(urls) {
 
 function createTreasuryBusinessLogo(urls, label) {
     return governanceBusinessLinks.createLogo(urls, label);
-}
-
-function normalizeBusinessDomainText(value) {
-    return String(value || '')
-        .toLowerCase()
-        .replace(/&/g, 'and')
-        .replace(/[^a-z0-9]+/g, '')
-        .replace(/labs?$/g, 'lab')
-        .replace(/foundation$/g, '')
-        .trim();
 }
 
 function createFundingRecipientAmountRow(usdValue, adaValue = null, usdPending = false, options = {}) {

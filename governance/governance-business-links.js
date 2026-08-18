@@ -5,7 +5,7 @@
         normalizeBusinessName,
         openExternalWarning
     }) {
-        function getWebsiteUrls(group, { mappedUrl, projectWebsites = [], normalizeDomainText } = {}) {
+        function getWebsiteUrls(group, { mappedUrl, projectWebsites = [], normalizeDomainText = normalizeBusinessDomainText } = {}) {
             if (mappedUrl) return normalizeUrlList(mappedUrl);
 
             const normalizedLabel = typeof normalizeDomainText === 'function'
@@ -135,11 +135,22 @@
             }
         }
 
+        function normalizeBusinessDomainText(value) {
+            return String(value || '')
+                .toLowerCase()
+                .replace(/&/g, 'and')
+                .replace(/[^a-z0-9]+/g, '')
+                .replace(/labs?$/g, 'lab')
+                .replace(/foundation$/g, '')
+                .trim();
+        }
+
         return Object.freeze({
             createLogo,
             createWebsiteLinks,
             getRootDomainLabel,
             getWebsiteUrls,
+            normalizeBusinessDomainText,
             normalizeExternalUrl,
             normalizeUrlList
         });
