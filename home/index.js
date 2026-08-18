@@ -1902,7 +1902,7 @@ function openPoolDelegatorsOverlay() {
         returnFocus: document.getElementById('pool-delegators-card'),
         rootTitle: 'Delegators',
         extraActions: [delegatorsPageButton],
-        bodyNode: createPoolDelegatorsList()
+        bodyNode: window.TDSPPoolDelegatorsList?.create?.(poolDelegators) || window.TDSPRuntime.createSmallText('Delegator details are not available yet.')
     });
 }
 
@@ -2780,7 +2780,7 @@ function createMithrilSignerFallbackCard(signer, index) {
 
     const stake = document.createElement('span');
     stake.className = 'pool-delegator-amount';
-    stake.textContent = formatDelegatorAda(getMithrilSignerStake(signer));
+    stake.textContent = window.TDSPRuntime.formatLovelaceAmount(getMithrilSignerStake(signer));
 
     const row = createPoolOverlayRow({
         title: signer?.display_name || signer?.name || 'No Name',
@@ -2793,93 +2793,6 @@ function createMithrilSignerFallbackCard(signer, index) {
 
 function getMithrilSignerStake(signer) {
     return window.TDSPRuntime.getLovelaceAmount(signer, ['stake_lovelace']);
-}
-
-function createPoolDelegatorsList() {
-    const list = document.createElement('div');
-    list.className = 'pool-delegator-list';
-
-    if (!poolDelegators.length) {
-        const message = window.TDSPRuntime.createSmallText('Delegator details are not available yet.');
-        list.appendChild(message);
-        return list;
-    }
-
-    const sortedDelegators = [...poolDelegators].sort((left, right) => {
-        const leftAmount = getDelegatorAmount(left);
-        const rightAmount = getDelegatorAmount(right);
-        return rightAmount > leftAmount ? 1 : rightAmount < leftAmount ? -1 : 0;
-    });
-
-    sortedDelegators.forEach((delegator, index) => {
-        const adaHandle = String(delegator?.ada_handle || '').trim();
-        const walletAddresses = window.TDSPRuntime.getDelegatorWalletAddresses(delegator);
-        const walletAddress = walletAddresses[0] || '';
-        const addressLine = document.createElement('div');
-        addressLine.className = 'pool-delegator-address-line';
-
-        const addressText = document.createElement('strong');
-        addressText.className = `pool-delegator-address${adaHandle ? ' pool-delegator-handle' : ''}`;
-        if (adaHandle || !walletAddress || !window.TDSPRuntime?.createResponsiveIdentifier) {
-            addressText.textContent = adaHandle || walletAddress || 'Wallet address unavailable';
-        } else {
-            addressText.appendChild(window.TDSPRuntime.createResponsiveIdentifier(walletAddress));
-        }
-        if (walletAddress) addressText.title = walletAddress;
-
-        const amount = document.createElement('span');
-        amount.className = 'pool-delegator-amount';
-        amount.textContent = formatDelegatorAda(getDelegatorAmount(delegator));
-
-        addressLine.appendChild(addressText);
-        if (walletAddress) {
-            const copy = document.createElement('button');
-            copy.className = 'pool-delegator-copy-button';
-            copy.type = 'button';
-            copy.textContent = '⧉';
-            copy.dataset.copyValue = walletAddress;
-            copy.setAttribute('aria-label', `Copy wallet address ${index + 1}`);
-            window.TDSPRuntime?.bindCopyButton?.(copy, button => button.dataset.copyValue, { preventDefault: false, stopPropagation: false });
-            addressLine.appendChild(copy);
-        }
-        const details = [addressLine, amount];
-
-        if (adaHandle && walletAddress) {
-            const walletText = document.createElement('span');
-            walletText.className = 'pool-delegator-wallet-address';
-            if (window.TDSPRuntime?.createResponsiveIdentifier) {
-                walletText.appendChild(window.TDSPRuntime.createResponsiveIdentifier(walletAddress));
-            } else {
-                walletText.textContent = walletAddress;
-            }
-            walletText.title = walletAddress;
-            details.push(walletText);
-        }
-
-        if (walletAddresses.length > 1) {
-            const addressCount = document.createElement('span');
-            addressCount.className = 'pool-delegator-epoch';
-            addressCount.textContent = `${walletAddresses.length.toLocaleString('en-US')} linked wallet addresses`;
-            details.push(addressCount);
-        }
-
-        const epoch = Number(delegator?.active_epoch_no);
-        if (Number.isFinite(epoch)) {
-            const epochText = document.createElement('span');
-            epochText.className = 'pool-delegator-epoch';
-            epochText.textContent = `Active epoch ${epoch.toLocaleString('en-US')}`;
-            details.push(epochText);
-        }
-
-        const row = createPoolOverlayRow({ details });
-        row.dataset.sortName = window.TDSPRuntime.normalizeSearchText(adaHandle || walletAddress);
-        row.dataset.searchText = window.TDSPRuntime.getDelegatorSearchText(delegator);
-        row.dataset.sortAmount = getDelegatorAmount(delegator).toString();
-        if (Number.isFinite(epoch)) row.dataset.sortEpoch = String(epoch);
-        list.appendChild(row);
-    });
-
-    return list;
 }
 
 function createPoolOverlayRow({ title = '', titleClassName = '', details = [] }) {
@@ -2911,14 +2824,6 @@ function createPoolOverlayRow({ title = '', titleClassName = '', details = [] })
 
     row.appendChild(content);
     return row;
-}
-
-function getDelegatorAmount(delegator) {
-    return window.TDSPRuntime.getLovelaceAmount(delegator, ['amount_lovelace', 'amount']);
-}
-
-function formatDelegatorAda(lovelace) {
-    return window.TDSPRuntime.formatLovelaceAmount(lovelace);
 }
 
 function shortenStakeAddress(address) {
