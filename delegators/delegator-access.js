@@ -302,10 +302,20 @@ function resolvePrizeImageUrl(value) {
     }
 }
 
+function getPrizeImageSource(asset) {
+    return asset?.image
+        || asset?.image_url
+        || asset?.logo
+        || asset?.icon
+        || asset?.metadata?.image
+        || asset?.metadata?.logo
+        || '';
+}
+
 function createPrizeCard(asset) {
     const card = document.createElement('article');
     card.className = 'governance-menu-card raffle-draw-card';
-    const imageUrl = resolvePrizeImageUrl(asset?.image);
+    const imageUrl = resolvePrizeImageUrl(getPrizeImageSource(asset));
     if (imageUrl) card.classList.add('has-prize-image');
 
     const title = document.createElement('strong');
@@ -335,6 +345,10 @@ function createPrizeCard(asset) {
         image.alt = `${String(asset?.name || asset?.ticker || 'Token')} logo`;
         image.loading = 'lazy';
         image.decoding = 'async';
+        image.addEventListener('error', () => {
+            image.remove();
+            card.classList.remove('has-prize-image');
+        }, { once: true });
         card.appendChild(image);
     }
 
