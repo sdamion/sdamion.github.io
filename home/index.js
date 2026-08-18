@@ -13,20 +13,6 @@ const ICEBREAKER_API_URL = IS_LOCAL_PREVIEW ? '/__icebreaker_proxy__' : 'https:/
 const STARCH_POOL_API_URL = IS_LOCAL_PREVIEW ? '/__starch_pools_proxy__' : 'https://api.tdsp.online/api/starch/pools';
 const LEADER_SCHEDULE_API_URL = IS_LOCAL_PREVIEW ? '/__leader_schedule_proxy__' : 'https://api.tdsp.online/api/leader-schedule';
 const DATABASE_STATUS_API_URL = IS_LOCAL_PREVIEW ? '/__sqlite_status_proxy__' : 'https://api.tdsp.online/api/sqlite/status';
-const STARCH_POOL_WEBSITES = Object.freeze({
-    '4free': 'https://x.com/4FREE_stakepool',
-    a3c: 'https://x.com/A3Cpool_Shawn',
-    bone: 'https://x.com/bone_pool',
-    drmz: 'https://x.com/drmz_web3',
-    earn: 'https://x.com/earncoinpool',
-    earncoin: 'https://x.com/earncoinpool',
-    earncoinpool: 'https://x.com/earncoinpool',
-    epc: 'https://x.com/earncoinpool',
-    epoch: 'https://x.com/EPOCHpool',
-    sagan: 'https://x.com/SaganPool',
-    tdsp: 'https://x.com/DamionDutch',
-    weed: 'https://x.com/CardanoWEED'
-});
 const notifiedRelayMaintenance = new Set();
 const cardanoEventNotificationTimers = new Map();
 const DEFAULT_SITE_ALERT_SETTINGS = Object.freeze({
@@ -1424,122 +1410,15 @@ function initCryptoNewsTicker() {
 }
 
 function openCryptoNewsOverlay(returnFocus = document.activeElement) {
-    closeCryptoNewsOverlay(false);
-    createPoolMenuOverlay({
-        id: 'crypto-news-overlay',
-        titleId: 'crypto-news-title',
-        titleText: 'Crypto News',
-        headerMeta: `${cryptoNewsItems.length.toLocaleString('en-US')} articles`,
-        closeLabel: 'Close Crypto News',
-        closeOverlay: closeCryptoNewsOverlay,
+    window.TDSPNewsOverlay?.openCryptoNewsOverlay?.(cryptoNewsItems, {
         returnFocus,
-        rootTitle: 'Crypto News',
-        bodyNode: createCryptoNewsList()
+        closeCryptoNewsOverlay,
+        openExternalSiteWarning
     });
 }
 
 function closeCryptoNewsOverlay(restoreFocus = true) {
     closePoolMenuOverlay('crypto-news-overlay', restoreFocus);
-}
-
-function createCryptoNewsList() {
-    const list = document.createElement('div');
-    list.className = 'pool-delegator-list crypto-news-list';
-
-    if (!cryptoNewsItems.length) {
-        const message = document.createElement('p');
-        message.className = 'small-text';
-        message.textContent = 'Crypto news is not available yet.';
-        list.appendChild(message);
-        return list;
-    }
-
-    cryptoNewsItems.forEach(item => {
-        const publishedAt = Date.parse(item?.published_at || '');
-        const dateText = Number.isFinite(publishedAt)
-            ? new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium' }).format(publishedAt)
-            : '';
-        const row = createPoolOverlayRow({
-            title: String(item?.title || 'Untitled Cardano news'),
-            titleClassName: 'crypto-news-list-title',
-            details: [
-                [String(item?.source || 'Cardano News'), dateText].filter(Boolean).join(' · ')
-            ]
-        });
-        const url = getExternalHttpUrl(item?.url);
-        const youtubeVideoId = getYouTubeVideoId(item?.url);
-        if (Number.isFinite(publishedAt)) row.dataset.sortDate = String(publishedAt);
-        if (url) {
-            row.tabIndex = 0;
-            row.setAttribute('role', 'link');
-            row.setAttribute('aria-label', youtubeVideoId
-                ? `Play YouTube video: ${item.title}`
-                : `Open news article: ${item.title}`);
-            const openArticle = () => youtubeVideoId
-                ? openYouTubeVideoOverlay(youtubeVideoId, item.title, row)
-                : openExternalSiteWarning(url.href, row);
-            window.TDSPRuntime?.bindActionTrigger?.(row, openArticle, {
-                datasetKey: 'articleBound',
-                errorMessage: 'News item could not be opened.'
-            });
-        }
-        list.appendChild(row);
-    });
-
-    return list;
-}
-
-function getYouTubeVideoId(value) {
-    try {
-        const url = new URL(value);
-        const host = url.hostname.toLowerCase().replace(/^www\./, '');
-        let videoId = '';
-        if (host === 'youtu.be') {
-            videoId = url.pathname.split('/').filter(Boolean)[0] || '';
-        } else if (['youtube.com', 'm.youtube.com', 'youtube-nocookie.com'].includes(host)) {
-            if (url.pathname === '/watch') videoId = url.searchParams.get('v') || '';
-            else if (/^\/(?:shorts|live|embed)\//.test(url.pathname)) {
-                videoId = url.pathname.split('/').filter(Boolean)[1] || '';
-            }
-        }
-        return /^[0-9A-Za-z_-]{11}$/.test(videoId) ? videoId : '';
-    } catch {
-        return '';
-    }
-}
-
-function openYouTubeVideoOverlay(videoId, title, returnFocus = document.activeElement) {
-    if (!/^[0-9A-Za-z_-]{11}$/.test(String(videoId || ''))) return;
-    closeYouTubeVideoOverlay(false);
-
-    const panel = document.createElement('section');
-    panel.className = 'youtube-video-panel';
-    const frame = document.createElement('div');
-    frame.className = 'youtube-video-frame';
-    const iframe = document.createElement('iframe');
-    iframe.src = `https://www.youtube-nocookie.com/embed/${videoId}?rel=0`;
-    iframe.title = String(title || 'YouTube video');
-    iframe.loading = 'eager';
-    iframe.referrerPolicy = 'strict-origin-when-cross-origin';
-    iframe.allow = 'accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture; web-share';
-    iframe.allowFullscreen = true;
-    frame.appendChild(iframe);
-
-    panel.appendChild(frame);
-
-    createPoolMenuOverlay({
-        id: 'youtube-video-overlay',
-        titleId: 'youtube-video-title',
-        titleText: String(title || 'YouTube Video'),
-        headerMeta: 'YouTube',
-        closeLabel: 'Close YouTube video',
-        closeOverlay: closeYouTubeVideoOverlay,
-        returnFocus,
-        rootTitle: 'Crypto News',
-        bodyNode: panel,
-        closeOnBackdrop: false,
-        closeOnEscape: !window.matchMedia('(max-width: 700px)').matches
-    });
 }
 
 function closeYouTubeVideoOverlay(restoreFocus = true) {
@@ -1569,7 +1448,7 @@ function initExternalLinkWarnings() {
         if (youtubeVideoId) {
             event.preventDefault();
             event.stopImmediatePropagation();
-            openYouTubeVideoOverlay(youtubeVideoId, link.dataset.youtubeVideoTitle, link);
+            window.TDSPNewsOverlay?.openYouTubeVideoOverlay?.(youtubeVideoId, link.dataset.youtubeVideoTitle, link);
             return;
         }
         const url = getExternalHttpUrl(link.href);
@@ -2046,7 +1925,7 @@ function openMithrilSignersOverlay() {
         closeOverlay: closeMithrilSignersOverlay,
         returnFocus: document.getElementById('pool-mithril-card'),
         rootTitle: 'Mithril',
-        bodyNode: createMithrilSignersList()
+        bodyNode: window.TDSPLinkedPoolLists?.createMithrilSignersList?.(mithrilSigners) || window.TDSPRuntime.createSmallText('Active Mithril signer data is not available yet.')
     });
 }
 
@@ -2067,7 +1946,7 @@ function openStarchPoolsOverlay(returnFocus = document.activeElement) {
         closeOverlay: closeStarchPoolsOverlay,
         returnFocus,
         rootTitle: 'Starch Pools',
-        bodyNode: createStarchPoolsList()
+        bodyNode: window.TDSPLinkedPoolLists?.createStarchPoolsList?.(starchPools, { openExternalSiteWarning }) || window.TDSPRuntime.createSmallText('Starch pool data is not available yet.')
     });
 }
 
@@ -2632,167 +2511,6 @@ function closePoolMenuOverlay(id, restoreFocus = true) {
     overlay?.remove();
     syncGovernanceMenuOverlayAccessibility();
     if (restoreFocus && returnFocus?.isConnected) returnFocus.focus();
-}
-
-function createStarchPoolsList() {
-    const list = document.createElement('div');
-    list.className = 'pool-delegator-list governance-drep-directory-list';
-
-    if (!starchPools.length) {
-        const message = document.createElement('p');
-        message.className = 'small-text';
-        message.textContent = 'Starch pool data is not available yet.';
-        list.appendChild(message);
-        return list;
-    }
-
-    const pools = [...starchPools];
-    pools.forEach(pool => list.appendChild(createStarchPoolFallbackCard(pool)));
-    hydrateStarchPoolSpoCards(list, pools).catch(() => {});
-
-    return list;
-}
-
-async function hydrateStarchPoolSpoCards(list, pools) {
-    const spoDirectory = window.TDSPSpoDirectory;
-    if (!spoDirectory?.load || !spoDirectory?.createCard) return;
-
-    const lookup = createSpoDirectoryLookup(await spoDirectory.load());
-    if (!list.isConnected) return;
-    const fragment = document.createDocumentFragment();
-
-    pools.forEach(pool => {
-        const poolId = String(pool?.pool_id || '').trim().toLowerCase();
-        const poolName = window.TDSPRuntime.normalizeSearchText(pool?.name);
-        const spo = poolId ? lookup.byPoolId.get(poolId) : lookup.byName.get(poolName);
-        fragment.appendChild(spo
-            ? spoDirectory.createCard({
-                ...spo,
-                name: String(pool?.name || spo.name || 'No Name'),
-                ticker: String(pool?.ticker || spo.ticker || '').toUpperCase()
-            })
-            : createStarchPoolFallbackCard(pool));
-    });
-    list.replaceChildren(fragment);
-}
-
-function createStarchPoolFallbackCard(pool) {
-    const row = createPoolOverlayRow({
-        title: pool?.name || 'No Name',
-        titleClassName: 'pool-delegator-handle',
-        details: [String(pool?.ticker || '').toUpperCase() || 'N/A']
-    });
-    const poolName = String(pool?.name || pool?.ticker || 'Starch pool');
-    const openWebsite = () => openExternalSiteWarning(getStarchPoolWebsite(pool), row);
-
-    row.classList.add('starch-pool-link-card');
-    row.tabIndex = 0;
-    row.setAttribute('role', 'link');
-    row.setAttribute('aria-label', `Open ${poolName} website`);
-    window.TDSPRuntime?.bindActionTrigger?.(row, openWebsite, {
-        datasetKey: 'websiteBound',
-        errorMessage: 'Starch pool website could not be opened.'
-    });
-    return row;
-}
-
-function getStarchPoolWebsite(pool) {
-    const suppliedWebsite = pool?.website || pool?.homepage || pool?.url;
-    if (getExternalHttpUrl(suppliedWebsite)) return suppliedWebsite;
-
-    const ticker = String(pool?.ticker || '').trim().toLowerCase();
-    const normalizedName = String(pool?.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-    if (normalizedName.includes('earncoin')) return 'https://x.com/earncoinpool';
-    return STARCH_POOL_WEBSITES[ticker] || 'https://starch.one/';
-}
-
-function createMithrilSignersList() {
-    const list = document.createElement('div');
-    list.className = 'pool-delegator-list governance-drep-directory-list';
-
-    if (!mithrilSigners.length) {
-        const message = window.TDSPRuntime.createSmallText('Active Mithril signer data is not available yet.');
-        list.appendChild(message);
-        return list;
-    }
-
-    const signers = [...mithrilSigners];
-    signers.forEach((signer, index) => list.appendChild(createMithrilSignerFallbackCard(signer, index)));
-    hydrateMithrilSignerSpoCards(list, signers).catch(() => {});
-
-    return list;
-}
-
-async function hydrateMithrilSignerSpoCards(list, signers) {
-    const spoDirectory = window.TDSPSpoDirectory;
-    if (!spoDirectory?.load || !spoDirectory?.createCard) return;
-
-    const lookup = createSpoDirectoryLookup(await spoDirectory.load());
-    if (!list.isConnected) return;
-    const fragment = document.createDocumentFragment();
-
-    signers.forEach((signer, index) => {
-        const poolId = String(signer?.pool_id || '').trim().toLowerCase();
-        const spo = lookup.byPoolId.get(poolId);
-        fragment.appendChild(spo
-            ? spoDirectory.createCard(spo)
-            : createMithrilSignerFallbackCard(signer, index));
-    });
-    list.replaceChildren(fragment);
-}
-
-function createSpoDirectoryLookup(payload) {
-    const byPoolId = new Map();
-    const byName = new Map();
-    (payload?.spos || []).forEach(spo => {
-        const poolId = String(spo?.pool_id || '').trim().toLowerCase();
-        const name = window.TDSPRuntime.normalizeSearchText(spo?.name);
-        if (poolId) byPoolId.set(poolId, spo);
-        if (name && !byName.has(name)) byName.set(name, spo);
-    });
-    return { byPoolId, byName };
-}
-
-function createMithrilSignerFallbackCard(signer, index) {
-    const poolId = String(signer?.pool_id || '');
-    const idLine = document.createElement('div');
-    idLine.className = 'pool-delegator-address-line';
-
-    const id = document.createElement('span');
-    id.className = 'pool-delegator-address';
-    if (poolId && window.TDSPRuntime?.createResponsiveIdentifier) {
-        id.appendChild(window.TDSPRuntime.createResponsiveIdentifier(poolId));
-    } else {
-        id.textContent = poolId || 'Unknown pool';
-    }
-    id.title = poolId;
-    idLine.appendChild(id);
-
-    if (poolId) {
-        const copy = document.createElement('button');
-        copy.className = 'pool-delegator-copy-button';
-        copy.type = 'button';
-        copy.textContent = '⧉';
-        copy.setAttribute('aria-label', `Copy Mithril signer pool ID ${index + 1}`);
-        window.TDSPRuntime?.bindCopyButton?.(copy, poolId, { preventDefault: false, stopPropagation: false });
-        idLine.appendChild(copy);
-    }
-
-    const stake = document.createElement('span');
-    stake.className = 'pool-delegator-amount';
-    stake.textContent = window.TDSPRuntime.formatLovelaceAmount(getMithrilSignerStake(signer));
-
-    const row = createPoolOverlayRow({
-        title: signer?.display_name || signer?.name || 'No Name',
-        titleClassName: 'pool-delegator-handle',
-        details: [idLine, stake]
-    });
-    row.dataset.sortAmount = getMithrilSignerStake(signer).toString();
-    return row;
-}
-
-function getMithrilSignerStake(signer) {
-    return window.TDSPRuntime.getLovelaceAmount(signer, ['stake_lovelace']);
 }
 
 function createPoolOverlayRow({ title = '', titleClassName = '', details = [] }) {
