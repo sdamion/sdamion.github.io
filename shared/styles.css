@@ -2179,7 +2179,15 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     border-radius: 8px;
     background: var(--overlay-surface-muted);
     transform: translateY(-50%);
-    pointer-events: none;
+    cursor: pointer;
+    transition: border-color var(--transition), box-shadow var(--transition), transform var(--transition);
+}
+
+.governance-business-logo-frame:hover,
+.governance-business-logo-frame:focus-visible {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(101, 255, 235, 0.16);
+    outline: none;
 }
 
 .governance-business-logo-frame--multi {

@@ -67,8 +67,21 @@
 
             const frame = document.createElement('span');
             frame.className = `governance-business-logo-frame${logos.length > 1 ? ' governance-business-logo-frame--multi' : ''}`;
-            frame.setAttribute('aria-hidden', 'true');
+            frame.setAttribute('role', 'link');
+            frame.tabIndex = 0;
+            frame.setAttribute('aria-label', `Open ${label || getRootDomainLabel(normalizedUrls[0]) || 'company'} website`);
             frame.title = `${label || 'Company'} logo`;
+            frame.addEventListener('click', event => {
+                event.preventDefault();
+                event.stopPropagation();
+                openLogoUrl(normalizedUrls[0], event.currentTarget);
+            });
+            frame.addEventListener('keydown', event => {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+                event.stopPropagation();
+                openLogoUrl(normalizedUrls[0], event.currentTarget);
+            });
 
             logos.forEach(({ logoUrl, domain, mappedLogo }) => {
                 const logo = document.createElement('img');
@@ -87,6 +100,15 @@
             });
 
             return frame;
+        }
+
+        function openLogoUrl(url, target) {
+            if (!url) return;
+            if (typeof openExternalWarning === 'function') {
+                openExternalWarning(url, target);
+                return;
+            }
+            window.open(url, '_blank', 'noopener,noreferrer');
         }
 
         function getLogoData(url, label) {
