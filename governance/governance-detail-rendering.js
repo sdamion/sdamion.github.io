@@ -21,7 +21,13 @@
             key.textContent = label;
 
             const text = document.createElement('span');
-            appendRichText(text, displayValue);
+            const isIdentifier = options.responsiveIdentifier === true
+                || (options.responsiveIdentifier !== false && options.copyLabel && /\b(?:id|address|hash|key)\b/i.test(String(options.copyLabel)));
+            if (isIdentifier && window.TDSPRuntime?.createResponsiveIdentifier) {
+                text.appendChild(window.TDSPRuntime.createResponsiveIdentifier(cleanValue));
+            } else {
+                appendRichText(text, displayValue);
+            }
 
             row.appendChild(key);
             row.appendChild(text);

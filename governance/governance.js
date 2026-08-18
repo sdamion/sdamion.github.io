@@ -4411,7 +4411,9 @@ function renderGovernanceVoteChoice(container, proposal) {
     actionIdLine.className = 'governance-drep-id-line governance-vote-action-id-line';
     const actionId = document.createElement('span');
     actionId.className = 'governance-drep-id governance-vote-action-id';
-    actionId.textContent = proposal.proposal_id;
+    actionId.appendChild(window.TDSPRuntime?.createResponsiveIdentifier
+        ? window.TDSPRuntime.createResponsiveIdentifier(proposal.proposal_id)
+        : document.createTextNode(proposal.proposal_id));
     actionIdLine.append(actionId, createGovernanceCopyButton(proposal.proposal_id, 'governance action ID'));
     const warningText = document.createElement('p');
     warningText.textContent = 'Voting creates a Cardano Mainnet transaction and costs a network fee. Always verify the governance action, vote choice and fee in your wallet before signing.';
@@ -5638,7 +5640,11 @@ function renderSpoVotesList(container, votes, voteLabel) {
 
         const id = document.createElement('span');
         id.className = 'governance-card-detail governance-cc-member-meta governance-drep-id';
-        id.textContent = poolId || 'Unknown pool';
+        if (poolId && window.TDSPRuntime?.createResponsiveIdentifier) {
+            id.appendChild(window.TDSPRuntime.createResponsiveIdentifier(poolId));
+        } else {
+            id.textContent = poolId || 'Unknown pool';
+        }
 
         idLine.appendChild(id);
         if (poolId) idLine.appendChild(createGovernanceCopyButton(poolId, 'pool ID'));
@@ -7022,7 +7028,11 @@ function createSpoPoolIdLine(poolId) {
     line.className = 'governance-drep-id-line';
     const id = document.createElement('span');
     id.className = 'governance-card-detail governance-cc-member-meta governance-drep-id';
-    id.textContent = poolId || '--';
+    if (poolId && window.TDSPRuntime?.createResponsiveIdentifier) {
+        id.appendChild(window.TDSPRuntime.createResponsiveIdentifier(poolId));
+    } else {
+        id.textContent = poolId || '--';
+    }
     line.append(id);
     if (poolId) line.appendChild(createGovernanceCopyButton(poolId, 'pool ID'));
     return line;
@@ -7775,7 +7785,9 @@ async function submitDrepRegistration(container, context, submitButton) {
         idLine.className = 'governance-drep-id-line governance-vote-action-id-line';
         const id = document.createElement('span');
         id.className = 'governance-drep-id governance-vote-action-id';
-        id.textContent = context.drep.dRepIDCip105;
+        id.appendChild(window.TDSPRuntime?.createResponsiveIdentifier
+            ? window.TDSPRuntime.createResponsiveIdentifier(context.drep.dRepIDCip105)
+            : document.createTextNode(context.drep.dRepIDCip105));
         idLine.append(id, createGovernanceCopyButton(context.drep.dRepIDCip105, 'DRep ID'));
         const link = document.createElement('a');
         link.href = `https://cardanoscan.io/transaction/${encodeURIComponent(txHash)}`;

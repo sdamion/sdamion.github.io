@@ -82,9 +82,11 @@
 
             const addressText = document.createElement('strong');
             addressText.className = `pool-delegator-address${adaHandle ? ' pool-delegator-handle' : ''}`;
-            addressText.textContent = adaHandle || (walletAddress
-                ? runtime.shortenMiddle(walletAddress)
-                : 'Wallet address unavailable');
+            if (adaHandle || !walletAddress || !runtime.createResponsiveIdentifier) {
+                addressText.textContent = adaHandle || walletAddress || 'Wallet address unavailable';
+            } else {
+                addressText.appendChild(runtime.createResponsiveIdentifier(walletAddress));
+            }
             if (walletAddress) addressText.title = walletAddress;
 
             const amount = document.createElement('span');
@@ -106,7 +108,11 @@
             if (adaHandle && walletAddress) {
                 const walletText = document.createElement('span');
                 walletText.className = 'pool-delegator-wallet-address';
-                walletText.textContent = runtime.shortenMiddle(walletAddress);
+                if (runtime.createResponsiveIdentifier) {
+                    walletText.appendChild(runtime.createResponsiveIdentifier(walletAddress));
+                } else {
+                    walletText.textContent = walletAddress;
+                }
                 walletText.title = walletAddress;
                 content.appendChild(walletText);
             }

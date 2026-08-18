@@ -1,5 +1,5 @@
 (function () {
-    const MAIN_HELPERS_SCRIPT_SRC = 'home/index.js?v=20260818-admin-users';
+    const MAIN_HELPERS_SCRIPT_SRC = 'home/index.js?v=20260818-raffle-prizes';
     const STAKE_SCRIPT_SRC = 'stake/stake.js?v=20260818-raffle-overlay-module';
     const STAKE_TRIGGER_SELECTOR = '[data-stake-open], [data-drep-open]';
     function loadMainHelpers() {

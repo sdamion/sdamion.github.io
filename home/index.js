@@ -1330,6 +1330,7 @@ document.addEventListener("DOMContentLoaded", () => {
     initExternalLinkWarnings();
     initSiteAlertsMenu();
     initThemeToggle();
+    initResponsiveIdentifiers();
     initPoolCopyButtons();
     initPoolMenuCards();
     initPriceHistoryTiles();
@@ -1802,7 +1803,7 @@ function renderPoolStatus(pool) {
     window.TDSPRuntime.setText('pool-pledge', window.TDSPRuntime.formatAdaFromLovelace(pool?.pledge_lovelace ?? pool?.raw?.pledge));
     window.TDSPRuntime.setText('pool-margin', window.TDSPRuntime.formatRatioPercentage(pool?.margin ?? pool?.raw?.margin, { scale: 100 }));
     window.TDSPRuntime.setText('pool-fixed-cost', window.TDSPRuntime.formatAdaFromLovelace(pool?.fixed_cost_lovelace ?? pool?.raw?.fixed_cost));
-    window.TDSPRuntime.setText('pool-id', pool?.pool_id || 'N/A');
+    setResponsiveIdentifierText('pool-id', pool?.pool_id || 'N/A');
 
     const relays = Array.isArray(pool?.relays) ? pool.relays : [];
     const upCount = relays.filter(relay => relay.up === true).length;
@@ -1936,9 +1937,15 @@ function createDelegatorsDashboardBody() {
                         <button id="raffle-logout" class="governance-vote-secondary" type="button">Lock</button>
                     </div>
                     <div id="raffle-identity" class="governance-menu-card raffle-identity"></div>
-                    <button class="governance-menu-card raffle-open-tile" id="raffle-open" type="button">
-                        <strong class="governance-card-title">Raffles</strong>
-                    </button>
+                    <div class="raffle-dashboard-tiles">
+                        <button class="governance-menu-card raffle-open-tile" id="raffle-open" type="button">
+                            <strong class="governance-card-title">Raffles</strong>
+                        </button>
+                        <button class="governance-menu-card raffle-open-tile" id="raffle-prizes-open" type="button">
+                            <strong class="governance-card-title">Prizes</strong>
+                            <span class="governance-card-detail" id="raffle-prizes-summary">Raffle wallet tokens</span>
+                        </button>
+                    </div>
                 </section>
                 <p id="raffle-status" class="wallet-status raffle-status" role="status" aria-live="polite" hidden></p>
             </main>
@@ -1959,6 +1966,25 @@ function createDelegatorsDashboardBody() {
                     </header>
                     <div class="overlay-dialog-body raffle-overlay-body">
                         <div class="raffle-draws" id="raffle-draws"></div>
+                    </div>
+                </section>
+            </div>
+
+            <div class="governance-overlay governance-menu-overlay raffle-overlay" id="raffle-prizes-overlay" role="dialog" aria-modal="true" aria-labelledby="raffle-prizes-title" hidden>
+                <section class="governance-dialog raffle-dialog">
+                    <header class="overlay-dialog-header">
+                        <div class="overlay-dialog-header-copy">
+                            <p class="eyebrow">Delegators Area</p>
+                            <h2 id="raffle-prizes-title">Prizes</h2>
+                        </div>
+                        <div class="overlay-dialog-header-actions">
+                            <button class="governance-close" id="raffle-prizes-close" type="button" aria-label="Close Prizes">
+                                <span class="governance-close-icon" aria-hidden="true"></span>
+                            </button>
+                        </div>
+                    </header>
+                    <div class="overlay-dialog-body raffle-overlay-body">
+                        <div class="raffle-draws" id="raffle-prizes-list"></div>
                     </div>
                 </section>
             </div>
@@ -2040,10 +2066,6 @@ function createAdminDashboardBody() {
                                 <strong class="governance-card-title">History</strong>
                                 <span class="governance-card-detail" id="raffle-menu-history-count">0 published raffles</span>
                             </button>
-                            <button class="governance-menu-card raffle-open-tile" type="button" data-raffle-view="admins">
-                                <strong class="governance-card-title">Admin Users</strong>
-                                <span class="governance-card-detail" id="raffle-menu-admin-count">1 admin</span>
-                            </button>
                         </div>
 
                         <section class="raffle-admin-panel" data-raffle-view-panel="draw" hidden>
@@ -2114,7 +2136,7 @@ function createAdminDashboardBody() {
 
 function loadDelegatorAccessModule() {
     if (window.TDSPDelegatorAccess?.initOverlay) return Promise.resolve(window.TDSPDelegatorAccess);
-    return window.TDSPRuntime.loadScript('delegators/delegator-access.js?v=20260818-admin-users', {
+    return window.TDSPRuntime.loadScript('delegators/delegator-access.js?v=20260818-raffle-prizes', {
         datasetName: 'delegatorAccess',
         selector: 'script[data-delegator-access]',
         ready: () => window.TDSPDelegatorAccess?.initOverlay ? window.TDSPDelegatorAccess : null
@@ -2948,7 +2970,11 @@ function createMithrilSignerFallbackCard(signer, index) {
 
     const id = document.createElement('span');
     id.className = 'pool-delegator-address';
-    id.textContent = poolId ? shortenStakeAddress(poolId) : 'Unknown pool';
+    if (poolId && window.TDSPRuntime?.createResponsiveIdentifier) {
+        id.appendChild(window.TDSPRuntime.createResponsiveIdentifier(poolId));
+    } else {
+        id.textContent = poolId || 'Unknown pool';
+    }
     id.title = poolId;
     idLine.appendChild(id);
 
@@ -3004,7 +3030,11 @@ function createPoolDelegatorsList() {
 
         const addressText = document.createElement('strong');
         addressText.className = `pool-delegator-address${adaHandle ? ' pool-delegator-handle' : ''}`;
-        addressText.textContent = adaHandle || (walletAddress ? shortenStakeAddress(walletAddress) : 'Wallet address unavailable');
+        if (adaHandle || !walletAddress || !window.TDSPRuntime?.createResponsiveIdentifier) {
+            addressText.textContent = adaHandle || walletAddress || 'Wallet address unavailable';
+        } else {
+            addressText.appendChild(window.TDSPRuntime.createResponsiveIdentifier(walletAddress));
+        }
         if (walletAddress) addressText.title = walletAddress;
 
         const amount = document.createElement('span');
@@ -3027,7 +3057,11 @@ function createPoolDelegatorsList() {
         if (adaHandle && walletAddress) {
             const walletText = document.createElement('span');
             walletText.className = 'pool-delegator-wallet-address';
-            walletText.textContent = shortenStakeAddress(walletAddress);
+            if (window.TDSPRuntime?.createResponsiveIdentifier) {
+                walletText.appendChild(window.TDSPRuntime.createResponsiveIdentifier(walletAddress));
+            } else {
+                walletText.textContent = walletAddress;
+            }
             walletText.title = walletAddress;
             details.push(walletText);
         }
@@ -3101,11 +3135,29 @@ function shortenStakeAddress(address) {
     return window.TDSPRuntime.shortenMiddle(address);
 }
 
+function setResponsiveIdentifierText(id, value) {
+    const element = document.getElementById(id);
+    if (!element) return;
+    const text = String(value || '').trim();
+    element.textContent = text;
+    if (window.TDSPRuntime?.createResponsiveIdentifier && text && text !== 'N/A') {
+        element.replaceChildren(window.TDSPRuntime.createResponsiveIdentifier(text));
+    }
+}
+
+function initResponsiveIdentifiers() {
+    ['pool-id', 'tdsp-drep-id'].forEach(id => {
+        const element = document.getElementById(id);
+        if (element) setResponsiveIdentifierText(id, element.textContent);
+    });
+}
+
 function initPoolCopyButtons() {
     document.querySelectorAll('[data-copy-target]').forEach(button => {
         window.TDSPRuntime?.bindCopyButton?.(button, () => {
             const target = document.getElementById(button.dataset.copyTarget);
-            const value = target?.textContent?.trim();
+            const responsive = target?.querySelector?.('.tdsp-responsive-identifier');
+            const value = responsive?.dataset.fullValue || target?.textContent?.trim();
             return value && value !== '...' && value !== 'N/A' ? value : '';
         }, { skipEmpty: true });
     });

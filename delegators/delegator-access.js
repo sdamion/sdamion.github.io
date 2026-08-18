@@ -13,7 +13,8 @@ const ENDPOINTS = IS_LOCAL ? {
     exclusions: '/__raffle_admin_exclusions_proxy__',
     admins: '/__raffle_admin_users_proxy__',
     anchor: '/__raffle_admin_anchor_proxy__',
-    delegator: '/__raffle_delegator_proxy__'
+    delegator: '/__raffle_delegator_proxy__',
+    prizes: '/__raffle_prizes_proxy__'
 } : {
     challenge: 'https://api.tdsp.online/api/raffle/auth/challenge',
     verify: 'https://api.tdsp.online/api/raffle/auth/verify',
@@ -22,7 +23,8 @@ const ENDPOINTS = IS_LOCAL ? {
     exclusions: 'https://api.tdsp.online/api/raffle/admin/exclusions',
     admins: 'https://api.tdsp.online/api/raffle/admin/users',
     anchor: 'https://api.tdsp.online/api/raffle/admin/anchor',
-    delegator: 'https://api.tdsp.online/api/raffle/delegator'
+    delegator: 'https://api.tdsp.online/api/raffle/delegator',
+    prizes: 'https://api.tdsp.online/api/raffle/prizes'
 };
 const ADMIN_SESSION_KEY = 'tdsp-raffle-session-admin';
 
@@ -37,6 +39,7 @@ let raffleExclusionTogglesSupported = false;
 let raffleStakeKeyExclusions = [];
 let raffleAdminUsers = [];
 let raffleAdminView = 'menu';
+let raffleOverlayRootView = 'menu';
 
 const RAFFLE_ADMIN_VIEW_TITLES = Object.freeze({
     menu: 'Raffles',
@@ -141,7 +144,12 @@ function addressLine(address, label = 'stake address') {
     const line = document.createElement('div');
     line.className = 'raffle-address-line';
     const text = document.createElement('code');
-    text.textContent = shorten(address);
+    const value = String(address || '').trim();
+    if (window.TDSPRuntime?.createResponsiveIdentifier && value) {
+        text.replaceChildren(window.TDSPRuntime.createResponsiveIdentifier(value));
+    } else {
+        text.textContent = value || shorten(address);
+    }
     text.title = address;
     line.append(text, createCopyButton(address, label));
     return line;
@@ -229,6 +237,7 @@ function setRaffleOverlay(open, initialAdminView = 'menu') {
     if (!overlay) return;
     if (open) {
         raffleOverlayReturnFocus = document.activeElement;
+        raffleOverlayRootView = initialAdminView;
         if (ROLE === 'admin') setRaffleAdminView(initialAdminView, { focus: false });
         overlay.hidden = false;
         document.body.classList.add('raffle-overlay-open');
@@ -241,9 +250,91 @@ function setRaffleOverlay(open, initialAdminView = 'menu') {
     }
     overlay.hidden = true;
     if (ROLE === 'admin') setRaffleAdminView('menu', { focus: false });
+    raffleOverlayRootView = 'menu';
     document.body.classList.remove('raffle-overlay-open');
     raffleOverlayReturnFocus?.focus?.();
     raffleOverlayReturnFocus = null;
+}
+
+function setPrizeOverlay(open) {
+    const overlay = document.getElementById('raffle-prizes-overlay');
+    if (!overlay) return;
+    if (open) {
+        raffleOverlayReturnFocus = document.activeElement;
+        overlay.hidden = false;
+        document.body.classList.add('raffle-overlay-open');
+        document.getElementById('raffle-prizes-close')?.focus();
+        loadRafflePrizes().catch(error => renderRafflePrizesError(error.message));
+        return;
+    }
+    overlay.hidden = true;
+    document.body.classList.remove('raffle-overlay-open');
+    raffleOverlayReturnFocus?.focus?.();
+    raffleOverlayReturnFocus = null;
+}
+
+function formatPrizeLine(asset) {
+    const amount = String(asset?.display_quantity || asset?.quantity || '0');
+    const name = String(asset?.ticker || asset?.name || 'Token').trim();
+    return `${amount} ${name}`.trim();
+}
+
+function createPrizeCard(asset) {
+    const card = document.createElement('article');
+    card.className = 'governance-menu-card raffle-draw-card';
+
+    const title = document.createElement('strong');
+    title.className = 'governance-card-title';
+    title.textContent = String(asset?.name || asset?.ticker || asset?.fingerprint || 'Token');
+
+    const amount = document.createElement('span');
+    amount.className = 'governance-card-detail';
+    amount.textContent = formatPrizeLine(asset);
+
+    card.append(title, amount);
+
+    if (asset?.fingerprint) {
+        const fingerprint = addressLine(asset.fingerprint, 'asset fingerprint');
+        card.appendChild(fingerprint);
+    }
+
+    return card;
+}
+
+function renderRafflePrizes(payload = {}) {
+    const summary = document.getElementById('raffle-prizes-summary');
+    const list = document.getElementById('raffle-prizes-list');
+    const assets = Array.isArray(payload.assets) ? payload.assets : [];
+    if (summary) {
+        summary.textContent = `${assets.length.toLocaleString('en-US')} token${assets.length === 1 ? '' : 's'}`;
+    }
+    if (!list) return;
+    list.replaceChildren();
+    if (!assets.length) {
+        const empty = document.createElement('p');
+        empty.className = 'governance-menu-card governance-card-detail raffle-draw-card raffle-empty';
+        empty.textContent = 'No prize tokens are currently in the raffle wallet.';
+        list.appendChild(empty);
+        return;
+    }
+    assets.forEach(asset => list.appendChild(createPrizeCard(asset)));
+}
+
+function renderRafflePrizesError(message) {
+    const summary = document.getElementById('raffle-prizes-summary');
+    if (summary) summary.textContent = 'Prize wallet unavailable';
+    const list = document.getElementById('raffle-prizes-list');
+    if (!list) return;
+    const error = document.createElement('p');
+    error.className = 'governance-menu-card governance-card-detail raffle-draw-card raffle-empty';
+    error.textContent = message || 'Prize wallet could not be loaded.';
+    list.replaceChildren(error);
+}
+
+async function loadRafflePrizes() {
+    const payload = await requestJson(ENDPOINTS.prizes);
+    renderRafflePrizes(payload);
+    return payload;
 }
 
 async function getWalletAddresses(wallet, method) {
@@ -714,8 +805,6 @@ function renderAdminUsers(adminUsers) {
     const users = Array.isArray(adminUsers) ? adminUsers : [];
     const list = document.getElementById('raffle-admin-user-list');
     const countText = `${users.length.toLocaleString('en-US')} admin${users.length === 1 ? '' : 's'}`;
-    const menuCount = document.getElementById('raffle-menu-admin-count');
-    if (menuCount) menuCount.textContent = countText;
     const dashboardCount = document.getElementById('raffle-dashboard-admin-count');
     if (dashboardCount) dashboardCount.textContent = countText;
     const count = document.getElementById('raffle-admin-users-count');
@@ -888,6 +977,11 @@ function renderDelegator(payload) {
         }
     }
     renderDraws(payload.draws || [], payload.stake_address);
+    loadRafflePrizes().catch(error => {
+        const summary = document.getElementById('raffle-prizes-summary');
+        if (summary) summary.textContent = 'Prize wallet unavailable';
+        console.warn(`Raffle prize wallet could not be loaded: ${error.message}`);
+    });
 }
 
 async function loadProtectedArea() {
@@ -984,9 +1078,11 @@ async function init(options = {}) {
     });
     document.getElementById('raffle-logout')?.addEventListener('click', logout);
     document.getElementById('raffle-open')?.addEventListener('click', () => setRaffleOverlay(true));
+    document.getElementById('raffle-prizes-open')?.addEventListener('click', () => setPrizeOverlay(true));
+    document.getElementById('raffle-prizes-close')?.addEventListener('click', () => setPrizeOverlay(false));
     document.getElementById('raffle-admin-users-open')?.addEventListener('click', () => setRaffleOverlay(true, 'admins'));
     document.getElementById('raffle-overlay-back')?.addEventListener('click', () => {
-        if (ROLE === 'admin' && raffleAdminView !== 'menu') setRaffleAdminView('menu');
+        if (ROLE === 'admin' && raffleAdminView !== 'menu' && raffleOverlayRootView === 'menu') setRaffleAdminView('menu');
         else if (ROLE === 'admin') setRaffleOverlay(false);
         else setRaffleOverlay(false);
     });
@@ -996,6 +1092,9 @@ async function init(options = {}) {
     });
     document.getElementById('raffle-overlay')?.addEventListener('click', event => {
         if (event.target === event.currentTarget) setRaffleOverlay(false);
+    });
+    document.getElementById('raffle-prizes-overlay')?.addEventListener('click', event => {
+        if (event.target === event.currentTarget) setPrizeOverlay(false);
     });
     document.getElementById('raffle-draw-form')?.addEventListener('submit', submitDraw);
     document.getElementById('raffle-exclusions-form')?.addEventListener('submit', submitExclusions);
@@ -1026,6 +1125,9 @@ window.TDSPRaffleAccess = window.TDSPDelegatorAccess;
 document.addEventListener('keydown', event => {
     if (event.key === 'Escape' && !document.getElementById('raffle-overlay')?.hidden) {
         setRaffleOverlay(false);
+    }
+    if (event.key === 'Escape' && !document.getElementById('raffle-prizes-overlay')?.hidden) {
+        setPrizeOverlay(false);
     }
 });
 

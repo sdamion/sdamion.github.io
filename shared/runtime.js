@@ -450,6 +450,22 @@
         return `${text.slice(0, front)}...${text.slice(-back)}`;
     }
 
+    function createResponsiveIdentifier(value, options = {}) {
+        const text = String(value || '').trim();
+        const wrapper = document.createElement(options.tagName || 'span');
+        wrapper.className = options.className || 'tdsp-responsive-identifier';
+        wrapper.title = text;
+        wrapper.dataset.fullValue = text;
+        const full = document.createElement('span');
+        full.className = 'tdsp-responsive-identifier-full';
+        full.textContent = text;
+        const short = document.createElement('span');
+        short.className = 'tdsp-responsive-identifier-short';
+        short.textContent = shortenMiddle(text, options.shortOptions || {});
+        wrapper.append(full, short);
+        return wrapper;
+    }
+
     function adjustHexColor(color, percent) {
         const red = parseInt(color.substring(1, 3), 16);
         const green = parseInt(color.substring(3, 5), 16);
@@ -578,6 +594,7 @@
         createCopyButton,
         createSmallText,
         shortenMiddle,
+        createResponsiveIdentifier,
         adjustHexColor,
         normalizeSearchText,
         getDelegatorWalletAddresses,
