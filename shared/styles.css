@@ -632,27 +632,46 @@ html {
 
 .theme-toggle-icon {
     display: none;
-    font-size: 1.12rem;
-    line-height: 1;
+    width: 18px;
+    height: 18px;
+    line-height: 0;
 }
 
-.theme-toggle:not([data-next-theme]) .theme-toggle-icon--moon,
-.theme-toggle[data-next-theme="dark"] .theme-toggle-icon--moon,
-.theme-toggle[data-next-theme="light"] .theme-toggle-icon--sun {
+.theme-toggle-icon svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.1;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.theme-toggle-icon--moon svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.1;
+}
+
+.theme-toggle:not([data-current-theme]) .theme-toggle-icon--moon,
+.theme-toggle[data-current-theme="light"] .theme-toggle-icon--moon,
+.theme-toggle[data-current-theme="dark"] .theme-toggle-icon--sun {
     display: block;
 }
 
-html[data-theme="dark"] .theme-toggle:not([data-next-theme]) .theme-toggle-icon--moon {
+html[data-theme="dark"] .theme-toggle:not([data-current-theme]) .theme-toggle-icon--moon {
     display: none;
 }
 
-html[data-theme="dark"] .theme-toggle:not([data-next-theme]) .theme-toggle-icon--sun {
+html[data-theme="dark"] .theme-toggle:not([data-current-theme]) .theme-toggle-icon--sun {
     display: block;
 }
 
 .theme-toggle:hover,
 .theme-toggle:focus-visible {
     background: transparent;
+    color: var(--accent);
 }
 
 /* Section Layout */

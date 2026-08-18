@@ -25,7 +25,7 @@
     const GOVERNANCE_DREP_TOP10_SCRIPT_SRC = 'governance/governance-drep-top10.js?v=20260817-modular-drep-top10';
     const GOVERNANCE_TDSP_DREP_SCRIPT_SRC = 'governance/governance-tdsp-drep.js?v=20260817-modular-tdsp-drep';
     const GOVERNANCE_PROPOSAL_DISPLAY_SCRIPT_SRC = 'governance/governance-proposal-display.js?v=20260817-modular-proposal-display';
-    const GOVERNANCE_SCRIPT_SRC = 'governance/governance.js?v=20260818-active-total-ask-header';
+    const GOVERNANCE_SCRIPT_SRC = 'governance/governance.js?v=20260818-treasury-candles-only';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
         '#drep',

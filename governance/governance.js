@@ -2532,6 +2532,16 @@ async function createTreasuryHistoryChart(payload, withdrawals) {
             return reconstructedTreasury;
         });
     }
+    const treasuryCandles = treasuryValues.map((close, index) => {
+        const previousClose = index > 0 ? treasuryValues[index - 1] : close;
+        if (!Number.isFinite(close) || !Number.isFinite(previousClose)) return null;
+        return {
+            open: previousClose,
+            close,
+            high: Math.max(previousClose, close),
+            low: Math.min(previousClose, close)
+        };
+    });
 
     const section = document.createElement('section');
     section.className = 'governance-vote-chart governance-chart-panel governance-treasury-history-chart';
@@ -2541,7 +2551,7 @@ async function createTreasuryHistoryChart(payload, withdrawals) {
     section.appendChild(title);
 
     const chartFrame = document.createElement('div');
-    chartFrame.className = 'governance-treasury-history-frame';
+    chartFrame.className = 'governance-treasury-history-frame price-history-chart-frame is-tradingview';
     const canvas = document.createElement('canvas');
     canvas.setAttribute('aria-label', 'Treasury income, withdrawals and treasury value per epoch');
     canvas.setAttribute('role', 'img');
@@ -2552,68 +2562,98 @@ async function createTreasuryHistoryChart(payload, withdrawals) {
     const styles = getComputedStyle(document.documentElement);
     const textColor = styles.getPropertyValue('--text').trim() || '#f8fafc';
     const mutedColor = styles.getPropertyValue('--muted').trim() || '#94a3b8';
-    const lineColor = styles.getPropertyValue('--line').trim() || 'rgba(148, 163, 184, 0.25)';
     const rootFontSize = Number.parseFloat(styles.fontSize) || 16;
-    const legendFontSize = rootFontSize * 0.9;
     const axisFontSize = rootFontSize * 0.82;
-    const chartContext = canvas.getContext('2d');
-    const withdrawalGradient = chartContext.createLinearGradient(0, 0, 0, 340);
-    withdrawalGradient.addColorStop(0, 'rgba(251, 113, 133, 0.94)');
-    withdrawalGradient.addColorStop(1, 'rgba(251, 113, 133, 0.34)');
-    const incomeGradient = chartContext.createLinearGradient(0, 0, 0, 340);
-    incomeGradient.addColorStop(0, 'rgba(94, 234, 212, 0.94)');
-    incomeGradient.addColorStop(1, 'rgba(20, 184, 166, 0.3)');
+    const tradingViewPlugin = {
+        id: 'tdspTreasuryTradingViewStyle',
+        beforeDraw(chart) {
+            const { ctx, chartArea } = chart;
+            if (!chartArea) return;
+            ctx.save();
+            ctx.fillStyle = 'rgba(7, 12, 11, 0.92)';
+            ctx.fillRect(chartArea.left, chartArea.top, chartArea.width, chartArea.height);
+            ctx.restore();
+        },
+        afterDatasetsDraw(chart) {
+            const { ctx, chartArea, scales } = chart;
+            const xScale = scales.x;
+            const yScale = scales.treasury;
+            if (!chartArea || !xScale || !yScale) return;
+            const slotWidth = chartArea.width / Math.max(treasuryCandles.length, 1);
+            const candleWidth = Math.max(4, Math.min(13, slotWidth * 0.46));
+
+            ctx.save();
+            treasuryCandles.forEach((candle, index) => {
+                if (!candle) return;
+                const x = xScale.getPixelForValue(index);
+                const openY = yScale.getPixelForValue(candle.open);
+                const closeY = yScale.getPixelForValue(candle.close);
+                const highY = yScale.getPixelForValue(candle.high);
+                const lowY = yScale.getPixelForValue(candle.low);
+                if (![x, openY, closeY, highY, lowY].every(Number.isFinite)) return;
+
+                const rising = candle.close >= candle.open;
+                const color = rising ? '#34d399' : '#fb7185';
+                const bodyTop = Math.min(openY, closeY);
+                const bodyHeight = Math.max(Math.abs(closeY - openY), 2);
+                const crispX = Math.round(x) + 0.5;
+
+                ctx.strokeStyle = color;
+                ctx.fillStyle = rising ? 'rgba(52, 211, 153, 0.78)' : 'rgba(251, 113, 133, 0.78)';
+                ctx.lineWidth = 1.35;
+                ctx.beginPath();
+                ctx.moveTo(crispX, highY);
+                ctx.lineTo(crispX, lowY);
+                ctx.stroke();
+
+                ctx.fillRect(
+                    Math.round(x - candleWidth / 2),
+                    Math.round(bodyTop),
+                    Math.round(candleWidth),
+                    Math.round(bodyHeight)
+                );
+                ctx.strokeRect(
+                    Math.round(x - candleWidth / 2) + 0.5,
+                    Math.round(bodyTop) + 0.5,
+                    Math.max(Math.round(candleWidth) - 1, 1),
+                    Math.max(Math.round(bodyHeight) - 1, 1)
+                );
+            });
+            ctx.restore();
+        },
+        afterDraw(chart) {
+            const active = chart.tooltip?.getActiveElements?.() || [];
+            const point = active[0]?.element;
+            const { ctx, chartArea } = chart;
+            if (!point || !chartArea) return;
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(point.x, chartArea.top);
+            ctx.lineTo(point.x, chartArea.bottom);
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = 'rgba(148, 163, 184, 0.34)';
+            ctx.setLineDash([3, 5]);
+            ctx.stroke();
+            ctx.restore();
+        }
+    };
 
     treasuryHistoryChart = new ChartCtor(canvas, {
+        plugins: [tradingViewPlugin],
         data: {
             labels: epochs.map(epoch => `Epoch ${epoch}`),
             datasets: [
                 {
-                    type: 'bar',
-                    label: 'Withdrawals',
-                    data: withdrawalAmounts,
-                    yAxisID: 'withdrawals',
-                    backgroundColor: withdrawalGradient,
-                    borderColor: '#fb7185',
-                    borderWidth: 0,
-                    borderRadius: 6,
-                    borderSkipped: false,
-                    categoryPercentage: 0.72,
-                    barPercentage: 0.88,
-                    order: 2,
-                    stack: 'treasuryFlows'
-                },
-                {
-                    type: 'bar',
-                    label: 'Treasury income',
-                    data: treasuryIncomeAmounts,
-                    yAxisID: 'withdrawals',
-                    backgroundColor: incomeGradient,
-                    borderColor: '#5eead4',
-                    borderWidth: 0,
-                    borderRadius: 6,
-                    borderSkipped: false,
-                    categoryPercentage: 0.72,
-                    barPercentage: 0.88,
-                    order: 2,
-                    stack: 'treasuryFlows'
-                },
-                {
                     type: 'line',
-                    label: 'Treasury value',
+                    label: 'Treasury candles',
                     data: treasuryValues,
                     yAxisID: 'treasury',
-                    borderColor: '#f6c667',
-                    backgroundColor: '#f6c667',
-                    borderWidth: 2.5,
+                    borderColor: 'rgba(0, 0, 0, 0)',
+                    backgroundColor: 'rgba(0, 0, 0, 0)',
+                    borderWidth: 0,
                     pointRadius: 0,
                     pointHitRadius: 12,
-                    pointHoverRadius: 5,
-                    pointHoverBackgroundColor: '#f6c667',
-                    pointHoverBorderColor: textColor,
-                    pointHoverBorderWidth: 2,
-                    tension: 0.36,
-                    cubicInterpolationMode: 'monotone',
+                    pointHoverRadius: 0,
                     order: 1
                 }
             ]
@@ -2621,56 +2661,49 @@ async function createTreasuryHistoryChart(payload, withdrawals) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            layout: {
+                padding: { top: 8, right: 8, bottom: 4, left: 4 }
+            },
             animation: {
                 duration: 650,
                 easing: 'easeOutQuart'
             },
             interaction: { mode: 'index', intersect: false },
             onClick: (event, elements) => {
-                const withdrawalBar = elements.find(element => (
-                    element.datasetIndex === 0
-                    && (withdrawalsByEpoch.get(epochs[element.index]) || 0) > 0
-                ));
-                if (!withdrawalBar) return;
-                const epoch = epochs[withdrawalBar.index];
+                const activeElement = elements[0];
+                if (!activeElement || (withdrawalsByEpoch.get(epochs[activeElement.index]) || 0) <= 0) return;
+                const epoch = epochs[activeElement.index];
                 openTreasuryEpochActionsOverlay(epoch, withdrawals, canvas);
             },
             onHover: (event, elements) => {
                 const target = event?.native?.target;
                 if (!target?.style) return;
-                target.style.cursor = elements.some(element => (
-                    element.datasetIndex === 0
-                    && (withdrawalsByEpoch.get(epochs[element.index]) || 0) > 0
-                ))
+                const activeElement = elements[0];
+                target.style.cursor = activeElement && (withdrawalsByEpoch.get(epochs[activeElement.index]) || 0) > 0
                     ? 'pointer'
                     : 'default';
             },
             plugins: {
-                legend: {
-                    position: 'top',
-                    align: 'start',
-                    labels: {
-                        color: textColor,
-                        usePointStyle: true,
-                        pointStyle: 'rectRounded',
-                        boxWidth: 8,
-                        boxHeight: 8,
-                        padding: 18,
-                        font: { family: 'Poppins', size: legendFontSize, weight: '600' }
-                    }
-                },
+                legend: { display: false },
                 tooltip: {
-                    backgroundColor: 'rgba(17, 24, 22, 0.96)',
+                    backgroundColor: 'rgba(8, 13, 12, 0.96)',
                     titleColor: '#f4f7f4',
                     bodyColor: '#f4f7f4',
-                    borderColor: 'rgba(255, 255, 255, 0.14)',
+                    borderColor: 'rgba(94, 234, 212, 0.28)',
                     borderWidth: 1,
                     cornerRadius: 8,
                     padding: 12,
                     displayColors: true,
                     usePointStyle: true,
                     callbacks: {
-                        label: context => `${context.dataset.label}: ${formatWholeAdaFromLovelace(context.raw)}`
+                        label: context => {
+                            const candle = treasuryCandles[context.dataIndex];
+                            if (!candle) return `Treasury: ${formatWholeAdaFromLovelace(context.raw)}`;
+                            return [
+                                `Open: ${formatWholeAdaFromLovelace(candle.open)}`,
+                                `Close: ${formatWholeAdaFromLovelace(candle.close)}`
+                            ];
+                        }
                     }
                 }
             },
@@ -2686,19 +2719,7 @@ async function createTreasuryHistoryChart(payload, withdrawals) {
                     },
                     grid: { display: false },
                     border: { display: false },
-                    stacked: true
-                },
-                withdrawals: {
-                    position: 'left',
-                    beginAtZero: true,
-                    ticks: {
-                        color: '#fb7185',
-                        callback: value => formatCompactAdaFromLovelace(value),
-                        font: { family: 'Poppins', size: axisFontSize }
-                    },
-                    grid: { color: lineColor, borderDash: [4, 5] },
-                    border: { display: false },
-                    stacked: true
+                    stacked: false
                 },
                 treasury: {
                     position: 'right',

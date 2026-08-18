@@ -479,6 +479,7 @@ function openPriceHistoryOverlay(tile) {
             frame.classList.add('is-tradingview');
             tradingViewFrame = frame;
         } else {
+            frame.classList.add('is-tradingview');
             canvas = document.createElement('canvas');
             canvas.setAttribute('role', 'img');
             canvas.setAttribute('aria-label', `${ticker}/USD candlestick chart over the last ${PRICE_CHART_WINDOW_LABEL}`);
@@ -547,9 +548,8 @@ async function renderPriceTradingChart(canvas, candles, ticker, intervalMinutes 
 
     const styles = getComputedStyle(document.documentElement);
     const mutedColor = styles.getPropertyValue('--muted').trim() || '#94a3b8';
-    const lineColor = styles.getPropertyValue('--line').trim() || 'rgba(148, 163, 184, 0.25)';
     const risingColor = '#34d399';
-    const fallingColor = '#f87171';
+    const fallingColor = '#fb7185';
     const tickTimeFormatter = new Intl.DateTimeFormat('en-GB', {
         month: 'short',
         day: '2-digit',
@@ -577,6 +577,14 @@ async function renderPriceTradingChart(canvas, candles, ticker, intervalMinutes 
 
     const candlestickPlugin = {
         id: `${String(ticker || 'token').toLowerCase()}-candlesticks`,
+        beforeDraw(chart) {
+            const { ctx, chartArea } = chart;
+            if (!chartArea) return;
+            ctx.save();
+            ctx.fillStyle = 'rgba(7, 12, 11, 0.92)';
+            ctx.fillRect(chartArea.left, chartArea.top, chartArea.width, chartArea.height);
+            ctx.restore();
+        },
         afterDatasetsDraw(chart) {
             const { ctx, chartArea, scales } = chart;
             const points = chart.getDatasetMeta(0).data;
@@ -584,7 +592,7 @@ async function renderPriceTradingChart(canvas, candles, ticker, intervalMinutes 
             const intervalWidth = Math.abs(
                 scales.x.getPixelForValue(chartStart + intervalMs) - scales.x.getPixelForValue(chartStart)
             );
-            const candleWidth = Math.max(2, Math.min(7, intervalWidth * 0.72));
+            const candleWidth = Math.max(4, Math.min(13, intervalWidth * 0.46));
             ctx.save();
             ctx.beginPath();
             ctx.rect(chartArea.left, chartArea.top, chartArea.width, chartArea.height);
@@ -597,17 +605,47 @@ async function renderPriceTradingChart(canvas, candles, ticker, intervalMinutes 
                 const lowY = scales.y.getPixelForValue(candle.low);
                 const openY = scales.y.getPixelForValue(candle.open);
                 const closeY = scales.y.getPixelForValue(candle.close);
+                if (![point.x, highY, lowY, openY, closeY].every(Number.isFinite)) return;
                 const bodyTop = Math.min(openY, closeY);
-                const bodyHeight = Math.max(1.5, Math.abs(closeY - openY));
+                const bodyHeight = Math.max(2, Math.abs(closeY - openY));
+                const crispX = Math.round(point.x) + 0.5;
                 ctx.strokeStyle = color;
-                ctx.lineWidth = 1;
+                ctx.fillStyle = candle.close >= candle.open
+                    ? 'rgba(52, 211, 153, 0.78)'
+                    : 'rgba(251, 113, 133, 0.78)';
+                ctx.lineWidth = 1.35;
                 ctx.beginPath();
-                ctx.moveTo(point.x, highY);
-                ctx.lineTo(point.x, lowY);
+                ctx.moveTo(crispX, highY);
+                ctx.lineTo(crispX, lowY);
                 ctx.stroke();
-                ctx.fillStyle = color;
-                ctx.fillRect(point.x - (candleWidth / 2), bodyTop, candleWidth, bodyHeight);
+                ctx.fillRect(
+                    Math.round(point.x - candleWidth / 2),
+                    Math.round(bodyTop),
+                    Math.round(candleWidth),
+                    Math.round(bodyHeight)
+                );
+                ctx.strokeRect(
+                    Math.round(point.x - candleWidth / 2) + 0.5,
+                    Math.round(bodyTop) + 0.5,
+                    Math.max(Math.round(candleWidth) - 1, 1),
+                    Math.max(Math.round(bodyHeight) - 1, 1)
+                );
             });
+            ctx.restore();
+        },
+        afterDraw(chart) {
+            const active = chart.tooltip?.getActiveElements?.() || [];
+            const point = active[0]?.element;
+            const { ctx, chartArea } = chart;
+            if (!point || !chartArea) return;
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(point.x, chartArea.top);
+            ctx.lineTo(point.x, chartArea.bottom);
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = 'rgba(148, 163, 184, 0.34)';
+            ctx.setLineDash([3, 5]);
+            ctx.stroke();
             ctx.restore();
         }
     };
@@ -634,6 +672,14 @@ async function renderPriceTradingChart(canvas, candles, ticker, intervalMinutes 
             plugins: {
                 legend: { display: false },
                 tooltip: {
+                    backgroundColor: 'rgba(8, 13, 12, 0.96)',
+                    titleColor: '#f4f7f4',
+                    bodyColor: '#f4f7f4',
+                    borderColor: 'rgba(94, 234, 212, 0.28)',
+                    borderWidth: 1,
+                    cornerRadius: 8,
+                    padding: 12,
+                    displayColors: false,
                     callbacks: {
                         title: contexts => {
                             const time = Number(contexts[0]?.parsed?.x);
@@ -663,13 +709,15 @@ async function renderPriceTradingChart(canvas, candles, ticker, intervalMinutes 
                         maxRotation: 0,
                         callback: value => tickTimeFormatter.format(Number(value))
                     },
-                    grid: { color: lineColor }
+                    grid: { color: 'rgba(148, 163, 184, 0.12)', borderDash: [2, 4] },
+                    border: { display: false }
                 },
                 y: {
                     min: lowest - padding,
                     max: highest + padding,
                     ticks: { color: mutedColor, callback: priceFormatter },
-                    grid: { color: lineColor }
+                    grid: { color: 'rgba(148, 163, 184, 0.12)', borderDash: [2, 4] },
+                    border: { display: false }
                 }
             }
         }
@@ -2791,7 +2839,9 @@ function getPreferredTheme() {
 }
 
 function syncThemeToggle(toggle) {
-    const nextTheme = getPreferredTheme() === 'dark' ? 'light' : 'dark';
+    const currentTheme = getPreferredTheme();
+    const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    toggle.dataset.currentTheme = currentTheme;
     toggle.dataset.nextTheme = nextTheme;
     toggle.setAttribute('aria-label', `Switch to ${nextTheme} mode`);
 }

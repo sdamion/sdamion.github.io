@@ -47,12 +47,12 @@
 
     <!-- Preload Logo -->
     <link rel="preload" href="tdsp_logo.webp?v=20260727-smooth-lines" as="image" type="image/webp">
-    <link rel="stylesheet" href="shared/styles.css?v=20260818-bar-legend-size">
+    <link rel="stylesheet" href="shared/styles.css?v=20260818-theme-toggle-moon-stroke">
 
     <script src="shared/runtime.js?v=20260815-delegator-wallets" defer></script>
-    <script src="shared/site-controls.js?v=20260817-section-folders" defer></script>
+    <script src="shared/site-controls.js?v=20260818-theme-toggle-current" defer></script>
     <script src="vendor/chart-loader.js?v=20260817-section-folders" defer></script>
-    <script src="home/index.js?v=20260818-calendar-title-first" defer></script>
+    <script src="home/index.js?v=20260818-theme-toggle-current" defer></script>
 </head>
 <body>
     <header class="site-header" id="site-header">
@@ -91,8 +91,17 @@
                             </div>
                         </div>
                         <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch to dark mode">
-                            <span class="theme-toggle-icon theme-toggle-icon--moon" aria-hidden="true">🌙</span>
-                            <span class="theme-toggle-icon theme-toggle-icon--sun" aria-hidden="true">☀️</span>
+                            <span class="theme-toggle-icon theme-toggle-icon--moon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" focusable="false">
+                                    <path d="M21 14.6A8 8 0 0 1 9.4 3a7 7 0 1 0 11.6 11.6Z"></path>
+                                </svg>
+                            </span>
+                            <span class="theme-toggle-icon theme-toggle-icon--sun" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" focusable="false">
+                                    <circle cx="12" cy="12" r="4"></circle>
+                                    <path d="M12 2v2.2M12 19.8V22M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M2 12h2.2M19.8 12H22M4.9 19.1l1.6-1.6M17.5 6.5l1.6-1.6"></path>
+                                </svg>
+                            </span>
                         </button>
                     </div>
                 </div>
@@ -421,7 +430,7 @@
     </template>
 
     <script src="starch/starch-loader.js?v=20260817-section-folders" defer></script>
-    <script src="governance/governance-loader.js?v=20260818-active-total-ask-header" defer></script>
+    <script src="governance/governance-loader.js?v=20260818-treasury-candles-only" defer></script>
     <script src="stake/stake-loader.js?v=20260817-section-folders" defer></script>
 </body>
 </html>
