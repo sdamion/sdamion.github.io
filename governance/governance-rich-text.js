@@ -6,6 +6,9 @@
         const normalizeImageSource = typeof options.normalizeImageSource === 'function'
             ? options.normalizeImageSource
             : () => '';
+        const looksLikeBase64Image = typeof options.looksLikeBase64Image === 'function'
+            ? options.looksLikeBase64Image
+            : () => false;
 
         function cleanGovernanceText(text) {
             return text
@@ -370,11 +373,150 @@
             return /(image|img|logo|icon|picture|photo|banner|thumbnail|media|qr|svg)/i.test(keyHint);
         }
 
+        function normalizeGovernanceImageCandidate(value, keyHint = '') {
+            const trimmed = String(value || '').trim();
+            if (!trimmed) return null;
+
+            const markdownMatch = trimmed.match(/^!\[([^\]]*)\]\(([^)\s]+)\)$/);
+            if (markdownMatch) {
+                const src = normalizeGovernanceImageSource(markdownMatch[2], keyHint);
+                return src ? { src, alt: markdownMatch[1] || 'Governance action image' } : null;
+            }
+
+            const src = normalizeGovernanceImageSource(trimmed, keyHint);
+            return src ? { src, alt: 'Governance action image' } : null;
+        }
+
+        function normalizeGovernanceImageSource(value, keyHint = '') {
+            if (!value) return '';
+
+            const normalizedKeyHint = String(keyHint).toLowerCase();
+            const rawValue = String(value);
+
+            if (rawValue.startsWith('data:image/')) {
+                return rawValue;
+            }
+
+            if (/^<svg[\s>]/i.test(rawValue)) {
+                return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(rawValue)}`;
+            }
+
+            const normalizedUrl = normalizeMetadataUrl(rawValue);
+            if (/^(https?:\/\/|ipfs:\/\/)/i.test(rawValue)) {
+                return isRenderableImageUrl(normalizedUrl, normalizedKeyHint) ? normalizedUrl : '';
+            }
+
+            if (looksLikeBase64Image(rawValue, normalizedKeyHint)) {
+                return `data:image/png;base64,${rawValue.replace(/\s+/g, '')}`;
+            }
+
+            return '';
+        }
+
+        function extractGovernanceImageCandidatesFromSources(sources = []) {
+            const results = [];
+            const seen = new Set();
+            sources.forEach(source => collectGovernanceImageCandidates(source, results, seen));
+            return results;
+        }
+
+        function collectGovernanceImageCandidates(value, results, seen, keyHint = '') {
+            if (value === null || value === undefined) return;
+
+            if (typeof value === 'string') {
+                extractGovernanceImageCandidatesFromString(value, keyHint).forEach(candidate => {
+                    if (!seen.has(candidate.src)) {
+                        seen.add(candidate.src);
+                        results.push(candidate);
+                    }
+                });
+                return;
+            }
+
+            if (Array.isArray(value)) {
+                value.forEach(entry => collectGovernanceImageCandidates(entry, results, seen, keyHint));
+                return;
+            }
+
+            if (typeof value !== 'object') return;
+
+            Object.entries(value).forEach(([key, entry]) => {
+                const nestedHint = [keyHint, key].filter(Boolean).join('.');
+                collectGovernanceImageCandidates(entry, results, seen, nestedHint);
+            });
+        }
+
+        function extractGovernanceImageCandidatesFromString(value, keyHint = '') {
+            const trimmed = value.trim();
+            if (!trimmed) return [];
+
+            const candidates = [];
+            const seen = new Set();
+            const addCandidate = candidate => {
+                if (!candidate || seen.has(candidate.src)) return;
+                seen.add(candidate.src);
+                candidates.push(candidate);
+            };
+
+            const directCandidate = normalizeGovernanceImageCandidate(trimmed, keyHint);
+            if (directCandidate) addCandidate(directCandidate);
+
+            const markdownMatches = trimmed.matchAll(/!\[([^\]]*)\]\(([^)\s]+)\)/g);
+            for (const match of markdownMatches) {
+                const src = normalizeGovernanceImageSource(match[2], keyHint || match[1]);
+                if (src) addCandidate({ src, alt: match[1] || 'Governance action image' });
+            }
+
+            const htmlMatches = trimmed.matchAll(/<img\b[^>]*src=["']([^"']+)["'][^>]*?(?:alt=["']([^"']*)["'])?[^>]*>/gi);
+            for (const match of htmlMatches) {
+                const src = normalizeGovernanceImageSource(match[1], keyHint || match[2]);
+                if (src) addCandidate({ src, alt: match[2] || 'Governance action image' });
+            }
+
+            const dataImageMatches = trimmed.matchAll(/data:image\/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=\s]+/gi);
+            for (const match of dataImageMatches) {
+                const src = normalizeGovernanceImageSource(match[0], keyHint);
+                if (src) addCandidate({ src, alt: 'Governance action image' });
+            }
+
+            const urlMatches = trimmed.matchAll(/(?:https?:\/\/|ipfs:\/\/)[^\s<>"')\]]+/gi);
+            for (const match of urlMatches) {
+                const src = normalizeGovernanceImageSource(match[0], keyHint);
+                if (src) addCandidate({ src, alt: 'Governance action image' });
+            }
+
+            const parsedJson = parseEmbeddedJson(trimmed);
+            if (parsedJson) {
+                collectGovernanceImageCandidates(parsedJson, candidates, seen, keyHint);
+            }
+
+            return candidates;
+        }
+
+        function parseEmbeddedJson(value) {
+            if (!value || value.length < 2) return null;
+
+            const startsLikeJson = (
+                (value.startsWith('{') && value.endsWith('}'))
+                || (value.startsWith('[') && value.endsWith(']'))
+            );
+            if (!startsLikeJson) return null;
+
+            try {
+                return JSON.parse(value);
+            } catch {
+                return null;
+            }
+        }
+
         return Object.freeze({
             appendRichText,
             cleanText: cleanGovernanceText,
+            extractImageCandidates: extractGovernanceImageCandidatesFromSources,
             isImageUrl,
             isRenderableImageUrl,
+            normalizeGovernanceImageCandidate,
+            normalizeImageSource: normalizeGovernanceImageSource,
             sanitizeMarkdown: sanitizeGovernanceMarkdown,
             renderMarkdown
         });

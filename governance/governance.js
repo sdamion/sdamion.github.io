@@ -5173,128 +5173,49 @@ function addEmbeddedGovernanceImages(container, proposal, candidates = extractGo
 }
 
 function extractGovernanceImageCandidates(proposal) {
-    const results = [];
-    const seen = new Set();
     const sources = [
         proposal?.meta_json,
         proposal?.meta_json?.body,
         proposal?.proposal_description
     ];
 
-    sources.forEach(source => collectGovernanceImageCandidates(source, results, seen));
-    return results;
-}
-
-function collectGovernanceImageCandidates(value, results, seen, keyHint = '') {
-    if (value === null || value === undefined) return;
-
-    if (typeof value === 'string') {
-        extractGovernanceImageCandidatesFromString(value, keyHint).forEach(candidate => {
-            if (!seen.has(candidate.src)) {
-                seen.add(candidate.src);
-                results.push(candidate);
-            }
-        });
-        return;
-    }
-
-    if (Array.isArray(value)) {
-        value.forEach(entry => collectGovernanceImageCandidates(entry, results, seen, keyHint));
-        return;
-    }
-
-    if (typeof value !== 'object') return;
-
-    Object.entries(value).forEach(([key, entry]) => {
-        const nestedHint = [keyHint, key].filter(Boolean).join('.');
-        collectGovernanceImageCandidates(entry, results, seen, nestedHint);
-    });
-}
-
-function extractGovernanceImageCandidatesFromString(value, keyHint = '') {
-    const trimmed = value.trim();
-    if (!trimmed) return [];
-
-    const candidates = [];
-    const seen = new Set();
-    const addCandidate = candidate => {
-        if (!candidate || seen.has(candidate.src)) return;
-        seen.add(candidate.src);
-        candidates.push(candidate);
-    };
-
-    const directCandidate = normalizeGovernanceImageCandidate(trimmed, keyHint);
-    if (directCandidate) addCandidate(directCandidate);
-
-    const markdownMatches = trimmed.matchAll(/!\[([^\]]*)\]\(([^)\s]+)\)/g);
-    for (const match of markdownMatches) {
-        const src = normalizeImageSource(match[2], keyHint || match[1]);
-        if (src) addCandidate({ src, alt: match[1] || 'Governance action image' });
-    }
-
-    const htmlMatches = trimmed.matchAll(/<img\b[^>]*src=["']([^"']+)["'][^>]*?(?:alt=["']([^"']*)["'])?[^>]*>/gi);
-    for (const match of htmlMatches) {
-        const src = normalizeImageSource(match[1], keyHint || match[2]);
-        if (src) addCandidate({ src, alt: match[2] || 'Governance action image' });
-    }
-
-    const dataImageMatches = trimmed.matchAll(/data:image\/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=\s]+/gi);
-    for (const match of dataImageMatches) {
-        const src = normalizeImageSource(match[0], keyHint);
-        if (src) addCandidate({ src, alt: 'Governance action image' });
-    }
-
-    const urlMatches = trimmed.matchAll(/(?:https?:\/\/|ipfs:\/\/)[^\s<>"')\]]+/gi);
-    for (const match of urlMatches) {
-        const src = normalizeImageSource(match[0], keyHint);
-        if (src) addCandidate({ src, alt: 'Governance action image' });
-    }
-
-    const parsedJson = parseEmbeddedJson(trimmed);
-    if (parsedJson) {
-        collectGovernanceImageCandidates(parsedJson, candidates, seen, keyHint);
-    }
-
-    return candidates;
+    return governanceRichText.extractImageCandidates(sources);
 }
 
 function normalizeGovernanceImageCandidate(value, keyHint = '') {
-    const trimmed = value.trim();
-    if (!trimmed) return null;
-
-    const markdownMatch = trimmed.match(/^!\[([^\]]*)\]\(([^)\s]+)\)$/);
-    if (markdownMatch) {
-        const src = normalizeImageSource(markdownMatch[2], keyHint);
-        return src ? { src, alt: markdownMatch[1] || 'Governance action image' } : null;
-    }
-
-    const src = normalizeImageSource(trimmed, keyHint);
-    return src ? { src, alt: 'Governance action image' } : null;
+    return governanceRichText.normalizeGovernanceImageCandidate(value, keyHint);
 }
 
-function normalizeImageSource(value, keyHint = '') {
+function normalizeGovernanceImageSourceBase(value, keyHint = '') {
     if (!value) return '';
 
     const normalizedKeyHint = String(keyHint).toLowerCase();
+    const rawValue = String(value);
 
-    if (value.startsWith('data:image/')) {
-        return value;
+    if (rawValue.startsWith('data:image/')) {
+        return rawValue;
     }
 
-    if (/^<svg[\s>]/i.test(value)) {
-        return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(value)}`;
+    if (/^<svg[\s>]/i.test(rawValue)) {
+        return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(rawValue)}`;
     }
 
-    const normalizedUrl = normalizeMetadataUrl(value);
-    if (/^(https?:\/\/|ipfs:\/\/)/i.test(value)) {
-        return isRenderableImageUrl(normalizedUrl, normalizedKeyHint) ? normalizedUrl : '';
+    const normalizedUrl = normalizeMetadataUrl(rawValue);
+    if (/^(https?:\/\/|ipfs:\/\/)/i.test(rawValue)) {
+        const hasImageExtension = /\.(png|jpe?g|gif|webp|avif|svg)(\?.*)?$/i.test(normalizedUrl);
+        const hasImageHint = /(image|img|logo|icon|picture|photo|banner|thumbnail|media|qr|svg)/i.test(normalizedKeyHint);
+        return hasImageExtension || hasImageHint ? normalizedUrl : '';
     }
 
-    if (looksLikeBase64Image(value, normalizedKeyHint)) {
-        return `data:image/png;base64,${value.replace(/\s+/g, '')}`;
+    if (looksLikeBase64Image(rawValue, normalizedKeyHint)) {
+        return `data:image/png;base64,${rawValue.replace(/\s+/g, '')}`;
     }
 
     return '';
+}
+
+function normalizeImageSource(value, keyHint = '') {
+    return governanceRichText.normalizeImageSource(value, keyHint);
 }
 
 function looksLikeBase64Image(value, keyHint = '') {
@@ -5306,22 +5227,6 @@ function looksLikeBase64Image(value, keyHint = '') {
     if (imageHintPattern.test(keyHint)) return true;
 
     return /^(iVBORw0KGgo|\/9j\/|R0lGOD|UklGR|PHN2Zy)/.test(compact);
-}
-
-function parseEmbeddedJson(value) {
-    if (!value || value.length < 2) return null;
-
-    const startsLikeJson = (
-        (value.startsWith('{') && value.endsWith('}'))
-        || (value.startsWith('[') && value.endsWith(']'))
-    );
-    if (!startsLikeJson) return null;
-
-    try {
-        return JSON.parse(value);
-    } catch {
-        return null;
-    }
 }
 
 function addVoteDetailsState(container, message) {
@@ -9877,7 +9782,8 @@ function createUniversalPieChart(items, options = {}) {
 
 const governanceRichText = window.TDSPGovernanceRichText.create({
     normalizeMetadataUrl,
-    normalizeImageSource
+    normalizeImageSource: normalizeGovernanceImageSourceBase,
+    looksLikeBase64Image
 });
 
 function cleanGovernanceText(text) {
