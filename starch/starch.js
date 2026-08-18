@@ -143,7 +143,7 @@ async function fetchTdspStarchMinerCount() {
 }
 
 function renderTdspStarchPoolTile() {
-    setStarchPoolCardStatus(
+    window.TDSPPoolStatus?.setStarchPoolCardStatus?.(
         tdspStarchCompanyEnabled === null
             ? 'N/A'
             : tdspStarchCompanyEnabled ? 'Active' : 'Inactive',
@@ -202,7 +202,7 @@ function updateStarchDirectoryTiles(payload) {
         companyCount.textContent = Number.isFinite(value) ? value.toLocaleString('en-US') : 'N/A';
     }
 
-    if (typeof setStarchPoolCardStatus === 'function') {
+    if (typeof window.TDSPPoolStatus?.setStarchPoolCardStatus === 'function') {
         const companies = Array.isArray(payload?.companies) ? payload.companies : null;
         tdspStarchCompanyEnabled = companies
             ? companies.some(company => String(company?.id || '').trim().toUpperCase() === TDSP_STARCH_COMPANY_ID)
