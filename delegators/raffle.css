@@ -269,11 +269,30 @@
 }
 
 .raffle-draw-card {
+    position: relative;
     display: grid;
     gap: 12px;
     min-width: 0;
     padding: 18px;
     overflow: hidden;
+}
+
+.raffle-draw-card.has-prize-image {
+    padding-right: 82px;
+}
+
+.raffle-prize-image {
+    position: absolute;
+    top: 50%;
+    right: 18px;
+    display: block;
+    width: 44px;
+    height: 44px;
+    object-fit: contain;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--overlay-surface-muted);
+    transform: translateY(-50%);
 }
 
 .raffle-draw-card :is(h3, p) {

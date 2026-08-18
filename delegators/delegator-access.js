@@ -282,6 +282,7 @@ function formatPrizeLine(asset) {
 function createPrizeCard(asset) {
     const card = document.createElement('article');
     card.className = 'governance-menu-card raffle-draw-card';
+    if (asset?.image) card.classList.add('has-prize-image');
 
     const title = document.createElement('strong');
     title.className = 'governance-card-title';
@@ -293,9 +294,14 @@ function createPrizeCard(asset) {
 
     card.append(title, amount);
 
-    if (asset?.fingerprint) {
-        const fingerprint = addressLine(asset.fingerprint, 'asset fingerprint');
-        card.appendChild(fingerprint);
+    if (asset?.image) {
+        const image = document.createElement('img');
+        image.className = 'raffle-prize-image';
+        image.src = String(asset.image);
+        image.alt = `${String(asset?.name || asset?.ticker || 'Token')} logo`;
+        image.loading = 'lazy';
+        image.decoding = 'async';
+        card.appendChild(image);
     }
 
     return card;
