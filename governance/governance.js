@@ -7890,8 +7890,7 @@ function renderDrepDirectory(container, dreps, options = {}) {
                 {
                     text: drep.active ? 'Active' : 'Inactive',
                     className: 'governance-card-detail governance-drep-member-status'
-                },
-                governanceDrepNcl.createSpendBar(drep)
+                }
             ]
         });
         bindDrepNameProfileTrigger(row.querySelector('.governance-cc-member-hash'), drep);
@@ -8374,10 +8373,7 @@ function updateDrepDirectoryRow(row, drep) {
     if (name) name.textContent = drep.name;
     if (power) power.textContent = `Voting power: ${formatCompactAdaFromLovelace(drep.votingPower)}`;
     if (status) status.textContent = drep.active ? 'Active' : 'Inactive';
-    const currentNclBar = row.querySelector('.drep-ncl-bar');
-    const nextNclBar = governanceDrepNcl.createSpendBar(drep);
-    if (currentNclBar) currentNclBar.remove();
-    row.appendChild(nextNclBar);
+    row.querySelector('.drep-ncl-bar')?.remove();
     row.classList.toggle('governance-drep-member--active', drep.active);
     row.classList.toggle('governance-drep-member--inactive', !drep.active);
     row.dataset.sortName = window.TDSPRuntime.normalizeSearchText(drep.name);
