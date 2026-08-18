@@ -1,6 +1,7 @@
 const MESH_CDN_URL = 'https://esm.sh/@meshsdk/core@1.9.1?bundle-deps';
 const ADMIN_ADDRESS = 'addr1qy93p0cfydj548ayt6mh2z572ly4n4s9yaxwzrht2rzc3urjvlyhltxc0287yacjhg8syg4w3dyg3jal6ltksfuc483sel7r8c';
 const ADMIN_STAKE_ADDRESS = 'stake1u9ex0jtl4nv84rlzwuft5rczy2hgkjygewla04mgy7v2nccx4p4yr';
+const ADA_HANDLE_POLICY_ID = 'f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a';
 const RAFFLE_METADATA_LABEL = 8675309;
 let ROLE = document.body.dataset.raffleRole === 'admin' ? 'admin' : 'delegator';
 const IS_EMBEDDED = new URLSearchParams(window.location.search).get('embed') === '1';
@@ -284,16 +285,23 @@ function isAdaPrizeAsset(asset) {
     const assetId = String(asset?.asset_id || '').trim().toLowerCase();
     const ticker = String(asset?.ticker || '').trim().toUpperCase();
     const name = String(asset?.name || '').trim().toUpperCase();
-    return !policyId || assetId === 'ada' || assetId === 'lovelace' || ticker === 'ADA' || name === 'ADA';
+    return !policyId
+        || policyId.toLowerCase() === ADA_HANDLE_POLICY_ID
+        || assetId === 'ada'
+        || assetId === 'lovelace'
+        || ticker === 'ADA'
+        || name === 'ADA';
 }
 
 function resolvePrizeImageUrl(value) {
     const image = String(value || '').trim();
     if (!image) return '';
     if (/^(https?:|data:|blob:)/i.test(image)) return image;
-    if (IS_LOCAL && image.startsWith('/api/raffle/prize-image/')) {
+    if (image.startsWith('/api/raffle/prize-image/')) {
         const file = image.split('/').pop() || '';
-        return `/__raffle_prize_image_proxy__?file=${encodeURIComponent(file)}`;
+        if (IS_LOCAL || window.TDSPRuntime?.isLocalPreview === true) {
+            return `/__raffle_prize_image_proxy__?file=${encodeURIComponent(file)}`;
+        }
     }
     try {
         return new URL(image, ENDPOINTS.prizes).href;

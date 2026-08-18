@@ -16,7 +16,7 @@
         if (!host) return false;
         if (host === 'localhost' || host.endsWith('.localhost')) return true;
         if (host === '::1' || /^127(?:\.\d{1,3}){3}$/.test(host)) return true;
-        if (/^192\.168\.(?:1|4)\.\d{1,3}$/.test(host)) return true;
+        if (/^192\.168\.(?:1|4|50)\.\d{1,3}$/.test(host)) return true;
         return false;
     }
 
