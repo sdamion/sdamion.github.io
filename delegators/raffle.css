@@ -295,6 +295,18 @@
     transform: translateY(-50%);
 }
 
+.raffle-prize-token-link {
+    color: var(--accent-strong);
+    text-decoration: none;
+    width: max-content;
+    max-width: 100%;
+}
+
+.raffle-prize-token-link:hover,
+.raffle-prize-token-link:focus-visible {
+    text-decoration: underline;
+}
+
 .raffle-draw-card :is(h3, p) {
     margin: 0;
 }

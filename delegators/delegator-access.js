@@ -294,6 +294,16 @@ function createPrizeCard(asset) {
 
     card.append(title, amount);
 
+    if (asset?.asset_id) {
+        const link = document.createElement('a');
+        link.className = 'governance-card-detail raffle-prize-token-link';
+        link.href = `https://cardanoscan.io/token/${encodeURIComponent(String(asset.asset_id))}`;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = 'View on Cardanoscan';
+        card.appendChild(link);
+    }
+
     if (asset?.image) {
         const image = document.createElement('img');
         image.className = 'raffle-prize-image';
