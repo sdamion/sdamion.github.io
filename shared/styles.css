@@ -1864,6 +1864,7 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     border: 1px solid var(--line);
     border-radius: 8px;
     background: var(--governance-card-bg);
+    color: var(--text);
     transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -4001,6 +4002,15 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     display: none;
 }
 
+.delegators-dashboard-identity-full {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.delegators-dashboard-identity-short {
+    display: none;
+}
+
 .overlay-dialog-header .governance-drep-title,
 .overlay-dialog-header h2 {
     max-width: none;
@@ -4204,6 +4214,14 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     .governance-menu-overlay .governance-menu-header-meta {
         grid-column: 1 / -1;
         grid-row: 3;
+    }
+
+    .delegators-dashboard-identity-full {
+        display: none;
+    }
+
+    .delegators-dashboard-identity-short {
+        display: inline;
     }
 
     .governance-action-header-context {

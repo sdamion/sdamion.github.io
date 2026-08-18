@@ -1923,7 +1923,7 @@ function createDelegatorsDashboardBody() {
                     <p class="eyebrow">TDSP Delegators</p>
                     <h1>Dashboard</h1>
                     <p>Sign a one-time wallet challenge with a stake key currently delegated to TDSP. This does not create a transaction or cost ADA.</p>
-                    <button id="raffle-connect" class="raffle-primary" type="button">Connect Delegator Wallet</button>
+                    <button id="raffle-connect" class="governance-vote-button" type="button">Connect Delegator Wallet</button>
                     <div id="raffle-wallet-list" class="wallet-list raffle-wallet-list"></div>
                 </section>
 
@@ -1933,7 +1933,7 @@ function createDelegatorsDashboardBody() {
                             <p class="eyebrow">Verified TDSP delegator</p>
                             <h1>Dashboard</h1>
                         </div>
-                        <button id="raffle-logout" class="raffle-secondary" type="button">Lock</button>
+                        <button id="raffle-logout" class="governance-vote-secondary" type="button">Lock</button>
                     </div>
                     <div id="raffle-identity" class="governance-menu-card raffle-identity"></div>
                     <button class="governance-menu-card raffle-open-tile" id="raffle-open" type="button">
@@ -1951,15 +1951,13 @@ function createDelegatorsDashboardBody() {
                             <h2 id="raffle-overlay-title">Raffles</h2>
                         </div>
                         <div class="overlay-dialog-header-actions">
+                            <button class="governance-back-to-root" id="raffle-overlay-back" type="button" aria-label="Back to Dashboard">&lt;</button>
                             <button class="governance-close" id="raffle-overlay-close" type="button" aria-label="Close Raffles">
                                 <span class="governance-close-icon" aria-hidden="true"></span>
                             </button>
                         </div>
                     </header>
                     <div class="overlay-dialog-body raffle-overlay-body">
-                        <div class="raffle-section-heading">
-                            <h2>Published Raffles</h2>
-                        </div>
                         <div class="raffle-draws" id="raffle-draws"></div>
                     </div>
                 </section>
@@ -1976,7 +1974,7 @@ function createAdminDashboardBody() {
                     <p class="eyebrow">Restricted</p>
                     <h1>Admin Area</h1>
                     <p>Connect the authorized Cardano wallet and sign the one-time access challenge. This does not create a transaction or cost ADA.</p>
-                    <button id="raffle-connect" class="raffle-primary" type="button">Connect Admin Wallet</button>
+                    <button id="raffle-connect" class="governance-vote-button" type="button">Connect Admin Wallet</button>
                     <div id="raffle-wallet-list" class="wallet-list raffle-wallet-list"></div>
                 </section>
 
@@ -1986,7 +1984,7 @@ function createAdminDashboardBody() {
                             <p class="eyebrow">Verified administrator</p>
                             <h1>Admin Area</h1>
                         </div>
-                        <button id="raffle-logout" class="raffle-secondary" type="button">Lock</button>
+                        <button id="raffle-logout" class="governance-vote-secondary" type="button">Lock</button>
                     </div>
 
                     <div class="raffle-stats pool-summary">
@@ -1999,11 +1997,17 @@ function createAdminDashboardBody() {
                             <span>Total Delegated</span>
                         </div>
                     </div>
-                    <p class="small-text" id="raffle-snapshot-time">Pool snapshot unavailable</p>
-                    <button class="governance-menu-card raffle-open-tile" id="raffle-open" type="button">
-                        <strong class="governance-card-title">Raffles</strong>
-                        <span class="governance-card-detail">Draw, publish and review raffle results</span>
-                    </button>
+                    <p class="governance-card-detail" id="raffle-snapshot-time">Pool snapshot unavailable</p>
+                    <div class="raffle-dashboard-tiles">
+                        <button class="governance-menu-card raffle-open-tile" id="raffle-open" type="button">
+                            <strong class="governance-card-title">Raffles</strong>
+                            <span class="governance-card-detail">Draw, publish and review raffle results</span>
+                        </button>
+                        <button class="governance-menu-card raffle-open-tile" id="raffle-admin-users-open" type="button">
+                            <strong class="governance-card-title">Admin Users</strong>
+                            <span class="governance-card-detail" id="raffle-dashboard-admin-count">1 admin</span>
+                        </button>
+                    </div>
                 </section>
                 <p id="raffle-status" class="wallet-status raffle-status" role="status" aria-live="polite" hidden></p>
             </main>
@@ -2036,11 +2040,15 @@ function createAdminDashboardBody() {
                                 <strong class="governance-card-title">History</strong>
                                 <span class="governance-card-detail" id="raffle-menu-history-count">0 published raffles</span>
                             </button>
+                            <button class="governance-menu-card raffle-open-tile" type="button" data-raffle-view="admins">
+                                <strong class="governance-card-title">Admin Users</strong>
+                                <span class="governance-card-detail" id="raffle-menu-admin-count">1 admin</span>
+                            </button>
                         </div>
 
                         <section class="raffle-admin-panel" data-raffle-view-panel="draw" hidden>
                             <form class="governance-menu-card raffle-form" id="raffle-draw-form">
-                                <h2>Draw and Publish</h2>
+                                <h2 class="governance-card-title">Draw and Publish</h2>
                                 <label for="raffle-title">Raffle title</label>
                                 <input id="raffle-title" name="title" maxlength="120" required>
                                 <label for="raffle-prize">Prize</label>
@@ -2062,29 +2070,40 @@ function createAdminDashboardBody() {
                                         Publish on the website and record proof on Cardano Mainnet (network fee required).
                                     </label>
                                 </fieldset>
-                                <button class="raffle-primary" type="submit">Draw and Publish Winner</button>
+                                <button class="governance-vote-button" type="submit">Draw and Publish Winner</button>
                             </form>
                         </section>
 
                         <section class="raffle-admin-panel" data-raffle-view-panel="exclusions" hidden>
                             <form class="governance-menu-card raffle-form" id="raffle-exclusions-form">
-                                <h2>Excluded Stake Keys</h2>
-                                <p class="small-text">Add Cardano Mainnet stake addresses here. You can later disable an exclusion so the saved stake key participates in future raffles again.</p>
+                                <h2 class="governance-card-title">Excluded Stake Keys</h2>
+                                <p class="governance-card-detail">Add Cardano Mainnet stake addresses here. You can later disable an exclusion so the saved stake key participates in future raffles again.</p>
                                 <label for="raffle-excluded-stake-keys">Stake addresses</label>
                                 <textarea id="raffle-excluded-stake-keys" name="stake_addresses" rows="5" spellcheck="false" autocomplete="off" placeholder="stake1..."></textarea>
-                                <p class="small-text">Format: enter one complete Mainnet stake address per line. Example:<br><code>stake1uxg7k2rzm28glx8decjmulsxrwwaxrn2t45mcvu5fyfscuc6z2mjz</code><br><code>stake1u...another complete stake address</code><br>Comma-separated addresses are also accepted.</p>
-                                <p class="small-text" id="raffle-exclusions-count">0 stake keys excluded</p>
+                                <p class="governance-card-detail">Format: enter one complete Mainnet stake address per line. Example:<br><code>stake1uxg7k2rzm28glx8decjmulsxrwwaxrn2t45mcvu5fyfscuc6z2mjz</code><br><code>stake1u...another complete stake address</code><br>Comma-separated addresses are also accepted.</p>
+                                <p class="governance-card-detail" id="raffle-exclusions-count">0 stake keys excluded</p>
                                 <div class="raffle-exclusion-list" id="raffle-exclusion-list"></div>
-                                <button class="raffle-secondary" type="submit">Add Exclusions</button>
+                                <button class="governance-vote-secondary" type="submit">Add Exclusions</button>
                                 <p class="raffle-inline-status" id="raffle-exclusions-status" role="status" aria-live="polite"></p>
                             </form>
                         </section>
 
                         <section class="raffle-admin-panel" data-raffle-view-panel="history" hidden>
-                            <div class="raffle-section-heading">
-                                <h2>Published Raffles</h2>
-                            </div>
                             <div class="raffle-draws" id="raffle-draws"></div>
+                        </section>
+
+                        <section class="raffle-admin-panel" data-raffle-view-panel="admins" hidden>
+                            <form class="governance-menu-card raffle-form" id="raffle-admin-users-form">
+                                <h2 class="governance-card-title">Admin Users</h2>
+                                <p class="governance-card-detail">Add Cardano Mainnet payment or stake addresses that may open the Admin Area. At least one admin must remain.</p>
+                                <label for="raffle-admin-addresses">Admin addresses</label>
+                                <textarea id="raffle-admin-addresses" name="addresses" rows="5" spellcheck="false" autocomplete="off" placeholder="addr1... or stake1..."></textarea>
+                                <p class="governance-card-detail">Format: enter one complete Mainnet address per line. Comma-separated addresses are also accepted.</p>
+                                <p class="governance-card-detail" id="raffle-admin-users-count">1 admin</p>
+                                <div class="raffle-exclusion-list" id="raffle-admin-user-list"></div>
+                                <button class="governance-vote-secondary" type="submit">Add Admin Users</button>
+                                <p class="raffle-inline-status" id="raffle-admin-users-status" role="status" aria-live="polite"></p>
+                            </form>
                         </section>
                     </div>
                 </section>
@@ -2095,7 +2114,7 @@ function createAdminDashboardBody() {
 
 function loadDelegatorAccessModule() {
     if (window.TDSPDelegatorAccess?.initOverlay) return Promise.resolve(window.TDSPDelegatorAccess);
-    return window.TDSPRuntime.loadScript('delegators/delegator-access.js?v=20260818-admin-auto-overlay', {
+    return window.TDSPRuntime.loadScript('delegators/delegator-access.js?v=20260818-admin-users', {
         datasetName: 'delegatorAccess',
         selector: 'script[data-delegator-access]',
         ready: () => window.TDSPDelegatorAccess?.initOverlay ? window.TDSPDelegatorAccess : null
@@ -2125,7 +2144,17 @@ function openDelegatorsDashboardOverlay(event) {
 
     delegatorsDashboardMessageHandler = event => {
         const identity = String(event.detail?.identity || '').trim();
-        elements.meta.textContent = identity ? `TDSP Delegator ${identity}` : 'TDSP Delegator';
+        const shortIdentity = String(event.detail?.short_identity || identity).trim();
+        elements.meta.replaceChildren('TDSP Delegator');
+        if (!identity) return;
+        elements.meta.appendChild(document.createTextNode(' '));
+        const full = document.createElement('span');
+        full.className = 'delegators-dashboard-identity-full';
+        full.textContent = identity;
+        const short = document.createElement('span');
+        short.className = 'delegators-dashboard-identity-short';
+        short.textContent = shortIdentity;
+        elements.meta.append(full, short);
     };
     window.addEventListener('tdsp:delegator-dashboard-identity', delegatorsDashboardMessageHandler);
 

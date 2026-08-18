@@ -2,7 +2,7 @@
     const THEME_STORAGE_KEY = 'tdsp-theme';
     const EPOCH_DURATION_MS = 432000 * 1000;
     const CARDANO_MAINNET_EPOCH_ZERO_MS = Date.parse('2017-09-23T21:44:51Z');
-    const MAIN_SCRIPT_SRC = 'home/index.js?v=20260818-raffle-overlay-module';
+    const MAIN_SCRIPT_SRC = 'home/index.js?v=20260818-admin-users';
     const GOVERNANCE_SCRIPT_SRC = 'governance/governance-loader.js?v=20260817-section-folders';
     let epochTimer = null;
 

@@ -11,6 +11,7 @@ const ENDPOINTS = IS_LOCAL ? {
     admin: '/__raffle_admin_proxy__',
     draw: '/__raffle_admin_draw_proxy__',
     exclusions: '/__raffle_admin_exclusions_proxy__',
+    admins: '/__raffle_admin_users_proxy__',
     anchor: '/__raffle_admin_anchor_proxy__',
     delegator: '/__raffle_delegator_proxy__'
 } : {
@@ -19,6 +20,7 @@ const ENDPOINTS = IS_LOCAL ? {
     admin: 'https://api.tdsp.online/api/raffle/admin',
     draw: 'https://api.tdsp.online/api/raffle/admin/draw',
     exclusions: 'https://api.tdsp.online/api/raffle/admin/exclusions',
+    admins: 'https://api.tdsp.online/api/raffle/admin/users',
     anchor: 'https://api.tdsp.online/api/raffle/admin/anchor',
     delegator: 'https://api.tdsp.online/api/raffle/delegator'
 };
@@ -33,12 +35,15 @@ let raffleAnchorSupported = false;
 let raffleExclusionsSupported = false;
 let raffleExclusionTogglesSupported = false;
 let raffleStakeKeyExclusions = [];
+let raffleAdminUsers = [];
+let raffleAdminView = 'menu';
 
 const RAFFLE_ADMIN_VIEW_TITLES = Object.freeze({
     menu: 'Raffles',
     draw: 'Draw',
     exclusions: 'Exclusion List',
-    history: 'History'
+    history: 'History',
+    admins: 'Admin Users'
 });
 
 const RAFFLE_ANCHOR_UNAVAILABLE = 'On-chain proof is not available in the running Koios proxy yet. Pull the latest proxy image and restart the container, then reload this page.';
@@ -84,18 +89,16 @@ function shorten(value, head = 16, tail = 10) {
 }
 
 function getDelegatorIdentity(payload = {}) {
-    return String(
-        payload.ada_handle
-        || payload.handle
-        || payload.delegator?.ada_handle
-        || payload.delegator?.handle
-        || shorten(payload.stake_address)
-        || ''
-    ).trim();
+    const stakeAddress = String(payload.stake_address || payload.delegator?.stake_address || '').trim();
+    return {
+        identity: stakeAddress || String(payload.ada_handle || payload.handle || payload.delegator?.ada_handle || payload.delegator?.handle || '').trim(),
+        short_identity: stakeAddress ? shorten(stakeAddress) : '',
+        stake_address: stakeAddress
+    };
 }
 
 function postEmbeddedDelegatorIdentity(payload = {}) {
-    const detail = { identity: getDelegatorIdentity(payload) };
+    const detail = getDelegatorIdentity(payload);
     if (window.TDSPRaffleOverlayActive) {
         window.dispatchEvent(new CustomEvent('tdsp:delegator-dashboard-identity', { detail }));
         return;
@@ -122,7 +125,7 @@ function formatDate(value) {
 function createCopyButton(value, label) {
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = 'raffle-copy';
+    button.className = 'pool-delegator-copy-button';
     button.textContent = '⧉';
     button.setAttribute('aria-label', `Copy ${label}`);
     button.title = `Copy ${label}`;
@@ -202,7 +205,9 @@ function showAuthenticatedUi(authenticated) {
 }
 
 function setRaffleAdminView(view = 'menu', { focus = true } = {}) {
+    if (ROLE !== 'admin') return;
     const normalizedView = Object.hasOwn(RAFFLE_ADMIN_VIEW_TITLES, view) ? view : 'menu';
+    raffleAdminView = normalizedView;
     const menu = document.getElementById('raffle-admin-menu');
     if (menu) menu.hidden = normalizedView !== 'menu';
     document.querySelectorAll('[data-raffle-view-panel]').forEach(panel => {
@@ -212,26 +217,30 @@ function setRaffleAdminView(view = 'menu', { focus = true } = {}) {
     const title = document.getElementById('raffle-overlay-title');
     if (title) title.textContent = RAFFLE_ADMIN_VIEW_TITLES[normalizedView];
     const back = document.getElementById('raffle-overlay-back');
-    if (back) back.hidden = normalizedView === 'menu';
+    if (back) back.hidden = false;
 
     if (!focus) return;
     if (normalizedView === 'menu') document.querySelector('[data-raffle-view]')?.focus();
     else back?.focus();
 }
 
-function setRaffleOverlay(open) {
+function setRaffleOverlay(open, initialAdminView = 'menu') {
     const overlay = document.getElementById('raffle-overlay');
     if (!overlay) return;
     if (open) {
         raffleOverlayReturnFocus = document.activeElement;
-        setRaffleAdminView('menu', { focus: false });
+        if (ROLE === 'admin') setRaffleAdminView(initialAdminView, { focus: false });
         overlay.hidden = false;
         document.body.classList.add('raffle-overlay-open');
-        document.querySelector('[data-raffle-view]')?.focus();
+        if (ROLE === 'admin' && initialAdminView !== 'menu') {
+            document.getElementById('raffle-overlay-back')?.focus();
+        } else {
+            document.querySelector('[data-raffle-view]')?.focus();
+        }
         return;
     }
     overlay.hidden = true;
-    setRaffleAdminView('menu', { focus: false });
+    if (ROLE === 'admin') setRaffleAdminView('menu', { focus: false });
     document.body.classList.remove('raffle-overlay-open');
     raffleOverlayReturnFocus?.focus?.();
     raffleOverlayReturnFocus = null;
@@ -273,7 +282,7 @@ function renderStakeAddressChoices(wallet, addresses) {
     const list = document.getElementById('raffle-wallet-list');
     list.replaceChildren();
     const intro = document.createElement('p');
-    intro.className = 'small-text';
+    intro.className = 'governance-card-detail';
     intro.textContent = 'Choose the TDSP stake key you want to verify.';
     list.appendChild(intro);
     addresses.forEach(address => {
@@ -325,6 +334,21 @@ async function connectWallet(walletInfo) {
         adminTransactionWallet = wallet;
         await authenticateAddress(wallet, ADMIN_STAKE_ADDRESS);
         return;
+    }
+    const candidates = [...new Set([...addresses, ...rewards])];
+    let lastError = null;
+    for (const candidate of candidates) {
+        try {
+            adminTransactionWallet = wallet;
+            await authenticateAddress(wallet, candidate);
+            return;
+        } catch (error) {
+            lastError = error;
+        }
+    }
+    adminTransactionWallet = null;
+    if (lastError?.message && lastError.message !== 'This wallet is not authorized for the Admin Area.') {
+        throw lastError;
     }
     throw new Error('This wallet does not contain the authorized Admin Area credential.');
 }
@@ -407,7 +431,7 @@ async function chooseRaffleTransactionWallet(draw, button, status, choices) {
         const wallets = BrowserWallet.getInstalledWallets();
         if (!wallets.length) throw new Error('No CIP-30 Cardano wallet extension was detected.');
         const intro = document.createElement('p');
-        intro.className = 'small-text';
+        intro.className = 'governance-card-detail';
         intro.textContent = 'Choose the authorized wallet that will pay the Cardano network fee.';
         choices.appendChild(intro);
         wallets.forEach(walletInfo => {
@@ -475,23 +499,26 @@ function createDrawCard(draw, viewerAddress = null) {
     card.className = `governance-menu-card raffle-draw-card${draw.is_winner ? ' is-winner' : ''}`;
     card.dataset.raffleId = draw.id;
     const heading = document.createElement('h3');
+    heading.className = 'governance-card-title';
     heading.textContent = draw.title || 'TDSP Delegator Raffle';
     const date = document.createElement('p');
-    date.className = 'small-text';
+    date.className = 'governance-card-detail';
     date.textContent = `Published ${formatDate(draw.published_at)}`;
     card.append(heading, date);
 
     if (draw.prize) {
         const prize = document.createElement('strong');
-        prize.className = 'raffle-prize';
+        prize.className = 'governance-card-detail raffle-prize';
         prize.textContent = draw.prize;
         card.appendChild(prize);
     }
     const winner = document.createElement('div');
     winner.className = 'raffle-winner';
     const winnerTitle = document.createElement('strong');
+    winnerTitle.className = 'governance-card-title';
     winnerTitle.textContent = draw.is_winner ? 'You are the winner' : 'Winner';
     const winnerName = document.createElement('span');
+    winnerName.className = 'governance-card-detail';
     const winnerWalletAddress = String(draw.winner?.wallet_address || '').trim();
     winnerName.textContent = draw.winner?.ada_handle || (ROLE === 'admin' ? 'Wallet address' : 'Stake key');
     const winnerAddress = ROLE === 'admin'
@@ -504,6 +531,7 @@ function createDrawCard(draw, viewerAddress = null) {
 
     if (draw.notes) {
         const notes = document.createElement('p');
+        notes.className = 'governance-card-detail';
         notes.textContent = draw.notes;
         card.appendChild(notes);
     }
@@ -511,7 +539,7 @@ function createDrawCard(draw, viewerAddress = null) {
     const summary = document.createElement('summary');
     summary.textContent = 'Draw proof';
     const proofText = document.createElement('p');
-    proofText.className = 'small-text';
+    proofText.className = 'governance-card-detail';
     proofText.textContent = `${draw.eligible_count.toLocaleString('en-US')} eligible delegators · index ${draw.selection_index}`;
     proof.append(summary, proofText, addressLine(draw.snapshot_sha256, 'snapshot hash'), addressLine(draw.selection_entropy, 'selection entropy'));
     if (draw.on_chain_tx_hash) {
@@ -520,7 +548,7 @@ function createDrawCard(draw, viewerAddress = null) {
         const onChainTitle = document.createElement('strong');
         onChainTitle.textContent = 'On-chain proof';
         const label = document.createElement('p');
-        label.className = 'small-text';
+        label.className = 'governance-card-detail';
         label.textContent = `Metadata label ${draw.on_chain_metadata_label || RAFFLE_METADATA_LABEL}`;
         onChain.append(onChainTitle, label, addressLine(draw.on_chain_tx_hash, 'transaction ID'), cardanoscanTransactionLink(draw.on_chain_tx_hash));
         proof.appendChild(onChain);
@@ -531,11 +559,11 @@ function createDrawCard(draw, viewerAddress = null) {
         onChainActions.className = 'raffle-on-chain-actions';
         const button = document.createElement('button');
         button.type = 'button';
-        button.className = 'raffle-primary raffle-on-chain-button';
+        button.className = 'governance-vote-button raffle-on-chain-button';
         button.textContent = 'Publish proof on-chain';
         button.disabled = !raffleAnchorSupported;
         const help = document.createElement('p');
-        help.className = 'small-text';
+        help.className = 'governance-card-detail';
         help.textContent = raffleAnchorSupported
             ? 'Creates a Cardano Mainnet transaction containing the draw proof and charges a network fee.'
             : RAFFLE_ANCHOR_UNAVAILABLE;
@@ -564,7 +592,7 @@ function renderDraws(draws, viewerAddress = null) {
     list.replaceChildren();
     if (!draws.length) {
         const empty = document.createElement('p');
-        empty.className = 'governance-menu-card raffle-empty';
+        empty.className = 'governance-menu-card governance-card-detail raffle-draw-card raffle-empty';
         empty.textContent = 'No raffle results have been published yet.';
         list.appendChild(empty);
         return;
@@ -613,6 +641,8 @@ function renderAdmin(payload) {
         menuHistoryCount.textContent = `${draws.length.toLocaleString('en-US')} published raffle${draws.length === 1 ? '' : 's'}`;
     }
     renderDraws(draws);
+    raffleAdminUsers = Array.isArray(payload.admin_users) ? payload.admin_users : [];
+    renderAdminUsers(raffleAdminUsers);
 }
 
 function renderExcludedStakeKeys(excludedDelegators) {
@@ -621,20 +651,21 @@ function renderExcludedStakeKeys(excludedDelegators) {
     list.replaceChildren();
     if (!excludedDelegators.length) {
         const empty = document.createElement('p');
-        empty.className = 'small-text';
+        empty.className = 'governance-card-detail';
         empty.textContent = 'No stake keys are excluded.';
         list.appendChild(empty);
         return;
     }
     excludedDelegators.forEach(entry => {
         const row = document.createElement('div');
-        row.className = 'raffle-exclusion-item';
+        row.className = 'governance-menu-card raffle-exclusion-item';
         const identity = document.createElement('div');
         identity.className = 'raffle-exclusion-identity';
         const name = document.createElement('strong');
+        name.className = 'governance-card-title';
         name.textContent = entry.ada_handle || 'Stake key';
         const state = document.createElement('span');
-        state.className = `raffle-exclusion-state ${entry.enabled === false ? 'is-included' : 'is-excluded'}`;
+        state.className = `governance-card-detail raffle-exclusion-state ${entry.enabled === false ? 'is-included' : 'is-excluded'}`;
         state.textContent = entry.enabled === false ? 'Included in raffle' : 'Excluded';
         identity.append(name, state, addressLine(entry.stake_address));
         const actions = document.createElement('div');
@@ -642,7 +673,7 @@ function renderExcludedStakeKeys(excludedDelegators) {
         if (raffleExclusionTogglesSupported) {
             const toggle = document.createElement('button');
             toggle.type = 'button';
-            toggle.className = 'raffle-secondary raffle-exclusion-toggle';
+            toggle.className = 'governance-vote-secondary raffle-exclusion-toggle';
             toggle.textContent = entry.enabled === false ? 'Enable exclusion' : 'Disable exclusion';
             toggle.addEventListener('click', async () => {
                 toggle.disabled = true;
@@ -660,7 +691,7 @@ function renderExcludedStakeKeys(excludedDelegators) {
         }
         const remove = document.createElement('button');
         remove.type = 'button';
-        remove.className = 'raffle-secondary raffle-exclusion-remove';
+        remove.className = 'governance-vote-secondary raffle-exclusion-remove';
         remove.textContent = 'Remove';
         remove.setAttribute('aria-label', `Remove ${entry.ada_handle || shorten(entry.stake_address)} from raffle exclusions`);
         remove.addEventListener('click', async () => {
@@ -677,6 +708,112 @@ function renderExcludedStakeKeys(excludedDelegators) {
         row.append(identity, actions);
         list.appendChild(row);
     });
+}
+
+function renderAdminUsers(adminUsers) {
+    const users = Array.isArray(adminUsers) ? adminUsers : [];
+    const list = document.getElementById('raffle-admin-user-list');
+    const countText = `${users.length.toLocaleString('en-US')} admin${users.length === 1 ? '' : 's'}`;
+    const menuCount = document.getElementById('raffle-menu-admin-count');
+    if (menuCount) menuCount.textContent = countText;
+    const dashboardCount = document.getElementById('raffle-dashboard-admin-count');
+    if (dashboardCount) dashboardCount.textContent = countText;
+    const count = document.getElementById('raffle-admin-users-count');
+    if (count) count.textContent = countText;
+    const input = document.getElementById('raffle-admin-addresses');
+    if (input) input.value = '';
+    if (!list) return;
+    list.replaceChildren();
+    if (!users.length) {
+        const empty = document.createElement('p');
+        empty.className = 'governance-card-detail';
+        empty.textContent = 'No admin users are configured.';
+        list.appendChild(empty);
+        return;
+    }
+    users.forEach(user => {
+        const row = document.createElement('div');
+        row.className = 'governance-menu-card raffle-exclusion-item';
+        const identity = document.createElement('div');
+        identity.className = 'raffle-exclusion-identity';
+        const name = document.createElement('strong');
+        name.className = 'governance-card-title';
+        name.textContent = user.type === 'stake' ? 'Stake admin' : 'Payment admin';
+        const detail = document.createElement('span');
+        detail.className = 'governance-card-detail';
+        detail.textContent = user.stake_credential ? 'Stake credential verified' : 'Exact address only';
+        identity.append(name, detail, addressLine(user.address, 'admin address'));
+
+        const actions = document.createElement('div');
+        actions.className = 'raffle-exclusion-actions';
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'governance-vote-secondary raffle-exclusion-remove';
+        remove.textContent = 'Remove';
+        remove.disabled = users.length <= 1;
+        remove.title = users.length <= 1 ? 'At least one admin user is required.' : '';
+        remove.setAttribute('aria-label', `Remove ${shorten(user.address)} from Admin Area users`);
+        remove.addEventListener('click', async () => {
+            const status = document.getElementById('raffle-admin-users-status');
+            if (raffleAdminUsers.length <= 1) {
+                status.textContent = 'At least one admin user is required.';
+                status.classList.add('is-error');
+                return;
+            }
+            remove.disabled = true;
+            const saved = await saveAdminUsers(
+                raffleAdminUsers.filter(entry => entry.address !== user.address),
+                status,
+                'Removing admin user...'
+            );
+            if (!saved) remove.disabled = false;
+        });
+        actions.appendChild(remove);
+        row.append(identity, actions);
+        list.appendChild(row);
+    });
+}
+
+async function saveAdminUsers(users, status, pendingMessage = 'Saving admin users...') {
+    if (!status) return null;
+    status.classList.remove('is-error');
+    status.textContent = pendingMessage;
+    try {
+        await authorizedRequest(ENDPOINTS.admins, {
+            method: 'POST',
+            body: JSON.stringify({
+                admin_users: users.map(user => ({ address: typeof user === 'string' ? user : user.address }))
+            })
+        });
+        const payload = await authorizedRequest(ENDPOINTS.admin);
+        renderAdmin(payload);
+        const savedCount = Array.isArray(payload.admin_users) ? payload.admin_users.length : 0;
+        status.textContent = `${savedCount.toLocaleString('en-US')} admin ${savedCount === 1 ? 'user' : 'users'} configured.`;
+        return payload;
+    } catch (error) {
+        status.textContent = error?.message || 'The admin users could not be saved.';
+        status.classList.add('is-error');
+        return null;
+    }
+}
+
+async function submitAdminUsers(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const submit = form.querySelector('button[type="submit"]');
+    const status = document.getElementById('raffle-admin-users-status');
+    const addresses = String(form.elements.addresses.value || '')
+        .split(/[\r\n,]+/)
+        .map(value => value.trim())
+        .filter(Boolean);
+    submit.disabled = true;
+    try {
+        const usersByAddress = new Map(raffleAdminUsers.map(user => [user.address, user]));
+        addresses.forEach(address => usersByAddress.set(address.toLowerCase(), { address }));
+        await saveAdminUsers([...usersByAddress.values()], status, 'Adding admin users...');
+    } finally {
+        submit.disabled = false;
+    }
 }
 
 async function saveStakeKeyExclusionConfigs(configs, status, pendingMessage = 'Saving exclusions...') {
@@ -847,7 +984,12 @@ async function init(options = {}) {
     });
     document.getElementById('raffle-logout')?.addEventListener('click', logout);
     document.getElementById('raffle-open')?.addEventListener('click', () => setRaffleOverlay(true));
-    document.getElementById('raffle-overlay-back')?.addEventListener('click', () => setRaffleAdminView('menu'));
+    document.getElementById('raffle-admin-users-open')?.addEventListener('click', () => setRaffleOverlay(true, 'admins'));
+    document.getElementById('raffle-overlay-back')?.addEventListener('click', () => {
+        if (ROLE === 'admin' && raffleAdminView !== 'menu') setRaffleAdminView('menu');
+        else if (ROLE === 'admin') setRaffleOverlay(false);
+        else setRaffleOverlay(false);
+    });
     document.getElementById('raffle-overlay-close')?.addEventListener('click', () => setRaffleOverlay(false));
     document.querySelectorAll('[data-raffle-view]').forEach(tile => {
         tile.addEventListener('click', () => setRaffleAdminView(tile.dataset.raffleView));
@@ -857,6 +999,7 @@ async function init(options = {}) {
     });
     document.getElementById('raffle-draw-form')?.addEventListener('submit', submitDraw);
     document.getElementById('raffle-exclusions-form')?.addEventListener('submit', submitExclusions);
+    document.getElementById('raffle-admin-users-form')?.addEventListener('submit', submitAdminUsers);
     if (sessionToken) {
         try {
             await loadProtectedArea();
