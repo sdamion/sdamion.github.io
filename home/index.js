@@ -1,5 +1,4 @@
 const IS_LOCAL_PREVIEW = window.TDSPRuntime?.isLocalPreview === true;
-const THEME_STORAGE_KEY = 'tdsp-theme';
 const OVERLAY_SORT_STORAGE_KEY = 'tdsp-overlay-sort';
 const SITE_ALERT_SETTINGS_STORAGE_KEY = 'tdsp-site-alert-settings-v1';
 const NEWS_NOTIFICATION_STORAGE_KEY = 'tdsp-news-notification-state-v1';
@@ -11,7 +10,6 @@ const DEFAULT_SITE_ALERT_SETTINGS = Object.freeze({
     news: true,
     events: true
 });
-let headerVisibilityObserver = null;
 let delegatorsDashboardMessageHandler = null;
 let cryptoNewsItems = [];
 
@@ -385,10 +383,9 @@ async function fetchCardanoEvents() {
 // Fetch prices on page load and set up auto-update
 // Initialize UI behaviors and price fetching when DOM is ready
 document.addEventListener("DOMContentLoaded", () => {
-    initFixedHeaderLayout();
+    window.TDSPSiteControls?.initUi?.();
     initExternalLinkWarnings();
     initSiteAlertsMenu();
-    initThemeToggle();
     initResponsiveIdentifiers();
     initPoolCopyButtons();
     initPoolMenuCards();
@@ -414,28 +411,10 @@ document.addEventListener("DOMContentLoaded", () => {
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden) refreshVisibleTasks(refreshTasks);
     });
-    initUI();
 });
 
 async function fetchDatabaseStatus() {
     return window.TDSPDatabaseStatus?.load?.();
-}
-
-function initFixedHeaderLayout() {
-    const header = document.getElementById('site-header');
-    if (!header) return;
-
-    const syncHeight = () => {
-        const height = Math.ceil(header.getBoundingClientRect().height);
-        document.documentElement.style.setProperty('--site-header-height', `${height}px`);
-    };
-    syncHeight();
-    window.addEventListener('resize', syncHeight, { passive: true });
-    if ('ResizeObserver' in window) {
-        const observer = new ResizeObserver(syncHeight);
-        observer.observe(header);
-        header.siteHeaderResizeObserver = observer;
-    }
 }
 
 function initCryptoNewsTicker() {
@@ -590,13 +569,8 @@ function closeExternalSiteWarning(restoreFocus = true) {
 }
 
 document.addEventListener('tdsp:content-loaded', () => {
-    initUI();
+    window.TDSPSiteControls?.initUi?.();
 });
-
-function initUI() {
-    setupRevealOnScroll();
-    setupHeaderVisibility();
-}
 
 async function fetchPoolStatus() {
     return loadPoolStatusModule().then(module => module.loadPool?.());
@@ -1465,114 +1439,6 @@ function initPoolCopyButtons() {
     });
 }
 
-function initThemeToggle() {
-    const toggle = document.getElementById('theme-toggle');
-    if (!toggle || toggle.dataset.themeBound === 'true') return;
-    toggle.dataset.themeBound = 'true';
-
-    applyStoredTheme();
-    syncThemeToggle(toggle);
-
-    toggle.addEventListener('click', () => {
-        const currentTheme = getPreferredTheme();
-        const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
-        localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
-        document.documentElement.dataset.theme = nextTheme;
-        syncThemeToggle(toggle);
-    });
-}
-
-function applyStoredTheme() {
-    const storedTheme = localStorage.getItem(THEME_STORAGE_KEY);
-    if (storedTheme === 'light' || storedTheme === 'dark') {
-        document.documentElement.dataset.theme = storedTheme;
-        return;
-    }
-
-    delete document.documentElement.dataset.theme;
-}
-
-function getPreferredTheme() {
-    const explicitTheme = document.documentElement.dataset.theme;
-    if (explicitTheme === 'light' || explicitTheme === 'dark') return explicitTheme;
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-}
-
-function syncThemeToggle(toggle) {
-    const currentTheme = getPreferredTheme();
-    const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
-    toggle.dataset.currentTheme = currentTheme;
-    toggle.dataset.nextTheme = nextTheme;
-    toggle.setAttribute('aria-label', `Switch to ${nextTheme} mode`);
-}
-
-function setupRevealOnScroll() {
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.classList.add('visible');
-            }
-        });
-    }, { threshold: 0.12, root: null, rootMargin: '0px 0px -10% 0px' });
-
-    const targets = Array.from(document.querySelectorAll('.section, .hero-logo, h2, p'));
-    targets.forEach(el => {
-        if (el.dataset.revealObserved === 'true') return;
-        el.dataset.revealObserved = 'true';
-        el.classList.add('reveal');
-        observer.observe(el);
-    });
-
-    // Fallback: if observer didn't trigger within 1s, reveal everything so the page isn't stuck hidden
-    setTimeout(() => {
-        const stillHidden = targets.filter(t => !t.classList.contains('visible'));
-        if (stillHidden.length) {
-            stillHidden.forEach(t => t.classList.add('visible'));
-        }
-    }, 1000);
-}
-
-function setupHeaderVisibility() {
-    const navLinks = Array.from(document.querySelectorAll('.nav-link[href^="#"]'));
-    const sections = navLinks
-        .map(link => document.querySelector(link.getAttribute('href')))
-        .filter(Boolean);
-
-    if (!navLinks.length || !sections.length) return;
-
-    if (headerVisibilityObserver) headerVisibilityObserver.disconnect();
-
-    headerVisibilityObserver = new IntersectionObserver((entries) => {
-        const visible = entries
-            .filter(entry => entry.isIntersecting)
-            .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-
-        if (!visible) return;
-
-        navLinks.forEach(link => {
-            link.classList.toggle('active', link.getAttribute('href') === `#${visible.target.id}`);
-        });
-    }, {
-        rootMargin: '-25% 0px -55% 0px',
-        threshold: [0.1, 0.25, 0.5]
-    });
-
-    sections.forEach(section => headerVisibilityObserver.observe(section));
-
-    navLinks.forEach(link => {
-        if (link.dataset.navBound === 'true') return;
-        link.dataset.navBound = 'true';
-        link.addEventListener('click', () => {
-            navLinks.forEach(item => item.classList.remove('active'));
-            link.classList.add('active');
-        });
-    });
-
-    const firstLink = navLinks[0];
-    if (firstLink) {
-        firstLink.classList.add('active');
-    }
-}
 
 window.getTopGovernanceMenuOverlay = getTopGovernanceMenuOverlay;
 window.syncGovernanceMenuOverlayAccessibility = syncGovernanceMenuOverlayAccessibility;

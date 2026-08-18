@@ -6,7 +6,7 @@
     const GOVERNANCE_BUSINESS_LINKS_SCRIPT_SRC = 'governance/governance-business-links.js?v=20260818-modular-business-links-domain';
     const GOVERNANCE_CATALYST_FORMAT_SCRIPT_SRC = 'governance/governance-catalyst-format.js?v=20260817-modular-catalyst-format-4';
     const GOVERNANCE_PIE_CHART_SCRIPT_SRC = 'governance/governance-pie-chart.js?v=20260817-modular-pie-chart';
-    const GOVERNANCE_CATALYST_CHARTS_SCRIPT_SRC = 'governance/governance-catalyst-charts.js?v=20260817-modular-catalyst-charts-2';
+    const GOVERNANCE_CATALYST_CHARTS_SCRIPT_SRC = 'governance/governance-catalyst-charts.js?v=20260819-funding-labels';
     const GOVERNANCE_ACTION_BUTTONS_SCRIPT_SRC = 'governance/governance-action-buttons.js?v=20260817-modular-action-buttons';
     const GOVERNANCE_BOT_CONTEXTS_SCRIPT_SRC = 'governance/governance-bot-contexts.js?v=20260817-modular-bot-contexts';
     const GOVERNANCE_PROPOSAL_SUMMARY_SCRIPT_SRC = 'governance/governance-proposal-summary.js?v=20260817-modular-proposal-summary';
@@ -25,7 +25,7 @@
     const GOVERNANCE_DREP_TOP10_SCRIPT_SRC = 'governance/governance-drep-top10.js?v=20260817-modular-drep-top10';
     const GOVERNANCE_TDSP_DREP_SCRIPT_SRC = 'governance/governance-tdsp-drep.js?v=20260818-responsive-identifiers';
     const GOVERNANCE_PROPOSAL_DISPLAY_SCRIPT_SRC = 'governance/governance-proposal-display.js?v=20260817-modular-proposal-display';
-    const GOVERNANCE_SCRIPT_SRC = 'governance/governance.js?v=20260818-responsive-identifiers';
+    const GOVERNANCE_SCRIPT_SRC = 'governance/governance.js?v=20260819-governance-actions-funding';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
         '#drep',

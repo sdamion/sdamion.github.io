@@ -17,7 +17,7 @@
             const groups = [
                 {
                     key: 'claimed',
-                    label: 'Claimed',
+                    label: 'Claimed Funds',
                     value: status.claimed,
                     color: '#34d399',
                     currency: 'USD',
@@ -29,7 +29,7 @@
                 },
                 {
                     key: 'not-claimed',
-                    label: 'Not Claimed',
+                    label: 'Unclaimed Funds',
                     value: status.notClaimed,
                     color: '#fb7185',
                     currency: 'USD',
@@ -74,7 +74,7 @@
             const groups = [
                 {
                     key: 'claimed',
-                    label: 'Claimed',
+                    label: 'Claimed Funds',
                     value: Number(fund.claimed_amount) || 0,
                     color: '#34d399',
                     currency: fund.funding_currency,
@@ -84,7 +84,7 @@
                 },
                 {
                     key: 'not-claimed',
-                    label: 'Not Claimed',
+                    label: 'Unclaimed Funds',
                     value: Number(fund.not_claimed_amount) || 0,
                     color: '#fb7185',
                     currency: fund.funding_currency,
@@ -178,12 +178,12 @@
             summary.className = 'governance-vote-legend governance-catalyst-fund-totals';
             summary.append(
                 createStatBox({
-                    label: 'Claimed',
+                    label: 'Claimed Funds',
                     detail: formatFundAmount(fund, 'claimed'),
                     color: '#34d399'
                 }),
                 createStatBox({
-                    label: 'Not Claimed',
+                    label: 'Unclaimed Funds',
                     detail: formatFundAmount(fund, 'not_claimed'),
                     color: '#fb7185'
                 })

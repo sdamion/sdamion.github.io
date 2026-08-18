@@ -913,6 +913,13 @@ function getApprovedGovernanceFundingActions() {
     return approved;
 }
 
+function getUnapprovedGovernanceFundingActions() {
+    const active = Array.isArray(governanceGroupsState?.active)
+        ? governanceGroupsState.active
+        : [];
+    return active.filter(proposal => getProposalTotalAskLovelace(proposal) > 0);
+}
+
 function getApprovedGovernanceFundingTotals(actions = getApprovedGovernanceFundingActions()) {
     const totals = actions.reduce((runningTotals, proposal) => {
         const lovelace = getProposalTotalAskLovelace(proposal);
@@ -942,6 +949,60 @@ function getApprovedTreasuryFundingUsd(proposal) {
         .reduce((sum, withdrawal) => sum + (Number(withdrawal?.amount_usd) || 0), 0);
     if (withdrawalUsd > 0) return withdrawalUsd;
     return NaN;
+}
+
+function getEstimatedTreasuryFundingUsd(proposal) {
+    const directUsd = getApprovedTreasuryFundingUsd(proposal);
+    if (Number.isFinite(directUsd) && directUsd > 0) return directUsd;
+
+    const lovelace = getProposalTotalAskLovelace(proposal);
+    if (!Number.isFinite(lovelace) || lovelace <= 0) return NaN;
+    const ada = lovelace / 1_000_000;
+    const price = getProposalAdaUsdPrice(proposal);
+    return Number.isFinite(price) && price > 0 ? ada * price : NaN;
+}
+
+function getProposalAdaUsdPrice(proposal) {
+    const proposalPrice = pickFirstNumber(
+        proposal?.ada_usd_price,
+        proposal?.ada_price_usd,
+        proposal?.price_usd,
+        proposal?.metadata?.ada_usd_price,
+        proposal?.meta_json?.ada_usd_price,
+        proposal?.treasury?.ada_usd_price,
+        proposal?.funding?.ada_usd_price,
+        proposal?.amounts?.ada_usd_price
+    );
+    if (Number.isFinite(proposalPrice) && proposalPrice > 0) return proposalPrice;
+
+    const latestAdaPrice = Number(window.TDSPPrices?.getLatest?.()?.ada_usd);
+    if (Number.isFinite(latestAdaPrice) && latestAdaPrice > 0) return latestAdaPrice;
+
+    const visibleAdaPrice = Number(
+        String(document.getElementById('ada-price')?.textContent || '')
+            .replace(/[^0-9.]/g, '')
+    );
+    return Number.isFinite(visibleAdaPrice) && visibleAdaPrice > 0 ? visibleAdaPrice : NaN;
+}
+
+function getUnapprovedGovernanceFundingTotals(actions = getUnapprovedGovernanceFundingActions()) {
+    const totals = actions.reduce((runningTotals, proposal) => {
+        const lovelace = getProposalTotalAskLovelace(proposal);
+        const ada = Number.isFinite(lovelace) ? lovelace / 1_000_000 : 0;
+        const usd = getEstimatedTreasuryFundingUsd(proposal);
+        const hasUsd = Number.isFinite(Number(usd));
+        return {
+            count: runningTotals.count + 1,
+            usd: runningTotals.usd + (hasUsd ? Number(usd) : 0),
+            ada: runningTotals.ada + (Number(ada) || 0),
+            usdCount: runningTotals.usdCount + (hasUsd ? 1 : 0),
+            usdMissingCount: runningTotals.usdMissingCount + (hasUsd ? 0 : 1)
+        };
+    }, { count: 0, usd: 0, ada: 0, usdCount: 0, usdMissingCount: 0 });
+    return {
+        ...totals,
+        usdPending: totals.usdCount === 0 && totals.ada > 0
+    };
 }
 
 function updateCatalystTreasuryFundingSummary() {
@@ -1234,7 +1295,14 @@ function createCatalystFundingStatusChart(payload) {
     return governanceCatalystCharts.createFundingStatusChart(payload);
 }
 
-function createCatalystProposalFundingOverview(funds, proposals, businessPayload, approvedGovernanceActions = [], overviewPayload = fundingOverviewState) {
+function createCatalystProposalFundingOverview(
+    funds,
+    proposals,
+    businessPayload,
+    approvedGovernanceActions = [],
+    unapprovedGovernanceActions = [],
+    overviewPayload = fundingOverviewState
+) {
     const detailedProjects = getCatalystFundingProjects(businessPayload);
     const detailsById = new Map(
         detailedProjects.map(project => [String(project?.id || ''), project])
@@ -1284,6 +1352,8 @@ function createCatalystProposalFundingOverview(funds, proposals, businessPayload
     const totalUnclaimed = unclaimed > 0 ? unclaimed : fallbackUnclaimed;
     const treasuryTotals = getApprovedGovernanceFundingTotals(approvedGovernanceActions);
     const totalTreasury = Number(treasuryTotals.usd) || 0;
+    const unapprovedTreasuryTotals = getUnapprovedGovernanceFundingTotals(unapprovedGovernanceActions);
+    const totalUnapprovedTreasury = Number(unapprovedTreasuryTotals.usd) || 0;
 
     const createGroup = (key, label, value, color, field, adaValueOverride = null) => {
         const matchingProjects = projects.filter(project => Number(project?.[field]) > 0);
@@ -1329,10 +1399,27 @@ function createCatalystProposalFundingOverview(funds, proposals, businessPayload
                     rootTitle: 'Catalyst/Treasury Funding'
                 };
             }
+            if (key === 'unapproved-governance') {
+                return {
+                    key,
+                    label: group?.label || 'Unapproved Treasury',
+                    value: Number(group?.value) || 0,
+                    color: group?.color || '#fb923c',
+                    currency: group?.currency || 'USD',
+                    actions: unapprovedGovernanceActions,
+                    adaValue: Number(group?.adaValue) || unapprovedTreasuryTotals.ada,
+                    rootTitle: 'Catalyst/Treasury Funding'
+                };
+            }
             const field = key === 'unclaimed' ? 'not_claimed_usd' : 'claimed_usd';
+            const label = key === 'unclaimed'
+                ? 'Unclaimed Funds'
+                : key === 'claimed'
+                    ? 'Claimed Funds'
+                    : group?.label;
             return createGroup(
                 key,
-                group?.label || (key === 'unclaimed' ? 'Unclaimed' : 'Claimed'),
+                label || 'Claimed Funds',
                 Number(group?.value) || 0,
                 group?.color || (key === 'unclaimed' ? '#fb7185' : '#34d399'),
                 field,
@@ -1340,8 +1427,8 @@ function createCatalystProposalFundingOverview(funds, proposals, businessPayload
             );
         }).filter(group => group.value > 0)
         : [
-            createGroup('claimed', 'Claimed', totalClaimed, '#34d399', 'claimed_usd'),
-            createGroup('unclaimed', 'Unclaimed', totalUnclaimed, '#fb7185', 'not_claimed_usd'),
+            createGroup('claimed', 'Claimed Funds', totalClaimed, '#34d399', 'claimed_usd'),
+            createGroup('unclaimed', 'Unclaimed Funds', totalUnclaimed, '#fb7185', 'not_claimed_usd'),
             {
                 key: 'approved-governance',
                 label: 'Approved Treasury',
@@ -1351,11 +1438,34 @@ function createCatalystProposalFundingOverview(funds, proposals, businessPayload
                 actions: approvedGovernanceActions,
                 adaValue: treasuryTotals.ada,
                 rootTitle: 'Catalyst/Treasury Funding'
+            },
+            {
+                key: 'unapproved-governance',
+                label: 'Unapproved Treasury',
+                value: totalUnapprovedTreasury,
+                color: '#fb923c',
+                currency: 'USD',
+                actions: unapprovedGovernanceActions,
+                adaValue: unapprovedTreasuryTotals.ada,
+                rootTitle: 'Catalyst/Treasury Funding'
             }
         ].filter(group => group.value > 0);
-    const total = Number(overviewPayload?.totals?.usd) > 0
-        ? Number(overviewPayload.totals.usd)
-        : groups.reduce((sum, group) => sum + (Number(group.value) || 0), 0);
+    if (
+        totalUnapprovedTreasury > 0
+        && !groups.some(group => group.key === 'unapproved-governance')
+    ) {
+        groups.push({
+            key: 'unapproved-governance',
+            label: 'Unapproved Treasury',
+            value: totalUnapprovedTreasury,
+            color: '#fb923c',
+            currency: 'USD',
+            actions: unapprovedGovernanceActions,
+            adaValue: unapprovedTreasuryTotals.ada,
+            rootTitle: 'Catalyst/Treasury Funding'
+        });
+    }
+    const total = groups.reduce((sum, group) => sum + (Number(group.value) || 0), 0);
     if (total <= 0) return null;
 
     const section = document.createElement('section');
@@ -1381,6 +1491,10 @@ function createCatalystProposalFundingOverview(funds, proposals, businessPayload
                 openApprovedGovernanceFundingOverlay(segment.actions || [], returnFocus);
                 return;
             }
+            if (segment.key === 'unapproved-governance') {
+                openUnapprovedGovernanceFundingOverlay(segment.actions || [], returnFocus);
+                return;
+            }
             openCatalystFundingProjectsOverlay(segment, returnFocus);
         },
         showSegmentSeparators: true
@@ -1396,6 +1510,10 @@ function createCatalystProposalFundingOverview(funds, proposals, businessPayload
             onClick: event => {
                 if (group.key === 'approved-governance') {
                     openApprovedGovernanceFundingOverlay(group.actions || [], event.currentTarget);
+                    return;
+                }
+                if (group.key === 'unapproved-governance') {
+                    openUnapprovedGovernanceFundingOverlay(group.actions || [], event.currentTarget);
                     return;
                 }
                 openCatalystFundingProjectsOverlay(group, event.currentTarget);
@@ -1543,6 +1661,7 @@ async function openCatalystFundsOverlay(returnFocus = document.activeElement) {
     let funds = [];
     let proposals = [];
     let approvedGovernanceActions = [];
+    let unapprovedGovernanceActions = [];
     let fundingChart = null;
     let renderedSignature = '';
     let directoryReady = false;
@@ -1569,13 +1688,16 @@ async function openCatalystFundsOverlay(returnFocus = document.activeElement) {
             });
         } else {
             if (fundingChart) panel.appendChild(fundingChart);
-            if (approvedGovernanceActions.length) {
-                panel.appendChild(createApprovedGovernanceFundingCard(approvedGovernanceActions));
+            if (approvedGovernanceActions.length || unapprovedGovernanceActions.length) {
+                panel.appendChild(createGovernanceActionsFundingCard(
+                    approvedGovernanceActions,
+                    unapprovedGovernanceActions
+                ));
             }
             funds.forEach(fund => {
                 panel.appendChild(createCatalystFundCard(fund));
             });
-            if (!funds.length && !approvedGovernanceActions.length) {
+            if (!funds.length && !approvedGovernanceActions.length && !unapprovedGovernanceActions.length) {
                 const empty = window.TDSPRuntime.createSmallText('No Catalyst or Treasury funding data is available yet.');
                 panel.appendChild(empty);
             }
@@ -1624,6 +1746,7 @@ async function openCatalystFundsOverlay(returnFocus = document.activeElement) {
             ? proposalPayload.proposals
             : [];
         approvedGovernanceActions = getApprovedGovernanceFundingActions();
+        unapprovedGovernanceActions = getUnapprovedGovernanceFundingActions();
         const overlayTotals = getCatalystTreasuryFundingOverlayTotals(funds, approvedGovernanceActions);
         updateGovernanceOverlayBotContext(
             'governance-catalyst-funds-overlay',
@@ -1633,7 +1756,7 @@ async function openCatalystFundsOverlay(returnFocus = document.activeElement) {
                 amount_usd: overlayTotals.claimed,
                 amount_ada: overlayTotals.ada,
                 root: 'Catalyst/Treasury Funding',
-                summary: `${funds.length.toLocaleString('en-US')} funds • ${approvedGovernanceActions.length.toLocaleString('en-US')} approved treasury actions`
+                summary: `${funds.length.toLocaleString('en-US')} funds • ${approvedGovernanceActions.length.toLocaleString('en-US')} approved treasury actions • ${unapprovedGovernanceActions.length.toLocaleString('en-US')} unapproved treasury actions`
             }),
             panel
         );
@@ -1642,6 +1765,7 @@ async function openCatalystFundsOverlay(returnFocus = document.activeElement) {
             proposals,
             businessPayload,
             approvedGovernanceActions,
+            unapprovedGovernanceActions,
             fundingOverviewPayload
         );
         directoryReady = true;
@@ -1671,38 +1795,114 @@ function formatCatalystTreasuryFundingHeader(totals) {
     return governanceCatalystFormat.formatFundingHeader(totals);
 }
 
-function createApprovedGovernanceFundingCard(actions) {
-    const totals = getApprovedGovernanceFundingTotals(actions);
+function createGovernanceActionsFundingCard(approvedActions, unapprovedActions) {
+    const approvedTotals = getApprovedGovernanceFundingTotals(approvedActions);
+    const unapprovedTotals = getUnapprovedGovernanceFundingTotals(unapprovedActions);
+    const actions = [
+        ...(Array.isArray(approvedActions) ? approvedActions : []),
+        ...(Array.isArray(unapprovedActions) ? unapprovedActions : [])
+    ];
     const card = document.createElement('button');
     card.type = 'button';
     card.className = 'governance-card governance-menu-card';
     card.dataset.searchText = [
+        'governance actions',
         'approved actions',
         'approved governance actions',
+        'unapproved treasury',
+        'active treasury',
+        'pending treasury',
         ...actions.map(getProposalTitle)
     ].filter(Boolean).join(' ');
-    card.dataset.sortName = 'Approved Governance Actions';
-    card.dataset.sortAmount = String(totals.usd || 0);
+    card.dataset.sortName = 'Governance Actions';
+    card.dataset.sortAmount = String((approvedTotals.usd || 0) + (unapprovedTotals.usd || 0));
     card.dataset.overlayPinRank = '0';
     window.TDSPRuntime?.bindMenuTrigger?.(card, event => {
-        openApprovedGovernanceFundingOverlay(actions, event.currentTarget);
+        openGovernanceActionsFundingOverlay(approvedActions, unapprovedActions, event.currentTarget);
     }, {
-        errorMessage: 'Approved governance actions could not be opened.'
+        errorMessage: 'Governance actions could not be opened.'
     });
 
-    const amount = createFundingRecipientAmountRow(
-        totals.usd,
-        totals.ada,
-        totals.usdPending,
-        { hidePendingUsd: true }
-    );
+    const approvedAmount = createCatalystFundAmountLine('', approvedTotals.usd, approvedTotals.ada, 'treasury');
+    const unapprovedAmount = createCatalystFundAmountLine('', unapprovedTotals.usd, unapprovedTotals.ada, 'unapproved-treasury');
     window.TDSPRuntime?.appendUniversalTileContent?.(card, {
-        title: 'Approved Governance Actions',
-        primaryNode: amount,
-        contextItems: [`${actions.length.toLocaleString('en-US')} actions`],
-        detailItems: ['Approved actions; treasury asks counted in totals']
+        title: 'Governance Actions',
+        primaryNode: approvedAmount,
+        contextItems: [`${(approvedActions || []).length.toLocaleString('en-US')} approved actions`],
+        detailItems: [
+            unapprovedAmount,
+            `${(unapprovedActions || []).length.toLocaleString('en-US')} unapproved actions`
+        ]
     });
     return card;
+}
+
+function createApprovedGovernanceFundingCard(actions) {
+    return createGovernanceActionsFundingCard(actions, []);
+}
+
+function createUnapprovedGovernanceFundingCard(actions) {
+    const totals = getUnapprovedGovernanceFundingTotals(actions);
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'governance-card governance-menu-card';
+    card.dataset.searchText = [
+        'unapproved treasury',
+        'active treasury',
+        'pending treasury',
+        ...actions.map(getProposalTitle)
+    ].filter(Boolean).join(' ');
+    card.dataset.sortName = 'Unapproved Treasury';
+    card.dataset.sortAmount = String(totals.usd || 0);
+    card.dataset.overlayPinRank = '1';
+    window.TDSPRuntime?.bindMenuTrigger?.(card, event => {
+        openUnapprovedGovernanceFundingOverlay(actions, event.currentTarget);
+    }, {
+        errorMessage: 'Unapproved treasury actions could not be opened.'
+    });
+
+    const amount = createCatalystFundAmountLine('', totals.usd, totals.ada, 'unapproved-treasury');
+    window.TDSPRuntime?.appendUniversalTileContent?.(card, {
+        title: 'Unapproved Treasury',
+        primaryNode: amount,
+        contextItems: [`${actions.length.toLocaleString('en-US')} actions`],
+        detailItems: ['Active treasury asks; not counted as approved funding']
+    });
+    return card;
+}
+
+function openGovernanceActionsFundingOverlay(approvedActions, unapprovedActions, returnFocus) {
+    const approved = Array.isArray(approvedActions) ? approvedActions : getApprovedGovernanceFundingActions();
+    const unapproved = Array.isArray(unapprovedActions) ? unapprovedActions : getUnapprovedGovernanceFundingActions();
+    const proposals = [...approved, ...unapproved];
+    const panel = document.createElement('div');
+    panel.className = 'governance-list governance-action-group-list';
+    renderGovernanceGroup(panel, proposals, 'No treasury governance actions found.');
+    const approvedTotals = getApprovedGovernanceFundingTotals(approved);
+    const unapprovedTotals = getUnapprovedGovernanceFundingTotals(unapproved);
+    createGovernanceMenuOverlay({
+        id: 'governance-treasury-funding-actions-overlay',
+        titleId: 'governance-treasury-funding-actions-title',
+        titleText: 'Governance Actions',
+        closeLabel: 'Close governance actions',
+        closeOverlay: closeGovernanceActionsFundingOverlay,
+        bodyNodes: [panel],
+        headerMeta: `Approved ${formatCatalystCurrencyAmount(approvedTotals.usd, 'USD', true)} • Unapproved ${formatCatalystCurrencyAmount(unapprovedTotals.usd, 'USD', true)}`,
+        returnFocus,
+        rootTitle: 'Catalyst/Treasury Funding',
+        defaultSort: 'ask-desc',
+        botContext: createGovernanceActionGroupBotContext(
+            'Governance Actions',
+            proposals,
+            {
+                rootTitle: 'Catalyst/Treasury Funding'
+            }
+        )
+    });
+}
+
+function closeGovernanceActionsFundingOverlay() {
+    removeGovernanceMenuOverlay('governance-treasury-funding-actions-overlay');
 }
 
 function openApprovedGovernanceFundingOverlay(actions, returnFocus) {
@@ -1736,8 +1936,63 @@ function openApprovedGovernanceFundingOverlay(actions, returnFocus) {
     });
 }
 
+function openUnapprovedGovernanceFundingOverlay(actions, returnFocus) {
+    const proposals = Array.isArray(actions) ? actions : getUnapprovedGovernanceFundingActions();
+    const panel = document.createElement('div');
+    panel.className = 'governance-list governance-action-group-list';
+    renderGovernanceGroup(panel, proposals, 'No unapproved treasury actions found.');
+    const totals = getUnapprovedGovernanceFundingTotals(proposals);
+    createGovernanceMenuOverlay({
+        id: 'governance-unapproved-treasury-funding-overlay',
+        titleId: 'governance-unapproved-treasury-funding-title',
+        titleText: 'Unapproved Treasury',
+        closeLabel: 'Close unapproved treasury actions',
+        closeOverlay: closeUnapprovedGovernanceFundingOverlay,
+        bodyNodes: [panel],
+        headerMeta: formatCatalystTreasuryFundingHeader({
+            claimed: totals.usd,
+            ada: totals.ada
+        }),
+        returnFocus,
+        rootTitle: 'Catalyst/Treasury Funding',
+        defaultSort: 'ask-desc',
+        botContext: createGovernanceActionGroupBotContext(
+            'Unapproved Treasury',
+            proposals,
+            {
+                status: 'active',
+                rootTitle: 'Catalyst/Treasury Funding'
+            }
+        )
+    });
+}
+
+function closeUnapprovedGovernanceFundingOverlay() {
+    removeGovernanceMenuOverlay('governance-unapproved-treasury-funding-overlay');
+}
+
 function closeApprovedGovernanceFundingOverlay() {
     removeGovernanceMenuOverlay('governance-approved-treasury-funding-overlay');
+}
+
+function createCatalystFundAmountLine(label, usdValue, adaValue, tone = '') {
+    const row = document.createElement('span');
+    row.className = 'governance-card-detail funding-recipient-amount-line';
+    if (tone) row.classList.add(`funding-recipient-amount-line--${tone}`);
+
+    const usd = document.createElement('strong');
+    usd.className = 'funding-recipient-usd-value';
+    usd.textContent = formatCatalystCurrencyAmount(usdValue, 'USD', true);
+
+    if (label) row.append(document.createTextNode(`${label} `));
+    row.appendChild(usd);
+    if (Number(adaValue) > 0) {
+        const ada = document.createElement('span');
+        ada.className = 'governance-card-detail funding-recipient-ada-value';
+        ada.textContent = formatCatalystAdaAmount(adaValue, true);
+        row.append(document.createTextNode(' '), ada);
+    }
+    return row;
 }
 
 function createCatalystFundCard(fund) {
@@ -1755,23 +2010,14 @@ function createCatalystFundCard(fund) {
         errorMessage: 'Catalyst fund could not be opened.'
     });
 
-    const amount = createFundingRecipientAmountRow(
-        fund.claimed_amount,
-        fund.claimed_ada,
-        false
-    );
+    const claimedAmount = createCatalystFundAmountLine('', fund.claimed_amount, fund.claimed_ada, 'claimed');
+    const unclaimedAmount = createCatalystFundAmountLine('', fund.not_claimed_amount, fund.not_claimed_ada, 'unclaimed');
     const detailItems = [
-        `Not Claimed ${formatCatalystFundAmount(fund, 'not_claimed', true)}`,
-        Number(fund?.not_claimed_ada) > 0
-            ? {
-                text: `Not Claimed ${formatAdaAmount(fund.not_claimed_ada, true)}`,
-                className: 'governance-card-detail funding-recipient-ada-value'
-            }
-            : null
+        unclaimedAmount
     ].filter(Boolean);
     window.TDSPRuntime?.appendUniversalTileContent?.(card, {
         title: fund.fund_name,
-        primaryNode: amount,
+        primaryNode: claimedAmount,
         contextItems: [`${fund.proposal_count.toLocaleString('en-US')} proposals`],
         detailItems
     });
@@ -1842,7 +2088,7 @@ async function openCatalystFundOverlay(fund, returnFocus) {
         panel.appendChild(list);
         updateGovernanceMenuHeaderMeta(
             'governance-catalyst-fund-overlay',
-            `${proposals.length.toLocaleString('en-US')} proposals • Claimed ${formatCatalystFundAmount(fund, 'claimed', true)} • Not Claimed ${formatCatalystFundAmount(fund, 'not_claimed', true)}`,
+            `${proposals.length.toLocaleString('en-US')} proposals • Claimed Funds ${formatCatalystFundAmount(fund, 'claimed', true)} • Unclaimed Funds ${formatCatalystFundAmount(fund, 'not_claimed', true)}`,
             panel
         );
         updateGovernanceOverlayBotContext(

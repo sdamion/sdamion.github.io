@@ -2045,6 +2045,41 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     font-weight: var(--tdsp-tile-detail-weight);
 }
 
+.funding-recipient-amount-line {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0 8px;
+}
+
+.funding-recipient-amount-line .governance-card-detail {
+    display: inline;
+    margin-top: 0;
+}
+
+.funding-recipient-usd-value {
+    color: var(--tdsp-tile-value-color);
+    font-size: var(--tdsp-tile-value-size);
+    font-weight: var(--tdsp-tile-value-weight);
+    line-height: var(--tdsp-tile-value-line-height);
+}
+
+.funding-recipient-amount-line--claimed .funding-recipient-usd-value {
+    color: #34d399;
+}
+
+.funding-recipient-amount-line--unclaimed .funding-recipient-usd-value {
+    color: #fb7185;
+}
+
+.funding-recipient-amount-line--treasury .funding-recipient-usd-value {
+    color: #fbbf24;
+}
+
+.funding-recipient-amount-line--unapproved-treasury .funding-recipient-usd-value {
+    color: #fb923c;
+}
+
 .governance-funding-card-context {
     font-weight: 700;
 }

@@ -5,6 +5,7 @@
     const MAIN_SCRIPT_SRC = 'home/index.js?v=20260818-prizes-back-button';
     const GOVERNANCE_SCRIPT_SRC = 'governance/governance-loader.js?v=20260817-section-folders';
     let epochTimer = null;
+    let headerVisibilityObserver = null;
 
     function getPreferredTheme() {
         const explicitTheme = document.documentElement.dataset.theme;
@@ -75,6 +76,87 @@
         sync();
         window.addEventListener('resize', sync, { passive: true });
         if ('ResizeObserver' in window) new ResizeObserver(sync).observe(header);
+    }
+
+    function setupRevealOnScroll() {
+        if (!('IntersectionObserver' in window)) {
+            document.querySelectorAll('.section, .hero-logo, h2, p').forEach(element => {
+                element.classList.add('visible');
+            });
+            return;
+        }
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, { threshold: 0.12, root: null, rootMargin: '0px 0px -10% 0px' });
+
+        const targets = Array.from(document.querySelectorAll('.section, .hero-logo, h2, p'));
+        targets.forEach(element => {
+            if (element.dataset.revealObserved === 'true') return;
+            element.dataset.revealObserved = 'true';
+            element.classList.add('reveal');
+            observer.observe(element);
+        });
+
+        window.setTimeout(() => {
+            targets
+                .filter(element => !element.classList.contains('visible'))
+                .forEach(element => element.classList.add('visible'));
+        }, 1000);
+    }
+
+    function setupHeaderVisibility() {
+        const navLinks = Array.from(document.querySelectorAll('.nav-link[href^="#"]'));
+        const sections = navLinks
+            .map(link => document.querySelector(link.getAttribute('href')))
+            .filter(Boolean);
+
+        if (!navLinks.length || !sections.length) return;
+
+        if (headerVisibilityObserver) headerVisibilityObserver.disconnect();
+
+        if (!('IntersectionObserver' in window)) {
+            navLinks[0]?.classList.add('active');
+            return;
+        }
+
+        headerVisibilityObserver = new IntersectionObserver((entries) => {
+            const visible = entries
+                .filter(entry => entry.isIntersecting)
+                .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+
+            if (!visible) return;
+
+            navLinks.forEach(link => {
+                link.classList.toggle('active', link.getAttribute('href') === `#${visible.target.id}`);
+            });
+        }, {
+            rootMargin: '-25% 0px -55% 0px',
+            threshold: [0.1, 0.25, 0.5]
+        });
+
+        sections.forEach(section => headerVisibilityObserver.observe(section));
+
+        navLinks.forEach(link => {
+            if (link.dataset.navBound === 'true') return;
+            link.dataset.navBound = 'true';
+            link.addEventListener('click', () => {
+                navLinks.forEach(item => item.classList.remove('active'));
+                link.classList.add('active');
+            });
+        });
+
+        navLinks[0]?.classList.add('active');
+    }
+
+    function initUi() {
+        syncHeaderHeight();
+        setupRevealOnScroll();
+        setupHeaderVisibility();
     }
 
     function loadMainHelpers() {
@@ -157,7 +239,7 @@
     function init() {
         initThemeToggle();
         startEpochClock();
-        syncHeaderHeight();
+        initUi();
         initTdspBot();
         initExternalLinkWarnings();
     }
@@ -165,7 +247,11 @@
     window.TDSPSiteControls = Object.freeze({
         init,
         initThemeToggle,
+        initFixedHeaderLayout: syncHeaderHeight,
+        initUi,
         startEpochClock,
+        setupHeaderVisibility,
+        setupRevealOnScroll,
         syncThemeToggle
     });
     window.TDSPRuntime.onReady(init);
