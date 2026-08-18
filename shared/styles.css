@@ -1873,14 +1873,16 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     line-height: var(--tdsp-tile-detail-line-height);
 }
 
-.drep-ncl-bar {
+.drep-ncl-bar,
+.governance-vote-bar {
     display: grid;
     gap: 6px;
     margin-top: 8px;
     min-width: 0;
 }
 
-.drep-ncl-bar-track {
+.drep-ncl-bar-track,
+.governance-vote-bar-track {
     display: flex;
     width: 100%;
     height: 8px;
@@ -1889,7 +1891,8 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     background: rgba(148, 163, 184, 0.16);
 }
 
-.drep-ncl-bar-fill {
+.drep-ncl-bar-fill,
+.governance-vote-bar-fill {
     display: block;
     min-width: 0;
     transition: flex-basis 0.25s ease;
@@ -1907,9 +1910,19 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     background: #38bdf8;
 }
 
-.drep-ncl-bar-label {
+.governance-vote-bar-fill--yes {
+    background: #34d399;
+}
+
+.governance-vote-bar-fill--no {
+    background: #fb7185;
+}
+
+.tdsp-bar-legend,
+.drep-ncl-bar-label,
+.governance-vote-bar-label {
     display: block;
-    font-size: calc(var(--tdsp-tile-detail-size) * 0.62);
+    font-size: calc(var(--tdsp-tile-detail-size) * 0.82);
     font-weight: var(--tdsp-tile-detail-weight);
     line-height: 1.2;
     overflow-wrap: anywhere;
@@ -1925,6 +1938,14 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 
 .drep-ncl-label-item--pipeline {
     color: #38bdf8;
+}
+
+.governance-vote-label-item--yes {
+    color: #34d399;
+}
+
+.governance-vote-label-item--no {
+    color: #fb7185;
 }
 
 #gov-spo-scan-status[hidden] {

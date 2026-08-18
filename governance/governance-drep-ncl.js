@@ -24,14 +24,14 @@
             pipelineFill.className = 'drep-ncl-bar-fill drep-ncl-bar-fill--pipeline';
             track.append(spendFill, leftFill, pipelineFill);
 
-            const label = document.createElement('span');
-            label.className = 'governance-card-detail drep-ncl-bar-label';
-
             const values = getSpendValues(drep);
+            const label = document.createElement('span');
+            label.className = 'tdsp-bar-legend drep-ncl-bar-label';
             if (!Number.isFinite(values.limit) || values.limit <= 0) {
                 spendFill.style.flexBasis = '0%';
                 leftFill.style.flexBasis = '100%';
                 pipelineFill.style.flexBasis = '0%';
+                bar.title = 'Current NCL unavailable';
                 label.textContent = 'Current NCL unavailable';
                 bar.append(track, label);
                 return bar;
@@ -61,15 +61,15 @@
             return Math.min(Math.max((value / total) * 100, 0), 100);
         }
 
+        function getSortValue(drep) {
+            return getSpendValues(drep).spent || 0;
+        }
+
         function createLabelItem(label, value, tone) {
             const item = document.createElement('span');
             item.className = `drep-ncl-label-item drep-ncl-label-item--${tone}`;
             item.textContent = `${label} ${value}`;
             return item;
-        }
-
-        function getSortValue(drep) {
-            return getSpendValues(drep).spent || 0;
         }
 
         function getSpendValues(drep) {

@@ -3768,7 +3768,8 @@ function createGovernanceCard(proposal, options = {}) {
         contextItems: [getExpirationText(proposal)],
         detailItems: metadataItems.map(item => `${item.label} ${item.value}`)
     });
-    if (shouldShowVotePercentages(proposal)) openButton.appendChild(votes);
+    const voteBar = createGovernanceVoteBar(proposal);
+    if (voteBar) openButton.appendChild(voteBar);
     card.appendChild(openButton);
 
     const copyActionIdButton = createGovernanceCopyButton(
@@ -3787,6 +3788,48 @@ function createGovernanceCard(proposal, options = {}) {
     }
 
     return card;
+}
+
+function createGovernanceVoteBar(proposal) {
+    const yes = normalizePercentageNumber(proposal?.votePercentages?.yes);
+    const no = normalizePercentageNumber(proposal?.votePercentages?.no);
+    if (![yes, no].every(Number.isFinite)) return null;
+
+    const total = yes + no;
+    if (total <= 0) return null;
+
+    const yesPct = (yes / total) * 100;
+    const noPct = Math.max(0, 100 - yesPct);
+    const bar = document.createElement('div');
+    bar.className = 'governance-vote-bar';
+
+    const track = document.createElement('div');
+    track.className = 'governance-vote-bar-track';
+    track.setAttribute('aria-label', `Yes ${formatPercentage(yesPct)}, No ${formatPercentage(noPct)}`);
+
+    const yesFill = document.createElement('span');
+    yesFill.className = 'governance-vote-bar-fill governance-vote-bar-fill--yes';
+    yesFill.style.flexBasis = `${Math.max(0, Math.min(100, yesPct))}%`;
+
+    const noFill = document.createElement('span');
+    noFill.className = 'governance-vote-bar-fill governance-vote-bar-fill--no';
+    noFill.style.flexBasis = `${Math.max(0, Math.min(100, noPct))}%`;
+
+    track.append(yesFill, noFill);
+
+    const label = document.createElement('span');
+    label.className = 'tdsp-bar-legend governance-vote-bar-label';
+    const yesLabel = document.createElement('span');
+    yesLabel.className = 'governance-vote-label-item governance-vote-label-item--yes';
+    yesLabel.textContent = `Yes ${formatPercentage(yesPct)}`;
+    const separator = document.createTextNode(' • ');
+    const noLabel = document.createElement('span');
+    noLabel.className = 'governance-vote-label-item governance-vote-label-item--no';
+    noLabel.textContent = `No ${formatPercentage(noPct)}`;
+    label.append(yesLabel, separator, noLabel);
+
+    bar.append(track, label);
+    return bar;
 }
 
 function createGovernanceMenuOverlay(options) {
@@ -3840,13 +3883,22 @@ function openGovernanceActionGroupOverlay(groupKey, titleText, emptyMessage, roo
         closeLabel: `Close ${titleText}`,
         closeOverlay: closeGovernanceActionGroupOverlay,
         bodyNodes: [panel],
-        headerMeta: `${proposals.length.toLocaleString('en-US')} actions`,
+        headerMeta: getGovernanceActionGroupHeaderMeta(groupKey, proposals),
         rootTitle,
         botContext: createGovernanceActionGroupBotContext(titleText, proposals, {
             groupKey,
             rootTitle
         })
     });
+}
+
+function getGovernanceActionGroupHeaderMeta(groupKey, proposals) {
+    const actionCount = `${proposals.length.toLocaleString('en-US')} actions`;
+    if (groupKey !== 'active') return actionCount;
+
+    const totalAsk = proposals.reduce((sum, proposal) => sum + getProposalTotalAskLovelace(proposal), 0);
+    if (!Number.isFinite(totalAsk) || totalAsk <= 0) return actionCount;
+    return `${actionCount} • Total ask ${formatCompactAdaFromLovelace(totalAsk, { fixedFractionDigits: 2 })}`;
 }
 
 function closeGovernanceActionGroupOverlay() {
@@ -7808,17 +7860,6 @@ function renderDrepDirectory(container, dreps, options = {}) {
 
         row.classList.add(drep.active ? 'governance-drep-member--active' : 'governance-drep-member--inactive');
 
-        const idLine = document.createElement('div');
-        idLine.className = 'governance-drep-id-line';
-
-        const id = document.createElement('span');
-        id.className = 'governance-card-detail governance-cc-member-meta governance-drep-id';
-        id.textContent = drep.id;
-
-        const copyId = createGovernanceCopyButton(drep.id, 'DRep ID');
-        idLine.appendChild(id);
-        idLine.appendChild(copyId);
-
         window.TDSPRuntime?.appendUniversalTileContent?.(row, {
             title: drep.name,
             titleClassName: 'governance-title governance-cc-member-hash',
@@ -7829,7 +7870,6 @@ function renderDrepDirectory(container, dreps, options = {}) {
                     text: drep.active ? 'Active' : 'Inactive',
                     className: 'governance-card-detail governance-drep-member-status'
                 },
-                idLine,
                 governanceDrepNcl.createSpendBar(drep)
             ]
         });
