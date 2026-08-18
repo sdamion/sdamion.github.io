@@ -4117,15 +4117,27 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     transform: none;
 }
 
-.delegators-dashboard-dialog {
-    width: min(1120px, calc(100vw - 28px));
-}
-
 .raffle-overlay-page {
     width: 100%;
 }
 
 @media (max-width: 720px) {
+    .governance-menu-overlay {
+        align-items: stretch;
+        justify-items: stretch;
+        padding: 0;
+        place-items: stretch;
+    }
+
+    .governance-menu-overlay > .governance-dialog {
+        width: 100%;
+        max-width: none;
+        height: 100dvh;
+        max-height: 100dvh;
+        border: 0;
+        border-radius: 0;
+    }
+
     .governance-dialog .overlay-dialog-header {
         width: 100%;
         margin: 0;

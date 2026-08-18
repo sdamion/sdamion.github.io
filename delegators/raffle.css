@@ -102,20 +102,6 @@
     appearance: none;
 }
 
-.raffle-overlay,
-.raffle-overlay * {
-    box-sizing: border-box;
-}
-
-.raffle-dialog {
-    width: min(920px, 100%);
-    max-height: min(90vh, 960px);
-}
-
-.raffle-dialog .overlay-dialog-header-copy :is(p, h2) {
-    margin: 0;
-}
-
 .raffle-overlay-body {
     display: grid;
     gap: 20px;
@@ -434,22 +420,6 @@
     .raffle-form,
     .raffle-draw-card {
         padding: 14px;
-    }
-
-    .raffle-overlay {
-        align-items: stretch;
-        justify-items: stretch;
-        padding: 0;
-        place-items: stretch;
-    }
-
-    .raffle-dialog {
-        width: 100%;
-        max-width: none;
-        height: 100dvh;
-        max-height: 100dvh;
-        border: 0;
-        border-radius: 0;
     }
 
     .raffle-admin-menu {

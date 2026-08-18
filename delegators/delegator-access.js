@@ -279,6 +279,14 @@ function formatPrizeLine(asset) {
     return `${amount} ${name}`.trim();
 }
 
+function isAdaPrizeAsset(asset) {
+    const policyId = String(asset?.policy_id || '').trim();
+    const assetId = String(asset?.asset_id || '').trim().toLowerCase();
+    const ticker = String(asset?.ticker || '').trim().toUpperCase();
+    const name = String(asset?.name || '').trim().toUpperCase();
+    return !policyId || assetId === 'ada' || assetId === 'lovelace' || ticker === 'ADA' || name === 'ADA';
+}
+
 function resolvePrizeImageUrl(value) {
     const image = String(value || '').trim();
     if (!image) return '';
@@ -336,7 +344,7 @@ function createPrizeCard(asset) {
 function renderRafflePrizes(payload = {}) {
     const summary = document.getElementById('raffle-prizes-summary');
     const list = document.getElementById('raffle-prizes-list');
-    const assets = Array.isArray(payload.assets) ? payload.assets : [];
+    const assets = (Array.isArray(payload.assets) ? payload.assets : []).filter(asset => !isAdaPrizeAsset(asset));
     if (summary) {
         summary.textContent = `${assets.length.toLocaleString('en-US')} token${assets.length === 1 ? '' : 's'}`;
     }
