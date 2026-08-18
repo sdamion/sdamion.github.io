@@ -4,6 +4,7 @@
     const GOVERNANCE_ASSISTANT_SCRIPT_SRC = 'governance/governance-assistant.js?v=20260818-constitution-sequential-lists';
     const GOVERNANCE_FUNDING_DIRECTORY_SCRIPT_SRC = 'governance/governance-funding-directory.js?v=20260817-modular-funding-directory';
     const GOVERNANCE_BUSINESS_LINKS_SCRIPT_SRC = 'governance/governance-business-links.js?v=20260818-modular-business-links-domain';
+    const GOVERNANCE_TREASURY_ADMINS_SCRIPT_SRC = 'governance/governance-treasury-admins.js?v=20260819-modular-treasury-admins';
     const GOVERNANCE_CATALYST_FORMAT_SCRIPT_SRC = 'governance/governance-catalyst-format.js?v=20260817-modular-catalyst-format-4';
     const GOVERNANCE_PIE_CHART_SCRIPT_SRC = 'governance/governance-pie-chart.js?v=20260817-modular-pie-chart';
     const GOVERNANCE_CATALYST_CHARTS_SCRIPT_SRC = 'governance/governance-catalyst-charts.js?v=20260819-funding-labels';
@@ -72,6 +73,12 @@
                 datasetName: 'governanceBusinessLinks',
                 selector: 'script[data-governance-business-links]',
                 ready: () => window.TDSPBusinessLinks || null
+            })
+        )).then(() => (
+            window.TDSPRuntime.loadScript(GOVERNANCE_TREASURY_ADMINS_SCRIPT_SRC, {
+                datasetName: 'governanceTreasuryAdmins',
+                selector: 'script[data-governance-treasury-admins]',
+                ready: () => window.TDSPTreasuryAdmins || null
             })
         )).then(() => (
             window.TDSPRuntime.loadScript(GOVERNANCE_CATALYST_FORMAT_SCRIPT_SRC, {
