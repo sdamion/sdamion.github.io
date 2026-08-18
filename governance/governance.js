@@ -5255,7 +5255,7 @@ async function fetchProposalVotesPayload(proposalId) {
 
 async function fetchOptionalProposalVotesPayload(proposalId, timeoutMs = 8000) {
     try {
-        const payload = await withTimeout(
+        const payload = await governanceApi.withTimeout(
             fetchProposalVotesPayload(proposalId),
             timeoutMs,
             `Current vote lookup timed out after ${timeoutMs}ms`
@@ -5265,14 +5265,6 @@ async function fetchOptionalProposalVotesPayload(proposalId, timeoutMs = 8000) {
         console.warn('Optional DRep current vote lookup failed', error);
         return { payload: null, error };
     }
-}
-
-function withTimeout(promise, timeoutMs, message) {
-    let timeoutId;
-    const timeout = new Promise((_, reject) => {
-        timeoutId = window.setTimeout(() => reject(new Error(message)), timeoutMs);
-    });
-    return Promise.race([promise, timeout]).finally(() => window.clearTimeout(timeoutId));
 }
 
 function mergeProposalVoteDetails(proposal, payload) {

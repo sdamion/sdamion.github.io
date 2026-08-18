@@ -133,6 +133,14 @@
             return `${endpoints.remoteMetadata}?${params.toString()}`;
         }
 
+        function withTimeout(promise, timeoutMs, message) {
+            let timeoutId;
+            const timeout = new Promise((_, reject) => {
+                timeoutId = window.setTimeout(() => reject(new Error(message)), timeoutMs);
+            });
+            return Promise.race([promise, timeout]).finally(() => window.clearTimeout(timeoutId));
+        }
+
         return Object.freeze({
             catalystProposalDetail,
             catalystProposalSummary,
@@ -153,7 +161,8 @@
             proposalVotes,
             spoDetail,
             spoDirectory,
-            spoRescanStatus
+            spoRescanStatus,
+            withTimeout
         });
     }
 

@@ -1,6 +1,6 @@
 (function () {
     const GOVERNANCE_RICH_TEXT_SCRIPT_SRC = 'governance/governance-rich-text.js?v=20260818-modular-rich-text-images';
-    const GOVERNANCE_API_SCRIPT_SRC = 'governance/governance-api.js?v=20260818-modular-api';
+    const GOVERNANCE_API_SCRIPT_SRC = 'governance/governance-api.js?v=20260818-modular-api-timeout';
     const GOVERNANCE_ASSISTANT_SCRIPT_SRC = 'governance/governance-assistant.js?v=20260817-modular-assistant';
     const GOVERNANCE_FUNDING_DIRECTORY_SCRIPT_SRC = 'governance/governance-funding-directory.js?v=20260817-modular-funding-directory';
     const GOVERNANCE_BUSINESS_LINKS_SCRIPT_SRC = 'governance/governance-business-links.js?v=20260818-modular-business-links-domain';
@@ -25,7 +25,7 @@
     const GOVERNANCE_DREP_TOP10_SCRIPT_SRC = 'governance/governance-drep-top10.js?v=20260817-modular-drep-top10';
     const GOVERNANCE_TDSP_DREP_SCRIPT_SRC = 'governance/governance-tdsp-drep.js?v=20260817-modular-tdsp-drep';
     const GOVERNANCE_PROPOSAL_DISPLAY_SCRIPT_SRC = 'governance/governance-proposal-display.js?v=20260817-modular-proposal-display';
-    const GOVERNANCE_SCRIPT_SRC = 'governance/governance.js?v=20260818-modular-rich-text-images';
+    const GOVERNANCE_SCRIPT_SRC = 'governance/governance.js?v=20260818-modular-api-timeout';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
         '#drep',
