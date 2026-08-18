@@ -20,7 +20,9 @@
             spendFill.className = 'drep-ncl-bar-fill drep-ncl-bar-fill--spend';
             const leftFill = document.createElement('span');
             leftFill.className = 'drep-ncl-bar-fill drep-ncl-bar-fill--left';
-            track.append(spendFill, leftFill);
+            const pipelineFill = document.createElement('span');
+            pipelineFill.className = 'drep-ncl-bar-fill drep-ncl-bar-fill--pipeline';
+            track.append(spendFill, leftFill, pipelineFill);
 
             const label = document.createElement('span');
             label.className = 'governance-card-detail drep-ncl-bar-label';
@@ -29,22 +31,41 @@
             if (!Number.isFinite(values.limit) || values.limit <= 0) {
                 spendFill.style.flexBasis = '0%';
                 leftFill.style.flexBasis = '100%';
+                pipelineFill.style.flexBasis = '0%';
                 label.textContent = 'Current NCL unavailable';
                 bar.append(track, label);
                 return bar;
             }
 
-            const spentPercent = Math.min(Math.max((values.spent / values.limit) * 100, 0), 100);
-            spendFill.style.flexBasis = `${spentPercent}%`;
-            leftFill.style.flexBasis = `${Math.max(100 - spentPercent, 0)}%`;
-            label.textContent = [
-                `DRep Yes NCL ${formatNclAdaAmount(values.spent)}`,
-                `NCL Available ${formatNclAdaAmount(values.left)}`,
-                values.pipeline > 0 ? `Pipeline ${formatNclAdaAmount(values.pipeline)}` : null
-            ].filter(Boolean).join(' • ');
+            const visualTotal = Math.max(values.limit + values.pipeline, values.limit);
+            const usedPercent = getBarPercent(values.spent, visualTotal);
+            const availablePercent = getBarPercent(values.left, visualTotal);
+            const pipelinePercent = getBarPercent(values.pipeline, visualTotal);
+            spendFill.style.flexBasis = `${usedPercent}%`;
+            leftFill.style.flexBasis = `${availablePercent}%`;
+            pipelineFill.style.flexBasis = `${pipelinePercent}%`;
+            label.append(
+                createLabelItem('NCL Used', formatNclAdaAmount(values.spent), 'used'),
+                document.createTextNode(' • '),
+                createLabelItem('NCL Available', formatNclAdaAmount(values.left), 'available'),
+                document.createTextNode(' • '),
+                createLabelItem('Pipeline', formatNclAdaAmount(values.pipeline), 'pipeline')
+            );
             bar.title = `${drep?.name || 'DRep'} voted Yes on ${formatNclAdaAmount(values.spent)} of treasury asks in the current NCL period. Current open/ratified NCL pipeline is ${formatNclAdaAmount(values.pipeline)}.`;
             bar.append(track, label);
             return bar;
+        }
+
+        function getBarPercent(value, total) {
+            if (!Number.isFinite(value) || !Number.isFinite(total) || total <= 0) return 0;
+            return Math.min(Math.max((value / total) * 100, 0), 100);
+        }
+
+        function createLabelItem(label, value, tone) {
+            const item = document.createElement('span');
+            item.className = `drep-ncl-label-item drep-ncl-label-item--${tone}`;
+            item.textContent = `${label} ${value}`;
+            return item;
         }
 
         function getSortValue(drep) {

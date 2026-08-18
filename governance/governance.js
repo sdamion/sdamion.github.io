@@ -357,7 +357,9 @@ function getGovernanceAssistant() {
         createOverlay: createGovernanceMenuOverlay,
         removeOverlay: removeGovernanceMenuOverlay,
         getTopOverlay: getTopGovernanceMenuOverlay,
-        getRequestContext: getConstitutionChatRequestContext
+        getRequestContext: getConstitutionChatRequestContext,
+        renderMarkdown,
+        sanitizeMarkdown: sanitizeGovernanceMarkdown
     });
     return governanceAssistant;
 }
@@ -7795,7 +7797,7 @@ function renderDrepDirectory(container, dreps, options = {}) {
     const fragment = document.createDocumentFragment();
     dreps.forEach(drep => {
         const row = document.createElement('div');
-        row.className = 'governance-card governance-menu-card governance-cc-member';
+        row.className = 'governance-card governance-menu-card governance-cc-member governance-drep-directory-card';
         row.dataset.searchText = `${drep.id || ''} ${drep.searchIds || ''}`.trim();
         row.dataset.sortName = window.TDSPRuntime.normalizeSearchText(drep.name);
         row.dataset.sortPower = String(Number(drep.votingPower) || 0);
@@ -7827,10 +7829,11 @@ function renderDrepDirectory(container, dreps, options = {}) {
                     text: drep.active ? 'Active' : 'Inactive',
                     className: 'governance-card-detail governance-drep-member-status'
                 },
-                governanceDrepNcl.createSpendBar(drep),
-                idLine
+                idLine,
+                governanceDrepNcl.createSpendBar(drep)
             ]
         });
+        bindDrepNameProfileTrigger(row.querySelector('.governance-cc-member-hash'), drep);
         row.classList.add('governance-cc-member-clickable');
         row.setAttribute('role', 'button');
         row.tabIndex = 0;
@@ -8208,6 +8211,62 @@ function formatDrepOverlayHeaderMeta(drep, actionCount = null) {
     return parts.join(' • ');
 }
 
+function bindDrepNameProfileTrigger(element, drep) {
+    if (!(element instanceof HTMLElement) || !drep?.id) return;
+    element.classList.add('governance-drep-name-link');
+    element.setAttribute('role', 'button');
+    element.tabIndex = 0;
+    element.setAttribute('aria-label', `Show DRep info for ${drep.name || drep.id}`);
+    const openProfile = event => {
+        event.preventDefault();
+        event.stopPropagation();
+        openDrepProfileOverlay(drep, element);
+    };
+    element.addEventListener('click', openProfile);
+    element.addEventListener('keydown', event => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        openProfile(event);
+    });
+}
+
+function openDrepProfileOverlay(drep, returnFocus = null) {
+    const panel = document.createElement('div');
+    panel.className = 'governance-list governance-action-group-list';
+    const loading = document.createElement('p');
+    loading.className = 'small-text';
+    loading.textContent = 'Loading DRep info...';
+    panel.appendChild(loading);
+
+    createGovernanceMenuOverlay({
+        id: 'governance-drep-profile-overlay',
+        titleId: 'governance-drep-profile-title',
+        titleText: drep.name || 'DRep info',
+        closeLabel: `Close DRep info for ${drep.name || drep.id}`,
+        closeOverlay: () => removeGovernanceMenuOverlay('governance-drep-profile-overlay'),
+        bodyNodes: [panel],
+        headerMeta: formatDrepOverlayHeaderMeta(drep),
+        overlayClass: 'governance-action-detail-overlay',
+        returnFocus,
+        botContext: createDrepBotContext(drep)
+    });
+
+    loadDrepDetail(drep)
+        .then(payload => {
+            if (!panel.isConnected) return;
+            const refreshedDrep = mergeDrepDetail(drep, payload);
+            Object.assign(drep, refreshedDrep);
+            const title = document.getElementById('governance-drep-profile-title');
+            if (title) title.textContent = refreshedDrep.name || 'DRep info';
+            updateGovernanceMenuHeaderMeta('governance-drep-profile-overlay', formatDrepOverlayHeaderMeta(refreshedDrep));
+            renderDrepProfileOverlayContent(panel, refreshedDrep);
+        })
+        .catch(() => {
+            if (!panel.isConnected) return;
+            panel.textContent = '';
+            renderDrepProfileOverlayContent(panel, drep, 'DRep profile details could not be loaded.');
+        });
+}
+
 function mergeDrepDetail(drep, payload) {
     const info = payload?.info || {};
     const metadata = payload?.metadata || {};
@@ -8231,6 +8290,17 @@ function mergeDrepDetail(drep, payload) {
             ? refreshedVotingPower
             : Number(drep?.votingPower) || 0,
         active: typeof info?.active === 'boolean' ? info.active : Boolean(drep?.active),
+        metadata: metadata && typeof metadata === 'object' ? metadata : drep?.metadata || null,
+        metaJson: payload?.meta_json || metadata?.meta_json || info?.meta_json || drep?.metaJson || drep?.meta_json || null,
+        metadataUrl: firstNonEmptyText(
+            payload?.metadata_url,
+            payload?.meta_url,
+            info?.metadata_url,
+            info?.meta_url,
+            metadata?.url,
+            drep?.metadataUrl,
+            drep?.meta_url
+        ),
         voteStats: payload?.vote_stats || drep?.voteStats || null
     };
 }
@@ -8244,7 +8314,9 @@ function updateDrepDirectoryRow(row, drep) {
     if (power) power.textContent = `Voting power: ${formatCompactAdaFromLovelace(drep.votingPower)}`;
     if (status) status.textContent = drep.active ? 'Active' : 'Inactive';
     const currentNclBar = row.querySelector('.drep-ncl-bar');
-    if (currentNclBar) currentNclBar.replaceWith(governanceDrepNcl.createSpendBar(drep));
+    const nextNclBar = governanceDrepNcl.createSpendBar(drep);
+    if (currentNclBar) currentNclBar.remove();
+    row.appendChild(nextNclBar);
     row.classList.toggle('governance-drep-member--active', drep.active);
     row.classList.toggle('governance-drep-member--inactive', !drep.active);
     row.dataset.sortName = window.TDSPRuntime.normalizeSearchText(drep.name);
@@ -8255,9 +8327,203 @@ function updateDrepDirectoryRow(row, drep) {
     row.setAttribute('aria-label', `Show votes by ${drep.name}`);
 }
 
+function renderDrepProfileCard(container, drep) {
+    let profile;
+    try {
+        profile = getDrepProfile(drep);
+    } catch (error) {
+        console.warn('DRep profile metadata could not be rendered', error);
+        return;
+    }
+    if (!profile.hasContent) return;
+
+    const card = document.createElement('section');
+    card.className = 'governance-menu-card governance-drep-profile-card';
+
+    const title = document.createElement('strong');
+    title.className = 'governance-title';
+    title.textContent = 'DRep profile';
+    card.appendChild(title);
+
+    addMarkdownDetailSection(card, 'Objective', profile.objective);
+    addMarkdownDetailSection(card, 'Motivation', profile.motivation);
+    addMarkdownDetailSection(card, 'Qualifications', profile.qualifications);
+
+    if (profile.links.length) {
+        const linksSection = document.createElement('section');
+        linksSection.className = 'governance-markdown-section governance-drep-profile-links';
+        const heading = document.createElement('strong');
+        heading.textContent = 'External links';
+        const list = document.createElement('div');
+        list.className = 'governance-drep-profile-link-list';
+        profile.links.forEach(link => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'governance-vote-secondary governance-drep-profile-link';
+            button.textContent = link.label;
+            button.addEventListener('click', event => {
+                event.preventDefault();
+                event.stopPropagation();
+                openExternalSiteWarning(link.url, event.currentTarget);
+            });
+            list.appendChild(button);
+        });
+        linksSection.append(heading, list);
+        card.appendChild(linksSection);
+    }
+
+    container.appendChild(card);
+}
+
+function renderDrepProfileOverlayContent(container, drep, fallbackMessage = '') {
+    container.textContent = '';
+    const overview = document.createElement('section');
+    overview.className = 'governance-menu-card governance-drep-profile-card';
+
+    const title = document.createElement('strong');
+    title.className = 'governance-title';
+    title.textContent = drep.name || 'DRep';
+    overview.appendChild(title);
+    addDetailRow(overview, 'Status', drep.active ? 'Active' : 'Inactive');
+    addDetailRow(overview, 'Voting power', formatCompactAdaFromLovelace(drep.votingPower));
+    addDetailRow(overview, 'DRep ID', drep.id, { copyLabel: 'DRep ID' });
+    addDetailRow(overview, 'Metadata URL', drep.metadataUrl || drep.meta_url, { copyLabel: 'metadata URL' });
+    container.appendChild(overview);
+
+    const beforeProfileCount = container.childElementCount;
+    renderDrepProfileCard(container, drep);
+    if (container.childElementCount === beforeProfileCount && fallbackMessage) {
+        const message = document.createElement('p');
+        message.className = 'small-text';
+        message.textContent = fallbackMessage;
+        container.appendChild(message);
+    }
+}
+
+function getDrepProfile(drep) {
+    const body = getDrepMetadataBody(drep);
+    const profile = {
+        objective: firstNonEmptyProfileText(body.objectives, body.objective, body.Objectives, body.Objective),
+        motivation: firstNonEmptyProfileText(body.motivations, body.motivation, body.Motivations, body.Motivation),
+        qualifications: firstNonEmptyProfileText(body.qualifications, body.qualification, body.Qualifications, body.Qualification),
+        links: getDrepProfileLinks(drep, body)
+    };
+    return {
+        ...profile,
+        hasContent: Boolean(profile.objective || profile.motivation || profile.qualifications || profile.links.length)
+    };
+}
+
+function getDrepMetadataBody(drep) {
+    const metadata = drep?.metadata && typeof drep.metadata === 'object' ? drep.metadata : {};
+    const metaJson = drep?.metaJson || drep?.meta_json || metadata?.meta_json || {};
+    return [
+        drep?.body,
+        metadata?.body,
+        metaJson?.body,
+        metadata?.json?.body,
+        metadata?.data?.body,
+        metadata,
+        metaJson
+    ].find(candidate => candidate && typeof candidate === 'object') || {};
+}
+
+function firstNonEmptyProfileText(...values) {
+    return firstNonEmptyText(...values.map(normalizeDrepProfileText));
+}
+
+function normalizeDrepProfileText(value) {
+    if (value === null || value === undefined) return '';
+    if (Array.isArray(value)) {
+        return value.map(normalizeDrepProfileText).filter(Boolean).join('\n\n');
+    }
+    if (typeof value === 'object') {
+        return firstNonEmptyText(
+            value['@value'],
+            value.value,
+            value.text,
+            value.markdown,
+            value.description,
+            value.content
+        );
+    }
+    return String(value).trim();
+}
+
+function getDrepProfileLinks(drep, body) {
+    const links = new Map();
+    const addLink = (label, url) => {
+        const normalizedUrl = normalizeDrepProfileUrl(url);
+        if (!normalizedUrl) return;
+        const normalizedLabel = cleanGovernanceText(label || getDrepProfileLinkHost(normalizedUrl) || 'External link');
+        links.set(normalizedUrl, { label: normalizedLabel, url: normalizedUrl });
+    };
+
+    addLink('Metadata URL', drep?.metadataUrl || drep?.meta_url);
+    [
+        body?.references,
+        body?.links,
+        body?.externalLinks,
+        body?.external_links,
+        body?.socials,
+        drep?.metadata?.references,
+        drep?.metadata?.links,
+        drep?.metaJson?.references,
+        drep?.metaJson?.links
+    ].forEach(source => collectDrepProfileLinks(source, addLink));
+
+    return [...links.values()];
+}
+
+function collectDrepProfileLinks(source, addLink) {
+    if (!source) return;
+    if (Array.isArray(source)) {
+        source.forEach(item => collectDrepProfileLinks(item, addLink));
+        return;
+    }
+    if (typeof source === 'string') {
+        addLink('', source);
+        return;
+    }
+    if (typeof source !== 'object') return;
+
+    const url = firstNonEmptyText(
+        source.uri,
+        source.url,
+        source.href,
+        source.link,
+        source.reference,
+        source.value
+    );
+    if (url) {
+        addLink(firstNonEmptyText(source.label, source.title, source.name, source['@type'], source.type), url);
+        return;
+    }
+
+    Object.entries(source).forEach(([key, value]) => {
+        if (typeof value === 'string') addLink(key, value);
+        else collectDrepProfileLinks(value, addLink);
+    });
+}
+
+function normalizeDrepProfileUrl(value) {
+    const url = normalizeMetadataUrl(value);
+    if (!url) return '';
+    return /^https?:\/\//i.test(url) ? url : '';
+}
+
+function getDrepProfileLinkHost(url) {
+    try {
+        return new URL(url).hostname.replace(/^www\./i, '');
+    } catch {
+        return '';
+    }
+}
+
 function renderDrepActionHistory(container, payload, drep) {
     if (!container.isConnected) return;
     container.textContent = '';
+    renderDrepProfileCard(container, drep);
     const voteStats = payload?.vote_stats || {};
     const actionsById = new Map((Array.isArray(voteStats.actions) ? voteStats.actions : [])
         .map(action => [String(action?.proposal_id || ''), action]));
@@ -8326,10 +8592,11 @@ function renderDrepActionHistory(container, payload, drep) {
         const card = createGovernanceCard(proposal, {
             onClick: event => openGovernanceOverlay(proposal, { returnFocus: event.currentTarget })
         });
+        card.classList.add('governance-drep-vote-card');
         const vote = document.createElement('span');
         const voteChoice = action ? formatVoteChoice(action?.vote || action?.vote_bucket) : null;
         const isClosed = isExpiredGovernanceActionForCommitteeStats(proposal);
-        vote.className = `governance-votes ${voteChoice === 'Yes'
+        vote.className = `governance-votes governance-drep-vote-status ${voteChoice === 'Yes'
             ? 'vote-green'
             : voteChoice === 'No' || (!voteChoice && isClosed)
                 ? 'vote-red'
@@ -8542,19 +8809,17 @@ function renderConstitutionalCommitteeMembers(container, members, emptyMessage =
         }
 
         const stats = document.createElement('span');
-        stats.className = 'governance-card-detail governance-treasury-withdrawal-amount governance-cc-member-stats';
+        stats.className = 'governance-card-detail governance-cc-member-stats';
         stats.dataset.ccMemberIndex = String(index);
         stats.textContent = 'Voting stats loading...';
 
         window.TDSPRuntime?.appendUniversalTileContent?.(row, {
             title: member.name || `CC Member ${index + 1}`,
             titleClassName: 'governance-title governance-cc-member-hash',
-            primaryNode: stats,
+            primaryText: member.expiresEpoch ? `expires epoch ${member.expiresEpoch}` : '',
+            primaryClassName: 'governance-card-detail governance-treasury-withdrawal-amount governance-cc-member-meta',
             detailItems: [
-                {
-                    text: member.expiresEpoch ? `expires epoch ${member.expiresEpoch}` : '',
-                    className: 'governance-card-detail governance-cc-member-meta'
-                }
+                stats
             ]
         });
         row.classList.add('governance-cc-member-clickable');
@@ -9449,6 +9714,7 @@ function createDrepVoteRow(vote, context = {}) {
 
     const drep = getDrepFromVote(vote);
     if (drep.id) {
+        bindDrepNameProfileTrigger(name, drep);
         row.classList.add('governance-cc-member-clickable');
         row.setAttribute('role', 'button');
         row.tabIndex = 0;

@@ -968,7 +968,7 @@ function createCardanoEventCard(event) {
     meta.className = 'cardano-event-meta';
     meta.textContent = [event?.location, event?.organizer].filter(Boolean).join(' | ') || 'Event details';
 
-    card.append(date, title, meta);
+    card.append(title, date, meta);
     if (event?.image_url) {
         const image = document.createElement('img');
         image.className = 'cardano-event-card-image';

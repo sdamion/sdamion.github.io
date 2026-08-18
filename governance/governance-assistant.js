@@ -13,6 +13,8 @@
         const removeGovernanceMenuOverlay = options.removeOverlay;
         const getTopGovernanceMenuOverlay = options.getTopOverlay;
         const getConstitutionChatRequestContext = options.getRequestContext;
+        const renderMarkdown = typeof options.renderMarkdown === 'function' ? options.renderMarkdown : null;
+        const sanitizeMarkdown = typeof options.sanitizeMarkdown === 'function' ? options.sanitizeMarkdown : value => String(value || '');
 
         function openConstitutionAssistantOverlay(context = null, returnFocus = document.getElementById('tdspbot-open')) {
             const isContextualAssistant = Boolean(context);
@@ -170,9 +172,14 @@
                 if (!payload.text) throw new Error('The Constitution document is empty.');
                 if (!content.isConnected) return;
                 content.textContent = '';
-                const documentText = document.createElement('pre');
-                documentText.className = 'constitution-document-text';
-                documentText.textContent = payload.text;
+                const documentText = document.createElement('div');
+                documentText.className = 'constitution-document-text governance-markdown';
+                const markdown = formatConstitutionDocumentMarkdown(payload.text);
+                if (renderMarkdown) {
+                    renderMarkdown(documentText, sanitizeMarkdown(markdown));
+                } else {
+                    documentText.textContent = markdown;
+                }
                 content.appendChild(documentText);
             } catch (error) {
                 if (!content.isConnected) return;
@@ -194,6 +201,90 @@
             return GOVERNANCE_IS_LOCAL_PREVIEW
                 ? LOCAL_CONSTITUTION_DOCUMENT_PROXY_PATH
                 : CONSTITUTION_DOCUMENT_API_URL;
+        }
+
+        function formatConstitutionDocumentMarkdown(text) {
+            const formattedLines = String(text || '')
+                .replace(/\r\n?/g, '\n')
+                .split('\n')
+                .map(line => {
+                    const trimmed = line.trim();
+                    if (!trimmed) return '';
+
+                    const subheaderMatch = trimmed.match(/^#{1,6}\s*\*\*(.+?)\*\*\s*$/);
+                    if (subheaderMatch) return `### ${subheaderMatch[1].trim()}`;
+
+                    const headerMatch = trimmed.match(/^\*\*(.+?)\*\*\s*$/);
+                    if (headerMatch) return `## ${headerMatch[1].trim()}`;
+
+                    return line;
+                });
+
+            return normalizeConstitutionNumberedLists(formattedLines)
+                .join('\n')
+                .replace(/\n{3,}/g, '\n\n')
+                .trim();
+        }
+
+        function normalizeConstitutionNumberedLists(lines) {
+            const normalized = [];
+            let orderedListIndex = 0;
+            for (let index = 0; index < lines.length; index += 1) {
+                const line = lines[index];
+                const trimmed = line.trim();
+                const previous = normalized[normalized.length - 1] || '';
+                const next = lines[index + 1] || '';
+
+                if (!trimmed && isOrderedListLine(previous) && isOrderedListLine(next)) {
+                    continue;
+                }
+
+                if (!trimmed) {
+                    orderedListIndex = 0;
+                    normalized.push(line);
+                    continue;
+                }
+
+                if (isStructuralMarkdownLine(trimmed) && !isOrderedListLine(trimmed)) {
+                    orderedListIndex = 0;
+                    normalized.push(line);
+                    continue;
+                }
+
+                const numberedLine = trimmed.match(/^(\d+)\.\s+(.+)$/);
+                if (numberedLine) {
+                    orderedListIndex += 1;
+                    normalized.push(`${orderedListIndex}. ${numberedLine[2].trim()}`);
+                    continue;
+                }
+
+                const bareNumber = trimmed.match(/^(\d+)\.\s*$/);
+                if (bareNumber) {
+                    const nextText = String(next || '').trim();
+                    if (nextText && !isStructuralMarkdownLine(nextText)) {
+                        orderedListIndex += 1;
+                        normalized.push(`${orderedListIndex}. ${nextText}`);
+                        index += 1;
+                        continue;
+                    }
+                }
+
+                orderedListIndex = 0;
+                normalized.push(line);
+            }
+            return normalized;
+        }
+
+        function isOrderedListLine(line) {
+            return /^\s*\d+\.(?:\s+|$)/.test(String(line || ''));
+        }
+
+        function isStructuralMarkdownLine(line) {
+            return /^(#{1,6})\s+/.test(line)
+                || /^>\s?/.test(line)
+                || /^\s*([-*+])\s+/.test(line)
+                || /^\s*\d+\.\s+/.test(line)
+                || line.trim().startsWith('```');
         }
 
         function setupConstitutionChat(panel, context = null) {
@@ -513,4 +604,3 @@
         create: createGovernanceAssistant
     });
 }());
-

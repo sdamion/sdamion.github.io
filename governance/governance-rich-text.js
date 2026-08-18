@@ -178,17 +178,44 @@
 
             while (index < lines.length) {
                 const line = lines[index];
+                if (!line.trim()) {
+                    if (hasNextMarkdownListItem(lines, index + 1, ordered)) {
+                        index += 1;
+                        continue;
+                    }
+                    break;
+                }
                 if (ordered && !/^\s*\d+\.\s+/.test(line)) break;
                 if (!ordered && !/^\s*[-*+]\s+/.test(line)) break;
 
                 const item = document.createElement('li');
-                const text = line.replace(/^\s*(?:[-*+]|\d+\.)\s+/, '');
-                appendMarkdownInline(item, text);
-                list.appendChild(item);
+                const itemLines = [line.replace(/^\s*(?:[-*+]|\d+\.)\s+/, '').trim()];
                 index += 1;
+                while (index < lines.length) {
+                    const continuation = lines[index];
+                    const trimmed = continuation.trim();
+                    if (!trimmed) break;
+                    if (/^(#{1,6})\s+/.test(continuation)) break;
+                    if (/^>\s?/.test(continuation)) break;
+                    if (/^\s*([-*+])\s+/.test(continuation) || /^\s*\d+\.\s+/.test(continuation)) break;
+                    if (isMarkdownTable(lines, index)) break;
+                    itemLines.push(trimmed);
+                    index += 1;
+                }
+                appendMarkdownInline(item, itemLines.join(' '));
+                list.appendChild(item);
             }
 
             return { element: list, nextIndex: index };
+        }
+
+        function hasNextMarkdownListItem(lines, startIndex, ordered) {
+            for (let index = startIndex; index < lines.length; index += 1) {
+                const line = lines[index];
+                if (!line.trim()) continue;
+                return ordered ? /^\s*\d+\.\s+/.test(line) : /^\s*[-*+]\s+/.test(line);
+            }
+            return false;
         }
 
         function isMarkdownTable(lines, index) {

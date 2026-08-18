@@ -1,7 +1,7 @@
 (function () {
-    const GOVERNANCE_RICH_TEXT_SCRIPT_SRC = 'governance/governance-rich-text.js?v=20260818-modular-rich-text-images';
+    const GOVERNANCE_RICH_TEXT_SCRIPT_SRC = 'governance/governance-rich-text.js?v=20260818-continuation-lists';
     const GOVERNANCE_API_SCRIPT_SRC = 'governance/governance-api.js?v=20260818-modular-api-timeout';
-    const GOVERNANCE_ASSISTANT_SCRIPT_SRC = 'governance/governance-assistant.js?v=20260817-modular-assistant';
+    const GOVERNANCE_ASSISTANT_SCRIPT_SRC = 'governance/governance-assistant.js?v=20260818-constitution-sequential-lists';
     const GOVERNANCE_FUNDING_DIRECTORY_SCRIPT_SRC = 'governance/governance-funding-directory.js?v=20260817-modular-funding-directory';
     const GOVERNANCE_BUSINESS_LINKS_SCRIPT_SRC = 'governance/governance-business-links.js?v=20260818-modular-business-links-domain';
     const GOVERNANCE_CATALYST_FORMAT_SCRIPT_SRC = 'governance/governance-catalyst-format.js?v=20260817-modular-catalyst-format-4';
@@ -19,13 +19,13 @@
     const GOVERNANCE_VOTE_DATA_SCRIPT_SRC = 'governance/governance-vote-data.js?v=20260817-modular-vote-data';
     const GOVERNANCE_DREP_UTILS_SCRIPT_SRC = 'governance/governance-drep-utils.js?v=20260817-modular-drep-utils';
     const GOVERNANCE_DREP_VOTES_SCRIPT_SRC = 'governance/governance-drep-votes.js?v=20260817-modular-drep-votes';
-    const GOVERNANCE_DREP_NCL_SCRIPT_SRC = 'governance/governance-drep-ncl.js?v=20260817-modular-drep-ncl';
+    const GOVERNANCE_DREP_NCL_SCRIPT_SRC = 'governance/governance-drep-ncl.js?v=20260818-sitewide-tile-type';
     const GOVERNANCE_DREP_STATUS_SCRIPT_SRC = 'governance/governance-drep-status.js?v=20260817-modular-drep-status';
     const GOVERNANCE_DREP_CORRELATION_SCRIPT_SRC = 'governance/governance-drep-correlation.js?v=20260817-modular-drep-correlation';
     const GOVERNANCE_DREP_TOP10_SCRIPT_SRC = 'governance/governance-drep-top10.js?v=20260817-modular-drep-top10';
     const GOVERNANCE_TDSP_DREP_SCRIPT_SRC = 'governance/governance-tdsp-drep.js?v=20260817-modular-tdsp-drep';
     const GOVERNANCE_PROPOSAL_DISPLAY_SCRIPT_SRC = 'governance/governance-proposal-display.js?v=20260817-modular-proposal-display';
-    const GOVERNANCE_SCRIPT_SRC = 'governance/governance.js?v=20260818-modular-api-timeout';
+    const GOVERNANCE_SCRIPT_SRC = 'governance/governance.js?v=20260818-drep-name-profile-link';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
         '#drep',
