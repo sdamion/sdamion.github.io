@@ -134,7 +134,10 @@ async function fetchStarchDirectory() {
 
 async function fetchTdspStarchMinerCount() {
     try {
-        const summary = await loadStarchCompanySummary(TDSP_STARCH_COMPANY_ID);
+        const company = getTdspStarchCompanyRecord();
+        const companyIds = company ? getStarchCompanyIds(company) : [TDSP_STARCH_COMPANY_ID];
+        const summaries = await Promise.all(companyIds.map(loadStarchCompanySummary));
+        const summary = mergeStarchCompanySummaries(summaries, companyIds);
         tdspStarchMinerCount = Array.isArray(summary?.miners) ? summary.miners.length : null;
     } catch (error) {
         console.error(`Starch company ${TDSP_STARCH_COMPANY_ID} miner count failed: ${error.message}`);
@@ -205,7 +208,7 @@ function updateStarchDirectoryTiles(payload) {
     if (typeof window.TDSPPoolStatus?.setStarchPoolCardStatus === 'function') {
         const companies = Array.isArray(payload?.companies) ? payload.companies : null;
         tdspStarchCompanyEnabled = companies
-            ? companies.some(company => String(company?.id || '').trim().toUpperCase() === TDSP_STARCH_COMPANY_ID)
+            ? companies.some(company => getStarchCompanyIds(company).includes(TDSP_STARCH_COMPANY_ID))
             : null;
         renderTdspStarchPoolTile();
     }
@@ -395,10 +398,19 @@ function getStarchCompanyRecordPinRank(company) {
     return Math.min(...getStarchCompanyIds(company).map(getStarchCompanyPinRank), Infinity);
 }
 
-function openTdspStarchCompanyOverlay(returnFocus) {
-    const company = starchDirectory.companies.find(record =>
-        String(record?.id || '').trim().toUpperCase() === TDSP_STARCH_COMPANY_ID
-    ) || {
+function getTdspStarchCompanyRecord() {
+    return starchDirectory.companies.find(record =>
+        getStarchCompanyIds(record).includes(TDSP_STARCH_COMPANY_ID)
+    ) || null;
+}
+
+async function openTdspStarchCompanyOverlay(returnFocus) {
+    let company = getTdspStarchCompanyRecord();
+    if (!company && !starchDirectory.companies.length) {
+        await fetchStarchDirectory();
+        company = getTdspStarchCompanyRecord();
+    }
+    company ||= {
         id: TDSP_STARCH_COMPANY_ID,
         name: 'TDSP 01'
     };

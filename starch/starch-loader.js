@@ -1,5 +1,5 @@
 (function () {
-    const STARCH_SCRIPT_SRC = 'starch/starch.js?v=20260819-pool-status-fallback';
+    const STARCH_SCRIPT_SRC = 'starch/starch.js?v=20260819-combined-pool-miners';
     const STARCH_TARGET_SELECTORS = [
         '#starch',
         '#pool-starch-status-card'
