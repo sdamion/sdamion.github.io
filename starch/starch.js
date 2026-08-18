@@ -207,9 +207,16 @@ function updateStarchDirectoryTiles(payload) {
 
     if (typeof window.TDSPPoolStatus?.setStarchPoolCardStatus === 'function') {
         const companies = Array.isArray(payload?.companies) ? payload.companies : null;
-        tdspStarchCompanyEnabled = companies
-            ? companies.some(company => getStarchCompanyIds(company).includes(TDSP_STARCH_COMPANY_ID))
+        const tdspCompany = companies
+            ? companies.find(company => getStarchCompanyIds(company).includes(TDSP_STARCH_COMPANY_ID))
             : null;
+        tdspStarchCompanyEnabled = companies
+            ? Boolean(tdspCompany)
+            : null;
+        const directoryMinerCount = Number(tdspCompany?.miner_count);
+        if (Number.isFinite(directoryMinerCount) && directoryMinerCount > 0) {
+            tdspStarchMinerCount = directoryMinerCount;
+        }
         renderTdspStarchPoolTile();
     }
 }
@@ -673,8 +680,10 @@ function initStarchUi() {
     const pricesReady = typeof window.TDSPPrices?.load === 'function'
         ? window.TDSPPrices.load().catch(() => null)
         : Promise.resolve(null);
-    pricesReady.then(fetchStarchDirectory);
-    fetchTdspStarchMinerCount();
+    pricesReady
+        .then(fetchStarchDirectory)
+        .then(fetchTdspStarchMinerCount)
+        .catch(fetchTdspStarchMinerCount);
     setInterval(fetchStarchDirectory, 300000);
     setInterval(fetchTdspStarchMinerCount, 300000);
 }
