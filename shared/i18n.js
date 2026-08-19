@@ -35,6 +35,7 @@
     const AUTO_TRANSLATION_KEYS = new Map([
         ['Active Mithril Signers', 'active_mithril_signers'],
         ['Active', 'active'],
+        ['Active first', 'active_first'],
         ['Active Relay Cloud SPOs', 'active_relay_cloud_spos'],
         ['Active Relay Non-cloud SPOs', 'active_relay_non_cloud_spos'],
         ['Admin Area', 'admin_area'],
@@ -43,7 +44,9 @@
         ['Add Exclusions', 'add_exclusions'],
         ['Active Relay', 'active_relay'],
         ['Approved Governance Actions', 'approved_governance_actions'],
+        ['Ask TDSPBot about this menu', 'ask_tdspbot_about_menu'],
         ['Ask about available governance, DReps, SPOs, Starch, Treasury, or the Constitution.', 'ask_tdspbot_empty'],
+        ['Back one window', 'back_one_window'],
         ['Back to metadata', 'back_to_metadata'],
         ['Become a DRep', 'become_drep'],
         ['Browser notifications active', 'browser_notifications_active'],
@@ -59,7 +62,9 @@
         ['Cardano Events', 'cardano_events'],
         ['Cardano Governance', 'cardano_governance'],
         ['Cardano Improvement Proposals', 'cardano_improvement_proposals'],
+        ['Cardano Mainnet', 'cardano_mainnet'],
         ['Cardano Treasury', 'cardano_treasury'],
+        ['Cancel', 'cancel'],
         ['Catalyst funding status', 'catalyst_funding_status'],
         ['Catalyst vote overview', 'catalyst_vote_overview'],
         ['Catalyst proposal', 'catalyst_proposal'],
@@ -71,6 +76,9 @@
         ['Choose topics and enable notifications', 'choose_topics_enable_notifications'],
         ['Choose your vote', 'choose_your_vote'],
         ['Claimed Funds', 'claimed_funds'],
+        ['Close', 'close'],
+        ['CIP number', 'cip_number'],
+        ['CIP number: Newest', 'cip_number_newest'],
         ['Cloud Service Usage', 'cloud_service_usage'],
         ['Companies', 'companies'],
         ['Company Balance', 'company_balance'],
@@ -83,7 +91,9 @@
         ['Constitutional Committee Members', 'constitutional_committee_members'],
         ['Consulting the Constitution...', 'consulting_constitution'],
         ['Copy', 'copy'],
+        ['Copy external URL', 'copy_external_url'],
         ['Copied', 'copied'],
+        ['Cast DRep vote', 'cast_drep_vote'],
         ['Create DRep metadata', 'create_drep_metadata'],
         ['Create and save drep.jsonld', 'create_save_drep_jsonld'],
         ['Create metadata file', 'create_metadata_file'],
@@ -99,24 +109,40 @@
         ['Delegation', 'delegation'],
         ['Delegators', 'delegators'],
         ['Delegators Dashboard', 'delegators_dashboard'],
-        ['Domains reaching the 50% threshold', 'domains_threshold'],
+        ['Domains reaching the 51% threshold', 'domains_threshold'],
         ['Draw', 'draw'],
         ['Draw and Publish', 'draw_and_publish'],
         ['Draw and Publish Winner', 'draw_publish_winner'],
         ['Draw proof', 'draw_proof'],
+        ['Earliest epoch', 'earliest_epoch'],
         ['Eligible Delegators', 'eligible_delegators'],
         ['Events', 'events'],
         ['Excluded Stake Keys', 'excluded_stake_keys'],
         ['Exclusion List', 'exclusion_list'],
         ['External links', 'external_links'],
         ['Fixed cost', 'fixed_cost'],
+        ['51% stake threshold', 'fifty_one_percent_stake_threshold'],
         ['Funding recipient', 'funding_recipient'],
+        ['Fund: Newest first', 'fund_newest_first'],
+        ['Fund: Oldest first', 'fund_oldest_first'],
         ['Generating answer...', 'generating_answer'],
         ['Governance Actions', 'governance_actions'],
         ['Governance yes threshold reached', 'governance_yes_threshold_reached'],
+        ['High', 'high'],
+        ['Highest amount', 'highest_amount'],
         ['History', 'history'],
         ['Improved rationale', 'improved_rationale'],
         ['Inactive', 'inactive'],
+        ['Inactive first', 'inactive_first'],
+        ['Latest epoch', 'latest_epoch'],
+        ['Least blocks', 'least_blocks'],
+        ['Least delegators', 'least_delegators'],
+        ['Least DRep Yes NCL', 'least_drep_yes_ncl'],
+        ['Least funded projects', 'least_funded_projects'],
+        ['Least miners', 'least_miners'],
+        ['Least power', 'least_power'],
+        ['Less ask', 'less_ask'],
+        ['Loading...', 'loading'],
         ['Loading CIPs...', 'loading_cips'],
         ['Loading Catalyst and Treasury funding...', 'loading_catalyst_treasury_funding'],
         ['Loading Catalyst proposal...', 'loading_catalyst_proposal'],
@@ -132,8 +158,24 @@
         ['Loading treasury data...', 'loading_treasury_data'],
         ['Lock', 'lock'],
         ['Live stake', 'live_stake'],
+        ['Low', 'low'],
+        ['Lowest amount', 'lowest_amount'],
+        ['Lowest balance', 'lowest_balance'],
+        ['Lowest saturation', 'lowest_saturation'],
         ['Margin', 'margin'],
         ['Miners', 'miners'],
+        ['Most ask', 'most_ask'],
+        ['Most blocks', 'most_blocks'],
+        ['Most delegators', 'most_delegators'],
+        ['Most DRep Yes NCL', 'most_drep_yes_ncl'],
+        ['Most funded projects', 'most_funded_projects'],
+        ['Most miners', 'most_miners'],
+        ['Most No votes', 'most_no_votes'],
+        ['Most power', 'most_power'],
+        ['Most Yes votes', 'most_yes_votes'],
+        ['Name A-Z', 'name_az'],
+        ['Name Z-A', 'name_za'],
+        ['Nakamoto Coefficient', 'nakamoto_coefficient'],
         ['NCL', 'ncl'],
         ['Net Change Limit', 'net_change_limit'],
         ['New Chat', 'new_chat'],
@@ -150,16 +192,22 @@
         ['No top DRep data available.', 'no_top_drep_data'],
         ['Not supported', 'not_supported'],
         ['Notifications enabled', 'notifications_enabled'],
+        ['Newest', 'newest'],
+        ['Oldest', 'oldest'],
         ['On-chain DRep registration', 'onchain_drep_registration'],
         ['On-chain proof', 'onchain_proof'],
         ['On-chain rationale (optional)', 'onchain_rationale_optional'],
+        ['Open', 'open'],
         ['Open for live votes', 'open_for_live_votes'],
         ['Passive Relay', 'passive_relay'],
         ['Pool Delegators', 'pool_delegators'],
         ['Pool snapshot unavailable', 'pool_snapshot_unavailable'],
         ['Pool ID', 'pool_id'],
         ['Pledge', 'pledge'],
+        ['Possible Blocks Current Epoch', 'possible_blocks_current_epoch'],
         ['Prices', 'prizes'],
+        ['Price history is still being collected.', 'price_history_collecting'],
+        ['Price history unavailable', 'price_history_unavailable'],
         ['Proposal Summary', 'proposal_summary'],
         ['Proposer', 'proposer'],
         ['Publish proof on-chain', 'publish_proof_onchain'],
@@ -182,6 +230,13 @@
         ['SPOs with no on-chain relays advertised', 'spos_no_advertised_relays'],
         ['SPOs with only passive relays', 'spos_passive_relays'],
         ['SPOs', 'spos'],
+        ['Search by name, ID, title or status', 'search_by_name_id_title_status'],
+        ['Search by CIP number, title, status or text', 'search_by_cip'],
+        ['Search by pool, ticker, ID or relay address', 'search_by_pool'],
+        ['Search action, DRep name or vote choice', 'search_action_drep_vote'],
+        ['Search proposers or team members, separated by commas', 'search_proposers_team_members'],
+        ['Search Cardano data or ask about the Constitution', 'search_cardano_data'],
+        ['Search this overlay', 'search_this_overlay'],
         ['Select and publish a raffle winner', 'select_publish_raffle_winner'],
         ['Source:', 'source'],
         ['Status unavailable', 'status_unavailable'],
@@ -191,6 +246,8 @@
         ['Starch Stats', 'starch_stats'],
         ['Summary', 'summary'],
         ['TDSPBot', 'tdspbot'],
+        ['This link will open in a new tab.', 'external_link_new_tab'],
+        ['Links in this chart are provided by TradingView. DYOR before opening external links.', 'tradingview_link_warning'],
         ['Top 10 DReps', 'top_10_dreps'],
         ['Total Delegated', 'total_delegated'],
         ['Treasury withdrawal history', 'treasury_withdrawal_history'],
@@ -276,14 +333,40 @@
         const key = AUTO_TRANSLATION_KEYS.get(normalized);
         if (key && translations[key]) return translations[key];
 
+        if (normalized.includes(' • ')) {
+            return normalized
+                .split(' • ')
+                .map(part => getAutoTranslationValue(part) || part)
+                .join(' • ');
+        }
+
+        if (normalized.includes(' · ')) {
+            return normalized
+                .split(' · ')
+                .map(part => getAutoTranslationValue(part) || part)
+                .join(' · ');
+        }
+
         const fundMatch = normalized.match(/^Fund\s+(\d+)$/i);
         if (fundMatch) return `Fonds ${fundMatch[1]}`;
 
         const priceMatch = normalized.match(/^([A-Z0-9]+)\s+Price$/);
         if (priceMatch) return `${priceMatch[1]} prijs`;
 
-        const possibleBlocksMatch = normalized.match(/^Possible blocks\s*·\s*Epoch\s+(.+)$/i);
-        if (possibleBlocksMatch) return `Mogelijke blokken · Epoch ${possibleBlocksMatch[1]}`;
+        const activeEpochMatch = normalized.match(/^Active epoch\s+(.+)$/i);
+        if (activeEpochMatch) return `Actieve epoch ${activeEpochMatch[1]}`;
+
+        const daysMatch = normalized.match(/^(\d+)\s+days?$/i);
+        if (daysMatch) return daysMatch[1] === '1' ? '1 dag' : `${daysMatch[1]} dagen`;
+
+        const hourMatch = normalized.match(/^(\d+)\s+hours?$/i);
+        if (hourMatch) return `${hourMatch[1]} uur`;
+
+        const closePriceMatch = normalized.match(/^Close\s+([A-Z0-9]+)\s+price history$/i);
+        if (closePriceMatch) return `Sluit ${closePriceMatch[1]} prijsgeschiedenis`;
+
+        const candlesMatch = normalized.match(/^(\d[\d,]*)\s+candles$/i);
+        if (candlesMatch) return `${candlesMatch[1]} candles`;
 
         const delegatedMatch = normalized.match(/^Delegated\s+(.+)$/i);
         if (delegatedMatch) return `Gedelegeerd ${delegatedMatch[1]}`;
@@ -350,7 +433,7 @@
             return `${loadingMatch[1]} laden...`;
         }
 
-        const countMatch = normalized.match(/^(\d+)\s+(admin|excluded|published raffles|proposals|actions|stake keys excluded)$/i);
+        const countMatch = normalized.match(/^(\d+)\s+(admin|excluded|published raffles|proposals|projects|actions|entries|members|signers|delegators|pools|articles|stake keys excluded)$/i);
         if (countMatch) return `${countMatch[1]} ${translateCountLabel(countMatch[2])}`;
 
         return '';
@@ -362,7 +445,14 @@
         if (normalized === 'excluded') return 'uitgesloten';
         if (normalized === 'published raffles') return 'gepubliceerde raffles';
         if (normalized === 'proposals') return 'voorstellen';
+        if (normalized === 'projects') return 'projecten';
         if (normalized === 'actions') return 'acties';
+        if (normalized === 'entries') return 'items';
+        if (normalized === 'members') return 'leden';
+        if (normalized === 'signers') return 'signers';
+        if (normalized === 'delegators') return 'delegatoren';
+        if (normalized === 'pools') return 'pools';
+        if (normalized === 'articles') return 'artikelen';
         if (normalized === 'stake keys excluded') return 'stake keys uitgesloten';
         return label;
     }
@@ -385,15 +475,26 @@
         element.textContent = original;
     }
 
+    function translatePlaceholderElement(element) {
+        if (!(element instanceof HTMLElement)) return;
+        const original = element.getAttribute('data-i18n-placeholder-original') || element.getAttribute('placeholder') || '';
+        if (!original) return;
+        element.setAttribute('data-i18n-placeholder-original', original);
+        const translated = activeLanguage === DUTCH_LANGUAGE ? getAutoTranslationValue(original) : '';
+        element.setAttribute('placeholder', translated || original);
+    }
+
     function applyTranslations(root = document) {
         if (isTranslating) return;
         isTranslating = true;
         try {
             root.querySelectorAll?.(`[${TRANSLATION_ATTR}]`).forEach(translateElement);
             root.querySelectorAll?.(AUTO_TRANSLATION_SELECTOR).forEach(translateAutoElement);
+            root.querySelectorAll?.('[data-i18n-placeholder-original]').forEach(translatePlaceholderElement);
             if (root instanceof HTMLElement) {
                 if (root.hasAttribute(TRANSLATION_ATTR)) translateElement(root);
                 if (root.matches?.(AUTO_TRANSLATION_SELECTOR)) translateAutoElement(root);
+                if (root.hasAttribute('data-i18n-placeholder-original')) translatePlaceholderElement(root);
             }
             document.documentElement.lang = activeLanguage;
             syncLanguageToggle();

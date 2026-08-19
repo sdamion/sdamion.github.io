@@ -488,7 +488,7 @@ function getExternalSiteWarning(returnFocus = document.activeElement) {
 
     const message = document.createElement('p');
     message.id = 'external-site-warning-message';
-    message.textContent = 'This link will open in a new tab.';
+    message.textContent = translateUiText('This link will open in a new tab.');
 
     const host = document.createElement('strong');
     host.className = 'external-site-warning-host';
@@ -500,8 +500,8 @@ function getExternalSiteWarning(returnFocus = document.activeElement) {
     const copyUrl = document.createElement('button');
     copyUrl.type = 'button';
     copyUrl.className = 'external-site-warning-copy';
-    copyUrl.textContent = 'Copy';
-    copyUrl.setAttribute('aria-label', 'Copy external URL');
+    copyUrl.textContent = translateUiText('Copy');
+    copyUrl.setAttribute('aria-label', translateUiText('Copy external URL'));
     window.TDSPRuntime?.bindCopyButton?.(copyUrl, () => pendingExternalUrl);
     urlRow.append(host, copyUrl);
 
@@ -511,13 +511,13 @@ function getExternalSiteWarning(returnFocus = document.activeElement) {
     const cancel = document.createElement('button');
     cancel.type = 'button';
     cancel.className = 'external-site-warning-cancel';
-    cancel.textContent = 'Cancel';
+    cancel.textContent = translateUiText('Cancel');
     cancel.addEventListener('click', closeExternalSiteWarning);
 
     const proceed = document.createElement('button');
     proceed.type = 'button';
     proceed.className = 'external-site-warning-continue';
-    proceed.textContent = 'Continue';
+    proceed.textContent = translateUiText('Continue');
     proceed.addEventListener('click', () => {
         const url = pendingExternalUrl;
         closeExternalSiteWarning(false);
@@ -871,6 +871,10 @@ function closeStarchPoolsOverlay(restoreFocus = true) {
 let universalOverlaySequence = 0;
 let overlayFieldSequence = 0;
 
+function translateUiText(text) {
+    return window.TDSPI18n?.translateText?.(text) || text;
+}
+
 function getTopGovernanceMenuOverlay(id = '') {
     const selector = id
         ? `.governance-menu-overlay[data-governance-overlay-id="${CSS.escape(id)}"]`
@@ -1017,8 +1021,9 @@ function createUniversalOverlay(options) {
     const close = document.createElement('button');
     close.className = 'governance-close';
     close.type = 'button';
-    close.setAttribute('aria-label', closeLabel);
-    close.title = closeLabel;
+    const translatedCloseLabel = translateUiText(closeLabel);
+    close.setAttribute('aria-label', translatedCloseLabel);
+    close.title = translatedCloseLabel;
     const closeIcon = document.createElement('span');
     closeIcon.className = 'governance-close-icon';
     closeIcon.setAttribute('aria-hidden', 'true');
@@ -1029,8 +1034,8 @@ function createUniversalOverlay(options) {
     back.className = 'governance-back-to-root';
     back.type = 'button';
     back.textContent = '<';
-    back.setAttribute('aria-label', 'Back one window');
-    back.title = 'Back one window';
+    back.setAttribute('aria-label', translateUiText('Back one window'));
+    back.title = translateUiText('Back one window');
     back.addEventListener('click', closeOverlay);
 
     let botButton = null;
@@ -1039,7 +1044,7 @@ function createUniversalOverlay(options) {
         botButton.className = 'governance-overlay-bot-button';
         botButton.type = 'button';
         botButton.textContent = 'TDSPBot';
-        botButton.setAttribute('aria-label', 'Ask TDSPBot about this menu');
+        botButton.setAttribute('aria-label', translateUiText('Ask TDSPBot about this menu'));
         botButton.addEventListener('click', event => {
             event.preventDefault();
             event.stopPropagation();
@@ -1050,12 +1055,16 @@ function createUniversalOverlay(options) {
     const title = document.createElement(titleTag);
     title.id = `${titleId}${suffix}`;
     if (titleTag !== 'h2') title.className = 'governance-drep-title';
-    title.textContent = titleText;
+    title.setAttribute('data-i18n-auto', '');
+    title.setAttribute('data-i18n-auto-original', titleText);
+    title.textContent = translateUiText(titleText);
 
     const meta = document.createElement('span');
     meta.className = 'governance-menu-header-meta';
     meta.dataset.governanceMenuHeaderMeta = 'true';
-    meta.textContent = headerMeta;
+    meta.setAttribute('data-i18n-auto', '');
+    meta.setAttribute('data-i18n-auto-original', headerMeta);
+    meta.textContent = translateUiText(headerMeta);
 
     const hasBackTarget = showBack !== false && (Boolean(previousTopOverlay) || showClose === false);
     appendUniversalOverlayHeader(
@@ -1075,6 +1084,7 @@ function createUniversalOverlay(options) {
 
     overlay.appendChild(dialog);
     document.body.appendChild(overlay);
+    window.TDSPI18n?.applyTranslations?.();
     setupUniversalOverlayKeyboard();
     syncGovernanceMenuOverlayAccessibility();
     (showClose === false ? back || botButton || dialog : close).focus();
@@ -1288,8 +1298,9 @@ function installOverlaySearch(body, {
     input.name = 'overlay_search';
     input.className = 'overlay-search-input';
     input.type = 'search';
-    input.placeholder = searchPlaceholder;
-    input.setAttribute('aria-label', 'Search this overlay');
+    input.placeholder = translateUiText(searchPlaceholder);
+    input.setAttribute('data-i18n-placeholder-original', searchPlaceholder);
+    input.setAttribute('aria-label', translateUiText('Search this overlay'));
     input.autocomplete = 'off';
     input.autocapitalize = 'none';
     input.spellcheck = false;
@@ -1304,7 +1315,9 @@ function installOverlaySearch(body, {
     sortOptions.forEach(({ value, label }) => {
         const option = document.createElement('option');
         option.value = value;
-        option.textContent = label;
+        option.setAttribute('data-i18n-auto', '');
+        option.setAttribute('data-i18n-auto-original', label);
+        option.textContent = translateUiText(label);
         sort.appendChild(option);
     });
     const storedSort = getStoredOverlaySort(sortOptions);
@@ -1321,7 +1334,9 @@ function installOverlaySearch(body, {
 
     const empty = document.createElement('p');
     empty.className = 'overlay-search-empty';
-    empty.textContent = 'No matching results.';
+    empty.setAttribute('data-i18n-auto', '');
+    empty.setAttribute('data-i18n-auto-original', 'No matching results.');
+    empty.textContent = translateUiText('No matching results.');
     empty.hidden = true;
 
     searchBar.append(input, sort, count);
@@ -1351,7 +1366,9 @@ function installOverlaySearch(body, {
             sort.replaceChildren(...relevantOptions.map(({ value, label }) => {
                 const option = document.createElement('option');
                 option.value = value;
-                option.textContent = label;
+                option.setAttribute('data-i18n-auto', '');
+                option.setAttribute('data-i18n-auto-original', label);
+                option.textContent = translateUiText(label);
                 return option;
             }));
             sort.value = relevantOptions.some(option => option.value === selected)

@@ -51,18 +51,18 @@
     <link rel="stylesheet" href="delegators/raffle.css?v=20260818-universal-overlay-mobile">
 
     <script src="shared/runtime.js?v=20260819-live-status-labels" defer></script>
-    <script src="shared/i18n.js?v=20260819-dutch-governance-tiles" defer></script>
+    <script src="shared/i18n.js?v=20260819-active-epoch-language" defer></script>
     <script src="shared/site-controls.js?v=20260818-raffle-overlay-module" defer></script>
     <script src="shared/database-status.js?v=20260819-database-status-module" defer></script>
     <script src="vendor/chart-loader.js?v=20260817-section-folders" defer></script>
     <script src="pool/linked-pool-lists.js?v=20260818-linked-pool-lists" defer></script>
-    <script src="pool/status.js?v=20260819-pool-status-language" defer></script>
-    <script src="delegators/pool-delegators-list.js?v=20260818-pool-delegators-module" defer></script>
+    <script src="pool/status.js?v=20260819-possible-blocks-label" defer></script>
+    <script src="delegators/pool-delegators-list.js?v=20260819-active-epoch-language" defer></script>
     <script src="delegators/delegator-dashboard-template.js?v=20260818-dashboard-template-module" defer></script>
     <script src="home/news-overlay.js?v=20260818-news-overlay-module" defer></script>
     <script src="home/cardano-events.js?v=20260819-cardano-events-module" defer></script>
-    <script src="home/prices.js?v=20260819-prices-module" defer></script>
-    <script src="home/index.js?v=20260819-realfi-language" defer></script>
+    <script src="home/prices.js?v=20260819-price-language" defer></script>
+    <script src="home/index.js?v=20260819-overlay-language" defer></script>
 </head>
 <body>
     <header class="site-header" id="site-header">
@@ -238,7 +238,7 @@
                                 <path d="m12 13 9-5"></path>
                                 <path d="M12 13v8"></path>
                             </svg>
-                            <span id="leader-schedule-meta" class="pool-provider-label-text">Possible blocks · Epoch ...</span>
+                            <span id="leader-schedule-meta" class="pool-provider-label-text" data-i18n="possible_blocks_current_epoch">Possible Blocks Current Epoch</span>
                         </span>
                     </div>
                     <div>
@@ -275,9 +275,8 @@
                         <span class="governance-summary-subvalue" id="gov-spo-scan-status" hidden></span>
                     </div>
                     <div id="spo-nakamoto-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show SPO Nakamoto coefficients">
-                        <strong id="spo-nakamoto-values">-- / --</strong>
-                        <span data-i18n="cardano_decentralization">Cardano Decentralization</span>
-                        <span class="governance-summary-subvalue" data-i18n="consensus_hosting_nc">Consensus / Hosting NC</span>
+                        <strong id="spo-nakamoto-values">--</strong>
+                        <span data-i18n="nakamoto_coefficient">Nakamoto Coefficient</span>
                     </div>
                 </div>
                 <div class="pool-relays" id="pool-relays">
@@ -436,7 +435,7 @@
     </template>
 
     <script src="starch/starch-loader.js?v=20260819-starch-language-values" defer></script>
-    <script src="governance/governance-loader.js?v=20260819-modular-treasury-admins" defer></script>
+    <script src="governance/governance-loader.js?v=20260819-nakamoto-tile" defer></script>
     <script src="stake/stake-loader.js?v=20260818-raffle-overlay-module" defer></script>
 </body>
 </html>

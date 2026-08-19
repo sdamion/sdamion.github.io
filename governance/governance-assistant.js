@@ -81,6 +81,7 @@
             input.rows = 1;
             input.maxLength = 5000;
             input.autocomplete = 'off';
+            input.setAttribute('data-i18n-placeholder-original', 'Search Cardano data or ask about the Constitution');
             input.placeholder = 'Search Cardano data or ask about the Constitution';
             input.required = true;
             const submit = document.createElement('button');

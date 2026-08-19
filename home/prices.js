@@ -28,6 +28,30 @@
     let priceFetchPromise = null;
     let priceHistoryChart = null;
 
+    function translatePriceText(text) {
+        return window.TDSPI18n?.translateText?.(text) || text;
+    }
+
+    function getPriceWindowLabel() {
+        return translatePriceText(PRICE_CHART_WINDOW_LABEL);
+    }
+
+    function setTranslatedText(element, text) {
+        if (!element) return;
+        element.setAttribute('data-i18n-auto', '');
+        element.setAttribute('data-i18n-auto-original', text);
+        element.textContent = translatePriceText(text);
+    }
+
+    function translatePriceMetric(label) {
+        if (window.TDSPI18n?.getLanguage?.() !== 'nl') return label;
+        if (label === 'Open') return 'Open';
+        if (label === 'High') return 'Hoog';
+        if (label === 'Low') return 'Laag';
+        if (label === 'Close') return 'Slot';
+        return label;
+    }
+
     function parsePriceValue(value) {
         return value === null || value === undefined || value === '' ? NaN : Number(value);
     }
@@ -275,7 +299,7 @@
                 button.type = 'button';
                 button.className = 'price-history-interval';
                 button.dataset.intervalMinutes = String(minutes);
-                button.textContent = label;
+                setTranslatedText(button, label);
                 button.setAttribute('aria-pressed', index === 0 ? 'true' : 'false');
                 intervalSelector.appendChild(button);
             });
@@ -287,7 +311,7 @@
         if (tradingViewSymbol) {
             const warning = document.createElement('p');
             warning.className = 'tradingview-link-warning';
-            warning.textContent = 'Links in this chart are provided by TradingView. DYOR before opening external links.';
+            setTranslatedText(warning, 'Links in this chart are provided by TradingView. DYOR before opening external links.');
             body.appendChild(warning);
         }
         if (showTradingChart) {
@@ -300,24 +324,25 @@
                 frame.classList.add('is-tradingview');
                 canvas = document.createElement('canvas');
                 canvas.setAttribute('role', 'img');
-                canvas.setAttribute('aria-label', `${ticker}/USD candlestick chart over the last ${PRICE_CHART_WINDOW_LABEL}`);
+                canvas.setAttribute('aria-label', `${ticker}/USD candlestick chart over the last ${getPriceWindowLabel()}`);
                 frame.appendChild(canvas);
             }
             body.appendChild(frame);
         } else {
             const message = document.createElement('p');
             message.className = 'small-text';
-            message.textContent = 'Price history is still being collected.';
+            setTranslatedText(message, 'Price history is still being collected.');
             body.appendChild(message);
         }
 
+        const historySourceMeta = showTradingChart
+            ? `${PRICE_CHART_WINDOW_LABEL} · ${tradingViewSymbol ? 'TradingView' : `5 min · ${tradingCandles.length.toLocaleString('en-US')} candles`}`
+            : `${PRICE_CHART_WINDOW_LABEL} · Price history unavailable`;
         window.createPoolMenuOverlay?.({
             id: 'price-history-overlay',
             titleId: 'price-history-title',
             titleText: `${ticker} Price`,
-            headerMeta: showTradingChart
-                ? `${PRICE_CHART_WINDOW_LABEL} · ${tradingViewSymbol ? 'TradingView' : `5 min · ${tradingCandles.length.toLocaleString('en-US')} candles`}`
-                : `${PRICE_CHART_WINDOW_LABEL} · Price history unavailable`,
+            headerMeta: historySourceMeta,
             closeLabel: `Close ${ticker} price history`,
             closeOverlay: closePriceHistoryOverlay,
             returnFocus: tile,
@@ -339,7 +364,10 @@
                     const sourceLabel = tradingViewFrame
                         ? 'TradingView'
                         : `${candles.length.toLocaleString('en-US')} candles`;
-                    meta.textContent = `${PRICE_CHART_WINDOW_LABEL} · ${option?.label || `${minutes} min`} · ${sourceLabel}`;
+                    const nextMeta = `${PRICE_CHART_WINDOW_LABEL} · ${option?.label || `${minutes} min`} · ${sourceLabel}`;
+                    meta.setAttribute('data-i18n-auto', '');
+                    meta.setAttribute('data-i18n-auto-original', nextMeta);
+                    meta.textContent = translatePriceText(nextMeta);
                 }
                 intervalSelector?.querySelectorAll('.price-history-interval').forEach(button => {
                     button.setAttribute('aria-pressed', String(Number(button.dataset.intervalMinutes) === minutes));
@@ -507,10 +535,10 @@
                                 const candle = candles[context.dataIndex];
                                 if (!candle) return '';
                                 return [
-                                    `Open ${priceFormatter(candle.open)}`,
-                                    `High ${priceFormatter(candle.high)}`,
-                                    `Low ${priceFormatter(candle.low)}`,
-                                    `Close ${priceFormatter(candle.close)}`
+                                    `${translatePriceMetric('Open')} ${priceFormatter(candle.open)}`,
+                                    `${translatePriceMetric('High')} ${priceFormatter(candle.high)}`,
+                                    `${translatePriceMetric('Low')} ${priceFormatter(candle.low)}`,
+                                    `${translatePriceMetric('Close')} ${priceFormatter(candle.close)}`
                                 ];
                             }
                         }

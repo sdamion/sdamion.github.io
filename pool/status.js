@@ -109,12 +109,12 @@
     function renderLeaderSchedule(schedule) {
         const leadership = Array.isArray(schedule?.leadership) ? schedule.leadership : [];
         window.TDSPRuntime.setText('leader-schedule-count', window.TDSPRuntime.formatInteger(schedule?.slotCount ?? leadership.length));
-        window.TDSPRuntime.setText('leader-schedule-meta', `Possible blocks · Epoch ${window.TDSPRuntime.formatInteger(schedule?.epoch)}`);
+        window.TDSPRuntime.setText('leader-schedule-meta', 'Possible Blocks Current Epoch');
     }
 
     function renderLeaderScheduleError() {
         window.TDSPRuntime.setText('leader-schedule-count', 'N/A');
-        window.TDSPRuntime.setText('leader-schedule-meta', 'Possible blocks · Epoch N/A');
+        window.TDSPRuntime.setText('leader-schedule-meta', 'Possible Blocks Current Epoch');
     }
 
     function renderPoolStatus(pool) {

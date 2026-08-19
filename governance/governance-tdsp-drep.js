@@ -128,7 +128,10 @@
             if (Number.isFinite(epoch)) {
                 const epochText = document.createElement('span');
                 epochText.className = 'pool-delegator-epoch';
-                epochText.textContent = `Active epoch ${epoch.toLocaleString('en-US')}`;
+                const epochLabel = `Active epoch ${epoch.toLocaleString('en-US')}`;
+                epochText.setAttribute('data-i18n-auto', '');
+                epochText.setAttribute('data-i18n-auto-original', epochLabel);
+                epochText.textContent = window.TDSPI18n?.translateText?.(epochLabel) || epochLabel;
                 content.appendChild(epochText);
             }
 

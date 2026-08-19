@@ -4104,7 +4104,11 @@ function updateGovernanceMenuHeaderMeta(id, text, context = null) {
         ? contextualOverlay
         : getTopGovernanceMenuOverlay(id);
     const meta = overlay?.querySelector('[data-governance-menu-header-meta="true"]');
-    if (meta) meta.textContent = text;
+    if (meta) {
+        meta.setAttribute('data-i18n-auto', '');
+        meta.setAttribute('data-i18n-auto-original', text);
+        meta.textContent = window.TDSPI18n?.translateText?.(text) || text;
+    }
 }
 
 function removeGovernanceMenuOverlay(id) {
@@ -6170,12 +6174,9 @@ function closeSpoDirectoryOverlay() {
 
 function renderSpoNakamotoTile(nakamoto) {
     const consensus = Number(nakamoto?.consensus?.coefficient);
-    const infrastructure = Number(nakamoto?.infrastructure?.coefficient);
     window.TDSPRuntime.setText(
         'spo-nakamoto-values',
-        Number.isFinite(consensus) && Number.isFinite(infrastructure)
-            ? `${consensus.toLocaleString('en-US')} / ${infrastructure.toLocaleString('en-US')}`
-            : '-- / --'
+        Number.isFinite(consensus) ? consensus.toLocaleString('en-US') : '--'
     );
 }
 
@@ -6219,7 +6220,7 @@ function createSpoNakamotoMetricSection(titleText, metric) {
     const domains = Array.isArray(metric?.threshold_domains) ? metric.threshold_domains : [];
     if (domains.length) {
         const domainTitle = document.createElement('strong');
-        domainTitle.textContent = 'Domains reaching the 50% threshold';
+        domainTitle.textContent = 'Domains reaching the 51% threshold';
         section.appendChild(domainTitle);
 
         const list = document.createElement('div');
@@ -6498,13 +6499,13 @@ function openSpoNakamotoMetricOverlay(titleText, metric, returnFocus) {
         closeLabel: `Close ${titleText}`,
         closeOverlay: closeSpoNakamotoMetricOverlay,
         bodyNodes: [createSpoNakamotoMetricSection(titleText, metric)],
-        headerMeta: metric?.available === false ? 'Unavailable' : '50% stake threshold',
+        headerMeta: metric?.available === false ? 'Unavailable' : '51% stake threshold',
         overlayClass: 'governance-action-detail-overlay',
-        rootTitle: 'Cardano Decentralization',
+        rootTitle: 'Nakamoto Coefficient',
         returnFocus,
         enableSearch: false,
         botContext: createWebsiteSectionBotContext('SPOs', {
-            title: `${titleText} / Cardano Decentralization`,
+            title: `${titleText} / Nakamoto Coefficient`,
             summary: metric?.methodology || metric?.reason || titleText
         })
     });
@@ -6547,7 +6548,7 @@ function renderSpoNakamotoPanel(panel, payload) {
 
     const note = document.createElement('p');
     note.className = 'small-text';
-    note.textContent = `50% stake threshold • ${nakamoto.stake_basis || 'cached SPO stake'}`;
+    note.textContent = `51% stake threshold • ${nakamoto.stake_basis || 'cached SPO stake'}`;
     const missingMetric = (label) => ({
         available: false,
         reason: `${label} requires a refreshed version 2 SPO decentralization cache.`
@@ -6578,16 +6579,16 @@ function openSpoNakamotoOverlay(returnFocus) {
     createGovernanceMenuOverlay({
         id: 'spo-nakamoto-overlay',
         titleId: 'spo-nakamoto-title',
-        titleText: 'Cardano Decentralization',
+        titleText: 'Nakamoto Coefficient',
         closeLabel: 'Close Nakamoto coefficients',
         closeOverlay: closeSpoNakamotoOverlay,
         bodyNodes: [panel],
-        headerMeta: '50% stake threshold',
+        headerMeta: '51% stake threshold',
         overlayClass: 'governance-action-detail-overlay',
         returnFocus,
         enableSearch: false,
         botContext: createWebsiteSectionBotContext('SPOs', {
-            title: 'Cardano Decentralization / Nakamoto Coefficients',
+            title: 'Nakamoto Coefficient',
             count: spoDirectoryState?.count || null,
             amount_ada: Number(spoDirectoryState?.nakamoto?.total_stake_lovelace || 0) / 1_000_000,
             summary: 'Consensus, relay operator, hosting provider, geographic and software/client concentration'
