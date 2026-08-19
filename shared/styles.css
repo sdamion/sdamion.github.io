@@ -1050,6 +1050,18 @@ p {
     border: 0;
 }
 
+.embedded-site-local-warning {
+    display: grid;
+    min-height: 100%;
+    place-items: center;
+    padding: 24px;
+    color: var(--muted);
+    font-size: var(--tile-subtitle-size);
+    font-weight: 700;
+    line-height: 1.35;
+    text-align: center;
+}
+
 .pool-summary-clickable {
     cursor: pointer;
 }

@@ -627,6 +627,7 @@ function initPoolMenuCards() {
 function openRealfiWebsiteOverlay(returnFocus = document.activeElement) {
     closeRealfiWebsiteOverlay(false);
 
+    const canEmbedRealfi = window.location.protocol === 'https:';
     const panel = document.createElement('div');
     panel.className = 'embedded-site-panel realfi-site-panel';
 
@@ -637,14 +638,21 @@ function openRealfiWebsiteOverlay(returnFocus = document.activeElement) {
     const frameWrap = document.createElement('div');
     frameWrap.className = 'embedded-site-frame';
 
-    const frame = document.createElement('iframe');
-    frame.title = 'RealFi Docs';
-    frame.src = REALFI_DOCS_URL;
-    frame.loading = 'lazy';
-    frame.referrerPolicy = 'no-referrer-when-downgrade';
-    frame.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox');
+    if (canEmbedRealfi) {
+        const frame = document.createElement('iframe');
+        frame.title = 'RealFi Docs';
+        frame.src = REALFI_DOCS_URL;
+        frame.loading = 'lazy';
+        frame.referrerPolicy = 'no-referrer-when-downgrade';
+        frame.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox');
+        frameWrap.appendChild(frame);
+    } else {
+        const localMessage = document.createElement('div');
+        localMessage.className = 'embedded-site-local-warning';
+        localMessage.textContent = 'RealFi Docs only allows embedding from HTTPS websites. Test this overlay on the production HTTPS site.';
+        frameWrap.appendChild(localMessage);
+    }
 
-    frameWrap.appendChild(frame);
     panel.append(notice, frameWrap);
 
     createPoolMenuOverlay({
