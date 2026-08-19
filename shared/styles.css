@@ -4826,9 +4826,23 @@ html[data-theme="dark"] input {
         white-space: nowrap;
     }
 
+    .hero-copy h1 {
+        width: 100%;
+        max-width: 100%;
+        text-align: center;
+    }
+
     .lead {
         max-width: 100%;
         font-size: 1rem;
+    }
+
+    .hero-copy .lead {
+        width: 100%;
+        max-width: 32rem;
+        white-space: normal;
+        overflow-wrap: normal;
+        text-wrap: balance;
     }
 
     .hero-logo {
@@ -4857,6 +4871,11 @@ html[data-theme="dark"] input {
         overflow-wrap: normal;
         font-size: clamp(1.45rem, 6.8vw, 1.95rem);
         white-space: nowrap;
+    }
+
+    .hero-copy h1 {
+        width: 100%;
+        text-align: center;
     }
 
     h2 {
