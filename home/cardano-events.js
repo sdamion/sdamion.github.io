@@ -376,7 +376,7 @@
                 })
                 .filter(Boolean);
             const summary = document.createElement('div');
-            summary.className = 'tdsp-tile-grid governance-summary cardano-event-source-summary';
+            summary.className = 'tdsp-tile-grid tdsp-tile-grid--event-sources';
             summary.append(...sourceTiles);
             container.replaceChildren(summary);
         } catch (error) {

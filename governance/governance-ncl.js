@@ -156,16 +156,16 @@
             const currentEpoch = Number(getClockEpochSnapshot()?.epoch);
             const endEpoch = Number(summary?.end_epoch);
             if (!Number.isFinite(currentEpoch) || !Number.isFinite(endEpoch)) {
-                element.textContent = 'Reset in -- epochs';
+                window.TDSPRuntime.setText('gov-ncl-epochs-left', 'Reset in -- epochs');
                 element.removeAttribute('title');
                 return;
             }
 
             const resetEpoch = Math.trunc(endEpoch) + 1;
             const epochsLeft = Math.max(resetEpoch - Math.trunc(currentEpoch), 0);
-            element.textContent = epochsLeft === 0
+            window.TDSPRuntime.setText('gov-ncl-epochs-left', epochsLeft === 0
                 ? 'Reset due'
-                : `Reset in ${epochsLeft} epoch${epochsLeft === 1 ? '' : 's'}`;
+                : `Reset in ${epochsLeft} epoch${epochsLeft === 1 ? '' : 's'}`);
             element.title = `Next NCL period starts in epoch ${resetEpoch}`;
         }
 

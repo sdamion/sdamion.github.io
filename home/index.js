@@ -595,7 +595,7 @@ async function fetchLeaderSchedule() {
 
 function loadPoolStatusModule() {
     if (window.TDSPPoolStatus) return Promise.resolve(window.TDSPPoolStatus);
-    return window.TDSPRuntime.loadScript('pool/status.js?v=20260819-pool-status-fallback', {
+    return window.TDSPRuntime.loadScript('pool/status.js?v=20260819-pool-status-language', {
         datasetName: 'poolStatus',
         selector: 'script[data-pool-status]',
         ready: () => window.TDSPPoolStatus || null

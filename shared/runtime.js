@@ -371,7 +371,12 @@
 
     function setText(id, value) {
         const element = document.getElementById(id);
-        if (element) element.textContent = String(value);
+        if (element) {
+            const text = String(value);
+            element.setAttribute('data-i18n-auto', '');
+            element.setAttribute('data-i18n-auto-original', text);
+            element.textContent = window.TDSPI18n?.translateText?.(text) || text;
+        }
     }
 
     async function copyText(value) {
@@ -512,7 +517,8 @@
     function createSmallText(text, options = {}) {
         const element = document.createElement(options.tagName || 'p');
         element.className = options.className || 'small-text';
-        element.textContent = String(text || '');
+        const value = String(text || '');
+        element.textContent = window.TDSPI18n?.translateText?.(value) || value;
         return element;
     }
 
@@ -530,7 +536,7 @@
         } else if (options.primaryText) {
             const primary = document.createElement('span');
             primary.className = options.primaryClassName || 'governance-card-detail governance-treasury-withdrawal-amount';
-            primary.textContent = cleanTileText(options.primaryText);
+            primary.textContent = cleanTileText(translateText(options.primaryText));
             container.appendChild(primary);
         }
 
@@ -538,14 +544,15 @@
         if (context) {
             const contextLine = document.createElement('span');
             contextLine.className = 'governance-card-detail governance-funding-card-context';
-            contextLine.textContent = cleanTileText(context);
+            contextLine.textContent = cleanTileText(translateText(context));
             container.appendChild(contextLine);
         }
 
         if (options.proposer) {
             const proposer = document.createElement('span');
             proposer.className = 'governance-card-detail governance-funding-card-proposer';
-            proposer.textContent = `Proposer: ${cleanTileText(options.proposer)}`;
+            const label = translateText('Proposer');
+            proposer.textContent = `${label}: ${cleanTileText(options.proposer)}`;
             container.appendChild(proposer);
         }
 
@@ -558,10 +565,26 @@
             if (!detailText) return;
             const detail = document.createElement('span');
             detail.className = item?.className || 'governance-card-detail';
-            detail.textContent = detailText;
+            detail.textContent = translateText(detailText);
             container.appendChild(detail);
         });
     }
+
+    function normalizeUniversalTileLabels(root = document) {
+        const tileSelector = '.governance-menu-card, .pool-summary-clickable';
+        root.querySelectorAll?.(tileSelector).forEach(tile => {
+            if (!(tile instanceof HTMLElement)) return;
+            tile.querySelectorAll(':scope > span:not([data-i18n])').forEach(label => {
+                if (!(label instanceof HTMLElement)) return;
+                if (label.children.length > 0) return;
+                label.setAttribute('data-i18n-auto', '');
+                label.setAttribute('data-i18n-auto-original', label.textContent || '');
+                label.textContent = window.TDSPI18n?.translateText?.(label.textContent || '') || label.textContent || '';
+            });
+        });
+    }
+
+    onReady(() => normalizeUniversalTileLabels());
 
     window.TDSPRuntime = Object.freeze({
         isLocalPreview: isLocalPreviewHostname(window.location.hostname),
@@ -601,6 +624,7 @@
         getDelegatorWalletAddresses,
         getDelegatorSearchText,
         formatReadableLabel,
-        appendUniversalTileContent
+        appendUniversalTileContent,
+        normalizeUniversalTileLabels
     });
 }());

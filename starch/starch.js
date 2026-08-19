@@ -154,9 +154,11 @@ function renderTdspStarchPoolTile() {
     );
     const minerLabel = document.getElementById('pool-starch-miner-label');
     if (minerLabel) {
-        minerLabel.textContent = Number.isFinite(tdspStarchMinerCount)
+        const label = Number.isFinite(tdspStarchMinerCount)
             ? `${tdspStarchMinerCount.toLocaleString('en-US')} Starch Miners`
             : 'N/A Starch Miners';
+        minerLabel.setAttribute('data-i18n-auto-original', label);
+        minerLabel.textContent = window.TDSPI18n?.translateText?.(label) || label;
     }
 }
 
@@ -177,32 +179,39 @@ function updateStarchDirectoryTiles(payload) {
             const inactiveCount = Number.isFinite(offlineCount)
                 ? offlineCount
                 : Math.max(registeredCount - activeCount, 0);
-            minerCount.textContent = registeredCount.toLocaleString('en-US');
+            window.TDSPRuntime?.setText?.('starchMinerCount', registeredCount.toLocaleString('en-US'));
             minerCount.classList.remove('is-online');
             if (minerStatus) {
                 minerStatus.textContent = '';
                 minerStatus.classList.remove('is-offline');
                 minerStatus.classList.add('starch-miner-status-lines');
                 const labelText = document.createElement('span');
-                labelText.textContent = 'Miners';
+                labelText.setAttribute('data-i18n-auto', '');
+                labelText.setAttribute('data-i18n-auto-original', 'Miners');
+                labelText.textContent = window.TDSPI18n?.translateText?.('Miners') || 'Miners';
                 const offlineText = document.createElement('span');
                 offlineText.className = 'starch-miner-offline-count';
-                offlineText.textContent = `Offline ${inactiveCount.toLocaleString('en-US')}`;
+                const offlineLabel = `Offline ${inactiveCount.toLocaleString('en-US')}`;
+                offlineText.setAttribute('data-i18n-auto', '');
+                offlineText.setAttribute('data-i18n-auto-original', offlineLabel);
+                offlineText.textContent = window.TDSPI18n?.translateText?.(offlineLabel) || offlineLabel;
                 minerStatus.append(labelText, offlineText);
             }
         } else {
-            minerCount.textContent = Number.isFinite(registeredCount)
+            window.TDSPRuntime?.setText?.('starchMinerCount', Number.isFinite(registeredCount)
                 ? registeredCount.toLocaleString('en-US')
-                : 'N/A';
+                : 'N/A');
             if (minerStatus) {
                 minerStatus.classList.remove('starch-miner-status-lines');
-                minerStatus.textContent = 'Miners';
+                minerStatus.setAttribute('data-i18n-auto', '');
+                minerStatus.setAttribute('data-i18n-auto-original', 'Miners');
+                minerStatus.textContent = window.TDSPI18n?.translateText?.('Miners') || 'Miners';
             }
         }
     }
     if (companyCount) {
         const value = Number(payload?.company_count);
-        companyCount.textContent = Number.isFinite(value) ? value.toLocaleString('en-US') : 'N/A';
+        window.TDSPRuntime?.setText?.('starchCompanyCount', Number.isFinite(value) ? value.toLocaleString('en-US') : 'N/A');
     }
 
     if (typeof window.TDSPPoolStatus?.setStarchPoolCardStatus === 'function') {
@@ -532,7 +541,7 @@ async function renderStarchCompanyDetail(content, company, summary, options = {}
     content.replaceChildren();
 
     const summaryTiles = document.createElement('div');
-    summaryTiles.className = 'starch-summary starch-company-detail-summary';
+    summaryTiles.className = 'tdsp-tile-grid tdsp-tile-grid--section starch-company-detail-summary';
     summaryTiles.append(
         createStarchStatTile(formatStarchCompanyBalance(summary?.team_balance), 'Company Balance'),
         createStarchStatTile(Number(summary?.weekly_blocks || 0).toLocaleString('en-US'), 'Weekly Blocks'),

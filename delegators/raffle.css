@@ -83,20 +83,9 @@
     margin: 0;
 }
 
-.raffle-dashboard-tiles {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--tdsp-tile-grid-gap, 14px);
-    width: 100%;
-    min-width: 0;
-}
-
 .raffle-open-tile {
-    display: grid;
-    gap: 8px;
     width: 100%;
     min-width: 0;
-    padding: 16px;
     text-align: left;
     font: inherit;
     appearance: none;
@@ -106,18 +95,6 @@
     display: grid;
     gap: 20px;
     width: 100%;
-}
-
-.raffle-admin-menu {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: var(--tdsp-tile-grid-gap, 14px);
-    width: 100%;
-    min-width: 0;
-}
-
-.raffle-admin-menu .raffle-open-tile {
-    height: 100%;
 }
 
 .raffle-admin-panel {
@@ -422,14 +399,4 @@
         padding: 14px;
     }
 
-    .raffle-admin-menu {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-}
-
-@media (max-width: 390px) {
-    .raffle-dashboard-tiles,
-    .raffle-admin-menu {
-        grid-template-columns: minmax(0, 1fr);
-    }
 }

@@ -47,10 +47,10 @@
         const meta = document.getElementById('pool-relays-meta');
         if (!status || !meta) return;
 
-        status.textContent = activeCount === null ? 'N/A' : activeCount > 0 ? 'Active' : 'Inactive';
-        meta.textContent = activeCount === null || relayCount === null
+        window.TDSPRuntime.setText('pool-relays-up', activeCount === null ? 'N/A' : activeCount > 0 ? 'Active' : 'Inactive');
+        window.TDSPRuntime.setText('pool-relays-meta', activeCount === null || relayCount === null
             ? 'Relay N/A'
-            : `Relay ${activeCount}/${relayCount}`;
+            : `Relay ${activeCount}/${relayCount}`);
         window.TDSPRuntime.setStatusClasses(status, {
             active: activeCount !== null && activeCount >= 2,
             warning: activeCount === 1,
@@ -62,7 +62,7 @@
         const status = document.getElementById('pool-mithril-status');
         if (!status) return;
 
-        status.textContent = label;
+        window.TDSPRuntime.setText('pool-mithril-status', label);
         window.TDSPRuntime.setBinaryStatusClasses(status, active);
     }
 
@@ -70,7 +70,7 @@
         const status = document.getElementById('pool-icebreaker-status');
         if (!status) return;
 
-        status.textContent = label;
+        window.TDSPRuntime.setText('pool-icebreaker-status', label);
         window.TDSPRuntime.setBinaryStatusClasses(status, active);
     }
 
@@ -102,7 +102,7 @@
         const status = document.getElementById('pool-starch-status');
         if (!status) return;
 
-        status.textContent = label;
+        window.TDSPRuntime.setText('pool-starch-status', label);
         window.TDSPRuntime.setBinaryStatusClasses(status, active);
     }
 

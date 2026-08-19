@@ -47,16 +47,16 @@
 
     <!-- Preload Logo -->
     <link rel="preload" href="tdsp_logo.webp?v=20260727-smooth-lines" as="image" type="image/webp">
-    <link rel="stylesheet" href="shared/styles.css?v=20260819-dutch-language">
+    <link rel="stylesheet" href="shared/styles.css?v=20260819-universal-id-line">
     <link rel="stylesheet" href="delegators/raffle.css?v=20260818-universal-overlay-mobile">
 
-    <script src="shared/runtime.js?v=20260819-dutch-tile-titles" defer></script>
-    <script src="shared/i18n.js?v=20260819-dutch-all-tile-titles" defer></script>
+    <script src="shared/runtime.js?v=20260819-live-status-labels" defer></script>
+    <script src="shared/i18n.js?v=20260819-dutch-governance-tiles" defer></script>
     <script src="shared/site-controls.js?v=20260818-raffle-overlay-module" defer></script>
     <script src="shared/database-status.js?v=20260819-database-status-module" defer></script>
     <script src="vendor/chart-loader.js?v=20260817-section-folders" defer></script>
     <script src="pool/linked-pool-lists.js?v=20260818-linked-pool-lists" defer></script>
-    <script src="pool/status.js?v=20260819-pool-status-fallback" defer></script>
+    <script src="pool/status.js?v=20260819-pool-status-language" defer></script>
     <script src="delegators/pool-delegators-list.js?v=20260818-pool-delegators-module" defer></script>
     <script src="delegators/delegator-dashboard-template.js?v=20260818-dashboard-template-module" defer></script>
     <script src="home/news-overlay.js?v=20260818-news-overlay-module" defer></script>
@@ -139,7 +139,7 @@
                             <img class="hero-logo" src="tdsp_logo.webp?v=20260727-smooth-lines" alt="The Dutch Stake Pool Logo" loading="eager">
                         </div>
                     </div>
-                    <div class="tdsp-tile-grid price-panel pool-summary">
+                    <div class="tdsp-tile-grid price-panel">
                         <div class="pool-summary-clickable" data-price-key="btc_usd" data-price-ticker="BTC" role="button" tabindex="0" aria-label="Show BTC 7 day price history">
                             <strong id="btc-price">Loading...</strong>
                             <span class="pool-provider-label"><img class="pool-provider-icon" src="bitcoin-logo.png?v=20260727-retina" alt=""><span class="pool-provider-label-text">BTC</span></span>
@@ -174,7 +174,7 @@
                     <button class="pool-id-stake-button" type="button" data-stake-open data-i18n="stake_now">Stake Now</button>
                     <button class="pool-copy-icon-button pool-id-copy-button" type="button" data-copy-target="pool-id" aria-label="Copy stake pool ID" title="Copy pool ID">⧉</button>
                 </div>
-                <div class="tdsp-tile-grid tdsp-tile-grid--section pool-summary" id="pool-summary" aria-live="polite">
+                <div class="tdsp-tile-grid tdsp-tile-grid--section" id="pool-summary" aria-live="polite">
                     <div id="pool-delegators-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show pool delegators">
                         <strong id="pool-delegators">...</strong>
                         <span class="pool-provider-label">
@@ -296,7 +296,7 @@
                     <button class="pool-id-stake-button" type="button" data-drep-open data-i18n="make_drep">Make DRep</button>
                     <button class="pool-copy-icon-button pool-id-copy-button" type="button" data-copy-target="tdsp-drep-id" aria-label="Copy DamionDutch DRep ID" title="Copy DRep ID">⧉</button>
                 </div>
-                <div class="tdsp-tile-grid governance-summary" id="drep-stats-summary">
+                <div class="tdsp-tile-grid tdsp-tile-grid--governance" id="drep-stats-summary">
                     <div id="tdsp-drep-status-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show DamionDutch DRep status">
                         <strong id="tdsp-drep-status">Loading...</strong>
                         <span>DamionDutch</span>
@@ -330,7 +330,7 @@
         <section class="section" id="starch">
             <div class="section-inner">
                 <h2 data-i18n="starch_stats">Starch Stats</h2>
-                <div class="tdsp-tile-grid tdsp-tile-grid--section starch-summary">
+                <div class="tdsp-tile-grid tdsp-tile-grid--section">
                     <div id="starch-pools-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show Starch pools">
                         <strong id="starch-pool-count">Loading...</strong>
                         <span data-i18n="starch_pools">Starch Pools</span>
@@ -351,17 +351,17 @@
         <section class="section governance-page" id="governance">
             <div class="section-inner">
                 <h2 data-i18n="governance">Governance</h2>
-                <div class="tdsp-tile-grid governance-summary" id="governance-summary">
+                <div class="tdsp-tile-grid tdsp-tile-grid--governance" id="governance-summary">
                     <div id="gov-treasury-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show Cardano treasury data">
                         <strong id="gov-treasury-amount">₳ --</strong>
-                        <span id="gov-treasury-epoch">Treasury Epoch --</span>
-                        <span class="governance-summary-subvalue" id="gov-treasury-income">Income ₳ --</span>
+                        <span id="gov-treasury-epoch" data-i18n-auto>Treasury Epoch --</span>
+                        <span class="governance-summary-subvalue" id="gov-treasury-income" data-i18n-auto>Income ₳ --</span>
                     </div>
                     <div id="gov-ncl-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show Net Change Limit data">
                         <strong id="gov-ncl-amount">&#8371; --</strong>
                         <span>NCL</span>
-                        <span class="governance-summary-subvalue" id="gov-ncl-balance">Balance &#8371; --</span>
-                        <span class="governance-summary-subvalue" id="gov-ncl-epochs-left">Reset in -- epochs</span>
+                        <span class="governance-summary-subvalue" id="gov-ncl-balance" data-i18n-auto>Balance &#8371; --</span>
+                        <span class="governance-summary-subvalue" id="gov-ncl-epochs-left" data-i18n-auto>Reset in -- epochs</span>
                     </div>
                     <div id="gov-active-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show active governance actions">
                         <strong id="gov-active-count">0</strong>
@@ -435,7 +435,7 @@
         <p id="wallet-status" class="wallet-status" role="status" aria-live="polite"></p>
     </template>
 
-    <script src="starch/starch-loader.js?v=20260819-combined-pool-miners-2" defer></script>
+    <script src="starch/starch-loader.js?v=20260819-starch-language-values" defer></script>
     <script src="governance/governance-loader.js?v=20260819-modular-treasury-admins" defer></script>
     <script src="stake/stake-loader.js?v=20260818-raffle-overlay-module" defer></script>
 </body>
