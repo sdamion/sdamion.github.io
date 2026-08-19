@@ -47,10 +47,11 @@
 
     <!-- Preload Logo -->
     <link rel="preload" href="tdsp_logo.webp?v=20260727-smooth-lines" as="image" type="image/webp">
-    <link rel="stylesheet" href="shared/styles.css?v=20260819-realfi-https-fallback">
+    <link rel="stylesheet" href="shared/styles.css?v=20260819-dutch-language">
     <link rel="stylesheet" href="delegators/raffle.css?v=20260818-universal-overlay-mobile">
 
-    <script src="shared/runtime.js?v=20260818-local-preview-50" defer></script>
+    <script src="shared/runtime.js?v=20260819-dutch-tile-titles" defer></script>
+    <script src="shared/i18n.js?v=20260819-dutch-all-tile-titles" defer></script>
     <script src="shared/site-controls.js?v=20260818-raffle-overlay-module" defer></script>
     <script src="shared/database-status.js?v=20260819-database-status-module" defer></script>
     <script src="vendor/chart-loader.js?v=20260817-section-folders" defer></script>
@@ -68,14 +69,14 @@
         <div class="header-inner">
             <div class="menu-bar">
                 <nav class="menu-bar__nav nav" aria-label="Main navigation">
-                    <a class="nav-link nav-home-link" href="#home">Home</a>
-                    <a class="nav-link" href="#pool">SPO</a>
-                    <a class="nav-link" href="#drep">DRep</a>
-                    <a class="nav-link" href="#starch">Starch</a>
-                    <a class="nav-link" href="#governance">Governance</a>
+                    <a class="nav-link nav-home-link" href="#home" data-i18n="nav_home">Home</a>
+                    <a class="nav-link" href="#pool" data-i18n="nav_spo">SPO</a>
+                    <a class="nav-link" href="#drep" data-i18n="nav_drep">DRep</a>
+                    <a class="nav-link" href="#starch" data-i18n="nav_starch">Starch</a>
+                    <a class="nav-link" href="#governance" data-i18n="nav_governance">Governance</a>
                     <span class="nav-row-break" aria-hidden="true"></span>
-                    <a class="nav-link" href="#calendar">Events</a>
-                    <a class="nav-link" href="#stakenow" data-stake-open>Stake Now</a>
+                    <a class="nav-link" href="#calendar" data-i18n="nav_events">Events</a>
+                    <a class="nav-link" href="#stakenow" data-stake-open data-i18n="nav_stake">Stake Now</a>
                     <a class="nav-link" href="https://twitter.com/DamionDutch" target="_blank" rel="noopener noreferrer">X</a>
                     <button class="nav-link nav-button tdspbot-nav-link" id="tdspbot-open" type="button" aria-label="Open TDSPBot">
                         <img class="tdspbot-nav-icon" src="bot.svg" alt="" width="18" height="18">
@@ -87,17 +88,18 @@
                     <div class="menu-bar__actions header-links" aria-label="External links">
                         <div class="site-alerts">
                             <button class="nav-link nav-button site-alerts-button" id="site-alerts-button" type="button" aria-expanded="false" aria-controls="site-alerts-menu">
-                                Alerts
+                                <span data-i18n="alerts">Alerts</span>
                             </button>
                             <div class="site-alerts-menu" id="site-alerts-menu" hidden>
-                                <strong>Alert Options</strong>
-                                <label><input type="checkbox" id="site-alert-governance" name="site_alert_governance" data-alert-topic="governance"> Governance</label>
-                                <label><input type="checkbox" id="site-alert-news" name="site_alert_news" data-alert-topic="news"> News</label>
-                                <label><input type="checkbox" id="site-alert-events" name="site_alert_events" data-alert-topic="events"> Cardano Events</label>
-                                <button id="site-alert-permission" type="button">Enable notifications</button>
+                                <strong data-i18n="alert_options">Alert Options</strong>
+                                <label><input type="checkbox" id="site-alert-governance" name="site_alert_governance" data-alert-topic="governance"> <span data-i18n="alert_governance">Governance</span></label>
+                                <label><input type="checkbox" id="site-alert-news" name="site_alert_news" data-alert-topic="news"> <span data-i18n="alert_news">News</span></label>
+                                <label><input type="checkbox" id="site-alert-events" name="site_alert_events" data-alert-topic="events"> <span data-i18n="alert_events">Cardano Events</span></label>
+                                <button id="site-alert-permission" type="button" data-i18n="enable_notifications">Enable notifications</button>
                                 <span id="site-alert-status" aria-live="polite">Notifications off</span>
                             </div>
                         </div>
+                        <button class="language-toggle" id="language-toggle" type="button" aria-label="Zet de site in het Nederlands">NL</button>
                         <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch to dark mode">
                             <span class="theme-toggle-icon theme-toggle-icon--moon" aria-hidden="true">
                                 <svg viewBox="0 0 24 24" focusable="false">
@@ -130,14 +132,14 @@
                 <div class="price-section">
                     <div class="hero-brand">
                         <div class="hero-copy">
-                            <h1>The Dutch Stake Pool</h1>
-                            <p class="lead">Reliable No fee staking, node operations, and Cardano ecosystem support from the Netherlands.</p>
+                            <h1 data-i18n="hero_title">The Dutch Stake Pool</h1>
+                            <p class="lead" data-i18n="hero_lead">Reliable No fee staking, node operations, and Cardano ecosystem support from the Netherlands.</p>
                         </div>
                         <div class="hero-media">
                             <img class="hero-logo" src="tdsp_logo.webp?v=20260727-smooth-lines" alt="The Dutch Stake Pool Logo" loading="eager">
                         </div>
                     </div>
-                    <div class="price-panel pool-summary">
+                    <div class="tdsp-tile-grid price-panel pool-summary">
                         <div class="pool-summary-clickable" data-price-key="btc_usd" data-price-ticker="BTC" role="button" tabindex="0" aria-label="Show BTC 7 day price history">
                             <strong id="btc-price">Loading...</strong>
                             <span class="pool-provider-label"><img class="pool-provider-icon" src="bitcoin-logo.png?v=20260727-retina" alt=""><span class="pool-provider-label-text">BTC</span></span>
@@ -165,14 +167,14 @@
 
         <section class="section pool-section" id="pool">
             <div class="section-inner">
-                <h2>SPO Stats</h2>
+                <h2 data-i18n="spo_stats">SPO Stats</h2>
                 <div class="pool-id-line">
-                    <span>Pool ID</span>
+                    <span data-i18n="pool_id">Pool ID</span>
                     <strong id="pool-id">...</strong>
-                    <button class="pool-id-stake-button" type="button" data-stake-open>Stake Now</button>
+                    <button class="pool-id-stake-button" type="button" data-stake-open data-i18n="stake_now">Stake Now</button>
                     <button class="pool-copy-icon-button pool-id-copy-button" type="button" data-copy-target="pool-id" aria-label="Copy stake pool ID" title="Copy pool ID">⧉</button>
                 </div>
-                <div class="pool-summary" id="pool-summary" aria-live="polite">
+                <div class="tdsp-tile-grid tdsp-tile-grid--section pool-summary" id="pool-summary" aria-live="polite">
                     <div id="pool-delegators-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show pool delegators">
                         <strong id="pool-delegators">...</strong>
                         <span class="pool-provider-label">
@@ -181,14 +183,14 @@
                                 <circle cx="9" cy="7" r="4"></circle>
                                 <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"></path>
                             </svg>
-                            <span class="pool-provider-label-text">Delegators</span>
+                            <span class="pool-provider-label-text" data-i18n="delegators">Delegators</span>
                         </span>
                     </div>
                     <div>
                         <strong id="pool-live-stake">...</strong>
                         <span class="pool-provider-label">
                             <span class="pool-provider-icon pool-provider-symbol" aria-hidden="true">₳</span>
-                            <span class="pool-provider-label-text">Live stake</span>
+                            <span class="pool-provider-label-text" data-i18n="live_stake">Live stake</span>
                         </span>
                     </div>
                     <div>
@@ -199,14 +201,14 @@
                                 <path d="m12 13 4-4"></path>
                                 <path d="M4 17h16"></path>
                             </svg>
-                            <span class="pool-provider-label-text">Saturation</span>
+                            <span class="pool-provider-label-text" data-i18n="saturation">Saturation</span>
                         </span>
                     </div>
                     <div>
                         <strong id="pool-pledge">...</strong>
                         <span class="pool-provider-label">
                             <span class="pool-provider-icon pool-provider-symbol" aria-hidden="true">₳</span>
-                            <span class="pool-provider-label-text">Pledge</span>
+                            <span class="pool-provider-label-text" data-i18n="pledge">Pledge</span>
                         </span>
                     </div>
                     <div>
@@ -217,14 +219,14 @@
                                 <circle cx="6.5" cy="6.5" r="2.5"></circle>
                                 <circle cx="17.5" cy="17.5" r="2.5"></circle>
                             </svg>
-                            <span class="pool-provider-label-text">Margin</span>
+                            <span class="pool-provider-label-text" data-i18n="margin">Margin</span>
                         </span>
                     </div>
                     <div>
                         <strong id="pool-fixed-cost">...</strong>
                         <span class="pool-provider-label">
                             <span class="pool-provider-icon pool-provider-symbol" aria-hidden="true">₳</span>
-                            <span class="pool-provider-label-text">Fixed cost</span>
+                            <span class="pool-provider-label-text" data-i18n="fixed_cost">Fixed cost</span>
                         </span>
                     </div>
                     <div id="leader-schedule" aria-live="polite">
@@ -264,62 +266,62 @@
                     </div>
                     <div id="pool-realfi-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Open Realfi SPO">
                         <strong class="pool-status-value">Active</strong>
-                        <span class="pool-provider-label"><img class="pool-provider-icon" src="realfi-logo.svg" alt="">Realfi SPO</span>
+                        <span class="pool-provider-label"><img class="pool-provider-icon" src="realfi-logo.svg" alt=""><span data-i18n="realfi_spo">Realfi SPO</span></span>
                     </div>
                     <div id="gov-spo-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show stake pool operator directory">
                         <strong id="gov-spo-count">0</strong>
-                        <span>SPOs</span>
+                        <span data-i18n="spos">SPOs</span>
                         <span class="governance-summary-subvalue" id="gov-spo-total-delegated">Delegated ₳ 0</span>
                         <span class="governance-summary-subvalue" id="gov-spo-scan-status" hidden></span>
                     </div>
                     <div id="spo-nakamoto-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show SPO Nakamoto coefficients">
                         <strong id="spo-nakamoto-values">-- / --</strong>
-                        <span>Cardano Decentralization</span>
-                        <span class="governance-summary-subvalue">Consensus / Hosting NC</span>
+                        <span data-i18n="cardano_decentralization">Cardano Decentralization</span>
+                        <span class="governance-summary-subvalue" data-i18n="consensus_hosting_nc">Consensus / Hosting NC</span>
                     </div>
                 </div>
                 <div class="pool-relays" id="pool-relays">
-                    <p class="small-text">Loading relay status...</p>
+                    <p class="small-text" data-i18n="loading_relay_status">Loading relay status...</p>
                 </div>
-                <p class="refresh-time small-text">Last Updated: <span id="pool-last-updated">Never</span></p>
+                <p class="refresh-time small-text"><span data-i18n="last_updated">Last Updated:</span> <span id="pool-last-updated">Never</span></p>
             </div>
         </section>
 
         <section class="section" id="drep">
             <div class="section-inner">
-                <h2>DRep Stats</h2>
+                <h2 data-i18n="drep_stats">DRep Stats</h2>
                 <div class="pool-id-line">
-                    <span>DRep ID</span>
+                    <span data-i18n="drep_id">DRep ID</span>
                     <strong id="tdsp-drep-id">drep1yg5gkkyxwwr7d6qflf2qqp6drkp9432h6cvtmun0dqthusqlkz8hj</strong>
-                    <button class="pool-id-stake-button" type="button" data-drep-open>Make DRep</button>
+                    <button class="pool-id-stake-button" type="button" data-drep-open data-i18n="make_drep">Make DRep</button>
                     <button class="pool-copy-icon-button pool-id-copy-button" type="button" data-copy-target="tdsp-drep-id" aria-label="Copy DamionDutch DRep ID" title="Copy DRep ID">⧉</button>
                 </div>
-                <div class="governance-summary" id="drep-stats-summary">
+                <div class="tdsp-tile-grid governance-summary" id="drep-stats-summary">
                     <div id="tdsp-drep-status-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show DamionDutch DRep status">
                         <strong id="tdsp-drep-status">Loading...</strong>
                         <span>DamionDutch</span>
                     </div>
                     <div id="tdsp-drep-delegators-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show DamionDutch DRep delegators">
                         <strong id="tdsp-drep-delegators">Loading...</strong>
-                        <span>Delegators</span>
+                        <span data-i18n="delegators">Delegators</span>
                     </div>
                     <div id="tdsp-drep-delegation-card" class="governance-menu-card">
                         <strong id="tdsp-drep-delegation">Loading...</strong>
-                        <span>Delegation</span>
+                        <span data-i18n="delegation">Delegation</span>
                     </div>
                     <div id="tdsp-drep-voted-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show DamionDutch voted governance actions">
                         <strong id="tdsp-drep-voted">Loading...</strong>
-                        <span>Voted Gov Actions</span>
+                        <span data-i18n="voted_gov_actions">Voted Gov Actions</span>
                     </div>
                     <div id="gov-drep-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show DRep directory">
                         <strong id="gov-drep-count">0</strong>
-                        <span>DReps</span>
+                        <span data-i18n="dreps">DReps</span>
                         <span class="governance-summary-subvalue" id="gov-drep-total-power">Voting Power ₳ 0</span>
                     </div>
                     <div id="gov-drep-top10-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show top 10 DReps by voting power">
                         <strong id="gov-drep-top10-power">₳ 0</strong>
-                        <span>Top 10 DReps</span>
-                        <span class="governance-summary-subvalue" id="gov-drep-top10-count">Voting Power</span>
+                        <span data-i18n="top_10_dreps">Top 10 DReps</span>
+                        <span class="governance-summary-subvalue" id="gov-drep-top10-count" data-i18n="voting_power">Voting Power</span>
                     </div>
                 </div>
             </div>
@@ -327,29 +329,29 @@
 
         <section class="section" id="starch">
             <div class="section-inner">
-                <h2>Starch Stats</h2>
-                <div class="starch-summary">
+                <h2 data-i18n="starch_stats">Starch Stats</h2>
+                <div class="tdsp-tile-grid tdsp-tile-grid--section starch-summary">
                     <div id="starch-pools-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show Starch pools">
                         <strong id="starch-pool-count">Loading...</strong>
-                        <span>Starch Pools</span>
+                        <span data-i18n="starch_pools">Starch Pools</span>
                     </div>
                     <div id="starch-companies-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show Starch companies">
                         <strong id="starchCompanyCount">Loading...</strong>
-                        <span>Companies</span>
+                        <span data-i18n="companies">Companies</span>
                     </div>
                     <div id="starch-miners-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show Starch miners">
                         <strong id="starchMinerCount">Loading...</strong>
                         <span id="starchMinerStatus">Miners</span>
                     </div>
                 </div>
-                <p class="small-text">Source: <a href="https://starch.one" target="_blank" rel="noopener noreferrer" aria-label="Starch.one">starch.one</a></p>
+                <p class="small-text"><span data-i18n="source">Source:</span> <a href="https://starch.one" target="_blank" rel="noopener noreferrer" aria-label="Starch.one">starch.one</a></p>
             </div>
         </section>
 
         <section class="section governance-page" id="governance">
             <div class="section-inner">
-                <h2>Governance</h2>
-                <div class="governance-summary" id="governance-summary">
+                <h2 data-i18n="governance">Governance</h2>
+                <div class="tdsp-tile-grid governance-summary" id="governance-summary">
                     <div id="gov-treasury-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show Cardano treasury data">
                         <strong id="gov-treasury-amount">₳ --</strong>
                         <span id="gov-treasury-epoch">Treasury Epoch --</span>
@@ -363,29 +365,29 @@
                     </div>
                     <div id="gov-active-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show active governance actions">
                         <strong id="gov-active-count">0</strong>
-                        <span>Governance Actions</span>
+                        <span data-i18n="governance_actions">Governance Actions</span>
                         <span class="governance-summary-subvalue" id="gov-active-ask">₳ 0</span>
                     </div>
                     <div id="gov-catalyst-proposals-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show Catalyst and Treasury funding">
                         <strong id="gov-catalyst-proposals-count">Loading...</strong>
-                        <span>Catalyst/Treasury Funding Claimed</span>
+                        <span data-i18n="catalyst_treasury_funding_claimed">Catalyst/Treasury Funding Claimed</span>
                         <span class="governance-summary-subvalue" id="gov-catalyst-funds-count">$0</span>
                     </div>
                     <div id="gov-business-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show Catalyst and Treasury recipients">
                         <strong id="gov-business-count">0</strong>
-                        <span>Catalyst/Treasury Recipients</span>
+                        <span data-i18n="catalyst_treasury_recipients">Catalyst/Treasury Recipients</span>
                         <span class="governance-summary-subvalue funding-recipient-value-row" id="gov-business-total">
                             <span id="gov-business-total-usd">$0</span>
                         </span>
                     </div>
                     <div id="gov-rejected-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show rejected governance actions">
                         <strong id="gov-rejected-count">0</strong>
-                        <span>Rejected Actions</span>
+                        <span data-i18n="rejected_actions">Rejected Actions</span>
                         <span class="governance-summary-subvalue" id="gov-rejected-ask">₳ 0</span>
                     </div>
                     <div id="gov-committee-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show Constitutional Committee members">
                         <strong id="gov-committee-count">0</strong>
-                        <span>CC Members</span>
+                        <span data-i18n="cc_members">CC Members</span>
                         <span class="governance-summary-subvalue" id="gov-committee-voted">Voted --%</span>
                     </div>
                     <div id="gov-cips-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show Cardano Improvement Proposals">
@@ -394,21 +396,21 @@
                         <span class="governance-summary-subvalue" id="gov-cip-status">Cardano Improvement Proposals</span>
                     </div>
                     <div id="constitution-document-open" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Read the Cardano Constitution">
-                        <strong>Read</strong>
-                        <span>Constitution</span>
-                        <span class="governance-summary-subvalue">Cardano Constitution</span>
+                        <strong data-i18n="read">Read</strong>
+                        <span data-i18n="constitution">Constitution</span>
+                        <span class="governance-summary-subvalue" data-i18n="cardano_constitution">Cardano Constitution</span>
                     </div>
                 </div>
 
-                <p class="small-text">Source: <a href="https://api.koios.rest/" target="_blank" rel="noopener noreferrer" aria-label="Koios API">Koios API</a></p>
+                <p class="small-text"><span data-i18n="source">Source:</span> <a href="https://api.koios.rest/" target="_blank" rel="noopener noreferrer" aria-label="Koios API">Koios API</a></p>
             </div>
         </section>
 
         <section class="section cardano-calendar-section" id="calendar">
             <div class="section-inner">
-                <h2>Events</h2>
+                <h2 data-i18n="events">Events</h2>
                 <div id="cardano-events" class="cardano-event-sources" aria-live="polite">
-                    <p class="small-text">Loading upcoming Cardano events...</p>
+                    <p class="small-text" data-i18n="loading_events">Loading upcoming Cardano events...</p>
                 </div>
             </div>
         </section>
@@ -416,7 +418,7 @@
     </main>
 
     <footer class="site-footer">
-        <span>&copy; 2026 The Dutch Stake Pool. All rights reserved.</span>
+        <span data-i18n="footer_rights">&copy; 2026 The Dutch Stake Pool. All rights reserved.</span>
         <span class="nav-db-status is-loading" id="database-status" aria-live="polite">
             <span class="nav-db-status__dot" aria-hidden="true"></span>
             <span id="database-status-text">DB loading</span>
@@ -425,9 +427,9 @@
 
     <template id="stakenow">
         <div id="stake-warning" class="stake-warning">
-            <strong>Check before signing</strong>
-            <p>Always review the transaction in your wallet before approving. Confirm it delegates to The Dutch Stake Pool and does not include anything unexpected.</p>
-            <button class="stake-continue-button" type="button" data-stake-continue>Continue</button>
+            <strong data-i18n="check_before_signing">Check before signing</strong>
+            <p data-i18n="stake_warning">Always review the transaction in your wallet before approving. Confirm it delegates to The Dutch Stake Pool and does not include anything unexpected.</p>
+            <button class="stake-continue-button" type="button" data-stake-continue data-i18n="continue">Continue</button>
         </div>
         <div id="wallet-list" class="wallet-list"></div>
         <p id="wallet-status" class="wallet-status" role="status" aria-live="polite"></p>

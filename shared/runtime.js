@@ -518,10 +518,11 @@
 
     function appendUniversalTileContent(container, options = {}) {
         if (!(container instanceof HTMLElement)) return;
+        const translateText = text => window.TDSPI18n?.translateText?.(text) || text;
 
         const title = document.createElement('strong');
         title.className = options.titleClassName || 'governance-title';
-        title.textContent = cleanTileText(options.title || 'Untitled');
+        title.textContent = cleanTileText(translateText(options.title || 'Untitled'));
         container.appendChild(title);
 
         if (options.primaryNode instanceof Node) {

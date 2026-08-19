@@ -103,7 +103,7 @@
                             <button id="raffle-logout" class="governance-vote-secondary" type="button">Lock</button>
                         </div>
 
-                        <div class="raffle-stats pool-summary">
+                        <div class="tdsp-tile-grid raffle-stats pool-summary">
                             <div>
                                 <strong id="raffle-eligible-count">0</strong>
                                 <span>Eligible Delegators</span>
@@ -114,7 +114,7 @@
                             </div>
                         </div>
                         <p class="governance-card-detail" id="raffle-snapshot-time">Pool snapshot unavailable</p>
-                        <div class="raffle-dashboard-tiles">
+                        <div class="tdsp-tile-grid raffle-dashboard-tiles">
                             <button class="governance-menu-card raffle-open-tile" id="raffle-open" type="button">
                                 <strong class="governance-card-title">Raffles</strong>
                                 <span class="governance-card-detail">Draw, publish and review raffle results</span>
@@ -143,7 +143,7 @@
                             </div>
                         </header>
                         <div class="overlay-dialog-body raffle-overlay-body">
-                            <div class="raffle-admin-menu" id="raffle-admin-menu">
+                            <div class="tdsp-tile-grid raffle-admin-menu" id="raffle-admin-menu">
                                 <button class="governance-menu-card raffle-open-tile" type="button" data-raffle-view="draw">
                                     <strong class="governance-card-title">Draw</strong>
                                     <span class="governance-card-detail">Select and publish a raffle winner</span>

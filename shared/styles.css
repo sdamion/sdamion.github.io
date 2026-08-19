@@ -337,6 +337,8 @@ footer {
     --tdsp-tile-detail-size: 0.9rem;
     --tdsp-tile-detail-weight: 600;
     --tdsp-tile-detail-line-height: 1.35;
+    --tdsp-tile-grid-gap: 14px;
+    --tdsp-tile-grid-min: calc((100% - 56px) / 5);
 }
 
 /* App Shell */
@@ -674,6 +676,29 @@ html[data-theme="dark"] .theme-toggle:not([data-current-theme]) .theme-toggle-ic
     color: var(--accent);
 }
 
+.language-toggle {
+    display: grid;
+    place-items: center;
+    min-width: 28px;
+    height: 26px;
+    padding: 0 2px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--accent-strong);
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 900;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.language-toggle:hover,
+.language-toggle:focus-visible {
+    color: var(--accent);
+    outline: none;
+}
+
 /* Section Layout */
 .section {
     min-height: auto;
@@ -818,16 +843,21 @@ p {
     width: 100%;
 }
 
+.tdsp-tile-grid,
 .pool-summary,
 .starch-summary,
-.governance-summary {
+.governance-summary,
+.cardano-event-source-summary {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(calc((100% - 56px) / 5), 1fr));
-    gap: 14px;
+    grid-template-columns: repeat(auto-fit, minmax(var(--tdsp-tile-grid-min), 1fr));
+    gap: var(--tdsp-tile-grid-gap);
+    width: 100%;
+    min-width: 0;
 }
 
 .pool-summary,
-.starch-summary {
+.starch-summary,
+.tdsp-tile-grid--section {
     margin: 18px 0;
 }
 
@@ -871,6 +901,7 @@ p {
     line-height: var(--tdsp-tile-detail-line-height);
 }
 
+.tdsp-tile-grid.price-panel,
 .pool-summary.price-panel {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     margin: 0;
@@ -4765,9 +4796,11 @@ html[data-theme="dark"] input {
         width: 21%;
     }
 
+    .tdsp-tile-grid,
     .pool-summary,
     .starch-summary,
-    .governance-summary {
+    .governance-summary,
+    .cardano-event-source-summary {
         grid-template-columns: 1fr 1fr;
     }
 
@@ -4775,6 +4808,7 @@ html[data-theme="dark"] input {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
+    .tdsp-tile-grid.price-panel,
     .pool-summary.price-panel {
         grid-template-columns: 1fr 1fr;
     }
@@ -4941,6 +4975,7 @@ html[data-theme="dark"] input {
         padding: 7px 4px;
     }
 
+    .tdsp-tile-grid,
     .governance-summary {
         grid-template-columns: 1fr 1fr;
     }
