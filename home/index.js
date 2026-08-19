@@ -5,6 +5,7 @@ const NEWS_NOTIFICATION_STORAGE_KEY = 'tdsp-news-notification-state-v1';
 const CARDANO_EVENT_NOTIFICATION_STORAGE_KEY = 'tdsp-cardano-event-notification-state-v1';
 const NEWS_API_URL = IS_LOCAL_PREVIEW ? '/__news_proxy__' : 'https://api.tdsp.online/api/news';
 const CARDANO_EVENTS_API_URL = IS_LOCAL_PREVIEW ? '/__events_proxy__' : 'https://api.tdsp.online/api/events';
+const REALFI_DOCS_URL = 'https://docs.realfi.co/';
 const DEFAULT_SITE_ALERT_SETTINGS = Object.freeze({
     governance: true,
     news: true,
@@ -610,6 +611,7 @@ function initPoolMenuCards() {
             event => window.TDSPStarch?.load?.().then(() => window.openTdspStarchCompanyOverlay?.(event.currentTarget)),
             'starchPoolBound'
         ],
+        ['pool-realfi-card', event => openRealfiWebsiteOverlay(event.currentTarget), 'realfiBound'],
         ['starch-pools-card', event => openStarchPoolsOverlay(event.currentTarget), 'starchPoolBound']
     ].forEach(([id, openMenu, datasetKey]) => {
         window.TDSPRuntime?.bindMenuTrigger?.(document.getElementById(id), openMenu, {
@@ -620,6 +622,47 @@ function initPoolMenuCards() {
             errorMessage: 'Pool menu could not be opened.'
         });
     });
+}
+
+function openRealfiWebsiteOverlay(returnFocus = document.activeElement) {
+    closeRealfiWebsiteOverlay(false);
+
+    const panel = document.createElement('div');
+    panel.className = 'embedded-site-panel realfi-site-panel';
+
+    const notice = document.createElement('p');
+    notice.className = 'embedded-site-notice';
+    notice.textContent = 'RealFi Docs is an external website. DYOR before clicking external links inside this embedded page.';
+
+    const frameWrap = document.createElement('div');
+    frameWrap.className = 'embedded-site-frame';
+
+    const frame = document.createElement('iframe');
+    frame.title = 'RealFi Docs';
+    frame.src = REALFI_DOCS_URL;
+    frame.loading = 'lazy';
+    frame.referrerPolicy = 'no-referrer-when-downgrade';
+    frame.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox');
+
+    frameWrap.appendChild(frame);
+    panel.append(notice, frameWrap);
+
+    createPoolMenuOverlay({
+        id: 'pool-realfi-overlay',
+        titleId: 'pool-realfi-title',
+        titleText: 'Realfi SPO',
+        headerMeta: REALFI_DOCS_URL,
+        closeLabel: 'Close RealFi Docs',
+        closeOverlay: closeRealfiWebsiteOverlay,
+        returnFocus,
+        rootTitle: 'Realfi SPO',
+        bodyNode: panel,
+        enableSearch: false
+    });
+}
+
+function closeRealfiWebsiteOverlay(restoreFocus = true) {
+    closePoolMenuOverlay('pool-realfi-overlay', restoreFocus);
 }
 
 function openPoolDelegatorsOverlay() {
@@ -1042,6 +1085,7 @@ function createPoolMenuOverlay({
     bodyNode,
     closeOnBackdrop = true,
     closeOnEscape = true,
+    enableSearch = true,
     defaultSort = '',
     extraActions = []
 }) {
@@ -1057,6 +1101,7 @@ function createPoolMenuOverlay({
         bodyNodes: [bodyNode],
         closeOnBackdrop,
         closeOnEscape,
+        enableSearch,
         defaultSort,
         extraActions
     });

@@ -47,7 +47,7 @@
 
     <!-- Preload Logo -->
     <link rel="preload" href="tdsp_logo.webp?v=20260727-smooth-lines" as="image" type="image/webp">
-    <link rel="stylesheet" href="shared/styles.css?v=20260819-mobile-hero-center-wrap">
+    <link rel="stylesheet" href="shared/styles.css?v=20260819-realfi-overlay">
     <link rel="stylesheet" href="delegators/raffle.css?v=20260818-universal-overlay-mobile">
 
     <script src="shared/runtime.js?v=20260818-local-preview-50" defer></script>
@@ -61,7 +61,7 @@
     <script src="home/news-overlay.js?v=20260818-news-overlay-module" defer></script>
     <script src="home/cardano-events.js?v=20260819-cardano-events-module" defer></script>
     <script src="home/prices.js?v=20260819-prices-module" defer></script>
-    <script src="home/index.js?v=20260819-pool-status-fallback" defer></script>
+    <script src="home/index.js?v=20260819-realfi-overlay" defer></script>
 </head>
 <body>
     <header class="site-header" id="site-header">
@@ -262,10 +262,10 @@
                         <strong id="pool-starch-status" class="pool-status-value">...</strong>
                         <span class="pool-provider-label"><img class="pool-provider-icon" src="starchCompanyLogo.webp?v=20260727-retina" alt=""><span id="pool-starch-miner-label" class="pool-provider-label-text">... Starch Miners</span></span>
                     </div>
-                    <a id="pool-realfi-card" class="pool-summary-link governance-menu-card" href="https://realfi.co/" target="_blank" rel="noopener noreferrer" aria-label="Open Realfi SPO">
+                    <div id="pool-realfi-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Open Realfi SPO">
                         <strong class="pool-status-value">Active</strong>
                         <span class="pool-provider-label"><img class="pool-provider-icon" src="realfi-logo.svg" alt="">Realfi SPO</span>
-                    </a>
+                    </div>
                     <div id="gov-spo-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show stake pool operator directory">
                         <strong id="gov-spo-count">0</strong>
                         <span>SPOs</span>
