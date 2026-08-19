@@ -727,9 +727,10 @@ html[data-theme="dark"] .theme-toggle:not([data-current-theme]) .theme-toggle-ic
 
 .hero-brand {
     display: grid;
-    grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
-    gap: 56px;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
     align-items: center;
+    justify-items: center;
     margin: 28px 0;
     min-width: 0;
 }
@@ -750,6 +751,7 @@ h1 {
     color: var(--text);
     font-size: clamp(2.8rem, 8vw, 6rem);
     line-height: 0.95;
+    white-space: nowrap;
 }
 
 h2 {
@@ -771,14 +773,42 @@ p {
     font-size: clamp(1.1rem, 2vw, 1.35rem);
 }
 
+.hero-copy {
+    display: grid;
+    justify-items: center;
+    justify-self: center;
+    width: 100%;
+    text-align: center;
+}
+
+.hero-copy h1,
+.hero-copy .lead {
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
+}
+
+.hero-copy h1 {
+    width: fit-content;
+    max-width: 100%;
+}
+
+.hero-copy .lead {
+    width: fit-content;
+    max-width: 100%;
+    white-space: nowrap;
+    font-size: clamp(0.58rem, 2.2vw, 1.35rem);
+}
+
 .hero-media {
     display: grid;
     gap: 18px;
     justify-items: center;
+    order: -1;
 }
 
 .hero-logo {
-    width: min(100%, 420px);
+    width: min(100%, 260px);
     max-width: none;
     filter: drop-shadow(0 26px 28px rgba(22, 22, 22, 0.14));
 }
@@ -1299,6 +1329,12 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 :root[data-theme="light"] .pool-id-stake-button,
 :root:not([data-theme="dark"]) .pool-id-stake-button {
     color: #050807;
+}
+
+:root[data-theme="dark"] .pool-id-stake-button,
+:root[data-theme="dark"] .pool-id-stake-button:hover,
+:root[data-theme="dark"] .pool-id-stake-button:focus-visible {
+    color: #fff;
 }
 
 .pool-relays {
@@ -4785,13 +4821,18 @@ html[data-theme="dark"] input {
 
     h1 {
         max-width: 100%;
-        overflow-wrap: break-word;
-        font-size: 2.05rem;
+        overflow-wrap: normal;
+        font-size: clamp(1.55rem, 7vw, 2.05rem);
+        white-space: nowrap;
     }
 
     .lead {
         max-width: 100%;
         font-size: 1rem;
+    }
+
+    .hero-logo {
+        width: min(100%, 180px);
     }
 
     .cardano-events-grid {
@@ -4813,8 +4854,9 @@ html[data-theme="dark"] input {
 @media (max-width: 480px) {
     h1 {
         max-width: 100%;
-        overflow-wrap: break-word;
-        font-size: 1.95rem;
+        overflow-wrap: normal;
+        font-size: clamp(1.45rem, 6.8vw, 1.95rem);
+        white-space: nowrap;
     }
 
     h2 {
