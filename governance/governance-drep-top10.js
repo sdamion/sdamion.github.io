@@ -1,4 +1,17 @@
 (function () {
+    function translateText(value) {
+        const text = String(value || '');
+        return window.TDSPI18n?.translateText?.(text) || text;
+    }
+
+    function setAutoTranslatedText(element, value) {
+        if (!(element instanceof HTMLElement)) return;
+        const text = String(value || '');
+        element.setAttribute('data-i18n-auto', '');
+        element.setAttribute('data-i18n-auto-original', text);
+        element.textContent = translateText(text);
+    }
+
     function createDrepTop10Module({
         bindOpen,
         formatVoteChoice,
@@ -29,8 +42,8 @@
             const order = ['Yes', 'No', 'Abstain', 'Not voted', 'Not voted yet', 'Not applicable', 'Unknown'];
             const parts = order
                 .filter(key => counts.has(key))
-                .map(key => `${key}: ${counts.get(key)}`);
-            return parts.length ? parts.join(' • ') : 'No vote data';
+                .map(key => `${translateText(key)}: ${counts.get(key)}`);
+            return parts.length ? parts.join(' • ') : translateText('No vote data');
         }
 
         function createVoteChip(drep, choice) {
@@ -45,7 +58,7 @@
             const name = document.createElement('strong');
             name.textContent = drep?.name || 'DRep';
             const vote = document.createElement('span');
-            vote.textContent = choice || 'Unknown';
+            setAutoTranslatedText(vote, choice || 'Unknown');
             chip.append(name, vote);
             return chip;
         }

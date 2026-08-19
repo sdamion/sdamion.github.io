@@ -518,17 +518,24 @@
         const element = document.createElement(options.tagName || 'p');
         element.className = options.className || 'small-text';
         const value = String(text || '');
-        element.textContent = window.TDSPI18n?.translateText?.(value) || value;
+        setAutoTranslatedText(element, value);
         return element;
+    }
+
+    function setAutoTranslatedText(element, text) {
+        if (!(element instanceof HTMLElement)) return;
+        const value = cleanTileText(String(text || ''));
+        element.setAttribute('data-i18n-auto', '');
+        element.setAttribute('data-i18n-auto-original', value);
+        element.textContent = cleanTileText(window.TDSPI18n?.translateText?.(value) || value);
     }
 
     function appendUniversalTileContent(container, options = {}) {
         if (!(container instanceof HTMLElement)) return;
-        const translateText = text => window.TDSPI18n?.translateText?.(text) || text;
 
         const title = document.createElement('strong');
         title.className = options.titleClassName || 'governance-title';
-        title.textContent = cleanTileText(translateText(options.title || 'Untitled'));
+        setAutoTranslatedText(title, options.title || 'Untitled');
         container.appendChild(title);
 
         if (options.primaryNode instanceof Node) {
@@ -536,7 +543,7 @@
         } else if (options.primaryText) {
             const primary = document.createElement('span');
             primary.className = options.primaryClassName || 'governance-card-detail governance-treasury-withdrawal-amount';
-            primary.textContent = cleanTileText(translateText(options.primaryText));
+            setAutoTranslatedText(primary, options.primaryText);
             container.appendChild(primary);
         }
 
@@ -544,14 +551,14 @@
         if (context) {
             const contextLine = document.createElement('span');
             contextLine.className = 'governance-card-detail governance-funding-card-context';
-            contextLine.textContent = cleanTileText(translateText(context));
+            setAutoTranslatedText(contextLine, context);
             container.appendChild(contextLine);
         }
 
         if (options.proposer) {
             const proposer = document.createElement('span');
             proposer.className = 'governance-card-detail governance-funding-card-proposer';
-            const label = translateText('Proposer');
+            const label = window.TDSPI18n?.translateText?.('Proposer') || 'Proposer';
             proposer.textContent = `${label}: ${cleanTileText(options.proposer)}`;
             container.appendChild(proposer);
         }
@@ -565,7 +572,7 @@
             if (!detailText) return;
             const detail = document.createElement('span');
             detail.className = item?.className || 'governance-card-detail';
-            detail.textContent = translateText(detailText);
+            setAutoTranslatedText(detail, detailText);
             container.appendChild(detail);
         });
     }
@@ -574,12 +581,10 @@
         const tileSelector = '.governance-menu-card, .pool-summary-clickable';
         root.querySelectorAll?.(tileSelector).forEach(tile => {
             if (!(tile instanceof HTMLElement)) return;
-            tile.querySelectorAll(':scope > span:not([data-i18n])').forEach(label => {
+            tile.querySelectorAll(':scope > strong:not([data-i18n]), :scope > span:not([data-i18n])').forEach(label => {
                 if (!(label instanceof HTMLElement)) return;
                 if (label.children.length > 0) return;
-                label.setAttribute('data-i18n-auto', '');
-                label.setAttribute('data-i18n-auto-original', label.textContent || '');
-                label.textContent = window.TDSPI18n?.translateText?.(label.textContent || '') || label.textContent || '';
+                setAutoTranslatedText(label, label.getAttribute('data-i18n-auto-original') || label.textContent || '');
             });
         });
     }

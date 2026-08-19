@@ -4691,7 +4691,7 @@ async function renderGovernanceVoteWallets(container, proposal, voteKind) {
         }
 
         const label = document.createElement('strong');
-        label.textContent = 'Connect your DRep wallet';
+        setGovernanceAutoTranslatedText(label, 'Connect your DRep wallet');
         const list = document.createElement('div');
         list.className = 'wallet-list governance-vote-wallet-list';
         wallets.forEach(walletInfo => {
@@ -4732,7 +4732,7 @@ function appendGovernanceVoteChangeButton(container, proposal) {
 function appendGovernanceVoteStatus(container, message, isError = false) {
     const status = document.createElement('p');
     status.className = `governance-vote-status${isError ? ' is-error' : ''}`;
-    status.textContent = message;
+    setGovernanceAutoTranslatedText(status, message);
     container.appendChild(status);
     return status;
 }
@@ -4758,7 +4758,7 @@ async function prepareGovernanceVote(container, proposal, voteKind, walletInfo) 
             throw new Error('This wallet did not provide CIP-95 DRep access. No transaction was built.');
         }
 
-        status.textContent = 'Verifying DRep registration...';
+        setGovernanceAutoTranslatedText(status, 'Verifying DRep registration...');
         const drepPayload = await fetchWalletDrepDetails(drep, { allowDetailLookup: false });
         const drepInfo = drepPayload?.info;
         if (!drepInfo || drepInfo.drep_status !== 'registered') {
@@ -4766,7 +4766,7 @@ async function prepareGovernanceVote(container, proposal, voteKind, walletInfo) 
         }
         const drepName = extractDrepNameFromEntry(drepInfo) || extractDrepNameFromEntry(drepPayload?.metadata);
 
-        status.textContent = 'Checking current vote cache...';
+        setGovernanceAutoTranslatedText(status, 'Checking current vote cache...');
         const voteLookup = await fetchOptionalProposalVotesPayload(latestProposal.proposal_id, 8000);
         const existingVote = voteLookup.payload?.votes?.dreps
             ? findExistingDrepVote(voteLookup.payload, drep)
@@ -5051,10 +5051,10 @@ function createGovernanceVoteRationaleFields(context) {
     const wrapper = document.createElement('section');
     wrapper.className = 'governance-vote-rationale';
     const title = document.createElement('strong');
-    title.textContent = 'On-chain rationale (optional)';
+    setGovernanceAutoTranslatedText(title, 'On-chain rationale (optional)');
     const help = document.createElement('p');
     help.className = 'small-text governance-drep-registration-help';
-    help.textContent = 'Your rationale can be up to 5000 characters and will be included as Cardano transaction metadata in this vote transaction. Long text is split into 64-byte chunks automatically.';
+    setGovernanceAutoTranslatedText(help, 'Your rationale can be up to 5000 characters and will be included as Cardano transaction metadata in this vote transaction. Long text is split into 64-byte chunks automatically.');
 
     const drepField = createDrepRegistrationField(
         'DRep key',
@@ -5119,9 +5119,9 @@ async function improveGovernanceVoteRationale(context, controls) {
     output.replaceChildren();
     const status = document.createElement('p');
     status.className = 'small-text governance-vote-rationale-status';
-    status.textContent = reason
+    setGovernanceAutoTranslatedText(status, reason
         ? 'TDSPBot is improving your rationale...'
-        : 'Add your reason or pointers first, then TDSPBot can improve it.';
+        : 'Add your reason or pointers first, then TDSPBot can improve it.');
     output.appendChild(status);
     if (!reason) return;
 
@@ -5132,7 +5132,7 @@ async function improveGovernanceVoteRationale(context, controls) {
         output.replaceChildren();
 
         const label = document.createElement('strong');
-        label.textContent = 'Improved rationale';
+        setGovernanceAutoTranslatedText(label, 'Improved rationale');
         const improvedWrapper = document.createElement('div');
         improvedWrapper.className = 'governance-drep-registration-field';
         const improvedInput = document.createElement('textarea');
@@ -5146,23 +5146,23 @@ async function improveGovernanceVoteRationale(context, controls) {
         const useButton = document.createElement('button');
         useButton.type = 'button';
         useButton.className = 'governance-vote-secondary';
-        useButton.textContent = 'Use improved rationale';
+        setGovernanceAutoTranslatedText(useButton, 'Use improved rationale');
         useButton.addEventListener('click', () => {
             controls.reasonInput.value = improvedInput.value;
             controls.reasonInput.dispatchEvent(new Event('input', { bubbles: true }));
-            status.textContent = 'Improved rationale copied into your original rationale field. Review it before continuing.';
+            setGovernanceAutoTranslatedText(status, 'Improved rationale copied into your original rationale field. Review it before continuing.');
             output.prepend(status);
         });
 
         const note = document.createElement('p');
         note.className = 'small-text governance-vote-rationale-status';
-        note.textContent = 'Review this text carefully. It will only be used when you copy it into the original rationale field and continue.';
+        setGovernanceAutoTranslatedText(note, 'Review this text carefully. It will only be used when you copy it into the original rationale field and continue.');
 
         output.append(label, improvedWrapper, useButton, note);
     } catch (error) {
         if (!output.isConnected) return;
         status.classList.add('is-error');
-        status.textContent = error?.message || 'TDSPBot could not improve the rationale right now.';
+        setGovernanceAutoTranslatedText(status, error?.message || 'TDSPBot could not improve the rationale right now.');
     }
 }
 
@@ -5925,7 +5925,7 @@ function createDrepVoteChartSection(breakdown, drepVotes, proposal = null) {
     section.className = 'governance-vote-chart';
 
     const title = document.createElement('strong');
-    title.textContent = 'DRep vote overview';
+    setGovernanceAutoTranslatedText(title, 'DRep vote overview');
     section.appendChild(title);
 
     const layout = document.createElement('div');
@@ -5970,6 +5970,14 @@ function createVoteLegendItem(item, drepVotes, proposal = null) {
     return element;
 }
 
+function setGovernanceAutoTranslatedText(element, text) {
+    if (!(element instanceof HTMLElement)) return;
+    const value = String(text || '').replace(/\s+/g, ' ').trim();
+    element.setAttribute('data-i18n-auto', '');
+    element.setAttribute('data-i18n-auto-original', value);
+    element.textContent = window.TDSPI18n?.translateText?.(value) || value;
+}
+
 function createGovernanceStatBox({ label, detail, color, statusClass = '', onClick = null }) {
     const element = document.createElement(onClick ? 'button' : 'div');
     element.className = `governance-vote-legend-item governance-stat-box${onClick ? ' is-clickable' : ''}${statusClass ? ` ${statusClass}` : ''}`;
@@ -5989,10 +5997,10 @@ function createGovernanceStatBox({ label, detail, color, statusClass = '', onCli
     text.className = 'governance-vote-legend-copy';
 
     const labelElement = document.createElement('strong');
-    labelElement.textContent = label;
+    setGovernanceAutoTranslatedText(labelElement, label);
 
     const value = document.createElement('span');
-    value.textContent = detail;
+    setGovernanceAutoTranslatedText(value, detail);
 
     text.appendChild(labelElement);
     text.appendChild(value);
@@ -6023,11 +6031,11 @@ function renderDrepDetailsPanel(container, item, drepVotes, proposal = null) {
 
     if (item.key === 'always-abstain' || item.key === 'always-no-confidence') {
         const title = document.createElement('strong');
-        title.textContent = item.label;
+        setGovernanceAutoTranslatedText(title, item.label);
 
         const message = document.createElement('p');
         message.className = 'small-text';
-        message.textContent = 'This API only provides stake totals for this bucket, not individual DRep IDs.';
+        setGovernanceAutoTranslatedText(message, 'This API only provides stake totals for this bucket, not individual DRep IDs.');
 
         container.appendChild(title);
         container.appendChild(message);
@@ -6072,7 +6080,7 @@ function openDrepDirectoryOverlay() {
     const becomeDrep = document.createElement('button');
     becomeDrep.type = 'button';
     becomeDrep.className = 'governance-become-drep-button';
-    becomeDrep.textContent = 'Become a DRep';
+    setGovernanceAutoTranslatedText(becomeDrep, 'Become a DRep');
     becomeDrep.setAttribute('aria-label', 'Register as a DRep');
     becomeDrep.addEventListener('click', event => openDrepRegistrationOverlay(event.currentTarget));
 
@@ -6080,7 +6088,7 @@ function openDrepDirectoryOverlay() {
     panel.className = 'governance-drep-directory-list';
     const loading = document.createElement('p');
     loading.className = 'small-text';
-    loading.textContent = 'Loading DRep data...';
+    setGovernanceAutoTranslatedText(loading, 'Loading DRep data...');
     panel.appendChild(loading);
 
     createGovernanceMenuOverlay({
@@ -6104,7 +6112,7 @@ function openDrepDirectoryOverlay() {
         panel.textContent = '';
         const message = document.createElement('p');
         message.className = 'small-text';
-        message.textContent = 'DRep data could not be loaded.';
+        setGovernanceAutoTranslatedText(message, 'DRep data could not be loaded.');
         panel.appendChild(message);
     });
 }
@@ -6185,7 +6193,7 @@ function createSpoNakamotoMetricSection(titleText, metric) {
     section.className = 'governance-chart-panel';
 
     const title = document.createElement('strong');
-    title.textContent = titleText;
+    setGovernanceAutoTranslatedText(title, titleText);
     section.appendChild(title);
 
     if (titleText === 'Geographic NC') {
@@ -6214,13 +6222,13 @@ function createSpoNakamotoMetricSection(titleText, metric) {
 
     const methodology = document.createElement('p');
     methodology.className = 'small-text';
-    methodology.textContent = metric?.methodology || '';
+    setGovernanceAutoTranslatedText(methodology, metric?.methodology || '');
     section.appendChild(methodology);
 
     const domains = Array.isArray(metric?.threshold_domains) ? metric.threshold_domains : [];
     if (domains.length) {
         const domainTitle = document.createElement('strong');
-        domainTitle.textContent = 'Domains reaching the 51% threshold';
+        setGovernanceAutoTranslatedText(domainTitle, 'Domains reaching the 51% threshold');
         section.appendChild(domainTitle);
 
         const list = document.createElement('div');
@@ -6291,7 +6299,8 @@ function createSpoGeographicMap(metric) {
 
     const figure = document.createElement('figure');
     figure.className = 'spo-geographic-map';
-    figure.setAttribute('aria-label', `World map with ${points.length.toLocaleString('en-US')} unique SPO relay locations`);
+    const mapLabel = `World map with ${points.length.toLocaleString('en-US')} unique SPO relay locations`;
+    figure.setAttribute('aria-label', window.TDSPI18n?.translateText?.(mapLabel) || mapLabel);
 
     const map = document.createElement('div');
     map.className = 'spo-geographic-map__canvas';
@@ -6455,7 +6464,10 @@ function createSpoGeographicMap(metric) {
 
     const caption = document.createElement('figcaption');
     caption.className = 'small-text';
-    caption.textContent = `${points.length.toLocaleString('en-US')} unique relay locations from ${rawPoints.length.toLocaleString('en-US')} relay IP records. Zoom or drag the map; point size represents attributed active stake. Select a shared location to view all SPOs there. Map: Natural Earth, CC0.`;
+    setGovernanceAutoTranslatedText(
+        caption,
+        `${points.length.toLocaleString('en-US')} unique relay locations from ${rawPoints.length.toLocaleString('en-US')} relay IP records. Zoom or drag the map; point size represents attributed active stake. Select a shared location to view all SPOs there. Map: Natural Earth, CC0.`
+    );
     figure.append(map, caption);
     return figure;
 }
@@ -6541,14 +6553,14 @@ function renderSpoNakamotoPanel(panel, payload) {
     if (!nakamoto?.consensus || !nakamoto?.infrastructure) {
         const message = document.createElement('p');
         message.className = 'small-text';
-        message.textContent = 'Nakamoto coefficient data is not available yet.';
+        setGovernanceAutoTranslatedText(message, 'Nakamoto coefficient data is not available yet.');
         panel.appendChild(message);
         return;
     }
 
     const note = document.createElement('p');
     note.className = 'small-text';
-    note.textContent = `51% stake threshold • ${nakamoto.stake_basis || 'cached SPO stake'}`;
+    setGovernanceAutoTranslatedText(note, `51% stake threshold • ${nakamoto.stake_basis || 'cached SPO stake'}`);
     const missingMetric = (label) => ({
         available: false,
         reason: `${label} requires a refreshed version 2 SPO decentralization cache.`
@@ -6573,7 +6585,7 @@ function openSpoNakamotoOverlay(returnFocus) {
     panel.className = 'governance-drep-directory-list';
     const loading = document.createElement('p');
     loading.className = 'small-text';
-    loading.textContent = 'Loading Nakamoto coefficients...';
+    setGovernanceAutoTranslatedText(loading, 'Loading Nakamoto coefficients...');
     panel.appendChild(loading);
 
     createGovernanceMenuOverlay({
@@ -6604,7 +6616,7 @@ function openSpoNakamotoOverlay(returnFocus) {
             panel.replaceChildren();
             const message = document.createElement('p');
             message.className = 'small-text';
-            message.textContent = 'Nakamoto coefficient data could not be loaded.';
+            setGovernanceAutoTranslatedText(message, 'Nakamoto coefficient data could not be loaded.');
             panel.appendChild(message);
         });
 }
@@ -6793,7 +6805,7 @@ function createSpoActivityStatusChart(spos) {
     section.className = 'governance-vote-chart governance-chart-panel governance-drep-status-chart';
 
     const title = document.createElement('strong');
-    title.textContent = 'SPO Status';
+    setGovernanceAutoTranslatedText(title, 'SPO Status');
 
     const layout = document.createElement('div');
     layout.className = 'governance-vote-chart-layout';
@@ -6868,7 +6880,7 @@ function createSpoCloudProviderChart(spos) {
     section.className = 'governance-vote-chart governance-chart-panel governance-drep-status-chart';
 
     const title = document.createElement('strong');
-    title.textContent = 'Cloud Service Usage';
+    setGovernanceAutoTranslatedText(title, 'Cloud Service Usage');
 
     const layout = document.createElement('div');
     layout.className = 'governance-vote-chart-layout';
@@ -7075,7 +7087,7 @@ function openSpoDetailOverlay(spo, returnFocus) {
     content.className = 'governance-detail-content';
     const loading = document.createElement('p');
     loading.className = 'small-text';
-    loading.textContent = 'Loading SPO details...';
+    setGovernanceAutoTranslatedText(loading, 'Loading SPO details...');
     content.appendChild(loading);
 
     createGovernanceMenuOverlay({
@@ -7104,7 +7116,7 @@ function openSpoDetailOverlay(spo, returnFocus) {
             content.replaceChildren();
             const message = document.createElement('p');
             message.className = 'small-text';
-            message.textContent = 'SPO details could not be loaded.';
+            setGovernanceAutoTranslatedText(message, 'SPO details could not be loaded.');
             content.appendChild(message);
         });
 }
@@ -7141,7 +7153,7 @@ function renderSpoDetails(container, spo) {
     container.appendChild(stats);
 
     const relayTitle = document.createElement('strong');
-    relayTitle.textContent = `Relay nodes (${Number(spo.relay_count || spo.relays?.length || 0).toLocaleString('en-US')})`;
+    setGovernanceAutoTranslatedText(relayTitle, `Relay nodes (${Number(spo.relay_count || spo.relays?.length || 0).toLocaleString('en-US')})`);
     container.appendChild(relayTitle);
 
     const relayList = document.createElement('div');
@@ -7150,21 +7162,21 @@ function renderSpoDetails(container, spo) {
     if (!relays.length) {
         const message = document.createElement('p');
         message.className = 'small-text';
-        message.textContent = 'No advertised relay nodes are available.';
+        setGovernanceAutoTranslatedText(message, 'No advertised relay nodes are available.');
         relayList.appendChild(message);
     } else {
         relays.forEach((relay, index) => {
             const card = document.createElement('div');
             card.className = 'governance-spo-relay governance-menu-card';
             const title = document.createElement('strong');
-            title.textContent = `Relay ${index + 1}`;
+            setGovernanceAutoTranslatedText(title, `Relay ${index + 1}`);
             card.appendChild(title);
             if (typeof relay?.up === 'boolean') {
                 const status = document.createElement('span');
                 status.className = `pool-status-value ${relay.up ? 'is-active' : 'is-inactive'}`;
-                status.textContent = relay.up
+                setGovernanceAutoTranslatedText(status, relay.up
                     ? 'Active Relay'
-                    : 'Passive Relay';
+                    : 'Passive Relay');
                 card.appendChild(status);
             }
             const address = formatSpoRelayAddress(relay);
@@ -7181,7 +7193,7 @@ function renderSpoDetails(container, spo) {
             if (location) {
                 const locationLine = document.createElement('span');
                 locationLine.className = 'governance-spo-relay-location';
-                locationLine.textContent = `Location: ${location}`;
+                setGovernanceAutoTranslatedText(locationLine, `Location: ${location}`);
                 card.appendChild(locationLine);
             }
             const provider = relay?.provider || spo.cloud_provider;
@@ -7189,7 +7201,7 @@ function renderSpoDetails(container, spo) {
                 card.appendChild(createSpoProviderBadge(provider));
             } else {
                 const provider = document.createElement('span');
-                provider.textContent = 'Cloud provider not identified';
+                setGovernanceAutoTranslatedText(provider, 'Cloud provider not identified');
                 card.appendChild(provider);
             }
             relayList.appendChild(card);
@@ -7272,7 +7284,7 @@ function createSpoProviderBadge(provider) {
     const badge = document.createElement('span');
     badge.className = 'governance-spo-provider';
     const name = document.createElement('span');
-    name.textContent = `Cloud Service: ${provider?.name || 'Not identified'}`;
+    setGovernanceAutoTranslatedText(name, `Cloud Service: ${provider?.name || 'Not identified'}`);
     badge.appendChild(name);
     badge.setAttribute('aria-label', name.textContent);
     return badge;
@@ -7438,9 +7450,9 @@ function renderDrepRegistrationForm(container, values = {}) {
     const warning = document.createElement('div');
     warning.className = 'governance-vote-warning governance-menu-card';
     const title = document.createElement('strong');
-    title.textContent = 'On-chain DRep registration';
+    setGovernanceAutoTranslatedText(title, 'On-chain DRep registration');
     const text = document.createElement('p');
-    text.textContent = 'Registration currently requires a refundable ₳ 500 deposit plus a network fee. Verify both amounts in your wallet before signing.';
+    setGovernanceAutoTranslatedText(text, 'Registration currently requires a refundable ₳ 500 deposit plus a network fee. Verify both amounts in your wallet before signing.');
     warning.append(title, text);
 
     const form = document.createElement('form');
@@ -7462,7 +7474,7 @@ function renderDrepRegistrationForm(container, values = {}) {
     const createMetadata = document.createElement('button');
     createMetadata.type = 'button';
     createMetadata.className = 'governance-vote-secondary governance-create-metadata-button';
-    createMetadata.textContent = 'Create metadata file';
+    setGovernanceAutoTranslatedText(createMetadata, 'Create metadata file');
     const urlControls = document.createElement('div');
     urlControls.className = 'governance-drep-metadata-url-controls';
     urlField.input.replaceWith(urlControls);
@@ -7479,7 +7491,7 @@ function renderDrepRegistrationForm(container, values = {}) {
     const createHash = document.createElement('button');
     createHash.type = 'button';
     createHash.className = 'governance-vote-secondary governance-create-metadata-button';
-    createHash.textContent = 'Create metadata hash';
+    setGovernanceAutoTranslatedText(createHash, 'Create metadata hash');
     const hashControls = document.createElement('div');
     hashControls.className = 'governance-drep-metadata-url-controls';
     hashField.input.replaceWith(hashControls);
@@ -7488,7 +7500,7 @@ function renderDrepRegistrationForm(container, values = {}) {
         removeDrepRegistrationFormStatus(form);
         createHash.disabled = true;
         const originalText = createHash.textContent;
-        createHash.textContent = 'Creating...';
+        setGovernanceAutoTranslatedText(createHash, 'Creating...');
         try {
             const metadataUrl = validateDrepMetadataUrl(urlField.input.value, { required: true });
             const fetchUrl = getDrepMetadataFetchUrl(metadataUrl, { refresh: true });
@@ -7508,17 +7520,17 @@ function renderDrepRegistrationForm(container, values = {}) {
             appendGovernanceVoteStatus(form, error?.message || 'Metadata hash could not be created.', true);
         } finally {
             createHash.disabled = false;
-            createHash.textContent = originalText;
+            setGovernanceAutoTranslatedText(createHash, createHash.getAttribute('data-i18n-auto-original') === 'Creating...' ? 'Create metadata hash' : originalText);
         }
     });
     const help = document.createElement('p');
     help.className = 'small-text governance-drep-registration-help';
-    help.textContent = 'Enter both metadata fields or leave both empty. Without metadata, your DRep can vote but may not appear by name in public directories.';
+    setGovernanceAutoTranslatedText(help, 'Enter both metadata fields or leave both empty. Without metadata, your DRep can vote but may not appear by name in public directories.');
 
     const submit = document.createElement('button');
     submit.type = 'submit';
     submit.className = 'governance-vote-submit';
-    submit.textContent = 'Continue to wallet';
+    setGovernanceAutoTranslatedText(submit, 'Continue to wallet');
     form.append(
         urlField.wrapper,
         hashField.wrapper,
@@ -7543,7 +7555,7 @@ function renderDrepRegistrationForm(container, values = {}) {
     govTool.href = 'https://gov.tools/';
     govTool.target = '_blank';
     govTool.rel = 'noopener noreferrer';
-    govTool.textContent = 'Use GovTool instead';
+    setGovernanceAutoTranslatedText(govTool, 'Use GovTool instead');
 
     container.append(warning, form, govTool);
 }
@@ -7583,11 +7595,11 @@ function openDrepMetadataBuilderOverlay(profile = {}, returnFocus, onCreated) {
     };
     const help = document.createElement('p');
     help.className = 'small-text governance-drep-registration-help';
-    help.textContent = 'Only DRep name is required by CIP-119. The name must not already exist in the DRep directory. The downloaded file must be uploaded unchanged before using its URL and hash.';
+    setGovernanceAutoTranslatedText(help, 'Only DRep name is required by CIP-119. The name must not already exist in the DRep directory. The downloaded file must be uploaded unchanged before using its URL and hash.');
     const submit = document.createElement('button');
     submit.type = 'submit';
     submit.className = 'governance-vote-submit';
-    submit.textContent = 'Create and save drep.jsonld';
+    setGovernanceAutoTranslatedText(submit, 'Create and save drep.jsonld');
     form.append(
         nameField.wrapper,
         paymentField.wrapper,
@@ -7609,9 +7621,9 @@ function openDrepMetadataBuilderOverlay(profile = {}, returnFocus, onCreated) {
         submit.disabled = true;
         try {
             const nextProfile = collectDrepMetadataProfile(profileFields, { requireName: true });
-            submit.textContent = 'Checking name...';
+            setGovernanceAutoTranslatedText(submit, 'Checking name...');
             await assertDrepMetadataNameAvailable(nextProfile.givenName);
-            submit.textContent = 'Creating file...';
+            setGovernanceAutoTranslatedText(submit, 'Creating file...');
             const documentData = createCip119MetadataDocument(nextProfile);
             const { hashDrepAnchor } = await loadGovernanceMesh();
             const hash = hashDrepAnchor(documentData);
@@ -7621,7 +7633,7 @@ function openDrepMetadataBuilderOverlay(profile = {}, returnFocus, onCreated) {
         } catch (error) {
             appendGovernanceVoteStatus(form, error?.message || 'Metadata file could not be created.', true);
             submit.disabled = false;
-            submit.textContent = 'Create and save drep.jsonld';
+            setGovernanceAutoTranslatedText(submit, 'Create and save drep.jsonld');
         }
     });
     content.appendChild(form);
@@ -7651,12 +7663,13 @@ function createDrepRegistrationField(labelText, id, placeholder, value) {
     wrapper.className = 'governance-drep-registration-field';
     wrapper.htmlFor = id;
     const label = document.createElement('strong');
-    label.textContent = labelText;
+    setGovernanceAutoTranslatedText(label, labelText);
     const input = document.createElement('input');
     input.id = id;
     input.name = id;
     input.type = 'text';
-    input.placeholder = placeholder;
+    input.placeholder = window.TDSPI18n?.translateText?.(placeholder) || placeholder;
+    input.setAttribute('data-i18n-placeholder-original', placeholder);
     input.value = value;
     input.autocomplete = 'off';
     input.spellcheck = false;
@@ -7669,11 +7682,12 @@ function createDrepRegistrationTextArea(labelText, id, placeholder, value) {
     wrapper.className = 'governance-drep-registration-field';
     wrapper.htmlFor = id;
     const label = document.createElement('strong');
-    label.textContent = labelText;
+    setGovernanceAutoTranslatedText(label, labelText);
     const input = document.createElement('textarea');
     input.id = id;
     input.name = id;
-    input.placeholder = placeholder;
+    input.placeholder = window.TDSPI18n?.translateText?.(placeholder) || placeholder;
+    input.setAttribute('data-i18n-placeholder-original', placeholder);
     input.value = value;
     input.maxLength = 1000;
     input.rows = 4;
@@ -7691,7 +7705,7 @@ function createDrepRegistrationCheckbox(labelText, id, checked) {
     input.type = 'checkbox';
     input.checked = checked;
     const label = document.createElement('span');
-    label.textContent = labelText;
+    setGovernanceAutoTranslatedText(label, labelText);
     wrapper.append(input, label);
     return { wrapper, input };
 }
@@ -7885,8 +7899,8 @@ async function renderDrepRegistrationWallets(container, metadata) {
             return;
         }
 
-        const label = document.createElement('strong');
-        label.textContent = 'Connect the wallet that will control your DRep';
+    const label = document.createElement('strong');
+        setGovernanceAutoTranslatedText(label, 'Connect the wallet that will control your DRep');
         const list = document.createElement('div');
         list.className = 'wallet-list governance-vote-wallet-list';
         wallets.forEach(walletInfo => {
@@ -7919,7 +7933,7 @@ function appendDrepRegistrationBackButton(container, metadata) {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'governance-vote-secondary';
-    button.textContent = 'Back to metadata';
+    setGovernanceAutoTranslatedText(button, 'Back to metadata');
     button.addEventListener('click', () => renderDrepRegistrationForm(container, metadata));
     container.appendChild(button);
 }
@@ -7972,11 +7986,11 @@ function renderDrepRegistrationReview(container, context) {
 
     const warning = document.createElement('p');
     warning.className = 'governance-vote-review-warning';
-    warning.textContent = 'This registers the displayed DRep ID on Cardano Mainnet. Check the ₳ 500 deposit, network fee, DRep ID and metadata in your wallet before signing.';
+    setGovernanceAutoTranslatedText(warning, 'This registers the displayed DRep ID on Cardano Mainnet. Check the ₳ 500 deposit, network fee, DRep ID and metadata in your wallet before signing.');
     const submit = document.createElement('button');
     submit.type = 'button';
     submit.className = 'governance-vote-submit';
-    submit.textContent = 'Register as DRep';
+    setGovernanceAutoTranslatedText(submit, 'Register as DRep');
     submit.addEventListener('click', () => submitDrepRegistration(container, context, submit));
     container.append(review, warning, submit);
     appendDrepRegistrationBackButton(container, context.metadata);
@@ -8002,15 +8016,15 @@ async function submitDrepRegistration(container, context, submitButton) {
             .changeAddress(changeAddress)
             .complete();
 
-        status.textContent = 'Check the DRep ID, refundable deposit, metadata and fee in your wallet before signing.';
+        setGovernanceAutoTranslatedText(status, 'Check the DRep ID, refundable deposit, metadata and fee in your wallet before signing.');
         const signedTx = await context.wallet.signTx(unsignedTx, false);
-        status.textContent = 'Submitting the signed DRep registration...';
+        setGovernanceAutoTranslatedText(status, 'Submitting the signed DRep registration...');
         const txHash = await context.wallet.submitTx(signedTx);
 
         container.replaceChildren();
         const success = document.createElement('strong');
         success.className = 'governance-vote-success';
-        success.textContent = 'DRep registration submitted.';
+        setGovernanceAutoTranslatedText(success, 'DRep registration submitted.');
         const idLine = document.createElement('div');
         idLine.className = 'governance-drep-id-line governance-vote-action-id-line';
         const id = document.createElement('span');
@@ -8023,7 +8037,7 @@ async function submitDrepRegistration(container, context, submitButton) {
         link.href = `https://cardanoscan.io/transaction/${encodeURIComponent(txHash)}`;
         link.target = '_blank';
         link.rel = 'noopener noreferrer';
-        link.textContent = 'View transaction on Cardanoscan';
+        setGovernanceAutoTranslatedText(link, 'View transaction on Cardanoscan');
         container.append(success, idLine, link);
     } catch (error) {
         console.error('DRep registration submission failed', error);
@@ -8100,7 +8114,7 @@ function renderDrepDirectory(container, dreps, options = {}) {
     if (!dreps.length) {
         const message = document.createElement('p');
         message.className = 'small-text';
-        message.textContent = 'No DRep data available.';
+        setGovernanceAutoTranslatedText(message, 'No DRep data available.');
         container.appendChild(message);
         return;
     }
@@ -8162,7 +8176,7 @@ async function openTopDrepPowerOverlay(returnFocus = document.activeElement) {
     panel.className = 'governance-drep-directory-list';
     const loading = document.createElement('p');
     loading.className = 'small-text';
-    loading.textContent = 'Loading top 10 DReps...';
+    setGovernanceAutoTranslatedText(loading, 'Loading top 10 DReps...');
     panel.appendChild(loading);
 
     createGovernanceMenuOverlay({
@@ -8295,7 +8309,7 @@ async function openTopDrepPowerOverlay(returnFocus = document.activeElement) {
         panel.replaceChildren();
         const message = document.createElement('p');
         message.className = 'small-text';
-        message.textContent = 'Top 10 DRep data could not be loaded.';
+        setGovernanceAutoTranslatedText(message, 'Top 10 DRep data could not be loaded.');
         panel.appendChild(message);
     }
 }
@@ -8309,7 +8323,7 @@ function renderTopDrepPowerList(container, topDreps) {
     if (!topDreps.length) {
         const message = document.createElement('p');
         message.className = 'small-text';
-        message.textContent = 'No top DRep data available.';
+        setGovernanceAutoTranslatedText(message, 'No top DRep data available.');
         container.appendChild(message);
         return;
     }
@@ -8317,7 +8331,7 @@ function renderTopDrepPowerList(container, topDreps) {
     renderDrepDirectory(container, topDreps, { showChart: false });
     const intro = document.createElement('p');
     intro.className = 'small-text';
-    intro.textContent = 'Vote sync is loading in the background.';
+    setGovernanceAutoTranslatedText(intro, 'Vote sync is loading in the background.');
     container.prepend(intro);
 }
 
@@ -8343,14 +8357,14 @@ function renderTopDrepVoteMatrix(container, dreps, detailPayloads) {
     if (!drepDetails.length) {
         const message = document.createElement('p');
         message.className = 'small-text';
-        message.textContent = 'No top DRep data available.';
+        setGovernanceAutoTranslatedText(message, 'No top DRep data available.');
         container.appendChild(message);
         return;
     }
 
     const intro = document.createElement('div');
     intro.className = 'governance-top-drep-vote-intro';
-    intro.textContent = 'Each card shows how the top 10 DReps voted. The same-vote line groups DReps by vote choice.';
+    setGovernanceAutoTranslatedText(intro, 'Each card shows how the top 10 DReps voted. The same-vote line groups DReps by vote choice.');
     container.appendChild(intro);
 
     const proposals = getGovernanceActionsForCommitteeOverview()
@@ -8452,7 +8466,7 @@ function openDrepActionHistoryOverlay(drep, returnFocus = null) {
     panel.className = 'governance-list governance-action-group-list';
     const loading = document.createElement('p');
     loading.className = 'small-text';
-    loading.textContent = 'Loading DRep votes...';
+    setGovernanceAutoTranslatedText(loading, 'Loading DRep votes...');
     panel.appendChild(loading);
 
     createGovernanceMenuOverlay({
@@ -8495,7 +8509,7 @@ function openDrepActionHistoryOverlay(drep, returnFocus = null) {
             panel.textContent = '';
             const message = document.createElement('p');
             message.className = 'small-text';
-            message.textContent = 'DRep votes could not be loaded.';
+            setGovernanceAutoTranslatedText(message, 'DRep votes could not be loaded.');
             panel.appendChild(message);
         });
 }
@@ -8536,7 +8550,7 @@ function openDrepProfileOverlay(drep, returnFocus = null) {
     panel.className = 'governance-list governance-action-group-list';
     const loading = document.createElement('p');
     loading.className = 'small-text';
-    loading.textContent = 'Loading DRep info...';
+    setGovernanceAutoTranslatedText(loading, 'Loading DRep info...');
     panel.appendChild(loading);
 
     createGovernanceMenuOverlay({
@@ -8558,7 +8572,7 @@ function openDrepProfileOverlay(drep, returnFocus = null) {
             const refreshedDrep = mergeDrepDetail(drep, payload);
             Object.assign(drep, refreshedDrep);
             const title = document.getElementById('governance-drep-profile-title');
-            if (title) title.textContent = refreshedDrep.name || 'DRep info';
+            if (title) setGovernanceAutoTranslatedText(title, refreshedDrep.name || 'DRep info');
             updateGovernanceMenuHeaderMeta('governance-drep-profile-overlay', formatDrepOverlayHeaderMeta(refreshedDrep));
             renderDrepProfileOverlayContent(panel, refreshedDrep);
         })
@@ -8613,8 +8627,8 @@ function updateDrepDirectoryRow(row, drep) {
     const power = row.querySelector('.governance-cc-member-stats');
     const status = row.querySelector('.governance-drep-member-status');
     if (name) name.textContent = drep.name;
-    if (power) power.textContent = `Voting power: ${formatCompactAdaFromLovelace(drep.votingPower)}`;
-    if (status) status.textContent = drep.active ? 'Active' : 'Inactive';
+    if (power) setGovernanceAutoTranslatedText(power, `Voting power: ${formatCompactAdaFromLovelace(drep.votingPower)}`);
+    if (status) setGovernanceAutoTranslatedText(status, drep.active ? 'Active' : 'Inactive');
     row.querySelector('.drep-ncl-bar')?.remove();
     row.classList.toggle('governance-drep-member--active', drep.active);
     row.classList.toggle('governance-drep-member--inactive', !drep.active);
@@ -8641,7 +8655,7 @@ function renderDrepProfileCard(container, drep) {
 
     const title = document.createElement('strong');
     title.className = 'governance-title';
-    title.textContent = 'DRep profile';
+    setGovernanceAutoTranslatedText(title, 'DRep profile');
     card.appendChild(title);
 
     addMarkdownDetailSection(card, 'Objective', profile.objective);
@@ -8652,7 +8666,7 @@ function renderDrepProfileCard(container, drep) {
         const linksSection = document.createElement('section');
         linksSection.className = 'governance-markdown-section governance-drep-profile-links';
         const heading = document.createElement('strong');
-        heading.textContent = 'External links';
+        setGovernanceAutoTranslatedText(heading, 'External links');
         const list = document.createElement('div');
         list.className = 'governance-drep-profile-link-list';
         profile.links.forEach(link => {
@@ -8882,7 +8896,7 @@ function renderDrepActionHistory(container, payload, drep) {
     if (!rows.length) {
         const message = document.createElement('p');
         message.className = 'small-text';
-        message.textContent = 'No applicable governance actions found for this DRep.';
+        setGovernanceAutoTranslatedText(message, 'No applicable governance actions found for this DRep.');
         container.appendChild(message);
         return;
     }
@@ -8900,11 +8914,11 @@ function renderDrepActionHistory(container, payload, drep) {
             : voteChoice === 'No' || (!voteChoice && isClosed)
                 ? 'vote-red'
                 : 'vote-neutral'}`;
-        vote.textContent = voteChoice
+        setGovernanceAutoTranslatedText(vote, voteChoice
             ? `DRep voted ${voteChoice}`
             : isClosed
                 ? 'DRep not voted'
-                : 'DRep not voted yet';
+                : 'DRep not voted yet');
         card.appendChild(vote);
         const rationaleButton = governanceDrepVotes.createRationaleButton(action, {
             proposal,

@@ -50,8 +50,8 @@
     <link rel="stylesheet" href="shared/styles.css?v=20260819-universal-id-line">
     <link rel="stylesheet" href="delegators/raffle.css?v=20260818-universal-overlay-mobile">
 
-    <script src="shared/runtime.js?v=20260819-live-status-labels" defer></script>
-    <script src="shared/i18n.js?v=20260819-active-epoch-language" defer></script>
+    <script src="shared/runtime.js?v=20260819-universal-tile-i18n" defer></script>
+    <script src="shared/i18n.js?v=20260819-drep-overlay-language" defer></script>
     <script src="shared/site-controls.js?v=20260818-raffle-overlay-module" defer></script>
     <script src="shared/database-status.js?v=20260819-database-status-module" defer></script>
     <script src="vendor/chart-loader.js?v=20260817-section-folders" defer></script>
@@ -168,10 +168,10 @@
         <section class="section pool-section" id="pool">
             <div class="section-inner">
                 <h2 data-i18n="spo_stats">SPO Stats</h2>
-                <div class="pool-id-line">
+                <div class="tdsp-identity-line pool-id-line">
                     <span data-i18n="pool_id">Pool ID</span>
                     <strong id="pool-id">...</strong>
-                    <button class="pool-id-stake-button" type="button" data-stake-open data-i18n="stake_now">Stake Now</button>
+                    <button class="tdsp-identity-action-button pool-id-stake-button" type="button" data-stake-open data-i18n="stake_now">Stake Now</button>
                     <button class="pool-copy-icon-button pool-id-copy-button" type="button" data-copy-target="pool-id" aria-label="Copy stake pool ID" title="Copy pool ID">⧉</button>
                 </div>
                 <div class="tdsp-tile-grid tdsp-tile-grid--section" id="pool-summary" aria-live="polite">
@@ -289,10 +289,10 @@
         <section class="section" id="drep">
             <div class="section-inner">
                 <h2 data-i18n="drep_stats">DRep Stats</h2>
-                <div class="pool-id-line">
+                <div class="tdsp-identity-line pool-id-line">
                     <span data-i18n="drep_id">DRep ID</span>
                     <strong id="tdsp-drep-id">drep1yg5gkkyxwwr7d6qflf2qqp6drkp9432h6cvtmun0dqthusqlkz8hj</strong>
-                    <button class="pool-id-stake-button" type="button" data-drep-open data-i18n="make_drep">Make DRep</button>
+                    <button class="tdsp-identity-action-button pool-id-stake-button" type="button" data-drep-open data-i18n="make_drep">Make DRep</button>
                     <button class="pool-copy-icon-button pool-id-copy-button" type="button" data-copy-target="tdsp-drep-id" aria-label="Copy DamionDutch DRep ID" title="Copy DRep ID">⧉</button>
                 </div>
                 <div class="tdsp-tile-grid tdsp-tile-grid--governance" id="drep-stats-summary">
@@ -435,7 +435,7 @@
     </template>
 
     <script src="starch/starch-loader.js?v=20260819-starch-language-values" defer></script>
-    <script src="governance/governance-loader.js?v=20260819-nakamoto-tile" defer></script>
-    <script src="stake/stake-loader.js?v=20260818-raffle-overlay-module" defer></script>
+    <script src="governance/governance-loader.js?v=20260819-drep-overlay-language" defer></script>
+    <script src="stake/stake-loader.js?v=20260819-stake-drep-language" defer></script>
 </body>
 </html>

@@ -15,6 +15,18 @@ function loadMeshLib() {
     return meshLibPromise;
 }
 
+function translateStakeText(text) {
+    return window.TDSPI18n?.translateText?.(text) || text;
+}
+
+function setStakeAutoText(element, text) {
+    if (!(element instanceof HTMLElement)) return;
+    const value = String(text || '').replace(/\s+/g, ' ').trim();
+    element.setAttribute('data-i18n-auto', '');
+    element.setAttribute('data-i18n-auto-original', value);
+    element.textContent = translateStakeText(value);
+}
+
 function getModal() {
     return getTopGovernanceMenuOverlay('stake-now-overlay');
 }
@@ -52,14 +64,14 @@ function setDrepWalletStep(step) {
 function setStatus(message) {
     const statusEl = document.getElementById('wallet-status');
     if (!statusEl) return;
-    statusEl.textContent = message || '';
+    setStakeAutoText(statusEl, message || '');
     statusEl.hidden = !message;
 }
 
 function setDrepStatus(message) {
     const statusEl = document.getElementById('drep-wallet-status');
     if (!statusEl) return;
-    statusEl.textContent = message || '';
+    setStakeAutoText(statusEl, message || '');
     statusEl.hidden = !message;
 }
 
@@ -240,13 +252,13 @@ async function delegateWithWallet(walletId) {
             link.href = `https://cardanoscan.io/transaction/${txHash}`;
             link.target = '_blank';
             link.rel = 'noopener noreferrer';
-            link.textContent = 'Delegation submitted! View on Cardanoscan';
+            setStakeAutoText(link, 'Delegation submitted! View on Cardanoscan');
             statusEl.appendChild(link);
         }
     } catch (error) {
         console.error('Delegation failed', error);
         const message = error && error.info ? error.info : (error && error.message) || 'Something went wrong.';
-        setStatus(`Delegation failed: ${message}`);
+        setStatus(`${translateStakeText('Delegation failed')}: ${message}`);
     }
 }
 
@@ -294,13 +306,13 @@ async function delegateDrepWithWallet(walletId) {
             link.href = `https://cardanoscan.io/transaction/${txHash}`;
             link.target = '_blank';
             link.rel = 'noopener noreferrer';
-            link.textContent = 'DRep delegation submitted! View on Cardanoscan';
+            setStakeAutoText(link, 'DRep delegation submitted! View on Cardanoscan');
             statusEl.appendChild(link);
         }
     } catch (error) {
         console.error('DRep delegation failed', error);
         const message = error && error.info ? error.info : (error && error.message) || 'Something went wrong.';
-        setDrepStatus(`DRep delegation failed: ${message}`);
+        setDrepStatus(`${translateStakeText('DRep delegation failed')}: ${message}`);
     }
 }
 
@@ -310,14 +322,14 @@ function createDrepDelegationBodyNodes() {
     warning.className = 'stake-warning';
 
     const title = document.createElement('strong');
-    title.textContent = 'Check before signing';
+    setStakeAutoText(title, 'Check before signing');
     const text = document.createElement('p');
-    text.textContent = `Always review the transaction in your wallet before approving. Confirm it delegates your Cardano voting power to ${TDSP_DREP_NAME} and does not include anything unexpected.`;
+    setStakeAutoText(text, `Always review the transaction in your wallet before approving. Confirm it delegates your Cardano voting power to ${TDSP_DREP_NAME} and does not include anything unexpected.`);
     const continueButton = document.createElement('button');
     continueButton.className = 'stake-continue-button';
     continueButton.type = 'button';
     continueButton.dataset.drepContinue = 'true';
-    continueButton.textContent = 'Continue';
+    setStakeAutoText(continueButton, 'Continue');
     warning.append(title, text, continueButton);
 
     const list = document.createElement('div');

@@ -1,4 +1,17 @@
 (function () {
+    function translateText(value) {
+        const text = String(value || '');
+        return window.TDSPI18n?.translateText?.(text) || text;
+    }
+
+    function setAutoTranslatedText(element, value) {
+        if (!(element instanceof HTMLElement)) return;
+        const text = String(value || '');
+        element.setAttribute('data-i18n-auto', '');
+        element.setAttribute('data-i18n-auto-original', text);
+        element.textContent = translateText(text);
+    }
+
     function createDetailRenderingModule({
         appendRichText,
         cleanText,
@@ -18,7 +31,7 @@
             row.className = 'governance-detail-row';
 
             const key = document.createElement('strong');
-            key.textContent = label;
+            setAutoTranslatedText(key, label);
 
             const text = document.createElement('span');
             const isIdentifier = options.responsiveIdentifier === true
@@ -49,7 +62,7 @@
             section.className = 'governance-markdown-section';
 
             const heading = document.createElement('strong');
-            heading.textContent = label;
+            setAutoTranslatedText(heading, label);
 
             const body = document.createElement('div');
             body.className = 'governance-markdown';

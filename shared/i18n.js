@@ -2,7 +2,7 @@
     const LANGUAGE_STORAGE_KEY = 'tdsp-language';
     const DEFAULT_LANGUAGE = 'en';
     const DUTCH_LANGUAGE = 'nl';
-    const DUTCH_TOML_URL = 'locales/nl.toml?v=20260819-dutch-governance-tiles';
+    const DUTCH_TOML_URL = 'locales/nl.toml?v=20260819-drep-overlay-language';
     const TRANSLATION_ATTR = 'data-i18n';
     const TRANSLATION_ORIGINAL_ATTR = 'data-i18n-original';
     const AUTO_TRANSLATION_ORIGINAL_ATTR = 'data-i18n-auto-original';
@@ -73,10 +73,18 @@
         ['Catalyst/Treasury Recipients', 'catalyst_treasury_recipients'],
         ['CC Members', 'cc_members'],
         ['Change vote', 'change_vote'],
+        ['Check before signing', 'check_before_signing'],
         ['Choose topics and enable notifications', 'choose_topics_enable_notifications'],
         ['Choose your vote', 'choose_your_vote'],
         ['Claimed Funds', 'claimed_funds'],
         ['Close', 'close'],
+        ['Close DRep directory', 'close_drep_directory'],
+        ['Close DRep list', 'close_drep_list'],
+        ['Close DRep metadata builder', 'close_drep_metadata_builder'],
+        ['Close DRep registration', 'close_drep_registration'],
+        ['Close DRep voting', 'close_drep_voting'],
+        ['Close top 10 DReps', 'close_top_10_dreps'],
+        ['Close vote rationale', 'close_vote_rationale'],
         ['CIP number', 'cip_number'],
         ['CIP number: Newest', 'cip_number_newest'],
         ['Cloud Service Usage', 'cloud_service_usage'],
@@ -85,14 +93,24 @@
         ['Connect Admin Wallet', 'connect_admin_wallet'],
         ['Connect Delegator Wallet', 'connect_delegator_wallet'],
         ['Connect your DRep wallet', 'connect_drep_wallet'],
+        ['Connecting to wallet...', 'connecting_wallet'],
+        ['Checking current delegation status...', 'checking_delegation_status'],
+        ['Checking current vote cache...', 'checking_current_vote_cache'],
+        ['Building the delegation transaction...', 'building_delegation_transaction'],
+        ['Close Nakamoto coefficients', 'close_nakamoto'],
+        ['Close Stake to TDSP', 'close_stake_to_tdsp'],
         ['Continue Chat', 'continue_chat'],
         ['Continue to wallet', 'continue_to_wallet'],
+        ['Consensus NC', 'consensus_nc'],
         ['Constitution', 'constitution'],
         ['Constitutional Committee Members', 'constitutional_committee_members'],
         ['Consulting the Constitution...', 'consulting_constitution'],
+        ['Connect the wallet that will control your DRep', 'connect_drep_control_wallet'],
         ['Copy', 'copy'],
         ['Copy external URL', 'copy_external_url'],
         ['Copied', 'copied'],
+        ['Could not load the wallet connector. Please refresh and try again.', 'wallet_connector_load_failed'],
+        ['Could not verify current delegation status. No transaction was built, so no ADA will be spent. Please try again in a moment.', 'delegation_status_verify_failed'],
         ['Cast DRep vote', 'cast_drep_vote'],
         ['Create DRep metadata', 'create_drep_metadata'],
         ['Create and save drep.jsonld', 'create_save_drep_jsonld'],
@@ -102,13 +120,31 @@
         ['Creating file...', 'creating_file'],
         ['Crypto News', 'crypto_news'],
         ['DRep profile', 'drep_profile'],
+        ['DRep profile details could not be loaded.', 'drep_profile_details_could_not_be_loaded'],
+        ['DRep data could not be loaded.', 'drep_data_could_not_be_loaded'],
+        ['DRep ID', 'drep_id'],
+        ['DRep key', 'drep_key'],
+        ['DRep info', 'drep_info'],
+        ['DRep name', 'drep_name'],
+        ['DRep name is required to create CIP-119 metadata.', 'drep_name_required'],
+        ['DRep not voted', 'drep_not_voted'],
+        ['DRep not voted yet', 'drep_not_voted_yet'],
+        ['DRep registration', 'drep_registration'],
+        ['DRep registration submitted.', 'drep_registration_submitted'],
+        ['DRep votes could not be loaded.', 'drep_votes_could_not_be_loaded'],
         ['DRep vote overview', 'drep_vote_overview'],
         ['DRep votes', 'drep_votes'],
         ['DReps', 'dreps'],
+        ['DRep Delegation', 'drep_delegation'],
+        ['DRep delegation failed', 'drep_delegation_failed'],
+        ['DRep delegation submitted! View on Cardanoscan', 'drep_delegation_submitted_cardanoscan'],
         ['Dashboard', 'dashboard'],
+        ['Delegation failed', 'delegation_failed'],
+        ['Delegation submitted! View on Cardanoscan', 'delegation_submitted_cardanoscan'],
         ['Delegation', 'delegation'],
         ['Delegators', 'delegators'],
         ['Delegators Dashboard', 'delegators_dashboard'],
+        ['Detecting installed wallets...', 'detecting_installed_wallets'],
         ['Domains reaching the 51% threshold', 'domains_threshold'],
         ['Draw', 'draw'],
         ['Draw and Publish', 'draw_and_publish'],
@@ -116,6 +152,7 @@
         ['Draw proof', 'draw_proof'],
         ['Earliest epoch', 'earliest_epoch'],
         ['Eligible Delegators', 'eligible_delegators'],
+        ['Each card shows how the top 10 DReps voted. The same-vote line groups DReps by vote choice.', 'top_drep_vote_matrix_intro'],
         ['Events', 'events'],
         ['Excluded Stake Keys', 'excluded_stake_keys'],
         ['Exclusion List', 'exclusion_list'],
@@ -131,6 +168,8 @@
         ['High', 'high'],
         ['Highest amount', 'highest_amount'],
         ['History', 'history'],
+        ['Geographic NC', 'geographic_nc'],
+        ['Hosting-provider NC', 'hosting_provider_nc'],
         ['Improved rationale', 'improved_rationale'],
         ['Inactive', 'inactive'],
         ['Inactive first', 'inactive_first'],
@@ -151,6 +190,8 @@
         ['Loading DRep data...', 'loading_drep_data'],
         ['Loading DRep info...', 'loading_drep_info'],
         ['Loading DRep votes...', 'loading_drep_votes'],
+        ['Loading DReps…', 'loading_dreps'],
+        ['Loading vote rationale...', 'loading_vote_rationale'],
         ['Loading Nakamoto coefficients...', 'loading_nakamoto'],
         ['Loading SPO data...', 'loading_spo_data'],
         ['Loading SPO details...', 'loading_spo_details'],
@@ -163,6 +204,14 @@
         ['Lowest balance', 'lowest_balance'],
         ['Lowest saturation', 'lowest_saturation'],
         ['Margin', 'margin'],
+        ['Metadata URL', 'metadata_url'],
+        ['Metadata URL (optional)', 'metadata_url_optional'],
+        ['Metadata hash', 'metadata_hash'],
+        ['Metadata hash (optional)', 'metadata_hash_optional'],
+        ['Metadata URL and metadata hash must be provided together.', 'metadata_url_hash_together'],
+        ['Metadata hash must contain exactly 64 hexadecimal characters.', 'metadata_hash_64_hex'],
+        ['Metadata hash could not be created.', 'metadata_hash_could_not_be_created'],
+        ['Metadata URL loaded and its Blake2b-256 hash was added.', 'metadata_url_hash_added'],
         ['Miners', 'miners'],
         ['Most ask', 'most_ask'],
         ['Most blocks', 'most_blocks'],
@@ -177,6 +226,8 @@
         ['Name Z-A', 'name_za'],
         ['Nakamoto Coefficient', 'nakamoto_coefficient'],
         ['NCL', 'ncl'],
+        ['NCL Used', 'ncl_used'],
+        ['NCL Available', 'ncl_available'],
         ['Net Change Limit', 'net_change_limit'],
         ['New Chat', 'new_chat'],
         ['New governance action', 'new_governance_action'],
@@ -188,30 +239,59 @@
         ['No prize tokens are currently in the raffle wallet.', 'no_prize_tokens'],
         ['No raffle results have been published yet.', 'no_raffle_results'],
         ['No registered SPOs are available.', 'no_registered_spos'],
+        ['No stake address was found in this wallet. No transaction was built.', 'no_stake_address_wallet'],
         ['No stake keys are excluded.', 'no_stake_keys_excluded'],
         ['No top DRep data available.', 'no_top_drep_data'],
+        ['No vote data', 'no_vote_data'],
+        ['No on-chain rationale metadata found for this DRep vote.', 'no_onchain_rationale_metadata_found'],
+        ['No Cardano wallet extension detected. Install a CIP-30 wallet (Eternl, Lace, Vespr...) and reopen this dialog.', 'no_cardano_wallet_detected'],
+        ['No Cardano wallet extension detected. Install a CIP-30/CIP-95 wallet and reopen this dialog.', 'no_cip30_cip95_wallet_detected'],
+        ['No CIP-95 Cardano wallet extension was detected. No transaction was built.', 'no_cip95_wallet_detected'],
+        ['No spendable wallet UTxO was found for the deposit and network fee.', 'no_spendable_wallet_utxo'],
+        ['Not available', 'not_available'],
+        ['Not identified', 'not_identified'],
+        ['Not a DRep Yet', 'not_a_drep_yet'],
+        ['Not applicable', 'not_applicable'],
+        ['Not voted', 'not_voted'],
+        ['Not voted yet', 'not_voted_yet'],
         ['Not supported', 'not_supported'],
         ['Notifications enabled', 'notifications_enabled'],
         ['Newest', 'newest'],
         ['Oldest', 'oldest'],
         ['On-chain DRep registration', 'onchain_drep_registration'],
+        ['Payment address (optional)', 'payment_address_optional'],
         ['On-chain proof', 'onchain_proof'],
         ['On-chain rationale (optional)', 'onchain_rationale_optional'],
         ['Open', 'open'],
         ['Open for live votes', 'open_for_live_votes'],
         ['Passive Relay', 'passive_relay'],
+        ['Please approve the DRep delegation transaction in your wallet...', 'approve_drep_delegation_wallet'],
+        ['Please approve the transaction in your wallet...', 'approve_transaction_wallet'],
+        ['Please switch your wallet to Cardano Mainnet and try again.', 'switch_wallet_mainnet'],
+        ['Preparing DRep voting delegation...', 'preparing_drep_delegation'],
         ['Pool Delegators', 'pool_delegators'],
         ['Pool snapshot unavailable', 'pool_snapshot_unavailable'],
         ['Pool ID', 'pool_id'],
+        ['Pipeline', 'pipeline'],
         ['Pledge', 'pledge'],
         ['Possible Blocks Current Epoch', 'possible_blocks_current_epoch'],
         ['Prices', 'prizes'],
         ['Price history is still being collected.', 'price_history_collecting'],
         ['Price history unavailable', 'price_history_unavailable'],
         ['Proposal Summary', 'proposal_summary'],
+        ['Profile image URL (optional)', 'profile_image_url_optional'],
+        ['Image SHA-256 (optional)', 'image_sha256_optional'],
+        ['Objectives (optional)', 'objectives_optional'],
+        ['Motivations (optional)', 'motivations_optional'],
+        ['Qualifications (optional)', 'qualifications_optional'],
+        ['Identity URL (optional)', 'identity_url_optional'],
+        ['Additional link label (optional)', 'additional_link_label_optional'],
+        ['Additional link URL (optional)', 'additional_link_url_optional'],
+        ['Do not list me in public DRep directories', 'do_not_list_public_drep_directories'],
         ['Proposer', 'proposer'],
         ['Publish proof on-chain', 'publish_proof_onchain'],
         ['Question about Cardano governance', 'question_cardano_governance'],
+        ['Reason for this vote (English)', 'reason_for_vote_english'],
         ['Raffles', 'raffles'],
         ['Raffle wallet tokens', 'raffle_wallet_tokens'],
         ['Read', 'read'],
@@ -220,16 +300,42 @@
         ['RealFi Docs only allows embedding from HTTPS websites. Test this overlay on the production HTTPS site.', 'realfi_docs_https_only'],
         ['Rejected Actions', 'rejected_actions'],
         ['Register as DRep', 'register_as_drep'],
+        ['Registering a DRep on Cardano Mainnet', 'registering_drep_mainnet'],
+        ['Registration currently requires a refundable ₳ 500 deposit plus a network fee. Verify both amounts in your wallet before signing.', 'drep_registration_deposit_warning'],
+        ['Registered DRep directory', 'registered_drep_directory'],
+        ['Required for CIP-119 metadata', 'required_cip119_metadata'],
+        ['What do you want to achieve as a DRep?', 'what_achieve_drep'],
+        ['Why do you want to become a DRep?', 'why_become_drep'],
+        ['Relevant experience and qualifications', 'relevant_experience_qualifications'],
+        ['Website, X, LinkedIn...', 'website_x_linkedin'],
+        ['Your public DRep name', 'your_public_drep_name'],
+        ['Relay Operator NC', 'relay_operator_nc'],
+        ['Relay operator NC', 'relay_operator_nc'],
         ['Remove', 'remove'],
         ['Reset in', 'reset_in'],
         ['Reset due', 'reset_due'],
+        ['Software/client NC', 'software_client_nc'],
         ['SPO Operator', 'spo_operator'],
         ['SPO Status', 'spo_status'],
+        ['Active Relay via operator group', 'active_relay_operator_group'],
+        ['SPO details could not be loaded.', 'spo_details_could_not_load'],
+        ['SPO hardware', 'spo_hardware'],
         ['SPO status unavailable', 'spo_status_unavailable'],
         ['SPO vote overview', 'spo_vote_overview'],
+        ['Cloud SPO', 'cloud_spo'],
+        ['Non-cloud SPO', 'non_cloud_spo'],
+        ['No cloud service', 'no_cloud_service'],
+        ['Multiple cloud services', 'multiple_cloud_services'],
+        ['Cloud provider not identified', 'cloud_provider_not_identified'],
+        ['Nakamoto coefficient data is not available yet.', 'nakamoto_data_unavailable'],
+        ['Nakamoto coefficient data could not be loaded.', 'nakamoto_data_could_not_load'],
+        ['Source data unavailable', 'source_data_unavailable'],
+        ['Insufficient coverage', 'insufficient_coverage'],
+        ['cached SPO stake', 'cached_spo_stake'],
         ['SPOs with no on-chain relays advertised', 'spos_no_advertised_relays'],
         ['SPOs with only passive relays', 'spos_passive_relays'],
         ['SPOs', 'spos'],
+        ['Stake to TDSP', 'stake_to_tdsp'],
         ['Search by name, ID, title or status', 'search_by_name_id_title_status'],
         ['Search by CIP number, title, status or text', 'search_by_cip'],
         ['Search by pool, ticker, ID or relay address', 'search_by_pool'],
@@ -238,32 +344,66 @@
         ['Search Cardano data or ask about the Constitution', 'search_cardano_data'],
         ['Search this overlay', 'search_this_overlay'],
         ['Select and publish a raffle winner', 'select_publish_raffle_winner'],
+        ['Saved drep.jsonld and added its Blake2b-256 hash. Upload this exact file, then enter its public metadata URL.', 'saved_drep_jsonld_hash_added'],
         ['Source:', 'source'],
         ['Status unavailable', 'status_unavailable'],
+        ['Submitting transaction...', 'submitting_transaction'],
         ['Saturation', 'saturation'],
         ['Starch Pools', 'starch_pools'],
         ['Starch pool data is not available yet.', 'starch_pool_data_unavailable'],
         ['Starch Stats', 'starch_stats'],
         ['Summary', 'summary'],
         ['TDSPBot', 'tdspbot'],
+        ['TDSPBot is improving your rationale...', 'tdspbot_improving_rationale'],
+        ['Add your reason or pointers first, then TDSPBot can improve it.', 'add_reason_first_improve_rationale'],
+        ['Improved rationale copied into your original rationale field. Review it before continuing.', 'improved_rationale_copied'],
+        ['Review this text carefully. It will only be used when you copy it into the original rationale field and continue.', 'review_improved_rationale_note'],
+        ['TDSPBot could not improve the rationale right now.', 'tdspbot_improve_rationale_failed'],
+        ['The wallet connector could not be loaded. No transaction was built.', 'wallet_connector_no_transaction'],
+        ['This API only provides stake totals for this bucket, not individual DRep IDs.', 'drep_bucket_stake_totals_only'],
+        ['This DRep is already registered. No transaction was built.', 'drep_already_registered'],
+        ['The metadata URL did not return a JSON object.', 'metadata_url_not_json_object'],
         ['This link will open in a new tab.', 'external_link_new_tab'],
+        ['This wallet is already delegating to The Dutch Stake Pool.', 'already_delegating_tdsp'],
+        ['This wallet is already registered as a DRep. No transaction was built.', 'wallet_already_registered_drep'],
+        ['This wallet did not provide CIP-95 DRep access. No transaction was built.', 'wallet_no_cip95_drep_access'],
+        ['This registers the displayed DRep ID on Cardano Mainnet. Check the ₳ 500 deposit, network fee, DRep ID and metadata in your wallet before signing.', 'drep_registration_review_warning'],
+        ['This wallet is already registered, but the current pool could not be confirmed. No transaction was built.', 'already_registered_pool_unconfirmed'],
+        ['This dimension is not available from the current SPO data.', 'spo_dimension_unavailable'],
+        ['Consensus, relay operator, hosting provider, geographic and software/client concentration', 'nakamoto_summary'],
         ['Links in this chart are provided by TradingView. DYOR before opening external links.', 'tradingview_link_warning'],
         ['Top 10 DReps', 'top_10_dreps'],
+        ['Top 10 DRep data could not be loaded.', 'top_10_drep_data_could_not_be_loaded'],
+        ['Top 10 DReps by voting power', 'top_10_dreps_by_voting_power'],
         ['Total Delegated', 'total_delegated'],
         ['Treasury withdrawal history', 'treasury_withdrawal_history'],
         ['Unclaimed Funds', 'unclaimed_funds'],
         ['Unapproved Treasury', 'unapproved_treasury'],
+        ['Unavailable', 'unavailable'],
         ['Unknown Relay', 'unknown_relay'],
         ['Use GovTool instead', 'use_govtool_instead'],
         ['Use improved rationale', 'use_improved_rationale'],
         ['Verified administrator', 'verified_administrator'],
         ['Verified TDSP delegator', 'verified_tdsp_delegator'],
+        ['Verifying DRep registration...', 'verifying_drep_registration'],
         ['Verify the raffle proof metadata and network fee in your wallet before signing.', 'verify_raffle_proof'],
         ['View event', 'view_event'],
         ['View transaction on Cardanoscan', 'view_transaction_cardanoscan'],
         ['Vote as DRep', 'vote_as_drep'],
         ['Vote Sync', 'vote_sync'],
         ['Vote rationale', 'vote_rationale'],
+        ['Vote rationale could not be loaded from the API. The koios-proxy container may need the latest image or this vote has no on-chain rationale metadata.', 'vote_rationale_api_load_failed'],
+        ['Vote sync is loading in the background.', 'vote_sync_background'],
+        ['Voted', 'voted'],
+        ['Vote', 'vote'],
+        ['Governance action', 'governance_action'],
+        ['Action ID', 'action_id'],
+        ['Transaction', 'transaction'],
+        ['Wallet', 'wallet'],
+        ['Your name', 'your_name'],
+        ['Refundable deposit', 'refundable_deposit'],
+        ['None', 'none'],
+        ['Your rationale can be up to 5000 characters and will be included as Cardano transaction metadata in this vote transaction. Long text is split into 64-byte chunks automatically.', 'rationale_5000_metadata_help'],
         ['Voting Power', 'voting_power'],
         ['Voting stats loading...', 'voting_stats_loading'],
         ['Voting stats unavailable', 'voting_stats_unavailable'],
@@ -353,6 +493,17 @@
         const priceMatch = normalized.match(/^([A-Z0-9]+)\s+Price$/);
         if (priceMatch) return `${priceMatch[1]} prijs`;
 
+        const makeDrepMatch = normalized.match(/^Make\s+(.+)\s+your DRep$/i);
+        if (makeDrepMatch) return `Maak ${makeDrepMatch[1]} je DRep`;
+
+        const closeDrepDelegationMatch = normalized.match(/^Close\s+(.+)\s+DRep delegation$/i);
+        if (closeDrepDelegationMatch) return `Sluit ${closeDrepDelegationMatch[1]} DRep-delegatie`;
+
+        const drepWarningMatch = normalized.match(/^Always review the transaction in your wallet before approving\.\s+Confirm it delegates your Cardano voting power to\s+(.+)\s+and does not include anything unexpected\.$/i);
+        if (drepWarningMatch) {
+            return `Controleer de transactie altijd in je wallet voordat je goedkeurt. Bevestig dat deze je Cardano stemkracht aan ${drepWarningMatch[1]} delegeert en niets onverwachts bevat.`;
+        }
+
         const activeEpochMatch = normalized.match(/^Active epoch\s+(.+)$/i);
         if (activeEpochMatch) return `Actieve epoch ${activeEpochMatch[1]}`;
 
@@ -365,14 +516,184 @@
         const closePriceMatch = normalized.match(/^Close\s+([A-Z0-9]+)\s+price history$/i);
         if (closePriceMatch) return `Sluit ${closePriceMatch[1]} prijsgeschiedenis`;
 
+        const closeNakamotoMetricMatch = normalized.match(/^Close\s+(.+\s+NC)$/i);
+        if (closeNakamotoMetricMatch) return `Sluit ${getAutoTranslationValue(closeNakamotoMetricMatch[1]) || closeNakamotoMetricMatch[1]}`;
+
+        const openNakamotoMetricMatch = normalized.match(/^Open\s+(.+\s+NC)$/i);
+        if (openNakamotoMetricMatch) return `Open ${getAutoTranslationValue(openNakamotoMetricMatch[1]) || openNakamotoMetricMatch[1]}`;
+
         const candlesMatch = normalized.match(/^(\d[\d,]*)\s+candles$/i);
         if (candlesMatch) return `${candlesMatch[1]} candles`;
 
         const delegatedMatch = normalized.match(/^Delegated\s+(.+)$/i);
         if (delegatedMatch) return `Gedelegeerd ${delegatedMatch[1]}`;
 
+        const delegationMatch = normalized.match(/^Delegation:\s*(.+)$/i);
+        if (delegationMatch) return `Delegatie: ${delegationMatch[1]}`;
+
+        const delegatorsMatch = normalized.match(/^Delegators:\s*(.+)$/i);
+        if (delegatorsMatch) return `Delegatoren: ${delegatorsMatch[1]}`;
+
+        const saturationMatch = normalized.match(/^Saturation:\s*(.+)$/i);
+        if (saturationMatch) return `Saturatie: ${saturationMatch[1]}`;
+
+        const relaysMatch = normalized.match(/^Relays:\s*(.+)$/i);
+        if (relaysMatch) return `Relays: ${relaysMatch[1] === 'not advertised' ? 'niet geadverteerd' : relaysMatch[1]}`;
+
+        const cloudServiceMatch = normalized.match(/^Cloud Service:\s*(.+)$/i);
+        if (cloudServiceMatch) return `Cloudservice: ${getAutoTranslationValue(cloudServiceMatch[1]) || cloudServiceMatch[1]}`;
+
+        const activeRelaySposMatch = normalized.match(/^(.+)\s+Active Relay SPOs$/i);
+        if (activeRelaySposMatch) return `${getAutoTranslationValue(activeRelaySposMatch[1]) || activeRelaySposMatch[1]} actieve relay SPOs`;
+
+        const drepGroupMatch = normalized.match(/^(.+)\s+DReps$/i);
+        if (drepGroupMatch) return `${getAutoTranslationValue(drepGroupMatch[1]) || drepGroupMatch[1]} DReps`;
+
+        const cloudSposMatch = normalized.match(/^(.+)\s+Cloud SPOs$/i);
+        if (cloudSposMatch) return `${getAutoTranslationValue(cloudSposMatch[1]) || cloudSposMatch[1]} cloud-SPOs`;
+
+        const nonCloudSposMatch = normalized.match(/^(.+)\s+Non-cloud SPOs$/i);
+        if (nonCloudSposMatch) return `${getAutoTranslationValue(nonCloudSposMatch[1]) || nonCloudSposMatch[1]} niet-cloud-SPOs`;
+
+        const locationMatch = normalized.match(/^Location:\s*(.+)$/i);
+        if (locationMatch) return `Locatie: ${locationMatch[1]}`;
+
+        const relayNodesMatch = normalized.match(/^Relay nodes\s+\((.+)\)$/i);
+        if (relayNodesMatch) return `Relay nodes (${relayNodesMatch[1]})`;
+
+        const nakamotoMatch = normalized.match(/^Nakamoto coefficient\s+(.+)$/i);
+        if (nakamotoMatch) return `Nakamoto-coëfficiënt ${nakamotoMatch[1]}`;
+
+        const domainsReachMatch = normalized.match(/^(.+)\s+of\s+(.+)\s+domains reach\s+(.+)\s+of stake$/i);
+        if (domainsReachMatch) return `${domainsReachMatch[1]} van ${domainsReachMatch[2]} domeinen halen ${domainsReachMatch[3]} van stake`;
+
+        const measuredDomainsMatch = normalized.match(/^(\d[\d,]*)\s+measured domains$/i);
+        if (measuredDomainsMatch) return `${measuredDomainsMatch[1]} gemeten domeinen`;
+
+        const combinedPoolsMatch = normalized.match(/^(\d[\d,]*)\s+combined pools$/i);
+        if (combinedPoolsMatch) return `${combinedPoolsMatch[1]} gecombineerde pools`;
+
+        const stakeCoverageMatch = normalized.match(/^Stake coverage\s+(.+)$/i);
+        if (stakeCoverageMatch) return `Stake-dekking ${stakeCoverageMatch[1]}`;
+
+        const knownStakeCoverageMatch = normalized.match(/^Known stake coverage\s+(.+)$/i);
+        if (knownStakeCoverageMatch) return `Bekende stake-dekking ${knownStakeCoverageMatch[1]}`;
+
+        const fiftyOneThresholdMatch = normalized.match(/^51%\s+stake threshold$/i);
+        if (fiftyOneThresholdMatch) return '51% stake-drempel';
+
+        const domainsThresholdMatch = normalized.match(/^Domains reaching the\s+(.+?)\s+threshold$/i);
+        if (domainsThresholdMatch) return `Domeinen die de ${domainsThresholdMatch[1]} drempel halen`;
+
+        const unavailableReasonMatch = normalized.match(/^(.+)\s+requires a refreshed version 2 SPO decentralization cache\.$/i);
+        if (unavailableReasonMatch) return `${getAutoTranslationValue(unavailableReasonMatch[1]) || unavailableReasonMatch[1]} vereist een vernieuwde versie 2 SPO-decentralisatiecache.`;
+
+        const relayOperatorMethodologyMatch = normalized.match(/^Minimum inferred relay operators whose combined stake reaches\s+(.+?)\.\s+Pools are grouped by a strict-majority relay operator identity derived from structured full hostnames or their relay base domain; pools without a majority remain separate\.$/i);
+        if (relayOperatorMethodologyMatch) {
+            return `Minimum aantal afgeleide relay-operators waarvan de gecombineerde stake ${relayOperatorMethodologyMatch[1]} bereikt. Pools worden gegroepeerd op een strict-majority relay-operatoridentiteit, afgeleid uit gestructureerde volledige hostnamen of hun relay-basisdomein; pools zonder meerderheid blijven apart.`;
+        }
+
+        const consensusMethodologyMatch = normalized.match(/^Minimum SPO operators whose combined active stake reaches\s+(.+?)\.\s+Pools are grouped by normalized operator identity and known aliases\.$/i);
+        if (consensusMethodologyMatch) {
+            return `Minimum aantal SPO-operators waarvan de gecombineerde actieve stake ${consensusMethodologyMatch[1]} bereikt. Pools worden gegroepeerd op genormaliseerde operatoridentiteit en bekende aliassen.`;
+        }
+
+        const consensusPoolIdMethodologyMatch = normalized.match(/^Minimum inferred SPO operators whose combined stake reaches\s+(.+?)\.\s+Pool IDs are combined when their normalized pool names match or a strict majority of their relays share the same inferred relay operator identity\.$/i);
+        if (consensusPoolIdMethodologyMatch) {
+            return `Minimum aantal afgeleide SPO-operators waarvan de gecombineerde stake ${consensusPoolIdMethodologyMatch[1]} bereikt. Pool-ID's worden gecombineerd wanneer hun genormaliseerde poolnamen overeenkomen of wanneer een strict majority van hun relays dezelfde afgeleide relay-operatoridentiteit deelt.`;
+        }
+
+        const hostingMethodologyMatch = normalized.match(/^Minimum hosting providers whose combined measured stake reaches\s+(.+?)\.\s+Only pools with classified relay hosting data are included\.$/i);
+        if (hostingMethodologyMatch) {
+            return `Minimum aantal hostingproviders waarvan de gecombineerde gemeten stake ${hostingMethodologyMatch[1]} bereikt. Alleen pools met geclassificeerde relay-hostingdata worden meegenomen.`;
+        }
+
+        const hostingFailureDomainMethodologyMatch = normalized.match(/^Minimum hosting failure domains whose combined stake reaches\s+(.+?)\.\s+Pools whose relays all use one identified provider share that provider domain; mixed, unknown, and non-cloud pools remain separate domains\.$/i);
+        if (hostingFailureDomainMethodologyMatch) {
+            return `Minimum aantal hosting-failure-domains waarvan de gecombineerde stake ${hostingFailureDomainMethodologyMatch[1]} bereikt. Pools waarvan alle relays één geïdentificeerde provider gebruiken delen dat provider-domein; gemengde, onbekende en niet-cloud pools blijven aparte domeinen.`;
+        }
+
+        const geographicMethodologyMatch = normalized.match(/^Minimum countries whose combined measured relay stake reaches\s+(.+?)\.\s+Only relay IPs with resolved geographic data are included\.$/i);
+        if (geographicMethodologyMatch) {
+            return `Minimum aantal landen waarvan de gecombineerde gemeten relay-stake ${geographicMethodologyMatch[1]} bereikt. Alleen relay-IP's met opgeloste geografische data worden meegenomen.`;
+        }
+
+        const relayHostingCountriesMethodologyMatch = normalized.match(/^Minimum relay-hosting countries whose combined attributed stake reaches\s+(.+?)\s+of identified stake\.\s+A pool's stake is divided equally across its known relay countries; IP geolocation is preferred and RDAP is used as a fallback\.$/i);
+        if (relayHostingCountriesMethodologyMatch) {
+            return `Minimum aantal relay-hostinglanden waarvan de gecombineerde toegerekende stake ${relayHostingCountriesMethodologyMatch[1]} van de geïdentificeerde stake bereikt. De stake van een pool wordt gelijk verdeeld over de bekende relay-landen; IP-geolocatie heeft voorkeur en RDAP wordt als fallback gebruikt.`;
+        }
+
+        const softwareReasonMatch = normalized.match(/^Cardano pool registration and relay discovery do not publish a trustworthy node implementation or client identity\.$/i);
+        if (softwareReasonMatch) {
+            return 'Cardano-poolregistratie en relay-discovery publiceren geen betrouwbare node-implementatie of client-identiteit.';
+        }
+
+        const softwareMethodologyMatch = normalized.match(/^Minimum independently maintained Cardano node implementations needed to reach\s+(.+?)\s+of stake\.$/i);
+        if (softwareMethodologyMatch) {
+            return `Minimum aantal onafhankelijk onderhouden Cardano-node-implementaties dat nodig is om ${softwareMethodologyMatch[1]} van stake te bereiken.`;
+        }
+
+        const uniqueRelayLocationsMatch = normalized.match(/^(\d[\d,]*)\s+unique relay locations from\s+(\d[\d,]*)\s+relay IP records\.\s+Zoom or drag the map; point size represents attributed active stake\.\s+Select a shared location to view all SPOs there\.\s+Map:\s+Natural Earth,\s+CC0\.$/i);
+        if (uniqueRelayLocationsMatch) {
+            return `${uniqueRelayLocationsMatch[1]} unieke relay-locaties uit ${uniqueRelayLocationsMatch[2]} relay-IP-records. Zoom of sleep de kaart; puntgrootte staat voor toegerekende actieve stake. Selecteer een gedeelde locatie om alle SPOs daar te bekijken. Kaart: Natural Earth, CC0.`;
+        }
+
+        const worldMapMatch = normalized.match(/^World map with\s+(\d[\d,]*)\s+unique SPO relay locations$/i);
+        if (worldMapMatch) return `Wereldkaart met ${worldMapMatch[1]} unieke SPO-relaylocaties`;
+
+        const spoCountMatch = normalized.match(/^(\d[\d,]*)\s+SPOs$/i);
+        if (spoCountMatch) return `${spoCountMatch[1]} SPOs`;
+
         const votingPowerMatch = normalized.match(/^Voting Power\s+(.+)$/i);
         if (votingPowerMatch) return `Stemkracht ${votingPowerMatch[1]}`;
+
+        const votingPowerColonMatch = normalized.match(/^Voting power:\s*(.+)$/i);
+        if (votingPowerColonMatch) return `Stemkracht: ${votingPowerColonMatch[1]}`;
+
+        const drepVotedMatch = normalized.match(/^DRep voted\s+(.+)$/i);
+        if (drepVotedMatch) return `DRep stemde ${getAutoTranslationValue(drepVotedMatch[1]) || drepVotedMatch[1]}`;
+
+        const nclUsedMatch = normalized.match(/^NCL Used\s+(.+)$/i);
+        if (nclUsedMatch) return `NCL gebruikt ${nclUsedMatch[1]}`;
+
+        const nclAvailableMatch = normalized.match(/^NCL Available\s+(.+)$/i);
+        if (nclAvailableMatch) return `NCL beschikbaar ${nclAvailableMatch[1]}`;
+
+        const pipelineMatch = normalized.match(/^Pipeline\s+(.+)$/i);
+        if (pipelineMatch) return `Pipeline ${pipelineMatch[1]}`;
+
+        const totalActionsMatch = normalized.match(/^(\d[\d,]*)\s+total actions$/i);
+        if (totalActionsMatch) return `${totalActionsMatch[1]} acties totaal`;
+
+        const drepNameExistsMatch = normalized.match(/^The DRep name "(.+)" already exists\. Choose a unique name\.$/i);
+        if (drepNameExistsMatch) return `De DRep-naam "${drepNameExistsMatch[1]}" bestaat al. Kies een unieke naam.`;
+
+        const drepLengthMatch = normalized.match(/^DRep name must be\s+(\d+)\s+characters or shorter\.$/i);
+        if (drepLengthMatch) return `DRep-naam mag maximaal ${drepLengthMatch[1]} tekens zijn.`;
+
+        const textLengthMatch = normalized.match(/^(.+)\s+must be\s+(.+)\s+characters or shorter\.$/i);
+        if (textLengthMatch) return `${getAutoTranslationValue(textLengthMatch[1]) || textLengthMatch[1]} mag maximaal ${textLengthMatch[2]} tekens zijn.`;
+
+        const urlHashTogetherMatch = normalized.match(/^(.+)\s+and\s+(.+)\s+must be provided together\.$/i);
+        if (urlHashTogetherMatch) return `${getAutoTranslationValue(urlHashTogetherMatch[1]) || urlHashTogetherMatch[1]} en ${getAutoTranslationValue(urlHashTogetherMatch[2]) || urlHashTogetherMatch[2]} moeten samen worden ingevuld.`;
+
+        const validHttpsMatch = normalized.match(/^(.+)\s+must be a valid HTTPS URL\.$/i);
+        if (validHttpsMatch) return `${getAutoTranslationValue(validHttpsMatch[1]) || validHttpsMatch[1]} moet een geldige HTTPS-URL zijn.`;
+
+        const validMetadataUrlMatch = normalized.match(/^Enter a valid HTTPS or IPFS\s+(.+)\.$/i);
+        if (validMetadataUrlMatch) return `Voer een geldige HTTPS- of IPFS-${validMetadataUrlMatch[1]} in.`;
+
+        const metadataBeforeHashMatch = normalized.match(/^Enter the\s+(.+)\s+before creating its hash\.$/i);
+        if (metadataBeforeHashMatch) return `Vul de ${metadataBeforeHashMatch[1]} in voordat je de hash maakt.`;
+
+        const bytesMatch = normalized.match(/^(.+)\s+must be\s+(\d+)\s+bytes or shorter\.$/i);
+        if (bytesMatch) return `${getAutoTranslationValue(bytesMatch[1]) || bytesMatch[1]} mag maximaal ${bytesMatch[2]} bytes zijn.`;
+
+        const urlProtocolMatch = normalized.match(/^(.+)\s+must use HTTPS or IPFS\.$/i);
+        if (urlProtocolMatch) return `${getAutoTranslationValue(urlProtocolMatch[1]) || urlProtocolMatch[1]} moet HTTPS of IPFS gebruiken.`;
+
+        const registrationFailedMatch = normalized.match(/^Registration failed:\s*(.+)$/i);
+        if (registrationFailedMatch) return `Registratie mislukt: ${registrationFailedMatch[1]}`;
 
         const offlineMatch = normalized.match(/^Offline\s+(.+)$/i);
         if (offlineMatch) return `Offline ${offlineMatch[1]}`;
@@ -433,7 +754,7 @@
             return `${loadingMatch[1]} laden...`;
         }
 
-        const countMatch = normalized.match(/^(\d+)\s+(admin|excluded|published raffles|proposals|projects|actions|entries|members|signers|delegators|pools|articles|stake keys excluded)$/i);
+        const countMatch = normalized.match(/^(\d+)\s+(admin|excluded|published raffles|proposals|projects|actions|entries|members|signers|delegators|pools|articles|DReps|stake keys excluded)$/i);
         if (countMatch) return `${countMatch[1]} ${translateCountLabel(countMatch[2])}`;
 
         return '';
@@ -453,6 +774,7 @@
         if (normalized === 'delegators') return 'delegatoren';
         if (normalized === 'pools') return 'pools';
         if (normalized === 'articles') return 'artikelen';
+        if (normalized === 'dreps') return 'DReps';
         if (normalized === 'stake keys excluded') return 'stake keys uitgesloten';
         return label;
     }

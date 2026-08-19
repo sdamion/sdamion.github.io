@@ -1,4 +1,17 @@
 (function () {
+    function translateText(value) {
+        const text = String(value || '');
+        return window.TDSPI18n?.translateText?.(text) || text;
+    }
+
+    function setAutoTranslatedText(element, value) {
+        if (!(element instanceof HTMLElement)) return;
+        const text = String(value || '');
+        element.setAttribute('data-i18n-auto', '');
+        element.setAttribute('data-i18n-auto-original', text);
+        element.textContent = translateText(text);
+    }
+
     function createDrepNclModule({
         formatNclAdaAmount,
         formatVoteChoice,
@@ -31,8 +44,8 @@
                 spendFill.style.flexBasis = '0%';
                 leftFill.style.flexBasis = '100%';
                 pipelineFill.style.flexBasis = '0%';
-                bar.title = 'Current NCL unavailable';
-                label.textContent = 'Current NCL unavailable';
+                bar.title = translateText('Current NCL unavailable');
+                setAutoTranslatedText(label, 'Current NCL unavailable');
                 bar.append(track, label);
                 return bar;
             }
@@ -68,7 +81,7 @@
         function createLabelItem(label, value, tone) {
             const item = document.createElement('span');
             item.className = `drep-ncl-label-item drep-ncl-label-item--${tone}`;
-            item.textContent = `${label} ${value}`;
+            setAutoTranslatedText(item, `${label} ${value}`);
             return item;
         }
 

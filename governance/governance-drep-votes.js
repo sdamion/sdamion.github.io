@@ -1,4 +1,17 @@
 (function () {
+    function translateText(value) {
+        const text = String(value || '');
+        return window.TDSPI18n?.translateText?.(text) || text;
+    }
+
+    function setAutoTranslatedText(element, value) {
+        if (!(element instanceof HTMLElement)) return;
+        const text = String(value || '');
+        element.setAttribute('data-i18n-auto', '');
+        element.setAttribute('data-i18n-auto-original', text);
+        element.textContent = translateText(text);
+    }
+
     function createDrepVotes({
         addDetailRow,
         cleanText,
@@ -20,7 +33,7 @@
             const button = document.createElement('button');
             button.type = 'button';
             button.className = 'governance-vote-secondary governance-rationale-read-button';
-            button.textContent = 'Rationale';
+            setAutoTranslatedText(button, 'Rationale');
             button.addEventListener('click', event => {
                 event.preventDefault();
                 event.stopPropagation();
@@ -42,10 +55,10 @@
             addDetailRow(content, 'Transaction', getTransactionId(vote));
 
             const title = document.createElement('strong');
-            title.textContent = 'Rationale';
+            setAutoTranslatedText(title, 'Rationale');
             const text = document.createElement('p');
             text.className = 'governance-proposal-summary-text';
-            text.textContent = rationale || 'Loading vote rationale...';
+            setAutoTranslatedText(text, rationale || 'Loading vote rationale...');
             content.append(title, text);
 
             createMenuOverlay({
@@ -75,7 +88,7 @@
                     content
                 }).catch(() => {
                     if (!text.isConnected) return;
-                    text.textContent = 'Vote rationale could not be loaded from the API. The koios-proxy container may need the latest image or this vote has no on-chain rationale metadata.';
+                    setAutoTranslatedText(text, 'Vote rationale could not be loaded from the API. The koios-proxy container may need the latest image or this vote has no on-chain rationale metadata.');
                 });
             }
         }
@@ -115,7 +128,7 @@
             vote.rationale = payload?.rationale || vote.rationale;
 
             const rationale = getRationaleText(vote);
-            text.textContent = rationale || 'No on-chain rationale metadata found for this DRep vote.';
+            setAutoTranslatedText(text, rationale || 'No on-chain rationale metadata found for this DRep vote.');
         }
 
         function getRationaleText(vote) {
