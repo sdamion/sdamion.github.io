@@ -168,6 +168,8 @@
         ['Raffle wallet tokens', 'raffle_wallet_tokens'],
         ['Read', 'read'],
         ['Realfi SPO', 'realfi_spo'],
+        ['RealFi Docs is an external website. DYOR before clicking external links inside this embedded page.', 'realfi_docs_external_notice'],
+        ['RealFi Docs only allows embedding from HTTPS websites. Test this overlay on the production HTTPS site.', 'realfi_docs_https_only'],
         ['Rejected Actions', 'rejected_actions'],
         ['Register as DRep', 'register_as_drep'],
         ['Remove', 'remove'],

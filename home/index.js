@@ -633,7 +633,7 @@ function openRealfiWebsiteOverlay(returnFocus = document.activeElement) {
 
     const notice = document.createElement('p');
     notice.className = 'embedded-site-notice';
-    notice.textContent = 'RealFi Docs is an external website. DYOR before clicking external links inside this embedded page.';
+    notice.textContent = window.TDSPI18n?.translateText?.('RealFi Docs is an external website. DYOR before clicking external links inside this embedded page.') || 'RealFi Docs is an external website. DYOR before clicking external links inside this embedded page.';
 
     const frameWrap = document.createElement('div');
     frameWrap.className = 'embedded-site-frame';
@@ -649,7 +649,7 @@ function openRealfiWebsiteOverlay(returnFocus = document.activeElement) {
     } else {
         const localMessage = document.createElement('div');
         localMessage.className = 'embedded-site-local-warning';
-        localMessage.textContent = 'RealFi Docs only allows embedding from HTTPS websites. Test this overlay on the production HTTPS site.';
+        localMessage.textContent = window.TDSPI18n?.translateText?.('RealFi Docs only allows embedding from HTTPS websites. Test this overlay on the production HTTPS site.') || 'RealFi Docs only allows embedding from HTTPS websites. Test this overlay on the production HTTPS site.';
         frameWrap.appendChild(localMessage);
     }
 
