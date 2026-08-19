@@ -1,5 +1,10 @@
 (function () {
     function createPieChartRenderer({ formatPercentage }) {
+        function translateLabel(label) {
+            const value = String(label || '').replace(/\s+/g, ' ').trim();
+            return window.TDSPI18n?.translateText?.(value) || value;
+        }
+
         function getSegments(items) {
             const total = items.reduce((sum, item) => sum + item.value, 0);
             if (!total) return [];
@@ -56,6 +61,7 @@
             segments.forEach((segment, index) => {
                 const span = segment.end - segment.start;
                 const interactiveSegment = createSector(segment, namespace);
+                const segmentLabel = translateLabel(segment.label || `Segment ${index + 1}`);
                 interactiveSegment.classList.add('governance-pie-chart-sector');
                 interactiveSegment.style.fill = segment.color;
                 interactiveSegment.setAttribute('tabindex', '0');
@@ -63,7 +69,7 @@
                 interactiveSegment.setAttribute('role', isClickable ? 'button' : 'img');
                 interactiveSegment.setAttribute(
                     'aria-label',
-                    `${segment.label || `Segment ${index + 1}`}: ${formatPercentage(span / 360 * 100)}${isClickable ? ', open details' : ''}`
+                    `${segmentLabel}: ${formatPercentage(span / 360 * 100)}${isClickable ? ', open details' : ''}`
                 );
                 if (isClickable) {
                     interactiveSegment.classList.add('is-clickable');
@@ -71,7 +77,7 @@
                         options.onSegmentClick(segment, event.currentTarget);
                     }, {
                         datasetKey: 'pieSegmentBound',
-                        errorMessage: `${segment.label || 'Chart segment'} details could not be opened.`
+                        errorMessage: `${segmentLabel || 'Chart segment'} details could not be opened.`
                     });
                 }
 

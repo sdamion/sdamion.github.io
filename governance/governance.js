@@ -585,7 +585,7 @@ async function openTreasuryOverlay() {
     content.className = 'governance-detail-content';
     const loading = document.createElement('p');
     loading.className = 'small-text';
-    loading.textContent = 'Loading treasury data...';
+    setGovernanceAutoTranslatedText(loading, 'Loading treasury data...');
     content.appendChild(loading);
 
     createGovernanceMenuOverlay({
@@ -615,7 +615,7 @@ async function openTreasuryOverlay() {
         content.textContent = '';
         const message = document.createElement('p');
         message.className = 'small-text';
-        message.textContent = 'Treasury data could not be loaded.';
+        setGovernanceAutoTranslatedText(message, 'Treasury data could not be loaded.');
         content.appendChild(message);
     }
 }
@@ -638,6 +638,7 @@ async function renderTreasuryDetails(container, payload) {
 
     if (!treasuryWithdrawals.length) {
         const empty = window.TDSPRuntime.createSmallText('No enacted treasury withdrawals available.');
+        setGovernanceAutoTranslatedText(empty, 'No enacted treasury withdrawals available.');
         container.appendChild(empty);
         return;
     }
@@ -657,7 +658,7 @@ function createTreasuryAdministratorList(groupsOrWithdrawals) {
     const section = document.createElement('section');
 
     const title = document.createElement('strong');
-    title.textContent = 'Withdrawals by administrator';
+    setGovernanceAutoTranslatedText(title, 'Withdrawals by administrator');
 
     const list = document.createElement('div');
     list.className = 'governance-list governance-action-group-list';
@@ -1173,7 +1174,7 @@ async function openBusinessOverlay(returnFocus = document.activeElement) {
     panel.className = 'governance-list governance-action-group-list';
     const loading = document.createElement('p');
     loading.className = 'small-text';
-    loading.textContent = 'Loading Catalyst/Treasury recipients...';
+    setGovernanceAutoTranslatedText(loading, 'Loading Catalyst/Treasury recipients...');
     panel.appendChild(loading);
 
     let groups = [];
@@ -1201,6 +1202,7 @@ async function openBusinessOverlay(returnFocus = document.activeElement) {
         });
         if (!visibleGroups.length) {
             const empty = window.TDSPRuntime.createSmallText('No Catalyst/Treasury recipient data is available yet.');
+            setGovernanceAutoTranslatedText(empty, 'No Catalyst/Treasury recipient data is available yet.');
             panel.appendChild(empty);
         }
         const totals = getFundingRecipientUsdTotals(visibleGroups);
@@ -1269,7 +1271,7 @@ async function openBusinessOverlay(returnFocus = document.activeElement) {
         panel.textContent = '';
         const error = document.createElement('p');
         error.className = 'small-text';
-        error.textContent = 'Funding recipient data could not be loaded.';
+        setGovernanceAutoTranslatedText(error, 'Funding recipient data could not be loaded.');
         panel.appendChild(error);
     }
 }
@@ -1455,11 +1457,11 @@ function createCatalystProposalFundingOverview(
     section.className = 'governance-vote-chart governance-chart-panel';
 
     const title = document.createElement('strong');
-    title.textContent = 'Catalyst/Treasury funding';
+    setGovernanceAutoTranslatedText(title, 'Catalyst/Treasury funding');
 
     const projectsLabel = document.createElement('span');
     projectsLabel.className = 'governance-card-detail';
-    projectsLabel.textContent = `${projects.length.toLocaleString('en-US')} funded projects`;
+    setGovernanceAutoTranslatedText(projectsLabel, `${projects.length.toLocaleString('en-US')} funded projects`);
 
     const layout = document.createElement('div');
     layout.className = 'governance-vote-chart-layout';
@@ -1638,7 +1640,7 @@ async function openCatalystFundsOverlay(returnFocus = document.activeElement) {
     panel.className = 'governance-list governance-action-group-list';
     const loading = document.createElement('p');
     loading.className = 'small-text';
-    loading.textContent = 'Loading Catalyst and Treasury funding...';
+    setGovernanceAutoTranslatedText(loading, 'Loading Catalyst and Treasury funding...');
     panel.appendChild(loading);
 
     let funds = [];
@@ -1682,6 +1684,7 @@ async function openCatalystFundsOverlay(returnFocus = document.activeElement) {
             });
             if (!funds.length && !approvedGovernanceActions.length && !unapprovedGovernanceActions.length) {
                 const empty = window.TDSPRuntime.createSmallText('No Catalyst or Treasury funding data is available yet.');
+                setGovernanceAutoTranslatedText(empty, 'No Catalyst or Treasury funding data is available yet.');
                 panel.appendChild(empty);
             }
         }
@@ -1760,7 +1763,7 @@ async function openCatalystFundsOverlay(returnFocus = document.activeElement) {
         panel.replaceChildren();
         const error = document.createElement('p');
         error.className = 'small-text';
-        error.textContent = 'Catalyst funds could not be loaded.';
+        setGovernanceAutoTranslatedText(error, 'Catalyst funds could not be loaded.');
         panel.appendChild(error);
     }
 }
@@ -2776,13 +2779,17 @@ async function createTreasuryHistoryChart(payload, withdrawals) {
     section.className = 'governance-vote-chart governance-chart-panel governance-treasury-history-chart';
 
     const title = document.createElement('strong');
-    title.textContent = 'Treasury withdrawal history';
+    setGovernanceAutoTranslatedText(title, 'Treasury withdrawal history');
     section.appendChild(title);
 
     const chartFrame = document.createElement('div');
     chartFrame.className = 'governance-treasury-history-frame price-history-chart-frame is-tradingview';
     const canvas = document.createElement('canvas');
-    canvas.setAttribute('aria-label', 'Treasury income, withdrawals and treasury value per epoch');
+    canvas.setAttribute(
+        'aria-label',
+        window.TDSPI18n?.translateText?.('Treasury income, withdrawals and treasury value per epoch')
+            || 'Treasury income, withdrawals and treasury value per epoch'
+    );
     canvas.setAttribute('role', 'img');
     canvas.tabIndex = 0;
     chartFrame.appendChild(canvas);
@@ -2870,11 +2877,11 @@ async function createTreasuryHistoryChart(payload, withdrawals) {
     treasuryHistoryChart = new ChartCtor(canvas, {
         plugins: [tradingViewPlugin],
         data: {
-            labels: epochs.map(epoch => `Epoch ${epoch}`),
+            labels: epochs.map(epoch => window.TDSPI18n?.translateText?.(`Epoch ${epoch}`) || `Epoch ${epoch}`),
             datasets: [
                 {
                     type: 'line',
-                    label: 'Treasury candles',
+                    label: window.TDSPI18n?.translateText?.('Treasury candles') || 'Treasury candles',
                     data: treasuryValues,
                     yAxisID: 'treasury',
                     borderColor: 'rgba(0, 0, 0, 0)',
@@ -2927,10 +2934,15 @@ async function createTreasuryHistoryChart(payload, withdrawals) {
                     callbacks: {
                         label: context => {
                             const candle = treasuryCandles[context.dataIndex];
-                            if (!candle) return `Treasury: ${formatWholeAdaFromLovelace(context.raw)}`;
+                            if (!candle) {
+                                const treasuryLabel = window.TDSPI18n?.translateText?.('Treasury') || 'Treasury';
+                                return `${treasuryLabel}: ${formatWholeAdaFromLovelace(context.raw)}`;
+                            }
+                            const openLabel = window.TDSPI18n?.translateText?.('Open') || 'Open';
+                            const closeLabel = window.TDSPI18n?.translateText?.('Candle close') || 'Close';
                             return [
-                                `Open: ${formatWholeAdaFromLovelace(candle.open)}`,
-                                `Close: ${formatWholeAdaFromLovelace(candle.close)}`
+                                `${openLabel}: ${formatWholeAdaFromLovelace(candle.open)}`,
+                                `${closeLabel}: ${formatWholeAdaFromLovelace(candle.close)}`
                             ];
                         }
                     }
@@ -3102,7 +3114,7 @@ function createTreasuryWithdrawalCard(withdrawal) {
 
         const administratorText = document.createElement('span');
         administratorText.className = 'governance-drep-id';
-        administratorText.textContent = `Administrator: ${administrator}`;
+        setGovernanceAutoTranslatedText(administratorText, `Administrator: ${administrator}`);
         administratorLine.appendChild(administratorText);
         administratorLine.appendChild(createGovernanceCopyButton(
             administrator,
@@ -4007,10 +4019,10 @@ function createGovernanceCard(proposal, options = {}) {
     const votes = document.createElement('span');
     if (!proposal.votePercentages) {
         votes.className = 'governance-votes vote-neutral';
-        votes.textContent = 'Open for live votes';
+        setGovernanceAutoTranslatedText(votes, 'Open for live votes');
     } else {
         votes.className = `governance-votes ${getVoteColorClass(proposal.votePercentages, proposal.voteDisplay?.source, proposal)}`;
-        votes.textContent = formatVotePercentages(proposal.votePercentages, proposal.voteDisplay?.label, proposal.voteSummary, proposal.voteDisplay?.source);
+        setGovernanceAutoTranslatedText(votes, formatVotePercentages(proposal.votePercentages, proposal.voteDisplay?.label, proposal.voteSummary, proposal.voteDisplay?.source));
     }
 
     window.TDSPRuntime?.appendUniversalTileContent?.(openButton, {
@@ -4071,11 +4083,11 @@ function createGovernanceVoteBar(proposal) {
     label.className = 'tdsp-bar-legend governance-vote-bar-label';
     const yesLabel = document.createElement('span');
     yesLabel.className = 'governance-vote-label-item governance-vote-label-item--yes';
-    yesLabel.textContent = `Yes ${formatPercentage(yesPct)}`;
+    setGovernanceAutoTranslatedText(yesLabel, `Yes ${formatPercentage(yesPct)}`);
     const separator = document.createTextNode(' • ');
     const noLabel = document.createElement('span');
     noLabel.className = 'governance-vote-label-item governance-vote-label-item--no';
-    noLabel.textContent = `No ${formatPercentage(noPct)}`;
+    setGovernanceAutoTranslatedText(noLabel, `No ${formatPercentage(noPct)}`);
     label.append(yesLabel, separator, noLabel);
 
     bar.append(track, label);
@@ -4215,9 +4227,12 @@ function getActiveGovernanceCardMetadata(proposal) {
 }
 
 function getGovernanceActionHeaderMeta(proposal) {
+    const parts = [getProposalMeta(proposal)].filter(Boolean);
     const totalAsk = getProposalTotalAskLovelace(proposal);
-    if (!Number.isFinite(totalAsk) || totalAsk <= 0) return '';
-    return `Total ask ${formatCompactAdaFromLovelace(totalAsk, { fixedFractionDigits: 2 })}`;
+    if (Number.isFinite(totalAsk) && totalAsk > 0) {
+        parts.push(`Total ask ${formatCompactAdaFromLovelace(totalAsk, { fixedFractionDigits: 2 })}`);
+    }
+    return parts.join(' • ');
 }
 
 function getProposalTotalAskLovelace(proposal) {
@@ -4318,12 +4333,12 @@ function openGovernanceOverlay(proposal, options = {}) {
 
     const type = document.createElement('span');
     type.className = 'governance-type';
-    type.textContent = window.TDSPRuntime.formatReadableLabel(getEffectiveProposalType(proposal), 'Governance');
+    setGovernanceAutoTranslatedText(
+        type,
+        window.TDSPRuntime.formatReadableLabel(getEffectiveProposalType(proposal), 'Governance')
+    );
 
-    const meta = document.createElement('p');
-    meta.className = 'governance-action-header-epoch';
-    meta.textContent = getProposalMeta(proposal);
-    headerContext.append(type, meta);
+    headerContext.append(type);
 
     const content = document.createElement('div');
     content.className = 'governance-detail-content';
@@ -5612,7 +5627,7 @@ function updateGovernanceCardVotes(proposalId, proposal) {
     if (!votes) return;
 
     votes.className = `governance-votes ${getVoteColorClass(proposal.votePercentages, proposal.voteDisplay?.source, proposal)}`;
-    votes.textContent = formatVotePercentages(proposal.votePercentages, proposal.voteDisplay?.label, proposal.voteSummary, proposal.voteDisplay?.source);
+    setGovernanceAutoTranslatedText(votes, formatVotePercentages(proposal.votePercentages, proposal.voteDisplay?.label, proposal.voteSummary, proposal.voteDisplay?.source));
 }
 
 function getVotingSummaryFromProposalVotesPayload(payload) {
@@ -9106,7 +9121,7 @@ function renderConstitutionalCommitteeMembers(container, members, emptyMessage =
     if (!members.length) {
         const message = document.createElement('p');
         message.className = 'small-text';
-        message.textContent = emptyMessage || 'Constitutional Committee members could not be loaded.';
+        setGovernanceAutoTranslatedText(message, emptyMessage || 'Constitutional Committee members could not be loaded.');
         container.appendChild(message);
         return;
     }
@@ -9121,36 +9136,37 @@ function renderConstitutionalCommitteeMembers(container, members, emptyMessage =
             row.dataset.sortEpoch = String(Number(member.expiresEpoch));
         }
 
-        const stats = document.createElement('span');
-        stats.className = 'governance-card-detail governance-cc-member-stats';
-        stats.dataset.ccMemberIndex = String(index);
-        stats.textContent = 'Voting stats loading...';
+        const openButton = document.createElement('button');
+        openButton.type = 'button';
+        openButton.className = 'governance-card-open';
+        openButton.setAttribute('aria-label', `Show governance actions for ${member.name || `CC Member ${index + 1}`}`);
 
-        window.TDSPRuntime?.appendUniversalTileContent?.(row, {
+        const voteBar = createConstitutionalCommitteeMemberVoteBar(index);
+
+        window.TDSPRuntime?.appendUniversalTileContent?.(openButton, {
             title: member.name || `CC Member ${index + 1}`,
             titleClassName: 'governance-title governance-cc-member-hash',
-            primaryText: member.expiresEpoch ? `expires epoch ${member.expiresEpoch}` : '',
-            primaryClassName: 'governance-card-detail governance-treasury-withdrawal-amount governance-cc-member-meta',
+            contextItems: [
+                member.expiresEpoch ? `expires epoch ${member.expiresEpoch}` : ''
+            ],
             detailItems: [
-                stats
+                voteBar
             ]
         });
         row.classList.add('governance-cc-member-clickable');
-        row.setAttribute('role', 'button');
-        row.tabIndex = 0;
-        row.setAttribute('aria-label', `Show governance actions for ${member.name || `CC Member ${index + 1}`}`);
-        bindGovernanceMenuTrigger(row, event => openConstitutionalCommitteeActionsOverlay(member, event.currentTarget));
+        bindGovernanceMenuTrigger(openButton, event => openConstitutionalCommitteeActionsOverlay(member, event.currentTarget));
         bindGovernanceEntityPreload(
-            row,
+            openButton,
             `committee:${String(member.id || '').toLowerCase()}`,
             () => fetchJson(getCommitteeMemberApiUrl(member.id), { cache: 'no-store' })
         );
+        row.appendChild(openButton);
         container.appendChild(row);
     });
 
     loadConstitutionalCommitteeMemberSummaryStats(enrichedMembers, container).catch(() => {
         container.querySelectorAll('.governance-cc-member-stats').forEach(element => {
-            element.textContent = 'Voting stats unavailable';
+            setGovernanceAutoTranslatedText(element, 'Voting stats unavailable');
         });
     });
 }
@@ -9491,11 +9507,65 @@ function normalizeConstitutionalCommitteeTileStats(voteStats, proposalStats = {}
     };
 }
 
+function createConstitutionalCommitteeMemberVoteBar(index) {
+    const bar = document.createElement('div');
+    bar.className = 'governance-vote-bar governance-cc-member-vote-bar is-empty';
+    bar.dataset.ccMemberIndex = String(index);
+
+    const track = document.createElement('div');
+    track.className = 'governance-vote-bar-track';
+    track.setAttribute('aria-label', 'Voting stats loading');
+
+    const votedFill = document.createElement('span');
+    votedFill.className = 'governance-vote-bar-fill governance-vote-bar-fill--yes';
+    votedFill.style.flexBasis = '0%';
+
+    const notVotedFill = document.createElement('span');
+    notVotedFill.className = 'governance-vote-bar-fill governance-vote-bar-fill--no';
+    notVotedFill.style.flexBasis = '0%';
+    track.append(votedFill, notVotedFill);
+
+    const label = document.createElement('span');
+    label.className = 'tdsp-bar-legend governance-vote-bar-label';
+
+    const votedLabel = document.createElement('span');
+    votedLabel.className = 'governance-vote-label-item governance-vote-label-item--yes';
+    setGovernanceAutoTranslatedText(votedLabel, 'Voted 0%');
+
+    const notVotedLabel = document.createElement('span');
+    notVotedLabel.className = 'governance-vote-label-item governance-vote-label-item--no';
+    setGovernanceAutoTranslatedText(notVotedLabel, 'Not voted 0%');
+
+    label.append(votedLabel, document.createTextNode(' • '), notVotedLabel);
+    bar.append(track, label);
+    return bar;
+}
+
+function updateConstitutionalCommitteeMemberVoteBar(container, index, votedPct, notVotedPct, hasApplicableVotes) {
+    const bar = container.querySelector(`.governance-cc-member-vote-bar[data-cc-member-index="${index}"]`);
+    if (!bar) return;
+
+    const normalizedVoted = hasApplicableVotes ? Math.max(0, Math.min(100, Number(votedPct) || 0)) : 0;
+    const normalizedNotVoted = hasApplicableVotes ? Math.max(0, Math.min(100, Number(notVotedPct) || 0)) : 0;
+    const votedLabelText = `Voted ${formatPercentage(normalizedVoted)}`;
+    const notVotedLabelText = `Not voted ${formatPercentage(normalizedNotVoted)}`;
+
+    const votedFill = bar.querySelector('.governance-vote-bar-fill--yes');
+    const notVotedFill = bar.querySelector('.governance-vote-bar-fill--no');
+    if (votedFill) votedFill.style.flexBasis = `${normalizedVoted}%`;
+    if (notVotedFill) notVotedFill.style.flexBasis = `${normalizedNotVoted}%`;
+
+    const votedLabel = bar.querySelector('.governance-vote-label-item--yes');
+    const notVotedLabel = bar.querySelector('.governance-vote-label-item--no');
+    if (votedLabel) setGovernanceAutoTranslatedText(votedLabel, votedLabelText);
+    if (notVotedLabel) setGovernanceAutoTranslatedText(notVotedLabel, notVotedLabelText);
+
+    bar.querySelector('.governance-vote-bar-track')?.setAttribute('aria-label', `${votedLabelText}, ${notVotedLabelText}`);
+    bar.classList.toggle('is-empty', !hasApplicableVotes);
+}
+
 function updateConstitutionalCommitteeMemberSummaryStats(container, stats) {
     stats.forEach((item, index) => {
-        const element = container.querySelector(`.governance-cc-member-stats[data-cc-member-index="${index}"]`);
-        if (!element) return;
-
         const votedCount = Math.max(0, Number(item.voted) || 0);
         const explicitNotVoted = Number(item.notVoted);
         const notVotedCount = Number.isFinite(explicitNotVoted)
@@ -9504,34 +9574,13 @@ function updateConstitutionalCommitteeMemberSummaryStats(container, stats) {
         const applicableClosedTotal = votedCount + notVotedCount;
 
         if (!applicableClosedTotal) {
-            element.textContent = `Active ${Number(item.open) || 0} • Voted 0% • Not voted 0% • Not applicable ${Number(item.notApplicable) || 0}`;
+            updateConstitutionalCommitteeMemberVoteBar(container, index, 0, 0, false);
             return;
         }
 
         const votedPct = (votedCount / applicableClosedTotal) * 100;
         const notVotedPct = (notVotedCount / applicableClosedTotal) * 100;
-        element.textContent = '';
-
-        const voted = document.createElement('span');
-        voted.textContent = `Voted ${formatPercentage(votedPct)}`;
-        const separator = document.createElement('span');
-        separator.className = 'governance-cc-member-stats-separator';
-        separator.textContent = ' • ';
-        const notVoted = document.createElement('span');
-        notVoted.className = 'governance-cc-member-stats-missing';
-        notVoted.textContent = `Not voted ${formatPercentage(notVotedPct)}`;
-        const notApplicableSeparator = document.createElement('span');
-        notApplicableSeparator.className = 'governance-cc-member-stats-separator';
-        notApplicableSeparator.textContent = ' • ';
-        const notApplicable = document.createElement('span');
-        notApplicable.className = 'governance-cc-member-stats-not-applicable';
-        notApplicable.textContent = `Not applicable ${Number(item.notApplicable) || 0}`;
-
-        element.appendChild(voted);
-        element.appendChild(separator);
-        element.appendChild(notVoted);
-        element.appendChild(notApplicableSeparator);
-        element.appendChild(notApplicable);
+        updateConstitutionalCommitteeMemberVoteBar(container, index, votedPct, notVotedPct, true);
     });
 }
 
@@ -9862,7 +9911,7 @@ function renderConstitutionalCommitteeVoteTotalsChart(container, stats, options 
     chart.className = 'governance-vote-chart governance-chart-panel';
 
     const title = document.createElement('strong');
-    title.textContent = options.title || 'CC vote overview';
+    setGovernanceAutoTranslatedText(title, options.title || 'CC vote overview');
 
     const layout = document.createElement('div');
     layout.className = 'governance-vote-chart-layout';

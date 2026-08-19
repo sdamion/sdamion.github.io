@@ -13,12 +13,20 @@
         updateMenuBotContext,
         updateMenuHeaderMeta
     }) {
+        function setAutoTranslatedText(element, text) {
+            if (!(element instanceof HTMLElement)) return;
+            const value = String(text || '').replace(/\s+/g, ' ').trim();
+            element.setAttribute('data-i18n-auto', '');
+            element.setAttribute('data-i18n-auto-original', value);
+            element.textContent = window.TDSPI18n?.translateText?.(value) || value;
+        }
+
         async function openDirectoryOverlay(returnFocus = document.activeElement) {
             const panel = document.createElement('div');
             panel.className = 'governance-list governance-action-group-list';
             const loading = document.createElement('p');
             loading.className = 'small-text';
-            loading.textContent = 'Loading CIPs...';
+            setAutoTranslatedText(loading, 'Loading CIPs...');
             panel.appendChild(loading);
 
             const currentState = getState();
@@ -33,7 +41,7 @@
                     ? `${(currentState.cips || []).length.toLocaleString('en-US')} CIPs`
                     : 'Loading...',
                 returnFocus,
-                rootTitle: 'Cardano Governance',
+                rootTitle: window.TDSPI18n?.translateText?.('Cardano Governance') || 'Cardano Governance',
                 defaultSort: 'cip-asc',
                 searchPlaceholder: 'Search by CIP number, title, status or text',
                 botContext: createSectionBotContext('CIPs', {
@@ -51,6 +59,7 @@
                 cips.forEach(cip => panel.appendChild(createCard(cip)));
                 if (!cips.length) {
                     const empty = window.TDSPRuntime.createSmallText('No CIPs are available yet.');
+                    setAutoTranslatedText(empty, 'No CIPs are available yet.');
                     panel.appendChild(empty);
                 }
                 updateMenuHeaderMeta(
@@ -73,7 +82,7 @@
                 panel.replaceChildren();
                 const message = document.createElement('p');
                 message.className = 'small-text';
-                message.textContent = 'CIPs could not be loaded.';
+                setAutoTranslatedText(message, 'CIPs could not be loaded.');
                 panel.appendChild(message);
             }
         }
@@ -171,7 +180,7 @@
                 headerMeta: cip.status,
                 overlayClass: 'governance-action-detail-overlay',
                 returnFocus,
-                rootTitle: 'Cardano Improvement Proposals',
+                rootTitle: window.TDSPI18n?.translateText?.('Cardano Improvement Proposals') || 'Cardano Improvement Proposals',
                 enableSearch: false,
                 botContext: createBotContext(cip)
             });

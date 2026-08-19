@@ -47,11 +47,11 @@
 
     <!-- Preload Logo -->
     <link rel="preload" href="tdsp_logo.webp?v=20260727-smooth-lines" as="image" type="image/webp">
-    <link rel="stylesheet" href="shared/styles.css?v=20260819-universal-id-line">
+    <link rel="stylesheet" href="shared/styles.css?v=20260819-language-flags">
     <link rel="stylesheet" href="delegators/raffle.css?v=20260818-universal-overlay-mobile">
 
     <script src="shared/runtime.js?v=20260819-universal-tile-i18n" defer></script>
-    <script src="shared/i18n.js?v=20260819-drep-overlay-language" defer></script>
+    <script src="shared/i18n.js?v=20260819-japanese-dynamic-labels" defer></script>
     <script src="shared/site-controls.js?v=20260818-raffle-overlay-module" defer></script>
     <script src="shared/database-status.js?v=20260819-database-status-module" defer></script>
     <script src="vendor/chart-loader.js?v=20260817-section-folders" defer></script>
@@ -60,7 +60,7 @@
     <script src="delegators/pool-delegators-list.js?v=20260819-active-epoch-language" defer></script>
     <script src="delegators/delegator-dashboard-template.js?v=20260818-dashboard-template-module" defer></script>
     <script src="home/news-overlay.js?v=20260818-news-overlay-module" defer></script>
-    <script src="home/cardano-events.js?v=20260819-cardano-events-module" defer></script>
+    <script src="home/cardano-events.js?v=20260819-language-flags" defer></script>
     <script src="home/prices.js?v=20260819-price-language" defer></script>
     <script src="home/index.js?v=20260819-overlay-language" defer></script>
 </head>
@@ -99,7 +99,11 @@
                                 <span id="site-alert-status" aria-live="polite">Notifications off</span>
                             </div>
                         </div>
-                        <button class="language-toggle" id="language-toggle" type="button" aria-label="Zet de site in het Nederlands">NL</button>
+                        <div class="language-toggle-group" aria-label="Language">
+                            <button class="language-toggle" type="button" data-language-option="en" aria-label="Switch site language to English">🇺🇸</button>
+                            <button class="language-toggle" type="button" data-language-option="nl" aria-label="Zet de site in het Nederlands">🇳🇱</button>
+                            <button class="language-toggle" type="button" data-language-option="ja" aria-label="サイトを日本語に切り替える">🇯🇵</button>
+                        </div>
                         <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch to dark mode">
                             <span class="theme-toggle-icon theme-toggle-icon--moon" aria-hidden="true">
                                 <svg viewBox="0 0 24 24" focusable="false">
@@ -358,7 +362,7 @@
                     </div>
                     <div id="gov-ncl-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show Net Change Limit data">
                         <strong id="gov-ncl-amount">&#8371; --</strong>
-                        <span>NCL</span>
+                        <span data-i18n="ncl">NCL</span>
                         <span class="governance-summary-subvalue" id="gov-ncl-balance" data-i18n-auto>Balance &#8371; --</span>
                         <span class="governance-summary-subvalue" id="gov-ncl-epochs-left" data-i18n-auto>Reset in -- epochs</span>
                     </div>
@@ -391,8 +395,8 @@
                     </div>
                     <div id="gov-cips-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show Cardano Improvement Proposals">
                         <strong id="gov-cip-count">Loading...</strong>
-                        <span>CIPs</span>
-                        <span class="governance-summary-subvalue" id="gov-cip-status">Cardano Improvement Proposals</span>
+                        <span data-i18n="cips">CIPs</span>
+                        <span class="governance-summary-subvalue" id="gov-cip-status" data-i18n="cardano_improvement_proposals">Cardano Improvement Proposals</span>
                     </div>
                     <div id="constitution-document-open" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Read the Cardano Constitution">
                         <strong data-i18n="read">Read</strong>
@@ -434,8 +438,8 @@
         <p id="wallet-status" class="wallet-status" role="status" aria-live="polite"></p>
     </template>
 
-    <script src="starch/starch-loader.js?v=20260819-starch-language-values" defer></script>
-    <script src="governance/governance-loader.js?v=20260819-drep-overlay-language" defer></script>
+    <script src="starch/starch-loader.js?v=20260819-starch-overlay-language" defer></script>
+    <script src="governance/governance-loader.js?v=20260819-cc-member-tile-cards" defer></script>
     <script src="stake/stake-loader.js?v=20260819-stake-drep-language" defer></script>
 </body>
 </html>

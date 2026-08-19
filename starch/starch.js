@@ -12,6 +12,14 @@ let minerChartInstance = null;
 let tdspStarchCompanyEnabled = null;
 let tdspStarchMinerCount = null;
 
+function setStarchAutoTranslatedText(element, text) {
+    if (!(element instanceof HTMLElement)) return;
+    const value = String(text || '').replace(/\s+/g, ' ').trim();
+    element.setAttribute('data-i18n-auto', '');
+    element.setAttribute('data-i18n-auto-original', value);
+    element.textContent = window.TDSPI18n?.translateText?.(value) || value;
+}
+
 const formatBalance = balance =>
     `${new Intl.NumberFormat('en-US', {
         style: 'decimal',
@@ -442,6 +450,7 @@ async function openStarchCompanyOverlay(company, returnFocus, options = {}) {
     const content = document.createElement('div');
     content.className = 'starch-company-detail';
     const loading = window.TDSPRuntime.createSmallText('Loading company miners...');
+    setStarchAutoTranslatedText(loading, 'Loading company miners...');
     content.appendChild(loading);
 
     createPoolMenuOverlay({
@@ -454,7 +463,7 @@ async function openStarchCompanyOverlay(company, returnFocus, options = {}) {
         closeLabel: `Close ${String(company?.name || 'company')}`,
         closeOverlay: closeStarchCompanyOverlay,
         returnFocus,
-        rootTitle: 'Companies',
+        rootTitle: window.TDSPI18n?.translateText?.('Companies') || 'Companies',
         bodyNode: content
     });
 
@@ -472,6 +481,7 @@ async function openStarchCompanyOverlay(company, returnFocus, options = {}) {
         if (!document.getElementById('starch-company-detail-overlay')) return;
         content.replaceChildren();
         const message = window.TDSPRuntime.createSmallText('Company miner data could not be loaded.', { className: 'governance-empty' });
+        setStarchAutoTranslatedText(message, 'Company miner data could not be loaded.');
         content.appendChild(message);
     }
 }
@@ -554,7 +564,7 @@ async function renderStarchCompanyDetail(content, company, summary, options = {}
     const idLine = document.createElement('div');
     idLine.className = 'pool-id-line starch-company-id-line';
     const idLabel = document.createElement('span');
-    idLabel.textContent = 'ID';
+    setStarchAutoTranslatedText(idLabel, companyIds.length > 1 ? 'Company IDs' : 'Company ID');
     const idValue = document.createElement('strong');
     const companyIds = getStarchCompanyIds(company);
     const companyIdText = companyIds.join(', ') || String(summary?.team_id || 'N/A');
@@ -573,7 +583,7 @@ async function renderStarchCompanyDetail(content, company, summary, options = {}
     const table = createStarchMinerTable(miners);
     const timestamp = document.createElement('p');
     timestamp.className = 'refresh-time small-text';
-    timestamp.textContent = `Last Updated: ${formatStarchTimestamp(summary?.updated_at, summary?.stale === true)}`;
+    setStarchAutoTranslatedText(timestamp, `Last Updated: ${formatStarchTimestamp(summary?.updated_at, summary?.stale === true)}`);
 
     content.append(summaryTiles, idLine, canvas, table, timestamp);
     await renderStarchCompanyChart(canvas, miners, String(company?.id || summary?.team_id || '000000'));
@@ -582,9 +592,9 @@ async function renderStarchCompanyDetail(content, company, summary, options = {}
 function createStarchStatTile(value, label) {
     const tile = document.createElement('div');
     const strong = document.createElement('strong');
-    strong.textContent = value;
+    setStarchAutoTranslatedText(strong, value);
     const span = document.createElement('span');
-    span.textContent = label;
+    setStarchAutoTranslatedText(span, label);
     tile.append(strong, span);
     return tile;
 }
@@ -597,7 +607,7 @@ function createStarchMinerTable(miners) {
     const headerRow = document.createElement('tr');
     ['#', 'Miner', 'Rank', 'Blocks', '$STRCH'].forEach(label => {
         const th = document.createElement('th');
-        th.textContent = label;
+        setStarchAutoTranslatedText(th, label);
         headerRow.appendChild(th);
     });
     head.appendChild(headerRow);
@@ -650,7 +660,7 @@ async function renderStarchCompanyChart(canvas, miners, companyId) {
         data: {
             labels: miners.map(miner => miner.miner_id),
             datasets: [{
-                label: 'Mined Blocks (Week)',
+                label: window.TDSPI18n?.translateText?.('Mined Blocks (Week)') || 'Mined Blocks (Week)',
                 data: miners.map(miner => miner.weeklyBlocks),
                 backgroundColor: gradient,
                 borderColor: color,

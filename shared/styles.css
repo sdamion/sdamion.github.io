@@ -676,27 +676,40 @@ html[data-theme="dark"] .theme-toggle:not([data-current-theme]) .theme-toggle-ic
     color: var(--accent);
 }
 
+.language-toggle-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+
 .language-toggle {
     display: grid;
     place-items: center;
-    min-width: 28px;
+    min-width: 26px;
     height: 26px;
     padding: 0 2px;
     border: 0;
-    border-radius: 0;
+    border-radius: 999px;
     background: transparent;
-    color: var(--accent-strong);
+    color: var(--text);
     font: inherit;
-    font-size: 0.8rem;
-    font-weight: 900;
+    font-size: 1rem;
+    font-weight: 800;
     line-height: 1;
     cursor: pointer;
+    opacity: 0.62;
+    transition: opacity 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .language-toggle:hover,
 .language-toggle:focus-visible {
-    color: var(--accent);
+    opacity: 1;
     outline: none;
+}
+
+.language-toggle.is-active {
+    opacity: 1;
+    box-shadow: 0 0 0 2px var(--accent);
 }
 
 /* Section Layout */
@@ -3593,6 +3606,10 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 .governance-cc-member {
     display: block;
     padding: 14px;
+}
+
+.governance-card.governance-cc-member {
+    padding: 16px 16px 18px;
 }
 
 .governance-cc-member-clickable {

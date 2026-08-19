@@ -1,6 +1,24 @@
 (function () {
     const notificationTimers = new Map();
 
+    function translateEventText(text) {
+        return window.TDSPI18n?.translateText?.(text) || text;
+    }
+
+    function setTranslatedEventText(element, text) {
+        if (!(element instanceof HTMLElement)) return;
+        element.setAttribute('data-i18n-auto', '');
+        element.setAttribute('data-i18n-auto-original', text);
+        element.textContent = translateEventText(text);
+    }
+
+    function getEventLocale() {
+        const language = window.TDSPI18n?.getLanguage?.();
+        if (language === 'nl') return 'nl-NL';
+        if (language === 'ja') return 'ja-JP';
+        return 'en-GB';
+    }
+
     function parseCardanoEventDate(value) {
         if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ''))) return null;
         const date = new Date(`${value}T12:00:00Z`);
@@ -25,9 +43,9 @@
     function formatCardanoEventDate(startValue, endValue) {
         const start = parseCardanoEventDate(startValue);
         const end = parseCardanoEventDate(endValue) || start;
-        if (!start) return 'Date unavailable';
+        if (!start) return translateEventText('Date unavailable');
 
-        const full = new Intl.DateTimeFormat('en-GB', {
+        const full = new Intl.DateTimeFormat(getEventLocale(), {
             day: 'numeric',
             month: 'short',
             year: 'numeric',
@@ -40,10 +58,10 @@
         const startMonth = start.getUTCMonth();
         const endMonth = end.getUTCMonth();
         if (startYear === endYear && startMonth === endMonth) {
-            const month = new Intl.DateTimeFormat('en-GB', { month: 'short', timeZone: 'UTC' }).format(start);
-            return `${start.getUTCDate()} to ${end.getUTCDate()} ${month} ${startYear}`;
+            const month = new Intl.DateTimeFormat(getEventLocale(), { month: 'short', timeZone: 'UTC' }).format(start);
+            return `${start.getUTCDate()} ${translateEventText('to')} ${end.getUTCDate()} ${month} ${startYear}`;
         }
-        return `${full.format(start)} to ${full.format(end)}`;
+        return `${full.format(start)} ${translateEventText('to')} ${full.format(end)}`;
     }
 
     function formatCardanoEventDateTime(event) {
@@ -56,17 +74,17 @@
             return formatCardanoEventDate(event?.start_date, event?.end_date);
         }
 
-        const date = new Intl.DateTimeFormat('en-GB', {
+        const date = new Intl.DateTimeFormat(getEventLocale(), {
             day: 'numeric',
             month: 'short',
             year: 'numeric'
         }).format(start);
-        const time = new Intl.DateTimeFormat('en-GB', {
+        const time = new Intl.DateTimeFormat(getEventLocale(), {
             hour: '2-digit',
             minute: '2-digit'
         });
         if (!end || Number.isNaN(end.getTime())) return `${date} | ${time.format(start)}`;
-        return `${date} | ${time.format(start)} to ${time.format(end)}`;
+        return `${date} | ${time.format(start)} ${translateEventText('to')} ${time.format(end)}`;
     }
 
     function getNotificationBody(event) {
@@ -75,13 +93,13 @@
             event?.location,
             event?.organizer
         ].filter(Boolean);
-        return details.join(' | ') || 'A Cardano event is starting now.';
+        return details.join(' | ') || translateEventText('A Cardano event is starting now.');
     }
 
     function notifyEventStart(event, options) {
-        const title = String(event?.title || 'Cardano event').trim();
+        const title = String(event?.title || translateEventText('Cardano event')).trim();
         options.sendBrowserNotification?.(
-            'Cardano event starting',
+            translateEventText('Cardano event starting'),
             `${title} — ${getNotificationBody(event)}`,
             `tdsp-cardano-event-${getCardanoEventNotificationId(event)}`,
             'events'
@@ -143,7 +161,7 @@
         card.type = 'button';
         card.dataset.sortDate = String(Date.parse(event?.start_at || `${event?.start_date}T00:00:00Z`) || 0);
         card.dataset.sortName = String(event?.title || '');
-        card.setAttribute('aria-label', `Open event: ${event?.title || 'Cardano event'}`);
+        card.setAttribute('aria-label', `${translateEventText('Open event')}: ${event?.title || translateEventText('Cardano event')}`);
 
         const date = document.createElement('strong');
         date.className = 'cardano-event-date';
@@ -151,11 +169,11 @@
 
         const title = document.createElement('span');
         title.className = 'cardano-event-title';
-        title.textContent = event?.title || 'Cardano event';
+        title.textContent = event?.title || translateEventText('Cardano event');
 
         const meta = document.createElement('p');
         meta.className = 'cardano-event-meta';
-        meta.textContent = [event?.location, event?.organizer].filter(Boolean).join(' | ') || 'Event details';
+        meta.textContent = [event?.location, event?.organizer].filter(Boolean).join(' | ') || translateEventText('Event details');
 
         card.append(title, date, meta);
         if (event?.image_url) {
@@ -174,7 +192,7 @@
         }
         window.TDSPRuntime?.bindMenuTrigger?.(card, () => openCardanoEventOverlay(event, card), {
             datasetKey: 'eventBound',
-            errorMessage: 'Cardano event could not be opened.'
+            errorMessage: translateEventText('Cardano event could not be opened.')
         });
         return card;
     }
@@ -201,14 +219,14 @@
         tile.className = 'governance-summary-clickable governance-menu-card cardano-event-source-tile';
         tile.setAttribute('role', 'button');
         tile.setAttribute('tabindex', '0');
-        tile.setAttribute('aria-label', `Show ${source.name} events`);
+        tile.setAttribute('aria-label', `${translateEventText('Show events from')} ${source.name}`);
         const count = document.createElement('strong');
         count.textContent = String(events.length);
         const name = document.createElement('span');
         name.textContent = source.name;
         const description = document.createElement('span');
         description.className = 'governance-summary-subvalue';
-        description.textContent = source.description;
+        setTranslatedEventText(description, source.description);
         const copy = document.createElement('div');
         copy.className = 'cardano-event-source-copy';
         copy.append(count, name, description);
@@ -219,7 +237,7 @@
             const image = document.createElement('img');
             image.className = 'cardano-event-source-image';
             image.src = upcomingEvent.image_url;
-            image.alt = `${upcomingEvent.title || source.name} event`;
+            image.alt = `${upcomingEvent.title || source.name} ${translateEventText('event')}`;
             image.loading = 'lazy';
             image.referrerPolicy = 'no-referrer';
             image.addEventListener('error', () => {
@@ -232,7 +250,7 @@
         const open = () => openCardanoEventSourceOverlay(source, events, tile);
         window.TDSPRuntime?.bindMenuTrigger?.(tile, open, {
             datasetKey: 'eventsBound',
-            errorMessage: `${source.name} events could not be opened.`
+            errorMessage: `${source.name} ${translateEventText('events could not be opened.')}`
         });
         return tile;
     }
@@ -250,7 +268,7 @@
         sourceLink.href = source.url;
         sourceLink.target = '_blank';
         sourceLink.rel = 'noopener noreferrer';
-        sourceLink.textContent = `Open ${source.name}`;
+        sourceLink.textContent = `${translateEventText('Open')} ${source.name}`;
         content.appendChild(sourceLink);
         return content;
     }
@@ -261,12 +279,12 @@
         window.createPoolMenuOverlay?.({
             id: overlayId,
             titleId: `cardano-event-source-${source.key}-title`,
-            titleText: `${source.name} Events`,
-            headerMeta: `${events.length} events`,
-            closeLabel: `Close ${source.name} events`,
+            titleText: `${source.name} ${translateEventText('Events')}`,
+            headerMeta: `${events.length} ${translateEventText(events.length === 1 ? 'event' : 'events')}`,
+            closeLabel: `${translateEventText('Close')} ${source.name} ${translateEventText('events')}`,
             closeOverlay: restoreFocus => window.closePoolMenuOverlay?.(overlayId, restoreFocus),
             returnFocus,
-            rootTitle: 'Cardano Events',
+            rootTitle: translateEventText('Cardano Events'),
             bodyNode: createCardanoEventSourceContent(source, events),
             defaultSort: 'oldest'
         });
@@ -280,7 +298,7 @@
             const image = document.createElement('img');
             image.className = 'cardano-event-detail-image';
             image.src = event.image_url;
-            image.alt = `${event.title || 'Cardano event'} poster`;
+            image.alt = `${event.title || translateEventText('Cardano event')} ${translateEventText('poster')}`;
             image.referrerPolicy = 'no-referrer';
             image.addEventListener('error', () => image.remove(), { once: true });
             detail.appendChild(image);
@@ -297,7 +315,7 @@
             const row = document.createElement('div');
             row.className = 'cardano-event-detail-fact';
             const label = document.createElement('strong');
-            label.textContent = labelText;
+            setTranslatedEventText(label, labelText);
             const text = document.createElement('span');
             text.textContent = value;
             row.append(label, text);
@@ -308,7 +326,7 @@
         const description = document.createElement('p');
         description.className = 'cardano-event-detail-description';
         description.textContent = event?.description
-            || 'More information is available on the event website.';
+            || translateEventText('More information is available on the event website.');
         detail.appendChild(description);
 
         if (event?.link) {
@@ -317,7 +335,7 @@
             link.href = event.link;
             link.target = '_blank';
             link.rel = 'noopener noreferrer';
-            link.textContent = 'View event';
+            setTranslatedEventText(link, 'View event');
             detail.appendChild(link);
         }
 
@@ -329,12 +347,12 @@
         window.createPoolMenuOverlay?.({
             id: 'cardano-event-overlay',
             titleId: 'cardano-event-title',
-            titleText: event?.title || 'Cardano Event',
+            titleText: event?.title || translateEventText('Cardano Event'),
             headerMeta: formatCardanoEventDateTime(event),
-            closeLabel: 'Close Cardano event',
+            closeLabel: translateEventText('Close Cardano event'),
             closeOverlay: closeCardanoEventOverlay,
             returnFocus,
-            rootTitle: 'Cardano Events',
+            rootTitle: translateEventText('Cardano Events'),
             bodyNode: createCardanoEventDetail(event)
         });
     }
@@ -382,6 +400,7 @@
         } catch (error) {
             console.error('Cardano events could not be loaded', error);
             const message = window.TDSPRuntime.createSmallText('Upcoming Cardano events are temporarily unavailable.');
+            setTranslatedEventText(message, 'Upcoming Cardano events are temporarily unavailable.');
             container.replaceChildren(message);
         }
     }

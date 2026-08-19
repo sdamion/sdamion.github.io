@@ -1,8 +1,11 @@
 (function initializeTdspI18n() {
     const LANGUAGE_STORAGE_KEY = 'tdsp-language';
     const DEFAULT_LANGUAGE = 'en';
-    const DUTCH_LANGUAGE = 'nl';
-    const DUTCH_TOML_URL = 'locales/nl.toml?v=20260819-drep-overlay-language';
+    const LANGUAGE_CONFIG = Object.freeze({
+        en: { label: 'English', flag: '🇺🇸' },
+        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20260819-japanese-dynamic-labels' },
+        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20260819-japanese-dynamic-labels' }
+    });
     const TRANSLATION_ATTR = 'data-i18n';
     const TRANSLATION_ORIGINAL_ATTR = 'data-i18n-original';
     const AUTO_TRANSLATION_ORIGINAL_ATTR = 'data-i18n-auto-original';
@@ -18,7 +21,9 @@
         '.small-text',
         '.refresh-time',
         '.governance-vote-button',
+        '.governance-vote-label-item',
         '.governance-vote-secondary',
+        '.governance-votes',
         '.governance-proposal-action-button',
         '.governance-type',
         '.governance-menu-header-meta',
@@ -43,6 +48,9 @@
         ['Add Admin Users', 'add_admin_users'],
         ['Add Exclusions', 'add_exclusions'],
         ['Active Relay', 'active_relay'],
+        ['Active Governance Actions', 'active_governance_actions'],
+        ['Abstain', 'abstain'],
+        ['Approved Treasury', 'approved_treasury'],
         ['Approved Governance Actions', 'approved_governance_actions'],
         ['Ask TDSPBot about this menu', 'ask_tdspbot_about_menu'],
         ['Ask about available governance, DReps, SPOs, Starch, Treasury, or the Constitution.', 'ask_tdspbot_empty'],
@@ -64,16 +72,19 @@
         ['Cardano Improvement Proposals', 'cardano_improvement_proposals'],
         ['Cardano Mainnet', 'cardano_mainnet'],
         ['Cardano Treasury', 'cardano_treasury'],
+        ['Candle close', 'candle_close'],
         ['Cancel', 'cancel'],
         ['Catalyst funding status', 'catalyst_funding_status'],
         ['Catalyst vote overview', 'catalyst_vote_overview'],
         ['Catalyst proposal', 'catalyst_proposal'],
         ['Catalyst/Treasury Funding', 'catalyst_treasury_funding'],
+        ['Catalyst/Treasury funding', 'catalyst_treasury_funding'],
         ['Catalyst/Treasury Funding Claimed', 'catalyst_treasury_funding_claimed'],
         ['Catalyst/Treasury Recipients', 'catalyst_treasury_recipients'],
         ['CC Members', 'cc_members'],
         ['Change vote', 'change_vote'],
         ['Check before signing', 'check_before_signing'],
+        ['Balance', 'balance_label'],
         ['Choose topics and enable notifications', 'choose_topics_enable_notifications'],
         ['Choose your vote', 'choose_your_vote'],
         ['Claimed Funds', 'claimed_funds'],
@@ -85,11 +96,28 @@
         ['Close DRep voting', 'close_drep_voting'],
         ['Close top 10 DReps', 'close_top_10_dreps'],
         ['Close vote rationale', 'close_vote_rationale'],
+        ['Close Net Change Limit', 'close_net_change_limit'],
+        ['Close CIPs', 'close_cips'],
+        ['Close Catalyst and Treasury funding', 'close_catalyst_treasury_funding'],
+        ['Close Catalyst/Treasury recipients', 'close_catalyst_treasury_recipients'],
+        ['Close Constitutional Committee members', 'close_constitutional_committee_members'],
+        ['Close Constitutional Committee voting overview', 'close_constitutional_committee_voting_overview'],
+        ['Close approved treasury actions', 'close_approved_treasury_actions'],
+        ['Close unapproved treasury actions', 'close_unapproved_treasury_actions'],
         ['CIP number', 'cip_number'],
         ['CIP number: Newest', 'cip_number_newest'],
+        ['CIP ID', 'cip_id'],
+        ['CIP website', 'cip_website'],
+        ['CIPs', 'cips'],
+        ['CIPs could not be loaded.', 'cips_could_not_be_loaded'],
+        ['Click to read the CIP explanation.', 'click_read_cip_explanation'],
+        ['Constitutional Committee members could not be loaded.', 'constitutional_committee_members_could_not_load'],
         ['Cloud Service Usage', 'cloud_service_usage'],
         ['Companies', 'companies'],
         ['Company Balance', 'company_balance'],
+        ['Company ID', 'company_id'],
+        ['Company IDs', 'company_ids'],
+        ['Company miner data could not be loaded.', 'company_miner_data_load_failed'],
         ['Connect Admin Wallet', 'connect_admin_wallet'],
         ['Connect Delegator Wallet', 'connect_delegator_wallet'],
         ['Connect your DRep wallet', 'connect_drep_wallet'],
@@ -154,16 +182,42 @@
         ['Eligible Delegators', 'eligible_delegators'],
         ['Each card shows how the top 10 DReps voted. The same-vote line groups DReps by vote choice.', 'top_drep_vote_matrix_intro'],
         ['Events', 'events'],
+        ['events', 'events'],
+        ['Date unavailable', 'date_unavailable'],
+        ['to', 'to'],
+        ['Cardano event', 'cardano_event'],
+        ['Cardano Event', 'cardano_event'],
+        ['Cardano event starting', 'cardano_event_starting'],
+        ['A Cardano event is starting now.', 'cardano_event_now'],
+        ['Open event', 'open_event'],
+        ['event', 'event'],
+        ['Event details', 'event_details'],
+        ['Cardano community calendar', 'cardano_community_calendar'],
+        ['Official Cardano events', 'official_cardano_events'],
+        ['Show events from', 'show_events_from'],
+        ['events could not be opened.', 'events_could_not_open'],
+        ['Open', 'open'],
+        ['poster', 'poster'],
+        ['Date', 'date'],
+        ['Location', 'location'],
+        ['Organizer', 'organizer'],
+        ['More information is available on the event website.', 'more_event_info_website'],
+        ['Cardano event could not be opened.', 'cardano_event_could_not_open'],
+        ['Close Cardano event', 'close_cardano_event'],
+        ['Upcoming Cardano events are temporarily unavailable.', 'upcoming_cardano_events_unavailable'],
         ['Excluded Stake Keys', 'excluded_stake_keys'],
         ['Exclusion List', 'exclusion_list'],
         ['External links', 'external_links'],
         ['Fixed cost', 'fixed_cost'],
         ['51% stake threshold', 'fifty_one_percent_stake_threshold'],
         ['Funding recipient', 'funding_recipient'],
+        ['Funding recipient data could not be loaded.', 'funding_recipient_data_could_not_load'],
         ['Fund: Newest first', 'fund_newest_first'],
         ['Fund: Oldest first', 'fund_oldest_first'],
         ['Generating answer...', 'generating_answer'],
+        ['Governance', 'governance'],
         ['Governance Actions', 'governance_actions'],
+        ['Rejected Governance Actions', 'rejected_governance_actions'],
         ['Governance yes threshold reached', 'governance_yes_threshold_reached'],
         ['High', 'high'],
         ['Highest amount', 'highest_amount'],
@@ -186,6 +240,7 @@
         ['Loading Catalyst and Treasury funding...', 'loading_catalyst_treasury_funding'],
         ['Loading Catalyst proposal...', 'loading_catalyst_proposal'],
         ['Loading Catalyst/Treasury recipients...', 'loading_catalyst_treasury_recipients'],
+        ['Loading Constitutional Committee members...', 'loading_constitutional_committee_members'],
         ['Loading Constitution...', 'loading_constitution'],
         ['Loading DRep data...', 'loading_drep_data'],
         ['Loading DRep info...', 'loading_drep_info'],
@@ -213,6 +268,17 @@
         ['Metadata hash could not be created.', 'metadata_hash_could_not_be_created'],
         ['Metadata URL loaded and its Blake2b-256 hash was added.', 'metadata_url_hash_added'],
         ['Miners', 'miners'],
+        ['Miner', 'miner'],
+        ['Rank', 'rank'],
+        ['Blocks', 'blocks'],
+        ['Active Miners', 'active_miners'],
+        ['Amount of miners', 'amount_of_miners'],
+        ['Balance loading...', 'balance_loading'],
+        ['Weekly Blocks loading...', 'weekly_blocks_loading'],
+        ['Amount of miners loading...', 'amount_of_miners_loading'],
+        ['Mined Blocks (Week)', 'mined_blocks_week'],
+        ['Last Updated:', 'last_updated'],
+        ['Loading company miners...', 'loading_company_miners'],
         ['Most ask', 'most_ask'],
         ['Most blocks', 'most_blocks'],
         ['Most delegators', 'most_delegators'],
@@ -226,9 +292,12 @@
         ['Name Z-A', 'name_za'],
         ['Nakamoto Coefficient', 'nakamoto_coefficient'],
         ['NCL', 'ncl'],
+        ['NCL Spend', 'ncl_spend'],
+        ['NCL Balance Actions', 'ncl_balance_actions'],
         ['NCL Used', 'ncl_used'],
         ['NCL Available', 'ncl_available'],
         ['Net Change Limit', 'net_change_limit'],
+        ['Net (if all treasury actions are enacted)', 'net_if_all_treasury_actions_enacted'],
         ['New Chat', 'new_chat'],
         ['New governance action', 'new_governance_action'],
         ['No DRep data available.', 'no_drep_data_available'],
@@ -236,6 +305,7 @@
         ['No applicable governance actions found for this DRep.', 'no_applicable_governance_actions'],
         ['No advertised relay nodes are available.', 'no_advertised_relays'],
         ['No matching results.', 'no_matching_results'],
+        ['No Name', 'no_name'],
         ['No prize tokens are currently in the raffle wallet.', 'no_prize_tokens'],
         ['No raffle results have been published yet.', 'no_raffle_results'],
         ['No registered SPOs are available.', 'no_registered_spos'],
@@ -243,6 +313,7 @@
         ['No stake keys are excluded.', 'no_stake_keys_excluded'],
         ['No top DRep data available.', 'no_top_drep_data'],
         ['No vote data', 'no_vote_data'],
+        ['No shared explicit votes found', 'no_shared_explicit_votes'],
         ['No on-chain rationale metadata found for this DRep vote.', 'no_onchain_rationale_metadata_found'],
         ['No Cardano wallet extension detected. Install a CIP-30 wallet (Eternl, Lace, Vespr...) and reopen this dialog.', 'no_cardano_wallet_detected'],
         ['No Cardano wallet extension detected. Install a CIP-30/CIP-95 wallet and reopen this dialog.', 'no_cip30_cip95_wallet_detected'],
@@ -251,13 +322,16 @@
         ['Not available', 'not_available'],
         ['Not identified', 'not_identified'],
         ['Not a DRep Yet', 'not_a_drep_yet'],
+        ['Not Applicable', 'not_applicable'],
         ['Not applicable', 'not_applicable'],
+        ['Not Voted', 'not_voted'],
         ['Not voted', 'not_voted'],
         ['Not voted yet', 'not_voted_yet'],
         ['Not supported', 'not_supported'],
         ['Notifications enabled', 'notifications_enabled'],
         ['Newest', 'newest'],
         ['Oldest', 'oldest'],
+        ['Offline', 'offline'],
         ['On-chain DRep registration', 'onchain_drep_registration'],
         ['Payment address (optional)', 'payment_address_optional'],
         ['On-chain proof', 'onchain_proof'],
@@ -346,6 +420,7 @@
         ['Select and publish a raffle winner', 'select_publish_raffle_winner'],
         ['Saved drep.jsonld and added its Blake2b-256 hash. Upload this exact file, then enter its public metadata URL.', 'saved_drep_jsonld_hash_added'],
         ['Source:', 'source'],
+        ['Spend', 'spend'],
         ['Status unavailable', 'status_unavailable'],
         ['Submitting transaction...', 'submitting_transaction'],
         ['Saturation', 'saturation'],
@@ -376,10 +451,19 @@
         ['Top 10 DRep data could not be loaded.', 'top_10_drep_data_could_not_be_loaded'],
         ['Top 10 DReps by voting power', 'top_10_dreps_by_voting_power'],
         ['Total Delegated', 'total_delegated'],
+        ['Total ask', 'total_ask'],
+        ['Total Ask', 'total_ask'],
         ['Treasury withdrawal history', 'treasury_withdrawal_history'],
+        ['Treasury income, withdrawals and treasury value per epoch', 'treasury_chart_aria'],
+        ['Treasury candles', 'treasury_candles'],
+        ['Treasury Withdrawals', 'treasury_withdrawals'],
+        ['Treasury', 'treasury'],
+        ['Treasury withdrawal could not be opened.', 'treasury_withdrawal_could_not_open'],
         ['Unclaimed Funds', 'unclaimed_funds'],
+        ['Unapproved', 'unapproved'],
         ['Unapproved Treasury', 'unapproved_treasury'],
         ['Unavailable', 'unavailable'],
+        ['Updated', 'updated'],
         ['Unknown Relay', 'unknown_relay'],
         ['Use GovTool instead', 'use_govtool_instead'],
         ['Use improved rationale', 'use_improved_rationale'],
@@ -396,12 +480,33 @@
         ['Vote sync is loading in the background.', 'vote_sync_background'],
         ['Voted', 'voted'],
         ['Vote', 'vote'],
+        ['Yes', 'yes'],
+        ['No', 'no'],
         ['Governance action', 'governance_action'],
         ['Action ID', 'action_id'],
+        ['Abstract', 'abstract'],
+        ['Authors', 'authors'],
+        ['Category', 'category'],
+        ['Created', 'created'],
+        ['Full CIP text', 'full_cip_text'],
+        ['Motivation', 'motivation'],
+        ['No CIPs are available yet.', 'no_cips_available'],
+        ['No enacted treasury withdrawals available.', 'no_enacted_treasury_withdrawals'],
+        ['No Catalyst/Treasury recipient data is available yet.', 'no_catalyst_treasury_recipients'],
+        ['No Catalyst or Treasury funding data is available yet.', 'no_catalyst_treasury_funding'],
+        ['No governance actions found.', 'no_governance_actions_found'],
+        ['No approved treasury funding actions found.', 'no_approved_treasury_funding_actions'],
+        ['No unapproved treasury actions found.', 'no_unapproved_treasury_actions'],
+        ['No treasury governance actions found.', 'no_treasury_governance_actions'],
+        ['Source', 'source'],
+        ['Status', 'status'],
+        ['Treasury data could not be loaded.', 'treasury_data_could_not_load'],
+        ['Catalyst funds could not be loaded.', 'catalyst_funds_could_not_load'],
         ['Transaction', 'transaction'],
         ['Wallet', 'wallet'],
         ['Your name', 'your_name'],
         ['Refundable deposit', 'refundable_deposit'],
+        ['Rationale', 'rationale'],
         ['None', 'none'],
         ['Your rationale can be up to 5000 characters and will be included as Cardano transaction metadata in this vote transaction. Long text is split into 64-byte chunks automatically.', 'rationale_5000_metadata_help'],
         ['Voting Power', 'voting_power'],
@@ -412,9 +517,9 @@
         ['Weekly Blocks', 'weekly_blocks'],
         ['Withdrawals by administrator', 'withdrawals_by_administrator']
     ]);
-    let translations = {};
     let activeLanguage = DEFAULT_LANGUAGE;
-    let dutchLoadPromise = null;
+    let translations = {};
+    const translationLoadPromises = new Map();
     let isTranslating = false;
 
     function parseTomlStrings(source) {
@@ -441,7 +546,7 @@
 
     function getStoredLanguage() {
         const stored = localStorage.getItem(LANGUAGE_STORAGE_KEY);
-        return stored === DUTCH_LANGUAGE ? DUTCH_LANGUAGE : DEFAULT_LANGUAGE;
+        return LANGUAGE_CONFIG[stored] ? stored : DEFAULT_LANGUAGE;
     }
 
     function rememberOriginal(element) {
@@ -456,7 +561,7 @@
         const key = element.getAttribute(TRANSLATION_ATTR);
         if (!key) return;
         rememberOriginal(element);
-        if (activeLanguage === DUTCH_LANGUAGE && translations[key]) {
+        if (activeLanguage !== DEFAULT_LANGUAGE && translations[key]) {
             element.textContent = translations[key];
             return;
         }
@@ -472,6 +577,44 @@
         const normalized = String(text || '').replace(/\s+/g, ' ').trim();
         const key = AUTO_TRANSLATION_KEYS.get(normalized);
         if (key && translations[key]) return translations[key];
+
+        const genericVotingPowerMatch = normalized.match(/^Voting Power\s+(.+)$/i);
+        if (genericVotingPowerMatch && translations.voting_power) {
+            return `${translations.voting_power} ${genericVotingPowerMatch[1]}`;
+        }
+
+        const genericVotingPowerColonMatch = normalized.match(/^Voting power:\s*(.+)$/i);
+        if (genericVotingPowerColonMatch && translations.voting_power) {
+            return `${translations.voting_power}: ${genericVotingPowerColonMatch[1]}`;
+        }
+
+        const genericOfflineMatch = normalized.match(/^Offline\s+(.+)$/i);
+        if (genericOfflineMatch && translations.offline) {
+            return `${translations.offline} ${genericOfflineMatch[1]}`;
+        }
+
+        if (activeLanguage !== 'nl') {
+            if (normalized.includes(' • ')) {
+                const translatedParts = normalized
+                    .split(' • ')
+                    .map(part => getAutoTranslationValue(part) || part);
+                return translatedParts.some((part, index) => part !== normalized.split(' • ')[index])
+                    ? translatedParts.join(' • ')
+                    : '';
+            }
+            if (normalized.includes(' · ')) {
+                const translatedParts = normalized
+                    .split(' · ')
+                    .map(part => getAutoTranslationValue(part) || part);
+                return translatedParts.some((part, index) => part !== normalized.split(' · ')[index])
+                    ? translatedParts.join(' · ')
+                    : '';
+            }
+            return '';
+        }
+
+        const approvedUnapprovedMatch = normalized.match(/^Approved\s+(.+?)\s+•\s+Unapproved\s+(.+)$/i);
+        if (approvedUnapprovedMatch) return `Goedgekeurd ${approvedUnapprovedMatch[1]} • Niet goedgekeurd ${approvedUnapprovedMatch[2]}`;
 
         if (normalized.includes(' • ')) {
             return normalized
@@ -513,6 +656,38 @@
         const hourMatch = normalized.match(/^(\d+)\s+hours?$/i);
         if (hourMatch) return `${hourMatch[1]} uur`;
 
+        const epochCountMatch = normalized.match(/^(.+)\s+epochs$/i);
+        if (epochCountMatch) return `${epochCountMatch[1]} epochs`;
+
+        const actionsCountMatch = normalized.match(/^(\d[\d,]*)\s+actions$/i);
+        if (actionsCountMatch) return `${actionsCountMatch[1]} acties`;
+
+        const approvedActionsCountMatch = normalized.match(/^(\d[\d,]*)\s+approved actions$/i);
+        if (approvedActionsCountMatch) return `${approvedActionsCountMatch[1]} goedgekeurde acties`;
+
+        const unapprovedActionsCountMatch = normalized.match(/^(\d[\d,]*)\s+unapproved actions$/i);
+        if (unapprovedActionsCountMatch) return `${unapprovedActionsCountMatch[1]} niet-goedgekeurde acties`;
+
+        const proposalsCountMatch = normalized.match(/^(\d[\d,]*)\s+proposals$/i);
+        if (proposalsCountMatch) return `${proposalsCountMatch[1]} voorstellen`;
+
+        const projectsCountMatch = normalized.match(/^(\d[\d,]*)\s+projects$/i);
+        if (projectsCountMatch) return `${projectsCountMatch[1]} projecten`;
+
+        const fundedProjectsCountMatch = normalized.match(/^(\d[\d,]*)\s+funded projects$/i);
+        if (fundedProjectsCountMatch) return `${fundedProjectsCountMatch[1]} gefinancierde projecten`;
+
+        const membersCountMatch = normalized.match(/^(\d[\d,]*)\s+members$/i);
+        if (membersCountMatch) return `${membersCountMatch[1]} leden`;
+
+        const applicableNotApplicableMatch = normalized.match(/^(\d[\d,]*)\s+applicable\s+\/\s+(\d[\d,]*)\s+not\s+applicable$/i);
+        if (applicableNotApplicableMatch) {
+            return `${applicableNotApplicableMatch[1]} van toepassing / ${applicableNotApplicableMatch[2]} niet van toepassing`;
+        }
+
+        const totalActionsMatch = normalized.match(/^(\d[\d,]*)\s+total actions$/i);
+        if (totalActionsMatch) return `${totalActionsMatch[1]} acties totaal`;
+
         const closePriceMatch = normalized.match(/^Close\s+([A-Z0-9]+)\s+price history$/i);
         if (closePriceMatch) return `Sluit ${closePriceMatch[1]} prijsgeschiedenis`;
 
@@ -525,8 +700,22 @@
         const candlesMatch = normalized.match(/^(\d[\d,]*)\s+candles$/i);
         if (candlesMatch) return `${candlesMatch[1]} candles`;
 
+        const proposalEpochMetaMatch = normalized.match(/^Epoch\s+(.+?)\s+-\s+expires\s+(.+?)(?:\s+•\s+Total ask\s+(.+))?$/i);
+        if (proposalEpochMetaMatch) {
+            const base = `Epoch ${proposalEpochMetaMatch[1]} - verloopt ${proposalEpochMetaMatch[2]}`;
+            return proposalEpochMetaMatch[3]
+                ? `${base} • ${translations.total_ask || 'Totaal gevraagd'} ${proposalEpochMetaMatch[3]}`
+                : base;
+        }
+
+        const epochLabelMatch = normalized.match(/^Epoch\s+(.+)$/i);
+        if (epochLabelMatch) return `Epoch ${epochLabelMatch[1]}`;
+
         const delegatedMatch = normalized.match(/^Delegated\s+(.+)$/i);
         if (delegatedMatch) return `Gedelegeerd ${delegatedMatch[1]}`;
+
+        const epochsRangeMatch = normalized.match(/^Epochs\s+(.+)$/i);
+        if (epochsRangeMatch) return `Epochs ${epochsRangeMatch[1]}`;
 
         const delegationMatch = normalized.match(/^Delegation:\s*(.+)$/i);
         if (delegationMatch) return `Delegatie: ${delegationMatch[1]}`;
@@ -650,8 +839,43 @@
         const votingPowerColonMatch = normalized.match(/^Voting power:\s*(.+)$/i);
         if (votingPowerColonMatch) return `Stemkracht: ${votingPowerColonMatch[1]}`;
 
+        const expiresEpochMatch = normalized.match(/^Expires epoch\s+(.+)$/i);
+        if (expiresEpochMatch) return `Verloopt epoch ${expiresEpochMatch[1]}`;
+
+        const enactedEpochMatch = normalized.match(/^Enacted Epoch\s+(.+)$/i);
+        if (enactedEpochMatch) return `Uitgevoerd epoch ${enactedEpochMatch[1]}`;
+
+        const expiredEpochMatch = normalized.match(/^Expired epoch\s+(.+)$/i);
+        if (expiredEpochMatch) return `Verlopen epoch ${expiredEpochMatch[1]}`;
+
+        const droppedEpochMatch = normalized.match(/^Dropped epoch\s+(.+)$/i);
+        if (droppedEpochMatch) return `Gedropt epoch ${droppedEpochMatch[1]}`;
+
+        const noExpirationMatch = normalized.match(/^No expiration data$/i);
+        if (noExpirationMatch) return 'Geen verloopdata';
+
+        const totalAskMatch = normalized.match(/^Total ask\s+(.+)$/i);
+        if (totalAskMatch) return `${translations.total_ask || 'Totaal gevraagd'} ${totalAskMatch[1]}`;
+
+        const yesValueMatch = normalized.match(/^Yes\s+(.+)$/i);
+        if (yesValueMatch) return `${translations.yes || 'Ja'} ${yesValueMatch[1]}`;
+
+        const noNotVotedValueMatch = normalized.match(/^No\s+-\s+Not Voted\s+(.+)$/i);
+        if (noNotVotedValueMatch) return `${translations.no || 'Nee'} - ${translations.not_voted || 'Niet gestemd'} ${noNotVotedValueMatch[1]}`;
+
+        const noValueMatch = normalized.match(/^No\s+(.+)$/i);
+        if (noValueMatch) return `${translations.no || 'Nee'} ${noValueMatch[1]}`;
+
+        const abstainValueMatch = normalized.match(/^Abstain\s+(.+)$/i);
+        if (abstainValueMatch) return `${translations.abstain || 'Onthouden'} ${abstainValueMatch[1]}`;
+
         const drepVotedMatch = normalized.match(/^DRep voted\s+(.+)$/i);
         if (drepVotedMatch) return `DRep stemde ${getAutoTranslationValue(drepVotedMatch[1]) || drepVotedMatch[1]}`;
+
+        const mostInSyncMatch = normalized.match(/^Most in sync with\s+(.+?)\s+-\s+(.+?)\s+\((.+?)\/(.+?)\s+shared votes\)$/i);
+        if (mostInSyncMatch) {
+            return `Meest synchroon met ${mostInSyncMatch[1]} - ${mostInSyncMatch[2]} (${mostInSyncMatch[3]}/${mostInSyncMatch[4]} gedeelde stemmen)`;
+        }
 
         const nclUsedMatch = normalized.match(/^NCL Used\s+(.+)$/i);
         if (nclUsedMatch) return `NCL gebruikt ${nclUsedMatch[1]}`;
@@ -661,9 +885,6 @@
 
         const pipelineMatch = normalized.match(/^Pipeline\s+(.+)$/i);
         if (pipelineMatch) return `Pipeline ${pipelineMatch[1]}`;
-
-        const totalActionsMatch = normalized.match(/^(\d[\d,]*)\s+total actions$/i);
-        if (totalActionsMatch) return `${totalActionsMatch[1]} acties totaal`;
 
         const drepNameExistsMatch = normalized.match(/^The DRep name "(.+)" already exists\. Choose a unique name\.$/i);
         if (drepNameExistsMatch) return `De DRep-naam "${drepNameExistsMatch[1]}" bestaat al. Kies een unieke naam.`;
@@ -696,7 +917,7 @@
         if (registrationFailedMatch) return `Registratie mislukt: ${registrationFailedMatch[1]}`;
 
         const offlineMatch = normalized.match(/^Offline\s+(.+)$/i);
-        if (offlineMatch) return `Offline ${offlineMatch[1]}`;
+        if (offlineMatch) return `Niet online ${offlineMatch[1]}`;
 
         const treasuryEpochValueMatch = normalized.match(/^Treasury Epoch\s+(.+)$/i);
         if (treasuryEpochValueMatch) return `Treasury epoch ${treasuryEpochValueMatch[1]}`;
@@ -707,11 +928,53 @@
         const nclBalanceMatch = normalized.match(/^NCL Balance\s+(.+)$/i);
         if (nclBalanceMatch) return `NCL balans ${nclBalanceMatch[1]}`;
 
+        const spendMatch = normalized.match(/^Spend\s+(.+)$/i);
+        if (spendMatch) return `Uitgaven ${spendMatch[1]}`;
+
         const balanceMatch = normalized.match(/^Balance\s+(.+)$/i);
         if (balanceMatch) return `Balans ${balanceMatch[1]}`;
 
+        const netTreasuryMatch = normalized.match(/^Net \(if all treasury actions are enacted\)\s+(.+)$/i);
+        if (netTreasuryMatch) return `Netto (als alle treasury-acties worden uitgevoerd) ${netTreasuryMatch[1]}`;
+
+        const ratifiedMatch = normalized.match(/^(\d[\d,]*)\s+ratified$/i);
+        if (ratifiedMatch) return `${ratifiedMatch[1]} geratificeerd`;
+
+        const activeCountMatch = normalized.match(/^(\d[\d,]*)\s+active$/i);
+        if (activeCountMatch) return `${activeCountMatch[1]} actief`;
+
+        const activePrefixCountMatch = normalized.match(/^Active\s+(\d[\d,]*)$/i);
+        if (activePrefixCountMatch) return `Actief ${activePrefixCountMatch[1]}`;
+
+        const administratorMatch = normalized.match(/^Administrator:\s*(.+)$/i);
+        if (administratorMatch) return `Administrator: ${administratorMatch[1]}`;
+
+        const weeklyBlocksMatch = normalized.match(/^Weekly Blocks\s+(.+)$/i);
+        if (weeklyBlocksMatch) return `Wekelijkse blocks ${weeklyBlocksMatch[1]}`;
+
+        const amountOfMinersMatch = normalized.match(/^Amount of miners\s+(.+)$/i);
+        if (amountOfMinersMatch) return `Aantal miners ${amountOfMinersMatch[1]}`;
+
+        const lastUpdatedMatch = normalized.match(/^Last Updated:\s+(.+)$/i);
+        if (lastUpdatedMatch) return `${translations.last_updated || 'Laatst bijgewerkt:'} ${lastUpdatedMatch[1]}`;
+
+        const companyIdsMatch = normalized.match(/^(\d[\d,]*)\s+Company IDs$/i);
+        if (companyIdsMatch) return `${companyIdsMatch[1]} bedrijfs-ID's`;
+
         const resetInMatch = normalized.match(/^Reset in\s+(.+)$/i);
         if (resetInMatch) return `Reset over ${resetInMatch[1]}`;
+
+        const nextNclPeriodMatch = normalized.match(/^Next NCL period starts in epoch\s+(.+)$/i);
+        if (nextNclPeriodMatch) return `Volgende NCL-periode start in epoch ${nextNclPeriodMatch[1]}`;
+
+        const askedReceivedUpdatingMatch = normalized.match(/^Asked\/received USD updating$/i);
+        if (askedReceivedUpdatingMatch) return 'Aangevraagd/ontvangen USD wordt bijgewerkt';
+
+        const askedReceivedMatch = normalized.match(/^Asked\s+(.+?)\s+•\s+Received\s+(.+)$/i);
+        if (askedReceivedMatch) return `Aangevraagd ${askedReceivedMatch[1]} • Ontvangen ${askedReceivedMatch[2]}`;
+
+        const cipsCountMatch = normalized.match(/^(\d[\d,]*)\s+CIPs$/i);
+        if (cipsCountMatch) return `${cipsCountMatch[1]} CIPs`;
 
         const relayMatch = normalized.match(/^Relay\s+(.+)$/i);
         if (relayMatch) return `Relay ${relayMatch[1]}`;
@@ -740,14 +1003,31 @@
         const votedMatch = normalized.match(/^Voted\s+(.+)$/i);
         if (votedMatch) return `Gestemd ${votedMatch[1]}`;
 
-        const notVotedMatch = normalized.match(/^Not voted\s+(.+)$/i);
+        const notVotedMatch = normalized.match(/^Not\s+voted\s+(.+)$/i);
         if (notVotedMatch) return `Niet gestemd ${notVotedMatch[1]}`;
+
+        const notApplicableMatch = normalized.match(/^Not\s+applicable\s+(.+)$/i);
+        if (notApplicableMatch) return `Niet van toepassing ${notApplicableMatch[1]}`;
 
         const eventsMatch = normalized.match(/^(.+)\s+Events$/);
         if (eventsMatch && translations.events) return `${eventsMatch[1]} ${translations.events.toLowerCase()}`;
 
         const treasuryEpochMatch = normalized.match(/^Treasury withdrawals\s+-\s+Epoch\s+(.+)$/i);
-        if (treasuryEpochMatch) return `Treasury withdrawals - Epoch ${treasuryEpochMatch[1]}`;
+        if (treasuryEpochMatch) return `Treasury-opnames - Epoch ${treasuryEpochMatch[1]}`;
+
+        const withdrawalsWithAmountMatch = normalized.match(/^(\d[\d,]*)\s+withdrawals?\s+•\s+(.+)$/i);
+        if (withdrawalsWithAmountMatch) {
+            const count = withdrawalsWithAmountMatch[1];
+            const label = count === '1' ? 'opname' : 'opnames';
+            return `${count} ${label} • ${withdrawalsWithAmountMatch[2]}`;
+        }
+
+        const withdrawalsCountMatch = normalized.match(/^(\d[\d,]*)\s+withdrawals?$/i);
+        if (withdrawalsCountMatch) {
+            const count = withdrawalsCountMatch[1];
+            const label = count === '1' ? 'opname' : 'opnames';
+            return `${count} ${label}`;
+        }
 
         const loadingMatch = normalized.match(/^Loading\s+(.+?)(\.\.\.)?$/i);
         if (loadingMatch) {
@@ -789,7 +1069,7 @@
         }
 
         const original = element.getAttribute(AUTO_TRANSLATION_ORIGINAL_ATTR) || '';
-        const translated = activeLanguage === DUTCH_LANGUAGE ? getAutoTranslationValue(original) : '';
+        const translated = activeLanguage !== DEFAULT_LANGUAGE ? getAutoTranslationValue(original) : '';
         if (translated) {
             element.textContent = translated;
             return;
@@ -802,7 +1082,7 @@
         const original = element.getAttribute('data-i18n-placeholder-original') || element.getAttribute('placeholder') || '';
         if (!original) return;
         element.setAttribute('data-i18n-placeholder-original', original);
-        const translated = activeLanguage === DUTCH_LANGUAGE ? getAutoTranslationValue(original) : '';
+        const translated = activeLanguage !== DEFAULT_LANGUAGE ? getAutoTranslationValue(original) : '';
         element.setAttribute('placeholder', translated || original);
     }
 
@@ -825,24 +1105,27 @@
         }
     }
 
-    async function loadDutchTranslations() {
-        if (!dutchLoadPromise) {
-            dutchLoadPromise = fetch(DUTCH_TOML_URL)
+    async function loadLanguageTranslations(language) {
+        const config = LANGUAGE_CONFIG[language];
+        if (!config?.url) {
+            translations = {};
+            return;
+        }
+        if (!translationLoadPromises.has(language)) {
+            translationLoadPromises.set(language, fetch(config.url)
                 .then(response => {
                     if (!response.ok) throw new Error(`HTTP ${response.status}`);
                     return response.text();
                 })
-                .then(parseTomlStrings);
+                .then(parseTomlStrings));
         }
-        translations = await dutchLoadPromise;
+        translations = await translationLoadPromises.get(language);
     }
 
     async function setLanguage(language) {
-        activeLanguage = language === DUTCH_LANGUAGE ? DUTCH_LANGUAGE : DEFAULT_LANGUAGE;
+        activeLanguage = LANGUAGE_CONFIG[language] ? language : DEFAULT_LANGUAGE;
         localStorage.setItem(LANGUAGE_STORAGE_KEY, activeLanguage);
-        if (activeLanguage === DUTCH_LANGUAGE) {
-            await loadDutchTranslations();
-        }
+        await loadLanguageTranslations(activeLanguage);
         applyTranslations();
         window.dispatchEvent(new CustomEvent('tdsp-language-change', {
             detail: { language: activeLanguage }
@@ -850,21 +1133,23 @@
     }
 
     function syncLanguageToggle() {
-        const toggle = document.getElementById('language-toggle');
-        if (!toggle) return;
-        const isDutch = activeLanguage === DUTCH_LANGUAGE;
-        toggle.textContent = isDutch ? 'EN' : 'NL';
-        toggle.setAttribute('aria-label', isDutch ? 'Switch site language to English' : 'Zet de site in het Nederlands');
-        toggle.dataset.currentLanguage = activeLanguage;
+        document.querySelectorAll?.('[data-language-option]').forEach(button => {
+            if (!(button instanceof HTMLButtonElement)) return;
+            const language = button.dataset.languageOption || DEFAULT_LANGUAGE;
+            const isActive = language === activeLanguage;
+            button.classList.toggle('is-active', isActive);
+            button.setAttribute('aria-pressed', String(isActive));
+        });
     }
 
     function initLanguageToggle() {
-        const toggle = document.getElementById('language-toggle');
-        if (!toggle || toggle.dataset.languageBound === 'true') return;
-        toggle.dataset.languageBound = 'true';
-        toggle.addEventListener('click', () => {
-            setLanguage(activeLanguage === DUTCH_LANGUAGE ? DEFAULT_LANGUAGE : DUTCH_LANGUAGE)
-                .catch(error => console.error('Language switch failed.', error));
+        document.querySelectorAll?.('[data-language-option]').forEach(button => {
+            if (!(button instanceof HTMLButtonElement) || button.dataset.languageBound === 'true') return;
+            button.dataset.languageBound = 'true';
+            button.addEventListener('click', () => {
+                setLanguage(button.dataset.languageOption || DEFAULT_LANGUAGE)
+                    .catch(error => console.error('Language switch failed.', error));
+            });
         });
     }
 
@@ -894,15 +1179,16 @@
     function init() {
         activeLanguage = getStoredLanguage();
         initLanguageToggle();
-        const ready = activeLanguage === DUTCH_LANGUAGE ? loadDutchTranslations() : Promise.resolve();
+        const ready = loadLanguageTranslations(activeLanguage);
         ready
             .then(() => {
                 applyTranslations();
                 observeDynamicTranslations();
             })
             .catch(error => {
-                console.error('Dutch language file could not be loaded.', error);
+                console.error('Language file could not be loaded.', error);
                 activeLanguage = DEFAULT_LANGUAGE;
+                translations = {};
                 applyTranslations();
             });
     }
@@ -912,7 +1198,7 @@
         getLanguage: () => activeLanguage,
         setLanguage,
         translateText: (text) => {
-            const translated = activeLanguage === DUTCH_LANGUAGE ? getAutoTranslationValue(text) : '';
+            const translated = activeLanguage !== DEFAULT_LANGUAGE ? getAutoTranslationValue(text) : '';
             return translated || text;
         }
     });

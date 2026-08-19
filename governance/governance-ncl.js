@@ -166,7 +166,8 @@
             window.TDSPRuntime.setText('gov-ncl-epochs-left', epochsLeft === 0
                 ? 'Reset due'
                 : `Reset in ${epochsLeft} epoch${epochsLeft === 1 ? '' : 's'}`);
-            element.title = `Next NCL period starts in epoch ${resetEpoch}`;
+            const title = `Next NCL period starts in epoch ${resetEpoch}`;
+            element.title = window.TDSPI18n?.translateText?.(title) || title;
         }
 
         function openOverlay(returnFocus) {
@@ -207,8 +208,8 @@
             createMenuOverlay({
                 id: 'governance-ncl-overlay',
                 titleId: 'governance-ncl-title',
-                titleText: 'NCL',
-                closeLabel: 'Close NCL',
+                titleText: 'Net Change Limit',
+                closeLabel: 'Close Net Change Limit',
                 closeOverlay,
                 bodyNodes: [stats],
                 headerMeta: epochRange,
