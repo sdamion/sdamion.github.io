@@ -3,8 +3,8 @@
     const DEFAULT_LANGUAGE = 'en';
     const LANGUAGE_CONFIG = Object.freeze({
         en: { label: 'English', flag: '🇺🇸' },
-        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20260819-japanese-dynamic-labels' },
-        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20260819-japanese-dynamic-labels' }
+        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20260820-spo-external-labels' },
+        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20260820-spo-external-labels' }
     });
     const TRANSLATION_ATTR = 'data-i18n';
     const TRANSLATION_ORIGINAL_ATTR = 'data-i18n-original';
@@ -909,6 +909,9 @@
             const checkingSpoRescanMatch = normalized.match(/^Checking\s+(pool data|relays|pools)\.\.\.$/i);
             if (checkingSpoRescanMatch) return `${translateSpoRescanPhase(checkingSpoRescanMatch[1], 'ja')}を確認中...`;
 
+            const combinedPoolsMatch = normalized.match(/^(\d[\d,]*)\s+combined\s+(?:pools|プール)$/i);
+            if (combinedPoolsMatch) return `${combinedPoolsMatch[1]}統合プール`;
+
             const operatorPoolsMatch = normalized.match(/^(.+)\s+Pools$/i);
             if (operatorPoolsMatch) return `${operatorPoolsMatch[1]} プール`;
 
@@ -935,9 +938,6 @@
 
             const measuredDomainsMatch = normalized.match(/^(\d[\d,]*)\s+measured domains$/i);
             if (measuredDomainsMatch) return `${measuredDomainsMatch[1]}測定済みドメイン`;
-
-            const combinedPoolsMatch = normalized.match(/^(\d[\d,]*)\s+combined\s+(?:pools|プール)$/i);
-            if (combinedPoolsMatch) return `${combinedPoolsMatch[1]}統合プール`;
 
             const showCombinedStakePoolsMatch = normalized.match(/^Show\s+(.+)\s+combined stake pools$/i);
             if (showCombinedStakePoolsMatch) return `${showCombinedStakePoolsMatch[1]}の統合ステークプールを表示`;
@@ -1385,6 +1385,9 @@
         const checkingSpoRescanMatch = normalized.match(/^Checking\s+(pool data|relays|pools)\.\.\.$/i);
         if (checkingSpoRescanMatch) return `${translateSpoRescanPhase(checkingSpoRescanMatch[1], 'nl')} controleren...`;
 
+        const combinedPoolsMatch = normalized.match(/^(\d[\d,]*)\s+combined\s+(?:pools|プール)$/i);
+        if (combinedPoolsMatch) return `${combinedPoolsMatch[1]} gecombineerde pools`;
+
         const operatorPoolsMatch = normalized.match(/^(.+)\s+Pools$/i);
         if (operatorPoolsMatch) return `${operatorPoolsMatch[1]} pools`;
 
@@ -1411,9 +1414,6 @@
 
         const measuredDomainsMatch = normalized.match(/^(\d[\d,]*)\s+measured domains$/i);
         if (measuredDomainsMatch) return `${measuredDomainsMatch[1]} gemeten domeinen`;
-
-        const combinedPoolsMatch = normalized.match(/^(\d[\d,]*)\s+combined\s+(?:pools|プール)$/i);
-        if (combinedPoolsMatch) return `${combinedPoolsMatch[1]} gecombineerde pools`;
 
         const showCombinedStakePoolsMatch = normalized.match(/^Show\s+(.+)\s+combined stake pools$/i);
         if (showCombinedStakePoolsMatch) return `Toon gecombineerde stake pools van ${showCombinedStakePoolsMatch[1]}`;
