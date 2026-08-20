@@ -89,9 +89,7 @@
             }
             if (walletAddress) addressText.title = walletAddress;
 
-            const amount = document.createElement('span');
-            amount.className = 'pool-delegator-amount';
-            amount.textContent = runtime.formatLovelaceAmount(getDelegatorAmount(delegator));
+            const amount = createDelegatorAmount(getDelegatorAmount(delegator));
 
             addressLine.appendChild(addressText);
             if (walletAddress) {
@@ -143,6 +141,41 @@
 
         function getDelegatorAmount(delegator) {
             return runtime.getLovelaceAmount(delegator);
+        }
+
+        function getAdaUsdPrice() {
+            const directPrice = Number(window.TDSPPrices?.getLatest?.()?.ada_usd);
+            if (Number.isFinite(directPrice) && directPrice > 0) return directPrice;
+
+            const priceText = String(document.getElementById('ada-price')?.textContent || '').replace(/[^0-9.]/g, '');
+            const parsedPrice = Number(priceText);
+            return Number.isFinite(parsedPrice) && parsedPrice > 0 ? parsedPrice : NaN;
+        }
+
+        function formatDelegatorUsd(lovelace) {
+            const price = getAdaUsdPrice();
+            const ada = Number(lovelace) / 1_000_000;
+            if (!Number.isFinite(price) || !Number.isFinite(ada)) return '';
+            return `≈ $${new Intl.NumberFormat('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(ada * price)}`;
+        }
+
+        function createDelegatorAmount(lovelace) {
+            const amount = document.createElement('span');
+            amount.className = 'pool-delegator-amount';
+            amount.appendChild(document.createTextNode(runtime.formatLovelaceAmount(lovelace)));
+
+            const usdValue = formatDelegatorUsd(lovelace);
+            if (usdValue) {
+                const usd = document.createElement('small');
+                usd.className = 'pool-delegator-usd';
+                usd.textContent = usdValue;
+                amount.appendChild(usd);
+            }
+
+            return amount;
         }
 
         function compareBigIntDescending(left, right) {

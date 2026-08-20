@@ -1294,6 +1294,17 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     font-size: var(--tdsp-tile-value-size);
     font-weight: var(--tdsp-tile-value-weight);
     line-height: var(--tdsp-tile-value-line-height);
+    display: inline-flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.pool-delegator-usd {
+    color: var(--tdsp-tile-detail-color);
+    font-size: var(--tdsp-tile-detail-size);
+    font-weight: var(--tdsp-tile-detail-weight);
+    line-height: var(--tdsp-tile-detail-line-height);
 }
 
 .pool-delegator-wallet-address {

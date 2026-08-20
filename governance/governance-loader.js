@@ -24,7 +24,7 @@
     const GOVERNANCE_DREP_STATUS_SCRIPT_SRC = 'governance/governance-drep-status.js?v=20260817-modular-drep-status';
     const GOVERNANCE_DREP_CORRELATION_SCRIPT_SRC = 'governance/governance-drep-correlation.js?v=20260819-drep-sync-language';
     const GOVERNANCE_DREP_TOP10_SCRIPT_SRC = 'governance/governance-drep-top10.js?v=20260819-drep-overlay-language';
-    const GOVERNANCE_TDSP_DREP_SCRIPT_SRC = 'governance/governance-tdsp-drep.js?v=20260819-active-epoch-language';
+    const GOVERNANCE_TDSP_DREP_SCRIPT_SRC = 'governance/governance-tdsp-drep.js?v=20260820-delegator-usd';
     const GOVERNANCE_PROPOSAL_DISPLAY_SCRIPT_SRC = 'governance/governance-proposal-display.js?v=20260817-modular-proposal-display';
     const GOVERNANCE_SCRIPT_SRC = 'governance/governance.js?v=20260819-cc-member-tile-cards';
     const GOVERNANCE_TARGET_SELECTORS = [
