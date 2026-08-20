@@ -53,6 +53,18 @@ const RAFFLE_ADMIN_VIEW_TITLES = Object.freeze({
 const RAFFLE_ANCHOR_UNAVAILABLE = 'On-chain proof is not available in the running Koios proxy yet. Pull the latest proxy image and restart the container, then reload this page.';
 const RAFFLE_EXCLUSIONS_UNAVAILABLE = 'Stake key exclusions are not available in the running Koios proxy yet. Pull the latest proxy image and restart the container, then reload this page.';
 
+function t(text) {
+    return window.TDSPI18n?.translateText?.(text) || text;
+}
+
+function setTranslatedText(element, text) {
+    if (!(element instanceof HTMLElement)) return;
+    const value = String(text || '');
+    element.setAttribute('data-i18n-auto', '');
+    element.setAttribute('data-i18n-auto-original', value);
+    element.textContent = t(value);
+}
+
 function loadMesh() {
     if (!meshPromise) meshPromise = import(MESH_CDN_URL);
     return meshPromise;
@@ -61,7 +73,7 @@ function loadMesh() {
 function setStatus(message, error = false) {
     const element = document.getElementById('raffle-status');
     if (!element) return;
-    element.textContent = message || '';
+    element.textContent = message ? t(message) : '';
     element.classList.toggle('is-error', error);
     element.hidden = !message;
 }
@@ -131,11 +143,11 @@ function createCopyButton(value, label) {
     button.type = 'button';
     button.className = 'pool-delegator-copy-button';
     button.textContent = '⧉';
-    button.setAttribute('aria-label', `Copy ${label}`);
-    button.title = `Copy ${label}`;
+    button.setAttribute('aria-label', t(`Copy ${label}`));
+    button.title = t(`Copy ${label}`);
     button.addEventListener('click', async () => {
         await navigator.clipboard.writeText(String(value || ''));
-        button.textContent = 'Copied';
+        button.textContent = t('Copied');
         window.setTimeout(() => { button.textContent = '⧉'; }, 1200);
     });
     return button;
@@ -202,7 +214,7 @@ function cardanoscanTransactionLink(txHash) {
     link.href = `https://cardanoscan.io/transaction/${encodeURIComponent(txHash)}`;
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
-    link.textContent = 'View transaction on Cardanoscan';
+    setTranslatedText(link, 'View transaction on Cardanoscan');
     return link;
 }
 
@@ -224,7 +236,7 @@ function setRaffleAdminView(view = 'menu', { focus = true } = {}) {
     });
 
     const title = document.getElementById('raffle-overlay-title');
-    if (title) title.textContent = RAFFLE_ADMIN_VIEW_TITLES[normalizedView];
+    if (title) setTranslatedText(title, RAFFLE_ADMIN_VIEW_TITLES[normalizedView]);
     const back = document.getElementById('raffle-overlay-back');
     if (back) back.hidden = false;
 
@@ -342,7 +354,7 @@ function createPrizeCard(asset) {
         link.href = `https://cardanoscan.io/token/${encodeURIComponent(String(asset.asset_id))}`;
         link.target = '_blank';
         link.rel = 'noopener noreferrer';
-        link.textContent = 'View on Cardanoscan';
+        setTranslatedText(link, 'View on Cardanoscan');
         card.appendChild(link);
     }
 
@@ -368,14 +380,14 @@ function renderRafflePrizes(payload = {}) {
     const list = document.getElementById('raffle-prizes-list');
     const assets = (Array.isArray(payload.assets) ? payload.assets : []).filter(asset => !isAdaPrizeAsset(asset));
     if (summary) {
-        summary.textContent = `${assets.length.toLocaleString('en-US')} token${assets.length === 1 ? '' : 's'}`;
+        setTranslatedText(summary, `${assets.length.toLocaleString('en-US')} token${assets.length === 1 ? '' : 's'}`);
     }
     if (!list) return;
     list.replaceChildren();
     if (!assets.length) {
         const empty = document.createElement('p');
         empty.className = 'governance-menu-card governance-card-detail raffle-draw-card raffle-empty';
-        empty.textContent = 'No prize tokens are currently in the raffle wallet.';
+        setTranslatedText(empty, 'No prize tokens are currently in the raffle wallet.');
         list.appendChild(empty);
         return;
     }
@@ -384,12 +396,12 @@ function renderRafflePrizes(payload = {}) {
 
 function renderRafflePrizesError(message) {
     const summary = document.getElementById('raffle-prizes-summary');
-    if (summary) summary.textContent = 'Prize wallet unavailable';
+    if (summary) setTranslatedText(summary, 'Prize wallet unavailable');
     const list = document.getElementById('raffle-prizes-list');
     if (!list) return;
     const error = document.createElement('p');
     error.className = 'governance-menu-card governance-card-detail raffle-draw-card raffle-empty';
-    error.textContent = message || 'Prize wallet could not be loaded.';
+    setTranslatedText(error, message || 'Prize wallet could not be loaded.');
     list.replaceChildren(error);
 }
 
@@ -436,7 +448,7 @@ function renderStakeAddressChoices(wallet, addresses) {
     list.replaceChildren();
     const intro = document.createElement('p');
     intro.className = 'governance-card-detail';
-    intro.textContent = 'Choose the TDSP stake key you want to verify.';
+    setTranslatedText(intro, 'Choose the TDSP stake key you want to verify.');
     list.appendChild(intro);
     addresses.forEach(address => {
         const button = document.createElement('button');
@@ -456,11 +468,11 @@ async function connectWallet(walletInfo) {
     const { BrowserWallet } = await loadMesh();
     setStatus(`Connecting to ${walletInfo.name}...`);
     const wallet = await BrowserWallet.enable(walletInfo.id);
-    if (await wallet.getNetworkId() !== 1) throw new Error('Switch your wallet to Cardano Mainnet.');
+    if (await wallet.getNetworkId() !== 1) throw new Error(t('Switch your wallet to Cardano Mainnet.'));
 
     if (ROLE === 'delegator') {
         const rewardAddresses = await getWalletAddresses(wallet, 'getRewardAddresses');
-        if (!rewardAddresses.length) throw new Error('No Cardano stake key was found in this wallet.');
+        if (!rewardAddresses.length) throw new Error(t('No Cardano stake key was found in this wallet.'));
         renderStakeAddressChoices(wallet, rewardAddresses);
         setStatus('Select a stake key to continue.');
         return;
@@ -503,7 +515,7 @@ async function connectWallet(walletInfo) {
     if (lastError?.message && lastError.message !== 'This wallet is not authorized for the Admin Area.') {
         throw lastError;
     }
-    throw new Error('This wallet does not contain the authorized Admin Area credential.');
+    throw new Error(t('This wallet does not contain the authorized Admin Area credential.'));
 }
 
 async function walletHasAdminCredential(wallet) {
@@ -541,33 +553,33 @@ async function submitRaffleProofTransaction(draw, button, status) {
     try {
         const pendingHash = sessionStorage.getItem(pendingKey);
         if (pendingHash && /^[0-9a-f]{64}$/i.test(pendingHash)) {
-            status.textContent = 'Recording the previously submitted transaction ID...';
+            status.textContent = t('Recording the previously submitted transaction ID...');
             await recordSubmittedRaffleProof(draw, pendingHash);
         } else {
-            if (!adminTransactionWallet) throw new Error('Choose the admin wallet first.');
-            status.textContent = 'Building the on-chain raffle proof transaction...';
+            if (!adminTransactionWallet) throw new Error(t('Choose the admin wallet first.'));
+            status.textContent = t('Building the on-chain raffle proof transaction...');
             const utxos = await adminTransactionWallet.getUtxos();
             const changeAddress = await adminTransactionWallet.getChangeAddress();
-            if (!utxos?.length || !changeAddress) throw new Error('No spendable wallet UTxO was found for the network fee.');
+            if (!utxos?.length || !changeAddress) throw new Error(t('No spendable wallet UTxO was found for the network fee.'));
             const { MeshTxBuilder } = await loadMesh();
             const unsignedTx = await new MeshTxBuilder({ verbose: false })
                 .metadataValue(RAFFLE_METADATA_LABEL, buildRaffleMetadata(draw))
                 .selectUtxosFrom(utxos)
                 .changeAddress(changeAddress)
                 .complete();
-            status.textContent = 'Verify the raffle proof metadata and network fee in your wallet before signing.';
+            status.textContent = t('Verify the raffle proof metadata and network fee in your wallet before signing.');
             const signedTx = await adminTransactionWallet.signTx(unsignedTx, false);
-            status.textContent = 'Submitting the signed transaction...';
+            status.textContent = t('Submitting the signed transaction...');
             const txHash = String(await adminTransactionWallet.submitTx(signedTx)).toLowerCase();
-            if (!/^[0-9a-f]{64}$/.test(txHash)) throw new Error('The wallet returned an invalid transaction ID.');
+            if (!/^[0-9a-f]{64}$/.test(txHash)) throw new Error(t('The wallet returned an invalid transaction ID.'));
             sessionStorage.setItem(pendingKey, txHash);
-            status.textContent = 'Transaction submitted. Recording its transaction ID with the raffle...';
+            status.textContent = t('Transaction submitted. Recording its transaction ID with the raffle...');
             await recordSubmittedRaffleProof(draw, txHash);
         }
         setStatus('The raffle result now has an on-chain transaction proof.');
         renderAdmin(await authorizedRequest(ENDPOINTS.admin));
     } catch (error) {
-        const message = error?.info || error?.message || 'The on-chain raffle proof could not be submitted.';
+        const message = error?.info || error?.message || t('The on-chain raffle proof could not be submitted.');
         status.textContent = message === 'HTTP 404'
             ? `${RAFFLE_ANCHOR_UNAVAILABLE} A submitted transaction ID is preserved in this browser and will be registered without creating another transaction.`
             : message;
@@ -582,10 +594,10 @@ async function chooseRaffleTransactionWallet(draw, button, status, choices) {
     try {
         const { BrowserWallet } = await loadMesh();
         const wallets = BrowserWallet.getInstalledWallets();
-        if (!wallets.length) throw new Error('No CIP-30 Cardano wallet extension was detected.');
+        if (!wallets.length) throw new Error(t('No CIP-30 Cardano wallet extension was detected.'));
         const intro = document.createElement('p');
         intro.className = 'governance-card-detail';
-        intro.textContent = 'Choose the authorized wallet that will pay the Cardano network fee.';
+        setTranslatedText(intro, 'Choose the authorized wallet that will pay the Cardano network fee.');
         choices.appendChild(intro);
         wallets.forEach(walletInfo => {
             const walletButton = document.createElement('button');
@@ -601,13 +613,13 @@ async function chooseRaffleTransactionWallet(draw, button, status, choices) {
                 walletButton.disabled = true;
                 try {
                     const wallet = await BrowserWallet.enable(walletInfo.id);
-                    if (await wallet.getNetworkId() !== 1) throw new Error('Switch your wallet to Cardano Mainnet.');
-                    if (!await walletHasAdminCredential(wallet)) throw new Error('This wallet does not contain the authorized admin stake credential.');
+                    if (await wallet.getNetworkId() !== 1) throw new Error(t('Switch your wallet to Cardano Mainnet.'));
+                    if (!await walletHasAdminCredential(wallet)) throw new Error(t('This wallet does not contain the authorized admin stake credential.'));
                     adminTransactionWallet = wallet;
                     choices.replaceChildren();
                     await submitRaffleProofTransaction(draw, button, status);
                 } catch (error) {
-                    status.textContent = error?.info || error?.message || 'Wallet connection failed.';
+                    status.textContent = error?.info || error?.message || t('Wallet connection failed.');
                     status.classList.add('is-error');
                     walletButton.disabled = false;
                     button.disabled = false;
@@ -628,7 +640,7 @@ async function populateWallets() {
     setStatus('Detecting installed Cardano wallets...');
     const { BrowserWallet } = await loadMesh();
     const wallets = BrowserWallet.getInstalledWallets();
-    if (!wallets.length) throw new Error('No CIP-30 Cardano wallet extension was detected.');
+    if (!wallets.length) throw new Error(t('No CIP-30 Cardano wallet extension was detected.'));
     wallets.forEach(walletInfo => {
         const button = document.createElement('button');
         button.type = 'button';
@@ -640,7 +652,7 @@ async function populateWallets() {
         label.textContent = walletInfo.name;
         button.append(icon, label);
         button.addEventListener('click', () => connectWallet(walletInfo).catch(error => {
-            setStatus(error?.info || error.message || 'Wallet access failed.', true);
+            setStatus(error?.info || error.message || t('Wallet access failed.'), true);
         }));
         list.appendChild(button);
     });
@@ -656,7 +668,7 @@ function createDrawCard(draw, viewerAddress = null) {
     heading.textContent = draw.title || 'TDSP Delegator Raffle';
     const date = document.createElement('p');
     date.className = 'governance-card-detail';
-    date.textContent = `Published ${formatDate(draw.published_at)}`;
+    setTranslatedText(date, `Published ${formatDate(draw.published_at)}`);
     card.append(heading, date);
 
     if (draw.prize) {
@@ -669,15 +681,15 @@ function createDrawCard(draw, viewerAddress = null) {
     winner.className = 'raffle-winner';
     const winnerTitle = document.createElement('strong');
     winnerTitle.className = 'governance-card-title';
-    winnerTitle.textContent = draw.is_winner ? 'You are the winner' : 'Winner';
+    setTranslatedText(winnerTitle, draw.is_winner ? 'You are the winner' : 'Winner');
     const winnerName = document.createElement('span');
     winnerName.className = 'governance-card-detail';
     const winnerWalletAddress = String(draw.winner?.wallet_address || '').trim();
-    winnerName.textContent = draw.winner?.ada_handle || (ROLE === 'admin' ? 'Wallet address' : 'Stake key');
+    setTranslatedText(winnerName, draw.winner?.ada_handle || (ROLE === 'admin' ? 'Wallet address' : 'Stake key'));
     const winnerAddress = ROLE === 'admin'
         ? (winnerWalletAddress
             ? addressLine(winnerWalletAddress, 'wallet address')
-            : document.createTextNode('Wallet address unavailable'))
+            : document.createTextNode(t('Wallet address unavailable')))
         : addressLine(draw.winner?.stake_address || '', 'stake key');
     winner.append(winnerTitle, winnerName, winnerAddress);
     card.appendChild(winner);
@@ -690,19 +702,19 @@ function createDrawCard(draw, viewerAddress = null) {
     }
     const proof = document.createElement('details');
     const summary = document.createElement('summary');
-    summary.textContent = 'Draw proof';
+    setTranslatedText(summary, 'Draw proof');
     const proofText = document.createElement('p');
     proofText.className = 'governance-card-detail';
-    proofText.textContent = `${draw.eligible_count.toLocaleString('en-US')} eligible delegators · index ${draw.selection_index}`;
+    setTranslatedText(proofText, `${draw.eligible_count.toLocaleString('en-US')} eligible delegators · index ${draw.selection_index}`);
     proof.append(summary, proofText, addressLine(draw.snapshot_sha256, 'snapshot hash'), addressLine(draw.selection_entropy, 'selection entropy'));
     if (draw.on_chain_tx_hash) {
         const onChain = document.createElement('div');
         onChain.className = 'raffle-on-chain-proof';
         const onChainTitle = document.createElement('strong');
-        onChainTitle.textContent = 'On-chain proof';
+        setTranslatedText(onChainTitle, 'On-chain proof');
         const label = document.createElement('p');
         label.className = 'governance-card-detail';
-        label.textContent = `Metadata label ${draw.on_chain_metadata_label || RAFFLE_METADATA_LABEL}`;
+        setTranslatedText(label, `Metadata label ${draw.on_chain_metadata_label || RAFFLE_METADATA_LABEL}`);
         onChain.append(onChainTitle, label, addressLine(draw.on_chain_tx_hash, 'transaction ID'), cardanoscanTransactionLink(draw.on_chain_tx_hash));
         proof.appendChild(onChain);
     }
@@ -713,12 +725,12 @@ function createDrawCard(draw, viewerAddress = null) {
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'governance-vote-button raffle-on-chain-button';
-        button.textContent = 'Publish proof on-chain';
+        setTranslatedText(button, 'Publish proof on-chain');
         button.disabled = !raffleAnchorSupported;
         const help = document.createElement('p');
         help.className = 'governance-card-detail';
         help.textContent = raffleAnchorSupported
-            ? 'Creates a Cardano Mainnet transaction containing the draw proof and charges a network fee.'
+            ? t('Creates a Cardano Mainnet transaction containing the draw proof and charges a network fee.')
             : RAFFLE_ANCHOR_UNAVAILABLE;
         const status = document.createElement('p');
         status.className = 'raffle-inline-status';
@@ -746,7 +758,7 @@ function renderDraws(draws, viewerAddress = null) {
     if (!draws.length) {
         const empty = document.createElement('p');
         empty.className = 'governance-menu-card governance-card-detail raffle-draw-card raffle-empty';
-        empty.textContent = 'No raffle results have been published yet.';
+        setTranslatedText(empty, 'No raffle results have been published yet.');
         list.appendChild(empty);
         return;
     }
@@ -768,11 +780,11 @@ function renderAdmin(payload) {
     const exclusionsCount = document.getElementById('raffle-exclusions-count');
     if (exclusionsCount) {
         const includedCount = raffleStakeKeyExclusions.filter(entry => entry.enabled === false).length;
-        exclusionsCount.textContent = `${exclusions.length.toLocaleString('en-US')} excluded · ${includedCount.toLocaleString('en-US')} included in raffles`;
+        setTranslatedText(exclusionsCount, `${exclusions.length.toLocaleString('en-US')} excluded · ${includedCount.toLocaleString('en-US')} included in raffles`);
     }
     const menuExclusionsCount = document.getElementById('raffle-menu-exclusion-count');
     if (menuExclusionsCount) {
-        menuExclusionsCount.textContent = `${exclusions.length.toLocaleString('en-US')} excluded`;
+        setTranslatedText(menuExclusionsCount, `${exclusions.length.toLocaleString('en-US')} excluded`);
     }
     renderExcludedStakeKeys(raffleStakeKeyExclusions);
     const exclusionsForm = document.getElementById('raffle-exclusions-form');
@@ -780,18 +792,18 @@ function renderAdmin(payload) {
     if (exclusionsSubmit) exclusionsSubmit.disabled = !raffleExclusionsSupported;
     const exclusionsStatus = document.getElementById('raffle-exclusions-status');
     if (exclusionsStatus && !raffleExclusionsSupported) {
-        exclusionsStatus.textContent = RAFFLE_EXCLUSIONS_UNAVAILABLE;
+        exclusionsStatus.textContent = t(RAFFLE_EXCLUSIONS_UNAVAILABLE);
         exclusionsStatus.classList.add('is-error');
     }
     document.getElementById('raffle-eligible-count').textContent = Number(payload.pool?.eligible_count || 0).toLocaleString('en-US');
     document.getElementById('raffle-total-stake').textContent = formatAda(payload.pool?.total_eligible_lovelace);
-    document.getElementById('raffle-snapshot-time').textContent = payload.pool?.updated_at
+    setTranslatedText(document.getElementById('raffle-snapshot-time'), payload.pool?.updated_at
         ? `Pool snapshot ${formatDate(payload.pool.updated_at)}`
-        : 'Pool snapshot time unavailable';
+        : 'Pool snapshot time unavailable');
     const draws = Array.isArray(payload.draws) ? payload.draws : [];
     const menuHistoryCount = document.getElementById('raffle-menu-history-count');
     if (menuHistoryCount) {
-        menuHistoryCount.textContent = `${draws.length.toLocaleString('en-US')} published raffle${draws.length === 1 ? '' : 's'}`;
+        setTranslatedText(menuHistoryCount, `${draws.length.toLocaleString('en-US')} published raffle${draws.length === 1 ? '' : 's'}`);
     }
     renderDraws(draws);
     raffleAdminUsers = Array.isArray(payload.admin_users) ? payload.admin_users : [];
@@ -805,7 +817,7 @@ function renderExcludedStakeKeys(excludedDelegators) {
     if (!excludedDelegators.length) {
         const empty = document.createElement('p');
         empty.className = 'governance-card-detail';
-        empty.textContent = 'No stake keys are excluded.';
+        setTranslatedText(empty, 'No stake keys are excluded.');
         list.appendChild(empty);
         return;
     }
@@ -816,10 +828,10 @@ function renderExcludedStakeKeys(excludedDelegators) {
         identity.className = 'raffle-exclusion-identity';
         const name = document.createElement('strong');
         name.className = 'governance-card-title';
-        name.textContent = entry.ada_handle || 'Stake key';
+        setTranslatedText(name, entry.ada_handle || 'Stake key');
         const state = document.createElement('span');
         state.className = `governance-card-detail raffle-exclusion-state ${entry.enabled === false ? 'is-included' : 'is-excluded'}`;
-        state.textContent = entry.enabled === false ? 'Included in raffle' : 'Excluded';
+        setTranslatedText(state, entry.enabled === false ? 'Included in raffle' : 'Excluded');
         identity.append(name, state, addressLine(entry.stake_address));
         const actions = document.createElement('div');
         actions.className = 'raffle-exclusion-actions';
@@ -827,7 +839,7 @@ function renderExcludedStakeKeys(excludedDelegators) {
             const toggle = document.createElement('button');
             toggle.type = 'button';
             toggle.className = 'governance-vote-secondary raffle-exclusion-toggle';
-            toggle.textContent = entry.enabled === false ? 'Enable exclusion' : 'Disable exclusion';
+            setTranslatedText(toggle, entry.enabled === false ? 'Enable exclusion' : 'Disable exclusion');
             toggle.addEventListener('click', async () => {
                 toggle.disabled = true;
                 const status = document.getElementById('raffle-exclusions-status');
@@ -845,8 +857,8 @@ function renderExcludedStakeKeys(excludedDelegators) {
         const remove = document.createElement('button');
         remove.type = 'button';
         remove.className = 'governance-vote-secondary raffle-exclusion-remove';
-        remove.textContent = 'Remove';
-        remove.setAttribute('aria-label', `Remove ${entry.ada_handle || shorten(entry.stake_address)} from raffle exclusions`);
+        setTranslatedText(remove, 'Remove');
+        remove.setAttribute('aria-label', t(`Remove ${entry.ada_handle || shorten(entry.stake_address)} from raffle exclusions`));
         remove.addEventListener('click', async () => {
             remove.disabled = true;
             const status = document.getElementById('raffle-exclusions-status');
@@ -868,9 +880,9 @@ function renderAdminUsers(adminUsers) {
     const list = document.getElementById('raffle-admin-user-list');
     const countText = `${users.length.toLocaleString('en-US')} admin${users.length === 1 ? '' : 's'}`;
     const dashboardCount = document.getElementById('raffle-dashboard-admin-count');
-    if (dashboardCount) dashboardCount.textContent = countText;
+    if (dashboardCount) setTranslatedText(dashboardCount, countText);
     const count = document.getElementById('raffle-admin-users-count');
-    if (count) count.textContent = countText;
+    if (count) setTranslatedText(count, countText);
     const input = document.getElementById('raffle-admin-addresses');
     if (input) input.value = '';
     if (!list) return;
@@ -878,7 +890,7 @@ function renderAdminUsers(adminUsers) {
     if (!users.length) {
         const empty = document.createElement('p');
         empty.className = 'governance-card-detail';
-        empty.textContent = 'No admin users are configured.';
+        setTranslatedText(empty, 'No admin users are configured.');
         list.appendChild(empty);
         return;
     }
@@ -889,10 +901,10 @@ function renderAdminUsers(adminUsers) {
         identity.className = 'raffle-exclusion-identity';
         const name = document.createElement('strong');
         name.className = 'governance-card-title';
-        name.textContent = user.type === 'stake' ? 'Stake admin' : 'Payment admin';
+        setTranslatedText(name, user.type === 'stake' ? 'Stake admin' : 'Payment admin');
         const detail = document.createElement('span');
         detail.className = 'governance-card-detail';
-        detail.textContent = user.stake_credential ? 'Stake credential verified' : 'Exact address only';
+        setTranslatedText(detail, user.stake_credential ? 'Stake credential verified' : 'Exact address only');
         identity.append(name, detail, addressLine(user.address, 'admin address'));
 
         const actions = document.createElement('div');
@@ -900,14 +912,14 @@ function renderAdminUsers(adminUsers) {
         const remove = document.createElement('button');
         remove.type = 'button';
         remove.className = 'governance-vote-secondary raffle-exclusion-remove';
-        remove.textContent = 'Remove';
+        setTranslatedText(remove, 'Remove');
         remove.disabled = users.length <= 1;
-        remove.title = users.length <= 1 ? 'At least one admin user is required.' : '';
-        remove.setAttribute('aria-label', `Remove ${shorten(user.address)} from Admin Area users`);
+        remove.title = users.length <= 1 ? t('At least one admin user is required.') : '';
+        remove.setAttribute('aria-label', t(`Remove ${shorten(user.address)} from Admin Area users`));
         remove.addEventListener('click', async () => {
             const status = document.getElementById('raffle-admin-users-status');
             if (raffleAdminUsers.length <= 1) {
-                status.textContent = 'At least one admin user is required.';
+                status.textContent = t('At least one admin user is required.');
                 status.classList.add('is-error');
                 return;
             }
@@ -928,7 +940,7 @@ function renderAdminUsers(adminUsers) {
 async function saveAdminUsers(users, status, pendingMessage = 'Saving admin users...') {
     if (!status) return null;
     status.classList.remove('is-error');
-    status.textContent = pendingMessage;
+    status.textContent = t(pendingMessage);
     try {
         await authorizedRequest(ENDPOINTS.admins, {
             method: 'POST',
@@ -939,10 +951,10 @@ async function saveAdminUsers(users, status, pendingMessage = 'Saving admin user
         const payload = await authorizedRequest(ENDPOINTS.admin);
         renderAdmin(payload);
         const savedCount = Array.isArray(payload.admin_users) ? payload.admin_users.length : 0;
-        status.textContent = `${savedCount.toLocaleString('en-US')} admin ${savedCount === 1 ? 'user' : 'users'} configured.`;
+        setTranslatedText(status, `${savedCount.toLocaleString('en-US')} admin ${savedCount === 1 ? 'user' : 'users'} configured.`);
         return payload;
     } catch (error) {
-        status.textContent = error?.message || 'The admin users could not be saved.';
+        status.textContent = error?.message || t('The admin users could not be saved.');
         status.classList.add('is-error');
         return null;
     }
@@ -969,7 +981,7 @@ async function submitAdminUsers(event) {
 
 async function saveStakeKeyExclusionConfigs(configs, status, pendingMessage = 'Saving exclusions...') {
     status.classList.remove('is-error');
-    status.textContent = pendingMessage;
+    status.textContent = t(pendingMessage);
     try {
         await authorizedRequest(ENDPOINTS.exclusions, {
             method: 'POST',
@@ -984,10 +996,10 @@ async function saveStakeKeyExclusionConfigs(configs, status, pendingMessage = 'S
         const payload = await authorizedRequest(ENDPOINTS.admin);
         renderAdmin(payload);
         const savedCount = Array.isArray(payload.excluded_stake_addresses) ? payload.excluded_stake_addresses.length : 0;
-        status.textContent = `${savedCount.toLocaleString('en-US')} stake ${savedCount === 1 ? 'key' : 'keys'} excluded from future draws.`;
+        setTranslatedText(status, `${savedCount.toLocaleString('en-US')} stake ${savedCount === 1 ? 'key' : 'keys'} excluded from future draws.`);
         return payload;
     } catch (error) {
-        status.textContent = error?.message || 'The exclusions could not be saved.';
+        status.textContent = error?.message || t('The exclusions could not be saved.');
         status.classList.add('is-error');
         return null;
     }
@@ -1003,7 +1015,7 @@ async function submitExclusions(event) {
         .map(value => value.trim())
         .filter(Boolean);
     if (!raffleExclusionsSupported) {
-        status.textContent = RAFFLE_EXCLUSIONS_UNAVAILABLE;
+        status.textContent = t(RAFFLE_EXCLUSIONS_UNAVAILABLE);
         status.classList.add('is-error');
         return;
     }
@@ -1026,7 +1038,7 @@ function renderDelegator(payload) {
         identity.hidden = true;
     } else {
         identity.hidden = false;
-        identity.replaceChildren(document.createTextNode('Verified stake key '), addressLine(payload.stake_address));
+        identity.replaceChildren(document.createTextNode(`${t('Verified stake key')} `), addressLine(payload.stake_address));
     }
     postEmbeddedDelegatorIdentity(payload);
     if (payload.is_admin === true) {
@@ -1041,7 +1053,7 @@ function renderDelegator(payload) {
     renderDraws(payload.draws || [], payload.stake_address);
     loadRafflePrizes().catch(error => {
         const summary = document.getElementById('raffle-prizes-summary');
-        if (summary) summary.textContent = 'Prize wallet unavailable';
+        if (summary) setTranslatedText(summary, 'Prize wallet unavailable');
         console.warn(`Raffle prize wallet could not be loaded: ${error.message}`);
     });
 }
@@ -1093,7 +1105,7 @@ async function submitDraw(event) {
         const button = card?.querySelector('.raffle-on-chain-button');
         const status = card?.querySelector('.raffle-inline-status');
         const choices = card?.querySelector('.raffle-wallet-list');
-        if (!button || !status || !choices) throw new Error('The published raffle could not be prepared for on-chain proof.');
+        if (!button || !status || !choices) throw new Error(t('The published raffle could not be prepared for on-chain proof.'));
         if (adminTransactionWallet) await submitRaffleProofTransaction(result.draw, button, status);
         else await chooseRaffleTransactionWallet(result.draw, button, status, choices);
     } catch (error) {

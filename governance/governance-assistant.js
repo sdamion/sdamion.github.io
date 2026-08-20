@@ -196,6 +196,13 @@
                 if (!payload.text) throw new Error('The Constitution document is empty.');
                 if (!content.isConnected) return;
                 content.textContent = '';
+                if (window.TDSPI18n?.getLanguage?.() === 'ja' && payload?._translation?.status === 'pending') {
+                    const pending = document.createElement('p');
+                    pending.className = 'constitution-chat-status';
+                    setAssistantText(pending, 'The Japanese Constitution translation is being prepared. Please try again later.');
+                    content.appendChild(pending);
+                    return;
+                }
                 const documentText = document.createElement('div');
                 documentText.className = 'constitution-document-text governance-markdown';
                 const markdown = formatConstitutionDocumentMarkdown(payload.text);

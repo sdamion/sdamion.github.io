@@ -679,8 +679,11 @@ function openPoolDelegatorsOverlay() {
     const delegatorsPageButton = document.createElement('button');
     delegatorsPageButton.type = 'button';
     delegatorsPageButton.className = 'governance-overlay-action-button';
-    delegatorsPageButton.textContent = 'Delegators Dashboard';
-    delegatorsPageButton.setAttribute('aria-label', 'Open delegators dashboard');
+    delegatorsPageButton.setAttribute('data-i18n-auto', '');
+    delegatorsPageButton.setAttribute('data-i18n-auto-original', 'Delegators Dashboard');
+    delegatorsPageButton.textContent = translateUiText('Delegators Dashboard');
+    delegatorsPageButton.setAttribute('data-i18n-aria-label-original', 'Open delegators dashboard');
+    delegatorsPageButton.setAttribute('aria-label', translateUiText('Open delegators dashboard'));
     delegatorsPageButton.addEventListener('click', openDelegatorsDashboardOverlay);
 
     createPoolMenuOverlay({
@@ -761,7 +764,7 @@ function openDelegatorsDashboardOverlay(event) {
         .catch(error => {
             const status = dashboardBody.querySelector('#raffle-status');
             if (status) {
-                status.textContent = error?.message || 'Delegator dashboard could not be loaded.';
+                status.textContent = error?.message || translateUiText('Delegator dashboard could not be loaded.');
                 status.classList.add('is-error');
                 status.hidden = false;
             }

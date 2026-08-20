@@ -2,7 +2,30 @@
     function createTemplate(html) {
         const template = document.createElement('template');
         template.innerHTML = html.trim();
-        return template.content.firstElementChild;
+        const root = template.content.firstElementChild;
+        markDashboardStaticText(root);
+        window.TDSPI18n?.applyTranslations?.(root);
+        return root;
+    }
+
+    function markDashboardStaticText(root) {
+        if (!(root instanceof HTMLElement)) return;
+        root.querySelectorAll('p, h1, h2, strong, span, button, label, legend, summary').forEach(element => {
+            if (!(element instanceof HTMLElement)) return;
+            if (element.closest('#raffle-wallet-list, #raffle-draws, #raffle-prizes-list, #raffle-exclusion-list, #raffle-admin-user-list')) return;
+            if (element.querySelector('input, textarea, code, img, span.governance-close-icon')) return;
+            const text = String(element.textContent || '').replace(/\s+/g, ' ').trim();
+            if (!text) return;
+            element.setAttribute('data-i18n-auto', '');
+            element.setAttribute('data-i18n-auto-original', text);
+        });
+        root.querySelectorAll('input[placeholder], textarea[placeholder], button[aria-label]').forEach(element => {
+            if (!(element instanceof HTMLElement)) return;
+            const placeholder = element.getAttribute('placeholder');
+            if (placeholder) element.setAttribute('data-i18n-placeholder-original', placeholder);
+            const ariaLabel = element.getAttribute('aria-label');
+            if (ariaLabel) element.setAttribute('data-i18n-aria-label-original', ariaLabel);
+        });
     }
 
     function createDelegatorsDashboardBody() {
@@ -169,17 +192,17 @@
                                     <textarea id="raffle-notes" name="notes" maxlength="500" rows="4"></textarea>
                                     <label class="raffle-confirm" for="raffle-confirm">
                                         <input id="raffle-confirm" name="confirmation" type="checkbox" required>
-                                        Publish this auditable result to verified TDSP delegators.
+                                        <span>Publish this auditable result to verified TDSP delegators.</span>
                                     </label>
                                     <fieldset class="raffle-publish-options">
                                         <legend>Publication method</legend>
                                         <label class="raffle-confirm" for="raffle-publish-website">
                                             <input id="raffle-publish-website" name="publish_mode" type="radio" value="website" checked>
-                                            Publish on the website only (no network fee).
+                                            <span>Publish on the website only (no network fee).</span>
                                         </label>
                                         <label class="raffle-confirm" for="raffle-publish-on-chain">
                                             <input id="raffle-publish-on-chain" name="publish_mode" type="radio" value="on_chain">
-                                            Publish on the website and record proof on Cardano Mainnet (network fee required).
+                                            <span>Publish on the website and record proof on Cardano Mainnet (network fee required).</span>
                                         </label>
                                     </fieldset>
                                     <button class="governance-vote-button" type="submit">Draw and Publish Winner</button>
@@ -192,7 +215,7 @@
                                     <p class="governance-card-detail">Add Cardano Mainnet stake addresses here. You can later disable an exclusion so the saved stake key participates in future raffles again.</p>
                                     <label for="raffle-excluded-stake-keys">Stake addresses</label>
                                     <textarea id="raffle-excluded-stake-keys" name="stake_addresses" rows="5" spellcheck="false" autocomplete="off" placeholder="stake1..."></textarea>
-                                    <p class="governance-card-detail">Format: enter one complete Mainnet stake address per line. Example:<br><code>stake1uxg7k2rzm28glx8decjmulsxrwwaxrn2t45mcvu5fyfscuc6z2mjz</code><br><code>stake1u...another complete stake address</code><br>Comma-separated addresses are also accepted.</p>
+                                    <p class="governance-card-detail"><span>Format: enter one complete Mainnet stake address per line. Example:</span><br><code>stake1uxg7k2rzm28glx8decjmulsxrwwaxrn2t45mcvu5fyfscuc6z2mjz</code><br><code>stake1u...another complete stake address</code><br><span>Comma-separated addresses are also accepted.</span></p>
                                     <p class="governance-card-detail" id="raffle-exclusions-count">0 stake keys excluded</p>
                                     <div class="raffle-exclusion-list" id="raffle-exclusion-list"></div>
                                     <button class="governance-vote-secondary" type="submit">Add Exclusions</button>

@@ -46,7 +46,9 @@
         ['Admin Area', 'admin_area'],
         ['Admin Users', 'admin_users'],
         ['Add Admin Users', 'add_admin_users'],
+        ['Add Cardano Mainnet payment or stake addresses that may open the Admin Area. At least one admin must remain.', 'add_admin_users_help'],
         ['Add Exclusions', 'add_exclusions'],
+        ['Add Cardano Mainnet stake addresses here. You can later disable an exclusion so the saved stake key participates in future raffles again.', 'add_exclusions_help'],
         ['Active Relay', 'active_relay'],
         ['Active Governance Actions', 'active_governance_actions'],
         ['Abstain', 'abstain'],
@@ -80,6 +82,7 @@
         ['Cardano Improvement Proposals', 'cardano_improvement_proposals'],
         ['Cardano Mainnet', 'cardano_mainnet'],
         ['Cardano Treasury', 'cardano_treasury'],
+        ['cached', 'cached'],
         ['Candle close', 'candle_close'],
         ['Cancel', 'cancel'],
         ['Catalyst funding status', 'catalyst_funding_status'],
@@ -96,6 +99,9 @@
         ['Check before signing', 'check_before_signing'],
         ['Balance', 'balance_label'],
         ['Choose topics and enable notifications', 'choose_topics_enable_notifications'],
+        ['Choose the authorized wallet that will pay the Cardano network fee.', 'choose_authorized_wallet_fee'],
+        ['Choose the TDSP stake key you want to verify.', 'choose_tdsp_stake_key_verify'],
+        ['Choose the wallet you want to verify.', 'choose_wallet_verify'],
         ['Choose your vote', 'choose_your_vote'],
         ['Claimed Funds', 'claimed_funds'],
         ['Close', 'close'],
@@ -107,6 +113,8 @@
         ['Close governance action', 'close_governance_action'],
         ['Close top 10 DReps', 'close_top_10_dreps'],
         ['Close vote rationale', 'close_vote_rationale'],
+        ['Close Raffles', 'close_raffles'],
+        ['Close Prizes', 'close_prizes'],
         ['Close Net Change Limit', 'close_net_change_limit'],
         ['Close CIPs', 'close_cips'],
         ['Close Constitution', 'close_constitution'],
@@ -144,6 +152,7 @@
         ['Continue Chat', 'continue_chat'],
         ['Continue with conversation history', 'continue_with_history'],
         ['Continue to wallet', 'continue_to_wallet'],
+        ['Connect the authorized Cardano wallet and sign the one-time access challenge. This does not create a transaction or cost ADA.', 'admin_sign_challenge_help'],
         ['Consensus NC', 'consensus_nc'],
         ['Constitution', 'constitution'],
         ['Constitutional Committee Members', 'constitutional_committee_members'],
@@ -188,15 +197,24 @@
         ['Delegation submitted! View on Cardanoscan', 'delegation_submitted_cardanoscan'],
         ['Delegation', 'delegation'],
         ['Delegators', 'delegators'],
+        ['Delegators Area', 'delegators_area'],
         ['Delegators Dashboard', 'delegators_dashboard'],
+        ['Delegator dashboard could not be loaded.', 'delegator_dashboard_could_not_load'],
+        ['Open delegators dashboard', 'open_delegators_dashboard'],
         ['Detecting installed wallets...', 'detecting_installed_wallets'],
         ['Domains reaching the 51% threshold', 'domains_threshold'],
         ['Draw', 'draw'],
         ['Draw and Publish', 'draw_and_publish'],
         ['Draw and Publish Winner', 'draw_publish_winner'],
         ['Draw proof', 'draw_proof'],
+        ['Draw, publish and review raffle results', 'draw_publish_review_raffle_results'],
+        ['Detecting installed Cardano wallets...', 'detecting_cardano_wallets'],
         ['Earliest epoch', 'earliest_epoch'],
         ['Eligible Delegators', 'eligible_delegators'],
+        ['Excluded', 'excluded'],
+        ['Excluded Stake Keys', 'excluded_stake_keys'],
+        ['Exclusion List', 'exclusion_list'],
+        ['Exact address only', 'exact_address_only'],
         ['Each card shows how the top 10 DReps voted. The same-vote line groups DReps by vote choice.', 'top_drep_vote_matrix_intro'],
         ['Events', 'events'],
         ['events', 'events'],
@@ -333,6 +351,8 @@
         ['No registered SPOs are available.', 'no_registered_spos'],
         ['No stake address was found in this wallet. No transaction was built.', 'no_stake_address_wallet'],
         ['No stake keys are excluded.', 'no_stake_keys_excluded'],
+        ['On-chain proof', 'on_chain_proof'],
+        ['On-chain proof is not available in the running Koios proxy yet. Pull the latest proxy image and restart the container, then reload this page.', 'on_chain_proof_unavailable'],
         ['No top DRep data available.', 'no_top_drep_data'],
         ['No vote data', 'no_vote_data'],
         ['No shared explicit votes found', 'no_shared_explicit_votes'],
@@ -340,6 +360,8 @@
         ['No Cardano wallet extension detected. Install a CIP-30 wallet (Eternl, Lace, Vespr...) and reopen this dialog.', 'no_cardano_wallet_detected'],
         ['No Cardano wallet extension detected. Install a CIP-30/CIP-95 wallet and reopen this dialog.', 'no_cip30_cip95_wallet_detected'],
         ['No CIP-95 Cardano wallet extension was detected. No transaction was built.', 'no_cip95_wallet_detected'],
+        ['No CIP-30 Cardano wallet extension was detected.', 'no_cip30_wallet_detected'],
+        ['No Cardano stake key was found in this wallet.', 'no_cardano_stake_key_wallet'],
         ['No spendable wallet UTxO was found for the deposit and network fee.', 'no_spendable_wallet_utxo'],
         ['Not available', 'not_available'],
         ['Not identified', 'not_identified'],
@@ -361,6 +383,7 @@
         ['Open', 'open'],
         ['Open for live votes', 'open_for_live_votes'],
         ['Passive Relay', 'passive_relay'],
+        ['Payment admin', 'payment_admin'],
         ['Please approve the DRep delegation transaction in your wallet...', 'approve_drep_delegation_wallet'],
         ['Please approve the transaction in your wallet...', 'approve_transaction_wallet'],
         ['Please switch your wallet to Cardano Mainnet and try again.', 'switch_wallet_mainnet'],
@@ -371,7 +394,10 @@
         ['Pipeline', 'pipeline'],
         ['Pledge', 'pledge'],
         ['Possible Blocks Current Epoch', 'possible_blocks_current_epoch'],
+        ['Prize', 'prize'],
+        ['For example: 100 ADA', 'raffle_prize_placeholder'],
         ['Prices', 'prizes'],
+        ['Prizes', 'prizes'],
         ['Price history is still being collected.', 'price_history_collecting'],
         ['Price history unavailable', 'price_history_unavailable'],
         ['Proposal Summary', 'proposal_summary'],
@@ -386,9 +412,19 @@
         ['Do not list me in public DRep directories', 'do_not_list_public_drep_directories'],
         ['Proposer', 'proposer'],
         ['Publish proof on-chain', 'publish_proof_onchain'],
+        ['Prize wallet could not be loaded.', 'prize_wallet_could_not_load'],
+        ['Prize wallet unavailable', 'prize_wallet_unavailable'],
+        ['Public notes', 'public_notes'],
+        ['Publication method', 'publication_method'],
+        ['Publish on the website and record proof on Cardano Mainnet (network fee required).', 'publish_website_and_cardano'],
+        ['Publish on the website only (no network fee).', 'publish_website_only'],
+        ['Publish this auditable result to verified TDSP delegators.', 'publish_auditable_result'],
         ['Question about Cardano governance', 'question_cardano_governance'],
         ['Reason for this vote (English)', 'reason_for_vote_english'],
+        ['Requesting a one-time wallet challenge...', 'requesting_wallet_challenge'],
+        ['Review and sign the access challenge in your wallet. No transaction or fee is created.', 'review_sign_access_challenge'],
         ['Raffles', 'raffles'],
+        ['Raffle title', 'raffle_title'],
         ['Raffle wallet tokens', 'raffle_wallet_tokens'],
         ['Read', 'read'],
         ['Realfi SPO', 'realfi_spo'],
@@ -408,6 +444,9 @@
         ['Relay Operator NC', 'relay_operator_nc'],
         ['Relay operator NC', 'relay_operator_nc'],
         ['Remove', 'remove'],
+        ['Back to Dashboard', 'back_to_dashboard'],
+        ['Back to Raffles', 'back_to_raffles'],
+        ['Restricted', 'restricted'],
         ['Reset in', 'reset_in'],
         ['Reset due', 'reset_due'],
         ['Software/client NC', 'software_client_nc'],
@@ -441,12 +480,26 @@
         ['Search Cardano data or ask about the Constitution', 'search_cardano_data'],
         ['Search this overlay', 'search_this_overlay'],
         ['Select and publish a raffle winner', 'select_publish_raffle_winner'],
+        ['Format: enter one complete Mainnet stake address per line. Example:', 'stake_address_format_intro'],
+        ['Comma-separated addresses are also accepted.', 'comma_addresses_accepted'],
+        ['Admin addresses', 'admin_addresses'],
+        ['Format: enter one complete Mainnet address per line. Comma-separated addresses are also accepted.', 'admin_address_format_help'],
+        ['Sign a one-time wallet challenge with a stake key currently delegated to TDSP. This does not create a transaction or cost ADA.', 'delegator_sign_challenge_help'],
+        ['Stake admin', 'stake_admin'],
+        ['Stake credential verified', 'stake_credential_verified'],
+        ['Verified stake key', 'verified_stake_key'],
+        ['Stake key', 'stake_key'],
+        ['Stake key exclusions are not available in the running Koios proxy yet. Pull the latest proxy image and restart the container, then reload this page.', 'stake_key_exclusions_unavailable'],
+        ['Stake addresses', 'stake_addresses'],
+        ['Select a stake key to continue.', 'select_stake_key_continue'],
         ['Saved drep.jsonld and added its Blake2b-256 hash. Upload this exact file, then enter its public metadata URL.', 'saved_drep_jsonld_hash_added'],
         ['Saved for review.', 'saved_for_review'],
         ['Source:', 'source'],
         ['Spend', 'spend'],
         ['Status unavailable', 'status_unavailable'],
         ['Submitting transaction...', 'submitting_transaction'],
+        ['Submitting the signed transaction...', 'submitting_signed_transaction'],
+        ['Switch your wallet to Cardano Mainnet.', 'switch_wallet_mainnet'],
         ['Saturation', 'saturation'],
         ['Starch Pools', 'starch_pools'],
         ['Starch pool data is not available yet.', 'starch_pool_data_unavailable'],
@@ -459,11 +512,41 @@
         ['Review this text carefully. It will only be used when you copy it into the original rationale field and continue.', 'review_improved_rationale_note'],
         ['Ask AI could not improve the rationale right now.', 'tdspbot_improve_rationale_failed'],
         ['The wallet connector could not be loaded. No transaction was built.', 'wallet_connector_no_transaction'],
+        ['This wallet does not contain the authorized Admin Area credential.', 'wallet_missing_admin_area_credential'],
+        ['This wallet does not contain the authorized admin stake credential.', 'wallet_missing_admin_stake_credential'],
+        ['Recording the previously submitted transaction ID...', 'recording_previous_tx_id'],
+        ['Choose the admin wallet first.', 'choose_admin_wallet_first'],
+        ['Building the on-chain raffle proof transaction...', 'building_onchain_raffle_proof_tx'],
+        ['No spendable wallet UTxO was found for the network fee.', 'no_spendable_wallet_utxo_fee'],
+        ['The wallet returned an invalid transaction ID.', 'wallet_invalid_tx_id'],
+        ['Transaction submitted. Recording its transaction ID with the raffle...', 'tx_submitted_recording_raffle_id'],
+        ['The on-chain raffle proof could not be submitted.', 'onchain_raffle_proof_submit_failed'],
+        ['Creates a Cardano Mainnet transaction containing the draw proof and charges a network fee.', 'creates_cardano_raffle_proof_tx'],
+        ['Included in raffle', 'included_in_raffle'],
+        ['Enable exclusion', 'enable_exclusion'],
+        ['Disable exclusion', 'disable_exclusion'],
+        ['Excluding stake key...', 'excluding_stake_key'],
+        ['Including stake key in future raffles...', 'including_stake_key_future_raffles'],
+        ['Removing exclusion...', 'removing_exclusion'],
+        ['At least one admin user is required.', 'one_admin_user_required'],
+        ['The admin users could not be saved.', 'admin_users_could_not_save'],
+        ['The exclusions could not be saved.', 'exclusions_could_not_save'],
+        ['Adding admin users...', 'adding_admin_users'],
+        ['Saving admin users...', 'saving_admin_users'],
+        ['Adding exclusions...', 'adding_exclusions'],
+        ['Saving exclusions...', 'saving_exclusions'],
+        ['Selecting and publishing a winner...', 'selecting_publishing_winner'],
+        ['The published raffle could not be prepared for on-chain proof.', 'published_raffle_onchain_prepare_failed'],
+        ['Your previous wallet session expired. Sign a new challenge to continue.', 'previous_wallet_session_expired'],
+        ['The raffle result has been published on the website.', 'raffle_published_website'],
+        ['The raffle result has been published. Complete the wallet step to record its proof on Cardano.', 'raffle_published_complete_wallet_proof'],
+        ['The raffle result now has an on-chain transaction proof.', 'raffle_onchain_proof_saved'],
         ['Thank you for your feedback.', 'thank_feedback'],
         ['The Constitution assistant returned an empty answer.', 'constitution_assistant_empty_answer'],
         ['The Constitution assistant is temporarily unavailable.', 'constitution_assistant_unavailable'],
         ['The Constitution document is empty.', 'constitution_document_empty'],
         ['The Cardano Constitution could not be loaded.', 'cardano_constitution_could_not_load'],
+        ['The Japanese Constitution translation is being prepared. Please try again later.', 'japanese_constitution_translation_pending'],
         ['This API only provides stake totals for this bucket, not individual DRep IDs.', 'drep_bucket_stake_totals_only'],
         ['This DRep is already registered. No transaction was built.', 'drep_already_registered'],
         ['The metadata URL did not return a JSON object.', 'metadata_url_not_json_object'],
@@ -480,6 +563,8 @@
         ['Top 10 DRep data could not be loaded.', 'top_10_drep_data_could_not_be_loaded'],
         ['Top 10 DReps by voting power', 'top_10_dreps_by_voting_power'],
         ['Total Delegated', 'total_delegated'],
+        ['TDSP Delegators', 'tdsp_delegators'],
+        ['TDSP Delegator Raffle', 'tdsp_delegator_raffle'],
         ['Total ask', 'total_ask'],
         ['Total Ask', 'total_ask'],
         ['Treasury withdrawal history', 'treasury_withdrawal_history'],
@@ -502,12 +587,21 @@
         ['Verify the raffle proof metadata and network fee in your wallet before signing.', 'verify_raffle_proof'],
         ['View event', 'view_event'],
         ['View transaction on Cardanoscan', 'view_transaction_cardanoscan'],
+        ['View on Cardanoscan', 'view_on_cardanoscan'],
         ['Vote as DRep', 'vote_as_drep'],
         ['Vote Sync', 'vote_sync'],
         ['Vote rationale', 'vote_rationale'],
         ['Vote rationale could not be loaded from the API. The koios-proxy container may need the latest image or this vote has no on-chain rationale metadata.', 'vote_rationale_api_load_failed'],
         ['Vote sync is loading in the background.', 'vote_sync_background'],
         ['Voted', 'voted'],
+        ['Wallet address', 'wallet_address'],
+        ['Wallet address unavailable', 'wallet_address_unavailable'],
+        ['Wallet access failed.', 'wallet_access_failed'],
+        ['Wallet connection failed.', 'wallet_connection_failed'],
+        ['Wallet session closed.', 'wallet_session_closed'],
+        ['Wallet verified.', 'wallet_verified'],
+        ['Winner', 'winner'],
+        ['You are the winner', 'you_are_winner'],
         ['Vote', 'vote'],
         ['Website context', 'website_context'],
         ['Yes', 'yes'],
@@ -674,6 +768,45 @@
 
             const proposalsCountMatch = normalized.match(/^(\d[\d,]*)\s+proposals$/i);
             if (proposalsCountMatch) return `${proposalsCountMatch[1]}提案`;
+
+            const tokensCountMatch = normalized.match(/^(\d[\d,]*)\s+tokens?$/i);
+            if (tokensCountMatch) return `${tokensCountMatch[1]}トークン`;
+
+            const publishedRafflesCountMatch = normalized.match(/^(\d[\d,]*)\s+published raffles?$/i);
+            if (publishedRafflesCountMatch) return `${publishedRafflesCountMatch[1]}公開済みラッフル`;
+
+            const excludedCountMatch = normalized.match(/^(\d[\d,]*)\s+excluded$/i);
+            if (excludedCountMatch) return `${excludedCountMatch[1]}除外`;
+
+            const excludedIncludedMatch = normalized.match(/^(\d[\d,]*)\s+excluded\s+·\s+(\d[\d,]*)\s+included in raffles$/i);
+            if (excludedIncludedMatch) return `${excludedIncludedMatch[1]}除外 · ${excludedIncludedMatch[2]}ラッフルに含む`;
+
+            const adminCountConfiguredMatch = normalized.match(/^(\d[\d,]*)\s+admin\s+users?\s+configured\.$/i);
+            if (adminCountConfiguredMatch) return `${adminCountConfiguredMatch[1]}管理ユーザーを設定しました。`;
+
+            const adminCountMatch = normalized.match(/^(\d[\d,]*)\s+admins?$/i);
+            if (adminCountMatch) return `${adminCountMatch[1]}管理者`;
+
+            const stakeKeysExcludedMatch = normalized.match(/^(\d[\d,]*)\s+stake\s+keys?\s+excluded from future draws\.$/i);
+            if (stakeKeysExcludedMatch) return `${stakeKeysExcludedMatch[1]}ステークキーを今後の抽選から除外しました。`;
+
+            const publishedMatch = normalized.match(/^Published\s+(.+)$/i);
+            if (publishedMatch) return `公開日時 ${publishedMatch[1]}`;
+
+            const poolSnapshotMatch = normalized.match(/^Pool snapshot\s+(.+)$/i);
+            if (poolSnapshotMatch) return `プールスナップショット ${poolSnapshotMatch[1]}`;
+
+            const eligibleIndexMatch = normalized.match(/^(\d[\d,]*)\s+eligible delegators\s+·\s+index\s+(.+)$/i);
+            if (eligibleIndexMatch) return `${eligibleIndexMatch[1]}対象委任者 · インデックス ${eligibleIndexMatch[2]}`;
+
+            const metadataLabelMatch = normalized.match(/^Metadata label\s+(.+)$/i);
+            if (metadataLabelMatch) return `メタデータラベル ${metadataLabelMatch[1]}`;
+
+            const connectingToWalletMatch = normalized.match(/^Connecting to\s+(.+)\.\.\.$/i);
+            if (connectingToWalletMatch) return `${connectingToWalletMatch[1]}に接続中...`;
+
+            const copyMatch = normalized.match(/^Copy\s+(.+)$/i);
+            if (copyMatch) return `${copyMatch[1]}をコピー`;
 
             const projectsCountMatch = normalized.match(/^(\d[\d,]*)\s+projects$/i);
             if (projectsCountMatch) return `${projectsCountMatch[1]}プロジェクト`;
@@ -1080,8 +1213,47 @@
         const unapprovedActionsCountMatch = normalized.match(/^(\d[\d,]*)\s+unapproved actions$/i);
         if (unapprovedActionsCountMatch) return `${unapprovedActionsCountMatch[1]} niet-goedgekeurde acties`;
 
-        const proposalsCountMatch = normalized.match(/^(\d[\d,]*)\s+proposals$/i);
-        if (proposalsCountMatch) return `${proposalsCountMatch[1]} voorstellen`;
+            const proposalsCountMatch = normalized.match(/^(\d[\d,]*)\s+proposals$/i);
+            if (proposalsCountMatch) return `${proposalsCountMatch[1]} voorstellen`;
+
+        const tokensCountMatch = normalized.match(/^(\d[\d,]*)\s+tokens?$/i);
+        if (tokensCountMatch) return `${tokensCountMatch[1]} tokens`;
+
+        const publishedRafflesCountMatch = normalized.match(/^(\d[\d,]*)\s+published raffles?$/i);
+        if (publishedRafflesCountMatch) return `${publishedRafflesCountMatch[1]} gepubliceerde raffles`;
+
+        const excludedCountMatch = normalized.match(/^(\d[\d,]*)\s+excluded$/i);
+        if (excludedCountMatch) return `${excludedCountMatch[1]} uitgesloten`;
+
+        const excludedIncludedMatch = normalized.match(/^(\d[\d,]*)\s+excluded\s+·\s+(\d[\d,]*)\s+included in raffles$/i);
+        if (excludedIncludedMatch) return `${excludedIncludedMatch[1]} uitgesloten · ${excludedIncludedMatch[2]} meegenomen in raffles`;
+
+        const adminCountConfiguredMatch = normalized.match(/^(\d[\d,]*)\s+admin\s+users?\s+configured\.$/i);
+        if (adminCountConfiguredMatch) return `${adminCountConfiguredMatch[1]} admin-gebruiker${adminCountConfiguredMatch[1] === '1' ? '' : 's'} ingesteld.`;
+
+        const adminCountMatch = normalized.match(/^(\d[\d,]*)\s+admins?$/i);
+        if (adminCountMatch) return `${adminCountMatch[1]} admin${adminCountMatch[1] === '1' ? '' : 's'}`;
+
+        const stakeKeysExcludedMatch = normalized.match(/^(\d[\d,]*)\s+stake\s+keys?\s+excluded from future draws\.$/i);
+        if (stakeKeysExcludedMatch) return `${stakeKeysExcludedMatch[1]} stake key${stakeKeysExcludedMatch[1] === '1' ? '' : 's'} uitgesloten van toekomstige trekkingen.`;
+
+        const publishedMatch = normalized.match(/^Published\s+(.+)$/i);
+        if (publishedMatch) return `Gepubliceerd ${publishedMatch[1]}`;
+
+        const poolSnapshotMatch = normalized.match(/^Pool snapshot\s+(.+)$/i);
+        if (poolSnapshotMatch) return `Pool-snapshot ${poolSnapshotMatch[1]}`;
+
+        const eligibleIndexMatch = normalized.match(/^(\d[\d,]*)\s+eligible delegators\s+·\s+index\s+(.+)$/i);
+        if (eligibleIndexMatch) return `${eligibleIndexMatch[1]} geldige delegators · index ${eligibleIndexMatch[2]}`;
+
+        const metadataLabelMatch = normalized.match(/^Metadata label\s+(.+)$/i);
+        if (metadataLabelMatch) return `Metadata-label ${metadataLabelMatch[1]}`;
+
+        const connectingToWalletMatch = normalized.match(/^Connecting to\s+(.+)\.\.\.$/i);
+        if (connectingToWalletMatch) return `Verbinden met ${connectingToWalletMatch[1]}...`;
+
+        const copyMatch = normalized.match(/^Copy\s+(.+)$/i);
+        if (copyMatch) return `Kopieer ${copyMatch[1]}`;
 
         const projectsCountMatch = normalized.match(/^(\d[\d,]*)\s+projects$/i);
         if (projectsCountMatch) return `${projectsCountMatch[1]} projecten`;
@@ -1518,6 +1690,15 @@
         element.setAttribute('placeholder', translated || original);
     }
 
+    function translateAriaLabelElement(element) {
+        if (!(element instanceof HTMLElement)) return;
+        const original = element.getAttribute('data-i18n-aria-label-original') || element.getAttribute('aria-label') || '';
+        if (!original) return;
+        element.setAttribute('data-i18n-aria-label-original', original);
+        const translated = activeLanguage !== DEFAULT_LANGUAGE ? getAutoTranslationValue(original) : '';
+        element.setAttribute('aria-label', translated || original);
+    }
+
     function applyTranslations(root = document) {
         if (isTranslating) return;
         isTranslating = true;
@@ -1525,10 +1706,12 @@
             root.querySelectorAll?.(`[${TRANSLATION_ATTR}]`).forEach(translateElement);
             root.querySelectorAll?.(AUTO_TRANSLATION_SELECTOR).forEach(translateAutoElement);
             root.querySelectorAll?.('[data-i18n-placeholder-original]').forEach(translatePlaceholderElement);
+            root.querySelectorAll?.('[data-i18n-aria-label-original]').forEach(translateAriaLabelElement);
             if (root instanceof HTMLElement) {
                 if (root.hasAttribute(TRANSLATION_ATTR)) translateElement(root);
                 if (root.matches?.(AUTO_TRANSLATION_SELECTOR)) translateAutoElement(root);
                 if (root.hasAttribute('data-i18n-placeholder-original')) translatePlaceholderElement(root);
+                if (root.hasAttribute('data-i18n-aria-label-original')) translateAriaLabelElement(root);
             }
             document.documentElement.lang = activeLanguage;
             syncLanguageToggle();

@@ -682,7 +682,9 @@ async function renderStarchCompanyChart(canvas, miners, companyId) {
 
 function formatStarchTimestamp(value, stale) {
     const formatted = window.TDSPRuntime.formatTimestamp(value);
-    return stale ? `${formatted} (cached)` : formatted;
+    if (!stale) return formatted;
+    const cached = window.TDSPI18n?.translateText?.('cached') || 'cached';
+    return `${formatted} (${cached})`;
 }
 
 function createStarchCopyButton(value, label) {
