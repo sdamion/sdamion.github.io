@@ -104,6 +104,7 @@
         ['Close DRep metadata builder', 'close_drep_metadata_builder'],
         ['Close DRep registration', 'close_drep_registration'],
         ['Close DRep voting', 'close_drep_voting'],
+        ['Close governance action', 'close_governance_action'],
         ['Close top 10 DReps', 'close_top_10_dreps'],
         ['Close vote rationale', 'close_vote_rationale'],
         ['Close Net Change Limit', 'close_net_change_limit'],
@@ -662,6 +663,9 @@
             const actionsCountMatch = normalized.match(/^(\d[\d,]*)\s+actions$/i);
             if (actionsCountMatch) return `${actionsCountMatch[1]}アクション`;
 
+            const actionCountWithTotalAskMatch = normalized.match(/^(\d[\d,]*)\s+actions\s+•\s+Total ask\s+(.+)$/i);
+            if (actionCountWithTotalAskMatch) return `${actionCountWithTotalAskMatch[1]}アクション • ${translations.total_ask || '総要求額'} ${actionCountWithTotalAskMatch[2]}`;
+
             const approvedActionsCountMatch = normalized.match(/^(\d[\d,]*)\s+approved actions$/i);
             if (approvedActionsCountMatch) return `${approvedActionsCountMatch[1]}承認済みアクション`;
 
@@ -688,6 +692,9 @@
 
             const closePriceMatch = normalized.match(/^Close\s+([A-Z0-9]+)\s+price history$/i);
             if (closePriceMatch) return `${closePriceMatch[1]}価格履歴を閉じる`;
+
+            const closeAnyMatch = normalized.match(/^Close\s+(.+)$/i);
+            if (closeAnyMatch) return `${getAutoTranslationValue(closeAnyMatch[1]) || closeAnyMatch[1]}を閉じる`;
 
             const closeNakamotoMetricMatch = normalized.match(/^Close\s+(.+\s+NC)$/i);
             if (closeNakamotoMetricMatch) return `${getAutoTranslationValue(closeNakamotoMetricMatch[1]) || closeNakamotoMetricMatch[1]}を閉じる`;
@@ -1064,6 +1071,9 @@
         const actionsCountMatch = normalized.match(/^(\d[\d,]*)\s+actions$/i);
         if (actionsCountMatch) return `${actionsCountMatch[1]} acties`;
 
+        const actionCountWithTotalAskMatch = normalized.match(/^(\d[\d,]*)\s+actions\s+•\s+Total ask\s+(.+)$/i);
+        if (actionCountWithTotalAskMatch) return `${actionCountWithTotalAskMatch[1]} acties • ${translations.total_ask || 'Totaal gevraagd'} ${actionCountWithTotalAskMatch[2]}`;
+
         const approvedActionsCountMatch = normalized.match(/^(\d[\d,]*)\s+approved actions$/i);
         if (approvedActionsCountMatch) return `${approvedActionsCountMatch[1]} goedgekeurde acties`;
 
@@ -1092,6 +1102,9 @@
 
         const closePriceMatch = normalized.match(/^Close\s+([A-Z0-9]+)\s+price history$/i);
         if (closePriceMatch) return `Sluit ${closePriceMatch[1]} prijsgeschiedenis`;
+
+        const closeAnyMatch = normalized.match(/^Close\s+(.+)$/i);
+        if (closeAnyMatch) return `Sluit ${getAutoTranslationValue(closeAnyMatch[1]) || closeAnyMatch[1]}`;
 
         const closeNakamotoMetricMatch = normalized.match(/^Close\s+(.+\s+NC)$/i);
         if (closeNakamotoMetricMatch) return `Sluit ${getAutoTranslationValue(closeNakamotoMetricMatch[1]) || closeNakamotoMetricMatch[1]}`;
