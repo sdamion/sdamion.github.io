@@ -488,6 +488,8 @@ function getExternalSiteWarning(returnFocus = document.activeElement) {
 
     const message = document.createElement('p');
     message.id = 'external-site-warning-message';
+    message.setAttribute('data-i18n-auto', '');
+    message.setAttribute('data-i18n-auto-original', 'This link will open in a new tab.');
     message.textContent = translateUiText('This link will open in a new tab.');
 
     const host = document.createElement('strong');
@@ -500,6 +502,8 @@ function getExternalSiteWarning(returnFocus = document.activeElement) {
     const copyUrl = document.createElement('button');
     copyUrl.type = 'button';
     copyUrl.className = 'external-site-warning-copy';
+    copyUrl.setAttribute('data-i18n-auto', '');
+    copyUrl.setAttribute('data-i18n-auto-original', 'Copy');
     copyUrl.textContent = translateUiText('Copy');
     copyUrl.setAttribute('aria-label', translateUiText('Copy external URL'));
     window.TDSPRuntime?.bindCopyButton?.(copyUrl, () => pendingExternalUrl);
@@ -511,12 +515,16 @@ function getExternalSiteWarning(returnFocus = document.activeElement) {
     const cancel = document.createElement('button');
     cancel.type = 'button';
     cancel.className = 'external-site-warning-cancel';
+    cancel.setAttribute('data-i18n-auto', '');
+    cancel.setAttribute('data-i18n-auto-original', 'Cancel');
     cancel.textContent = translateUiText('Cancel');
     cancel.addEventListener('click', closeExternalSiteWarning);
 
     const proceed = document.createElement('button');
     proceed.type = 'button';
     proceed.className = 'external-site-warning-continue';
+    proceed.setAttribute('data-i18n-auto', '');
+    proceed.setAttribute('data-i18n-auto-original', 'Continue');
     proceed.textContent = translateUiText('Continue');
     proceed.addEventListener('click', () => {
         const url = pendingExternalUrl;
@@ -555,7 +563,7 @@ function openExternalSiteWarning(value, returnFocus = document.activeElement) {
     const host = overlay.querySelector('[data-external-site-host]');
     const copy = overlay.querySelector('.external-site-warning-copy');
     if (host) host.textContent = url.href;
-    if (copy) copy.textContent = 'Copy';
+    if (copy) copy.textContent = translateUiText('Copy');
     return true;
 }
 

@@ -6013,6 +6013,14 @@ function setGovernanceAutoTranslatedText(element, text) {
     element.textContent = window.TDSPI18n?.translateText?.(value) || value;
 }
 
+function setGovernanceAutoTranslatedAriaLabel(element, text) {
+    if (!(element instanceof HTMLElement)) return;
+    const value = String(text || '').replace(/\s+/g, ' ').trim();
+    element.setAttribute('data-i18n-aria-label-auto', '');
+    element.setAttribute('data-i18n-aria-label-original', value);
+    element.setAttribute('aria-label', window.TDSPI18n?.translateText?.(value) || value);
+}
+
 function createGovernanceStatBox({ label, detail, color, statusClass = '', onClick = null }) {
     const element = document.createElement(onClick ? 'button' : 'div');
     element.className = `governance-vote-legend-item governance-stat-box${onClick ? ' is-clickable' : ''}${statusClass ? ` ${statusClass}` : ''}`;
@@ -6161,7 +6169,7 @@ function openSpoDirectoryOverlay() {
     panel.className = 'governance-drep-directory-list';
     const loading = document.createElement('p');
     loading.className = 'small-text';
-    loading.textContent = 'Loading SPO data...';
+    setGovernanceAutoTranslatedText(loading, 'Loading SPO data...');
     panel.appendChild(loading);
 
     createGovernanceMenuOverlay({
@@ -6206,7 +6214,7 @@ function openSpoDirectoryOverlay() {
         panel.replaceChildren();
         const message = document.createElement('p');
         message.className = 'small-text';
-        message.textContent = 'SPO data could not be loaded.';
+        setGovernanceAutoTranslatedText(message, 'SPO data could not be loaded.');
         panel.appendChild(message);
     });
 }
@@ -6665,7 +6673,7 @@ function renderSpoDirectory(container, spos, options = {}) {
     if (!spos.length) {
         const message = document.createElement('p');
         message.className = 'small-text';
-        message.textContent = 'No registered SPOs are available.';
+        setGovernanceAutoTranslatedText(message, 'No registered SPOs are available.');
         container.appendChild(message);
         return;
     }
@@ -6735,7 +6743,7 @@ function createSpoOperatorGroupCard(domain, members) {
     if (Number.isFinite(pinRank)) row.dataset.overlayPinRank = String(pinRank);
     row.setAttribute('role', 'button');
     row.tabIndex = 0;
-    row.setAttribute('aria-label', `Show ${domain?.label || 'operator'} combined stake pools`);
+    setGovernanceAutoTranslatedAriaLabel(row, `Show ${domain?.label || 'operator'} combined stake pools`);
     window.TDSPRuntime?.appendUniversalTileContent?.(row, {
         title: domain?.label || 'SPO Operator',
         titleClassName: 'governance-title governance-cc-member-hash',
@@ -7428,9 +7436,9 @@ function renderSpoRescanStatus(status) {
             : 'pools';
     const completed = Number(status?.completed) || 0;
     const total = Number(status?.total) || 0;
-    element.textContent = total > 0
+    setGovernanceAutoTranslatedText(element, total > 0
         ? `Checking ${phase} ${completed.toLocaleString('en-US')}/${total.toLocaleString('en-US')}`
-        : `Checking ${phase}...`;
+        : `Checking ${phase}...`);
 }
 
 async function pollSpoRescanStatus() {

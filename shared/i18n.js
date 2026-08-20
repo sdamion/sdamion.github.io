@@ -135,21 +135,28 @@
         ['Click to read the CIP explanation.', 'click_read_cip_explanation'],
         ['Constitutional Committee members could not be loaded.', 'constitutional_committee_members_could_not_load'],
         ['Cloud Service Usage', 'cloud_service_usage'],
+        ['Cloud Service', 'cloud_service'],
         ['Companies', 'companies'],
         ['Company Balance', 'company_balance'],
         ['Company ID', 'company_id'],
         ['Company IDs', 'company_ids'],
         ['Company miner data could not be loaded.', 'company_miner_data_load_failed'],
+        ['Combined', 'combined'],
+        ['combined', 'combined'],
         ['Connect Admin Wallet', 'connect_admin_wallet'],
         ['Connect Delegator Wallet', 'connect_delegator_wallet'],
         ['Connect your DRep wallet', 'connect_drep_wallet'],
         ['Connecting to wallet...', 'connecting_wallet'],
         ['Checking current delegation status...', 'checking_delegation_status'],
         ['Checking current vote cache...', 'checking_current_vote_cache'],
+        ['Checking pool data', 'checking_pool_data'],
         ['Building the delegation transaction...', 'building_delegation_transaction'],
         ['Close Nakamoto coefficients', 'close_nakamoto'],
+        ['Close SPO directory', 'close_spo_directory'],
         ['Close Stake to TDSP', 'close_stake_to_tdsp'],
+        ['Close external site warning', 'close_external_site_warning'],
         ['Continue Chat', 'continue_chat'],
+        ['Continue', 'continue'],
         ['Continue with conversation history', 'continue_with_history'],
         ['Continue to wallet', 'continue_to_wallet'],
         ['Connect the authorized Cardano wallet and sign the one-time access challenge. This does not create a transaction or cost ADA.', 'admin_sign_challenge_help'],
@@ -197,6 +204,7 @@
         ['Delegation submitted! View on Cardanoscan', 'delegation_submitted_cardanoscan'],
         ['Delegation', 'delegation'],
         ['Delegators', 'delegators'],
+        ['Delegators:', 'delegators_colon'],
         ['Delegators Area', 'delegators_area'],
         ['Delegators Dashboard', 'delegators_dashboard'],
         ['Delegator dashboard could not be loaded.', 'delegator_dashboard_could_not_load'],
@@ -265,6 +273,8 @@
         ['If this answer was useful, consider ', 'stake_prompt_prefix'],
         ['Improved rationale', 'improved_rationale'],
         ['Inactive', 'inactive'],
+        ['Inactive: pledge not met', 'inactive_pledge_not_met'],
+        ['Inactive: not registered', 'inactive_not_registered'],
         ['Inactive first', 'inactive_first'],
         ['Latest epoch', 'latest_epoch'],
         ['Least blocks', 'least_blocks'],
@@ -289,10 +299,12 @@
         ['Loading Nakamoto coefficients...', 'loading_nakamoto'],
         ['Loading SPO data...', 'loading_spo_data'],
         ['Loading SPO details...', 'loading_spo_details'],
+        ['Loading SPOs...', 'loading_spos'],
         ['Loading top 10 DReps...', 'loading_top_dreps'],
         ['Loading treasury data...', 'loading_treasury_data'],
         ['Lock', 'lock'],
         ['Live stake', 'live_stake'],
+        ['Live pledge', 'live_pledge'],
         ['Low', 'low'],
         ['Lowest amount', 'lowest_amount'],
         ['Lowest balance', 'lowest_balance'],
@@ -443,6 +455,7 @@
         ['Your public DRep name', 'your_public_drep_name'],
         ['Relay Operator NC', 'relay_operator_nc'],
         ['Relay operator NC', 'relay_operator_nc'],
+        ['Registered SPO directory', 'registered_spo_directory'],
         ['Remove', 'remove'],
         ['Back to Dashboard', 'back_to_dashboard'],
         ['Back to Raffles', 'back_to_raffles'],
@@ -453,6 +466,7 @@
         ['SPO Operator', 'spo_operator'],
         ['SPO Status', 'spo_status'],
         ['Active Relay via operator group', 'active_relay_operator_group'],
+        ['SPO data could not be loaded.', 'spo_data_could_not_load'],
         ['SPO details could not be loaded.', 'spo_details_could_not_load'],
         ['SPO hardware', 'spo_hardware'],
         ['SPO status unavailable', 'spo_status_unavailable'],
@@ -557,6 +571,7 @@
         ['This registers the displayed DRep ID on Cardano Mainnet. Check the ₳ 500 deposit, network fee, DRep ID and metadata in your wallet before signing.', 'drep_registration_review_warning'],
         ['This wallet is already registered, but the current pool could not be confirmed. No transaction was built.', 'already_registered_pool_unconfirmed'],
         ['This dimension is not available from the current SPO data.', 'spo_dimension_unavailable'],
+        ["You're opening an external site", 'opening_external_site'],
         ['Consensus, relay operator, hosting provider, geographic and software/client concentration', 'nakamoto_summary'],
         ['Links in this chart are provided by TradingView. DYOR before opening external links.', 'tradingview_link_warning'],
         ['Top 10 DReps', 'top_10_dreps'],
@@ -888,6 +903,30 @@
             const relayNodesMatch = normalized.match(/^Relay nodes\s+\((.+)\)$/i);
             if (relayNodesMatch) return `リレーノード（${relayNodesMatch[1]}）`;
 
+            const checkingSpoRescanProgressMatch = normalized.match(/^Checking\s+(pool data|relays|pools)\s+(.+)$/i);
+            if (checkingSpoRescanProgressMatch) return `${translateSpoRescanPhase(checkingSpoRescanProgressMatch[1], 'ja')}を確認中 ${checkingSpoRescanProgressMatch[2]}`;
+
+            const checkingSpoRescanMatch = normalized.match(/^Checking\s+(pool data|relays|pools)\.\.\.$/i);
+            if (checkingSpoRescanMatch) return `${translateSpoRescanPhase(checkingSpoRescanMatch[1], 'ja')}を確認中...`;
+
+            const operatorPoolsMatch = normalized.match(/^(.+)\s+Pools$/i);
+            if (operatorPoolsMatch) return `${operatorPoolsMatch[1]} プール`;
+
+            const closeSpoHostingGroupsMatch = normalized.match(/^Close\s+(.+)\s+SPO hosting groups$/i);
+            if (closeSpoHostingGroupsMatch) return `${getAutoTranslationValue(closeSpoHostingGroupsMatch[1]) || closeSpoHostingGroupsMatch[1]} SPOホスティンググループを閉じる`;
+
+            const registeredSposMatch = normalized.match(/^(\d[\d,]*)\s+registered SPOs$/i);
+            if (registeredSposMatch) return `${registeredSposMatch[1]} 登録済みSPO`;
+
+            const sposAtLocationMatch = normalized.match(/^(\d[\d,]*)\s+SPOs at this location$/i);
+            if (sposAtLocationMatch) return `この場所のSPO ${sposAtLocationMatch[1]}件`;
+
+            const relayCountMatch = normalized.match(/^(\d[\d,]*)\s+relays?$/i);
+            if (relayCountMatch) return `${relayCountMatch[1]} リレー`;
+
+            const poolCountMatch = normalized.match(/^(\d[\d,]*)\s+pools?$/i);
+            if (poolCountMatch) return `${poolCountMatch[1]} プール`;
+
             const nakamotoMatch = normalized.match(/^Nakamoto coefficient\s+(.+)$/i);
             if (nakamotoMatch) return `ナカモト係数 ${nakamotoMatch[1]}`;
 
@@ -897,8 +936,11 @@
             const measuredDomainsMatch = normalized.match(/^(\d[\d,]*)\s+measured domains$/i);
             if (measuredDomainsMatch) return `${measuredDomainsMatch[1]}測定済みドメイン`;
 
-            const combinedPoolsMatch = normalized.match(/^(\d[\d,]*)\s+combined pools$/i);
+            const combinedPoolsMatch = normalized.match(/^(\d[\d,]*)\s+combined\s+(?:pools|プール)$/i);
             if (combinedPoolsMatch) return `${combinedPoolsMatch[1]}統合プール`;
+
+            const showCombinedStakePoolsMatch = normalized.match(/^Show\s+(.+)\s+combined stake pools$/i);
+            if (showCombinedStakePoolsMatch) return `${showCombinedStakePoolsMatch[1]}の統合ステークプールを表示`;
 
             const stakeCoverageMatch = normalized.match(/^Stake coverage\s+(.+)$/i);
             if (stakeCoverageMatch) return `ステークカバレッジ ${stakeCoverageMatch[1]}`;
@@ -1335,7 +1377,31 @@
         if (locationMatch) return `Locatie: ${locationMatch[1]}`;
 
         const relayNodesMatch = normalized.match(/^Relay nodes\s+\((.+)\)$/i);
-        if (relayNodesMatch) return `Relay nodes (${relayNodesMatch[1]})`;
+        if (relayNodesMatch) return `Relay-nodes (${relayNodesMatch[1]})`;
+
+        const checkingSpoRescanProgressMatch = normalized.match(/^Checking\s+(pool data|relays|pools)\s+(.+)$/i);
+        if (checkingSpoRescanProgressMatch) return `${translateSpoRescanPhase(checkingSpoRescanProgressMatch[1], 'nl')} controleren ${checkingSpoRescanProgressMatch[2]}`;
+
+        const checkingSpoRescanMatch = normalized.match(/^Checking\s+(pool data|relays|pools)\.\.\.$/i);
+        if (checkingSpoRescanMatch) return `${translateSpoRescanPhase(checkingSpoRescanMatch[1], 'nl')} controleren...`;
+
+        const operatorPoolsMatch = normalized.match(/^(.+)\s+Pools$/i);
+        if (operatorPoolsMatch) return `${operatorPoolsMatch[1]} pools`;
+
+        const closeSpoHostingGroupsMatch = normalized.match(/^Close\s+(.+)\s+SPO hosting groups$/i);
+        if (closeSpoHostingGroupsMatch) return `Sluit ${getAutoTranslationValue(closeSpoHostingGroupsMatch[1]) || closeSpoHostingGroupsMatch[1]} SPO-hostinggroepen`;
+
+        const registeredSposMatch = normalized.match(/^(\d[\d,]*)\s+registered SPOs$/i);
+        if (registeredSposMatch) return `${registeredSposMatch[1]} geregistreerde SPOs`;
+
+        const sposAtLocationMatch = normalized.match(/^(\d[\d,]*)\s+SPOs at this location$/i);
+        if (sposAtLocationMatch) return `${sposAtLocationMatch[1]} SPOs op deze locatie`;
+
+        const relayCountMatch = normalized.match(/^(\d[\d,]*)\s+relays?$/i);
+        if (relayCountMatch) return `${relayCountMatch[1]} relays`;
+
+        const poolCountMatch = normalized.match(/^(\d[\d,]*)\s+pools?$/i);
+        if (poolCountMatch) return `${poolCountMatch[1]} pools`;
 
         const nakamotoMatch = normalized.match(/^Nakamoto coefficient\s+(.+)$/i);
         if (nakamotoMatch) return `Nakamoto-coëfficiënt ${nakamotoMatch[1]}`;
@@ -1346,8 +1412,11 @@
         const measuredDomainsMatch = normalized.match(/^(\d[\d,]*)\s+measured domains$/i);
         if (measuredDomainsMatch) return `${measuredDomainsMatch[1]} gemeten domeinen`;
 
-        const combinedPoolsMatch = normalized.match(/^(\d[\d,]*)\s+combined pools$/i);
+        const combinedPoolsMatch = normalized.match(/^(\d[\d,]*)\s+combined\s+(?:pools|プール)$/i);
         if (combinedPoolsMatch) return `${combinedPoolsMatch[1]} gecombineerde pools`;
+
+        const showCombinedStakePoolsMatch = normalized.match(/^Show\s+(.+)\s+combined stake pools$/i);
+        if (showCombinedStakePoolsMatch) return `Toon gecombineerde stake pools van ${showCombinedStakePoolsMatch[1]}`;
 
         const stakeCoverageMatch = normalized.match(/^Stake coverage\s+(.+)$/i);
         if (stakeCoverageMatch) return `Stake-dekking ${stakeCoverageMatch[1]}`;
@@ -1661,6 +1730,20 @@
         if (normalized === 'dreps') return 'DReps';
         if (normalized === 'stake keys excluded') return 'stake keys uitgesloten';
         return label;
+    }
+
+    function translateSpoRescanPhase(phase, language) {
+        const normalized = String(phase || '').toLowerCase();
+        if (language === 'ja') {
+            if (normalized === 'pool data') return 'プールデータ';
+            if (normalized === 'relays') return 'リレー';
+            if (normalized === 'pools') return 'プール';
+            return phase;
+        }
+        if (normalized === 'pool data') return 'Pooldata';
+        if (normalized === 'relays') return 'Relays';
+        if (normalized === 'pools') return 'Pools';
+        return phase;
     }
 
     function translateAutoElement(element) {
