@@ -67,9 +67,10 @@
             const menuEpochElement = document.getElementById('menu-epoch');
             if (menuEpochElement) {
                 const epochText = Number.isFinite(currentEpochNumber) ? `Epoch ${currentEpochNumber}` : 'Epoch ...';
-                menuEpochElement.textContent = Number.isFinite(remainingSeconds)
+                const menuText = Number.isFinite(remainingSeconds)
                     ? `${epochText} ${formatCountdown(remainingSeconds)} left`
                     : epochText;
+                menuEpochElement.textContent = window.TDSPI18n?.translateText?.(menuText) || menuText;
                 return;
             }
 

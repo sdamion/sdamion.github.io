@@ -3,8 +3,8 @@
     const DEFAULT_LANGUAGE = 'en';
     const LANGUAGE_CONFIG = Object.freeze({
         en: { label: 'English', flag: '🇺🇸' },
-        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20260820-spo-external-labels' },
-        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20260820-spo-external-labels' }
+        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20260820-menu-alerts-epoch' },
+        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20260820-menu-alerts-epoch' }
     });
     const TRANSLATION_ATTR = 'data-i18n';
     const TRANSLATION_ORIGINAL_ATTR = 'data-i18n-original';
@@ -64,6 +64,8 @@
         ['Answer feedback could not be saved.', 'answer_feedback_not_saved'],
         ['Answer loaded from saved website data.', 'answer_loaded_saved_data'],
         ['Answer saved.', 'answer_saved'],
+        ['Alerts', 'alerts'],
+        ['Allow notifications in browser settings', 'allow_notifications_browser_settings'],
         ['Back one window', 'back_one_window'],
         ['Back to metadata', 'back_to_metadata'],
         ['Become a DRep', 'become_drep'],
@@ -133,6 +135,7 @@
         ['CIPs', 'cips'],
         ['CIPs could not be loaded.', 'cips_could_not_be_loaded'],
         ['Click to read the CIP explanation.', 'click_read_cip_explanation'],
+        ['Blocked in browser', 'blocked_in_browser'],
         ['Constitutional Committee members could not be loaded.', 'constitutional_committee_members_could_not_load'],
         ['Cloud Service Usage', 'cloud_service_usage'],
         ['Cloud Service', 'cloud_service'],
@@ -563,6 +566,7 @@
         ['The Japanese Constitution translation is being prepared. Please try again later.', 'japanese_constitution_translation_pending'],
         ['This API only provides stake totals for this bucket, not individual DRep IDs.', 'drep_bucket_stake_totals_only'],
         ['This DRep is already registered. No transaction was built.', 'drep_already_registered'],
+        ['This browser does not support notifications', 'browser_notifications_not_supported'],
         ['The metadata URL did not return a JSON object.', 'metadata_url_not_json_object'],
         ['This link will open in a new tab.', 'external_link_new_tab'],
         ['This wallet is already delegating to The Dutch Stake Pool.', 'already_delegating_tdsp'],
@@ -860,6 +864,9 @@
                     ? `${base} • ${translations.total_ask || '総要求額'} ${proposalEpochMetaMatch[3]}`
                     : base;
             }
+
+            const epochLeftMatch = normalized.match(/^Epoch\s+(.+?)\s+(.+?)\s+left$/i);
+            if (epochLeftMatch) return `エポック ${epochLeftMatch[1]} 残り ${epochLeftMatch[2]}`;
 
             const epochLabelMatch = normalized.match(/^Epoch\s+(.+)$/i);
             if (epochLabelMatch) return `エポック ${epochLabelMatch[1]}`;
@@ -1336,6 +1343,9 @@
                 ? `${base} • ${translations.total_ask || 'Totaal gevraagd'} ${proposalEpochMetaMatch[3]}`
                 : base;
         }
+
+        const epochLeftMatch = normalized.match(/^Epoch\s+(.+?)\s+(.+?)\s+left$/i);
+        if (epochLeftMatch) return `Epoch ${epochLeftMatch[1]} nog ${epochLeftMatch[2]}`;
 
         const epochLabelMatch = normalized.match(/^Epoch\s+(.+)$/i);
         if (epochLabelMatch) return `Epoch ${epochLabelMatch[1]}`;

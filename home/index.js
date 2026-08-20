@@ -58,6 +58,14 @@ function sendBrowserNotification(title, body, tag, topic) {
     new Notification(title, { body, tag });
 }
 
+function setTranslatedUiText(element, text) {
+    if (!(element instanceof HTMLElement)) return;
+    const value = String(text || '');
+    element.setAttribute('data-i18n-auto', '');
+    element.setAttribute('data-i18n-auto-original', value);
+    element.textContent = translateUiText(value);
+}
+
 function renderSiteAlertsMenu() {
     const button = document.getElementById('site-alerts-button');
     const permissionButton = document.getElementById('site-alert-permission');
@@ -73,27 +81,27 @@ function renderSiteAlertsMenu() {
     const permission = getNotificationPermissionState();
     if (permission === 'granted') {
         button.classList.add('is-enabled');
-        button.textContent = 'Alerts';
-        permissionButton.textContent = 'Notifications enabled';
+        setTranslatedUiText(button, 'Alerts');
+        setTranslatedUiText(permissionButton, 'Notifications enabled');
         permissionButton.disabled = true;
-        status.textContent = 'Browser notifications active';
+        setTranslatedUiText(status, 'Browser notifications active');
     } else if (permission === 'denied') {
         button.classList.add('is-blocked');
-        button.textContent = 'Alerts';
-        permissionButton.textContent = 'Blocked in browser';
+        setTranslatedUiText(button, 'Alerts');
+        setTranslatedUiText(permissionButton, 'Blocked in browser');
         permissionButton.disabled = true;
-        status.textContent = 'Allow notifications in browser settings';
+        setTranslatedUiText(status, 'Allow notifications in browser settings');
     } else if (permission === 'unsupported') {
         button.classList.add('is-blocked');
-        button.textContent = 'Alerts';
-        permissionButton.textContent = 'Not supported';
+        setTranslatedUiText(button, 'Alerts');
+        setTranslatedUiText(permissionButton, 'Not supported');
         permissionButton.disabled = true;
-        status.textContent = 'This browser does not support notifications';
+        setTranslatedUiText(status, 'This browser does not support notifications');
     } else {
-        button.textContent = 'Alerts';
-        permissionButton.textContent = 'Enable notifications';
+        setTranslatedUiText(button, 'Alerts');
+        setTranslatedUiText(permissionButton, 'Enable notifications');
         permissionButton.disabled = false;
-        status.textContent = 'Choose topics and enable notifications';
+        setTranslatedUiText(status, 'Choose topics and enable notifications');
     }
 }
 

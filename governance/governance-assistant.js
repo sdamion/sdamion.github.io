@@ -27,9 +27,10 @@
         function formatAskAboutContextTitle(title) {
             const cleanTitle = String(title || '').trim();
             if (!cleanTitle) return 'Ask about available governance, DReps, SPOs, Starch, Treasury, or the Constitution.';
+            const translatedTitle = translateAssistantText(cleanTitle);
             const language = getAssistantLanguage();
-            if (language === 'nl') return `Vraag iets over ${cleanTitle}.`;
-            if (language === 'ja') return `${cleanTitle}について質問してください。`;
+            if (language === 'nl') return `Vraag iets over ${translatedTitle}.`;
+            if (language === 'ja') return `${translatedTitle}について質問してください。`;
             return `Ask about ${cleanTitle}.`;
         }
 
