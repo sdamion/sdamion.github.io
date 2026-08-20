@@ -536,6 +536,7 @@ function closeStarchCompanyOverlay(restoreFocus = true) {
 }
 
 async function renderStarchCompanyDetail(content, company, summary, options = {}) {
+    const companyIds = getStarchCompanyIds(company);
     const miners = (Array.isArray(summary?.miners) ? summary.miners : [])
         .map(miner => ({
             miner_id: String(miner?.miner_id || ''),
@@ -566,7 +567,6 @@ async function renderStarchCompanyDetail(content, company, summary, options = {}
     const idLabel = document.createElement('span');
     setStarchAutoTranslatedText(idLabel, companyIds.length > 1 ? 'Company IDs' : 'Company ID');
     const idValue = document.createElement('strong');
-    const companyIds = getStarchCompanyIds(company);
     const companyIdText = companyIds.join(', ') || String(summary?.team_id || 'N/A');
     idValue.textContent = companyIdText;
     idLine.append(idLabel, idValue);
