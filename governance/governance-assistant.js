@@ -199,9 +199,13 @@
         }
 
         function getConstitutionDocumentApiUrl() {
-            return GOVERNANCE_IS_LOCAL_PREVIEW
+            const url = GOVERNANCE_IS_LOCAL_PREVIEW
                 ? LOCAL_CONSTITUTION_DOCUMENT_PROXY_PATH
                 : CONSTITUTION_DOCUMENT_API_URL;
+            const language = window.TDSPI18n?.getLanguage?.() || 'en';
+            if (!language || language === 'en') return url;
+            const separator = url.includes('?') ? '&' : '?';
+            return `${url}${separator}lang=${encodeURIComponent(language)}`;
         }
 
         function formatConstitutionDocumentMarkdown(text) {

@@ -5,6 +5,23 @@
             return `${path}?${query.toString()}`;
         }
 
+        function getCurrentLanguage() {
+            return window.TDSPI18n?.getLanguage?.() || 'en';
+        }
+
+        function withCurrentLanguage(path) {
+            const language = getCurrentLanguage();
+            if (!language || language === 'en') return path;
+            const separator = path.includes('?') ? '&' : '?';
+            return `${path}${separator}lang=${encodeURIComponent(language)}`;
+        }
+
+        function addCurrentLanguage(params = {}) {
+            const language = getCurrentLanguage();
+            if (!language || language === 'en') return params;
+            return { ...params, lang: language };
+        }
+
         function catalystProposals(options = {}) {
             if (isLocalPreview) {
                 const params = new URLSearchParams();
@@ -19,15 +36,15 @@
         }
 
         function cips() {
-            return isLocalPreview ? endpoints.localCips : endpoints.cips;
+            return withCurrentLanguage(isLocalPreview ? endpoints.localCips : endpoints.cips);
         }
 
         function dashboard() {
-            return isLocalPreview ? endpoints.localDashboard : endpoints.dashboard;
+            return withCurrentLanguage(isLocalPreview ? endpoints.localDashboard : endpoints.dashboard);
         }
 
         function compactDashboard() {
-            return isLocalPreview ? endpoints.localCompactDashboard : endpoints.compactDashboard;
+            return withCurrentLanguage(isLocalPreview ? endpoints.localCompactDashboard : endpoints.compactDashboard);
         }
 
         function proposalVotes(proposalId) {
@@ -39,9 +56,9 @@
 
         function proposalDetail(proposalId) {
             if (isLocalPreview) {
-                return withParams(endpoints.localProposalDetail, { proposalId });
+                return withParams(endpoints.localProposalDetail, addCurrentLanguage({ proposalId }));
             }
-            return `${endpoints.proposalDetailBase}/${encodeURIComponent(proposalId)}`;
+            return withCurrentLanguage(`${endpoints.proposalDetailBase}/${encodeURIComponent(proposalId)}`);
         }
 
         function proposalSummary(proposalId) {

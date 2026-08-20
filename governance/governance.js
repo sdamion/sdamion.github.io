@@ -84,6 +84,7 @@ const DAMION_DREP_ID = 'drep1yg5gkkyxwwr7d6qflf2qqp6drkp9432h6cvtmun0dqthusqlkz8
 let governanceRefreshTimer = null;
 let epochChangeRefreshTimer = null;
 let epochChangeRefreshStartedAtMs = 0;
+let governanceLanguageRefreshTimer = null;
 let lastActiveRenderSignature = '';
 let governanceState = null;
 let governanceGroupsState = null;
@@ -302,6 +303,7 @@ if (document.readyState === 'loading') {
 
 function initGovernance() {
     setupGovernanceMenuCards();
+    setupGovernanceLanguageRefresh();
     loadCurrentEpoch();
     const hasGovernanceDashboard = Boolean(document.querySelector('#governance, #drep, #gov-spo-card'));
     if (!hasGovernanceDashboard) return;
@@ -320,6 +322,24 @@ function initGovernance() {
     loadCipDirectory().catch(() => {
         window.TDSPRuntime.setText('gov-cip-count', 'Unavailable');
         window.TDSPRuntime.setText('gov-cip-status', 'CIP cache unavailable');
+    });
+}
+
+function setupGovernanceLanguageRefresh() {
+    if (window.TDSPGovernanceLanguageRefreshBound === true) return;
+    window.TDSPGovernanceLanguageRefreshBound = true;
+    window.addEventListener('tdsp-language-change', () => {
+        window.clearTimeout(governanceLanguageRefreshTimer);
+        governanceLanguageRefreshTimer = window.setTimeout(() => {
+            proposalDetailsCache.clear();
+            cipDirectoryPromise = null;
+            catalystProposalDirectoryPromise = null;
+            governanceState = null;
+            governanceGroupsState = null;
+            lastActiveRenderSignature = '';
+            loadGovernanceActions().catch(() => {});
+            loadCipDirectory().catch(() => {});
+        }, 50);
     });
 }
 

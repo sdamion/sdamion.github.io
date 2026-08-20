@@ -221,6 +221,7 @@
         ['Governance yes threshold reached', 'governance_yes_threshold_reached'],
         ['High', 'high'],
         ['Highest amount', 'highest_amount'],
+        ['Highest saturation', 'highest_saturation'],
         ['History', 'history'],
         ['Geographic NC', 'geographic_nc'],
         ['Hosting-provider NC', 'hosting_provider_nc'],
@@ -591,6 +592,378 @@
         const genericOfflineMatch = normalized.match(/^Offline\s+(.+)$/i);
         if (genericOfflineMatch && translations.offline) {
             return `${translations.offline} ${genericOfflineMatch[1]}`;
+        }
+
+        if (activeLanguage === 'ja') {
+            const approvedUnapprovedMatch = normalized.match(/^Approved\s+(.+?)\s+•\s+Unapproved\s+(.+)$/i);
+            if (approvedUnapprovedMatch) return `承認済み ${approvedUnapprovedMatch[1]} • 未承認 ${approvedUnapprovedMatch[2]}`;
+
+            const fundMatch = normalized.match(/^Fund\s+(\d+)$/i);
+            if (fundMatch) return `ファンド ${fundMatch[1]}`;
+
+            const priceMatch = normalized.match(/^([A-Z0-9]+)\s+Price$/);
+            if (priceMatch) return `${priceMatch[1]}価格`;
+
+            const makeDrepMatch = normalized.match(/^Make\s+(.+)\s+your DRep$/i);
+            if (makeDrepMatch) return `${makeDrepMatch[1]}をあなたのDRepにする`;
+
+            const closeDrepDelegationMatch = normalized.match(/^Close\s+(.+)\s+DRep delegation$/i);
+            if (closeDrepDelegationMatch) return `${closeDrepDelegationMatch[1]}のDRep委任を閉じる`;
+
+            const drepWarningMatch = normalized.match(/^Always review the transaction in your wallet before approving\.\s+Confirm it delegates your Cardano voting power to\s+(.+)\s+and does not include anything unexpected\.$/i);
+            if (drepWarningMatch) {
+                return `承認する前に必ずウォレット内の取引を確認してください。Cardanoの投票力が${drepWarningMatch[1]}へ委任され、予期しない内容が含まれていないことを確認してください。`;
+            }
+
+            const activeEpochMatch = normalized.match(/^Active epoch\s+(.+)$/i);
+            if (activeEpochMatch) return `アクティブエポック ${activeEpochMatch[1]}`;
+
+            const daysMatch = normalized.match(/^(\d+)\s+days?$/i);
+            if (daysMatch) return `${daysMatch[1]}日`;
+
+            const hourMatch = normalized.match(/^(\d+)\s+hours?$/i);
+            if (hourMatch) return `${hourMatch[1]}時間`;
+
+            const resetInMatch = normalized.match(/^Reset in\s+(.+)$/i);
+            if (resetInMatch) return `リセットまで ${getAutoTranslationValue(resetInMatch[1]) || resetInMatch[1]}`;
+
+            const epochCountMatch = normalized.match(/^(.+)\s+epochs$/i);
+            if (epochCountMatch) return `${epochCountMatch[1]}エポック`;
+
+            const actionsCountMatch = normalized.match(/^(\d[\d,]*)\s+actions$/i);
+            if (actionsCountMatch) return `${actionsCountMatch[1]}アクション`;
+
+            const approvedActionsCountMatch = normalized.match(/^(\d[\d,]*)\s+approved actions$/i);
+            if (approvedActionsCountMatch) return `${approvedActionsCountMatch[1]}承認済みアクション`;
+
+            const unapprovedActionsCountMatch = normalized.match(/^(\d[\d,]*)\s+unapproved actions$/i);
+            if (unapprovedActionsCountMatch) return `${unapprovedActionsCountMatch[1]}未承認アクション`;
+
+            const proposalsCountMatch = normalized.match(/^(\d[\d,]*)\s+proposals$/i);
+            if (proposalsCountMatch) return `${proposalsCountMatch[1]}提案`;
+
+            const projectsCountMatch = normalized.match(/^(\d[\d,]*)\s+projects$/i);
+            if (projectsCountMatch) return `${projectsCountMatch[1]}プロジェクト`;
+
+            const fundedProjectsCountMatch = normalized.match(/^(\d[\d,]*)\s+funded projects$/i);
+            if (fundedProjectsCountMatch) return `${fundedProjectsCountMatch[1]}資金提供済みプロジェクト`;
+
+            const membersCountMatch = normalized.match(/^(\d[\d,]*)\s+members$/i);
+            if (membersCountMatch) return `${membersCountMatch[1]}メンバー`;
+
+            const applicableNotApplicableMatch = normalized.match(/^(\d[\d,]*)\s+applicable\s+\/\s+(\d[\d,]*)\s+not\s+applicable$/i);
+            if (applicableNotApplicableMatch) return `${applicableNotApplicableMatch[1]}対象 / ${applicableNotApplicableMatch[2]}対象外`;
+
+            const totalActionsMatch = normalized.match(/^(\d[\d,]*)\s+total actions$/i);
+            if (totalActionsMatch) return `合計${totalActionsMatch[1]}アクション`;
+
+            const closePriceMatch = normalized.match(/^Close\s+([A-Z0-9]+)\s+price history$/i);
+            if (closePriceMatch) return `${closePriceMatch[1]}価格履歴を閉じる`;
+
+            const closeNakamotoMetricMatch = normalized.match(/^Close\s+(.+\s+NC)$/i);
+            if (closeNakamotoMetricMatch) return `${getAutoTranslationValue(closeNakamotoMetricMatch[1]) || closeNakamotoMetricMatch[1]}を閉じる`;
+
+            const openNakamotoMetricMatch = normalized.match(/^Open\s+(.+\s+NC)$/i);
+            if (openNakamotoMetricMatch) return `${getAutoTranslationValue(openNakamotoMetricMatch[1]) || openNakamotoMetricMatch[1]}を開く`;
+
+            const candlesMatch = normalized.match(/^(\d[\d,]*)\s+candles$/i);
+            if (candlesMatch) return `${candlesMatch[1]}本のローソク足`;
+
+            const proposalEpochMetaMatch = normalized.match(/^Epoch\s+(.+?)\s+-\s+expires\s+(.+?)(?:\s+•\s+Total ask\s+(.+))?$/i);
+            if (proposalEpochMetaMatch) {
+                const base = `エポック ${proposalEpochMetaMatch[1]} - 期限 ${proposalEpochMetaMatch[2]}`;
+                return proposalEpochMetaMatch[3]
+                    ? `${base} • ${translations.total_ask || '総要求額'} ${proposalEpochMetaMatch[3]}`
+                    : base;
+            }
+
+            const epochLabelMatch = normalized.match(/^Epoch\s+(.+)$/i);
+            if (epochLabelMatch) return `エポック ${epochLabelMatch[1]}`;
+
+            const delegatedMatch = normalized.match(/^Delegated\s+(.+)$/i);
+            if (delegatedMatch) return `委任済み ${delegatedMatch[1]}`;
+
+            const epochsRangeMatch = normalized.match(/^Epochs\s+(.+)$/i);
+            if (epochsRangeMatch) return `エポック ${epochsRangeMatch[1]}`;
+
+            const delegationMatch = normalized.match(/^Delegation:\s*(.+)$/i);
+            if (delegationMatch) return `委任: ${delegationMatch[1]}`;
+
+            const delegatorsMatch = normalized.match(/^Delegators:\s*(.+)$/i);
+            if (delegatorsMatch) return `委任者: ${delegatorsMatch[1]}`;
+
+            const saturationMatch = normalized.match(/^Saturation:\s*(.+)$/i);
+            if (saturationMatch) return `飽和度: ${saturationMatch[1]}`;
+
+            const relaysMatch = normalized.match(/^Relays:\s*(.+)$/i);
+            if (relaysMatch) return `リレー: ${relaysMatch[1] === 'not advertised' ? '未公開' : relaysMatch[1]}`;
+
+            const cloudServiceMatch = normalized.match(/^Cloud Service:\s*(.+)$/i);
+            if (cloudServiceMatch) return `クラウドサービス: ${getAutoTranslationValue(cloudServiceMatch[1]) || cloudServiceMatch[1]}`;
+
+            const activeRelaySposMatch = normalized.match(/^(.+)\s+Active Relay SPOs$/i);
+            if (activeRelaySposMatch) return `${getAutoTranslationValue(activeRelaySposMatch[1]) || activeRelaySposMatch[1]} アクティブリレーSPO`;
+
+            const drepGroupMatch = normalized.match(/^(.+)\s+DReps$/i);
+            if (drepGroupMatch) return `${getAutoTranslationValue(drepGroupMatch[1]) || drepGroupMatch[1]} DRep`;
+
+            const cloudSposMatch = normalized.match(/^(.+)\s+Cloud SPOs$/i);
+            if (cloudSposMatch) return `${getAutoTranslationValue(cloudSposMatch[1]) || cloudSposMatch[1]} クラウドSPO`;
+
+            const nonCloudSposMatch = normalized.match(/^(.+)\s+Non-cloud SPOs$/i);
+            if (nonCloudSposMatch) return `${getAutoTranslationValue(nonCloudSposMatch[1]) || nonCloudSposMatch[1]} 非クラウドSPO`;
+
+            const locationMatch = normalized.match(/^Location:\s*(.+)$/i);
+            if (locationMatch) return `場所: ${locationMatch[1]}`;
+
+            const relayNodesMatch = normalized.match(/^Relay nodes\s+\((.+)\)$/i);
+            if (relayNodesMatch) return `リレーノード（${relayNodesMatch[1]}）`;
+
+            const nakamotoMatch = normalized.match(/^Nakamoto coefficient\s+(.+)$/i);
+            if (nakamotoMatch) return `ナカモト係数 ${nakamotoMatch[1]}`;
+
+            const domainsReachMatch = normalized.match(/^(.+)\s+of\s+(.+)\s+domains reach\s+(.+)\s+of stake$/i);
+            if (domainsReachMatch) return `${domainsReachMatch[2]}ドメイン中${domainsReachMatch[1]}がステークの${domainsReachMatch[3]}に到達`;
+
+            const measuredDomainsMatch = normalized.match(/^(\d[\d,]*)\s+measured domains$/i);
+            if (measuredDomainsMatch) return `${measuredDomainsMatch[1]}測定済みドメイン`;
+
+            const combinedPoolsMatch = normalized.match(/^(\d[\d,]*)\s+combined pools$/i);
+            if (combinedPoolsMatch) return `${combinedPoolsMatch[1]}統合プール`;
+
+            const stakeCoverageMatch = normalized.match(/^Stake coverage\s+(.+)$/i);
+            if (stakeCoverageMatch) return `ステークカバレッジ ${stakeCoverageMatch[1]}`;
+
+            const knownStakeCoverageMatch = normalized.match(/^Known stake coverage\s+(.+)$/i);
+            if (knownStakeCoverageMatch) return `既知ステークカバレッジ ${knownStakeCoverageMatch[1]}`;
+
+            const fiftyOneThresholdMatch = normalized.match(/^51%\s+stake threshold$/i);
+            if (fiftyOneThresholdMatch) return '51%ステークしきい値';
+
+            const domainsThresholdMatch = normalized.match(/^Domains reaching the\s+(.+?)\s+threshold$/i);
+            if (domainsThresholdMatch) return `${domainsThresholdMatch[1]}しきい値に到達するドメイン`;
+
+            const unavailableReasonMatch = normalized.match(/^(.+)\s+requires a refreshed version 2 SPO decentralization cache\.$/i);
+            if (unavailableReasonMatch) return `${getAutoTranslationValue(unavailableReasonMatch[1]) || unavailableReasonMatch[1]}には更新済みのバージョン2 SPO分散化キャッシュが必要です。`;
+
+            const relayOperatorMethodologyMatch = normalized.match(/^Minimum inferred relay operators whose combined stake reaches\s+(.+?)\.\s+Pools are grouped by a strict-majority relay operator identity derived from structured full hostnames or their relay base domain; pools without a majority remain separate\.$/i);
+            if (relayOperatorMethodologyMatch) return `合計ステークが${relayOperatorMethodologyMatch[1]}に達する最小の推定リレーオペレーター数。プールは構造化された完全ホスト名またはリレー基底ドメインから推定される厳格多数のリレーオペレーターIDでグループ化され、過半数がないプールは別扱いです。`;
+
+            const consensusMethodologyMatch = normalized.match(/^Minimum SPO operators whose combined active stake reaches\s+(.+?)\.\s+Pools are grouped by normalized operator identity and known aliases\.$/i);
+            if (consensusMethodologyMatch) return `合計アクティブステークが${consensusMethodologyMatch[1]}に達する最小のSPOオペレーター数。プールは正規化されたオペレーターIDと既知の別名でグループ化されます。`;
+
+            const consensusPoolIdMethodologyMatch = normalized.match(/^Minimum inferred SPO operators whose combined stake reaches\s+(.+?)\.\s+Pool IDs are combined when their normalized pool names match or a strict majority of their relays share the same inferred relay operator identity\.$/i);
+            if (consensusPoolIdMethodologyMatch) return `合計ステークが${consensusPoolIdMethodologyMatch[1]}に達する最小の推定SPOオペレーター数。正規化されたプール名が一致する場合、またはリレーの厳格多数が同じ推定リレーオペレーターIDを共有する場合にプールIDを統合します。`;
+
+            const hostingMethodologyMatch = normalized.match(/^Minimum hosting providers whose combined measured stake reaches\s+(.+?)\.\s+Only pools with classified relay hosting data are included\.$/i);
+            if (hostingMethodologyMatch) return `測定済み合計ステークが${hostingMethodologyMatch[1]}に達する最小のホスティングプロバイダー数。分類済みリレーホスティングデータを持つプールのみ含まれます。`;
+
+            const hostingFailureDomainMethodologyMatch = normalized.match(/^Minimum hosting failure domains whose combined stake reaches\s+(.+?)\.\s+Pools whose relays all use one identified provider share that provider domain; mixed, unknown, and non-cloud pools remain separate domains\.$/i);
+            if (hostingFailureDomainMethodologyMatch) return `合計ステークが${hostingFailureDomainMethodologyMatch[1]}に達する最小のホスティング障害ドメイン数。すべてのリレーが同一の識別済みプロバイダーを使うプールは同じプロバイダードメインを共有し、混在・不明・非クラウドのプールは別ドメインとして扱います。`;
+
+            const geographicMethodologyMatch = normalized.match(/^Minimum countries whose combined measured relay stake reaches\s+(.+?)\.\s+Only relay IPs with resolved geographic data are included\.$/i);
+            if (geographicMethodologyMatch) return `測定済みリレーステークの合計が${geographicMethodologyMatch[1]}に達する最小の国数。地理データが解決済みのリレーIPのみ含まれます。`;
+
+            const relayHostingCountriesMethodologyMatch = normalized.match(/^Minimum relay-hosting countries whose combined attributed stake reaches\s+(.+?)\s+of identified stake\.\s+A pool's stake is divided equally across its known relay countries; IP geolocation is preferred and RDAP is used as a fallback\.$/i);
+            if (relayHostingCountriesMethodologyMatch) return `特定済みステークの${relayHostingCountriesMethodologyMatch[1]}に達する最小のリレーホスティング国数。プールのステークは既知のリレー所在国に均等配分され、IPジオロケーションを優先しRDAPをフォールバックに使います。`;
+
+            const softwareReasonMatch = normalized.match(/^Cardano pool registration and relay discovery do not publish a trustworthy node implementation or client identity\.$/i);
+            if (softwareReasonMatch) return 'Cardanoのプール登録とリレー検出では、信頼できるノード実装またはクライアントIDは公開されません。';
+
+            const softwareMethodologyMatch = normalized.match(/^Minimum independently maintained Cardano node implementations needed to reach\s+(.+?)\s+of stake\.$/i);
+            if (softwareMethodologyMatch) return `ステークの${softwareMethodologyMatch[1]}に到達するために必要な、独立して保守されるCardanoノード実装の最小数。`;
+
+            const uniqueRelayLocationsMatch = normalized.match(/^(\d[\d,]*)\s+unique relay locations from\s+(\d[\d,]*)\s+relay IP records\.\s+Zoom or drag the map; point size represents attributed active stake\.\s+Select a shared location to view all SPOs there\.\s+Map:\s+Natural Earth,\s+CC0\.$/i);
+            if (uniqueRelayLocationsMatch) return `${uniqueRelayLocationsMatch[2]}件のリレーIP記録から${uniqueRelayLocationsMatch[1]}箇所の一意なリレー所在地。地図をズームまたはドラッグできます。点の大きさは割当アクティブステークを表します。共有所在地を選択すると、その場所のすべてのSPOを表示します。地図: Natural Earth, CC0。`;
+
+            const worldMapMatch = normalized.match(/^World map with\s+(\d[\d,]*)\s+unique SPO relay locations$/i);
+            if (worldMapMatch) return `${worldMapMatch[1]}箇所の一意なSPOリレー所在地を示す世界地図`;
+
+            const spoCountMatch = normalized.match(/^(\d[\d,]*)\s+SPOs$/i);
+            if (spoCountMatch) return `${spoCountMatch[1]} SPO`;
+
+            const expiresEpochMatch = normalized.match(/^Expires epoch\s+(.+)$/i);
+            if (expiresEpochMatch) return `期限エポック ${expiresEpochMatch[1]}`;
+
+            const enactedEpochMatch = normalized.match(/^Enacted Epoch\s+(.+)$/i);
+            if (enactedEpochMatch) return `実行エポック ${enactedEpochMatch[1]}`;
+
+            const expiredEpochMatch = normalized.match(/^Expired epoch\s+(.+)$/i);
+            if (expiredEpochMatch) return `期限切れエポック ${expiredEpochMatch[1]}`;
+
+            const droppedEpochMatch = normalized.match(/^Dropped epoch\s+(.+)$/i);
+            if (droppedEpochMatch) return `ドロップエポック ${droppedEpochMatch[1]}`;
+
+            const noExpirationMatch = normalized.match(/^No expiration data$/i);
+            if (noExpirationMatch) return '期限データなし';
+
+            const totalAskMatch = normalized.match(/^Total ask\s+(.+)$/i);
+            if (totalAskMatch) return `${translations.total_ask || '総要求額'} ${totalAskMatch[1]}`;
+
+            const yesValueMatch = normalized.match(/^Yes\s+(.+)$/i);
+            if (yesValueMatch) return `${translations.yes || '賛成'} ${yesValueMatch[1]}`;
+
+            const noNotVotedValueMatch = normalized.match(/^No\s+-\s+Not Voted\s+(.+)$/i);
+            if (noNotVotedValueMatch) return `${translations.no || '反対'} - ${translations.not_voted || '未投票'} ${noNotVotedValueMatch[1]}`;
+
+            const noValueMatch = normalized.match(/^No\s+(.+)$/i);
+            if (noValueMatch) return `${translations.no || '反対'} ${noValueMatch[1]}`;
+
+            const abstainValueMatch = normalized.match(/^Abstain\s+(.+)$/i);
+            if (abstainValueMatch) return `${translations.abstain || '棄権'} ${abstainValueMatch[1]}`;
+
+            const drepVotedMatch = normalized.match(/^DRep voted\s+(.+)$/i);
+            if (drepVotedMatch) return `DRep投票 ${getAutoTranslationValue(drepVotedMatch[1]) || drepVotedMatch[1]}`;
+
+            const mostInSyncMatch = normalized.match(/^Most in sync with\s+(.+?)\s+-\s+(.+?)\s+\((.+?)\/(.+?)\s+shared votes\)$/i);
+            if (mostInSyncMatch) return `${mostInSyncMatch[1]}と最も同期 - ${mostInSyncMatch[2]}（共有投票 ${mostInSyncMatch[3]}/${mostInSyncMatch[4]}）`;
+
+            const nclUsedMatch = normalized.match(/^NCL Used\s+(.+)$/i);
+            if (nclUsedMatch) return `NCL使用済み ${nclUsedMatch[1]}`;
+
+            const nclAvailableMatch = normalized.match(/^NCL Available\s+(.+)$/i);
+            if (nclAvailableMatch) return `NCL利用可能 ${nclAvailableMatch[1]}`;
+
+            const pipelineMatch = normalized.match(/^Pipeline\s+(.+)$/i);
+            if (pipelineMatch) return `パイプライン ${pipelineMatch[1]}`;
+
+            const drepNameExistsMatch = normalized.match(/^The DRep name "(.+)" already exists\. Choose a unique name\.$/i);
+            if (drepNameExistsMatch) return `DRep名「${drepNameExistsMatch[1]}」はすでに存在します。一意の名前を選んでください。`;
+
+            const drepLengthMatch = normalized.match(/^DRep name must be\s+(\d+)\s+characters or shorter\.$/i);
+            if (drepLengthMatch) return `DRep名は${drepLengthMatch[1]}文字以内である必要があります。`;
+
+            const textLengthMatch = normalized.match(/^(.+)\s+must be\s+(.+)\s+characters or shorter\.$/i);
+            if (textLengthMatch) return `${getAutoTranslationValue(textLengthMatch[1]) || textLengthMatch[1]}は${textLengthMatch[2]}文字以内である必要があります。`;
+
+            const urlHashTogetherMatch = normalized.match(/^(.+)\s+and\s+(.+)\s+must be provided together\.$/i);
+            if (urlHashTogetherMatch) return `${getAutoTranslationValue(urlHashTogetherMatch[1]) || urlHashTogetherMatch[1]}と${getAutoTranslationValue(urlHashTogetherMatch[2]) || urlHashTogetherMatch[2]}は一緒に入力する必要があります。`;
+
+            const validHttpsMatch = normalized.match(/^(.+)\s+must be a valid HTTPS URL\.$/i);
+            if (validHttpsMatch) return `${getAutoTranslationValue(validHttpsMatch[1]) || validHttpsMatch[1]}は有効なHTTPS URLである必要があります。`;
+
+            const validMetadataUrlMatch = normalized.match(/^Enter a valid HTTPS or IPFS\s+(.+)\.$/i);
+            if (validMetadataUrlMatch) return `有効なHTTPSまたはIPFSの${validMetadataUrlMatch[1]}を入力してください。`;
+
+            const metadataBeforeHashMatch = normalized.match(/^Enter the\s+(.+)\s+before creating its hash\.$/i);
+            if (metadataBeforeHashMatch) return `ハッシュを作成する前に${metadataBeforeHashMatch[1]}を入力してください。`;
+
+            const bytesMatch = normalized.match(/^(.+)\s+must be\s+(\d+)\s+bytes or shorter\.$/i);
+            if (bytesMatch) return `${getAutoTranslationValue(bytesMatch[1]) || bytesMatch[1]}は${bytesMatch[2]}バイト以内である必要があります。`;
+
+            const urlProtocolMatch = normalized.match(/^(.+)\s+must use HTTPS or IPFS\.$/i);
+            if (urlProtocolMatch) return `${getAutoTranslationValue(urlProtocolMatch[1]) || urlProtocolMatch[1]}はHTTPSまたはIPFSを使用する必要があります。`;
+
+            const registrationFailedMatch = normalized.match(/^Registration failed:\s*(.+)$/i);
+            if (registrationFailedMatch) return `登録に失敗しました: ${registrationFailedMatch[1]}`;
+
+            const offlineMatch = normalized.match(/^Offline\s+(.+)$/i);
+            if (offlineMatch) return `オフライン ${offlineMatch[1]}`;
+
+            const treasuryEpochValueMatch = normalized.match(/^Treasury Epoch\s+(.+)$/i);
+            if (treasuryEpochValueMatch) return `財務庫エポック ${treasuryEpochValueMatch[1]}`;
+
+            const incomeMatch = normalized.match(/^Income\s+(.+)$/i);
+            if (incomeMatch) return `収入 ${incomeMatch[1]}`;
+
+            const nclBalanceMatch = normalized.match(/^NCL Balance\s+(.+)$/i);
+            if (nclBalanceMatch) return `NCL残高 ${nclBalanceMatch[1]}`;
+
+            const spendMatch = normalized.match(/^Spend\s+(.+)$/i);
+            if (spendMatch) return `支出 ${spendMatch[1]}`;
+
+            const balanceMatch = normalized.match(/^Balance\s+(.+)$/i);
+            if (balanceMatch) return `残高 ${balanceMatch[1]}`;
+
+            const netTreasuryMatch = normalized.match(/^Net \(if all treasury actions are enacted\)\s+(.+)$/i);
+            if (netTreasuryMatch) return `純額（すべての財務庫アクションが実行された場合） ${netTreasuryMatch[1]}`;
+
+            const ratifiedMatch = normalized.match(/^(\d[\d,]*)\s+ratified$/i);
+            if (ratifiedMatch) return `${ratifiedMatch[1]}批准済み`;
+
+            const activeCountMatch = normalized.match(/^(\d[\d,]*)\s+active$/i);
+            if (activeCountMatch) return `${activeCountMatch[1]}アクティブ`;
+
+            const activePrefixCountMatch = normalized.match(/^Active\s+(\d[\d,]*)$/i);
+            if (activePrefixCountMatch) return `アクティブ ${activePrefixCountMatch[1]}`;
+
+            const administratorMatch = normalized.match(/^Administrator:\s*(.+)$/i);
+            if (administratorMatch) return `管理者: ${administratorMatch[1]}`;
+
+            const weeklyBlocksMatch = normalized.match(/^Weekly Blocks\s+(.+)$/i);
+            if (weeklyBlocksMatch) return `週間ブロック ${weeklyBlocksMatch[1]}`;
+
+            const amountOfMinersMatch = normalized.match(/^Amount of miners\s+(.+)$/i);
+            if (amountOfMinersMatch) return `マイナー数 ${amountOfMinersMatch[1]}`;
+
+            const lastUpdatedMatch = normalized.match(/^Last Updated:\s+(.+)$/i);
+            if (lastUpdatedMatch) return `${translations.last_updated || '最終更新:'} ${lastUpdatedMatch[1]}`;
+
+            const companyIdsMatch = normalized.match(/^(\d[\d,]*)\s+Company IDs$/i);
+            if (companyIdsMatch) return `${companyIdsMatch[1]}企業ID`;
+
+            const nextNclPeriodMatch = normalized.match(/^Next NCL period starts in epoch\s+(.+)$/i);
+            if (nextNclPeriodMatch) return `次のNCL期間はエポック${nextNclPeriodMatch[1]}に開始`;
+
+            const askedReceivedUpdatingMatch = normalized.match(/^Asked\/received USD updating$/i);
+            if (askedReceivedUpdatingMatch) return '要求/受領USDを更新中';
+
+            const askedReceivedMatch = normalized.match(/^Asked\s+(.+?)\s+•\s+Received\s+(.+)$/i);
+            if (askedReceivedMatch) return `要求 ${askedReceivedMatch[1]} • 受領 ${askedReceivedMatch[2]}`;
+
+            const cipsCountMatch = normalized.match(/^(\d[\d,]*)\s+CIPs$/i);
+            if (cipsCountMatch) return `${cipsCountMatch[1]} CIPs`;
+
+            const relayMatch = normalized.match(/^Relay\s+(.+)$/i);
+            if (relayMatch) return `リレー ${relayMatch[1]}`;
+
+            const starchMinersMatch = normalized.match(/^(.+)\s+Starch Miners$/i);
+            if (starchMinersMatch) return `${starchMinersMatch[1]} Starchマイナー`;
+
+            const proposerMatch = normalized.match(/^Proposer:\s*(.+)$/i);
+            if (proposerMatch && translations.proposer) return `${translations.proposer}: ${proposerMatch[1]}`;
+
+            const claimedFundsMatch = normalized.match(/^Claimed Funds\s+(.+)$/i);
+            if (claimedFundsMatch && translations.claimed_funds) return `${translations.claimed_funds} ${claimedFundsMatch[1]}`;
+
+            const unclaimedFundsMatch = normalized.match(/^Unclaimed Funds\s+(.+)$/i);
+            if (unclaimedFundsMatch && translations.unclaimed_funds) return `${translations.unclaimed_funds} ${unclaimedFundsMatch[1]}`;
+
+            const claimedMatch = normalized.match(/^Claimed\s+(.+)$/i);
+            if (claimedMatch) return `請求済み ${claimedMatch[1]}`;
+
+            const notClaimedMatch = normalized.match(/^Not Claimed\s+(.+)$/i);
+            if (notClaimedMatch) return `未請求 ${notClaimedMatch[1]}`;
+
+            const unclaimedMatch = normalized.match(/^Unclaimed\s+(.+)$/i);
+            if (unclaimedMatch) return `未請求 ${unclaimedMatch[1]}`;
+
+            const votedMatch = normalized.match(/^Voted\s+(.+)$/i);
+            if (votedMatch) return `投票済み ${votedMatch[1]}`;
+
+            const notVotedMatch = normalized.match(/^Not\s+voted\s+(.+)$/i);
+            if (notVotedMatch) return `未投票 ${notVotedMatch[1]}`;
+
+            const notApplicableMatch = normalized.match(/^Not\s+applicable\s+(.+)$/i);
+            if (notApplicableMatch) return `対象外 ${notApplicableMatch[1]}`;
+
+            const eventsMatch = normalized.match(/^(.+)\s+Events$/);
+            if (eventsMatch && translations.events) return `${eventsMatch[1]}${translations.events}`;
+
+            const treasuryEpochMatch = normalized.match(/^Treasury withdrawals\s+-\s+Epoch\s+(.+)$/i);
+            if (treasuryEpochMatch) return `財務庫出金 - エポック ${treasuryEpochMatch[1]}`;
+
+            const withdrawalsWithAmountMatch = normalized.match(/^(\d[\d,]*)\s+withdrawals?\s+•\s+(.+)$/i);
+            if (withdrawalsWithAmountMatch) return `${withdrawalsWithAmountMatch[1]}出金 • ${withdrawalsWithAmountMatch[2]}`;
+
+            const withdrawalsCountMatch = normalized.match(/^(\d[\d,]*)\s+withdrawals?$/i);
+            if (withdrawalsCountMatch) return `${withdrawalsCountMatch[1]}出金`;
+
+            const loadingMatch = normalized.match(/^Loading\s+(.+?)(\.\.\.)?$/i);
+            if (loadingMatch) return `${getAutoTranslationValue(loadingMatch[1]) || loadingMatch[1]}を読み込み中...`;
+
+            const countMatch = normalized.match(/^(\d+)\s+(admin|excluded|published raffles|proposals|projects|actions|entries|members|signers|delegators|pools|articles|DReps|stake keys excluded)$/i);
+            if (countMatch) return `${countMatch[1]} ${translateCountLabel(countMatch[2])}`;
         }
 
         if (activeLanguage !== 'nl') {
@@ -1042,6 +1415,23 @@
 
     function translateCountLabel(label) {
         const normalized = String(label || '').toLowerCase();
+        if (activeLanguage === 'ja') {
+            if (normalized === 'admin') return '管理者';
+            if (normalized === 'excluded') return '除外';
+            if (normalized === 'published raffles') return '公開済みラッフル';
+            if (normalized === 'proposals') return '提案';
+            if (normalized === 'projects') return 'プロジェクト';
+            if (normalized === 'actions') return 'アクション';
+            if (normalized === 'entries') return '項目';
+            if (normalized === 'members') return 'メンバー';
+            if (normalized === 'signers') return '署名者';
+            if (normalized === 'delegators') return '委任者';
+            if (normalized === 'pools') return 'プール';
+            if (normalized === 'articles') return '記事';
+            if (normalized === 'dreps') return 'DRep';
+            if (normalized === 'stake keys excluded') return '除外ステークキー';
+            return label;
+        }
         if (normalized === 'admin') return 'admin';
         if (normalized === 'excluded') return 'uitgesloten';
         if (normalized === 'published raffles') return 'gepubliceerde raffles';
