@@ -182,7 +182,7 @@
                 }
                 if (Date.now() - startedAt > timeoutMs) {
                     window.clearInterval(timer);
-                    reject(new Error('TDSPBot did not finish loading in time.'));
+                    reject(new Error('Ask AI did not finish loading in time.'));
                 }
             }, 50);
         });
@@ -200,7 +200,7 @@
             const openAssistant = await waitForGovernanceAssistant();
             openAssistant(null, button);
         } catch (error) {
-            console.error('TDSPBot could not be opened.', error);
+            console.error('Ask AI could not be opened.', error);
         } finally {
             button.disabled = false;
         }

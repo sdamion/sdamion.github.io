@@ -19,7 +19,7 @@
             }
             if (options.showBot !== false) {
                 actions.appendChild(createButton(
-                    'TDSPBot',
+                    'Ask AI',
                     'governance-tdspbot-button',
                     event => onAskBot(createGovernanceContext(proposal), event.currentTarget)
                 ));
@@ -42,7 +42,7 @@
                 event => onOpenCatalystSummary(proposal, event.currentTarget)
             ));
             actions.appendChild(createButton(
-                'TDSPBot',
+                'Ask AI',
                 'governance-tdspbot-button',
                 event => onAskBot(createCatalystContext(proposal), event.currentTarget)
             ));
@@ -59,6 +59,8 @@
             const button = document.createElement('button');
             button.type = 'button';
             button.className = `governance-vote-button governance-proposal-action-button ${className}`;
+            button.setAttribute('data-i18n-auto', '');
+            button.setAttribute('data-i18n-auto-original', label);
             button.textContent = label;
             button.addEventListener('click', event => {
                 event.preventDefault();

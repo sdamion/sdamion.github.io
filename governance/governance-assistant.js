@@ -16,13 +16,38 @@
         const renderMarkdown = typeof options.renderMarkdown === 'function' ? options.renderMarkdown : null;
         const sanitizeMarkdown = typeof options.sanitizeMarkdown === 'function' ? options.sanitizeMarkdown : value => String(value || '');
 
+        function translateAssistantText(text) {
+            return window.TDSPI18n?.translateText?.(text) || text;
+        }
+
+        function getAssistantLanguage() {
+            return window.TDSPI18n?.getLanguage?.() || 'en';
+        }
+
+        function formatAskAboutContextTitle(title) {
+            const cleanTitle = String(title || '').trim();
+            if (!cleanTitle) return 'Ask about available governance, DReps, SPOs, Starch, Treasury, or the Constitution.';
+            const language = getAssistantLanguage();
+            if (language === 'nl') return `Vraag iets over ${cleanTitle}.`;
+            if (language === 'ja') return `${cleanTitle}について質問してください。`;
+            return `Ask about ${cleanTitle}.`;
+        }
+
+        function setAssistantText(element, text) {
+            if (!(element instanceof HTMLElement)) return;
+            const value = String(text || '');
+            element.setAttribute('data-i18n-auto', '');
+            element.setAttribute('data-i18n-auto-original', value);
+            element.textContent = translateAssistantText(value);
+        }
+
         function openConstitutionAssistantOverlay(context = null, returnFocus = document.getElementById('tdspbot-open')) {
             const isContextualAssistant = Boolean(context);
             const panel = createConstitutionChatPanel(context);
             createGovernanceMenuOverlay({
                 id: 'constitution-assistant-overlay',
                 titleId: 'constitution-assistant-title',
-                titleText: 'TDSPBot',
+                titleText: 'Ask AI',
                 closeLabel: 'Close Constitution assistant',
                 closeOverlay: closeConstitutionAssistantOverlay,
                 bodyNodes: [panel],
@@ -52,7 +77,7 @@
             headingCopy.className = 'constitution-chat-heading-copy';
             const title = document.createElement('strong');
             title.id = 'constitution-chat-title';
-            title.textContent = 'TDSPBot';
+            setAssistantText(title, 'Ask AI');
             headingCopy.append(title);
             heading.append(headingCopy);
 
@@ -62,9 +87,7 @@
             messages.setAttribute('aria-live', 'polite');
             const empty = document.createElement('p');
             empty.className = 'constitution-chat-empty';
-            empty.textContent = context?.title
-                ? `Ask about ${context.title}.`
-                : 'Ask about available governance, DReps, SPOs, Starch, Treasury, or the Constitution.';
+            setAssistantText(empty, formatAskAboutContextTitle(context?.title));
             messages.appendChild(empty);
 
             const form = document.createElement('form');
@@ -74,7 +97,7 @@
             const label = document.createElement('label');
             label.className = 'sr-only';
             label.htmlFor = 'constitution-chat-question';
-            label.textContent = 'Question about Cardano governance';
+            setAssistantText(label, 'Question about Cardano governance');
             const input = document.createElement('textarea');
             input.id = 'constitution-chat-question';
             input.name = 'question';
@@ -82,20 +105,20 @@
             input.maxLength = 5000;
             input.autocomplete = 'off';
             input.setAttribute('data-i18n-placeholder-original', 'Search Cardano data or ask about the Constitution');
-            input.placeholder = 'Search Cardano data or ask about the Constitution';
+            input.placeholder = translateAssistantText('Search Cardano data or ask about the Constitution');
             input.required = true;
             const submit = document.createElement('button');
             submit.id = 'constitution-chat-submit';
             submit.type = 'submit';
             submit.className = 'governance-vote-secondary';
-            submit.textContent = 'Continue Chat';
-            submit.setAttribute('aria-label', 'Continue with conversation history');
+            setAssistantText(submit, 'Continue Chat');
+            submit.setAttribute('aria-label', translateAssistantText('Continue with conversation history'));
             const newQuestion = document.createElement('button');
             newQuestion.id = 'constitution-chat-new-question';
             newQuestion.type = 'submit';
             newQuestion.className = 'governance-vote-button';
-            newQuestion.textContent = 'New Chat';
-            newQuestion.setAttribute('aria-label', 'Ask a new question without conversation history');
+            setAssistantText(newQuestion, 'New Chat');
+            newQuestion.setAttribute('aria-label', translateAssistantText('Ask a new question without conversation history'));
             const formActions = document.createElement('div');
             formActions.className = 'constitution-chat-form-actions';
             formActions.append(newQuestion, submit);
@@ -108,14 +131,14 @@
             status.setAttribute('aria-live', 'polite');
             const note = document.createElement('p');
             note.className = 'constitution-chat-note';
-            note.textContent = 'AI-generated answer. Verify proposal details and constitutional references before making decisions.';
+            setAssistantText(note, 'AI-generated answer. Verify proposal details and constitutional references before making decisions.');
 
             panel.appendChild(heading);
 
             if (context?.title || context?.id) {
                 const contextLine = document.createElement('p');
                 contextLine.className = 'constitution-chat-note';
-                contextLine.textContent = getConstitutionChatContextDisplayParts(context).join(' • ');
+                setAssistantText(contextLine, getConstitutionChatContextDisplayParts(context).join(' • '));
                 panel.appendChild(contextLine);
             }
 
@@ -124,23 +147,23 @@
         }
 
         function getConstitutionChatContextLabel(context) {
-            if (context?.kind === 'cip') return 'CIP context';
-            if (context?.kind === 'catalyst_proposal') return 'Catalyst proposal context';
-            if (context?.kind === 'governance_action') return 'Governance action context';
-            if (context?.kind === 'governance_vote') return 'DRep vote context';
-            if (context?.kind === 'funding_recipient') return 'Catalyst/Treasury recipient context';
-            if (context?.section) return `${context.section} context`;
-            return 'Website context';
+            if (context?.kind === 'cip') return translateAssistantText('CIP context');
+            if (context?.kind === 'catalyst_proposal') return translateAssistantText('Catalyst proposal context');
+            if (context?.kind === 'governance_action') return translateAssistantText('Governance action context');
+            if (context?.kind === 'governance_vote') return translateAssistantText('DRep vote context');
+            if (context?.kind === 'funding_recipient') return translateAssistantText('Catalyst/Treasury recipient context');
+            if (context?.section) return `${context.section} ${translateAssistantText('context')}`;
+            return translateAssistantText('Website context');
         }
 
         function getConstitutionChatContextDisplayParts(context) {
             return [
                 getConstitutionChatContextLabel(context),
                 context?.title || context?.recipient || context?.menu,
-                context?.vote_choice ? `Vote ${context.vote_choice}` : null,
+                context?.vote_choice ? `${translateAssistantText('Vote')} ${translateAssistantText(context.vote_choice)}` : null,
                 context?.id,
                 context?.summary
-            ].filter(Boolean);
+            ].filter(Boolean).map(part => translateAssistantText(part));
         }
 
         async function openConstitutionDocumentOverlay() {
@@ -149,7 +172,7 @@
             content.className = 'constitution-document';
             const loading = document.createElement('p');
             loading.className = 'small-text';
-            loading.textContent = 'Loading Constitution...';
+            setAssistantText(loading, 'Loading Constitution...');
             content.appendChild(loading);
 
             createGovernanceMenuOverlay({
@@ -187,9 +210,9 @@
                 content.textContent = '';
                 const message = document.createElement('p');
                 message.className = 'error-text';
-                message.textContent = error instanceof Error
+                setAssistantText(message, error instanceof Error
                     ? error.message
-                    : 'The Cardano Constitution could not be loaded.';
+                    : 'The Cardano Constitution could not be loaded.');
                 content.appendChild(message);
             }
         }
@@ -308,7 +331,7 @@
                 messages.textContent = '';
                 const empty = document.createElement('p');
                 empty.className = 'constitution-chat-empty';
-                empty.textContent = 'Ask about available governance, DReps, SPOs, Starch, Treasury, or the Constitution.';
+                setAssistantText(empty, 'Ask about available governance, DReps, SPOs, Starch, Treasury, or the Constitution.');
                 messages.appendChild(empty);
                 status.textContent = '';
             };
@@ -350,7 +373,7 @@
                 submit.disabled = true;
                 newQuestion.disabled = true;
                 input.disabled = true;
-                status.textContent = 'Consulting the Constitution...';
+                setAssistantText(status, 'Consulting the Constitution...');
                 let pendingAnswerMessage = null;
 
                 try {
@@ -377,11 +400,11 @@
                             pendingAnswerMessage.body.textContent = formatConstitutionChatAnswer(answer);
                             pendingAnswerMessage.stakePrompt.hidden = false;
                             messages.scrollTop = messages.scrollHeight;
-                            status.textContent = 'Generating answer...';
+                            setAssistantText(status, 'Generating answer...');
                         });
                         if (!answer) {
                             pendingAnswerMessage.message.remove();
-                            throw new Error('The Constitution assistant returned an empty answer.');
+                            throw new Error(translateAssistantText('The Constitution assistant returned an empty answer.'));
                         }
                     } else {
                         payload = await response.json().catch(() => ({}));
@@ -398,7 +421,7 @@
                     }
                     conversation.push({ role: 'assistant', content: answer });
                     while (conversation.length > 12) conversation.shift();
-                    status.textContent = payload.cached ? 'Answer loaded from saved website data.' : '';
+                    setAssistantText(status, payload.cached ? 'Answer loaded from saved website data.' : '');
                 } catch (error) {
                     if (conversation.at(-1)?.role === 'user') conversation.pop();
                     if (pendingAnswerMessage && !pendingAnswerMessage.body.textContent) {
@@ -408,10 +431,10 @@
                         messages,
                         error instanceof Error
                             ? error.message
-                            : 'The Constitution assistant is temporarily unavailable.',
+                            : translateAssistantText('The Constitution assistant is temporarily unavailable.'),
                         'error'
                     );
-                    status.textContent = '';
+                    setAssistantText(status, '');
                 } finally {
                     submit.disabled = false;
                     newQuestion.disabled = false;
@@ -478,7 +501,7 @@
                 } else if (event.type === 'done') {
                     result = event;
                 } else if (event.type === 'error') {
-                    throw new Error(event.error || 'The Constitution assistant is temporarily unavailable.');
+                    throw new Error(event.error || translateAssistantText('The Constitution assistant is temporarily unavailable.'));
                 }
             };
 
@@ -498,7 +521,7 @@
             const message = document.createElement('div');
             message.className = `constitution-chat-message constitution-chat-message-${type}`;
             const label = document.createElement('strong');
-            label.textContent = type === 'question' ? 'You' : type === 'answer' ? 'Governance assistant' : 'Unavailable';
+            setAssistantText(label, type === 'question' ? 'You' : type === 'answer' ? 'Governance assistant' : 'Unavailable');
             const body = document.createElement('p');
             body.textContent = type === 'answer'
                 ? formatConstitutionChatAnswer(text)
@@ -529,10 +552,10 @@
         function createConstitutionChatStakePrompt() {
             const prompt = document.createElement('p');
             prompt.className = 'constitution-chat-stake-prompt';
-            prompt.append('If this answer was useful, consider ');
+            prompt.append(translateAssistantText('If this answer was useful, consider '));
             const link = document.createElement('a');
             link.href = '#stakenow';
-            link.textContent = 'staking to TDSP';
+            setAssistantText(link, 'staking to TDSP');
             link.addEventListener('click', event => {
                 const stakeTrigger = document.querySelector('[data-stake-open]');
                 if (!stakeTrigger) return;
@@ -547,16 +570,16 @@
             const feedback = document.createElement('div');
             feedback.className = 'constitution-chat-feedback';
             const question = document.createElement('strong');
-            question.textContent = 'Was this the answer you were looking for?';
+            setAssistantText(question, 'Was this the answer you were looking for?');
             const actions = document.createElement('div');
             actions.className = 'constitution-chat-feedback-actions';
             const yes = document.createElement('button');
             yes.type = 'button';
-            yes.textContent = 'Yes';
+            setAssistantText(yes, 'Yes');
             yes.className = 'governance-vote-button';
             const no = document.createElement('button');
             no.type = 'button';
-            no.textContent = 'No';
+            setAssistantText(no, 'No');
             no.className = 'governance-vote-secondary';
             actions.append(yes, no);
             feedback.append(question, actions);
@@ -579,17 +602,17 @@
                     });
                     feedback.replaceChildren();
                     const result = document.createElement('span');
-                    result.textContent = helpful
+                    setAssistantText(result, helpful
                         ? (payload.saved ? 'Answer saved.' : 'Thank you for your feedback.')
-                        : 'Saved for review.';
+                        : 'Saved for review.');
                     feedback.appendChild(result);
-                    status.textContent = '';
+                    setAssistantText(status, '');
                 } catch (error) {
                     yes.disabled = false;
                     no.disabled = false;
-                    status.textContent = error instanceof Error
+                    setAssistantText(status, error instanceof Error
                         ? error.message
-                        : 'Answer feedback could not be saved.';
+                        : 'Answer feedback could not be saved.');
                 }
             };
             yes.addEventListener('click', () => submitFeedback(true));

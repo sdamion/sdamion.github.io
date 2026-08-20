@@ -1043,8 +1043,8 @@ function createUniversalOverlay(options) {
         botButton = document.createElement('button');
         botButton.className = 'governance-overlay-bot-button';
         botButton.type = 'button';
-        botButton.textContent = 'TDSPBot';
-        botButton.setAttribute('aria-label', translateUiText('Ask TDSPBot about this menu'));
+        botButton.textContent = translateUiText('Ask AI');
+        botButton.setAttribute('aria-label', translateUiText('Ask AI about this menu'));
         botButton.addEventListener('click', event => {
             event.preventDefault();
             event.stopPropagation();

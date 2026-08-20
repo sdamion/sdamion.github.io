@@ -5119,7 +5119,7 @@ function createGovernanceVoteRationaleFields(context) {
     const assistantActions = document.createElement('div');
     assistantActions.className = 'governance-action-buttons governance-vote-rationale-actions';
     const improveButton = createGovernanceProposalActionButton(
-        'TDSPBot improve rationale',
+        'Ask AI improve rationale',
         'governance-tdspbot-button',
         () => improveGovernanceVoteRationale(context, {
             nameInput: nameField.input,
@@ -5155,8 +5155,8 @@ async function improveGovernanceVoteRationale(context, controls) {
     const status = document.createElement('p');
     status.className = 'small-text governance-vote-rationale-status';
     setGovernanceAutoTranslatedText(status, reason
-        ? 'TDSPBot is improving your rationale...'
-        : 'Add your reason or pointers first, then TDSPBot can improve it.');
+        ? 'Ask AI is improving your rationale...'
+        : 'Add your reason or pointers first, then Ask AI can improve it.');
     output.appendChild(status);
     if (!reason) return;
 
@@ -5197,7 +5197,7 @@ async function improveGovernanceVoteRationale(context, controls) {
     } catch (error) {
         if (!output.isConnected) return;
         status.classList.add('is-error');
-        setGovernanceAutoTranslatedText(status, error?.message || 'TDSPBot could not improve the rationale right now.');
+        setGovernanceAutoTranslatedText(status, error?.message || 'Ask AI could not improve the rationale right now.');
     }
 }
 
@@ -5257,7 +5257,7 @@ async function requestGovernanceVoteRationaleImprovement(context, name, reason) 
         })
     });
     const answer = String(payload.answer || '').trim();
-    if (!answer) throw new Error('TDSPBot returned an empty rationale.');
+    if (!answer) throw new Error('Ask AI returned an empty rationale.');
     return answer;
 }
 
