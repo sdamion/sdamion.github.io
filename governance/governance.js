@@ -2820,6 +2820,8 @@ async function createTreasuryHistoryChart(payload, withdrawals) {
     const mutedColor = styles.getPropertyValue('--muted').trim() || '#94a3b8';
     const rootFontSize = Number.parseFloat(styles.fontSize) || 16;
     const axisFontSize = rootFontSize * 0.82;
+    const isCompactTreasuryChart = window.matchMedia?.('(max-width: 600px)')?.matches;
+    const treasuryXAxisMaxTicks = isCompactTreasuryChart ? 4 : 10;
     const tradingViewPlugin = {
         id: 'tdspTreasuryTradingViewStyle',
         beforeDraw(chart) {
@@ -2975,7 +2977,13 @@ async function createTreasuryHistoryChart(payload, withdrawals) {
                         maxRotation: 0,
                         minRotation: 0,
                         autoSkip: true,
-                        maxTicksLimit: 10,
+                        maxTicksLimit: treasuryXAxisMaxTicks,
+                        callback: value => {
+                            const epoch = epochs[Number(value)];
+                            if (!Number.isFinite(epoch)) return '';
+                            if (isCompactTreasuryChart) return String(epoch);
+                            return window.TDSPI18n?.translateText?.(`Epoch ${epoch}`) || `Epoch ${epoch}`;
+                        },
                         font: { family: 'Poppins', size: axisFontSize }
                     },
                     grid: { display: false },
