@@ -225,7 +225,38 @@ function convertBits(data, fromBits, toBits, pad) {
     return result;
 }
 
+function hexToBytes(value) {
+    const hex = String(value || '').trim().toLowerCase();
+    if (!/^(?:[0-9a-f]{2})+$/.test(hex)) return null;
+    const bytes = [];
+    for (let index = 0; index < hex.length; index += 2) {
+        bytes.push(Number.parseInt(hex.slice(index, index + 2), 16));
+    }
+    return bytes;
+}
+
+function deriveRewardAddressFromBytes(bytes) {
+    if (!Array.isArray(bytes) || !bytes.length) return '';
+    const addressType = bytes[0] >> 4;
+    const networkId = bytes[0] & 15;
+    if (networkId !== 1) return '';
+
+    if ((addressType === 14 || addressType === 15) && bytes.length >= 29) {
+        const rewardWords = convertBits(bytes.slice(0, 29), 8, 5, true);
+        return bech32Encode('stake', rewardWords);
+    }
+    if (addressType < 0 || addressType > 3 || bytes.length < 57) return '';
+
+    const stakeCredential = bytes.slice(29, 57);
+    const rewardHeader = (addressType === 2 || addressType === 3 ? 0xf0 : 0xe0) | networkId;
+    const rewardWords = convertBits([rewardHeader, ...stakeCredential], 8, 5, true);
+    return bech32Encode('stake', rewardWords);
+}
+
 function deriveRewardAddressFromAddress(address) {
+    const fromHex = deriveRewardAddressFromBytes(hexToBytes(address));
+    if (/^stake1[0-9a-z]{20,120}$/i.test(fromHex)) return fromHex;
+
     const decoded = bech32Decode(address);
     if (!decoded) return '';
     if (decoded.hrp === 'stake' || decoded.hrp === 'stake_test') return String(address || '').trim().toLowerCase();
@@ -238,16 +269,7 @@ function deriveRewardAddressFromAddress(address) {
         console.warn('Could not decode Cardano address bytes', error);
         return '';
     }
-    if (!Array.isArray(bytes) || bytes.length < 57) return '';
-
-    const addressType = bytes[0] >> 4;
-    const networkId = bytes[0] & 15;
-    if (addressType < 0 || addressType > 3) return '';
-
-    const stakeCredential = bytes.slice(29, 57);
-    const rewardHeader = (addressType === 2 || addressType === 3 ? 0xf0 : 0xe0) | networkId;
-    const rewardWords = convertBits([rewardHeader, ...stakeCredential], 8, 5, true);
-    return bech32Encode(networkId === 1 ? 'stake' : 'stake_test', rewardWords);
+    return deriveRewardAddressFromBytes(bytes);
 }
 
 async function getWalletAddressList(wallet, methodName) {
@@ -282,7 +304,11 @@ function resolveWalletStakeAddress(walletAddresses, rewardAddresses, resolveRewa
 
     const firstRewardAddress = String((Array.isArray(rewardAddresses) ? rewardAddresses[0] : '') || '').trim();
     const fromDecodedRewardAddress = deriveRewardAddressFromAddress(firstRewardAddress);
-    return fromDecodedRewardAddress || firstRewardAddress;
+    if (/^stake1[0-9a-z]{20,120}$/i.test(fromDecodedRewardAddress)) {
+        const rewardMatchesWallet = addressCandidates.some(address => deriveRewardAddressFromAddress(address) === fromDecodedRewardAddress);
+        return rewardMatchesWallet ? fromDecodedRewardAddress : '';
+    }
+    return '';
 }
 
 async function fetchStakeStatus(rewardAddress) {
@@ -315,6 +341,11 @@ async function fetchStakeStatus(rewardAddress) {
 
 function isTargetPoolId(poolId) {
     return TARGET_POOL_IDS.has(String(poolId || '').trim().toLowerCase());
+}
+
+function shortenStakeAddress(value) {
+    const text = String(value || '').trim();
+    return text.length > 24 ? `${text.slice(0, 14)}...${text.slice(-8)}` : text;
 }
 
 async function delegateWithWallet(walletId) {
@@ -352,7 +383,7 @@ async function delegateWithWallet(walletId) {
         }
 
         if (accountInfo.active && isTargetPoolId(accountInfo.poolId)) {
-            setStatus('This wallet is already delegating to The Dutch Stake Pool.');
+            setStatus(`This wallet is already delegating to The Dutch Stake Pool. Checked stake address ${shortenStakeAddress(rewardAddress)}.`);
             return;
         }
 
