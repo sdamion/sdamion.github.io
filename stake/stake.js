@@ -6,6 +6,8 @@ const TDSP_DREP_ID = 'drep1yg5gkkyxwwr7d6qflf2qqp6drkp9432h6cvtmun0dqthusqlkz8hj
 const TDSP_DREP_NAME = 'DamionDutch';
 const MESH_CDN_URL = 'https://esm.sh/@meshsdk/core@1.9.1?bundle-deps';
 const IS_LOCAL_STAKE_PREVIEW = window.TDSPRuntime?.isLocalPreview === true;
+const BECH32_ALPHABET = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l';
+const BECH32_GENERATOR = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3];
 
 let meshLibPromise = null;
 function loadMeshLib() {
@@ -155,18 +157,132 @@ async function populateDrepWalletList() {
     }
 }
 
-function resolveWalletStakeAddress(changeAddress, rewardAddresses, resolveRewardAddress) {
+function bech32Polymod(values) {
+    let chk = 1;
+    values.forEach(value => {
+        const top = chk >> 25;
+        chk = ((chk & 0x1ffffff) << 5) ^ value;
+        BECH32_GENERATOR.forEach((generator, index) => {
+            if ((top >> index) & 1) chk ^= generator;
+        });
+    });
+    return chk;
+}
+
+function bech32HrpExpand(hrp) {
+    const high = [];
+    const low = [];
+    for (let index = 0; index < hrp.length; index++) {
+        const code = hrp.charCodeAt(index);
+        high.push(code >> 5);
+        low.push(code & 31);
+    }
+    return [...high, 0, ...low];
+}
+
+function bech32Decode(value) {
+    const bech = String(value || '').trim();
+    if (!bech || bech !== bech.toLowerCase()) return null;
+    const separator = bech.lastIndexOf('1');
+    if (separator < 1 || separator + 7 > bech.length) return null;
+    const hrp = bech.slice(0, separator);
+    const data = [];
+    for (const char of bech.slice(separator + 1)) {
+        const digit = BECH32_ALPHABET.indexOf(char);
+        if (digit < 0) return null;
+        data.push(digit);
+    }
+    if (bech32Polymod([...bech32HrpExpand(hrp), ...data]) !== 1) return null;
+    return { hrp, words: data.slice(0, -6) };
+}
+
+function bech32Encode(hrp, words) {
+    const values = [...bech32HrpExpand(hrp), ...words];
+    const polymod = bech32Polymod([...values, 0, 0, 0, 0, 0, 0]) ^ 1;
+    const checksum = Array.from({ length: 6 }, (_, index) => (polymod >> (5 * (5 - index))) & 31);
+    return `${hrp}1${[...words, ...checksum].map(value => BECH32_ALPHABET[value]).join('')}`;
+}
+
+function convertBits(data, fromBits, toBits, pad) {
+    let value = 0;
+    let bits = 0;
+    const maxValue = (1 << toBits) - 1;
+    const result = [];
+    data.forEach(item => {
+        if (item < 0 || (item >> fromBits)) throw new Error('Invalid bech32 data');
+        value = (value << fromBits) | item;
+        bits += fromBits;
+        while (bits >= toBits) {
+            bits -= toBits;
+            result.push((value >> bits) & maxValue);
+        }
+    });
+    if (pad) {
+        if (bits > 0) result.push((value << (toBits - bits)) & maxValue);
+    } else if (bits >= fromBits || ((value << (toBits - bits)) & maxValue)) {
+        throw new Error('Invalid bech32 padding');
+    }
+    return result;
+}
+
+function deriveRewardAddressFromAddress(address) {
+    const decoded = bech32Decode(address);
+    if (!decoded) return '';
+    if (decoded.hrp === 'stake' || decoded.hrp === 'stake_test') return String(address || '').trim().toLowerCase();
+    if (decoded.hrp !== 'addr' && decoded.hrp !== 'addr_test') return '';
+
+    let bytes;
+    try {
+        bytes = convertBits(decoded.words, 5, 8, false);
+    } catch (error) {
+        console.warn('Could not decode Cardano address bytes', error);
+        return '';
+    }
+    if (!Array.isArray(bytes) || bytes.length < 57) return '';
+
+    const addressType = bytes[0] >> 4;
+    const networkId = bytes[0] & 15;
+    if (addressType < 0 || addressType > 3) return '';
+
+    const stakeCredential = bytes.slice(29, 57);
+    const rewardHeader = (addressType === 2 || addressType === 3 ? 0xf0 : 0xe0) | networkId;
+    const rewardWords = convertBits([rewardHeader, ...stakeCredential], 8, 5, true);
+    return bech32Encode(networkId === 1 ? 'stake' : 'stake_test', rewardWords);
+}
+
+async function getWalletAddressList(wallet, methodName) {
+    if (!wallet || typeof wallet[methodName] !== 'function') return [];
+    try {
+        const addresses = await wallet[methodName]();
+        return Array.isArray(addresses) ? addresses.filter(Boolean) : [];
+    } catch (error) {
+        console.warn(`Could not read wallet ${methodName}`, error);
+        return [];
+    }
+}
+
+function resolveWalletStakeAddress(walletAddresses, rewardAddresses, resolveRewardAddress) {
+    const addressCandidates = Array.isArray(walletAddresses) ? walletAddresses.filter(Boolean) : [walletAddresses].filter(Boolean);
+    for (const address of addressCandidates) {
+        const fromDecodedAddress = deriveRewardAddressFromAddress(address);
+        if (/^stake1[0-9a-z]{20,120}$/i.test(fromDecodedAddress)) return fromDecodedAddress;
+    }
+
     const fromChangeAddress = (() => {
-        if (typeof resolveRewardAddress !== 'function' || !changeAddress) return '';
+        const primaryAddress = addressCandidates[0];
+        if (typeof resolveRewardAddress !== 'function' || !primaryAddress) return '';
         try {
-            return String(resolveRewardAddress(changeAddress) || '').trim();
+            return String(resolveRewardAddress(primaryAddress) || '').trim();
         } catch (error) {
-            console.warn('Could not resolve stake address from wallet change address', error);
+            console.warn('Could not resolve stake address from wallet address', error);
             return '';
         }
     })();
     if (/^stake1[0-9a-z]{20,120}$/i.test(fromChangeAddress)) return fromChangeAddress;
-    return String((Array.isArray(rewardAddresses) ? rewardAddresses[0] : '') || '').trim();
+
+    const firstRewardAddress = String((Array.isArray(rewardAddresses) ? rewardAddresses[0] : '') || '').trim();
+    const fromDecodedRewardAddress = deriveRewardAddressFromAddress(firstRewardAddress);
+    return fromDecodedRewardAddress || firstRewardAddress;
 }
 
 async function fetchStakeStatus(rewardAddress) {
@@ -217,7 +333,13 @@ async function delegateWithWallet(walletId) {
         setStatus('Checking current delegation status...');
         const rewardAddresses = await wallet.getRewardAddresses();
         const changeAddress = await wallet.getChangeAddress();
-        const rewardAddress = resolveWalletStakeAddress(changeAddress, rewardAddresses, resolveRewardAddress);
+        const usedAddresses = await getWalletAddressList(wallet, 'getUsedAddresses');
+        const unusedAddresses = await getWalletAddressList(wallet, 'getUnusedAddresses');
+        const rewardAddress = resolveWalletStakeAddress(
+            [changeAddress, ...usedAddresses, ...unusedAddresses],
+            rewardAddresses,
+            resolveRewardAddress
+        );
         if (!rewardAddress) {
             setStatus('No stake address was found in this wallet. No transaction was built.');
             return;
@@ -293,7 +415,13 @@ async function delegateDrepWithWallet(walletId) {
         setDrepStatus('Preparing DRep voting delegation...');
         const rewardAddresses = await wallet.getRewardAddresses();
         const changeAddress = await wallet.getChangeAddress();
-        const rewardAddress = resolveWalletStakeAddress(changeAddress, rewardAddresses, resolveRewardAddress);
+        const usedAddresses = await getWalletAddressList(wallet, 'getUsedAddresses');
+        const unusedAddresses = await getWalletAddressList(wallet, 'getUnusedAddresses');
+        const rewardAddress = resolveWalletStakeAddress(
+            [changeAddress, ...usedAddresses, ...unusedAddresses],
+            rewardAddresses,
+            resolveRewardAddress
+        );
         if (!rewardAddress) {
             setDrepStatus('No stake address was found in this wallet. No transaction was built.');
             return;
