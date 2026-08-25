@@ -344,6 +344,12 @@ function createStakeAddressEntries(walletAddresses, rewardAddresses, resolveRewa
     const entries = [];
     const seen = new Set();
     const addressCandidates = Array.isArray(walletAddresses) ? walletAddresses.filter(Boolean) : [walletAddresses].filter(Boolean);
+    const selectedRewardAddresses = (Array.isArray(rewardAddresses) ? rewardAddresses : [])
+        .map(address => deriveRewardAddressFromAddress(address) || String(address || '').trim())
+        .map(address => String(address || '').trim().toLowerCase())
+        .filter(address => /^stake1[0-9a-z]{20,120}$/.test(address));
+    const selectedRewardSet = new Set(selectedRewardAddresses);
+    const hasSelectedRewardFilter = selectedRewardSet.size > 0;
 
     addressCandidates.forEach(address => {
         let stakeAddress = deriveRewardAddressFromAddress(address);
@@ -356,6 +362,7 @@ function createStakeAddressEntries(walletAddresses, rewardAddresses, resolveRewa
         }
 
         stakeAddress = String(stakeAddress || '').trim().toLowerCase();
+        if (hasSelectedRewardFilter && !selectedRewardSet.has(stakeAddress)) return;
         if (!/^stake1[0-9a-z]{20,120}$/.test(stakeAddress) || seen.has(stakeAddress)) return;
         seen.add(stakeAddress);
         entries.push({
@@ -365,12 +372,26 @@ function createStakeAddressEntries(walletAddresses, rewardAddresses, resolveRewa
         });
     });
 
-    if (!entries.length) {
+    selectedRewardAddresses.forEach(stakeAddress => {
+        if (seen.has(stakeAddress)) return;
+        seen.add(stakeAddress);
+        const matchingAddress = addressCandidates.find(address => {
+            const derived = deriveRewardAddressFromAddress(address);
+            return String(derived || '').trim().toLowerCase() === stakeAddress;
+        });
+        entries.push({
+            stakeAddress,
+            walletAddress: normalizeWalletAddressForExplorer(matchingAddress),
+            rawAddress: String(matchingAddress || '').trim()
+        });
+    });
+
+    if (!entries.length && !hasSelectedRewardFilter) {
         const firstRewardAddress = String((Array.isArray(rewardAddresses) ? rewardAddresses[0] : '') || '').trim();
-        const stakeAddress = deriveRewardAddressFromAddress(firstRewardAddress) || firstRewardAddress;
+        const stakeAddress = String(deriveRewardAddressFromAddress(firstRewardAddress) || firstRewardAddress || '').trim().toLowerCase();
         if (/^stake1[0-9a-z]{20,120}$/i.test(stakeAddress)) {
             entries.push({
-                stakeAddress: stakeAddress.toLowerCase(),
+                stakeAddress,
                 walletAddress: '',
                 rawAddress: firstRewardAddress
             });
