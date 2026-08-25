@@ -287,6 +287,35 @@ function deriveRewardAddressFromAddress(address) {
     return deriveRewardAddressFromBytes(bytes);
 }
 
+function getStakeAddressFromWalletAddress(address, resolveRewardAddress) {
+    let stakeAddress = deriveRewardAddressFromAddress(address);
+    if (!/^stake1[0-9a-z]{20,120}$/i.test(stakeAddress) && typeof resolveRewardAddress === 'function') {
+        try {
+            stakeAddress = String(resolveRewardAddress(address) || '').trim();
+        } catch (error) {
+            console.warn('Could not resolve stake address from wallet address', error);
+        }
+    }
+    stakeAddress = String(stakeAddress || '').trim().toLowerCase();
+    return /^stake1[0-9a-z]{20,120}$/.test(stakeAddress) ? stakeAddress : '';
+}
+
+function findWalletAddressForStake(stakeAddress, walletAddresses, resolveRewardAddress) {
+    const expectedStakeAddress = String(stakeAddress || '').trim().toLowerCase();
+    const addressCandidates = Array.isArray(walletAddresses) ? walletAddresses.filter(Boolean) : [walletAddresses].filter(Boolean);
+    if (!expectedStakeAddress) return '';
+    return addressCandidates.find(address => (
+        getStakeAddressFromWalletAddress(address, resolveRewardAddress) === expectedStakeAddress
+    )) || '';
+}
+
+function resolveChangeAddressForStake(stakeAddress, changeAddress, walletAddresses, resolveRewardAddress) {
+    const expectedStakeAddress = String(stakeAddress || '').trim().toLowerCase();
+    const changeStakeAddress = getStakeAddressFromWalletAddress(changeAddress, resolveRewardAddress);
+    if (changeStakeAddress && changeStakeAddress === expectedStakeAddress) return changeAddress;
+    return findWalletAddressForStake(expectedStakeAddress, walletAddresses, resolveRewardAddress);
+}
+
 async function withTimeout(promise, timeoutMs, label) {
     let timeoutId;
     try {
@@ -352,16 +381,7 @@ function createStakeAddressEntries(walletAddresses, rewardAddresses, resolveRewa
     const hasSelectedRewardFilter = selectedRewardSet.size > 0;
 
     addressCandidates.forEach(address => {
-        let stakeAddress = deriveRewardAddressFromAddress(address);
-        if (!/^stake1[0-9a-z]{20,120}$/i.test(stakeAddress) && typeof resolveRewardAddress === 'function') {
-            try {
-                stakeAddress = String(resolveRewardAddress(address) || '').trim();
-            } catch (error) {
-                console.warn('Could not resolve stake address from wallet address', error);
-            }
-        }
-
-        stakeAddress = String(stakeAddress || '').trim().toLowerCase();
+        const stakeAddress = getStakeAddressFromWalletAddress(address, resolveRewardAddress);
         if (hasSelectedRewardFilter && !selectedRewardSet.has(stakeAddress)) return;
         if (!/^stake1[0-9a-z]{20,120}$/.test(stakeAddress) || seen.has(stakeAddress)) return;
         seen.add(stakeAddress);
@@ -376,7 +396,7 @@ function createStakeAddressEntries(walletAddresses, rewardAddresses, resolveRewa
         if (seen.has(stakeAddress)) return;
         seen.add(stakeAddress);
         const matchingAddress = addressCandidates.find(address => {
-            const derived = deriveRewardAddressFromAddress(address);
+            const derived = getStakeAddressFromWalletAddress(address, resolveRewardAddress);
             return String(derived || '').trim().toLowerCase() === stakeAddress;
         });
         entries.push({
@@ -526,13 +546,19 @@ async function delegateWithWallet(walletId) {
         const stakeEntries = createStakeAddressEntries(walletAddressCandidates, rewardAddresses, resolveRewardAddress);
         if (stakeEntries.length > 1) {
             renderStakeAddressChoices(stakeEntries, entry => {
+                const selectedChangeAddress = resolveChangeAddressForStake(
+                    entry.stakeAddress,
+                    changeAddress,
+                    walletAddressCandidates,
+                    resolveRewardAddress
+                );
                 continueStakeDelegation({
                     wallet,
                     MeshTxBuilder,
                     deserializePoolId,
                     rewardAddress: entry.stakeAddress,
                     walletAddress: entry.walletAddress || entry.rawAddress,
-                    changeAddress
+                    changeAddress: selectedChangeAddress
                 }).catch(error => {
                     console.error('Delegation failed', error);
                     const message = error && error.info ? error.info : (error && error.message) || 'Something went wrong.';
@@ -551,14 +577,21 @@ async function delegateWithWallet(walletId) {
             setStatus('No stake address was found in this wallet. No transaction was built.');
             return;
         }
-        const walletAddress = stakeEntries[0]?.walletAddress || changeAddress || usedAddresses[0] || unusedAddresses[0];
+        const matchingWalletAddress = stakeEntries[0]?.walletAddress
+            || normalizeWalletAddressForExplorer(findWalletAddressForStake(rewardAddress, walletAddressCandidates, resolveRewardAddress));
+        const selectedChangeAddress = resolveChangeAddressForStake(
+            rewardAddress,
+            changeAddress,
+            walletAddressCandidates,
+            resolveRewardAddress
+        );
         await continueStakeDelegation({
             wallet,
             MeshTxBuilder,
             deserializePoolId,
             rewardAddress,
-            walletAddress,
-            changeAddress
+            walletAddress: matchingWalletAddress || rewardAddress,
+            changeAddress: selectedChangeAddress
         });
     } catch (error) {
         console.error('Delegation failed', error);
@@ -568,6 +601,11 @@ async function delegateWithWallet(walletId) {
 }
 
 async function continueStakeDelegation({ wallet, MeshTxBuilder, deserializePoolId, rewardAddress, walletAddress, changeAddress }) {
+    if (!changeAddress) {
+        setStatus('The selected Lace account payment address could not be confirmed. No transaction was built.');
+        return;
+    }
+
     const accountInfo = await fetchStakeStatus(rewardAddress);
 
     if (!accountInfo.verified) {
@@ -642,11 +680,17 @@ async function delegateDrepWithWallet(walletId) {
         const stakeEntries = createStakeAddressEntries(walletAddressCandidates, rewardAddresses, resolveRewardAddress);
         if (stakeEntries.length > 1) {
             renderDrepStakeAddressChoices(stakeEntries, entry => {
+                const selectedChangeAddress = resolveChangeAddressForStake(
+                    entry.stakeAddress,
+                    changeAddress,
+                    walletAddressCandidates,
+                    resolveRewardAddress
+                );
                 continueDrepDelegation({
                     wallet,
                     MeshTxBuilder,
                     rewardAddress: entry.stakeAddress,
-                    changeAddress
+                    changeAddress: selectedChangeAddress
                 }).catch(error => {
                     console.error('DRep delegation failed', error);
                     const message = error && error.info ? error.info : (error && error.message) || 'Something went wrong.';
@@ -665,7 +709,13 @@ async function delegateDrepWithWallet(walletId) {
             setDrepStatus('No stake address was found in this wallet. No transaction was built.');
             return;
         }
-        await continueDrepDelegation({ wallet, MeshTxBuilder, rewardAddress, changeAddress });
+        const selectedChangeAddress = resolveChangeAddressForStake(
+            rewardAddress,
+            changeAddress,
+            walletAddressCandidates,
+            resolveRewardAddress
+        );
+        await continueDrepDelegation({ wallet, MeshTxBuilder, rewardAddress, changeAddress: selectedChangeAddress });
     } catch (error) {
         console.error('DRep delegation failed', error);
         const message = error && error.info ? error.info : (error && error.message) || 'Something went wrong.';
@@ -674,6 +724,11 @@ async function delegateDrepWithWallet(walletId) {
 }
 
 async function continueDrepDelegation({ wallet, MeshTxBuilder, rewardAddress, changeAddress }) {
+    if (!changeAddress) {
+        setDrepStatus('The selected Lace account payment address could not be confirmed. No transaction was built.');
+        return;
+    }
+
     const utxos = await wallet.getUtxos();
     const txBuilder = new MeshTxBuilder({ verbose: false });
 
