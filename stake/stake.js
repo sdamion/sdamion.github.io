@@ -155,15 +155,30 @@ async function populateDrepWalletList() {
     }
 }
 
+function resolveWalletStakeAddress(changeAddress, rewardAddresses, resolveRewardAddress) {
+    const fromChangeAddress = (() => {
+        if (typeof resolveRewardAddress !== 'function' || !changeAddress) return '';
+        try {
+            return String(resolveRewardAddress(changeAddress) || '').trim();
+        } catch (error) {
+            console.warn('Could not resolve stake address from wallet change address', error);
+            return '';
+        }
+    })();
+    if (/^stake1[0-9a-z]{20,120}$/i.test(fromChangeAddress)) return fromChangeAddress;
+    return String((Array.isArray(rewardAddresses) ? rewardAddresses[0] : '') || '').trim();
+}
+
 async function fetchStakeStatus(rewardAddress) {
+    const query = `stakeAddress=${encodeURIComponent(rewardAddress)}&refresh=1&ts=${Date.now()}`;
     const url = IS_LOCAL_STAKE_PREVIEW
-        ? `/__stake_status_proxy__?stakeAddress=${encodeURIComponent(rewardAddress)}`
-        : `https://api.tdsp.online/api/stake-status/${encodeURIComponent(rewardAddress)}`;
+        ? `/__stake_status_proxy__?${query}`
+        : `https://api.tdsp.online/api/stake-status/${encodeURIComponent(rewardAddress)}?refresh=1&ts=${Date.now()}`;
     const errors = [];
 
     for (let round = 1; round <= 2; round++) {
         try {
-            const response = await fetch(url);
+            const response = await fetch(url, { cache: 'no-store' });
             if (!response.ok) throw new Error(`Stake status API returned ${response.status}`);
             const data = await response.json();
             return { active: data.active === true, poolId: data.pool_id || undefined, verified: true };
@@ -188,7 +203,7 @@ function isTargetPoolId(poolId) {
 
 async function delegateWithWallet(walletId) {
     try {
-        const { BrowserWallet, MeshTxBuilder, deserializePoolId } = await loadMeshLib();
+        const { BrowserWallet, MeshTxBuilder, deserializePoolId, resolveRewardAddress } = await loadMeshLib();
 
         setStatus('Connecting to wallet...');
         const wallet = await BrowserWallet.enable(walletId);
@@ -201,7 +216,8 @@ async function delegateWithWallet(walletId) {
 
         setStatus('Checking current delegation status...');
         const rewardAddresses = await wallet.getRewardAddresses();
-        const rewardAddress = rewardAddresses[0];
+        const changeAddress = await wallet.getChangeAddress();
+        const rewardAddress = resolveWalletStakeAddress(changeAddress, rewardAddresses, resolveRewardAddress);
         if (!rewardAddress) {
             setStatus('No stake address was found in this wallet. No transaction was built.');
             return;
@@ -225,7 +241,6 @@ async function delegateWithWallet(walletId) {
 
         setStatus('Building the delegation transaction...');
         const utxos = await wallet.getUtxos();
-        const changeAddress = await wallet.getChangeAddress();
         const poolIdHash = deserializePoolId(POOL_ID);
 
         const txBuilder = new MeshTxBuilder({ verbose: false });
@@ -264,7 +279,7 @@ async function delegateWithWallet(walletId) {
 
 async function delegateDrepWithWallet(walletId) {
     try {
-        const { BrowserWallet, MeshTxBuilder } = await loadMeshLib();
+        const { BrowserWallet, MeshTxBuilder, resolveRewardAddress } = await loadMeshLib();
 
         setDrepStatus('Connecting to wallet...');
         const wallet = await BrowserWallet.enable(walletId);
@@ -277,14 +292,14 @@ async function delegateDrepWithWallet(walletId) {
 
         setDrepStatus('Preparing DRep voting delegation...');
         const rewardAddresses = await wallet.getRewardAddresses();
-        const rewardAddress = rewardAddresses[0];
+        const changeAddress = await wallet.getChangeAddress();
+        const rewardAddress = resolveWalletStakeAddress(changeAddress, rewardAddresses, resolveRewardAddress);
         if (!rewardAddress) {
             setDrepStatus('No stake address was found in this wallet. No transaction was built.');
             return;
         }
 
         const utxos = await wallet.getUtxos();
-        const changeAddress = await wallet.getChangeAddress();
         const txBuilder = new MeshTxBuilder({ verbose: false });
 
         const unsignedTx = await txBuilder
