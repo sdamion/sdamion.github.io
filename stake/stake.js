@@ -332,9 +332,9 @@ async function fetchStakeStatus(rewardAddress) {
         : `https://api.tdsp.online/api/stake-status/${encodeURIComponent(rewardAddress)}?ts=${Date.now()}`;
     const errors = [];
 
-    for (let round = 1; round <= 2; round++) {
+    for (let round = 1; round <= 1; round++) {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 12000);
+        const timeout = setTimeout(() => controller.abort(), 8000);
         try {
             const response = await fetch(url, { cache: 'no-store', signal: controller.signal });
             if (!response.ok) throw new Error(`Stake status API returned ${response.status}`);
@@ -346,7 +346,6 @@ async function fetchStakeStatus(rewardAddress) {
         } finally {
             clearTimeout(timeout);
         }
-        if (round === 1) await new Promise(resolve => setTimeout(resolve, 1500));
     }
 
     return {
