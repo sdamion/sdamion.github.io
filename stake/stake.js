@@ -272,10 +272,24 @@ function deriveRewardAddressFromAddress(address) {
     return deriveRewardAddressFromBytes(bytes);
 }
 
+async function withTimeout(promise, timeoutMs, label) {
+    let timeoutId;
+    try {
+        return await Promise.race([
+            promise,
+            new Promise((_, reject) => {
+                timeoutId = setTimeout(() => reject(new Error(`${label} timed out`)), timeoutMs);
+            })
+        ]);
+    } finally {
+        clearTimeout(timeoutId);
+    }
+}
+
 async function getWalletAddressList(wallet, methodName) {
     if (!wallet || typeof wallet[methodName] !== 'function') return [];
     try {
-        const addresses = await wallet[methodName]();
+        const addresses = await withTimeout(wallet[methodName](), 5000, methodName);
         return Array.isArray(addresses) ? addresses.filter(Boolean) : [];
     } catch (error) {
         console.warn(`Could not read wallet ${methodName}`, error);
@@ -312,21 +326,25 @@ function resolveWalletStakeAddress(walletAddresses, rewardAddresses, resolveRewa
 }
 
 async function fetchStakeStatus(rewardAddress) {
-    const query = `stakeAddress=${encodeURIComponent(rewardAddress)}&refresh=1&ts=${Date.now()}`;
+    const query = `stakeAddress=${encodeURIComponent(rewardAddress)}&ts=${Date.now()}`;
     const url = IS_LOCAL_STAKE_PREVIEW
         ? `/__stake_status_proxy__?${query}`
-        : `https://api.tdsp.online/api/stake-status/${encodeURIComponent(rewardAddress)}?refresh=1&ts=${Date.now()}`;
+        : `https://api.tdsp.online/api/stake-status/${encodeURIComponent(rewardAddress)}?ts=${Date.now()}`;
     const errors = [];
 
     for (let round = 1; round <= 2; round++) {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 12000);
         try {
-            const response = await fetch(url, { cache: 'no-store' });
+            const response = await fetch(url, { cache: 'no-store', signal: controller.signal });
             if (!response.ok) throw new Error(`Stake status API returned ${response.status}`);
             const data = await response.json();
             return { active: data.active === true, poolId: data.pool_id || undefined, verified: true };
         } catch (error) {
             console.warn('Stake status request failed', error);
             errors.push(error);
+        } finally {
+            clearTimeout(timeout);
         }
         if (round === 1) await new Promise(resolve => setTimeout(resolve, 1500));
     }
@@ -362,10 +380,12 @@ async function delegateWithWallet(walletId) {
         }
 
         setStatus('Checking current delegation status...');
-        const rewardAddresses = await wallet.getRewardAddresses();
-        const changeAddress = await wallet.getChangeAddress();
-        const usedAddresses = await getWalletAddressList(wallet, 'getUsedAddresses');
-        const unusedAddresses = await getWalletAddressList(wallet, 'getUnusedAddresses');
+        const [rewardAddresses, changeAddress, usedAddresses, unusedAddresses] = await Promise.all([
+            withTimeout(wallet.getRewardAddresses(), 8000, 'getRewardAddresses'),
+            withTimeout(wallet.getChangeAddress(), 8000, 'getChangeAddress'),
+            getWalletAddressList(wallet, 'getUsedAddresses'),
+            getWalletAddressList(wallet, 'getUnusedAddresses')
+        ]);
         const rewardAddress = resolveWalletStakeAddress(
             [changeAddress, ...usedAddresses, ...unusedAddresses],
             rewardAddresses,
@@ -444,10 +464,12 @@ async function delegateDrepWithWallet(walletId) {
         }
 
         setDrepStatus('Preparing DRep voting delegation...');
-        const rewardAddresses = await wallet.getRewardAddresses();
-        const changeAddress = await wallet.getChangeAddress();
-        const usedAddresses = await getWalletAddressList(wallet, 'getUsedAddresses');
-        const unusedAddresses = await getWalletAddressList(wallet, 'getUnusedAddresses');
+        const [rewardAddresses, changeAddress, usedAddresses, unusedAddresses] = await Promise.all([
+            withTimeout(wallet.getRewardAddresses(), 8000, 'getRewardAddresses'),
+            withTimeout(wallet.getChangeAddress(), 8000, 'getChangeAddress'),
+            getWalletAddressList(wallet, 'getUsedAddresses'),
+            getWalletAddressList(wallet, 'getUnusedAddresses')
+        ]);
         const rewardAddress = resolveWalletStakeAddress(
             [changeAddress, ...usedAddresses, ...unusedAddresses],
             rewardAddresses,
