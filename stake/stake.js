@@ -340,6 +340,86 @@ function resolveWalletStakeAddress(walletAddresses, rewardAddresses, resolveRewa
     return '';
 }
 
+function createStakeAddressEntries(walletAddresses, rewardAddresses, resolveRewardAddress) {
+    const entries = [];
+    const seen = new Set();
+    const addressCandidates = Array.isArray(walletAddresses) ? walletAddresses.filter(Boolean) : [walletAddresses].filter(Boolean);
+
+    addressCandidates.forEach(address => {
+        let stakeAddress = deriveRewardAddressFromAddress(address);
+        if (!/^stake1[0-9a-z]{20,120}$/i.test(stakeAddress) && typeof resolveRewardAddress === 'function') {
+            try {
+                stakeAddress = String(resolveRewardAddress(address) || '').trim();
+            } catch (error) {
+                console.warn('Could not resolve stake address from wallet address', error);
+            }
+        }
+
+        stakeAddress = String(stakeAddress || '').trim().toLowerCase();
+        if (!/^stake1[0-9a-z]{20,120}$/.test(stakeAddress) || seen.has(stakeAddress)) return;
+        seen.add(stakeAddress);
+        entries.push({
+            stakeAddress,
+            walletAddress: normalizeWalletAddressForExplorer(address),
+            rawAddress: String(address || '').trim()
+        });
+    });
+
+    if (!entries.length) {
+        const firstRewardAddress = String((Array.isArray(rewardAddresses) ? rewardAddresses[0] : '') || '').trim();
+        const stakeAddress = deriveRewardAddressFromAddress(firstRewardAddress) || firstRewardAddress;
+        if (/^stake1[0-9a-z]{20,120}$/i.test(stakeAddress)) {
+            entries.push({
+                stakeAddress: stakeAddress.toLowerCase(),
+                walletAddress: '',
+                rawAddress: firstRewardAddress
+            });
+        }
+    }
+
+    return entries;
+}
+
+function renderStakeAddressChoices(entries, onSelect) {
+    const listEl = document.getElementById('wallet-list');
+    if (!listEl) return;
+    listEl.replaceChildren();
+    setStatus('Choose the wallet address you want to stake.');
+
+    entries.forEach((entry, index) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'wallet-option';
+        const label = document.createElement('span');
+        label.textContent = `${translateStakeText('Use address')} ${index + 1}`;
+        const address = document.createElement('span');
+        address.textContent = shortenStakeAddress(entry.walletAddress || entry.stakeAddress);
+        button.append(label, address);
+        button.addEventListener('click', () => onSelect(entry), { once: true });
+        listEl.appendChild(button);
+    });
+}
+
+function renderDrepStakeAddressChoices(entries, onSelect) {
+    const listEl = document.getElementById('drep-wallet-list');
+    if (!listEl) return;
+    listEl.replaceChildren();
+    setDrepStatus('Choose the wallet address you want to use.');
+
+    entries.forEach((entry, index) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'wallet-option';
+        const label = document.createElement('span');
+        label.textContent = `${translateStakeText('Use address')} ${index + 1}`;
+        const address = document.createElement('span');
+        address.textContent = shortenStakeAddress(entry.walletAddress || entry.stakeAddress);
+        button.append(label, address);
+        button.addEventListener('click', () => onSelect(entry), { once: true });
+        listEl.appendChild(button);
+    });
+}
+
 async function fetchStakeStatus(rewardAddress) {
     const query = `stakeAddress=${encodeURIComponent(rewardAddress)}&ts=${Date.now()}`;
     const url = IS_LOCAL_STAKE_PREVIEW
@@ -421,8 +501,28 @@ async function delegateWithWallet(walletId) {
             getWalletAddressList(wallet, 'getUsedAddresses'),
             getWalletAddressList(wallet, 'getUnusedAddresses')
         ]);
-        const rewardAddress = resolveWalletStakeAddress(
-            [changeAddress, ...usedAddresses, ...unusedAddresses],
+        const walletAddressCandidates = [changeAddress, ...usedAddresses, ...unusedAddresses];
+        const stakeEntries = createStakeAddressEntries(walletAddressCandidates, rewardAddresses, resolveRewardAddress);
+        if (stakeEntries.length > 1) {
+            renderStakeAddressChoices(stakeEntries, entry => {
+                continueStakeDelegation({
+                    wallet,
+                    MeshTxBuilder,
+                    deserializePoolId,
+                    rewardAddress: entry.stakeAddress,
+                    walletAddress: entry.walletAddress || entry.rawAddress,
+                    changeAddress
+                }).catch(error => {
+                    console.error('Delegation failed', error);
+                    const message = error && error.info ? error.info : (error && error.message) || 'Something went wrong.';
+                    setStatus(`${translateStakeText('Delegation failed')}: ${message}`);
+                });
+            });
+            return;
+        }
+
+        const rewardAddress = stakeEntries[0]?.stakeAddress || resolveWalletStakeAddress(
+            walletAddressCandidates,
             rewardAddresses,
             resolveRewardAddress
         );
@@ -430,58 +530,70 @@ async function delegateWithWallet(walletId) {
             setStatus('No stake address was found in this wallet. No transaction was built.');
             return;
         }
-        const accountInfo = await fetchStakeStatus(rewardAddress);
-
-        if (!accountInfo.verified) {
-            setStatus('Could not verify current delegation status. No transaction was built, so no ADA will be spent. Please try again in a moment.');
-            return;
-        }
-
-        if (accountInfo.active && isTargetPoolId(accountInfo.poolId)) {
-            renderAlreadyDelegatingStatus(changeAddress || usedAddresses[0] || unusedAddresses[0]);
-            return;
-        }
-
-        if (accountInfo.active && !accountInfo.poolId) {
-            setStatus('This wallet is already registered, but the current pool could not be confirmed. No transaction was built.');
-            return;
-        }
-
-        setStatus('Building the delegation transaction...');
-        const utxos = await wallet.getUtxos();
-        const poolIdHash = deserializePoolId(POOL_ID);
-
-        const txBuilder = new MeshTxBuilder({ verbose: false });
-        if (!accountInfo.active) {
-            txBuilder.registerStakeCertificate(rewardAddress);
-        }
-        txBuilder.delegateStakeCertificate(rewardAddress, poolIdHash);
-
-        const unsignedTx = await txBuilder
-            .selectUtxosFrom(utxos)
-            .changeAddress(changeAddress)
-            .complete();
-
-        setStatus('Please approve the transaction in your wallet...');
-        const signedTx = await wallet.signTx(unsignedTx, false);
-
-        setStatus('Submitting transaction...');
-        const txHash = await wallet.submitTx(signedTx);
-
-        const statusEl = document.getElementById('wallet-status');
-        if (statusEl) {
-            statusEl.textContent = '';
-            const link = document.createElement('a');
-            link.href = `https://cardanoscan.io/transaction/${txHash}`;
-            link.target = '_blank';
-            link.rel = 'noopener noreferrer';
-            setStakeAutoText(link, 'Delegation submitted! View on Cardanoscan');
-            statusEl.appendChild(link);
-        }
+        const walletAddress = stakeEntries[0]?.walletAddress || changeAddress || usedAddresses[0] || unusedAddresses[0];
+        await continueStakeDelegation({
+            wallet,
+            MeshTxBuilder,
+            deserializePoolId,
+            rewardAddress,
+            walletAddress,
+            changeAddress
+        });
     } catch (error) {
         console.error('Delegation failed', error);
         const message = error && error.info ? error.info : (error && error.message) || 'Something went wrong.';
         setStatus(`${translateStakeText('Delegation failed')}: ${message}`);
+    }
+}
+
+async function continueStakeDelegation({ wallet, MeshTxBuilder, deserializePoolId, rewardAddress, walletAddress, changeAddress }) {
+    const accountInfo = await fetchStakeStatus(rewardAddress);
+
+    if (!accountInfo.verified) {
+        setStatus('Could not verify current delegation status. No transaction was built, so no ADA will be spent. Please try again in a moment.');
+        return;
+    }
+
+    if (accountInfo.active && isTargetPoolId(accountInfo.poolId)) {
+        renderAlreadyDelegatingStatus(walletAddress || changeAddress);
+        return;
+    }
+
+    if (accountInfo.active && !accountInfo.poolId) {
+        setStatus('This wallet is already registered, but the current pool could not be confirmed. No transaction was built.');
+        return;
+    }
+
+    setStatus('Building the delegation transaction...');
+    const utxos = await wallet.getUtxos();
+    const poolIdHash = deserializePoolId(POOL_ID);
+
+    const txBuilder = new MeshTxBuilder({ verbose: false });
+    if (!accountInfo.active) {
+        txBuilder.registerStakeCertificate(rewardAddress);
+    }
+    txBuilder.delegateStakeCertificate(rewardAddress, poolIdHash);
+
+    const unsignedTx = await txBuilder
+        .selectUtxosFrom(utxos)
+        .changeAddress(changeAddress)
+        .complete();
+
+    setStatus('Please approve the transaction in your wallet...');
+    const signedTx = await wallet.signTx(unsignedTx, false);
+
+    setStatus('Submitting transaction...');
+    const txHash = await wallet.submitTx(signedTx);
+
+    const statusEl = document.getElementById('wallet-status');
+    if (statusEl) {
+        statusEl.textContent = '';
+        const link = document.createElement('a');
+        link.href = `https://cardanoscan.io/transaction/${txHash}`;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        setStakeAutoText(link, 'Delegation submitted! View on Cardanoscan');
+        statusEl.appendChild(link);
     }
 }
 
@@ -505,8 +617,26 @@ async function delegateDrepWithWallet(walletId) {
             getWalletAddressList(wallet, 'getUsedAddresses'),
             getWalletAddressList(wallet, 'getUnusedAddresses')
         ]);
-        const rewardAddress = resolveWalletStakeAddress(
-            [changeAddress, ...usedAddresses, ...unusedAddresses],
+        const walletAddressCandidates = [changeAddress, ...usedAddresses, ...unusedAddresses];
+        const stakeEntries = createStakeAddressEntries(walletAddressCandidates, rewardAddresses, resolveRewardAddress);
+        if (stakeEntries.length > 1) {
+            renderDrepStakeAddressChoices(stakeEntries, entry => {
+                continueDrepDelegation({
+                    wallet,
+                    MeshTxBuilder,
+                    rewardAddress: entry.stakeAddress,
+                    changeAddress
+                }).catch(error => {
+                    console.error('DRep delegation failed', error);
+                    const message = error && error.info ? error.info : (error && error.message) || 'Something went wrong.';
+                    setDrepStatus(`${translateStakeText('DRep delegation failed')}: ${message}`);
+                });
+            });
+            return;
+        }
+
+        const rewardAddress = stakeEntries[0]?.stakeAddress || resolveWalletStakeAddress(
+            walletAddressCandidates,
             rewardAddresses,
             resolveRewardAddress
         );
@@ -514,36 +644,39 @@ async function delegateDrepWithWallet(walletId) {
             setDrepStatus('No stake address was found in this wallet. No transaction was built.');
             return;
         }
-
-        const utxos = await wallet.getUtxos();
-        const txBuilder = new MeshTxBuilder({ verbose: false });
-
-        const unsignedTx = await txBuilder
-            .voteDelegationCertificate({ dRepId: TDSP_DREP_ID }, rewardAddress)
-            .selectUtxosFrom(utxos)
-            .changeAddress(changeAddress)
-            .complete();
-
-        setDrepStatus('Please approve the DRep delegation transaction in your wallet...');
-        const signedTx = await wallet.signTx(unsignedTx, false);
-
-        setDrepStatus('Submitting transaction...');
-        const txHash = await wallet.submitTx(signedTx);
-
-        const statusEl = document.getElementById('drep-wallet-status');
-        if (statusEl) {
-            statusEl.textContent = '';
-            const link = document.createElement('a');
-            link.href = `https://cardanoscan.io/transaction/${txHash}`;
-            link.target = '_blank';
-            link.rel = 'noopener noreferrer';
-            setStakeAutoText(link, 'DRep delegation submitted! View on Cardanoscan');
-            statusEl.appendChild(link);
-        }
+        await continueDrepDelegation({ wallet, MeshTxBuilder, rewardAddress, changeAddress });
     } catch (error) {
         console.error('DRep delegation failed', error);
         const message = error && error.info ? error.info : (error && error.message) || 'Something went wrong.';
         setDrepStatus(`${translateStakeText('DRep delegation failed')}: ${message}`);
+    }
+}
+
+async function continueDrepDelegation({ wallet, MeshTxBuilder, rewardAddress, changeAddress }) {
+    const utxos = await wallet.getUtxos();
+    const txBuilder = new MeshTxBuilder({ verbose: false });
+
+    const unsignedTx = await txBuilder
+        .voteDelegationCertificate({ dRepId: TDSP_DREP_ID }, rewardAddress)
+        .selectUtxosFrom(utxos)
+        .changeAddress(changeAddress)
+        .complete();
+
+    setDrepStatus('Please approve the DRep delegation transaction in your wallet...');
+    const signedTx = await wallet.signTx(unsignedTx, false);
+
+    setDrepStatus('Submitting transaction...');
+    const txHash = await wallet.submitTx(signedTx);
+
+    const statusEl = document.getElementById('drep-wallet-status');
+    if (statusEl) {
+        statusEl.textContent = '';
+        const link = document.createElement('a');
+        link.href = `https://cardanoscan.io/transaction/${txHash}`;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        setStakeAutoText(link, 'DRep delegation submitted! View on Cardanoscan');
+        statusEl.appendChild(link);
     }
 }
 

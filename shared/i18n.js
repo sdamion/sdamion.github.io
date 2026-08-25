@@ -3,8 +3,8 @@
     const DEFAULT_LANGUAGE = 'en';
     const LANGUAGE_CONFIG = Object.freeze({
         en: { label: 'English', flag: '🇺🇸' },
-        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20260820-menu-alerts-epoch' },
-        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20260820-menu-alerts-epoch' }
+        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20260825-stake-address-choice' },
+        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20260825-stake-address-choice' }
     });
     const TRANSLATION_ATTR = 'data-i18n';
     const TRANSLATION_ORIGINAL_ATTR = 'data-i18n-original';
@@ -151,6 +151,9 @@
         ['Connect your DRep wallet', 'connect_drep_wallet'],
         ['Connecting to wallet...', 'connecting_wallet'],
         ['Checking current delegation status...', 'checking_delegation_status'],
+        ['Choose the wallet address you want to stake.', 'choose_wallet_address_stake'],
+        ['Choose the wallet address you want to use.', 'choose_wallet_address_use'],
+        ['Use address', 'use_address'],
         ['Checking current vote cache...', 'checking_current_vote_cache'],
         ['Checking pool data', 'checking_pool_data'],
         ['Building the delegation transaction...', 'building_delegation_transaction'],
