@@ -253,6 +253,21 @@ function deriveRewardAddressFromBytes(bytes) {
     return bech32Encode('stake', rewardWords);
 }
 
+function normalizeWalletAddressForExplorer(address) {
+    const text = String(address || '').trim().toLowerCase();
+    if (/^addr1[0-9a-z]{20,180}$/.test(text)) return text;
+    const bytes = hexToBytes(text);
+    if (!Array.isArray(bytes) || !bytes.length) return '';
+    const networkId = bytes[0] & 15;
+    const hrp = networkId === 1 ? 'addr' : 'addr_test';
+    try {
+        return bech32Encode(hrp, convertBits(bytes, 8, 5, true));
+    } catch (error) {
+        console.warn('Could not encode wallet address for explorer', error);
+        return '';
+    }
+}
+
 function deriveRewardAddressFromAddress(address) {
     const fromHex = deriveRewardAddressFromBytes(hexToBytes(address));
     if (/^stake1[0-9a-z]{20,120}$/i.test(fromHex)) return fromHex;
@@ -365,6 +380,27 @@ function shortenStakeAddress(value) {
     return text.length > 24 ? `${text.slice(0, 14)}...${text.slice(-8)}` : text;
 }
 
+function renderAlreadyDelegatingStatus(walletAddress) {
+    const statusEl = document.getElementById('wallet-status');
+    if (!statusEl) return;
+    const explorerAddress = normalizeWalletAddressForExplorer(walletAddress);
+    statusEl.textContent = '';
+    statusEl.hidden = false;
+
+    const text = document.createElement('span');
+    setStakeAutoText(text, 'This wallet is already delegating to The Dutch Stake Pool. Used address');
+    statusEl.appendChild(text);
+
+    if (!explorerAddress) return;
+    statusEl.append(' ');
+    const link = document.createElement('a');
+    link.href = `https://cardanoscan.io/address/${explorerAddress}`;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.textContent = shortenStakeAddress(explorerAddress);
+    statusEl.appendChild(link);
+}
+
 async function delegateWithWallet(walletId) {
     try {
         const { BrowserWallet, MeshTxBuilder, deserializePoolId, resolveRewardAddress } = await loadMeshLib();
@@ -402,7 +438,7 @@ async function delegateWithWallet(walletId) {
         }
 
         if (accountInfo.active && isTargetPoolId(accountInfo.poolId)) {
-            setStatus(`This wallet is already delegating to The Dutch Stake Pool. Checked stake address ${shortenStakeAddress(rewardAddress)}.`);
+            renderAlreadyDelegatingStatus(changeAddress || usedAddresses[0] || unusedAddresses[0]);
             return;
         }
 
