@@ -6,6 +6,18 @@
         fetchJson,
         removeOverlay
     }) {
+        function translate(text) {
+            return window.TDSPI18n?.translateText?.(text) || text;
+        }
+
+        function setTranslatedText(element, text) {
+            if (!(element instanceof HTMLElement)) return;
+            const value = String(text || '');
+            element.setAttribute('data-i18n-auto', '');
+            element.setAttribute('data-i18n-auto-original', value);
+            element.textContent = translate(value);
+        }
+
         function open({
             proposal,
             returnFocus,
@@ -77,9 +89,9 @@
                     const section = document.createElement('section');
                     section.className = 'governance-proposal-summary-section';
                     const title = document.createElement('h3');
-                    title.textContent = heading;
+                    setTranslatedText(title, heading);
                     const text = document.createElement('p');
-                    text.textContent = payload.sections[key] || 'Not stated in the proposal.';
+                    text.textContent = payload.sections[key] || translate('Not stated in the proposal.');
                     section.append(title, text);
                     summary.appendChild(section);
                 });
@@ -87,15 +99,15 @@
             } else {
                 const summary = document.createElement('p');
                 summary.className = 'governance-proposal-summary-text';
-                summary.textContent = payload?.summary || 'No summary is available.';
+                summary.textContent = payload?.summary || translate('No summary is available.');
                 container.appendChild(summary);
             }
 
             const warning = document.createElement('p');
             warning.className = 'small-text governance-proposal-summary-warning';
-            warning.textContent = payload?.status === 'stale'
+            setTranslatedText(warning, payload?.status === 'stale'
                 ? '!! AI-generated summary based on an older proposal version. Verify it against the full proposal. !!'
-                : '!! AI-generated summary. Verify important details against the full proposal before making decisions. !!';
+                : '!! AI-generated summary. Verify important details against the full proposal before making decisions. !!');
             container.appendChild(warning);
         }
 
@@ -103,7 +115,7 @@
             container.replaceChildren();
             const status = document.createElement('p');
             status.className = 'small-text';
-            status.textContent = message;
+            setTranslatedText(status, message);
             container.appendChild(status);
         }
 

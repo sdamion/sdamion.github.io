@@ -43,9 +43,9 @@
 
         function catalystProposalSummary(proposalId) {
             if (isLocalPreview) {
-                return withParams(endpoints.localCatalystProposalSummary, { proposalId });
+                return withParams(endpoints.localCatalystProposalSummary, addCurrentLanguage({ proposalId }));
             }
-            return `${endpoints.catalystProposalSummaryBase}/${encodeURIComponent(proposalId)}/summary`;
+            return withCurrentLanguage(`${endpoints.catalystProposalSummaryBase}/${encodeURIComponent(proposalId)}/summary`);
         }
 
         function cips() {
@@ -76,9 +76,9 @@
 
         function proposalSummary(proposalId) {
             if (isLocalPreview) {
-                return withParams(endpoints.localProposalSummary, { proposalId });
+                return withParams(endpoints.localProposalSummary, addCurrentLanguage({ proposalId }));
             }
-            return `${endpoints.proposalSummaryBase}/${encodeURIComponent(proposalId)}/summary`;
+            return withCurrentLanguage(`${endpoints.proposalSummaryBase}/${encodeURIComponent(proposalId)}/summary`);
         }
 
         function proposalDrepRationale(proposalId, drepId) {

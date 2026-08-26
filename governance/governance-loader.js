@@ -1,6 +1,6 @@
 (function () {
     const GOVERNANCE_RICH_TEXT_SCRIPT_SRC = 'governance/governance-rich-text.js?v=20260818-continuation-lists';
-    const GOVERNANCE_API_SCRIPT_SRC = 'governance/governance-api.js?v=20260826-explicit-language';
+    const GOVERNANCE_API_SCRIPT_SRC = 'governance/governance-api.js?v=20260827-summary-language';
     const GOVERNANCE_ASSISTANT_SCRIPT_SRC = 'governance/governance-assistant.js?v=20260827-translation-pending';
     const GOVERNANCE_FUNDING_DIRECTORY_SCRIPT_SRC = 'governance/governance-funding-directory.js?v=20260817-modular-funding-directory';
     const GOVERNANCE_BUSINESS_LINKS_SCRIPT_SRC = 'governance/governance-business-links.js?v=20260818-modular-business-links-domain';
@@ -10,7 +10,7 @@
     const GOVERNANCE_CATALYST_CHARTS_SCRIPT_SRC = 'governance/governance-catalyst-charts.js?v=20260819-funding-labels';
     const GOVERNANCE_ACTION_BUTTONS_SCRIPT_SRC = 'governance/governance-action-buttons.js?v=20260817-modular-action-buttons';
     const GOVERNANCE_BOT_CONTEXTS_SCRIPT_SRC = 'governance/governance-bot-contexts.js?v=20260817-modular-bot-contexts';
-    const GOVERNANCE_PROPOSAL_SUMMARY_SCRIPT_SRC = 'governance/governance-proposal-summary.js?v=20260817-modular-proposal-summary';
+    const GOVERNANCE_PROPOSAL_SUMMARY_SCRIPT_SRC = 'governance/governance-proposal-summary.js?v=20260827-summary-language';
     const GOVERNANCE_COPY_SCRIPT_SRC = 'governance/governance-copy.js?v=20260817-modular-copy';
     const GOVERNANCE_DETAIL_RENDERING_SCRIPT_SRC = 'governance/governance-detail-rendering.js?v=20260819-drep-overlay-language';
     const GOVERNANCE_CIPS_SCRIPT_SRC = 'governance/governance-cips.js?v=20260819-governance-overlay-language';
