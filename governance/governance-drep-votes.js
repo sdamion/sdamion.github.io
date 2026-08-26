@@ -52,7 +52,7 @@
             addDetailRow(content, 'Vote', context.voteChoice || formatVoteChoice(vote?.vote || vote?.vote_bucket));
             addDetailRow(content, 'Governance action', context.proposal ? getProposalTitle(context.proposal) : '');
             addDetailRow(content, 'Action ID', proposalId);
-            addDetailRow(content, 'Transaction', getTransactionId(vote));
+            appendTransactionLinkRow(content, getTransactionId(vote));
 
             const title = document.createElement('strong');
             setAutoTranslatedText(title, 'Rationale');
@@ -108,6 +108,35 @@
                 || '';
         }
 
+        function appendTransactionLinkRow(container, txHash) {
+            const cleanHash = cleanText(String(txHash || ''));
+            if (!container || !cleanHash) return;
+            const existing = container.querySelector('[data-rationale-transaction-row="true"]');
+            if (existing) existing.remove();
+
+            const row = document.createElement('div');
+            row.className = 'governance-detail-row';
+            row.dataset.rationaleTransactionRow = 'true';
+
+            const key = document.createElement('strong');
+            setAutoTranslatedText(key, 'Transaction');
+
+            const link = document.createElement('a');
+            link.href = `https://cardanoscan.io/transaction/${encodeURIComponent(cleanHash)}`;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.textContent = shortenIdentifier(cleanHash);
+
+            row.appendChild(key);
+            row.appendChild(link);
+            container.appendChild(row);
+        }
+
+        function shortenIdentifier(value) {
+            const text = String(value || '').trim();
+            return text.length > 28 ? `${text.slice(0, 14)}...${text.slice(-10)}` : text;
+        }
+
         async function loadRationale(vote, { proposalId, drepId, text, content }) {
             if (!proposalId || !drepId) throw new Error('Missing DRep vote rationale lookup data');
             const payload = await fetchJson(getProposalRationaleUrl(proposalId, drepId), { cache: 'no-store' });
@@ -118,11 +147,8 @@
                 const hasVoteRow = voteRows.some(row => row.textContent.includes('Vote'));
                 if (!hasVoteRow) addDetailRow(content, 'Vote', payload.vote);
             }
-            if (payload?.vote_tx_hash && !getTransactionId(vote)) {
-                addDetailRow(content, 'Transaction', payload.vote_tx_hash);
-            }
-
             vote.vote_tx_hash = payload?.vote_tx_hash || vote.vote_tx_hash;
+            appendTransactionLinkRow(content, getTransactionId(vote));
             vote.tx_metadata = payload?.metadata || vote.tx_metadata;
             vote.onchain_metadata = payload?.metadata || vote.onchain_metadata;
             vote.rationale = payload?.rationale || vote.rationale;
