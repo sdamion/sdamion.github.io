@@ -27,12 +27,27 @@
                 const params = new URLSearchParams();
                 if (options.funds) params.set('type', 'funds');
                 if (options.fundName) params.set('fund', options.fundName);
-                return `${endpoints.localCatalystProposals}?${params.toString()}`;
+                const localized = addCurrentLanguage(Object.fromEntries(params.entries()));
+                return withParams(endpoints.localCatalystProposals, localized);
             }
-            if (options.funds) return `${endpoints.catalystProposals}/funds`;
-            const params = new URLSearchParams();
+            if (options.funds) return withCurrentLanguage(`${endpoints.catalystProposals}/funds`);
+            const params = new URLSearchParams(addCurrentLanguage());
             if (options.fundName) params.set('fund', options.fundName);
             return `${endpoints.catalystProposals}${params.size ? `?${params.toString()}` : ''}`;
+        }
+
+        function catalystProposalDetail(proposalId) {
+            if (isLocalPreview) {
+                return withParams(endpoints.localCatalystProposalDetail, addCurrentLanguage({ proposalId }));
+            }
+            return withCurrentLanguage(`${endpoints.catalystProposalDetailBase}/${encodeURIComponent(proposalId)}`);
+        }
+
+        function catalystProposalSummary(proposalId) {
+            if (isLocalPreview) {
+                return withParams(endpoints.localCatalystProposalSummary, { proposalId });
+            }
+            return `${endpoints.catalystProposalSummaryBase}/${encodeURIComponent(proposalId)}/summary`;
         }
 
         function cips() {
@@ -73,20 +88,6 @@
                 return withParams(endpoints.localProposalRationale, { proposalId, drepId });
             }
             return `${endpoints.proposalRationaleBase}/${encodeURIComponent(proposalId)}/drep/${encodeURIComponent(drepId)}/rationale`;
-        }
-
-        function catalystProposalDetail(proposalId) {
-            if (isLocalPreview) {
-                return withParams(endpoints.localCatalystProposalDetail, { proposalId });
-            }
-            return `${endpoints.catalystProposalDetailBase}/${encodeURIComponent(proposalId)}`;
-        }
-
-        function catalystProposalSummary(proposalId) {
-            if (isLocalPreview) {
-                return withParams(endpoints.localCatalystProposalSummary, { proposalId });
-            }
-            return `${endpoints.catalystProposalSummaryBase}/${encodeURIComponent(proposalId)}/summary`;
         }
 
         function committeeInfo() {
