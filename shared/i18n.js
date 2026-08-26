@@ -4,6 +4,7 @@
     const LANGUAGE_CONFIG = Object.freeze({
         en: { label: 'English', flag: '🇺🇸' },
         nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20260825-lace-account-change' },
+        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20260826-spanish' },
         ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20260825-lace-account-change' }
     });
     const TRANSLATION_ATTR = 'data-i18n';
@@ -567,7 +568,8 @@
         ['The Constitution assistant is temporarily unavailable.', 'constitution_assistant_unavailable'],
         ['The Constitution document is empty.', 'constitution_document_empty'],
         ['The Cardano Constitution could not be loaded.', 'cardano_constitution_could_not_load'],
-        ['The Japanese Constitution translation is being prepared. Please try again later.', 'japanese_constitution_translation_pending'],
+        ['The Constitution translation is being prepared. Please try again later.', 'constitution_translation_pending'],
+        ['The Japanese Constitution translation is being prepared. Please try again later.', 'constitution_translation_pending'],
         ['This API only provides stake totals for this bucket, not individual DRep IDs.', 'drep_bucket_stake_totals_only'],
         ['This DRep is already registered. No transaction was built.', 'drep_already_registered'],
         ['This browser does not support notifications', 'browser_notifications_not_supported'],
@@ -719,6 +721,144 @@
     function getAutoTranslationKey(text) {
         const normalized = String(text || '').replace(/\s+/g, ' ').trim();
         return AUTO_TRANSLATION_KEYS.get(normalized) || '';
+    }
+
+    function getSpanishAutoTranslationValue(normalized) {
+        const approvedUnapprovedMatch = normalized.match(/^Approved\s+(.+?)\s+•\s+Unapproved\s+(.+)$/i);
+        if (approvedUnapprovedMatch) return `Aprobado ${approvedUnapprovedMatch[1]} • No aprobado ${approvedUnapprovedMatch[2]}`;
+
+        if (normalized.includes(' • ')) {
+            return normalized
+                .split(' • ')
+                .map(part => getAutoTranslationValue(part) || part)
+                .join(' • ');
+        }
+
+        if (normalized.includes(' · ')) {
+            return normalized
+                .split(' · ')
+                .map(part => getAutoTranslationValue(part) || part)
+                .join(' · ');
+        }
+
+        const fundMatch = normalized.match(/^Fund\s+(\d+)$/i);
+        if (fundMatch) return `Fondo ${fundMatch[1]}`;
+
+        const priceMatch = normalized.match(/^([A-Z0-9]+)\s+Price$/);
+        if (priceMatch) return `Precio ${priceMatch[1]}`;
+
+        const makeDrepMatch = normalized.match(/^Make\s+(.+)\s+your DRep$/i);
+        if (makeDrepMatch) return `Hacer que ${makeDrepMatch[1]} sea tu DRep`;
+
+        const closeDrepDelegationMatch = normalized.match(/^Close\s+(.+)\s+DRep delegation$/i);
+        if (closeDrepDelegationMatch) return `Cerrar delegación DRep de ${closeDrepDelegationMatch[1]}`;
+
+        const activeEpochMatch = normalized.match(/^Active epoch\s+(.+)$/i);
+        if (activeEpochMatch) return `Epoch activo ${activeEpochMatch[1]}`;
+
+        const daysMatch = normalized.match(/^(\d+)\s+days?$/i);
+        if (daysMatch) return `${daysMatch[1]} días`;
+
+        const hourMatch = normalized.match(/^(\d+)\s+hours?$/i);
+        if (hourMatch) return `${hourMatch[1]} horas`;
+
+        const resetInMatch = normalized.match(/^Reset in\s+(.+)$/i);
+        if (resetInMatch) return `Reset en ${getAutoTranslationValue(resetInMatch[1]) || resetInMatch[1]}`;
+
+        const epochCountMatch = normalized.match(/^(.+)\s+epochs$/i);
+        if (epochCountMatch) return `${epochCountMatch[1]} epochs`;
+
+        const closeAnyMatch = normalized.match(/^Close\s+(.+)$/i);
+        if (closeAnyMatch) return `Cerrar ${getAutoTranslationValue(closeAnyMatch[1]) || closeAnyMatch[1]}`;
+
+        const openAnyMatch = normalized.match(/^Open\s+(.+)$/i);
+        if (openAnyMatch) return `Abrir ${getAutoTranslationValue(openAnyMatch[1]) || openAnyMatch[1]}`;
+
+        const loadingMatch = normalized.match(/^Loading\s+(.+?)(\.\.\.)?$/i);
+        if (loadingMatch) return `Cargando ${getAutoTranslationValue(loadingMatch[1]) || loadingMatch[1]}...`;
+
+        const liveStakeMatch = normalized.match(/^Live stake\s+(.+)$/i);
+        if (liveStakeMatch) return `${translations.live_stake || 'Stake en vivo'} ${liveStakeMatch[1]}`;
+
+        const livePledgeMatch = normalized.match(/^Live pledge\s+(.+)$/i);
+        if (livePledgeMatch) return `${translations.live_pledge || 'Pledge en vivo'} ${livePledgeMatch[1]}`;
+
+        const companyIdsMatch = normalized.match(/^(\d[\d,]*)\s+Company IDs$/i);
+        if (companyIdsMatch) return `${companyIdsMatch[1]} IDs de empresa`;
+
+        const nextNclPeriodMatch = normalized.match(/^Next NCL period starts in epoch\s+(.+)$/i);
+        if (nextNclPeriodMatch) return `El próximo período NCL empieza en el epoch ${nextNclPeriodMatch[1]}`;
+
+        const askedReceivedUpdatingMatch = normalized.match(/^Asked\/received USD updating$/i);
+        if (askedReceivedUpdatingMatch) return 'Actualizando USD solicitado/recibido';
+
+        const askedReceivedMatch = normalized.match(/^Asked\s+(.+?)\s+•\s+Received\s+(.+)$/i);
+        if (askedReceivedMatch) return `Solicitado ${askedReceivedMatch[1]} • Recibido ${askedReceivedMatch[2]}`;
+
+        const relayMatch = normalized.match(/^Relay\s+(.+)$/i);
+        if (relayMatch) return `Relay ${relayMatch[1]}`;
+
+        const starchMinersMatch = normalized.match(/^(.+)\s+Starch Miners$/i);
+        if (starchMinersMatch) return `${starchMinersMatch[1]} mineros Starch`;
+
+        const proposerMatch = normalized.match(/^Proposer:\s*(.+)$/i);
+        if (proposerMatch && translations.proposer) return `${translations.proposer}: ${proposerMatch[1]}`;
+
+        const claimedFundsMatch = normalized.match(/^Claimed Funds\s+(.+)$/i);
+        if (claimedFundsMatch && translations.claimed_funds) return `${translations.claimed_funds} ${claimedFundsMatch[1]}`;
+
+        const unclaimedFundsMatch = normalized.match(/^Unclaimed Funds\s+(.+)$/i);
+        if (unclaimedFundsMatch && translations.unclaimed_funds) return `${translations.unclaimed_funds} ${unclaimedFundsMatch[1]}`;
+
+        const claimedMatch = normalized.match(/^Claimed\s+(.+)$/i);
+        if (claimedMatch) return `Reclamado ${claimedMatch[1]}`;
+
+        const notClaimedMatch = normalized.match(/^Not Claimed\s+(.+)$/i);
+        if (notClaimedMatch) return `No reclamado ${notClaimedMatch[1]}`;
+
+        const unclaimedMatch = normalized.match(/^Unclaimed\s+(.+)$/i);
+        if (unclaimedMatch) return `No reclamado ${unclaimedMatch[1]}`;
+
+        const votedMatch = normalized.match(/^Voted\s+(.+)$/i);
+        if (votedMatch) return `Votado ${votedMatch[1]}`;
+
+        const notVotedMatch = normalized.match(/^Not\s+voted\s+(.+)$/i);
+        if (notVotedMatch) return `No votado ${notVotedMatch[1]}`;
+
+        const notApplicableMatch = normalized.match(/^Not\s+applicable\s+(.+)$/i);
+        if (notApplicableMatch) return `No aplicable ${notApplicableMatch[1]}`;
+
+        const lastUpdatedMatch = normalized.match(/^Last Updated:\s+(.+)$/i);
+        if (lastUpdatedMatch) return `${translations.last_updated || 'Última actualización:'} ${lastUpdatedMatch[1]}`;
+
+        const cloudServiceMatch = normalized.match(/^Cloud Service:\s*(.+)$/i);
+        if (cloudServiceMatch) return `Servicio cloud: ${cloudServiceMatch[1]}`;
+
+        const drepVotedMatch = normalized.match(/^DRep voted\s+(.+)$/i);
+        if (drepVotedMatch) return `DRep votó ${getAutoTranslationValue(drepVotedMatch[1]) || drepVotedMatch[1]}`;
+
+        const totalAskMatch = normalized.match(/^Total Ask\s+(.+)$/i);
+        if (totalAskMatch) return `${translations.total_ask || 'Total solicitado'} ${totalAskMatch[1]}`;
+
+        const yesValueMatch = normalized.match(/^Yes\s+(.+)$/i);
+        if (yesValueMatch) return `${translations.yes || 'Sí'} ${yesValueMatch[1]}`;
+
+        const noValueMatch = normalized.match(/^No\s+(.+)$/i);
+        if (noValueMatch) return `${translations.no || 'No'} ${noValueMatch[1]}`;
+
+        const abstainValueMatch = normalized.match(/^Abstain\s+(.+)$/i);
+        if (abstainValueMatch) return `${translations.abstain || 'Abstenerse'} ${abstainValueMatch[1]}`;
+
+        const expiresEpochMatch = normalized.match(/^expires epoch\s+(.+)$/i);
+        if (expiresEpochMatch) return `expira epoch ${expiresEpochMatch[1]}`;
+
+        const epochExpiresMatch = normalized.match(/^Epoch\s+(.+?)\s+-\s+expires\s+(.+)$/i);
+        if (epochExpiresMatch) return `Epoch ${epochExpiresMatch[1]} - expira ${epochExpiresMatch[2]}`;
+
+        const countMatch = normalized.match(/^(\d+)\s+(admin|excluded|published raffles|proposals|projects|actions|entries|members|signers|delegators|pools|articles|DReps|stake keys excluded)$/i);
+        if (countMatch) return `${countMatch[1]} ${translateCountLabel(countMatch[2])}`;
+
+        return '';
     }
 
     function getAutoTranslationValue(text) {
@@ -1186,6 +1326,10 @@
 
             const countMatch = normalized.match(/^(\d+)\s+(admin|excluded|published raffles|proposals|projects|actions|entries|members|signers|delegators|pools|articles|DReps|stake keys excluded)$/i);
             if (countMatch) return `${countMatch[1]} ${translateCountLabel(countMatch[2])}`;
+        }
+
+        if (activeLanguage === 'es') {
+            return getSpanishAutoTranslationValue(normalized);
         }
 
         if (activeLanguage !== 'nl') {
@@ -1729,6 +1873,23 @@
             if (normalized === 'stake keys excluded') return '除外ステークキー';
             return label;
         }
+        if (activeLanguage === 'es') {
+            if (normalized === 'admin') return 'admin';
+            if (normalized === 'excluded') return 'excluidos';
+            if (normalized === 'published raffles') return 'sorteos publicados';
+            if (normalized === 'proposals') return 'propuestas';
+            if (normalized === 'projects') return 'proyectos';
+            if (normalized === 'actions') return 'acciones';
+            if (normalized === 'entries') return 'entradas';
+            if (normalized === 'members') return 'miembros';
+            if (normalized === 'signers') return 'firmantes';
+            if (normalized === 'delegators') return 'delegadores';
+            if (normalized === 'pools') return 'pools';
+            if (normalized === 'articles') return 'artículos';
+            if (normalized === 'dreps') return 'DReps';
+            if (normalized === 'stake keys excluded') return 'stake keys excluidas';
+            return label;
+        }
         if (normalized === 'admin') return 'admin';
         if (normalized === 'excluded') return 'uitgesloten';
         if (normalized === 'published raffles') return 'gepubliceerde raffles';
@@ -1752,6 +1913,12 @@
             if (normalized === 'pool data') return 'プールデータ';
             if (normalized === 'relays') return 'リレー';
             if (normalized === 'pools') return 'プール';
+            return phase;
+        }
+        if (language === 'es') {
+            if (normalized === 'pool data') return 'datos del pool';
+            if (normalized === 'relays') return 'relays';
+            if (normalized === 'pools') return 'pools';
             return phase;
         }
         if (normalized === 'pool data') return 'Pooldata';

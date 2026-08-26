@@ -30,6 +30,7 @@
             const translatedTitle = translateAssistantText(cleanTitle);
             const language = getAssistantLanguage();
             if (language === 'nl') return `Vraag iets over ${translatedTitle}.`;
+            if (language === 'es') return `Pregunta sobre ${translatedTitle}.`;
             if (language === 'ja') return `${translatedTitle}について質問してください。`;
             return `Ask about ${cleanTitle}.`;
         }
@@ -197,10 +198,10 @@
                 if (!payload.text) throw new Error('The Constitution document is empty.');
                 if (!content.isConnected) return;
                 content.textContent = '';
-                if (window.TDSPI18n?.getLanguage?.() === 'ja' && payload?._translation?.status === 'pending') {
+                if ((window.TDSPI18n?.getLanguage?.() || 'en') !== 'en' && payload?._translation?.status === 'pending') {
                     const pending = document.createElement('p');
                     pending.className = 'constitution-chat-status';
-                    setAssistantText(pending, 'The Japanese Constitution translation is being prepared. Please try again later.');
+                    setAssistantText(pending, 'The Constitution translation is being prepared. Please try again later.');
                     content.appendChild(pending);
                     return;
                 }
