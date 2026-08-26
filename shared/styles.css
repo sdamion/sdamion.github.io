@@ -219,18 +219,30 @@ th {
 
 /* Base Interactive Elements */
 button {
-    transition: all 0.3s ease;
-    cursor:pointer;
-    background-color: #0f766e;
-    color: #fff;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 5px;
+    min-width: 0;
+    max-width: 100%;
+    min-height: var(--tdsp-button-min-height, 38px);
+    border: var(--tdsp-button-border, 1px solid var(--line));
+    border-radius: var(--tdsp-button-radius, 8px);
+    padding: var(--tdsp-button-padding, 9px 14px);
+    background: var(--tdsp-button-bg, var(--control-surface));
+    color: var(--tdsp-button-color, var(--text));
+    font: inherit;
+    font-weight: var(--tdsp-button-weight, 800);
+    line-height: var(--tdsp-button-line-height, 1.25);
+    text-align: center;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: normal;
+    box-shadow: var(--tdsp-button-shadow, none);
+    cursor: pointer;
+    transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, opacity 0.18s ease;
 }
 
 button:hover {
-    background-color: #115e59;
-    transform: scale(1.02);
+    background: var(--tdsp-button-hover-bg, var(--control-hover-surface));
+    color: var(--tdsp-button-hover-color, var(--tdsp-button-color, var(--text)));
+    transform: none;
 }
 
 button:focus {
@@ -423,7 +435,9 @@ html {
 }
 
 .nav-button {
+    min-height: 0;
     border: 0;
+    padding: 7px 9px;
     background: transparent;
     font-family: inherit;
     cursor: pointer;
@@ -536,7 +550,9 @@ html {
 }
 
 .site-alerts-button {
+    min-height: 0;
     border: 0;
+    padding: 7px 9px;
     background: transparent;
     font-family: inherit;
     cursor: pointer;
@@ -617,7 +633,9 @@ html {
     display: grid;
     place-items: center;
     width: 26px;
+    min-width: 26px;
     height: 26px;
+    min-height: 26px;
     flex: 0 0 auto;
     border: 0;
     border-radius: 0;
@@ -687,6 +705,7 @@ html[data-theme="dark"] .theme-toggle:not([data-current-theme]) .theme-toggle-ic
     place-items: center;
     min-width: 26px;
     height: 26px;
+    min-height: 26px;
     padding: 0 2px;
     border: 0;
     border-radius: 999px;
@@ -1395,23 +1414,24 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     min-height: 28px;
     min-width: 108px;
     padding: 0 10px;
-    border: 0;
-    border-radius: 6px;
-    background: var(--accent);
-    color: var(--bg);
+    border: var(--tdsp-button-border, 1px solid var(--line));
+    border-radius: var(--tdsp-button-radius, 8px);
+    background: var(--tdsp-button-bg, var(--control-surface));
+    color: var(--tdsp-button-color, var(--text));
     font-size: 0.76rem;
     font-weight: 800;
-    line-height: 1;
+    line-height: var(--tdsp-button-line-height, 1.25);
     text-align: center;
-    white-space: nowrap;
+    white-space: normal;
+    overflow-wrap: anywhere;
 }
 
 .tdsp-identity-action-button:hover,
 .tdsp-identity-action-button:focus-visible,
 .pool-id-stake-button:hover,
 .pool-id-stake-button:focus-visible {
-    background: var(--accent-strong);
-    color: var(--bg);
+    background: var(--tdsp-button-hover-bg, var(--control-hover-surface));
+    color: var(--tdsp-button-hover-color, var(--tdsp-button-color, var(--text)));
     transform: translateY(-50%);
 }
 
@@ -1444,17 +1464,6 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 .pool-id-line > .pool-id-stake-button:focus-visible,
 .pool-id-line > .pool-id-copy-button:hover {
     transform: none;
-}
-
-:root[data-theme="light"] .pool-id-stake-button,
-:root:not([data-theme="dark"]) .pool-id-stake-button {
-    color: #050807;
-}
-
-:root[data-theme="dark"] .pool-id-stake-button,
-:root[data-theme="dark"] .pool-id-stake-button:hover,
-:root[data-theme="dark"] .pool-id-stake-button:focus-visible {
-    color: #fff;
 }
 
 .pool-relays {
@@ -2585,18 +2594,13 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     margin-bottom: 14px;
     align-items: center;
     justify-content: center;
-    background: var(--accent);
-    border-color: var(--accent);
-    color: #fff;
     text-align: center;
     text-decoration: none;
 }
 
 .governance-become-drep-button:hover,
 .governance-become-drep-button:focus-visible {
-    background: var(--accent-strong);
-    border-color: var(--accent-strong);
-    color: #fff;
+    transform: none;
 }
 
 .governance-drep-registration-form,
@@ -5183,4 +5187,173 @@ html[data-theme="dark"] input {
 .governance-top-drep-correlation-row:focus-visible {
     background: var(--governance-card-hover-bg);
     outline: none;
+}
+
+.governance-menu-overlay button:not(.governance-close):not(.governance-back-to-root):not(.pool-copy-icon-button):not(.pool-id-copy-button):not(.pool-delegator-copy-button):not(.governance-action-id-copy-button):not(.governance-detail-copy-button):not(.governance-drep-copy-button),
+.raffle-page button:not(.governance-close):not(.governance-back-to-root):not(.pool-copy-icon-button):not(.pool-id-copy-button):not(.pool-delegator-copy-button):not(.governance-action-id-copy-button):not(.governance-detail-copy-button):not(.governance-drep-copy-button),
+.stake-continue-button,
+.tdsp-identity-action-button,
+.pool-id-stake-button,
+.pool-notification-button,
+.governance-vote-button,
+.governance-vote-choice,
+.governance-vote-submit,
+.governance-vote-secondary,
+.governance-become-drep-button,
+.governance-create-metadata-button,
+.governance-drep-govtool-link,
+.governance-overlay-action-button,
+.governance-overlay-bot-button,
+.governance-action-buttons button,
+.external-site-warning-actions button,
+.constitution-chat-form-actions button,
+.wallet-list button.wallet-option {
+    min-width: 0;
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: normal;
+    text-align: center;
+    line-height: 1.25;
+}
+
+button:disabled,
+button[aria-disabled="true"],
+.governance-vote-button:disabled,
+.governance-vote-secondary:disabled,
+.governance-become-drep-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.62;
+}
+
+.governance-action-buttons {
+    min-width: 0;
+}
+
+.governance-action-buttons .governance-proposal-action-button {
+    min-width: 0;
+}
+
+.overlay-dialog-header .governance-overlay-action-button,
+.overlay-dialog-header .governance-overlay-bot-button {
+    justify-content: center;
+    min-width: 0;
+    max-width: min(180px, 34vw);
+    height: auto;
+    padding-top: 8px;
+    padding-bottom: 8px;
+}
+
+@media (max-width: 620px) {
+    .governance-action-buttons {
+        flex-wrap: wrap;
+    }
+
+    .governance-action-buttons .governance-proposal-action-button {
+        flex-basis: min(100%, 9rem);
+    }
+
+    .overlay-dialog-header .governance-overlay-action-button,
+    .overlay-dialog-header .governance-overlay-bot-button {
+        max-width: 30vw;
+        font-size: 0.74rem;
+    }
+}
+
+:where(
+    .governance-close,
+    .governance-back-to-root,
+    .pool-copy-icon-button,
+    .pool-id-copy-button,
+    .pool-delegator-copy-button,
+    .governance-action-id-copy-button,
+    .governance-detail-copy-button,
+    .governance-drep-copy-button
+) {
+    --tdsp-icon-button-size: 38px;
+    --tdsp-icon-button-radius: 8px;
+    --tdsp-icon-button-border: 1px solid var(--line);
+    --tdsp-icon-button-bg: var(--overlay-surface-strong);
+    --tdsp-icon-button-color: var(--text);
+    position: var(--tdsp-icon-button-position, static);
+    display: grid;
+    width: var(--tdsp-icon-button-size);
+    min-width: var(--tdsp-icon-button-size);
+    height: var(--tdsp-icon-button-size);
+    min-height: var(--tdsp-icon-button-size);
+    flex: 0 0 var(--tdsp-icon-button-size);
+    place-items: center;
+    border: var(--tdsp-icon-button-border);
+    border-radius: var(--tdsp-icon-button-radius);
+    padding: 0;
+    background: var(--tdsp-icon-button-bg);
+    color: var(--tdsp-icon-button-color);
+    font: inherit;
+    font-size: var(--tdsp-icon-button-font-size, 0.9rem);
+    font-weight: 800;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    overflow-wrap: normal;
+    text-decoration: none;
+    box-shadow: none;
+}
+
+:where(
+    .governance-close,
+    .governance-back-to-root,
+    .pool-copy-icon-button,
+    .pool-id-copy-button,
+    .pool-delegator-copy-button,
+    .governance-action-id-copy-button,
+    .governance-detail-copy-button,
+    .governance-drep-copy-button
+):hover,
+:where(
+    .governance-close,
+    .governance-back-to-root,
+    .pool-copy-icon-button,
+    .pool-id-copy-button,
+    .pool-delegator-copy-button,
+    .governance-action-id-copy-button,
+    .governance-detail-copy-button,
+    .governance-drep-copy-button
+):focus-visible {
+    background: var(--tdsp-icon-button-hover-bg, var(--control-hover-surface));
+    color: var(--tdsp-icon-button-hover-color, var(--tdsp-icon-button-color));
+    transform: var(--tdsp-icon-button-hover-transform, none);
+}
+
+:where(
+    .pool-copy-icon-button,
+    .pool-id-copy-button,
+    .pool-delegator-copy-button,
+    .governance-action-id-copy-button,
+    .governance-detail-copy-button,
+    .governance-drep-copy-button
+) {
+    --tdsp-icon-button-size: 28px;
+    --tdsp-icon-button-radius: 6px;
+    --tdsp-icon-button-border: 0;
+    --tdsp-icon-button-bg: var(--button-surface);
+    --tdsp-icon-button-hover-bg: var(--surface);
+    --tdsp-icon-button-color: var(--muted);
+    --tdsp-icon-button-hover-color: var(--text);
+}
+
+.governance-back-to-root {
+    --tdsp-icon-button-color: var(--accent-strong);
+}
+
+.pool-copy-icon-button,
+.pool-id-copy-button,
+.governance-action-id-copy-button,
+.governance-drep-copy-button {
+    --tdsp-icon-button-position: absolute;
+}
+
+.pool-id-copy-button,
+.governance-drep-copy-button {
+    --tdsp-icon-button-hover-transform: translateY(-50%);
 }
