@@ -10,15 +10,13 @@
         }
 
         function withCurrentLanguage(path) {
-            const language = getCurrentLanguage();
-            if (!language || language === 'en') return path;
+            const language = getCurrentLanguage() || 'en';
             const separator = path.includes('?') ? '&' : '?';
             return `${path}${separator}lang=${encodeURIComponent(language)}`;
         }
 
         function addCurrentLanguage(params = {}) {
-            const language = getCurrentLanguage();
-            if (!language || language === 'en') return params;
+            const language = getCurrentLanguage() || 'en';
             return { ...params, lang: language };
         }
 

@@ -1465,14 +1465,6 @@ function closePoolMenuOverlay(id, restoreFocus = true) {
     if (restoreFocus && returnFocus?.isConnected) returnFocus.focus();
 }
 
-function createPoolOverlayRow({ title = '', titleClassName = '', details = [] }) {
-    return window.TDSPRuntime.createUniversalOverlayRow({
-        title,
-        titleClassName,
-        details
-    });
-}
-
 function shortenStakeAddress(address) {
     return window.TDSPRuntime.shortenMiddle(address);
 }

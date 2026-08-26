@@ -139,18 +139,15 @@ function formatDate(value) {
 }
 
 function createCopyButton(value, label) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'pool-delegator-copy-button';
-    button.textContent = '⧉';
-    button.setAttribute('aria-label', t(`Copy ${label}`));
-    button.title = t(`Copy ${label}`);
-    button.addEventListener('click', async () => {
-        await navigator.clipboard.writeText(String(value || ''));
-        button.textContent = t('Copied');
-        window.setTimeout(() => { button.textContent = '⧉'; }, 1200);
+    return window.TDSPRuntime.createCopyButton(value, label, {
+        className: 'pool-delegator-copy-button',
+        ariaLabel: t(`Copy ${label}`),
+        title: t(`Copy ${label}`),
+        bindOptions: {
+            copiedText: t('Copied'),
+            resetMs: 1200
+        }
     });
-    return button;
 }
 
 function addressLine(address, label = 'stake address') {

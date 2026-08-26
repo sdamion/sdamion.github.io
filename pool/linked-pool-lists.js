@@ -14,14 +14,6 @@
         weed: 'https://x.com/CardanoWEED'
     });
 
-    function createPoolOverlayRow({ title = '', titleClassName = '', details = [] }) {
-        return window.TDSPRuntime.createUniversalOverlayRow({
-            title,
-            titleClassName,
-            details
-        });
-    }
-
     function createSpoDirectoryLookup(payload) {
         const byPoolId = new Map();
         const byName = new Map();
@@ -50,7 +42,7 @@
     }
 
     function createStarchPoolFallbackCard(pool, { openExternalSiteWarning } = {}) {
-        const row = createPoolOverlayRow({
+        const row = window.TDSPRuntime.createUniversalOverlayRow({
             title: pool?.name || 'No Name',
             titleClassName: 'pool-delegator-handle',
             details: [String(pool?.ticker || '').toUpperCase() || 'N/A']
@@ -131,12 +123,10 @@
         idLine.appendChild(id);
 
         if (poolId) {
-            const copy = document.createElement('button');
-            copy.className = 'pool-delegator-copy-button';
-            copy.type = 'button';
-            copy.textContent = '⧉';
-            copy.setAttribute('aria-label', `Copy Mithril signer pool ID ${index + 1}`);
-            window.TDSPRuntime?.bindCopyButton?.(copy, poolId, { preventDefault: false, stopPropagation: false });
+            const copy = window.TDSPRuntime.createCopyButton(poolId, `Mithril signer pool ID ${index + 1}`, {
+                className: 'pool-delegator-copy-button',
+                bindOptions: { preventDefault: false, stopPropagation: false }
+            });
             idLine.appendChild(copy);
         }
 
@@ -144,7 +134,7 @@
         stake.className = 'pool-delegator-amount';
         stake.textContent = window.TDSPRuntime.formatLovelaceAmount(getMithrilSignerStake(signer));
 
-        const row = createPoolOverlayRow({
+        const row = window.TDSPRuntime.createUniversalOverlayRow({
             title: signer?.display_name || signer?.name || 'No Name',
             titleClassName: 'pool-delegator-handle',
             details: [idLine, stake]

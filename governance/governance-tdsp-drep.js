@@ -89,16 +89,14 @@
             }
             if (walletAddress) addressText.title = walletAddress;
 
-            const amount = createDelegatorAmount(getDelegatorAmount(delegator));
+            const amount = runtime.createDelegatorAmount(getDelegatorAmount(delegator));
 
             addressLine.appendChild(addressText);
             if (walletAddress) {
-                const copy = document.createElement('button');
-                copy.className = 'pool-delegator-copy-button';
-                copy.type = 'button';
-                copy.textContent = '⧉';
-                copy.setAttribute('aria-label', `Copy DRep delegator wallet address ${index + 1}`);
-                runtime?.bindCopyButton?.(copy, walletAddress, { preventDefault: false });
+                const copy = runtime.createCopyButton(walletAddress, `DRep delegator wallet address ${index + 1}`, {
+                    className: 'pool-delegator-copy-button',
+                    bindOptions: { preventDefault: false }
+                });
                 addressLine.appendChild(copy);
             }
             content.append(addressLine, amount);
@@ -141,41 +139,6 @@
 
         function getDelegatorAmount(delegator) {
             return runtime.getLovelaceAmount(delegator);
-        }
-
-        function getAdaUsdPrice() {
-            const directPrice = Number(window.TDSPPrices?.getLatest?.()?.ada_usd);
-            if (Number.isFinite(directPrice) && directPrice > 0) return directPrice;
-
-            const priceText = String(document.getElementById('ada-price')?.textContent || '').replace(/[^0-9.]/g, '');
-            const parsedPrice = Number(priceText);
-            return Number.isFinite(parsedPrice) && parsedPrice > 0 ? parsedPrice : NaN;
-        }
-
-        function formatDelegatorUsd(lovelace) {
-            const price = getAdaUsdPrice();
-            const ada = Number(lovelace) / 1_000_000;
-            if (!Number.isFinite(price) || !Number.isFinite(ada)) return '';
-            return `≈ $${new Intl.NumberFormat('en-US', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            }).format(ada * price)}`;
-        }
-
-        function createDelegatorAmount(lovelace) {
-            const amount = document.createElement('span');
-            amount.className = 'pool-delegator-amount';
-            amount.appendChild(document.createTextNode(runtime.formatLovelaceAmount(lovelace)));
-
-            const usdValue = formatDelegatorUsd(lovelace);
-            if (usdValue) {
-                const usd = document.createElement('small');
-                usd.className = 'pool-delegator-usd';
-                usd.textContent = usdValue;
-                amount.appendChild(usd);
-            }
-
-            return amount;
         }
 
         function compareBigIntDescending(left, right) {

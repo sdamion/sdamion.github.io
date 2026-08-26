@@ -332,13 +332,22 @@ function setupGovernanceLanguageRefresh() {
         window.clearTimeout(governanceLanguageRefreshTimer);
         governanceLanguageRefreshTimer = window.setTimeout(() => {
             proposalDetailsCache.clear();
+            catalystProposalDetailsCache.clear();
             cipDirectoryPromise = null;
             catalystProposalDirectoryPromise = null;
+            catalystFundDirectoryPromise = null;
+            catalystBusinessPromise = null;
+            fundingRecipientsPromise = null;
+            fundingOverviewPromise = null;
+            treasuryPromise = null;
+            treasuryAdministratorsPromise = null;
             governanceState = null;
             governanceGroupsState = null;
             lastActiveRenderSignature = '';
             loadGovernanceActions().catch(() => {});
             loadCipDirectory().catch(() => {});
+            loadCatalystFundDirectory().catch(() => {});
+            loadTreasuryData().catch(() => {});
         }, 50);
     });
 }

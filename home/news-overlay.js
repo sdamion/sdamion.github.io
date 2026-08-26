@@ -1,12 +1,4 @@
 (function () {
-    function createNewsOverlayRow({ title = '', titleClassName = '', details = [] }) {
-        return window.TDSPRuntime.createUniversalOverlayRow({
-            title,
-            titleClassName,
-            details
-        });
-    }
-
     function getExternalHttpUrl(value) {
         try {
             const url = new URL(value, window.location.href);
@@ -53,7 +45,7 @@
             const dateText = Number.isFinite(publishedAt)
                 ? new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium' }).format(publishedAt)
                 : '';
-            const row = createNewsOverlayRow({
+            const row = window.TDSPRuntime.createUniversalOverlayRow({
                 title: String(item?.title || 'Untitled Cardano news'),
                 titleClassName: 'crypto-news-list-title',
                 details: [
