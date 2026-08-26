@@ -577,6 +577,41 @@
         });
     }
 
+    function createUniversalOverlayRow({ title = '', titleClassName = '', details = [], rowClassName = '', contentClassName = '' } = {}) {
+        const row = document.createElement('div');
+        row.className = rowClassName || 'pool-delegator-row governance-menu-card';
+
+        const content = document.createElement('div');
+        content.className = contentClassName || 'pool-delegator-content';
+
+        if (title) {
+            appendUniversalTileContent(content, {
+                title,
+                titleClassName: titleClassName || 'pool-delegator-address',
+                detailItems: details.map(detail => (
+                    detail instanceof Node ? detail : {
+                        text: detail,
+                        className: 'pool-delegator-address'
+                    }
+                ))
+            });
+        } else {
+            details.filter(Boolean).forEach(detail => {
+                if (detail instanceof Node) {
+                    content.appendChild(detail);
+                    return;
+                }
+                const text = document.createElement('span');
+                text.className = 'pool-delegator-address';
+                setAutoTranslatedText(text, detail);
+                content.appendChild(text);
+            });
+        }
+
+        row.appendChild(content);
+        return row;
+    }
+
     function normalizeUniversalTileLabels(root = document) {
         const tileSelector = '.governance-menu-card, .pool-summary-clickable';
         root.querySelectorAll?.(tileSelector).forEach(tile => {
@@ -630,6 +665,7 @@
         getDelegatorSearchText,
         formatReadableLabel,
         appendUniversalTileContent,
+        createUniversalOverlayRow,
         normalizeUniversalTileLabels
     });
 }());

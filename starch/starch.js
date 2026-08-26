@@ -591,11 +591,19 @@ async function renderStarchCompanyDetail(content, company, summary, options = {}
 
 function createStarchStatTile(value, label) {
     const tile = document.createElement('div');
-    const strong = document.createElement('strong');
-    setStarchAutoTranslatedText(strong, value);
-    const span = document.createElement('span');
-    setStarchAutoTranslatedText(span, label);
-    tile.append(strong, span);
+    if (window.TDSPRuntime?.appendUniversalTileContent) {
+        window.TDSPRuntime.appendUniversalTileContent(tile, {
+            value,
+            title: label,
+            translate: setStarchAutoTranslatedText
+        });
+    } else {
+        const strong = document.createElement('strong');
+        setStarchAutoTranslatedText(strong, value);
+        const span = document.createElement('span');
+        setStarchAutoTranslatedText(span, label);
+        tile.append(strong, span);
+    }
     return tile;
 }
 

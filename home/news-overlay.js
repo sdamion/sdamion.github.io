@@ -1,33 +1,10 @@
 (function () {
     function createNewsOverlayRow({ title = '', titleClassName = '', details = [] }) {
-        const row = document.createElement('div');
-        row.className = 'pool-delegator-row governance-menu-card';
-
-        const content = document.createElement('div');
-        content.className = 'pool-delegator-content';
-
-        if (title) {
-            const titleElement = document.createElement('strong');
-            titleElement.className = titleClassName || 'pool-delegator-address';
-            titleElement.textContent = title;
-            content.appendChild(titleElement);
-        }
-
-        details.forEach(detail => {
-            if (!detail) return;
-            if (detail instanceof Node) {
-                content.appendChild(detail);
-                return;
-            }
-
-            const text = document.createElement('span');
-            text.className = 'pool-delegator-address';
-            text.textContent = String(detail);
-            content.appendChild(text);
+        return window.TDSPRuntime.createUniversalOverlayRow({
+            title,
+            titleClassName,
+            details
         });
-
-        row.appendChild(content);
-        return row;
     }
 
     function getExternalHttpUrl(value) {

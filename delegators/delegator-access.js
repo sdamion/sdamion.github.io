@@ -338,15 +338,15 @@ function createPrizeCard(asset) {
     const imageUrl = resolvePrizeImageUrl(getPrizeImageSource(asset));
     if (imageUrl) card.classList.add('has-prize-image');
 
-    const title = document.createElement('strong');
-    title.className = 'governance-card-title';
-    title.textContent = String(asset?.name || asset?.ticker || asset?.fingerprint || 'Token');
-
-    const amount = document.createElement('span');
-    amount.className = 'governance-card-detail';
-    amount.textContent = formatPrizeLine(asset);
-
-    card.append(title, amount);
+    window.TDSPRuntime?.appendUniversalTileContent?.(card, {
+        title: String(asset?.name || asset?.ticker || asset?.fingerprint || 'Token'),
+        titleClassName: 'governance-card-title',
+        detailItems: [{
+            text: formatPrizeLine(asset),
+            className: 'governance-card-detail'
+        }],
+        translate: setTranslatedText
+    });
 
     if (asset?.asset_id) {
         const link = document.createElement('a');
