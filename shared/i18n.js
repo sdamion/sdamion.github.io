@@ -861,6 +861,15 @@
         const abstainValueMatch = normalized.match(/^Abstain\s+(.+)$/i);
         if (abstainValueMatch) return `${translations.abstain || 'Abstenerse'} ${abstainValueMatch[1]}`;
 
+        const mostInSyncMatch = normalized.match(/^Most in sync with\s+(.+?)\s+-\s+(.+?)\s+\((.+?)\/(.+?)\s+shared votes\)$/i);
+        if (mostInSyncMatch) {
+            return `Más sincronizado con ${mostInSyncMatch[1]} - ${mostInSyncMatch[2]} (${mostInSyncMatch[3]}/${mostInSyncMatch[4]} votos compartidos)`;
+        }
+
+        if (/^No shared explicit votes found$/i.test(normalized)) {
+            return 'No se encontraron votos explícitos compartidos';
+        }
+
         const expiresEpochMatch = normalized.match(/^expires epoch\s+(.+)$/i);
         if (expiresEpochMatch) return `expira epoch ${expiresEpochMatch[1]}`;
 
