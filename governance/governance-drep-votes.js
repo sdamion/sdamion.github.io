@@ -142,7 +142,7 @@
 
         async function loadRationale(vote, { proposalId, drepId, text, content }) {
             if (!proposalId || !drepId) throw new Error('Missing DRep vote rationale lookup data');
-            const payload = await fetchJson(getProposalRationaleUrl(proposalId, drepId), { cache: 'no-store' });
+            const payload = await fetchJson(getFreshRationaleUrl(proposalId, drepId), { cache: 'no-store' });
             if (!text.isConnected) return;
 
             applyLoadedRationalePayload(vote, payload, { content });
@@ -163,7 +163,7 @@
             for (let attempt = 0; attempt < RATIONALE_TRANSLATION_POLL_LIMIT; attempt += 1) {
                 await delay(RATIONALE_TRANSLATION_POLL_MS);
                 if (!text.isConnected) return;
-                const payload = await fetchJson(getProposalRationaleUrl(proposalId, drepId), { cache: 'no-store' });
+                const payload = await fetchJson(getFreshRationaleUrl(proposalId, drepId), { cache: 'no-store' });
                 if (!text.isConnected) return;
                 applyLoadedRationalePayload(vote, payload, { content });
                 if (payload?._translation?.status === 'ready') {
@@ -192,6 +192,12 @@
 
         function delay(ms) {
             return new Promise(resolve => window.setTimeout(resolve, ms));
+        }
+
+        function getFreshRationaleUrl(proposalId, drepId) {
+            const url = getProposalRationaleUrl(proposalId, drepId);
+            const separator = url.includes('?') ? '&' : '?';
+            return `${url}${separator}_rationalePoll=${Date.now()}`;
         }
 
         function getRationaleTranslationPendingMessage() {
