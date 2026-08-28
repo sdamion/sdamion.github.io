@@ -26,6 +26,9 @@
         getProposalTitle,
         removeMenuOverlay
     }) {
+        const RATIONALE_TRANSLATION_POLL_LIMIT = 60;
+        const RATIONALE_TRANSLATION_POLL_MS = 5000;
+
         function createRationaleButton(vote, context = {}) {
             if (!vote || !context?.proposal?.proposal_id && !vote?.proposal_id && !vote?.proposalId && !vote?.gov_action_id) return null;
             if (!getDrepIdentifier(vote) && !context?.drepId) return null;
@@ -142,6 +145,36 @@
             const payload = await fetchJson(getProposalRationaleUrl(proposalId, drepId), { cache: 'no-store' });
             if (!text.isConnected) return;
 
+            applyLoadedRationalePayload(vote, payload, { content });
+            const rationale = getRationaleText(vote);
+            if (rationale) {
+                setAutoTranslatedText(text, rationale);
+            } else {
+                setAutoTranslatedText(text, 'No on-chain rationale metadata found for this DRep vote.');
+            }
+
+            if (payload?._translation?.status === 'pending' && rationale) {
+                setAutoTranslatedText(text, getRationaleTranslationPendingMessage());
+                pollRationaleTranslation(vote, { proposalId, drepId, text, content }).catch(() => {});
+            }
+        }
+
+        async function pollRationaleTranslation(vote, { proposalId, drepId, text, content }) {
+            for (let attempt = 0; attempt < RATIONALE_TRANSLATION_POLL_LIMIT; attempt += 1) {
+                await delay(RATIONALE_TRANSLATION_POLL_MS);
+                if (!text.isConnected) return;
+                const payload = await fetchJson(getProposalRationaleUrl(proposalId, drepId), { cache: 'no-store' });
+                if (!text.isConnected) return;
+                applyLoadedRationalePayload(vote, payload, { content });
+                if (payload?._translation?.status === 'ready') {
+                    const rationale = getRationaleText(vote);
+                    setAutoTranslatedText(text, rationale || 'No on-chain rationale metadata found for this DRep vote.');
+                    return;
+                }
+            }
+        }
+
+        function applyLoadedRationalePayload(vote, payload, { content }) {
             if (payload?.vote) {
                 const voteRows = Array.from(content.querySelectorAll('.governance-detail-row'));
                 const hasVoteRow = voteRows.some(row => row.textContent.includes('Vote'));
@@ -151,10 +184,18 @@
             appendTransactionLinkRow(content, getTransactionId(vote));
             vote.tx_metadata = payload?.metadata || vote.tx_metadata;
             vote.onchain_metadata = payload?.metadata || vote.onchain_metadata;
+            vote.anchor_metadata = payload?.anchor_metadata || vote.anchor_metadata;
+            vote.anchor_rationale = payload?.rationale_source === 'anchor' ? payload?.rationale || vote.anchor_rationale : vote.anchor_rationale;
             vote.rationale = payload?.rationale || vote.rationale;
+            vote._translation = payload?._translation || vote._translation;
+        }
 
-            const rationale = getRationaleText(vote);
-            setAutoTranslatedText(text, rationale || 'No on-chain rationale metadata found for this DRep vote.');
+        function delay(ms) {
+            return new Promise(resolve => window.setTimeout(resolve, ms));
+        }
+
+        function getRationaleTranslationPendingMessage() {
+            return 'Translating vote rationale to selected language...';
         }
 
         function getRationaleText(vote) {

@@ -83,9 +83,9 @@
 
         function proposalDrepRationale(proposalId, drepId) {
             if (isLocalPreview) {
-                return withParams(endpoints.localProposalRationale, { proposalId, drepId });
+                return withParams(endpoints.localProposalRationale, addCurrentLanguage({ proposalId, drepId }));
             }
-            return `${endpoints.proposalRationaleBase}/${encodeURIComponent(proposalId)}/drep/${encodeURIComponent(drepId)}/rationale`;
+            return withCurrentLanguage(`${endpoints.proposalRationaleBase}/${encodeURIComponent(proposalId)}/drep/${encodeURIComponent(drepId)}/rationale`);
         }
 
         function committeeInfo() {

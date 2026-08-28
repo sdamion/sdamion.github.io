@@ -3,9 +3,9 @@
     const DEFAULT_LANGUAGE = 'en';
     const LANGUAGE_CONFIG = Object.freeze({
         en: { label: 'English', flag: '🇺🇸' },
-        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20260825-lace-account-change' },
-        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20260826-spanish' },
-        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20260825-lace-account-change' }
+        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20260828-rationale-translation' },
+        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20260828-rationale-translation' },
+        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20260828-rationale-translation' }
     });
     const TRANSLATION_ATTR = 'data-i18n';
     const TRANSLATION_ORIGINAL_ATTR = 'data-i18n-original';
@@ -304,6 +304,7 @@
         ['Loading DRep votes...', 'loading_drep_votes'],
         ['Loading DReps…', 'loading_dreps'],
         ['Loading vote rationale...', 'loading_vote_rationale'],
+        ['Translating vote rationale to selected language...', 'translating_vote_rationale'],
         ['Loading Nakamoto coefficients...', 'loading_nakamoto'],
         ['Loading SPO data...', 'loading_spo_data'],
         ['Loading SPO details...', 'loading_spo_details'],
