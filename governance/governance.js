@@ -7140,6 +7140,10 @@ function closeSpoStatusListOverlay() {
 }
 
 function getSpoActivityLabel(spo) {
+    if (String(spo?.status || '').toLowerCase() === 'retired') {
+        const epoch = Number(spo?.retiring_epoch);
+        return Number.isFinite(epoch) ? `Retired epoch ${epoch}` : 'Retired';
+    }
     if (spo?.operator_group_active === true) return 'Active Relay via operator group';
     if (spo?.active === true) return 'Active Relay';
     if (!hasSpoAdvertisedRelays(spo)) return 'Unknown Relay';
