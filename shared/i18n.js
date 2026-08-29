@@ -372,6 +372,7 @@
         ['No prize tokens are currently in the raffle wallet.', 'no_prize_tokens'],
         ['No raffle results have been published yet.', 'no_raffle_results'],
         ['No registered SPOs are available.', 'no_registered_spos'],
+        ['No retired SPOs are available.', 'no_retired_spos'],
         ['No stake address was found in this wallet. No transaction was built.', 'no_stake_address_wallet'],
         ['No stake keys are excluded.', 'no_stake_keys_excluded'],
         ['On-chain proof', 'on_chain_proof'],

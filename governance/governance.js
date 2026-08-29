@@ -6276,7 +6276,8 @@ function openRetiredSpoDirectoryOverlay(returnFocus) {
         const retired = Array.isArray(payload?.retired_spos) ? payload.retired_spos : [];
         renderSpoDirectory(panel, retired, {
             showChart: false,
-            combineOperators: false
+            combineOperators: false,
+            emptyMessage: 'No retired SPOs are available.'
         });
         updateGovernanceMenuHeaderMeta(
             'governance-retired-spo-directory-overlay',
@@ -6757,7 +6758,7 @@ function renderSpoDirectory(container, spos, options = {}) {
     if (!spos.length) {
         const message = document.createElement('p');
         message.className = 'small-text';
-        setGovernanceAutoTranslatedText(message, 'No registered SPOs are available.');
+        setGovernanceAutoTranslatedText(message, options.emptyMessage || 'No registered SPOs are available.');
         container.appendChild(message);
         return;
     }
