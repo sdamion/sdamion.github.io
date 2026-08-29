@@ -94,6 +94,7 @@
         ['Catalyst proposal context', 'catalyst_proposal_context'],
         ['Catalyst Pilot 2026', 'catalyst_pilot_2026'],
         ['Catalyst Pilot 2026 could not be opened.', 'catalyst_pilot_2026_could_not_open'],
+        ['Pilot 2026 data could not be loaded', 'pilot_2026_data_could_not_load'],
         ['Catalyst/Treasury Funding', 'catalyst_treasury_funding'],
         ['Catalyst/Treasury funding', 'catalyst_treasury_funding'],
         ['Catalyst/Treasury Funding Claimed', 'catalyst_treasury_funding_claimed'],

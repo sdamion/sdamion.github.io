@@ -1698,6 +1698,7 @@ async function openCatalystFundsOverlay(returnFocus = document.activeElement) {
     let proposals = [];
     let pilotProposals = [];
     let pilotPayload = null;
+    let pilotLoadError = '';
     let approvedGovernanceActions = [];
     let unapprovedGovernanceActions = [];
     let fundingChart = null;
@@ -1735,6 +1736,8 @@ async function openCatalystFundsOverlay(returnFocus = document.activeElement) {
             }
             if (pilotPayload?.proposal_count || pilotProposals.length) {
                 panel.appendChild(createCatalystPilot2026Card(pilotPayload, pilotProposals));
+            } else if (pilotLoadError) {
+                panel.appendChild(createCatalystPilot2026UnavailableCard(pilotLoadError));
             }
             funds.forEach(fund => {
                 panel.appendChild(createCatalystFundCard(fund));
@@ -1779,7 +1782,9 @@ async function openCatalystFundsOverlay(returnFocus = document.activeElement) {
         const [payload, proposalPayload, pilotDirectoryPayload, businessPayload, fundingOverviewPayload] = await Promise.all([
             catalystFundDirectoryState || loadCatalystFundDirectory(),
             catalystProposalDirectoryState || fetchCatalystProposalDirectoryPayload(),
-            catalystPilot2026State || fetchCatalystPilot2026Payload().catch(() => null),
+            catalystPilot2026State || fetchCatalystPilot2026Payload().catch(error => ({
+                __pilotError: error?.message || 'Catalyst Pilot 2026 could not be loaded.'
+            })),
             catalystBusinessState || fetchCatalystBusinessPayload().catch(() => null),
             fundingOverviewState || fetchFundingOverviewPayload().catch(() => null)
         ]);
@@ -1789,10 +1794,17 @@ async function openCatalystFundsOverlay(returnFocus = document.activeElement) {
         proposals = Array.isArray(proposalPayload?.proposals)
             ? proposalPayload.proposals
             : [];
-        pilotPayload = pilotDirectoryPayload;
-        pilotProposals = Array.isArray(pilotDirectoryPayload?.proposals)
-            ? pilotDirectoryPayload.proposals
-            : [];
+        if (pilotDirectoryPayload?.__pilotError) {
+            pilotPayload = null;
+            pilotProposals = [];
+            pilotLoadError = pilotDirectoryPayload.__pilotError;
+        } else {
+            pilotPayload = pilotDirectoryPayload;
+            pilotProposals = Array.isArray(pilotDirectoryPayload?.proposals)
+                ? pilotDirectoryPayload.proposals
+                : [];
+            pilotLoadError = '';
+        }
         approvedGovernanceActions = getApprovedGovernanceFundingActions();
         unapprovedGovernanceActions = getUnapprovedGovernanceFundingActions();
         const overlayTotals = getCatalystTreasuryFundingOverlayTotals(funds, approvedGovernanceActions);
@@ -2087,6 +2099,21 @@ function createCatalystPilot2026Card(payload, proposals = []) {
         detailItems: [
             campaign.status ? `Status ${campaign.status}` : 'Current Catalyst pilot proposals'
         ]
+    });
+    return card;
+}
+
+function createCatalystPilot2026UnavailableCard(message) {
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'governance-card governance-menu-card';
+    card.disabled = true;
+    card.dataset.searchText = 'Catalyst Pilot 2026';
+    window.TDSPRuntime?.appendUniversalTileContent?.(card, {
+        title: 'Catalyst Pilot 2026',
+        primaryText: 'Unavailable',
+        contextItems: ['Pilot 2026 data could not be loaded'],
+        detailItems: [message]
     });
     return card;
 }
