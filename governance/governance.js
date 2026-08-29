@@ -403,6 +403,7 @@ function setupGovernanceMenuCards() {
         ['gov-catalyst-proposals-card', openCatalystFundsOverlay],
         ['gov-cips-card', openCipDirectoryOverlay],
         ['gov-spo-card', openSpoDirectoryOverlay],
+        ['retired-spo-card', event => openRetiredSpoDirectoryOverlay(event?.currentTarget)],
         ['spo-nakamoto-card', event => openSpoNakamotoOverlay(event?.currentTarget)],
         ['gov-committee-card', openConstitutionalCommitteeOverlay],
         ['gov-drep-card', openDrepDirectoryOverlay],
@@ -6240,6 +6241,72 @@ function closeSpoDirectoryOverlay() {
     removeGovernanceMenuOverlay('governance-spo-directory-overlay');
 }
 
+function openRetiredSpoDirectoryOverlay(returnFocus) {
+    const retiredSpos = Array.isArray(spoDirectoryState?.retired_spos) ? spoDirectoryState.retired_spos : [];
+    const panel = document.createElement('div');
+    panel.className = 'governance-drep-directory-list';
+    const loading = document.createElement('p');
+    loading.className = 'small-text';
+    setGovernanceAutoTranslatedText(loading, 'Loading retired SPO data...');
+    panel.appendChild(loading);
+
+    createGovernanceMenuOverlay({
+        id: 'governance-retired-spo-directory-overlay',
+        titleId: 'governance-retired-spo-directory-title',
+        titleText: 'Retired SPOs',
+        closeLabel: 'Close retired SPO directory',
+        closeOverlay: closeRetiredSpoDirectoryOverlay,
+        bodyNodes: [panel],
+        defaultSort: 'amount-desc',
+        searchPlaceholder: 'Search by pool, ticker, ID or relay address',
+        headerMeta: spoDirectoryState
+            ? `${retiredSpos.length.toLocaleString('en-US')} SPOs • ${formatCompactAdaFromLovelace(spoDirectoryState.retired_total_delegated_lovelace || 0)}`
+            : 'Loading retired SPOs...',
+        returnFocus,
+        botContext: createWebsiteSectionBotContext('SPOs', {
+            title: 'Retired SPOs',
+            count: retiredSpos.length || null,
+            amount_ada: Number(spoDirectoryState?.retired_total_delegated_lovelace || 0) / 1_000_000,
+            summary: 'Retired SPO directory'
+        })
+    });
+
+    loadSpoDirectory().then(payload => {
+        if (!panel.isConnected) return;
+        const retired = Array.isArray(payload?.retired_spos) ? payload.retired_spos : [];
+        renderSpoDirectory(panel, retired, {
+            showChart: false,
+            combineOperators: false
+        });
+        updateGovernanceMenuHeaderMeta(
+            'governance-retired-spo-directory-overlay',
+            `${retired.length.toLocaleString('en-US')} SPOs • ${formatCompactAdaFromLovelace(payload.retired_total_delegated_lovelace || 0)}`,
+            panel
+        );
+        updateGovernanceOverlayBotContext(
+            'governance-retired-spo-directory-overlay',
+            createWebsiteSectionBotContext('SPOs', {
+                title: 'Retired SPOs',
+                count: retired.length,
+                amount_ada: Number(payload.retired_total_delegated_lovelace || 0) / 1_000_000,
+                summary: `${retired.length.toLocaleString('en-US')} retired SPOs`
+            }),
+            panel
+        );
+    }).catch(() => {
+        if (!panel.isConnected) return;
+        panel.replaceChildren();
+        const message = document.createElement('p');
+        message.className = 'small-text';
+        setGovernanceAutoTranslatedText(message, 'Retired SPO data could not be loaded.');
+        panel.appendChild(message);
+    });
+}
+
+function closeRetiredSpoDirectoryOverlay() {
+    removeGovernanceMenuOverlay('governance-retired-spo-directory-overlay');
+}
+
 function renderSpoNakamotoTile(nakamoto) {
     const consensus = Number(nakamoto?.consensus?.coefficient);
     window.TDSPRuntime.setText(
@@ -7408,6 +7475,14 @@ async function loadSpoDirectory() {
                     'gov-spo-total-delegated',
                     `Delegated ${window.TDSPRuntime.formatTileAdaFromLovelace(spoDirectoryState.total_delegated_lovelace || 0)}`
                 );
+                window.TDSPRuntime.setText(
+                    'retired-spo-count',
+                    (Number(spoDirectoryState.retired_count) || 0).toLocaleString('en-US')
+                );
+                window.TDSPRuntime.setText(
+                    'retired-spo-total-delegated',
+                    `Delegated ${window.TDSPRuntime.formatTileAdaFromLovelace(spoDirectoryState.retired_total_delegated_lovelace || 0)}`
+                );
                 renderSpoNakamotoTile(spoDirectoryState.nakamoto);
                 return spoDirectoryState;
             })
@@ -7415,6 +7490,8 @@ async function loadSpoDirectory() {
                 spoDirectoryPromise = null;
                 window.TDSPRuntime.setText('gov-spo-count', '--');
                 window.TDSPRuntime.setText('gov-spo-total-delegated', 'Delegated ₳ --');
+                window.TDSPRuntime.setText('retired-spo-count', '--');
+                window.TDSPRuntime.setText('retired-spo-total-delegated', 'Delegated ₳ --');
                 renderSpoNakamotoTile(null);
                 throw error;
             });
