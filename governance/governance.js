@@ -2159,7 +2159,6 @@ function openCatalystPilot2026Overlay(payload, proposals, returnFocus) {
         const empty = window.TDSPRuntime.createSmallText('No Catalyst Pilot 2026 proposals are available yet.');
         list.appendChild(empty);
     }
-    if (proposalList.length) installOverlaySearch(list, { defaultSort: 'name-asc' });
     createGovernanceMenuOverlay({
         id: 'governance-catalyst-pilot-2026-overlay',
         titleId: 'governance-catalyst-pilot-2026-title',
@@ -2171,6 +2170,7 @@ function openCatalystPilot2026Overlay(payload, proposals, returnFocus) {
         returnFocus,
         rootTitle: 'Catalyst/Treasury Funding',
         defaultSort: 'name-asc',
+        searchPlaceholder: 'Search proposers or team members, separated by commas',
         botContext: createWebsiteSectionBotContext('Catalyst Pilot 2026', {
             title: 'Catalyst Pilot 2026',
             count: proposalList.length,
