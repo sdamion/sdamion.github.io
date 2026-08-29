@@ -48,6 +48,12 @@
             return withCurrentLanguage(`${endpoints.catalystProposalSummaryBase}/${encodeURIComponent(proposalId)}/summary`);
         }
 
+        function catalystPilot2026() {
+            return withCurrentLanguage(isLocalPreview
+                ? endpoints.localCatalystPilot2026
+                : endpoints.catalystPilot2026);
+        }
+
         function cips() {
             return withCurrentLanguage(isLocalPreview ? endpoints.localCips : endpoints.cips);
         }
@@ -158,6 +164,7 @@
         }
 
         return Object.freeze({
+            catalystPilot2026,
             catalystProposalDetail,
             catalystProposalSummary,
             catalystProposals,

@@ -23,6 +23,7 @@ const CATALYST_BUSINESS_API_URL = 'https://api.tdsp.online/api/catalyst/business
 const FUNDING_RECIPIENTS_API_URL = 'https://api.tdsp.online/api/funding/recipients';
 const FUNDING_OVERVIEW_API_URL = 'https://api.tdsp.online/api/funding/overview';
 const CATALYST_PROPOSALS_API_URL = 'https://api.tdsp.online/api/catalyst/proposals';
+const CATALYST_PILOT_2026_API_URL = 'https://api.tdsp.online/api/catalyst/pilot-2026';
 const CATALYST_PROPOSAL_DETAIL_API_BASE_URL = 'https://api.tdsp.online/api/catalyst/proposal';
 const CATALYST_PROPOSAL_SUMMARY_API_BASE_URL = 'https://api.tdsp.online/api/catalyst/proposal';
 const CIPS_API_URL = 'https://api.tdsp.online/api/cips';
@@ -51,6 +52,7 @@ const LOCAL_CATALYST_BUSINESS_PROXY_PATH = '/__catalyst_business_proxy__';
 const LOCAL_FUNDING_RECIPIENTS_PROXY_PATH = '/__funding_recipients_proxy__';
 const LOCAL_FUNDING_OVERVIEW_PROXY_PATH = '/__funding_overview_proxy__';
 const LOCAL_CATALYST_PROPOSALS_PROXY_PATH = '/__catalyst_proposals_proxy__';
+const LOCAL_CATALYST_PILOT_2026_PROXY_PATH = '/__catalyst_pilot_2026_proxy__';
 const LOCAL_CATALYST_PROPOSAL_DETAIL_PROXY_PATH = '/__catalyst_proposal_detail_proxy__';
 const LOCAL_CATALYST_PROPOSAL_SUMMARY_PROXY_PATH = '/__catalyst_proposal_summary_proxy__';
 const LOCAL_CIPS_PROXY_PATH = '/__cips_proxy__';
@@ -117,6 +119,8 @@ let catalystFundDirectoryPromise = null;
 let catalystFundDirectoryState = null;
 let catalystProposalDirectoryPromise = null;
 let catalystProposalDirectoryState = null;
+let catalystPilot2026Promise = null;
+let catalystPilot2026State = null;
 let cipDirectoryPromise = null;
 let cipDirectoryState = null;
 const catalystProposalDetailsCache = new Map();
@@ -146,6 +150,7 @@ const governanceApi = window.TDSPGovernanceApi.create({
         spoDetailBase: SPO_DETAIL_API_BASE_URL,
         remoteMetadata: REMOTE_METADATA_API_URL,
         catalystProposals: CATALYST_PROPOSALS_API_URL,
+        catalystPilot2026: CATALYST_PILOT_2026_API_URL,
         catalystProposalDetailBase: CATALYST_PROPOSAL_DETAIL_API_BASE_URL,
         catalystProposalSummaryBase: CATALYST_PROPOSAL_SUMMARY_API_BASE_URL,
         cips: CIPS_API_URL,
@@ -166,6 +171,7 @@ const governanceApi = window.TDSPGovernanceApi.create({
         localSpoDetail: LOCAL_SPO_DETAIL_PROXY_PATH,
         localMetadata: LOCAL_METADATA_PROXY_PATH,
         localCatalystProposals: LOCAL_CATALYST_PROPOSALS_PROXY_PATH,
+        localCatalystPilot2026: LOCAL_CATALYST_PILOT_2026_PROXY_PATH,
         localCatalystProposalDetail: LOCAL_CATALYST_PROPOSAL_DETAIL_PROXY_PATH,
         localCatalystProposalSummary: LOCAL_CATALYST_PROPOSAL_SUMMARY_PROXY_PATH,
         localCips: LOCAL_CIPS_PROXY_PATH
@@ -574,6 +580,21 @@ function fetchCatalystProposalDirectoryPayload() {
             });
     }
     return catalystProposalDirectoryPromise;
+}
+
+function fetchCatalystPilot2026Payload() {
+    if (!catalystPilot2026Promise) {
+        catalystPilot2026Promise = fetchJson(governanceApi.catalystPilot2026())
+            .then(payload => {
+                catalystPilot2026State = payload;
+                return payload;
+            })
+            .catch(error => {
+                catalystPilot2026Promise = null;
+                throw error;
+            });
+    }
+    return catalystPilot2026Promise;
 }
 
 function getCatalystProposalsApiUrl(options = {}) {
@@ -1675,6 +1696,8 @@ async function openCatalystFundsOverlay(returnFocus = document.activeElement) {
 
     let funds = [];
     let proposals = [];
+    let pilotProposals = [];
+    let pilotPayload = null;
     let approvedGovernanceActions = [];
     let unapprovedGovernanceActions = [];
     let fundingChart = null;
@@ -1683,8 +1706,9 @@ async function openCatalystFundsOverlay(returnFocus = document.activeElement) {
     const renderDirectory = normalizedQuery => {
         if (!directoryReady) return false;
         const teamQueries = getCatalystMultiSearchQueries(normalizedQuery);
+        const allCatalystProposals = [...proposals, ...pilotProposals];
         const teamMatches = teamQueries.length
-            ? proposals.filter(proposal => matchesCatalystMultiSearch(
+            ? allCatalystProposals.filter(proposal => matchesCatalystMultiSearch(
                 getCatalystTeamSearchTerms(proposal),
                 teamQueries
             ))
@@ -1708,6 +1732,9 @@ async function openCatalystFundsOverlay(returnFocus = document.activeElement) {
                     approvedGovernanceActions,
                     unapprovedGovernanceActions
                 ));
+            }
+            if (pilotPayload?.proposal_count || pilotProposals.length) {
+                panel.appendChild(createCatalystPilot2026Card(pilotPayload, pilotProposals));
             }
             funds.forEach(fund => {
                 panel.appendChild(createCatalystFundCard(fund));
@@ -1749,9 +1776,10 @@ async function openCatalystFundsOverlay(returnFocus = document.activeElement) {
     });
 
     try {
-        const [payload, proposalPayload, businessPayload, fundingOverviewPayload] = await Promise.all([
+        const [payload, proposalPayload, pilotDirectoryPayload, businessPayload, fundingOverviewPayload] = await Promise.all([
             catalystFundDirectoryState || loadCatalystFundDirectory(),
             catalystProposalDirectoryState || fetchCatalystProposalDirectoryPayload(),
+            catalystPilot2026State || fetchCatalystPilot2026Payload().catch(() => null),
             catalystBusinessState || fetchCatalystBusinessPayload().catch(() => null),
             fundingOverviewState || fetchFundingOverviewPayload().catch(() => null)
         ]);
@@ -1760,6 +1788,10 @@ async function openCatalystFundsOverlay(returnFocus = document.activeElement) {
         funds = normalizeCatalystFunds(payload);
         proposals = Array.isArray(proposalPayload?.proposals)
             ? proposalPayload.proposals
+            : [];
+        pilotPayload = pilotDirectoryPayload;
+        pilotProposals = Array.isArray(pilotDirectoryPayload?.proposals)
+            ? pilotDirectoryPayload.proposals
             : [];
         approvedGovernanceActions = getApprovedGovernanceFundingActions();
         unapprovedGovernanceActions = getUnapprovedGovernanceFundingActions();
@@ -2011,6 +2043,54 @@ function createCatalystFundAmountLine(label, usdValue, adaValue, tone = '') {
     return row;
 }
 
+function createCatalystPilotAmountLine(adaValue) {
+    const row = document.createElement('span');
+    row.className = 'governance-card-detail funding-recipient-amount-line';
+    const amount = document.createElement('strong');
+    amount.className = 'funding-recipient-usd-value';
+    amount.textContent = formatCatalystAdaAmount(adaValue, true);
+    row.appendChild(amount);
+    return row;
+}
+
+function createCatalystPilot2026Card(payload, proposals = []) {
+    const campaign = payload?.campaign || {};
+    const proposalCount = Number(payload?.proposal_count ?? proposals.length) || 0;
+    const requestedAda = Number(payload?.requested_ada) || proposals.reduce(
+        (sum, proposal) => sum + (Number(proposal?.amount_requested) || 0),
+        0
+    );
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'governance-card governance-menu-card';
+    card.dataset.searchText = [
+        'Catalyst Pilot',
+        'Catalyst Pilot 2026',
+        campaign.title,
+        campaign.status,
+        ...proposals.flatMap(proposal => [proposal?.title, proposal?.business, proposal?.tagline])
+    ].filter(Boolean).join(' ');
+    card.dataset.sortName = 'Pilot 2026';
+    card.dataset.sortFund = '2026';
+    card.dataset.sortAmount = String(requestedAda || 0);
+    window.TDSPRuntime?.bindMenuTrigger?.(card, event => {
+        openCatalystPilot2026Overlay(payload, proposals, event.currentTarget);
+    }, {
+        datasetKey: 'pilot2026Bound',
+        errorMessage: 'Catalyst Pilot 2026 could not be opened.'
+    });
+
+    window.TDSPRuntime?.appendUniversalTileContent?.(card, {
+        title: 'Catalyst Pilot 2026',
+        primaryNode: createCatalystPilotAmountLine(requestedAda),
+        contextItems: [`${proposalCount.toLocaleString('en-US')} proposals`],
+        detailItems: [
+            campaign.status ? `Status ${campaign.status}` : 'Current Catalyst pilot proposals'
+        ]
+    });
+    return card;
+}
+
 function createCatalystFundCard(fund) {
     const card = document.createElement('button');
     card.type = 'button';
@@ -2038,6 +2118,43 @@ function createCatalystFundCard(fund) {
         detailItems
     });
     return card;
+}
+
+function openCatalystPilot2026Overlay(payload, proposals, returnFocus) {
+    const campaign = payload?.campaign || {};
+    const list = document.createElement('div');
+    list.className = 'governance-list governance-action-group-list';
+    const proposalList = Array.isArray(proposals) ? proposals : [];
+    proposalList.forEach(proposal => {
+        list.appendChild(createCatalystProposalCard(proposal));
+    });
+    if (!proposalList.length) {
+        const empty = window.TDSPRuntime.createSmallText('No Catalyst Pilot 2026 proposals are available yet.');
+        list.appendChild(empty);
+    }
+    if (proposalList.length) installOverlaySearch(list, { defaultSort: 'name-asc' });
+    createGovernanceMenuOverlay({
+        id: 'governance-catalyst-pilot-2026-overlay',
+        titleId: 'governance-catalyst-pilot-2026-title',
+        titleText: 'Catalyst Pilot 2026',
+        closeLabel: 'Close Catalyst Pilot 2026',
+        closeOverlay: closeCatalystPilot2026Overlay,
+        bodyNodes: [list],
+        headerMeta: `${proposalList.length.toLocaleString('en-US')} proposals • Requested ${formatCatalystAdaAmount(payload?.requested_ada, true)}`,
+        returnFocus,
+        rootTitle: 'Catalyst/Treasury Funding',
+        defaultSort: 'name-asc',
+        botContext: createWebsiteSectionBotContext('Catalyst Pilot 2026', {
+            title: 'Catalyst Pilot 2026',
+            count: proposalList.length,
+            amount_ada: Number(payload?.requested_ada) || 0,
+            summary: campaign.brief || 'Current Project Catalyst Pilot 2026 proposals'
+        })
+    });
+}
+
+function closeCatalystPilot2026Overlay() {
+    removeGovernanceMenuOverlay('governance-catalyst-pilot-2026-overlay');
 }
 
 async function openCatalystFundOverlay(fund, returnFocus) {
