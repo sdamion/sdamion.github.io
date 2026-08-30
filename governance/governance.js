@@ -7697,22 +7697,8 @@ function getSpoRescanStatusApiUrl() {
 function renderSpoRescanStatus(status) {
     const element = document.getElementById('gov-spo-scan-status');
     if (!element) return;
-    const checking = status?.status === 'checking';
-    element.hidden = !checking;
-    if (!checking) {
-        element.textContent = '';
-        return;
-    }
-    const phase = status?.phase === 'relay_checks'
-        ? 'relays'
-        : status?.phase === 'pool_details'
-            ? 'pool data'
-            : 'pools';
-    const completed = Number(status?.completed) || 0;
-    const total = Number(status?.total) || 0;
-    setGovernanceAutoTranslatedText(element, total > 0
-        ? `Checking ${phase} ${completed.toLocaleString('en-US')}/${total.toLocaleString('en-US')}`
-        : `Checking ${phase}...`);
+    element.hidden = true;
+    element.textContent = '';
 }
 
 async function pollSpoRescanStatus() {
