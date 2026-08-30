@@ -493,6 +493,8 @@
         ['Software/client NC', 'software_client_nc'],
         ['SPO Operator', 'spo_operator'],
         ['Retired SPOs', 'retired_spos'],
+        ['Retired/retiring epoch: newest', 'retired_retiring_epoch_newest'],
+        ['Retired/retiring epoch: oldest', 'retired_retiring_epoch_oldest'],
         ['SPO Status', 'spo_status'],
         ['Active Relay via operator group', 'active_relay_operator_group'],
         ['Retired SPO data could not be loaded.', 'retired_spo_data_could_not_load'],

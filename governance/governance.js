@@ -6990,7 +6990,7 @@ function createSpoOperatorGroupCard(domain, members) {
 function createSpoDirectoryCard(spo) {
     const relayAddressSummary = getSpoRelayAddressSummary(spo);
     const relaySearchText = getSpoRelaySearchText(spo);
-    const retired = isRetiredSpo(spo);
+    const retired = isRetiredOrRetiringSpo(spo);
     const row = document.createElement('div');
     row.className = 'governance-card governance-menu-card governance-cc-member governance-cc-member-clickable governance-spo-directory-card';
     row.dataset.searchText = [spo.name, spo.ticker, spo.pool_id, relayAddressSummary, relaySearchText]
@@ -7001,6 +7001,9 @@ function createSpoDirectoryCard(spo) {
     row.dataset.sortDelegators = String(Number(spo.delegator_count) || 0);
     row.dataset.sortSaturation = String(Number(spo.saturation_pct) || 0);
     row.dataset.sortStatus = spo.active === true ? '1' : spo.active === false ? '0' : '';
+    if (Number.isInteger(Number(spo.retiring_epoch)) && Number(spo.retiring_epoch) > 0) {
+        row.dataset.sortLifecycleEpoch = String(Number(spo.retiring_epoch));
+    }
     const cloudHostingType = getSpoCloudHostingType(spo);
     const pinRank = getSpoPinRank(spo);
     if (Number.isFinite(pinRank)) row.dataset.overlayPinRank = String(pinRank);
@@ -7303,9 +7306,11 @@ function closeSpoStatusListOverlay() {
 }
 
 function getSpoActivityLabel(spo) {
-    if (isRetiredSpo(spo)) {
+    if (isRetiredOrRetiringSpo(spo)) {
+        const status = getSpoLifecycleStatus(spo);
         const epoch = Number(spo?.retiring_epoch);
-        return Number.isInteger(epoch) && epoch > 0 ? `Retired epoch ${epoch}` : 'Retired';
+        const label = status === 'retiring' ? 'Retiring' : 'Retired';
+        return Number.isInteger(epoch) && epoch > 0 ? `${label} epoch ${epoch}` : label;
     }
     if (spo?.operator_group_active === true) return 'Active Relay via operator group';
     if (spo?.active === true) return 'Active Relay';
@@ -7322,15 +7327,20 @@ function getSpoActivityLabel(spo) {
 }
 
 function getSpoActivityClassName(spo) {
-    if (isRetiredSpo(spo)) return '';
+    if (isRetiredOrRetiringSpo(spo)) return '';
     if (spo?.active === true) return 'is-active';
     if (!hasSpoAdvertisedRelays(spo)) return 'is-warning';
     if (spo?.active === false) return 'is-inactive';
     return '';
 }
 
-function isRetiredSpo(spo) {
-    return String(spo?.status || '').toLowerCase() === 'retired';
+function isRetiredOrRetiringSpo(spo) {
+    const status = getSpoLifecycleStatus(spo);
+    return status === 'retired' || status === 'retiring';
+}
+
+function getSpoLifecycleStatus(spo) {
+    return String(spo?.status || spo?.pool_status || '').toLowerCase();
 }
 
 function getSpoCloudHostingType(spo) {
