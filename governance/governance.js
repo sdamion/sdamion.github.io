@@ -6990,6 +6990,7 @@ function createSpoOperatorGroupCard(domain, members) {
 function createSpoDirectoryCard(spo) {
     const relayAddressSummary = getSpoRelayAddressSummary(spo);
     const relaySearchText = getSpoRelaySearchText(spo);
+    const retired = isRetiredSpo(spo);
     const row = document.createElement('div');
     row.className = 'governance-card governance-menu-card governance-cc-member governance-cc-member-clickable governance-spo-directory-card';
     row.dataset.searchText = [spo.name, spo.ticker, spo.pool_id, relayAddressSummary, relaySearchText]
@@ -7011,8 +7012,7 @@ function createSpoDirectoryCard(spo) {
     window.TDSPRuntime?.appendUniversalTileContent?.(row, {
         title: getSpoDisplayName(spo),
         titleClassName: 'governance-title governance-cc-member-hash',
-        primaryText: `Delegation: ${formatCompactAdaFromLovelace(spo.delegated_lovelace)}`,
-        primaryClassName: 'governance-card-detail governance-treasury-withdrawal-amount governance-cc-member-stats',
+        primaryNode: createSpoDelegationLine(spo.delegated_lovelace, { redAmount: retired }),
         detailItems: [
             {
                 text: getSpoActivityLabel(spo),
@@ -7036,6 +7036,25 @@ function createSpoDirectoryCard(spo) {
         () => fetchJson(getSpoDetailApiUrl(spo.pool_id), { cache: 'no-store' })
     );
     return row;
+}
+
+function createSpoDelegationLine(lovelace, options = {}) {
+    return createValueLine('Delegation:', formatCompactAdaFromLovelace(lovelace), {
+        className: 'governance-card-detail governance-treasury-withdrawal-amount governance-cc-member-stats',
+        valueClassName: options.redAmount ? 'pool-status-value is-inactive' : ''
+    });
+}
+
+function createValueLine(labelText, valueText, options = {}) {
+    const line = document.createElement('span');
+    line.className = options.className || 'governance-card-detail';
+    const label = document.createElement('span');
+    setGovernanceAutoTranslatedText(label, labelText);
+    const value = document.createElement('span');
+    if (options.valueClassName) value.className = options.valueClassName;
+    value.textContent = valueText;
+    line.append(label, document.createTextNode(' '), value);
+    return line;
 }
 
 async function getSpoDirectoryEntry(poolId) {
@@ -7284,7 +7303,7 @@ function closeSpoStatusListOverlay() {
 }
 
 function getSpoActivityLabel(spo) {
-    if (String(spo?.status || '').toLowerCase() === 'retired') {
+    if (isRetiredSpo(spo)) {
         const epoch = Number(spo?.retiring_epoch);
         return Number.isFinite(epoch) ? `Retired epoch ${epoch}` : 'Retired';
     }
@@ -7303,10 +7322,15 @@ function getSpoActivityLabel(spo) {
 }
 
 function getSpoActivityClassName(spo) {
+    if (isRetiredSpo(spo)) return '';
     if (spo?.active === true) return 'is-active';
     if (!hasSpoAdvertisedRelays(spo)) return 'is-warning';
     if (spo?.active === false) return 'is-inactive';
     return '';
+}
+
+function isRetiredSpo(spo) {
+    return String(spo?.status || '').toLowerCase() === 'retired';
 }
 
 function getSpoCloudHostingType(spo) {
@@ -7628,9 +7652,8 @@ async function loadSpoDirectory() {
                     'retired-spo-count',
                     (Number(spoDirectoryState.retired_count) || 0).toLocaleString('en-US')
                 );
-                window.TDSPRuntime.setText(
-                    'retired-spo-total-delegated',
-                    `Delegated ${window.TDSPRuntime.formatTileAdaFromLovelace(spoDirectoryState.retired_total_delegated_lovelace || 0)}`
+                setRetiredSpoDelegatedTileValue(
+                    window.TDSPRuntime.formatTileAdaFromLovelace(spoDirectoryState.retired_total_delegated_lovelace || 0)
                 );
                 renderSpoNakamotoTile(spoDirectoryState.nakamoto);
                 return spoDirectoryState;
@@ -7640,12 +7663,20 @@ async function loadSpoDirectory() {
                 window.TDSPRuntime.setText('gov-spo-count', '--');
                 window.TDSPRuntime.setText('gov-spo-total-delegated', 'Delegated ₳ --');
                 window.TDSPRuntime.setText('retired-spo-count', '--');
-                window.TDSPRuntime.setText('retired-spo-total-delegated', 'Delegated ₳ --');
+                setRetiredSpoDelegatedTileValue('₳ --');
                 renderSpoNakamotoTile(null);
                 throw error;
             });
     }
     return spoDirectoryPromise;
+}
+
+function setRetiredSpoDelegatedTileValue(valueText) {
+    const element = document.getElementById('retired-spo-total-delegated');
+    if (!element) return;
+    element.replaceChildren(createValueLine('Delegated', valueText, {
+        valueClassName: 'pool-status-value is-inactive'
+    }));
 }
 
 function getSpoOperatorCount(payload, fallback = 0) {
