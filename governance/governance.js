@@ -7305,7 +7305,7 @@ function closeSpoStatusListOverlay() {
 function getSpoActivityLabel(spo) {
     if (isRetiredSpo(spo)) {
         const epoch = Number(spo?.retiring_epoch);
-        return Number.isFinite(epoch) ? `Retired epoch ${epoch}` : 'Retired';
+        return Number.isInteger(epoch) && epoch > 0 ? `Retired epoch ${epoch}` : 'Retired';
     }
     if (spo?.operator_group_active === true) return 'Active Relay via operator group';
     if (spo?.active === true) return 'Active Relay';
