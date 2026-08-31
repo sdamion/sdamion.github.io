@@ -7518,6 +7518,98 @@ function renderSpoDetails(container, spo) {
         });
     }
     container.appendChild(relayList);
+
+    if (isRetiredOrRetiringSpo(spo)) {
+        container.appendChild(createRetiredSpoDelegatorsSection(spo));
+    }
+}
+
+function getRetiredSpoDelegatorAmount(delegator) {
+    return window.TDSPRuntime.getLovelaceAmount(delegator, ['amount_lovelace', 'total_balance', 'amount']);
+}
+
+function createRetiredSpoDelegatorsSection(spo) {
+    const section = document.createElement('section');
+    section.className = 'governance-detail-section governance-retired-spo-delegators-section';
+
+    const delegators = Array.isArray(spo?.delegators) ? spo.delegators : [];
+    const title = document.createElement('strong');
+    setGovernanceAutoTranslatedText(title, `Stake addresses (${delegators.length.toLocaleString('en-US')})`);
+    section.appendChild(title);
+
+    const list = document.createElement('div');
+    list.className = 'pool-delegator-list governance-retired-spo-delegator-list';
+
+    if (!delegators.length) {
+        const message = document.createElement('p');
+        message.className = 'small-text';
+        setGovernanceAutoTranslatedText(message, 'No retired stake addresses are cached yet.');
+        list.appendChild(message);
+        section.appendChild(list);
+        return section;
+    }
+
+    const sortedDelegators = [...delegators].sort((left, right) => {
+        const leftAmount = getRetiredSpoDelegatorAmount(left);
+        const rightAmount = getRetiredSpoDelegatorAmount(right);
+        return rightAmount > leftAmount ? 1 : rightAmount < leftAmount ? -1 : 0;
+    });
+
+    sortedDelegators.forEach((delegator, index) => {
+        const adaHandle = String(delegator?.ada_handle || '').trim();
+        const stakeAddress = String(delegator?.stake_address || '').trim();
+        const delegatorAmount = getRetiredSpoDelegatorAmount(delegator);
+
+        const addressLine = document.createElement('div');
+        addressLine.className = 'pool-delegator-address-line';
+
+        const addressText = document.createElement('strong');
+        addressText.className = `pool-delegator-address${adaHandle ? ' pool-delegator-handle' : ''}`;
+        addressText.textContent = adaHandle || 'Stake address';
+        if (stakeAddress) addressText.title = stakeAddress;
+        addressLine.appendChild(addressText);
+
+        if (stakeAddress) {
+            addressLine.appendChild(window.TDSPRuntime.createCopyButton(stakeAddress, `retired stake address ${index + 1}`, {
+                className: 'pool-delegator-copy-button'
+            }));
+        }
+
+        const amount = document.createElement('span');
+        amount.className = 'pool-delegator-amount';
+        amount.textContent = formatFullAdaFromLovelace(delegatorAmount.toString()) || '₳ 0';
+
+        const details = [addressLine, amount];
+        if (stakeAddress) {
+            const stakeText = document.createElement('span');
+            stakeText.className = 'pool-delegator-wallet-address';
+            if (window.TDSPRuntime?.createResponsiveIdentifier) {
+                stakeText.appendChild(window.TDSPRuntime.createResponsiveIdentifier(stakeAddress));
+            } else {
+                stakeText.textContent = stakeAddress;
+            }
+            stakeText.title = stakeAddress;
+            details.push(stakeText);
+        }
+
+        const latestEpoch = Number(delegator?.latest_pool_delegation_epoch);
+        if (Number.isFinite(latestEpoch)) {
+            const epochText = document.createElement('span');
+            epochText.className = 'pool-delegator-epoch';
+            setGovernanceAutoTranslatedText(epochText, `Latest pool delegation epoch ${latestEpoch.toLocaleString('en-US')}`);
+            details.push(epochText);
+        }
+
+        const row = window.TDSPRuntime.createUniversalOverlayRow({ details });
+        row.dataset.sortName = window.TDSPRuntime.normalizeSearchText(adaHandle || stakeAddress);
+        row.dataset.searchText = window.TDSPRuntime.normalizeSearchText([adaHandle, stakeAddress].filter(Boolean).join(' '));
+        row.dataset.sortAmount = delegatorAmount.toString();
+        if (Number.isFinite(latestEpoch)) row.dataset.sortEpoch = String(latestEpoch);
+        list.appendChild(row);
+    });
+
+    section.appendChild(list);
+    return section;
 }
 
 function formatSpoRelayLocation(relay) {
