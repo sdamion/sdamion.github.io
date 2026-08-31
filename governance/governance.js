@@ -6458,7 +6458,13 @@ function openRetiredSpoDirectoryOverlay(returnFocus) {
         })
     });
 
-    loadRetiredSpoDirectory().then(payload => {
+    loadRetiredSpoDirectory().catch(error => {
+        console.warn('Retired SPO compact directory could not be loaded; falling back to full SPO directory', error);
+        if (Array.isArray(spoDirectoryState?.retired_spos) && spoDirectoryState.retired_spos.length) {
+            return spoDirectoryState;
+        }
+        return loadSpoDirectory();
+    }).then(payload => {
         if (!panel.isConnected) return;
         const retired = Array.isArray(payload?.retired_spos) ? payload.retired_spos : [];
         renderSpoDirectory(panel, retired, {
@@ -6496,7 +6502,28 @@ function closeRetiredSpoDirectoryOverlay() {
 }
 
 async function loadRetiredSpoDirectory() {
-    const payload = await fetchJson(governanceApi.retiredSpoDirectory());
+    const candidateUrls = [];
+    if (GOVERNANCE_IS_LOCAL_PREVIEW) {
+        candidateUrls.push('http://192.168.1.193:3005/api/spos/retired');
+    }
+    candidateUrls.push(governanceApi.retiredSpoDirectory());
+    if (!GOVERNANCE_IS_LOCAL_PREVIEW) {
+        candidateUrls.push(RETIRED_SPO_DIRECTORY_API_URL);
+    }
+
+    let lastError = null;
+    for (const url of [...new Set(candidateUrls.filter(Boolean))]) {
+        try {
+            const payload = await fetchJson(url);
+            return applyRetiredSpoDirectoryPayload(payload);
+        } catch (error) {
+            lastError = error;
+        }
+    }
+    throw lastError || new Error('Retired SPO directory could not be loaded');
+}
+
+function applyRetiredSpoDirectoryPayload(payload) {
     const retiredSpos = Array.isArray(payload?.retired_spos) ? payload.retired_spos : [];
     spoDirectoryState = {
         ...(spoDirectoryState || {}),
