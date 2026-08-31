@@ -4212,8 +4212,8 @@ function createGovernanceCard(proposal, options = {}) {
         contextItems: [getExpirationText(proposal)],
         detailItems: metadataItems.map(item => `${item.label} ${item.value}`)
     });
-    const voteBar = createGovernanceVoteBar(proposal);
-    if (voteBar) openButton.appendChild(voteBar);
+    const voteBars = createGovernanceVoteBars(proposal);
+    if (voteBars) openButton.appendChild(voteBars);
     card.appendChild(openButton);
 
     const copyActionIdButton = createGovernanceCopyButton(
@@ -4234,9 +4234,35 @@ function createGovernanceCard(proposal, options = {}) {
     return card;
 }
 
-function createGovernanceVoteBar(proposal) {
-    const yes = normalizePercentageNumber(proposal?.votePercentages?.yes);
-    const no = normalizePercentageNumber(proposal?.votePercentages?.no);
+function createGovernanceVoteBars(proposal) {
+    const rows = [];
+    const drepPercentages = getPercentagesFromSummary(proposal?.voteSummary, 'drep');
+    if (drepPercentages) {
+        rows.push({ label: 'DRep', percentages: drepPercentages });
+    }
+    if (usesPoolVoting(proposal)) {
+        const poolPercentages = getPercentagesFromSummary(proposal?.voteSummary, 'pool');
+        if (poolPercentages) {
+            rows.push({ label: 'SPO', percentages: poolPercentages });
+        }
+    }
+    if (!rows.length && proposal?.votePercentages) {
+        rows.push({ label: proposal?.voteDisplay?.label || null, percentages: proposal.votePercentages });
+    }
+    if (!rows.length) return null;
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'governance-vote-bars';
+    rows.forEach(row => {
+        const bar = createGovernanceVoteBarSegment(row.percentages, row.label);
+        if (bar) wrapper.appendChild(bar);
+    });
+    return wrapper.children.length ? wrapper : null;
+}
+
+function createGovernanceVoteBarSegment(percentages, labelText = null) {
+    const yes = normalizePercentageNumber(percentages?.yes);
+    const no = normalizePercentageNumber(percentages?.no);
     if (![yes, no].every(Number.isFinite)) return null;
 
     const total = yes + no;
@@ -4265,7 +4291,7 @@ function createGovernanceVoteBar(proposal) {
     label.className = 'tdsp-bar-legend governance-vote-bar-label';
     const yesLabel = document.createElement('span');
     yesLabel.className = 'governance-vote-label-item governance-vote-label-item--yes';
-    setGovernanceAutoTranslatedText(yesLabel, `Yes ${formatPercentage(yesPct)}`);
+    setGovernanceAutoTranslatedText(yesLabel, `${labelText ? `${labelText} ` : ''}Yes ${formatPercentage(yesPct)}`);
     const separator = document.createTextNode(' • ');
     const noLabel = document.createElement('span');
     noLabel.className = 'governance-vote-label-item governance-vote-label-item--no';

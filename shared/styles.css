@@ -2109,6 +2109,17 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     min-width: 0;
 }
 
+.governance-vote-bars {
+    display: grid;
+    gap: 6px;
+    margin-top: 8px;
+    min-width: 0;
+}
+
+.governance-vote-bars .governance-vote-bar {
+    margin-top: 0;
+}
+
 .drep-ncl-bar-track,
 .governance-vote-bar-track {
     display: flex;
