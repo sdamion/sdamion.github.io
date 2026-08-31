@@ -4088,7 +4088,12 @@ function getEffectiveProposalType(proposal) {
 function usesPoolVoting(proposal) {
     const proposalType = getEffectiveProposalType(proposal);
     return proposalType === 'HardForkInitiation'
-        || proposalType === 'ParameterChange';
+        || proposalType === 'ParameterChange'
+        || proposalType === 'NewCommittee'
+        || proposalType === 'UpdateCommittee'
+        || proposalType === 'UpdateCommitteeThreshold'
+        || proposalType === 'MotionNoConfidence'
+        || proposalType === 'NoConfidence';
 }
 
 function getGovernanceStatus(proposal) {
