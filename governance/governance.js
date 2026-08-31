@@ -14,6 +14,7 @@ const DREP_CORRELATION_API_URL = 'https://api.tdsp.online/api/dreps/correlation'
 const TDSP_DREP_ID = 'drep1yg5gkkyxwwr7d6qflf2qqp6drkp9432h6cvtmun0dqthusqlkz8hj';
 const TDSP_DREP_FALLBACK_NAME = 'DamionDutch';
 const SPO_DIRECTORY_API_URL = 'https://api.tdsp.online/api/spos/directory';
+const RETIRED_SPO_DIRECTORY_API_URL = 'https://api.tdsp.online/api/spos/retired';
 const SPO_RESCAN_STATUS_API_URL = 'https://api.tdsp.online/api/spos/rescan/status';
 const SPO_DETAIL_API_BASE_URL = 'https://api.tdsp.online/api/spo';
 const REMOTE_METADATA_API_URL = 'https://api.tdsp.online/api/metadata';
@@ -43,6 +44,7 @@ const LOCAL_DREP_DETAIL_PROXY_PATH = '/__drep_detail_proxy__';
 const LOCAL_DREP_VOTE_STATS_PROXY_PATH = '/__drep_vote_stats_proxy__';
 const LOCAL_DREP_CORRELATION_PROXY_PATH = '/__drep_correlation_proxy__';
 const LOCAL_SPO_DIRECTORY_PROXY_PATH = '/__spo_directory_proxy__';
+const LOCAL_RETIRED_SPO_DIRECTORY_PROXY_PATH = '/__retired_spo_directory_proxy__';
 const LOCAL_SPO_RESCAN_STATUS_PROXY_PATH = '/__spo_rescan_status_proxy__';
 const LOCAL_SPO_DETAIL_PROXY_PATH = '/__spo_detail_proxy__';
 const LOCAL_METADATA_PROXY_PATH = '/__metadata_proxy__';
@@ -146,6 +148,7 @@ const governanceApi = window.TDSPGovernanceApi.create({
         drepVoteStats: DREP_VOTE_STATS_API_URL,
         drepCorrelation: DREP_CORRELATION_API_URL,
         spoDirectory: SPO_DIRECTORY_API_URL,
+        retiredSpoDirectory: RETIRED_SPO_DIRECTORY_API_URL,
         spoRescanStatus: SPO_RESCAN_STATUS_API_URL,
         spoDetailBase: SPO_DETAIL_API_BASE_URL,
         remoteMetadata: REMOTE_METADATA_API_URL,
@@ -167,6 +170,7 @@ const governanceApi = window.TDSPGovernanceApi.create({
         localDrepVoteStats: LOCAL_DREP_VOTE_STATS_PROXY_PATH,
         localDrepCorrelation: LOCAL_DREP_CORRELATION_PROXY_PATH,
         localSpoDirectory: LOCAL_SPO_DIRECTORY_PROXY_PATH,
+        localRetiredSpoDirectory: LOCAL_RETIRED_SPO_DIRECTORY_PROXY_PATH,
         localSpoRescanStatus: LOCAL_SPO_RESCAN_STATUS_PROXY_PATH,
         localSpoDetail: LOCAL_SPO_DETAIL_PROXY_PATH,
         localMetadata: LOCAL_METADATA_PROXY_PATH,
@@ -6420,10 +6424,18 @@ function openRetiredSpoDirectoryOverlay(returnFocus) {
     const retiredSpos = Array.isArray(spoDirectoryState?.retired_spos) ? spoDirectoryState.retired_spos : [];
     const panel = document.createElement('div');
     panel.className = 'governance-drep-directory-list';
-    const loading = document.createElement('p');
-    loading.className = 'small-text';
-    setGovernanceAutoTranslatedText(loading, 'Loading retired SPO data...');
-    panel.appendChild(loading);
+    if (retiredSpos.length) {
+        renderSpoDirectory(panel, retiredSpos, {
+            showChart: false,
+            combineOperators: false,
+            emptyMessage: 'No retired SPOs are available.'
+        });
+    } else {
+        const loading = document.createElement('p');
+        loading.className = 'small-text';
+        setGovernanceAutoTranslatedText(loading, 'Loading retired SPO data...');
+        panel.appendChild(loading);
+    }
 
     createGovernanceMenuOverlay({
         id: 'governance-retired-spo-directory-overlay',
@@ -6446,7 +6458,7 @@ function openRetiredSpoDirectoryOverlay(returnFocus) {
         })
     });
 
-    loadSpoDirectory().then(payload => {
+    loadRetiredSpoDirectory().then(payload => {
         if (!panel.isConnected) return;
         const retired = Array.isArray(payload?.retired_spos) ? payload.retired_spos : [];
         renderSpoDirectory(panel, retired, {
@@ -6481,6 +6493,25 @@ function openRetiredSpoDirectoryOverlay(returnFocus) {
 
 function closeRetiredSpoDirectoryOverlay() {
     removeGovernanceMenuOverlay('governance-retired-spo-directory-overlay');
+}
+
+async function loadRetiredSpoDirectory() {
+    const payload = await fetchJson(governanceApi.retiredSpoDirectory());
+    const retiredSpos = Array.isArray(payload?.retired_spos) ? payload.retired_spos : [];
+    spoDirectoryState = {
+        ...(spoDirectoryState || {}),
+        ...payload,
+        retired_spos: retiredSpos,
+        retired_count: Number.isFinite(Number(payload?.retired_count)) ? Number(payload.retired_count) : retiredSpos.length
+    };
+    window.TDSPRuntime.setText(
+        'retired-spo-count',
+        (Number(spoDirectoryState.retired_count) || 0).toLocaleString('en-US')
+    );
+    setRetiredSpoDelegatedTileValue(
+        window.TDSPRuntime.formatTileAdaFromLovelace(spoDirectoryState.retired_total_delegated_lovelace || 0)
+    );
+    return spoDirectoryState;
 }
 
 function renderSpoNakamotoTile(nakamoto) {

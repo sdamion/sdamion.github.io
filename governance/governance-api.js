@@ -109,6 +109,10 @@
             return isLocalPreview ? endpoints.localSpoDirectory : endpoints.spoDirectory;
         }
 
+        function retiredSpoDirectory() {
+            return isLocalPreview ? endpoints.localRetiredSpoDirectory : endpoints.retiredSpoDirectory;
+        }
+
         function spoRescanStatus() {
             return isLocalPreview ? endpoints.localSpoRescanStatus : endpoints.spoRescanStatus;
         }
@@ -182,6 +186,7 @@
             proposalDrepRationale,
             proposalSummary,
             proposalVotes,
+            retiredSpoDirectory,
             spoDetail,
             spoDirectory,
             spoRescanStatus,
