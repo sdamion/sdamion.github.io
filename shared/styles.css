@@ -2040,6 +2040,8 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 .tdsp-tile-grid > .governance-menu-card {
     display: grid;
     gap: 4px;
+    justify-items: start;
+    text-align: left;
 }
 
 .governance-summary-clickable {
@@ -2051,6 +2053,7 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     border-radius: 8px;
     background: var(--governance-card-bg);
     color: var(--text);
+    text-align: left;
     transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -3835,8 +3838,6 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
         overscroll-behavior: contain;
     }
 
-    .governance-dialog h2,
-    .governance-dialog .small-text,
     .governance-vote-chart > strong {
         text-align: center;
     }
@@ -3855,7 +3856,7 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 
     .governance-type {
         display: block;
-        text-align: center;
+        text-align: left;
         margin-top: 8px;
     }
 
@@ -3879,11 +3880,11 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 
     .governance-vote-legend {
         width: 100%;
-        justify-items: center;
+        justify-items: stretch;
     }
 
     .governance-vote-legend-item {
-        width: min(100%, 420px);
+        width: 100%;
         text-align: left;
     }
 
@@ -3985,6 +3986,26 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 .table-shell table {
     max-width: 100%;
     min-width: 0;
+}
+
+.governance-menu-overlay :is(
+    .governance-menu-card,
+    .governance-card,
+    .governance-card-open,
+    .governance-cc-member,
+    .governance-vote-legend-item
+) {
+    justify-items: start;
+    text-align: left;
+}
+
+.governance-menu-overlay :is(
+    .governance-menu-card > *,
+    .governance-card > *,
+    .governance-card-open > *,
+    .governance-cc-member > *
+) {
+    text-align: left;
 }
 
 .governance-menu-overlay :is(
