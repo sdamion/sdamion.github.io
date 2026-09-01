@@ -6421,7 +6421,8 @@ function closeSpoDirectoryOverlay() {
 }
 
 function openRetiredSpoDirectoryOverlay(returnFocus) {
-    const retiredSpos = Array.isArray(spoDirectoryState?.retired_spos) ? spoDirectoryState.retired_spos : [];
+    const retiredSpos = (Array.isArray(spoDirectoryState?.retired_spos) ? spoDirectoryState.retired_spos : [])
+        .filter(hasPositiveRetiredSpoStake);
     const panel = document.createElement('div');
     panel.className = 'governance-drep-directory-list';
     if (retiredSpos.length) {
@@ -6466,7 +6467,15 @@ function openRetiredSpoDirectoryOverlay(returnFocus) {
         return loadSpoDirectory();
     }).then(payload => {
         if (!panel.isConnected) return;
-        const retired = Array.isArray(payload?.retired_spos) ? payload.retired_spos : [];
+        const retired = (Array.isArray(payload?.retired_spos) ? payload.retired_spos : [])
+            .filter(hasPositiveRetiredSpoStake);
+        const retiredTotalDelegated = retired.reduce((sum, spo) => {
+            try {
+                return sum + BigInt(String(spo?.current_delegated_lovelace || spo?.delegated_lovelace || '0'));
+            } catch {
+                return sum;
+            }
+        }, 0n).toString();
         renderSpoDirectory(panel, retired, {
             showChart: false,
             combineOperators: false,
@@ -6474,7 +6483,7 @@ function openRetiredSpoDirectoryOverlay(returnFocus) {
         });
         updateGovernanceMenuHeaderMeta(
             'governance-retired-spo-directory-overlay',
-            `${retired.length.toLocaleString('en-US')} SPOs • ${formatCompactAdaFromLovelace(payload.retired_total_delegated_lovelace || 0)}`,
+            `${retired.length.toLocaleString('en-US')} SPOs • ${formatCompactAdaFromLovelace(retiredTotalDelegated)}`,
             panel
         );
         updateGovernanceOverlayBotContext(
@@ -6482,7 +6491,7 @@ function openRetiredSpoDirectoryOverlay(returnFocus) {
             createWebsiteSectionBotContext('SPOs', {
                 title: 'Retired SPOs',
                 count: retired.length,
-                amount_ada: Number(payload.retired_total_delegated_lovelace || 0) / 1_000_000,
+                amount_ada: Number(retiredTotalDelegated || 0) / 1_000_000,
                 summary: `${retired.length.toLocaleString('en-US')} retired SPOs`
             }),
             panel
@@ -6499,6 +6508,20 @@ function openRetiredSpoDirectoryOverlay(returnFocus) {
 
 function closeRetiredSpoDirectoryOverlay() {
     removeGovernanceMenuOverlay('governance-retired-spo-directory-overlay');
+}
+
+function hasPositiveRetiredSpoStake(spo) {
+    try {
+        return BigInt(String(
+            spo?.current_delegated_lovelace
+            || spo?.delegated_lovelace
+            || spo?.live_stake_lovelace
+            || spo?.active_stake_lovelace
+            || '0'
+        )) > 0n;
+    } catch {
+        return false;
+    }
 }
 
 async function loadRetiredSpoDirectory() {
@@ -6524,12 +6547,21 @@ async function loadRetiredSpoDirectory() {
 }
 
 function applyRetiredSpoDirectoryPayload(payload) {
-    const retiredSpos = Array.isArray(payload?.retired_spos) ? payload.retired_spos : [];
+    const retiredSpos = (Array.isArray(payload?.retired_spos) ? payload.retired_spos : [])
+        .filter(hasPositiveRetiredSpoStake);
+    const retiredTotalDelegated = retiredSpos.reduce((sum, spo) => {
+        try {
+            return sum + BigInt(String(spo?.current_delegated_lovelace || spo?.delegated_lovelace || '0'));
+        } catch {
+            return sum;
+        }
+    }, 0n).toString();
     spoDirectoryState = {
         ...(spoDirectoryState || {}),
         ...payload,
         retired_spos: retiredSpos,
-        retired_count: Number.isFinite(Number(payload?.retired_count)) ? Number(payload.retired_count) : retiredSpos.length
+        retired_count: retiredSpos.length,
+        retired_total_delegated_lovelace: retiredTotalDelegated
     };
     window.TDSPRuntime.setText(
         'retired-spo-count',
