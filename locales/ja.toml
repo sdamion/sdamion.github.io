@@ -701,6 +701,7 @@ manual_wallet_address_help = "任意: 1つ以上のウォレットアドレス�
 manual_wallet_saved_no_override = "手動変更はローカルに保存され、キャッシュ更新で上書きされません。"
 mark_notification_sent = "通知を送信済みにする"
 message = "メッセージ"
+message_state_could_not_save = "メッセージ状態を保存できませんでした。"
 no_selected_or_manual_wallet_address = "選択されたステークキーまたは手動ウォレットアドレスがありません。ウォレットに表示されるトランザクションを作成できません。"
 onchain_message = "オンチェーンメッセージ"
 onchain_message_sent = "オンチェーンメッセージ送信済み"

@@ -25,6 +25,7 @@ const ENDPOINTS = IS_LOCAL ? {
     delegator: '/__raffle_delegator_proxy__',
     prizes: '/__raffle_prizes_proxy__',
     lostStake: '/__raffle_admin_lost_stake_proxy__',
+    lostStakeMessageState: '/__raffle_admin_lost_stake_message_state_proxy__',
     chat: '/__constitution_chat_proxy__'
 } : {
     challenge: 'https://api.tdsp.online/api/raffle/auth/challenge',
@@ -37,6 +38,7 @@ const ENDPOINTS = IS_LOCAL ? {
     delegator: 'https://api.tdsp.online/api/raffle/delegator',
     prizes: 'https://api.tdsp.online/api/raffle/prizes',
     lostStake: 'https://api.tdsp.online/api/raffle/admin/lost-stake',
+    lostStakeMessageState: 'https://api.tdsp.online/api/raffle/admin/lost-stake/message-state',
     chat: 'https://api.tdsp.online/api/constitution/chat'
 };
 const ADMIN_SESSION_KEY = 'tdsp-raffle-session-admin';
@@ -128,15 +130,49 @@ function saveLostStakeMessagedAddresses() {
     }
 }
 
-function markLostStakeDelegatorsMessaged(delegators) {
+function applyLostStakeMessageStates(states) {
+    if (!Array.isArray(states)) return;
     let changed = false;
-    delegators.forEach(delegator => {
-        const address = getLostStakeNotificationKey(delegator);
-        if (!address || lostStakeMessagedAddresses.has(address)) return;
-        lostStakeMessagedAddresses.add(address);
-        changed = true;
+    states.forEach(state => {
+        const key = String(state?.key || state?.address || state?.wallet_address || state?.stake_address || state?.ada_handle || '').trim().toLowerCase();
+        if (!key) return;
+        if (state.sent === false) {
+            if (lostStakeMessagedAddresses.delete(key)) changed = true;
+        } else if (!lostStakeMessagedAddresses.has(key)) {
+            lostStakeMessagedAddresses.add(key);
+            changed = true;
+        }
     });
     if (changed) saveLostStakeMessagedAddresses();
+}
+
+async function saveLostStakeMessageState(key, sent, txHash = '') {
+    const address = String(key || '').trim();
+    if (!address) return null;
+    const payload = await authorizedRequest(ENDPOINTS.lostStakeMessageState, {
+        method: 'PUT',
+        body: JSON.stringify({ key: address, sent, tx_hash: txHash || undefined })
+    });
+    applyLostStakeMessageStates(payload?.lost_stake_message_states || []);
+    return payload;
+}
+
+async function markLostStakeDelegatorsMessaged(delegators, txHash = '') {
+    let changed = false;
+    const keys = [];
+    delegators.forEach(delegator => {
+        const address = getLostStakeNotificationKey(delegator);
+        if (!address) return;
+        keys.push(address);
+        if (!lostStakeMessagedAddresses.has(address)) {
+            lostStakeMessagedAddresses.add(address);
+            changed = true;
+        }
+    });
+    if (changed) saveLostStakeMessagedAddresses();
+    await Promise.all(keys.map(key => saveLostStakeMessageState(key, true, txHash).catch(error => {
+        console.warn(`Lost stake message state could not be saved for ${key}: ${error.message}`);
+    })));
 }
 
 function loadMesh() {
@@ -370,7 +406,7 @@ function getLostStakeSourcePaymentAddress(delegator) {
 }
 
 function getLostStakeNotificationKey(delegator) {
-    return getLostStakePaymentTarget(delegator) || String(delegator?.stake_address || '').trim();
+    return String(getLostStakePaymentTarget(delegator) || delegator?.stake_address || '').trim().toLowerCase();
 }
 
 function isLostStakeDelegatorMessaged(delegator) {
@@ -926,6 +962,12 @@ function createLostStakeDelegatorCard(delegator) {
         lostStakeMessagedAddresses.delete(String(delegator.stake_address || '').trim());
         saveLostStakeMessagedAddresses();
         renderLostStake(lostStakePayload);
+        saveLostStakeMessageState(notificationKey, !isSent).catch(error => {
+            const status = document.getElementById('raffle-lost-stake-status');
+            if (!status) return;
+            status.textContent = error?.message || t('Message state could not be saved.');
+            status.classList.add('is-error');
+        });
     });
     card.append(amount, identity);
     if (copyIdentity) card.appendChild(copyIdentity);
@@ -1000,6 +1042,7 @@ async function loadLostStake() {
         }
         throw error;
     }
+    applyLostStakeMessageStates(payload.message_states || []);
     lostStakeVisibleCount = LOST_STAKE_RENDER_BATCH_SIZE;
     renderLostStake(payload);
     return payload;
@@ -1307,7 +1350,7 @@ async function publishLostStakeMessage(selected, message, submit, status, manual
     status.textContent = t('Submitting the signed transaction...');
     const txHash = String(await adminTransactionWallet.submitTx(signedTx)).toLowerCase();
     if (!/^[0-9a-f]{64}$/.test(txHash)) throw new Error(t('The wallet returned an invalid transaction ID.'));
-    markLostStakeDelegatorsMessaged(selected);
+    await markLostStakeDelegatorsMessaged(selected, txHash);
     renderLostStake(lostStakePayload);
     status.replaceChildren(document.createTextNode(t('Lost stake message published on-chain. ')), cardanoscanTransactionLink(txHash));
     if (submit) submit.disabled = false;

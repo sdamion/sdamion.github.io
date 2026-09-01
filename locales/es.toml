@@ -701,6 +701,7 @@ manual_wallet_address_help = "Opcional: añade una o más direcciones de wallet 
 manual_wallet_saved_no_override = "Los cambios manuales se guardan localmente y no serán sobrescritos por refrescos de caché."
 mark_notification_sent = "Marcar notificación como enviada"
 message = "Mensaje"
+message_state_could_not_save = "No se pudo guardar el estado del mensaje."
 no_selected_or_manual_wallet_address = "No hay ninguna stake key seleccionada ni dirección de wallet manual disponible. No se puede construir una transacción visible en la wallet."
 onchain_message = "Mensaje on-chain"
 onchain_message_sent = "Mensaje on-chain enviado"

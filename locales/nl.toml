@@ -701,6 +701,7 @@ manual_wallet_address_help = "Optioneel: voeg één of meer walletadressen toe, 
 manual_wallet_saved_no_override = "Handmatige wijzigingen worden lokaal opgeslagen en niet overschreven door cache-refreshes."
 mark_notification_sent = "Markeer notificatie als verzonden"
 message = "Bericht"
+message_state_could_not_save = "Berichtstatus kon niet worden opgeslagen."
 no_selected_or_manual_wallet_address = "Er is geen geselecteerde stake key of handmatig walletadres beschikbaar. Er kan geen wallet-zichtbare transactie worden gebouwd."
 onchain_message = "On-chain bericht"
 onchain_message_sent = "On-chain bericht verzonden"

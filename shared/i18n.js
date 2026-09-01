@@ -3,9 +3,9 @@
     const DEFAULT_LANGUAGE = 'en';
     const LANGUAGE_CONFIG = Object.freeze({
         en: { label: 'English', flag: '🇺🇸' },
-        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20260901-lost-stake-hide-messaged' },
-        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20260901-lost-stake-hide-messaged' },
-        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20260901-lost-stake-hide-messaged' }
+        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20260901-lost-stake-backend-message-state' },
+        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20260901-lost-stake-backend-message-state' },
+        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20260901-lost-stake-backend-message-state' }
     });
     const TRANSLATION_ATTR = 'data-i18n';
     const TRANSLATION_ORIGINAL_ATTR = 'data-i18n-original';
@@ -342,6 +342,7 @@
         ['Manual changes are saved locally and will not be overwritten by cache refreshes.', 'manual_wallet_saved_no_override'],
         ['Mark notification sent', 'mark_notification_sent'],
         ['Message', 'message'],
+        ['Message state could not be saved.', 'message_state_could_not_save'],
         ['Metadata URL', 'metadata_url'],
         ['Metadata URL (optional)', 'metadata_url_optional'],
         ['Metadata hash', 'metadata_hash'],
