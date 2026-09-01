@@ -173,7 +173,7 @@
         function openOverlay(returnFocus) {
             const values = getValues();
             const stats = document.createElement('div');
-            stats.className = 'governance-vote-legend';
+            stats.className = 'governance-vote-legend governance-ncl-stats';
             stats.append(
                 createStatBox({
                     label: 'NCL',

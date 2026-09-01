@@ -14,7 +14,7 @@
     const GOVERNANCE_COPY_SCRIPT_SRC = 'governance/governance-copy.js?v=20260817-modular-copy';
     const GOVERNANCE_DETAIL_RENDERING_SCRIPT_SRC = 'governance/governance-detail-rendering.js?v=20260819-drep-overlay-language';
     const GOVERNANCE_CIPS_SCRIPT_SRC = 'governance/governance-cips.js?v=20260819-governance-overlay-language';
-    const GOVERNANCE_NCL_SCRIPT_SRC = 'governance/governance-ncl.js?v=20260819-net-change-limit-title';
+    const GOVERNANCE_NCL_SCRIPT_SRC = 'governance/governance-ncl.js?v=20260901-ncl-left-align-stats';
     const GOVERNANCE_NOTIFICATIONS_SCRIPT_SRC = 'governance/governance-notifications.js?v=20260817-modular-notifications';
     const GOVERNANCE_EPOCH_CLOCK_SCRIPT_SRC = 'governance/governance-epoch-clock.js?v=20260820-menu-alerts-epoch';
     const GOVERNANCE_VOTE_DATA_SCRIPT_SRC = 'governance/governance-vote-data.js?v=20260817-modular-vote-data';

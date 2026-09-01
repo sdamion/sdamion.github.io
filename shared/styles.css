@@ -3414,6 +3414,20 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     overflow-wrap: anywhere;
 }
 
+.governance-ncl-stats .governance-vote-legend-item {
+    justify-items: start;
+    text-align: left;
+}
+
+.governance-ncl-stats .governance-vote-legend-copy {
+    justify-items: start;
+    text-align: left;
+}
+
+.governance-ncl-stats .governance-stat-box.is-clickable {
+    justify-content: stretch;
+}
+
 .governance-vote-legend--inline,
 .governance-vote-legend--stacked {
     display: grid;
