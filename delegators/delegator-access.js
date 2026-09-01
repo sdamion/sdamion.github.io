@@ -931,6 +931,7 @@ function createLostStakeDelegatorCard(delegator) {
     };
     const checkboxWrap = document.createElement('div');
     checkboxWrap.className = 'raffle-lost-stake-select-wrap';
+    checkboxWrap.addEventListener('pointerdown', event => event.stopPropagation());
     checkboxWrap.addEventListener('click', event => {
         event.stopPropagation();
         if (event.target === checkbox) return;
@@ -947,6 +948,7 @@ function createLostStakeDelegatorCard(delegator) {
     checkbox.setAttribute('aria-label', t(`Select ${identityInfo.value}`));
     checkbox.addEventListener('change', () => toggleLostStakeSelection(checkbox.checked));
     checkbox.addEventListener('click', event => event.stopPropagation());
+    checkbox.addEventListener('pointerdown', event => event.stopPropagation());
     checkboxWrap.appendChild(checkbox);
     const notificationKey = getLostStakeNotificationKey(delegator);
     const isSent = isLostStakeDelegatorMessaged(delegator);
@@ -954,9 +956,11 @@ function createLostStakeDelegatorCard(delegator) {
     sent.type = 'button';
     sent.className = 'raffle-lost-stake-sent';
     sent.classList.toggle('is-marked', isSent);
+    sent.setAttribute('aria-pressed', isSent ? 'true' : 'false');
     sent.textContent = '✉';
     sent.title = t(isSent ? 'Unmark notification sent' : 'Mark notification sent');
     sent.setAttribute('aria-label', t(isSent ? 'Unmark notification sent' : 'Mark notification sent'));
+    sent.addEventListener('pointerdown', event => event.stopPropagation());
     sent.addEventListener('click', event => {
         event.stopPropagation();
         if (!notificationKey) return;

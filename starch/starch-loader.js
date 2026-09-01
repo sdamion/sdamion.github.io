@@ -1,5 +1,5 @@
 (function () {
-    const STARCH_SCRIPT_SRC = 'starch/starch.js?v=20260819-starch-overlay-language';
+    const STARCH_SCRIPT_SRC = 'starch/starch.js?v=20260901-starch-company-totals';
     const STARCH_TARGET_SELECTORS = [
         '#starch',
         '#pool-starch-status-card'

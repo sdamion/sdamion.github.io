@@ -98,6 +98,13 @@ function consolidateStarchCompanies(companies) {
     return Array.from(groups.values());
 }
 
+function hasStarchCompanyStats(record) {
+    return ['balance', 'weekly_blocks', 'miner_count'].some(key => {
+        const value = Number(record?.[key]);
+        return Number.isFinite(value);
+    });
+}
+
 function getStarchSummaryUrl(teamId) {
     if (STARCH_IS_LOCAL_PREVIEW) {
         return `${STARCH_API_BASE_URL}?teamId=${encodeURIComponent(teamId)}`;
@@ -350,7 +357,8 @@ function createStarchCompanyDirectoryCard(record, id) {
     const row = document.createElement('div');
     row.className = 'governance-card governance-menu-card governance-treasury-withdrawal-card starch-company-card';
     row.dataset.sortName = window.TDSPRuntime.normalizeSearchText(String(record?.name || 'No Name'));
-    if (record?.stats_resolved === true) {
+    const hasStats = record?.stats_resolved === true || hasStarchCompanyStats(record);
+    if (hasStats) {
         row.dataset.sortBalance = String(Number(record?.balance) || 0);
         row.dataset.sortBlocks = String(Number(record?.weekly_blocks) || 0);
         row.dataset.sortMiners = String(Number(record?.miner_count) || 0);
@@ -366,14 +374,14 @@ function createStarchCompanyDirectoryCard(record, id) {
 
     window.TDSPRuntime?.appendUniversalTileContent?.(row, {
         title: String(record?.name || 'No Name'),
-        primaryText: record?.stats_resolved === true
+        primaryText: hasStats
             ? `Balance ${formatStarchCompanyBalance(record.balance)}`
             : 'Balance loading...',
         contextItems: [
-            record?.stats_resolved === true
+            hasStats
                 ? `Weekly Blocks ${Number(record.weekly_blocks || 0).toLocaleString('en-US')}`
                 : 'Weekly Blocks loading...',
-            record?.stats_resolved === true
+            hasStats
                 ? `Amount of miners ${Number(record.miner_count || 0).toLocaleString('en-US')}`
                 : 'Amount of miners loading...'
         ]
