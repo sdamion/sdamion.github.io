@@ -266,6 +266,12 @@
     word-break: break-word;
 }
 
+.raffle-lost-stake-identity-label {
+    color: var(--muted);
+    font-size: 0.9em;
+    font-weight: 700;
+}
+
 .raffle-lost-stake-row .tdsp-responsive-identifier,
 .raffle-lost-stake-row .tdsp-responsive-identifier-full,
 .raffle-lost-stake-row .tdsp-responsive-identifier-short {

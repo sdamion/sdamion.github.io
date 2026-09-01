@@ -723,10 +723,13 @@ function createLostStakeDelegatorCard(delegator) {
     const identity = document.createElement('span');
     identity.className = 'raffle-lost-stake-identity';
     const identityInfo = getLostStakeDisplayIdentity(delegator);
+    const identityLabel = document.createElement('span');
+    identityLabel.className = 'raffle-lost-stake-identity-label';
+    identityLabel.textContent = `${t(identityInfo.label)} `;
     if (window.TDSPRuntime?.createResponsiveIdentifier && identityInfo.type !== 'ada_handle') {
-        identity.replaceChildren(window.TDSPRuntime.createResponsiveIdentifier(identityInfo.value));
+        identity.replaceChildren(identityLabel, window.TDSPRuntime.createResponsiveIdentifier(identityInfo.value));
     } else {
-        identity.textContent = identityInfo.value;
+        identity.replaceChildren(identityLabel, document.createTextNode(identityInfo.value));
     }
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
