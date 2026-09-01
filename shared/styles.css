@@ -2149,22 +2149,6 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     background: #38bdf8;
 }
 
-.retired-spo-stake-bar-fill--visible {
-    background: #fb7185;
-}
-
-.retired-spo-stake-bar-fill--hidden {
-    background: rgba(148, 163, 184, 0.48);
-}
-
-.retired-spo-stake-label--visible {
-    color: #fb7185;
-}
-
-.retired-spo-stake-label--hidden {
-    color: rgba(148, 163, 184, 0.92);
-}
-
 .governance-vote-bar-fill--yes {
     background: #34d399;
 }

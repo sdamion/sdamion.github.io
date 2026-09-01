@@ -167,14 +167,14 @@
         }
     }
 
-    async function loadPool() {
+    async function loadPool(options = {}) {
         const summaryEl = document.getElementById('pool-summary');
         const relaysEl = document.getElementById('pool-relays');
 
         if (!summaryEl || !relaysEl) return;
 
         try {
-            renderPoolStatus(await window.TDSPRuntime.fetchJson(POOL_API_URL));
+            renderPoolStatus(await window.TDSPRuntime.fetchJson(POOL_API_URL, options.force ? { cache: 'no-store' } : {}));
         } catch (error) {
             setRelayCardStatus(null, null);
             relaysEl.textContent = '';

@@ -2,8 +2,8 @@
     const THEME_STORAGE_KEY = 'tdsp-theme';
     const EPOCH_DURATION_MS = 432000 * 1000;
     const CARDANO_MAINNET_EPOCH_ZERO_MS = Date.parse('2017-09-23T21:44:51Z');
-    const MAIN_SCRIPT_SRC = 'home/index.js?v=20260820-menu-alerts-epoch';
-    const GOVERNANCE_SCRIPT_SRC = 'governance/governance-loader.js?v=20260901-retired-spo-threshold-bar';
+    const MAIN_SCRIPT_SRC = 'home/index.js?v=20260901-pool-delegators-live-refresh';
+    const GOVERNANCE_SCRIPT_SRC = 'governance/governance-loader.js?v=20260901-retired-spo-no-bar';
     let epochTimer = null;
     let headerVisibilityObserver = null;
 

@@ -611,7 +611,7 @@ async function fetchLeaderSchedule() {
 
 function loadPoolStatusModule() {
     if (window.TDSPPoolStatus) return Promise.resolve(window.TDSPPoolStatus);
-    return window.TDSPRuntime.loadScript('pool/status.js?v=20260819-pool-status-language', {
+    return window.TDSPRuntime.loadScript('pool/status.js?v=20260901-pool-delegators-live-refresh', {
         datasetName: 'poolStatus',
         selector: 'script[data-pool-status]',
         ready: () => window.TDSPPoolStatus || null
@@ -689,8 +689,14 @@ function closeRealfiWebsiteOverlay(restoreFocus = true) {
     closePoolMenuOverlay('pool-realfi-overlay', restoreFocus);
 }
 
-function openPoolDelegatorsOverlay() {
+async function openPoolDelegatorsOverlay() {
     closePoolDelegatorsOverlay(false);
+    try {
+        const poolStatus = await loadPoolStatusModule();
+        await poolStatus.loadPool?.({ force: true });
+    } catch (error) {
+        console.warn('Pool delegator live stake refresh failed before opening overlay', error);
+    }
     const { poolDelegators = [] } = window.TDSPPoolStatus?.getState?.() || {};
     const delegatorsPageButton = document.createElement('button');
     delegatorsPageButton.type = 'button';

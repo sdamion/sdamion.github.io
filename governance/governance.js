@@ -7916,46 +7916,11 @@ function setRetiredSpoDelegatedTileValue(valueText) {
 function updateRetiredSpoTile(payload) {
     const retiredSummary = getRetiredSpoStakeSummary(payload?.retired_spos);
     const visibleLovelace = retiredSummary.visibleLovelace;
-    const belowThresholdLovelace = payload?.retired_below_threshold_delegated_lovelace != null
-        ? BigInt(String(payload.retired_below_threshold_delegated_lovelace || '0'))
-        : retiredSummary.belowThresholdLovelace;
     window.TDSPRuntime.setText(
         'retired-spo-count',
         retiredSummary.visible.length.toLocaleString('en-US')
     );
     setRetiredSpoDelegatedTileValue(window.TDSPRuntime.formatTileAdaFromLovelace(visibleLovelace.toString()));
-
-    const card = document.getElementById('retired-spo-card');
-    if (!card) return;
-    card.querySelector('.retired-spo-stake-bar')?.remove();
-    const total = visibleLovelace + belowThresholdLovelace;
-    if (total <= 0n) return;
-
-    const bar = document.createElement('div');
-    bar.className = 'retired-spo-stake-bar drep-ncl-bar';
-
-    const track = document.createElement('div');
-    track.className = 'drep-ncl-bar-track';
-    const visibleFill = document.createElement('span');
-    visibleFill.className = 'drep-ncl-bar-fill retired-spo-stake-bar-fill--visible';
-    visibleFill.style.flexBasis = `${Number((visibleLovelace * 10000n) / total) / 100}%`;
-    const hiddenFill = document.createElement('span');
-    hiddenFill.className = 'drep-ncl-bar-fill retired-spo-stake-bar-fill--hidden';
-    hiddenFill.style.flexBasis = `${Number((belowThresholdLovelace * 10000n) / total) / 100}%`;
-    track.append(visibleFill, hiddenFill);
-
-    const label = document.createElement('span');
-    label.className = 'drep-ncl-bar-label';
-    const visibleLabel = document.createElement('span');
-    visibleLabel.className = 'retired-spo-stake-label--visible';
-    visibleLabel.textContent = `>= 100 ADA ${window.TDSPRuntime.formatTileAdaFromLovelace(visibleLovelace.toString())}`;
-    const hiddenLabel = document.createElement('span');
-    hiddenLabel.className = 'retired-spo-stake-label--hidden';
-    hiddenLabel.textContent = `< 100 ADA ${window.TDSPRuntime.formatTileAdaFromLovelace(belowThresholdLovelace.toString())}`;
-    label.append(visibleLabel, document.createTextNode(' • '), hiddenLabel);
-
-    bar.append(track, label);
-    card.appendChild(bar);
 }
 
 function getSpoOperatorCount(payload, fallback = 0) {
