@@ -8,6 +8,7 @@ const LOST_STAKE_RENDER_BATCH_SIZE = 100;
 const LOST_STAKE_MAX_ON_CHAIN_RECIPIENTS = 50;
 const LOST_STAKE_MESSAGED_KEY = 'tdsp-lost-stake-messaged-addresses';
 const LOST_STAKE_MESSAGE_OUTPUT_LOVELACE = '1000000';
+const ADA_HANDLE_API_BASE_URL = 'https://api.handle.me';
 let ROLE = document.body.dataset.raffleRole === 'admin' ? 'admin' : 'delegator';
 const IS_EMBEDDED = new URLSearchParams(window.location.search).get('embed') === '1';
 const IS_LOCAL = window.TDSPRuntime?.isLocalPreview === true;
@@ -298,13 +299,58 @@ function getLostStakePaymentAddress(delegator) {
         .find(address => /^addr1[0-9a-z]+$/i.test(address)) || '';
 }
 
+function getLostStakeAdaHandleTarget(delegator) {
+    const handle = String(delegator?.ada_handle || '').trim();
+    if (!handle) return '';
+    const normalized = handle.startsWith('$') ? handle : `$${handle}`;
+    return /^\$[0-9A-Za-z_.-]{1,64}$/.test(normalized) ? normalized : '';
+}
+
+function getLostStakePaymentTarget(delegator) {
+    return getLostStakePaymentAddress(delegator) || getLostStakeAdaHandleTarget(delegator);
+}
+
+async function resolveAdaHandlePaymentAddress(handle) {
+    const normalized = String(handle || '').trim().replace(/^\$/, '');
+    if (!/^[0-9A-Za-z_.-]{1,64}$/.test(normalized)) return '';
+    const response = await fetch(`${ADA_HANDLE_API_BASE_URL}/handles/${encodeURIComponent(normalized)}`, {
+        headers: { accept: 'application/json' }
+    });
+    if (response.status === 404) return '';
+    if (!response.ok) throw new Error(t(`ADA Handle lookup failed with HTTP ${response.status}.`));
+    const payload = await response.json();
+    const address = String(payload?.resolved_addresses?.ada || payload?.address || '').trim();
+    return /^addr1[0-9a-z]+$/i.test(address) ? address : '';
+}
+
+async function resolveLostStakePaymentTarget(delegator) {
+    const paymentAddress = getLostStakePaymentAddress(delegator);
+    if (paymentAddress) return paymentAddress;
+    const handle = getLostStakeAdaHandleTarget(delegator);
+    if (!handle) return '';
+    return resolveAdaHandlePaymentAddress(handle);
+}
+
+function getLostStakeDisplayIdentity(delegator) {
+    const adaHandle = String(delegator?.ada_handle || '').trim();
+    if (adaHandle) return { value: adaHandle, type: 'ada_handle', label: 'ADA handle' };
+    const walletAddress = getLostStakePaymentAddress(delegator);
+    if (walletAddress) return { value: walletAddress, type: 'wallet_address', label: 'Wallet address' };
+    const stakeAddress = String(delegator?.stake_address || '').trim();
+    return { value: stakeAddress || 'Stake key', type: 'stake_address', label: 'Stake key' };
+}
+
+function getLostStakeIdentitySortRank(delegator) {
+    const type = getLostStakeDisplayIdentity(delegator).type;
+    if (type === 'ada_handle' || type === 'wallet_address') return 0;
+    return 2;
+}
+
 function getLostStakeVisibleMessageRecipients(selectedDelegators) {
-    return selectedDelegators
-        .map(delegator => ({
-            delegator,
-            walletAddress: getLostStakePaymentAddress(delegator)
-        }))
-        .filter(entry => entry.walletAddress);
+    return Promise.all(selectedDelegators.map(async delegator => ({
+        delegator,
+        paymentTarget: await resolveLostStakePaymentTarget(delegator)
+    }))).then(entries => entries.filter(entry => entry.paymentTarget));
 }
 
 function buildLostStakeWalletMessage(message, selectedDelegators) {
@@ -573,7 +619,7 @@ function openLostStakeDelegatorDetail(delegator) {
 
     const title = document.createElement('strong');
     title.className = 'governance-card-title';
-    title.textContent = delegator.ada_handle || 'Stake key';
+    title.textContent = getLostStakeDisplayIdentity(delegator).value;
 
     const pools = Array.isArray(delegator?.pools) ? delegator.pools : [];
     const poolList = document.createElement('div');
@@ -605,8 +651,9 @@ function openLostStakeDelegatorDetail(delegator) {
         title,
         createLostStakeDetailRow('ADA handle', delegator.ada_handle || '-'),
         createLostStakeDetailRow('Stake', formatAda(delegator.amount_lovelace)),
-        createLostStakeDetailRow('Stake key', delegator.stake_address, 'stake address'),
         createLostStakeDetailRow('Wallet address', getLostStakePaymentAddress(delegator) || '-', getLostStakePaymentAddress(delegator) ? 'wallet address' : null),
+        createLostStakeDetailRow('Message target', getLostStakePaymentTarget(delegator) || '-'),
+        createLostStakeDetailRow('Stake key', delegator.stake_address, 'stake address'),
         poolList
     );
     list.replaceChildren(detail);
@@ -628,11 +675,11 @@ function createLostStakeDelegatorCard(delegator) {
     amount.textContent = formatAda(delegator.amount_lovelace);
     const identity = document.createElement('span');
     identity.className = 'raffle-lost-stake-identity';
-    const identityText = delegator.ada_handle || delegator.stake_address || 'Stake key';
-    if (window.TDSPRuntime?.createResponsiveIdentifier && identityText === delegator.stake_address) {
-        identity.replaceChildren(window.TDSPRuntime.createResponsiveIdentifier(identityText));
+    const identityInfo = getLostStakeDisplayIdentity(delegator);
+    if (window.TDSPRuntime?.createResponsiveIdentifier && identityInfo.type !== 'ada_handle') {
+        identity.replaceChildren(window.TDSPRuntime.createResponsiveIdentifier(identityInfo.value));
     } else {
-        identity.textContent = identityText;
+        identity.textContent = identityInfo.value;
     }
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
@@ -640,7 +687,7 @@ function createLostStakeDelegatorCard(delegator) {
     checkbox.value = delegator.stake_address;
     checkbox.checked = lostStakeSelectedAddresses.has(delegator.stake_address);
     checkbox.setAttribute('data-lost-stake-select', '');
-    checkbox.setAttribute('aria-label', t(`Select ${delegator.ada_handle || delegator.stake_address}`));
+    checkbox.setAttribute('aria-label', t(`Select ${identityInfo.value}`));
     checkbox.addEventListener('change', () => {
         if (checkbox.checked) lostStakeSelectedAddresses.add(delegator.stake_address);
         else lostStakeSelectedAddresses.delete(delegator.stake_address);
@@ -661,11 +708,14 @@ function renderLostStake(payload = lostStakePayload) {
     const delegators = getLostStakeDelegators().slice().sort((left, right) => {
         const leftAmount = BigInt(String(left.amount_lovelace || '0'));
         const rightAmount = BigInt(String(right.amount_lovelace || '0'));
+        const leftRank = getLostStakeIdentitySortRank(left);
+        const rightRank = getLostStakeIdentitySortRank(right);
+        if (leftRank !== rightRank) return leftRank - rightRank;
         if (rightAmount !== leftAmount) {
             const result = rightAmount > leftAmount ? 1 : -1;
             return lostStakeSortDescending ? result : -result;
         }
-        return String(left.stake_address).localeCompare(String(right.stake_address));
+        return getLostStakeDisplayIdentity(left).value.localeCompare(getLostStakeDisplayIdentity(right).value);
     });
     const dashboardCount = document.getElementById('raffle-dashboard-lost-stake-count');
     const menuCount = document.getElementById('raffle-menu-lost-stake-count');
@@ -997,12 +1047,13 @@ async function improveLostStakeMessage() {
 }
 
 async function publishLostStakeMessage(selected, message, submit, status) {
-    const visibleRecipients = getLostStakeVisibleMessageRecipients(selected);
+    status.textContent = t('Resolving wallet addresses and ADA Handles...');
+    const visibleRecipients = await getLostStakeVisibleMessageRecipients(selected);
     if (!visibleRecipients.length) {
-        throw new Error(t('No selected stake key has a known wallet address. A wallet-visible transaction cannot be built.'));
+        throw new Error(t('No selected stake key has a known wallet address or ADA Handle. A wallet-visible transaction cannot be built.'));
     }
     if (visibleRecipients.length !== selected.length) {
-        throw new Error(t(`${selected.length - visibleRecipients.length} selected stake key${selected.length - visibleRecipients.length === 1 ? '' : 's'} have no known wallet address. Select only rows with wallet addresses for a wallet-visible message.`));
+        throw new Error(t(`${selected.length - visibleRecipients.length} selected stake key${selected.length - visibleRecipients.length === 1 ? '' : 's'} have no known wallet address or ADA Handle. Select only rows with wallet addresses or ADA Handles for a wallet-visible message.`));
     }
     status.textContent = t('Building the on-chain lost stake message transaction...');
     const utxos = await adminTransactionWallet.getUtxos();
@@ -1010,8 +1061,8 @@ async function publishLostStakeMessage(selected, message, submit, status) {
     if (!utxos?.length || !changeAddress) throw new Error(t('No spendable wallet UTxO was found for the network fee.'));
     const { MeshTxBuilder } = await loadMesh();
     const txBuilder = new MeshTxBuilder({ verbose: false });
-    visibleRecipients.forEach(({ walletAddress }) => {
-        txBuilder.txOut(walletAddress, [{ unit: 'lovelace', quantity: LOST_STAKE_MESSAGE_OUTPUT_LOVELACE }]);
+    visibleRecipients.forEach(({ paymentTarget }) => {
+        txBuilder.txOut(paymentTarget, [{ unit: 'lovelace', quantity: LOST_STAKE_MESSAGE_OUTPUT_LOVELACE }]);
     });
     const unsignedTx = await txBuilder
         .metadataValue(674, buildLostStakeWalletMessage(message, selected))
