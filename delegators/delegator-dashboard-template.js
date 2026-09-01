@@ -272,6 +272,7 @@
                                         <button class="governance-vote-button" type="submit">Publish message on-chain</button>
                                     </div>
                                     <p class="raffle-inline-status" id="raffle-lost-stake-status" role="status" aria-live="polite"></p>
+                                    <div class="wallet-list raffle-wallet-list" id="raffle-lost-stake-wallet-list"></div>
                                 </form>
                             </section>
                         </div>

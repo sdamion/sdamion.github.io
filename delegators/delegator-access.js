@@ -4,6 +4,10 @@ const ADMIN_STAKE_ADDRESS = 'stake1u9ex0jtl4nv84rlzwuft5rczy2hgkjygewla04mgy7v2n
 const ADA_HANDLE_POLICY_ID = 'f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a';
 const RAFFLE_METADATA_LABEL = 8675309;
 const LOST_STAKE_MESSAGE_METADATA_LABEL = 8675310;
+const LOST_STAKE_RENDER_BATCH_SIZE = 100;
+const LOST_STAKE_MAX_ON_CHAIN_RECIPIENTS = 50;
+const LOST_STAKE_MESSAGED_KEY = 'tdsp-lost-stake-messaged-addresses';
+const LOST_STAKE_MESSAGE_OUTPUT_LOVELACE = '1000000';
 let ROLE = document.body.dataset.raffleRole === 'admin' ? 'admin' : 'delegator';
 const IS_EMBEDDED = new URLSearchParams(window.location.search).get('embed') === '1';
 const IS_LOCAL = window.TDSPRuntime?.isLocalPreview === true;
@@ -48,6 +52,9 @@ let raffleAdminView = 'menu';
 let raffleOverlayRootView = 'menu';
 let lostStakePayload = null;
 let lostStakeSortDescending = true;
+let lostStakeVisibleCount = LOST_STAKE_RENDER_BATCH_SIZE;
+const lostStakeSelectedAddresses = new Set();
+const lostStakeMessagedAddresses = new Set(readLostStakeMessagedAddresses());
 
 const RAFFLE_ADMIN_VIEW_TITLES = Object.freeze({
     menu: 'Raffles',
@@ -71,6 +78,34 @@ function setTranslatedText(element, text) {
     element.setAttribute('data-i18n-auto', '');
     element.setAttribute('data-i18n-auto-original', value);
     element.textContent = t(value);
+}
+
+function readLostStakeMessagedAddresses() {
+    try {
+        const value = JSON.parse(localStorage.getItem(LOST_STAKE_MESSAGED_KEY) || '[]');
+        return Array.isArray(value) ? value.filter(Boolean).map(String) : [];
+    } catch {
+        return [];
+    }
+}
+
+function saveLostStakeMessagedAddresses() {
+    try {
+        localStorage.setItem(LOST_STAKE_MESSAGED_KEY, JSON.stringify([...lostStakeMessagedAddresses]));
+    } catch {
+        // The sent marker is only a UI convenience; the on-chain transaction remains the source of truth.
+    }
+}
+
+function markLostStakeDelegatorsMessaged(delegators) {
+    let changed = false;
+    delegators.forEach(delegator => {
+        const address = String(delegator?.stake_address || '').trim();
+        if (!address || lostStakeMessagedAddresses.has(address)) return;
+        lostStakeMessagedAddresses.add(address);
+        changed = true;
+    });
+    if (changed) saveLostStakeMessagedAddresses();
 }
 
 function loadMesh() {
@@ -227,6 +262,7 @@ function buildRaffleMetadata(draw) {
 function buildLostStakeMessageMetadata(message, selectedDelegators) {
     const recipients = selectedDelegators.map(delegator => ({
         stake_address: splitMetadataText(delegator.stake_address),
+        wallet_address: splitMetadataText(getLostStakePaymentAddress(delegator) || ''),
         ada_handle: splitMetadataText(delegator.ada_handle || ''),
         amount_lovelace: String(delegator.amount_lovelace || '0'),
         pools: (Array.isArray(delegator.pools) ? delegator.pools : []).slice(0, 3).map(pool => ({
@@ -248,6 +284,35 @@ function buildLostStakeMessageMetadata(message, selectedDelegators) {
         message: splitMetadataText(message, 64),
         recipients
     });
+}
+
+function getLostStakePaymentAddress(delegator) {
+    const candidates = [
+        delegator?.registered_payment_address,
+        delegator?.wallet_address,
+        delegator?.payment_address,
+        ...(Array.isArray(delegator?.payment_addresses) ? delegator.payment_addresses : [])
+    ];
+    return candidates
+        .map(address => String(address || '').trim())
+        .find(address => /^addr1[0-9a-z]+$/i.test(address)) || '';
+}
+
+function getLostStakeVisibleMessageRecipients(selectedDelegators) {
+    return selectedDelegators
+        .map(delegator => ({
+            delegator,
+            walletAddress: getLostStakePaymentAddress(delegator)
+        }))
+        .filter(entry => entry.walletAddress);
+}
+
+function buildLostStakeWalletMessage(message, selectedDelegators) {
+    const intro = `TDSP lost stake notice for ${selectedDelegators.length} stake key${selectedDelegators.length === 1 ? '' : 's'}.`;
+    const chunks = splitMetadataText(`${intro} ${message}`, 64);
+    return {
+        msg: Array.isArray(chunks) ? chunks : [chunks].filter(Boolean)
+    };
 }
 
 function cardanoscanTransactionLink(txHash) {
@@ -460,15 +525,7 @@ function getLostStakeDelegators() {
 }
 
 function getSelectedLostStakeDelegators() {
-    const selected = new Set(Array.from(document.querySelectorAll('[data-lost-stake-select]:checked'))
-        .map(input => input.value));
-    return getLostStakeDelegators().filter(delegator => selected.has(delegator.stake_address));
-}
-
-function formatLostStakePools(delegator) {
-    const pools = Array.isArray(delegator?.pools) ? delegator.pools : [];
-    if (!pools.length) return 'Retired pool';
-    return pools.map(pool => pool.pool_name || pool.ticker || shorten(pool.pool_id || '', 12, 6)).filter(Boolean).join(', ');
+    return getLostStakeDelegators().filter(delegator => lostStakeSelectedAddresses.has(delegator.stake_address));
 }
 
 function updateLostStakeSelectionStatus() {
@@ -485,27 +542,117 @@ function updateLostStakeSelectionStatus() {
     status.classList.remove('is-error');
 }
 
-function createLostStakeDelegatorCard(delegator) {
-    const card = document.createElement('article');
-    card.className = 'governance-menu-card raffle-exclusion-item';
-    const identity = document.createElement('label');
-    identity.className = 'raffle-exclusion-identity';
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.value = delegator.stake_address;
-    checkbox.setAttribute('data-lost-stake-select', '');
-    checkbox.addEventListener('change', updateLostStakeSelectionStatus);
+function createLostStakeDetailRow(label, value, copyLabel = null) {
+    const row = document.createElement('div');
+    row.className = 'raffle-lost-stake-detail-row';
+    const labelNode = document.createElement('span');
+    labelNode.className = 'governance-card-detail';
+    setTranslatedText(labelNode, label);
+    const valueNode = copyLabel
+        ? addressLine(value, copyLabel)
+        : document.createElement('strong');
+    if (!copyLabel) {
+        valueNode.className = 'governance-card-title';
+        valueNode.textContent = value || '-';
+    }
+    row.append(labelNode, valueNode);
+    return row;
+}
+
+function openLostStakeDelegatorDetail(delegator) {
+    const list = document.getElementById('raffle-lost-stake-list');
+    if (!list) return;
+    const detail = document.createElement('article');
+    detail.className = 'governance-menu-card raffle-lost-stake-detail';
+
+    const back = document.createElement('button');
+    back.type = 'button';
+    back.className = 'governance-vote-secondary';
+    setTranslatedText(back, 'Back to list');
+    back.addEventListener('click', () => renderLostStake(lostStakePayload));
+
     const title = document.createElement('strong');
     title.className = 'governance-card-title';
     title.textContent = delegator.ada_handle || 'Stake key';
-    const amount = document.createElement('span');
-    amount.className = 'governance-card-detail';
+
+    const pools = Array.isArray(delegator?.pools) ? delegator.pools : [];
+    const poolList = document.createElement('div');
+    poolList.className = 'raffle-lost-stake-pools';
+    if (pools.length) {
+        pools.forEach(pool => {
+            const poolCard = document.createElement('div');
+            poolCard.className = 'governance-menu-card raffle-lost-stake-pool';
+            const poolName = document.createElement('strong');
+            poolName.className = 'governance-card-title';
+            poolName.textContent = pool.pool_name || pool.ticker || 'Retired pool';
+            poolCard.append(
+                poolName,
+                createLostStakeDetailRow('Pool ID', pool.pool_id || '-', pool.pool_id ? 'pool ID' : null),
+                createLostStakeDetailRow('Retired epoch', pool.retired_epoch ?? pool.retiring_epoch ?? '-'),
+                createLostStakeDetailRow('Stake', formatAda(pool.amount_lovelace || delegator.amount_lovelace || '0'))
+            );
+            poolList.appendChild(poolCard);
+        });
+    } else {
+        const emptyPools = document.createElement('p');
+        emptyPools.className = 'governance-card-detail';
+        setTranslatedText(emptyPools, 'No retired pool details are cached for this stake key.');
+        poolList.appendChild(emptyPools);
+    }
+
+    detail.append(
+        back,
+        title,
+        createLostStakeDetailRow('ADA handle', delegator.ada_handle || '-'),
+        createLostStakeDetailRow('Stake', formatAda(delegator.amount_lovelace)),
+        createLostStakeDetailRow('Stake key', delegator.stake_address, 'stake address'),
+        createLostStakeDetailRow('Wallet address', getLostStakePaymentAddress(delegator) || '-', getLostStakePaymentAddress(delegator) ? 'wallet address' : null),
+        poolList
+    );
+    list.replaceChildren(detail);
+}
+
+function createLostStakeDelegatorCard(delegator) {
+    const card = document.createElement('article');
+    card.tabIndex = 0;
+    card.role = 'button';
+    card.className = 'governance-menu-card raffle-lost-stake-row';
+    card.addEventListener('click', () => openLostStakeDelegatorDetail(delegator));
+    card.addEventListener('keydown', event => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        openLostStakeDelegatorDetail(delegator);
+    });
+    const amount = document.createElement('strong');
+    amount.className = 'raffle-lost-stake-amount';
     amount.textContent = formatAda(delegator.amount_lovelace);
-    const pools = document.createElement('span');
-    pools.className = 'governance-card-detail';
-    pools.textContent = formatLostStakePools(delegator);
-    identity.append(checkbox, title, amount, pools, addressLine(delegator.stake_address));
-    card.appendChild(identity);
+    const identity = document.createElement('span');
+    identity.className = 'raffle-lost-stake-identity';
+    const identityText = delegator.ada_handle || delegator.stake_address || 'Stake key';
+    if (window.TDSPRuntime?.createResponsiveIdentifier && identityText === delegator.stake_address) {
+        identity.replaceChildren(window.TDSPRuntime.createResponsiveIdentifier(identityText));
+    } else {
+        identity.textContent = identityText;
+    }
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.className = 'raffle-lost-stake-select';
+    checkbox.value = delegator.stake_address;
+    checkbox.checked = lostStakeSelectedAddresses.has(delegator.stake_address);
+    checkbox.setAttribute('data-lost-stake-select', '');
+    checkbox.setAttribute('aria-label', t(`Select ${delegator.ada_handle || delegator.stake_address}`));
+    checkbox.addEventListener('change', () => {
+        if (checkbox.checked) lostStakeSelectedAddresses.add(delegator.stake_address);
+        else lostStakeSelectedAddresses.delete(delegator.stake_address);
+        updateLostStakeSelectionStatus();
+    });
+    checkbox.addEventListener('click', event => event.stopPropagation());
+    const sent = document.createElement('span');
+    sent.className = 'raffle-lost-stake-sent';
+    sent.textContent = lostStakeMessagedAddresses.has(String(delegator.stake_address || '').trim()) ? '✉' : '';
+    sent.title = t('On-chain message sent');
+    sent.setAttribute('aria-label', sent.textContent ? t('On-chain message sent') : '');
+    card.append(amount, identity, sent, checkbox);
     return card;
 }
 
@@ -541,7 +688,21 @@ function renderLostStake(payload = lostStakePayload) {
         list.appendChild(empty);
         return;
     }
-    delegators.forEach(delegator => list.appendChild(createLostStakeDelegatorCard(delegator)));
+    const visibleDelegators = delegators.slice(0, Math.max(LOST_STAKE_RENDER_BATCH_SIZE, lostStakeVisibleCount));
+    const fragment = document.createDocumentFragment();
+    visibleDelegators.forEach(delegator => fragment.appendChild(createLostStakeDelegatorCard(delegator)));
+    list.appendChild(fragment);
+    if (visibleDelegators.length < delegators.length) {
+        const loadMore = document.createElement('button');
+        loadMore.type = 'button';
+        loadMore.className = 'governance-vote-secondary';
+        setTranslatedText(loadMore, `Load ${Math.min(LOST_STAKE_RENDER_BATCH_SIZE, delegators.length - visibleDelegators.length).toLocaleString('en-US')} more`);
+        loadMore.addEventListener('click', () => {
+            lostStakeVisibleCount += LOST_STAKE_RENDER_BATCH_SIZE;
+            renderLostStake(lostStakePayload);
+        });
+        list.appendChild(loadMore);
+    }
     updateLostStakeSelectionStatus();
 }
 
@@ -564,6 +725,7 @@ async function loadLostStake() {
         }
         throw error;
     }
+    lostStakeVisibleCount = LOST_STAKE_RENDER_BATCH_SIZE;
     renderLostStake(payload);
     return payload;
 }
@@ -834,6 +996,83 @@ async function improveLostStakeMessage() {
     }
 }
 
+async function publishLostStakeMessage(selected, message, submit, status) {
+    const visibleRecipients = getLostStakeVisibleMessageRecipients(selected);
+    if (!visibleRecipients.length) {
+        throw new Error(t('No selected stake key has a known wallet address. A wallet-visible transaction cannot be built.'));
+    }
+    if (visibleRecipients.length !== selected.length) {
+        throw new Error(t(`${selected.length - visibleRecipients.length} selected stake key${selected.length - visibleRecipients.length === 1 ? '' : 's'} have no known wallet address. Select only rows with wallet addresses for a wallet-visible message.`));
+    }
+    status.textContent = t('Building the on-chain lost stake message transaction...');
+    const utxos = await adminTransactionWallet.getUtxos();
+    const changeAddress = await adminTransactionWallet.getChangeAddress();
+    if (!utxos?.length || !changeAddress) throw new Error(t('No spendable wallet UTxO was found for the network fee.'));
+    const { MeshTxBuilder } = await loadMesh();
+    const txBuilder = new MeshTxBuilder({ verbose: false });
+    visibleRecipients.forEach(({ walletAddress }) => {
+        txBuilder.txOut(walletAddress, [{ unit: 'lovelace', quantity: LOST_STAKE_MESSAGE_OUTPUT_LOVELACE }]);
+    });
+    const unsignedTx = await txBuilder
+        .metadataValue(674, buildLostStakeWalletMessage(message, selected))
+        .metadataValue(LOST_STAKE_MESSAGE_METADATA_LABEL, buildLostStakeMessageMetadata(message, selected))
+        .selectUtxosFrom(utxos)
+        .changeAddress(changeAddress)
+        .complete();
+    status.textContent = t(`Verify the lost stake message, ${visibleRecipients.length.toLocaleString('en-US')} wallet output${visibleRecipients.length === 1 ? '' : 's'} and network fee in your wallet before signing.`);
+    const signedTx = await adminTransactionWallet.signTx(unsignedTx, false);
+    status.textContent = t('Submitting the signed transaction...');
+    const txHash = String(await adminTransactionWallet.submitTx(signedTx)).toLowerCase();
+    if (!/^[0-9a-f]{64}$/.test(txHash)) throw new Error(t('The wallet returned an invalid transaction ID.'));
+    markLostStakeDelegatorsMessaged(selected);
+    renderLostStake(lostStakePayload);
+    status.replaceChildren(document.createTextNode(t('Lost stake message published on-chain. ')), cardanoscanTransactionLink(txHash));
+    if (submit) submit.disabled = false;
+}
+
+async function chooseLostStakeTransactionWallet(selected, message, submit, status) {
+    let choices = document.getElementById('raffle-lost-stake-wallet-list');
+    if (!choices) {
+        choices = document.createElement('div');
+        choices.id = 'raffle-lost-stake-wallet-list';
+        choices.className = 'wallet-list raffle-wallet-list';
+        status.after(choices);
+    }
+    choices.replaceChildren();
+    status.textContent = t('Choose the wallet that will pay the Cardano network fee.');
+    const { BrowserWallet } = await loadMesh();
+    const wallets = BrowserWallet.getInstalledWallets();
+    if (!wallets.length) throw new Error(t('No CIP-30 Cardano wallet extension was detected.'));
+    wallets.forEach(walletInfo => {
+        const walletButton = document.createElement('button');
+        walletButton.type = 'button';
+        walletButton.className = 'wallet-option';
+        const icon = document.createElement('img');
+        icon.src = walletInfo.icon;
+        icon.alt = '';
+        const label = document.createElement('span');
+        label.textContent = walletInfo.name;
+        walletButton.append(icon, label);
+        walletButton.addEventListener('click', async () => {
+            walletButton.disabled = true;
+            status.classList.remove('is-error');
+            try {
+                const wallet = await BrowserWallet.enable(walletInfo.id);
+                if (await wallet.getNetworkId() !== 1) throw new Error(t('Switch your wallet to Cardano Mainnet.'));
+                adminTransactionWallet = wallet;
+                choices.replaceChildren();
+                await publishLostStakeMessage(selected, message, submit, status);
+            } catch (error) {
+                status.textContent = error?.info || error?.message || t('Wallet connection failed.');
+                status.classList.add('is-error');
+                walletButton.disabled = false;
+                if (submit) submit.disabled = false;
+            }
+        });
+        choices.appendChild(walletButton);
+    });
+}
+
 async function submitLostStakeMessage(event) {
     event.preventDefault();
     const form = event.currentTarget;
@@ -846,6 +1085,11 @@ async function submitLostStakeMessage(event) {
         status.classList.add('is-error');
         return;
     }
+    if (selected.length > LOST_STAKE_MAX_ON_CHAIN_RECIPIENTS) {
+        status.textContent = t(`Select ${LOST_STAKE_MAX_ON_CHAIN_RECIPIENTS} stake keys or fewer per on-chain message transaction.`);
+        status.classList.add('is-error');
+        return;
+    }
     if (!message) {
         status.textContent = t('Enter or improve a message before publishing.');
         status.classList.add('is-error');
@@ -854,23 +1098,11 @@ async function submitLostStakeMessage(event) {
     submit.disabled = true;
     status.classList.remove('is-error');
     try {
-        if (!adminTransactionWallet) throw new Error(t('Choose the admin wallet first.'));
-        status.textContent = t('Building the on-chain lost stake message transaction...');
-        const utxos = await adminTransactionWallet.getUtxos();
-        const changeAddress = await adminTransactionWallet.getChangeAddress();
-        if (!utxos?.length || !changeAddress) throw new Error(t('No spendable wallet UTxO was found for the network fee.'));
-        const { MeshTxBuilder } = await loadMesh();
-        const unsignedTx = await new MeshTxBuilder({ verbose: false })
-            .metadataValue(LOST_STAKE_MESSAGE_METADATA_LABEL, buildLostStakeMessageMetadata(message, selected))
-            .selectUtxosFrom(utxos)
-            .changeAddress(changeAddress)
-            .complete();
-        status.textContent = t('Verify the lost stake message metadata and network fee in your wallet before signing.');
-        const signedTx = await adminTransactionWallet.signTx(unsignedTx, false);
-        status.textContent = t('Submitting the signed transaction...');
-        const txHash = String(await adminTransactionWallet.submitTx(signedTx)).toLowerCase();
-        if (!/^[0-9a-f]{64}$/.test(txHash)) throw new Error(t('The wallet returned an invalid transaction ID.'));
-        status.replaceChildren(document.createTextNode(t('Lost stake message published on-chain. ')), cardanoscanTransactionLink(txHash));
+        if (!adminTransactionWallet) {
+            await chooseLostStakeTransactionWallet(selected, message, submit, status);
+            return;
+        }
+        await publishLostStakeMessage(selected, message, submit, status);
     } catch (error) {
         status.textContent = error?.info || error?.message || t('The lost stake message could not be published on-chain.');
         status.classList.add('is-error');
@@ -1404,15 +1636,18 @@ async function init(options = {}) {
     document.getElementById('raffle-lost-stake-open')?.addEventListener('click', () => setRaffleOverlay(true, 'lost_stake'));
     document.getElementById('raffle-lost-stake-sort')?.addEventListener('click', () => {
         lostStakeSortDescending = !lostStakeSortDescending;
+        lostStakeVisibleCount = LOST_STAKE_RENDER_BATCH_SIZE;
         renderLostStake(lostStakePayload);
     });
     document.getElementById('raffle-lost-stake-select-all')?.addEventListener('click', () => {
-        document.querySelectorAll('[data-lost-stake-select]').forEach(input => { input.checked = true; });
-        updateLostStakeSelectionStatus();
+        getLostStakeDelegators().forEach(delegator => {
+            if (delegator?.stake_address) lostStakeSelectedAddresses.add(delegator.stake_address);
+        });
+        renderLostStake(lostStakePayload);
     });
     document.getElementById('raffle-lost-stake-clear')?.addEventListener('click', () => {
-        document.querySelectorAll('[data-lost-stake-select]').forEach(input => { input.checked = false; });
-        updateLostStakeSelectionStatus();
+        lostStakeSelectedAddresses.clear();
+        renderLostStake(lostStakePayload);
     });
     document.getElementById('raffle-lost-stake-improve')?.addEventListener('click', improveLostStakeMessage);
     document.getElementById('raffle-overlay-back')?.addEventListener('click', () => {

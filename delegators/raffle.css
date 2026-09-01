@@ -216,6 +216,93 @@
     padding: 7px 10px;
 }
 
+.raffle-lost-stake-select {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+}
+
+.raffle-lost-stake-row {
+    display: grid;
+    grid-template-columns: minmax(104px, max-content) minmax(0, 1fr) 20px auto;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    padding: 9px 12px;
+    text-align: left;
+    font: inherit;
+    appearance: none;
+}
+
+.raffle-lost-stake-amount {
+    color: var(--accent);
+    font-size: var(--tdsp-tile-detail-size);
+    font-weight: 800;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.raffle-lost-stake-identity {
+    min-width: 0;
+    color: var(--tdsp-tile-detail-color);
+    font-size: var(--tdsp-tile-detail-size);
+    font-weight: var(--tdsp-tile-detail-weight);
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.raffle-lost-stake-row .tdsp-responsive-identifier,
+.raffle-lost-stake-row .tdsp-responsive-identifier-full,
+.raffle-lost-stake-row .tdsp-responsive-identifier-short {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.raffle-lost-stake-row .raffle-lost-stake-select {
+    position: static;
+}
+
+.raffle-lost-stake-sent {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    color: var(--accent);
+    font-size: 1rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.raffle-lost-stake-detail {
+    display: grid;
+    gap: 10px;
+    min-width: 0;
+    padding: 14px;
+}
+
+.raffle-lost-stake-detail-row {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+}
+
+.raffle-lost-stake-pools {
+    display: grid;
+    gap: 8px;
+    min-width: 0;
+}
+
+.raffle-lost-stake-pool {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+    padding: 12px;
+}
+
 @media (max-width: 560px) {
     .raffle-exclusion-item {
         grid-template-columns: minmax(0, 1fr);
@@ -223,6 +310,11 @@
 
     .raffle-exclusion-actions {
         justify-content: flex-start;
+    }
+
+    .raffle-lost-stake-row {
+        grid-template-columns: minmax(92px, max-content) minmax(0, 1fr) 18px auto;
+        padding: 8px 10px;
     }
 }
 
