@@ -26,7 +26,7 @@
     const GOVERNANCE_DREP_TOP10_SCRIPT_SRC = 'governance/governance-drep-top10.js?v=20260819-drep-overlay-language';
     const GOVERNANCE_TDSP_DREP_SCRIPT_SRC = 'governance/governance-tdsp-drep.js?v=20260820-delegator-usd';
     const GOVERNANCE_PROPOSAL_DISPLAY_SCRIPT_SRC = 'governance/governance-proposal-display.js?v=20260817-modular-proposal-display';
-    const GOVERNANCE_SCRIPT_SRC = 'governance/governance.js?v=20260831-retired-spo-only';
+    const GOVERNANCE_SCRIPT_SRC = 'governance/governance.js?v=20260901-retired-spo-threshold-bar';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
         '#drep',

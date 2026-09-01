@@ -6421,8 +6421,8 @@ function closeSpoDirectoryOverlay() {
 }
 
 function openRetiredSpoDirectoryOverlay(returnFocus) {
-    const retiredSpos = (Array.isArray(spoDirectoryState?.retired_spos) ? spoDirectoryState.retired_spos : [])
-        .filter(hasVisibleRetiredSpoStake);
+    const retiredSummary = getRetiredSpoStakeSummary(spoDirectoryState?.retired_spos);
+    const retiredSpos = retiredSummary.visible;
     const panel = document.createElement('div');
     panel.className = 'governance-drep-directory-list';
     if (retiredSpos.length) {
@@ -6448,13 +6448,13 @@ function openRetiredSpoDirectoryOverlay(returnFocus) {
         defaultSort: 'amount-desc',
         searchPlaceholder: 'Search by pool, ticker, ID or relay address',
         headerMeta: spoDirectoryState
-            ? `${retiredSpos.length.toLocaleString('en-US')} SPOs • ${formatCompactAdaFromLovelace(spoDirectoryState.retired_total_delegated_lovelace || 0)}`
+            ? `${retiredSpos.length.toLocaleString('en-US')} SPOs • ${formatCompactAdaFromLovelace(retiredSummary.visibleLovelace.toString())}`
             : 'Loading retired SPOs...',
         returnFocus,
         botContext: createWebsiteSectionBotContext('SPOs', {
             title: 'Retired SPOs',
             count: retiredSpos.length || null,
-            amount_ada: Number(spoDirectoryState?.retired_total_delegated_lovelace || 0) / 1_000_000,
+            amount_ada: Number(retiredSummary.visibleLovelace.toString()) / 1_000_000,
             summary: 'Retired SPO directory'
         })
     });
@@ -6467,15 +6467,9 @@ function openRetiredSpoDirectoryOverlay(returnFocus) {
         return loadSpoDirectory();
     }).then(payload => {
         if (!panel.isConnected) return;
-        const retired = (Array.isArray(payload?.retired_spos) ? payload.retired_spos : [])
-            .filter(hasVisibleRetiredSpoStake);
-        const retiredTotalDelegated = retired.reduce((sum, spo) => {
-            try {
-                return sum + BigInt(String(spo?.current_delegated_lovelace || spo?.delegated_lovelace || '0'));
-            } catch {
-                return sum;
-            }
-        }, 0n).toString();
+        const loadedRetiredSummary = getRetiredSpoStakeSummary(payload?.retired_spos);
+        const retired = loadedRetiredSummary.visible;
+        const retiredTotalDelegated = loadedRetiredSummary.visibleLovelace.toString();
         renderSpoDirectory(panel, retired, {
             showChart: false,
             combineOperators: false,
@@ -6510,20 +6504,46 @@ function closeRetiredSpoDirectoryOverlay() {
     removeGovernanceMenuOverlay('governance-retired-spo-directory-overlay');
 }
 
-const RETIRED_SPO_VISIBLE_STAKE_MIN_LOVELACE = 10_000_000n;
+const RETIRED_SPO_VISIBLE_STAKE_MIN_LOVELACE = 100_000_000n;
+
+function getRetiredSpoDisplayStakeLovelace(spo) {
+    return String(
+        spo?.current_delegated_lovelace
+        || spo?.delegated_lovelace
+        || spo?.live_stake_lovelace
+        || spo?.active_stake_lovelace
+        || '0'
+    );
+}
 
 function hasVisibleRetiredSpoStake(spo) {
     try {
-        return BigInt(String(
-            spo?.current_delegated_lovelace
-            || spo?.delegated_lovelace
-            || spo?.live_stake_lovelace
-            || spo?.active_stake_lovelace
-            || '0'
-        )) >= RETIRED_SPO_VISIBLE_STAKE_MIN_LOVELACE;
+        return BigInt(getRetiredSpoDisplayStakeLovelace(spo)) >= RETIRED_SPO_VISIBLE_STAKE_MIN_LOVELACE;
     } catch {
         return false;
     }
+}
+
+function getRetiredSpoStakeSummary(retiredSpos) {
+    return (Array.isArray(retiredSpos) ? retiredSpos : []).reduce((summary, spo) => {
+        let stake = 0n;
+        try {
+            stake = BigInt(getRetiredSpoDisplayStakeLovelace(spo));
+        } catch {
+            stake = 0n;
+        }
+        if (stake >= RETIRED_SPO_VISIBLE_STAKE_MIN_LOVELACE) {
+            summary.visible.push(spo);
+            summary.visibleLovelace += stake;
+        } else {
+            summary.belowThresholdLovelace += stake;
+        }
+        return summary;
+    }, {
+        visible: [],
+        visibleLovelace: 0n,
+        belowThresholdLovelace: 0n
+    });
 }
 
 async function loadRetiredSpoDirectory() {
@@ -6549,29 +6569,23 @@ async function loadRetiredSpoDirectory() {
 }
 
 function applyRetiredSpoDirectoryPayload(payload) {
-    const retiredSpos = (Array.isArray(payload?.retired_spos) ? payload.retired_spos : [])
-        .filter(hasVisibleRetiredSpoStake);
-    const retiredTotalDelegated = retiredSpos.reduce((sum, spo) => {
-        try {
-            return sum + BigInt(String(spo?.current_delegated_lovelace || spo?.delegated_lovelace || '0'));
-        } catch {
-            return sum;
-        }
-    }, 0n).toString();
+    const retiredSummary = getRetiredSpoStakeSummary(payload?.retired_spos);
+    const retiredSpos = retiredSummary.visible;
+    const retiredTotalDelegated = retiredSummary.visibleLovelace.toString();
     spoDirectoryState = {
         ...(spoDirectoryState || {}),
         ...payload,
         retired_spos: retiredSpos,
         retired_count: retiredSpos.length,
-        retired_total_delegated_lovelace: retiredTotalDelegated
+        retired_total_delegated_lovelace: retiredTotalDelegated,
+        retired_visible_delegated_lovelace: retiredTotalDelegated,
+        retired_below_threshold_delegated_lovelace: retiredSummary.belowThresholdLovelace.toString()
     };
     window.TDSPRuntime.setText(
         'retired-spo-count',
         (Number(spoDirectoryState.retired_count) || 0).toLocaleString('en-US')
     );
-    setRetiredSpoDelegatedTileValue(
-        window.TDSPRuntime.formatTileAdaFromLovelace(spoDirectoryState.retired_total_delegated_lovelace || 0)
-    );
+    updateRetiredSpoTile(spoDirectoryState);
     return spoDirectoryState;
 }
 
@@ -7873,13 +7887,7 @@ async function loadSpoDirectory() {
                     'gov-spo-total-delegated',
                     `Delegated ${window.TDSPRuntime.formatTileAdaFromLovelace(spoDirectoryState.total_delegated_lovelace || 0)}`
                 );
-                window.TDSPRuntime.setText(
-                    'retired-spo-count',
-                    (Number(spoDirectoryState.retired_count) || 0).toLocaleString('en-US')
-                );
-                setRetiredSpoDelegatedTileValue(
-                    window.TDSPRuntime.formatTileAdaFromLovelace(spoDirectoryState.retired_total_delegated_lovelace || 0)
-                );
+                updateRetiredSpoTile(spoDirectoryState);
                 renderSpoNakamotoTile(spoDirectoryState.nakamoto);
                 return spoDirectoryState;
             })
@@ -7889,6 +7897,7 @@ async function loadSpoDirectory() {
                 window.TDSPRuntime.setText('gov-spo-total-delegated', 'Delegated ₳ --');
                 window.TDSPRuntime.setText('retired-spo-count', '--');
                 setRetiredSpoDelegatedTileValue('₳ --');
+                document.getElementById('retired-spo-card')?.querySelector('.retired-spo-stake-bar')?.remove();
                 renderSpoNakamotoTile(null);
                 throw error;
             });
@@ -7902,6 +7911,51 @@ function setRetiredSpoDelegatedTileValue(valueText) {
     element.replaceChildren(createValueLine('Delegated', valueText, {
         valueClassName: 'pool-status-value is-inactive'
     }));
+}
+
+function updateRetiredSpoTile(payload) {
+    const retiredSummary = getRetiredSpoStakeSummary(payload?.retired_spos);
+    const visibleLovelace = retiredSummary.visibleLovelace;
+    const belowThresholdLovelace = payload?.retired_below_threshold_delegated_lovelace != null
+        ? BigInt(String(payload.retired_below_threshold_delegated_lovelace || '0'))
+        : retiredSummary.belowThresholdLovelace;
+    window.TDSPRuntime.setText(
+        'retired-spo-count',
+        retiredSummary.visible.length.toLocaleString('en-US')
+    );
+    setRetiredSpoDelegatedTileValue(window.TDSPRuntime.formatTileAdaFromLovelace(visibleLovelace.toString()));
+
+    const card = document.getElementById('retired-spo-card');
+    if (!card) return;
+    card.querySelector('.retired-spo-stake-bar')?.remove();
+    const total = visibleLovelace + belowThresholdLovelace;
+    if (total <= 0n) return;
+
+    const bar = document.createElement('div');
+    bar.className = 'retired-spo-stake-bar drep-ncl-bar';
+
+    const track = document.createElement('div');
+    track.className = 'drep-ncl-bar-track';
+    const visibleFill = document.createElement('span');
+    visibleFill.className = 'drep-ncl-bar-fill retired-spo-stake-bar-fill--visible';
+    visibleFill.style.flexBasis = `${Number((visibleLovelace * 10000n) / total) / 100}%`;
+    const hiddenFill = document.createElement('span');
+    hiddenFill.className = 'drep-ncl-bar-fill retired-spo-stake-bar-fill--hidden';
+    hiddenFill.style.flexBasis = `${Number((belowThresholdLovelace * 10000n) / total) / 100}%`;
+    track.append(visibleFill, hiddenFill);
+
+    const label = document.createElement('span');
+    label.className = 'drep-ncl-bar-label';
+    const visibleLabel = document.createElement('span');
+    visibleLabel.className = 'retired-spo-stake-label--visible';
+    visibleLabel.textContent = `>= 100 ADA ${window.TDSPRuntime.formatTileAdaFromLovelace(visibleLovelace.toString())}`;
+    const hiddenLabel = document.createElement('span');
+    hiddenLabel.className = 'retired-spo-stake-label--hidden';
+    hiddenLabel.textContent = `< 100 ADA ${window.TDSPRuntime.formatTileAdaFromLovelace(belowThresholdLovelace.toString())}`;
+    label.append(visibleLabel, document.createTextNode(' • '), hiddenLabel);
+
+    bar.append(track, label);
+    card.appendChild(bar);
 }
 
 function getSpoOperatorCount(payload, fallback = 0) {

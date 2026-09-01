@@ -3,7 +3,7 @@
     const EPOCH_DURATION_MS = 432000 * 1000;
     const CARDANO_MAINNET_EPOCH_ZERO_MS = Date.parse('2017-09-23T21:44:51Z');
     const MAIN_SCRIPT_SRC = 'home/index.js?v=20260820-menu-alerts-epoch';
-    const GOVERNANCE_SCRIPT_SRC = 'governance/governance-loader.js?v=20260831-retired-spo-only';
+    const GOVERNANCE_SCRIPT_SRC = 'governance/governance-loader.js?v=20260901-retired-spo-threshold-bar';
     let epochTimer = null;
     let headerVisibilityObserver = null;
 
