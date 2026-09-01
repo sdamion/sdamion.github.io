@@ -888,6 +888,10 @@ function createLostStakeDelegatorCard(delegator) {
         { className: 'pool-delegator-copy-button raffle-lost-stake-copy' }
     );
     copyIdentity?.addEventListener('click', event => event.stopPropagation());
+    const checkboxWrap = document.createElement('label');
+    checkboxWrap.className = 'raffle-lost-stake-select-wrap';
+    checkboxWrap.addEventListener('click', event => event.stopPropagation());
+    checkboxWrap.addEventListener('keydown', event => event.stopPropagation());
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
     checkbox.className = 'raffle-lost-stake-select';
@@ -901,6 +905,7 @@ function createLostStakeDelegatorCard(delegator) {
         updateLostStakeSelectionStatus();
     });
     checkbox.addEventListener('click', event => event.stopPropagation());
+    checkboxWrap.appendChild(checkbox);
     const notificationKey = getLostStakeNotificationKey(delegator);
     const isSent = isLostStakeDelegatorMessaged(delegator);
     const sent = document.createElement('button');
@@ -924,7 +929,7 @@ function createLostStakeDelegatorCard(delegator) {
     });
     card.append(amount, identity);
     if (copyIdentity) card.appendChild(copyIdentity);
-    card.append(sent, checkbox);
+    card.append(sent, checkboxWrap);
     return card;
 }
 

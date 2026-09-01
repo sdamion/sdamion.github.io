@@ -245,10 +245,21 @@
     padding: 7px 10px;
 }
 
+.raffle-lost-stake-select-wrap {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    min-height: 40px;
+    cursor: pointer;
+}
+
 .raffle-lost-stake-select {
-    width: 18px;
-    height: 18px;
+    width: 24px;
+    height: 24px;
     margin: 0;
+    cursor: pointer;
+    accent-color: var(--accent);
 }
 
 .raffle-lost-stake-row {
@@ -297,7 +308,8 @@
     word-break: break-word;
 }
 
-.raffle-lost-stake-row .raffle-lost-stake-select {
+.raffle-lost-stake-row .raffle-lost-stake-select,
+.raffle-lost-stake-row .raffle-lost-stake-select-wrap {
     position: static;
 }
 
