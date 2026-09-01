@@ -307,14 +307,8 @@ function updateStarchDirectoryTiles(payload) {
                 labelText.setAttribute('data-i18n-auto', '');
                 labelText.setAttribute('data-i18n-auto-original', 'Miners');
                 labelText.textContent = window.TDSPI18n?.translateText?.('Miners') || 'Miners';
-                const offlineText = document.createElement('span');
-                offlineText.className = 'starch-miner-offline-count';
-                const offlineLabel = `Offline ${inactiveCount.toLocaleString('en-US')}`;
-                offlineText.setAttribute('data-i18n-auto', '');
-                offlineText.setAttribute('data-i18n-auto-original', offlineLabel);
-                offlineText.textContent = window.TDSPI18n?.translateText?.(offlineLabel) || offlineLabel;
                 const statusBar = createStarchMinerStatusBar(activeCount, inactiveCount, registeredCount);
-                minerStatus.append(labelText, offlineText);
+                minerStatus.append(labelText);
                 if (statusBar) minerStatus.appendChild(statusBar);
             }
         } else {

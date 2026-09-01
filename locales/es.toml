@@ -54,6 +54,8 @@ delegation = "Delegación"
 voted_gov_actions = "Acciones de gobernanza votadas"
 dreps = "DReps"
 voting_power = "Poder de voto"
+active_voting_power = "Poder de voto activo"
+inactive_voting_power = "Poder de voto inactivo"
 top_10_dreps = "Top 10 DReps"
 
 starch_stats = "Estadísticas Starch"

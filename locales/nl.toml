@@ -54,6 +54,8 @@ delegation = "Delegatie"
 voted_gov_actions = "Gestemde governance-acties"
 dreps = "DReps"
 voting_power = "Stemkracht"
+active_voting_power = "Actieve stemkracht"
+inactive_voting_power = "Inactieve stemkracht"
 top_10_dreps = "Top 10 DReps"
 
 starch_stats = "Starch-statistieken"

@@ -1,5 +1,5 @@
 (function () {
-    const STARCH_SCRIPT_SRC = 'starch/starch.js?v=20260901-starch-miner-bar';
+    const STARCH_SCRIPT_SRC = 'starch/starch.js?v=20260901-starch-miner-bar-no-offline-line';
     const STARCH_TARGET_SELECTORS = [
         '#starch',
         '#pool-starch-status-card'

@@ -10977,7 +10977,7 @@ async function updateGovernanceCounts(groups) {
     } catch {
         if (!cachedDrepStats) {
             window.TDSPRuntime.setText('gov-drep-count', '0');
-            window.TDSPRuntime.setText('gov-drep-total-power', 'Voting Power ₳ 0');
+            hideDrepVotingPowerSummaryLine();
         }
     }
 
@@ -11018,15 +11018,69 @@ function getDashboardDrepStats(payload) {
         activeCount,
         inactiveCount,
         totalPower,
+        activePower: Number(summary.active_voting_power ?? summary.activeVotingPower ?? summary.active_power),
+        inactivePower: Number(summary.inactive_voting_power ?? summary.inactiveVotingPower ?? summary.inactive_power),
         top10Power: Number.isFinite(top10Power) ? top10Power : null
     };
 }
 
 function renderDrepSummaryStats(stats) {
     window.TDSPRuntime.setText('gov-drep-count', stats.count.toLocaleString('en-US'));
-    window.TDSPRuntime.setText('gov-drep-total-power', `Voting Power ${window.TDSPRuntime.formatTileAdaFromLovelace(stats.totalPower, { fixedFractionDigits: 2 })}`);
+    hideDrepVotingPowerSummaryLine();
+    renderDrepVotingPowerBar(stats);
     renderDrepTop10PowerTile(stats);
     window.TDSPRuntime.setText('gov-drep-top10-count', 'Voting Power');
+}
+
+function hideDrepVotingPowerSummaryLine() {
+    const element = document.getElementById('gov-drep-total-power');
+    if (!element) return;
+    element.textContent = '';
+    element.hidden = true;
+}
+
+function renderDrepVotingPowerBar(stats) {
+    const card = document.getElementById('gov-drep-card');
+    if (!card) return;
+
+    card.querySelector('.drep-voting-power-bar')?.remove();
+    const totalPower = Number(stats?.totalPower);
+    const activePower = Number(stats?.activePower);
+    const inactivePower = Number(stats?.inactivePower);
+    if (![totalPower, activePower, inactivePower].every(Number.isFinite) || totalPower <= 0) return;
+
+    const activePercent = Math.max(0, Math.min((activePower / totalPower) * 100, 100));
+    const inactivePercent = Math.max(0, Math.min((inactivePower / totalPower) * 100, 100));
+    const bar = document.createElement('div');
+    bar.className = 'governance-vote-bar drep-voting-power-bar';
+
+    const track = document.createElement('div');
+    track.className = 'governance-vote-bar-track';
+    track.setAttribute('aria-label', `Active voting power ${formatCompactAdaFromLovelace(activePower)}, inactive voting power ${formatCompactAdaFromLovelace(inactivePower)}`);
+
+    const activeFill = document.createElement('span');
+    activeFill.className = 'governance-vote-bar-fill governance-vote-bar-fill--yes';
+    activeFill.style.flexBasis = `${activePercent}%`;
+
+    const inactiveFill = document.createElement('span');
+    inactiveFill.className = 'governance-vote-bar-fill governance-vote-bar-fill--no';
+    inactiveFill.style.flexBasis = `${inactivePercent}%`;
+    track.append(activeFill, inactiveFill);
+
+    const label = document.createElement('span');
+    label.className = 'tdsp-bar-legend governance-vote-bar-label';
+    const activeLabel = window.TDSPI18n?.translateText?.('Active voting power') || 'Active voting power';
+    const inactiveLabel = window.TDSPI18n?.translateText?.('Inactive voting power') || 'Inactive voting power';
+    const activeText = document.createElement('span');
+    activeText.className = 'governance-vote-label-item--yes';
+    activeText.textContent = `${activeLabel} ${formatCompactAdaFromLovelace(activePower)}`;
+    const inactiveText = document.createElement('span');
+    inactiveText.className = 'governance-vote-label-item--no';
+    inactiveText.textContent = `${inactiveLabel} ${formatCompactAdaFromLovelace(inactivePower)}`;
+    label.append(activeText, document.createTextNode(' '), inactiveText);
+
+    bar.append(track, label);
+    card.appendChild(bar);
 }
 
 function renderDrepTop10PowerTile(stats) {
@@ -11536,6 +11590,8 @@ async function getDrepStats(groups) {
     return {
         count: baseStats.count,
         totalPower: baseStats.totalPower,
+        activePower: baseStats.activePower,
+        inactivePower: baseStats.inactivePower,
         activeCount: baseStats.activeCount,
         inactiveCount: baseStats.inactiveCount,
         top10Power: baseStats.top10Power
@@ -11559,10 +11615,17 @@ async function fetchDrepStats() {
     });
 
     let totalPower = 0;
+    let activePower = 0;
+    let inactivePower = 0;
     let activeCount = 0;
     uniqueDreps.forEach(value => {
         totalPower += value.votingPower;
-        if (value.active) activeCount += 1;
+        if (value.active) {
+            activeCount += 1;
+            activePower += value.votingPower;
+        } else {
+            inactivePower += value.votingPower;
+        }
     });
 
     const top10Power = Array.from(uniqueDreps.values())
@@ -11574,6 +11637,8 @@ async function fetchDrepStats() {
     return {
         count: uniqueDreps.size,
         totalPower,
+        activePower,
+        inactivePower,
         activeCount,
         inactiveCount: uniqueDreps.size - activeCount,
         top10Power

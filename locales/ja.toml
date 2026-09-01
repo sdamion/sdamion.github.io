@@ -54,6 +54,8 @@ delegation = "委任"
 voted_gov_actions = "投票済みガバナンスアクション"
 dreps = "DReps"
 voting_power = "投票力"
+active_voting_power = "有効な投票力"
+inactive_voting_power = "無効な投票力"
 top_10_dreps = "トップ10 DReps"
 
 starch_stats = "Starch統計"

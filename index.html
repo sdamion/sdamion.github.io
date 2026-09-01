@@ -51,7 +51,7 @@
     <link rel="stylesheet" href="delegators/raffle.css?v=20260901-lost-stake-mail-toggle-hitarea-2">
 
     <script src="shared/runtime.js?v=20260819-universal-tile-i18n" defer></script>
-    <script src="shared/i18n.js?v=20260901-lost-stake-backend-message-state" defer></script>
+    <script src="shared/i18n.js?v=20260901-drep-voting-power-bar" defer></script>
     <script src="shared/site-controls.js?v=20260901-pool-delegators-live-refresh" defer></script>
     <script src="shared/database-status.js?v=20260819-database-status-module" defer></script>
     <script src="vendor/chart-loader.js?v=20260817-section-folders" defer></script>
@@ -328,7 +328,7 @@
                     <div id="gov-drep-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show DRep directory">
                         <strong id="gov-drep-count">0</strong>
                         <span data-i18n="dreps">DReps</span>
-                        <span class="governance-summary-subvalue" id="gov-drep-total-power">Voting Power ₳ 0</span>
+                        <span class="governance-summary-subvalue" id="gov-drep-total-power" hidden></span>
                     </div>
                     <div id="gov-drep-top10-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show top 10 DReps by voting power">
                         <strong id="gov-drep-top10-power">₳ 0</strong>
@@ -447,8 +447,8 @@
         <p id="wallet-status" class="wallet-status" role="status" aria-live="polite"></p>
     </template>
 
-    <script src="starch/starch-loader.js?v=20260901-starch-miner-bar" defer></script>
-    <script src="governance/governance-loader.js?v=20260901-retired-spo-no-bar" defer></script>
+    <script src="starch/starch-loader.js?v=20260901-starch-miner-bar-no-offline-line" defer></script>
+    <script src="governance/governance-loader.js?v=20260901-drep-voting-power-bar-no-summary" defer></script>
     <script src="stake/stake-loader.js?v=20260825-lace-account-change" defer></script>
 </body>
 </html>

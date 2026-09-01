@@ -723,6 +723,8 @@
         ['None', 'none'],
         ['Your rationale can be up to 5000 characters and will be included as Cardano transaction metadata in this vote transaction. Long text is split into 64-byte chunks automatically.', 'rationale_5000_metadata_help'],
         ['Voting Power', 'voting_power'],
+        ['Active voting power', 'active_voting_power'],
+        ['Inactive voting power', 'inactive_voting_power'],
         ['Voting stats loading...', 'voting_stats_loading'],
         ['Voting stats unavailable', 'voting_stats_unavailable'],
         ['Voting Stats', 'voting_stats'],
