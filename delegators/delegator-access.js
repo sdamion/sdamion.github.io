@@ -7,6 +7,8 @@ const LOST_STAKE_MESSAGE_METADATA_LABEL = 8675310;
 const LOST_STAKE_RENDER_BATCH_SIZE = 100;
 const LOST_STAKE_MAX_ON_CHAIN_RECIPIENTS = 50;
 const LOST_STAKE_MESSAGED_KEY = 'tdsp-lost-stake-messaged-addresses';
+const LOST_STAKE_WALLET_OVERRIDES_KEY = 'tdsp-lost-stake-wallet-address-overrides';
+const LOST_STAKE_HIDE_MESSAGED_KEY = 'tdsp-lost-stake-hide-messaged';
 const LOST_STAKE_MESSAGE_OUTPUT_LOVELACE = '1000000';
 const ADA_HANDLE_API_BASE_URL = 'https://api.handle.me';
 let ROLE = document.body.dataset.raffleRole === 'admin' ? 'admin' : 'delegator';
@@ -54,8 +56,10 @@ let raffleOverlayRootView = 'menu';
 let lostStakePayload = null;
 let lostStakeSortMode = 'ada_desc';
 let lostStakeVisibleCount = LOST_STAKE_RENDER_BATCH_SIZE;
+let lostStakeHideMessaged = localStorage.getItem(LOST_STAKE_HIDE_MESSAGED_KEY) === '1';
 const lostStakeSelectedAddresses = new Set();
 const lostStakeMessagedAddresses = new Set(readLostStakeMessagedAddresses());
+const lostStakeWalletOverrides = readLostStakeWalletOverrides();
 
 const RAFFLE_ADMIN_VIEW_TITLES = Object.freeze({
     menu: 'Raffles',
@@ -90,6 +94,32 @@ function readLostStakeMessagedAddresses() {
     }
 }
 
+function readLostStakeWalletOverrides() {
+    try {
+        const value = JSON.parse(localStorage.getItem(LOST_STAKE_WALLET_OVERRIDES_KEY) || '{}');
+        if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+        return Object.fromEntries(Object.entries(value)
+            .map(([stakeAddress, walletAddress]) => [
+                String(stakeAddress || '').trim(),
+                String(walletAddress || '').trim()
+            ])
+            .filter(([stakeAddress, walletAddress]) => (
+                /^stake1[0-9a-z]+$/i.test(stakeAddress) &&
+                /^addr1[0-9a-z]+$/i.test(walletAddress)
+            )));
+    } catch {
+        return {};
+    }
+}
+
+function saveLostStakeWalletOverrides() {
+    try {
+        localStorage.setItem(LOST_STAKE_WALLET_OVERRIDES_KEY, JSON.stringify(lostStakeWalletOverrides));
+    } catch {
+        // Wallet address overrides are local admin UI preferences. Refresh data remains untouched.
+    }
+}
+
 function saveLostStakeMessagedAddresses() {
     try {
         localStorage.setItem(LOST_STAKE_MESSAGED_KEY, JSON.stringify([...lostStakeMessagedAddresses]));
@@ -101,7 +131,7 @@ function saveLostStakeMessagedAddresses() {
 function markLostStakeDelegatorsMessaged(delegators) {
     let changed = false;
     delegators.forEach(delegator => {
-        const address = String(delegator?.stake_address || '').trim();
+        const address = getLostStakeNotificationKey(delegator);
         if (!address || lostStakeMessagedAddresses.has(address)) return;
         lostStakeMessagedAddresses.add(address);
         changed = true;
@@ -260,7 +290,7 @@ function buildRaffleMetadata(draw) {
     )));
 }
 
-function buildLostStakeMessageMetadata(message, selectedDelegators) {
+function buildLostStakeMessageMetadata(message, selectedDelegators, manualAddresses = []) {
     const recipients = selectedDelegators.map(delegator => ({
         stake_address: splitMetadataText(delegator.stake_address),
         wallet_address: splitMetadataText(getLostStakePaymentAddress(delegator) || ''),
@@ -272,6 +302,11 @@ function buildLostStakeMessageMetadata(message, selectedDelegators) {
             retired_epoch: Number(pool.retired_epoch) || undefined
         }))
     }));
+    manualAddresses.forEach(address => {
+        recipients.push({
+            manual_wallet_address: splitMetadataText(address)
+        });
+    });
     return cleanMetadataValue({
         app: 'TDSP',
         type: 'lost_stake_message',
@@ -288,6 +323,8 @@ function buildLostStakeMessageMetadata(message, selectedDelegators) {
 }
 
 function getLostStakePaymentAddress(delegator) {
+    const override = lostStakeWalletOverrides[String(delegator?.stake_address || '').trim()];
+    if (/^addr1[0-9a-z]+$/i.test(override || '')) return override;
     const candidates = [
         delegator?.registered_payment_address,
         delegator?.wallet_address,
@@ -299,6 +336,19 @@ function getLostStakePaymentAddress(delegator) {
         .find(address => /^addr1[0-9a-z]+$/i.test(address)) || '';
 }
 
+function normalizeLostStakeManualAddresses(value) {
+    return [...new Set(String(value || '')
+        .split(/[\s,]+/)
+        .map(address => address.trim())
+        .filter(Boolean))]
+        .map(address => {
+            if (!/^addr1[0-9a-z]+$/i.test(address)) {
+                throw new Error(t(`Invalid manual wallet address: ${address}`));
+            }
+            return address;
+        });
+}
+
 function getLostStakeAdaHandleTarget(delegator) {
     const handle = String(delegator?.ada_handle || '').trim();
     if (!handle) return '';
@@ -308,6 +358,31 @@ function getLostStakeAdaHandleTarget(delegator) {
 
 function getLostStakePaymentTarget(delegator) {
     return getLostStakePaymentAddress(delegator) || getLostStakeAdaHandleTarget(delegator);
+}
+
+function getLostStakeSourcePaymentAddress(delegator) {
+    const stakeAddress = String(delegator?.stake_address || '').trim();
+    const existingOverride = lostStakeWalletOverrides[stakeAddress];
+    if (existingOverride) delete lostStakeWalletOverrides[stakeAddress];
+    const sourceAddress = getLostStakePaymentAddress(delegator);
+    if (existingOverride) lostStakeWalletOverrides[stakeAddress] = existingOverride;
+    return sourceAddress;
+}
+
+function getLostStakeNotificationKey(delegator) {
+    return getLostStakePaymentTarget(delegator) || String(delegator?.stake_address || '').trim();
+}
+
+function isLostStakeDelegatorMessaged(delegator) {
+    const notificationKey = getLostStakeNotificationKey(delegator);
+    const stakeAddress = String(delegator?.stake_address || '').trim();
+    return Boolean(notificationKey && lostStakeMessagedAddresses.has(notificationKey))
+        || Boolean(stakeAddress && lostStakeMessagedAddresses.has(stakeAddress));
+}
+
+function getVisibleLostStakeDelegators() {
+    return getLostStakeDelegators()
+        .filter(delegator => !lostStakeHideMessaged || !isLostStakeDelegatorMessaged(delegator));
 }
 
 async function resolveAdaHandlePaymentAddress(handle) {
@@ -366,23 +441,23 @@ function compareLostStakeDelegators(left, right) {
         const rightHandle = String(right?.ada_handle || '').trim();
         if (leftHandle && !rightHandle) return -1;
         if (!leftHandle && rightHandle) return 1;
-        const handleOrder = compareLostStakeText(leftHandle, rightHandle);
-        if (handleOrder) return handleOrder;
-        return compareLostStakeAmountDesc(left, right);
+        const amountOrder = compareLostStakeAmountDesc(left, right);
+        if (amountOrder) return amountOrder;
+        return compareLostStakeText(leftHandle, rightHandle);
     }
     if (lostStakeSortMode === 'payment_address') {
         const leftAddress = getLostStakePaymentAddress(left);
         const rightAddress = getLostStakePaymentAddress(right);
         if (leftAddress && !rightAddress) return -1;
         if (!leftAddress && rightAddress) return 1;
-        const addressOrder = compareLostStakeText(leftAddress, rightAddress);
-        if (addressOrder) return addressOrder;
-        return compareLostStakeAmountDesc(left, right);
+        const amountOrder = compareLostStakeAmountDesc(left, right);
+        if (amountOrder) return amountOrder;
+        return compareLostStakeText(leftAddress, rightAddress);
     }
     if (lostStakeSortMode === 'stake_key') {
-        const stakeOrder = compareLostStakeText(left?.stake_address, right?.stake_address);
-        if (stakeOrder) return stakeOrder;
-        return compareLostStakeAmountDesc(left, right);
+        const amountOrder = compareLostStakeAmountDesc(left, right);
+        if (amountOrder) return amountOrder;
+        return compareLostStakeText(left?.stake_address, right?.stake_address);
     }
 
     const amountOrder = compareLostStakeAmountDesc(left, right);
@@ -400,8 +475,9 @@ function getLostStakeVisibleMessageRecipients(selectedDelegators) {
     }))).then(entries => entries.filter(entry => entry.paymentTarget));
 }
 
-function buildLostStakeWalletMessage(message, selectedDelegators) {
-    const intro = `TDSP lost stake notice for ${selectedDelegators.length} stake key${selectedDelegators.length === 1 ? '' : 's'}.`;
+function buildLostStakeWalletMessage(message, selectedDelegators, manualAddresses = []) {
+    const recipientCount = selectedDelegators.length + manualAddresses.length;
+    const intro = `TDSP lost stake notice for ${recipientCount} recipient${recipientCount === 1 ? '' : 's'}.`;
     const chunks = splitMetadataText(`${intro} ${message}`, 64);
     return {
         msg: Array.isArray(chunks) ? chunks : [chunks].filter(Boolean)
@@ -652,6 +728,80 @@ function createLostStakeDetailRow(label, value, copyLabel = null) {
     return row;
 }
 
+function createLostStakeWalletOverrideEditor(delegator) {
+    const stakeAddress = String(delegator?.stake_address || '').trim();
+    const wrapper = document.createElement('div');
+    wrapper.className = 'raffle-lost-stake-wallet-editor';
+
+    const label = document.createElement('label');
+    label.className = 'governance-card-detail';
+    label.htmlFor = 'raffle-lost-stake-wallet-override';
+    setTranslatedText(label, 'Manual wallet address');
+
+    const input = document.createElement('input');
+    input.id = 'raffle-lost-stake-wallet-override';
+    input.name = 'lost_stake_wallet_override';
+    input.type = 'text';
+    input.inputMode = 'text';
+    input.autocomplete = 'off';
+    input.placeholder = 'addr1...';
+    input.value = lostStakeWalletOverrides[stakeAddress] || getLostStakePaymentAddress(delegator) || '';
+
+    const help = document.createElement('p');
+    help.className = 'governance-card-detail';
+    const sourceAddress = getLostStakeSourcePaymentAddress(delegator);
+    setTranslatedText(help, sourceAddress
+        ? 'Manual changes are saved locally and will not be overwritten by cache refreshes.'
+        : 'Add a wallet address manually. It will not be overwritten by cache refreshes.');
+
+    const status = document.createElement('p');
+    status.className = 'raffle-inline-status';
+    status.setAttribute('role', 'status');
+    status.setAttribute('aria-live', 'polite');
+
+    const actions = document.createElement('div');
+    actions.className = 'raffle-exclusion-actions';
+
+    const save = document.createElement('button');
+    save.type = 'button';
+    save.className = 'governance-vote-button';
+    setTranslatedText(save, 'Save wallet address');
+    save.addEventListener('click', () => {
+        status.classList.remove('is-error');
+        const value = String(input.value || '').trim();
+        if (!stakeAddress) {
+            status.textContent = t('Stake key is unavailable.');
+            status.classList.add('is-error');
+            return;
+        }
+        if (!/^addr1[0-9a-z]+$/i.test(value)) {
+            status.textContent = t(`Invalid manual wallet address: ${value || 'empty'}`);
+            status.classList.add('is-error');
+            return;
+        }
+        lostStakeWalletOverrides[stakeAddress] = value;
+        saveLostStakeWalletOverrides();
+        setTranslatedText(status, 'Wallet address saved locally.');
+        openLostStakeDelegatorDetail(delegator);
+    });
+
+    const clear = document.createElement('button');
+    clear.type = 'button';
+    clear.className = 'governance-vote-secondary';
+    setTranslatedText(clear, 'Clear manual wallet address');
+    clear.disabled = !lostStakeWalletOverrides[stakeAddress];
+    clear.addEventListener('click', () => {
+        if (!stakeAddress) return;
+        delete lostStakeWalletOverrides[stakeAddress];
+        saveLostStakeWalletOverrides();
+        openLostStakeDelegatorDetail(delegator);
+    });
+
+    actions.append(save, clear);
+    wrapper.append(label, input, help, actions, status);
+    return wrapper;
+}
+
 function openLostStakeDelegatorDetail(delegator) {
     const list = document.getElementById('raffle-lost-stake-list');
     if (!list) return;
@@ -699,6 +849,7 @@ function openLostStakeDelegatorDetail(delegator) {
         createLostStakeDetailRow('ADA handle', delegator.ada_handle || '-'),
         createLostStakeDetailRow('Stake', formatAda(delegator.amount_lovelace)),
         createLostStakeDetailRow('Wallet address', getLostStakePaymentAddress(delegator) || '-', getLostStakePaymentAddress(delegator) ? 'wallet address' : null),
+        createLostStakeWalletOverrideEditor(delegator),
         createLostStakeDetailRow('Message target', getLostStakePaymentTarget(delegator) || '-'),
         createLostStakeDetailRow('Stake key', delegator.stake_address, 'stake address'),
         poolList
@@ -731,6 +882,12 @@ function createLostStakeDelegatorCard(delegator) {
     } else {
         identity.replaceChildren(identityLabel, document.createTextNode(identityInfo.value));
     }
+    const copyIdentity = window.TDSPRuntime?.createCopyButton?.(
+        identityInfo.value,
+        `${identityInfo.label} for lost stake delegator`,
+        { className: 'pool-delegator-copy-button raffle-lost-stake-copy' }
+    );
+    copyIdentity?.addEventListener('click', event => event.stopPropagation());
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
     checkbox.className = 'raffle-lost-stake-select';
@@ -744,29 +901,53 @@ function createLostStakeDelegatorCard(delegator) {
         updateLostStakeSelectionStatus();
     });
     checkbox.addEventListener('click', event => event.stopPropagation());
-    const sent = document.createElement('span');
+    const notificationKey = getLostStakeNotificationKey(delegator);
+    const isSent = isLostStakeDelegatorMessaged(delegator);
+    const sent = document.createElement('button');
+    sent.type = 'button';
     sent.className = 'raffle-lost-stake-sent';
-    sent.textContent = lostStakeMessagedAddresses.has(String(delegator.stake_address || '').trim()) ? '✉' : '';
-    sent.title = t('On-chain message sent');
-    sent.setAttribute('aria-label', sent.textContent ? t('On-chain message sent') : '');
-    card.append(amount, identity, sent, checkbox);
+    sent.classList.toggle('is-marked', isSent);
+    sent.textContent = '✉';
+    sent.title = t(isSent ? 'Unmark notification sent' : 'Mark notification sent');
+    sent.setAttribute('aria-label', t(isSent ? 'Unmark notification sent' : 'Mark notification sent'));
+    sent.addEventListener('click', event => {
+        event.stopPropagation();
+        if (!notificationKey) return;
+        if (isSent) {
+            lostStakeMessagedAddresses.delete(notificationKey);
+        } else {
+            lostStakeMessagedAddresses.add(notificationKey);
+        }
+        lostStakeMessagedAddresses.delete(String(delegator.stake_address || '').trim());
+        saveLostStakeMessagedAddresses();
+        renderLostStake(lostStakePayload);
+    });
+    card.append(amount, identity);
+    if (copyIdentity) card.appendChild(copyIdentity);
+    card.append(sent, checkbox);
     return card;
 }
 
 function renderLostStake(payload = lostStakePayload) {
     lostStakePayload = payload || {};
-    const delegators = getLostStakeDelegators().slice().sort(compareLostStakeDelegators);
+    const allDelegators = getLostStakeDelegators();
+    const delegators = getVisibleLostStakeDelegators().slice().sort(compareLostStakeDelegators);
     const dashboardCount = document.getElementById('raffle-dashboard-lost-stake-count');
     const menuCount = document.getElementById('raffle-menu-lost-stake-count');
-    const countText = `${delegators.length.toLocaleString('en-US')} stake keys over ${formatAda(lostStakePayload.minimum_lovelace || '200000000')}`;
+    const countText = `${allDelegators.length.toLocaleString('en-US')} stake keys over ${formatAda(lostStakePayload.minimum_lovelace || '200000000')}`;
     if (dashboardCount) setTranslatedText(dashboardCount, countText);
     if (menuCount) setTranslatedText(menuCount, countText);
     const summary = document.getElementById('raffle-lost-stake-summary');
     if (summary) {
-        summary.textContent = `${delegators.length.toLocaleString('en-US')} stake keys · ${formatAda(lostStakePayload.total_lovelace || '0')} on retired pools`;
+        const hiddenCount = allDelegators.length - delegators.length;
+        summary.textContent = hiddenCount > 0
+            ? `${delegators.length.toLocaleString('en-US')} ${t('shown')} · ${hiddenCount.toLocaleString('en-US')} ${t('hidden')} · ${formatAda(lostStakePayload.total_lovelace || '0')} ${t('on retired pools')}`
+            : `${delegators.length.toLocaleString('en-US')} ${t('stake keys')} · ${formatAda(lostStakePayload.total_lovelace || '0')} ${t('on retired pools')}`;
     }
     const sort = document.getElementById('raffle-lost-stake-sort');
     if (sort) sort.value = lostStakeSortMode;
+    const hideMessaged = document.getElementById('raffle-lost-stake-hide-messaged');
+    if (hideMessaged) hideMessaged.checked = lostStakeHideMessaged;
     const list = document.getElementById('raffle-lost-stake-list');
     if (!list) return;
     list.replaceChildren();
@@ -1085,14 +1266,18 @@ async function improveLostStakeMessage() {
     }
 }
 
-async function publishLostStakeMessage(selected, message, submit, status) {
+async function publishLostStakeMessage(selected, message, submit, status, manualAddresses = []) {
     status.textContent = t('Resolving wallet addresses and ADA Handles...');
     const visibleRecipients = await getLostStakeVisibleMessageRecipients(selected);
-    if (!visibleRecipients.length) {
-        throw new Error(t('No selected stake key has a known wallet address or ADA Handle. A wallet-visible transaction cannot be built.'));
+    const recipientCount = visibleRecipients.length + manualAddresses.length;
+    if (!recipientCount) {
+        throw new Error(t('No selected stake key or manual wallet address is available. A wallet-visible transaction cannot be built.'));
     }
     if (visibleRecipients.length !== selected.length) {
         throw new Error(t(`${selected.length - visibleRecipients.length} selected stake key${selected.length - visibleRecipients.length === 1 ? '' : 's'} have no known wallet address or ADA Handle. Select only rows with wallet addresses or ADA Handles for a wallet-visible message.`));
+    }
+    if (recipientCount > LOST_STAKE_MAX_ON_CHAIN_RECIPIENTS) {
+        throw new Error(t(`Use ${LOST_STAKE_MAX_ON_CHAIN_RECIPIENTS} recipients or fewer per on-chain message transaction.`));
     }
     status.textContent = t('Building the on-chain lost stake message transaction...');
     const utxos = await adminTransactionWallet.getUtxos();
@@ -1103,13 +1288,16 @@ async function publishLostStakeMessage(selected, message, submit, status) {
     visibleRecipients.forEach(({ paymentTarget }) => {
         txBuilder.txOut(paymentTarget, [{ unit: 'lovelace', quantity: LOST_STAKE_MESSAGE_OUTPUT_LOVELACE }]);
     });
+    manualAddresses.forEach(address => {
+        txBuilder.txOut(address, [{ unit: 'lovelace', quantity: LOST_STAKE_MESSAGE_OUTPUT_LOVELACE }]);
+    });
     const unsignedTx = await txBuilder
-        .metadataValue(674, buildLostStakeWalletMessage(message, selected))
-        .metadataValue(LOST_STAKE_MESSAGE_METADATA_LABEL, buildLostStakeMessageMetadata(message, selected))
+        .metadataValue(674, buildLostStakeWalletMessage(message, selected, manualAddresses))
+        .metadataValue(LOST_STAKE_MESSAGE_METADATA_LABEL, buildLostStakeMessageMetadata(message, selected, manualAddresses))
         .selectUtxosFrom(utxos)
         .changeAddress(changeAddress)
         .complete();
-    status.textContent = t(`Verify the lost stake message, ${visibleRecipients.length.toLocaleString('en-US')} wallet output${visibleRecipients.length === 1 ? '' : 's'} and network fee in your wallet before signing.`);
+    status.textContent = t(`Verify the lost stake message, ${recipientCount.toLocaleString('en-US')} wallet output${recipientCount === 1 ? '' : 's'} and network fee in your wallet before signing.`);
     const signedTx = await adminTransactionWallet.signTx(unsignedTx, false);
     status.textContent = t('Submitting the signed transaction...');
     const txHash = String(await adminTransactionWallet.submitTx(signedTx)).toLowerCase();
@@ -1120,7 +1308,7 @@ async function publishLostStakeMessage(selected, message, submit, status) {
     if (submit) submit.disabled = false;
 }
 
-async function chooseLostStakeTransactionWallet(selected, message, submit, status) {
+async function chooseLostStakeTransactionWallet(selected, message, submit, status, manualAddresses = []) {
     let choices = document.getElementById('raffle-lost-stake-wallet-list');
     if (!choices) {
         choices = document.createElement('div');
@@ -1151,7 +1339,7 @@ async function chooseLostStakeTransactionWallet(selected, message, submit, statu
                 if (await wallet.getNetworkId() !== 1) throw new Error(t('Switch your wallet to Cardano Mainnet.'));
                 adminTransactionWallet = wallet;
                 choices.replaceChildren();
-                await publishLostStakeMessage(selected, message, submit, status);
+                await publishLostStakeMessage(selected, message, submit, status, manualAddresses);
             } catch (error) {
                 status.textContent = error?.info || error?.message || t('Wallet connection failed.');
                 status.classList.add('is-error');
@@ -1170,13 +1358,21 @@ async function submitLostStakeMessage(event) {
     const status = document.getElementById('raffle-lost-stake-status');
     const selected = getSelectedLostStakeDelegators();
     const message = String(form.elements.improved_message.value || form.elements.message.value || '').trim();
-    if (!selected.length) {
-        status.textContent = t('Select at least one stake key first.');
+    let manualAddresses = [];
+    try {
+        manualAddresses = normalizeLostStakeManualAddresses(form.elements.manual_addresses?.value || '');
+    } catch (error) {
+        status.textContent = error.message;
         status.classList.add('is-error');
         return;
     }
-    if (selected.length > LOST_STAKE_MAX_ON_CHAIN_RECIPIENTS) {
-        status.textContent = t(`Select ${LOST_STAKE_MAX_ON_CHAIN_RECIPIENTS} stake keys or fewer per on-chain message transaction.`);
+    if (!selected.length && !manualAddresses.length) {
+        status.textContent = t('Select at least one stake key or add a manual wallet address first.');
+        status.classList.add('is-error');
+        return;
+    }
+    if (selected.length + manualAddresses.length > LOST_STAKE_MAX_ON_CHAIN_RECIPIENTS) {
+        status.textContent = t(`Use ${LOST_STAKE_MAX_ON_CHAIN_RECIPIENTS} recipients or fewer per on-chain message transaction.`);
         status.classList.add('is-error');
         return;
     }
@@ -1189,10 +1385,10 @@ async function submitLostStakeMessage(event) {
     status.classList.remove('is-error');
     try {
         if (!adminTransactionWallet) {
-            await chooseLostStakeTransactionWallet(selected, message, submit, status);
+            await chooseLostStakeTransactionWallet(selected, message, submit, status, manualAddresses);
             return;
         }
-        await publishLostStakeMessage(selected, message, submit, status);
+        await publishLostStakeMessage(selected, message, submit, status, manualAddresses);
     } catch (error) {
         status.textContent = error?.info || error?.message || t('The lost stake message could not be published on-chain.');
         status.classList.add('is-error');
@@ -1731,8 +1927,20 @@ async function init(options = {}) {
         lostStakeVisibleCount = LOST_STAKE_RENDER_BATCH_SIZE;
         renderLostStake(lostStakePayload);
     });
+    document.getElementById('raffle-lost-stake-hide-messaged')?.addEventListener('change', event => {
+        lostStakeHideMessaged = event.target.checked === true;
+        localStorage.setItem(LOST_STAKE_HIDE_MESSAGED_KEY, lostStakeHideMessaged ? '1' : '0');
+        lostStakeVisibleCount = LOST_STAKE_RENDER_BATCH_SIZE;
+        lostStakeSelectedAddresses.forEach(stakeAddress => {
+            const delegator = getLostStakeDelegators().find(item => item?.stake_address === stakeAddress);
+            if (delegator && lostStakeHideMessaged && isLostStakeDelegatorMessaged(delegator)) {
+                lostStakeSelectedAddresses.delete(stakeAddress);
+            }
+        });
+        renderLostStake(lostStakePayload);
+    });
     document.getElementById('raffle-lost-stake-select-all')?.addEventListener('click', () => {
-        getLostStakeDelegators().forEach(delegator => {
+        getVisibleLostStakeDelegators().forEach(delegator => {
             if (delegator?.stake_address) lostStakeSelectedAddresses.add(delegator.stake_address);
         });
         renderLostStake(lostStakePayload);

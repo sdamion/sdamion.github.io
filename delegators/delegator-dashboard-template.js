@@ -258,6 +258,10 @@
                                         </select>
                                         <button class="governance-vote-secondary" id="raffle-lost-stake-select-all" type="button">Select all</button>
                                         <button class="governance-vote-secondary" id="raffle-lost-stake-clear" type="button">Clear selection</button>
+                                        <label class="raffle-lost-stake-toggle">
+                                            <input id="raffle-lost-stake-hide-messaged" name="hide_messaged" type="checkbox">
+                                            <span>Hide messaged</span>
+                                        </label>
                                     </div>
                                     <div class="raffle-exclusion-list" id="raffle-lost-stake-list"></div>
                                 </div>
@@ -268,6 +272,9 @@
                                     <textarea id="raffle-lost-stake-message" name="message" maxlength="5000" rows="7" placeholder="Hi, your ADA still appears connected to a retired stake pool. Please review your delegation and consider moving it to an active pool."></textarea>
                                     <label for="raffle-lost-stake-improved-message">AI improved message</label>
                                     <textarea id="raffle-lost-stake-improved-message" name="improved_message" maxlength="5000" rows="7"></textarea>
+                                    <label for="raffle-lost-stake-manual-addresses">Manual wallet address</label>
+                                    <textarea id="raffle-lost-stake-manual-addresses" name="manual_addresses" rows="3" placeholder="addr1..."></textarea>
+                                    <p class="governance-card-detail">Optional: add one or more wallet addresses separated by commas or new lines.</p>
                                     <div class="raffle-exclusion-actions">
                                         <button class="governance-vote-secondary" id="raffle-lost-stake-improve" type="button">Ask AI to improve</button>
                                         <button class="governance-vote-button" type="submit">Publish message on-chain</button>
