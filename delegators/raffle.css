@@ -210,6 +210,18 @@
     gap: 8px;
 }
 
+.raffle-lost-stake-sort-label {
+    align-self: center;
+    color: var(--muted);
+    font-size: var(--tdsp-detail-size);
+    font-weight: 700;
+}
+
+.raffle-lost-stake-sort {
+    width: auto;
+    min-width: 170px;
+}
+
 .raffle-exclusion-remove,
 .raffle-exclusion-toggle {
     min-height: 38px;

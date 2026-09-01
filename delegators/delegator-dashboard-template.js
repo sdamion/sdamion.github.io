@@ -183,10 +183,6 @@
                                     <strong class="governance-card-title">History</strong>
                                     <span class="governance-card-detail" id="raffle-menu-history-count">0 published raffles</span>
                                 </button>
-                                <button class="governance-menu-card raffle-open-tile" type="button" data-raffle-view="lost_stake">
-                                    <strong class="governance-card-title">Lost stake</strong>
-                                    <span class="governance-card-detail" id="raffle-menu-lost-stake-count">Stake keys on retired pools</span>
-                                </button>
                             </div>
 
                             <section class="raffle-admin-panel" data-raffle-view-panel="draw" hidden>
@@ -251,10 +247,15 @@
 
                             <section class="raffle-admin-panel" data-raffle-view-panel="lost_stake" hidden>
                                 <div class="governance-menu-card raffle-form">
-                                    <h2 class="governance-card-title">Lost stake</h2>
                                     <p class="governance-card-detail" id="raffle-lost-stake-summary">Stake keys with more than 200 ADA connected to retired pools.</p>
                                     <div class="raffle-exclusion-actions">
-                                        <button class="governance-vote-secondary" id="raffle-lost-stake-sort" type="button">Sort: highest stake first</button>
+                                        <label class="raffle-lost-stake-sort-label" for="raffle-lost-stake-sort">Sort by</label>
+                                        <select class="governance-vote-secondary raffle-lost-stake-sort" id="raffle-lost-stake-sort" name="lost_stake_sort">
+                                            <option value="ada_desc">ADA high to low</option>
+                                            <option value="ada_handle">ADA Handle</option>
+                                            <option value="payment_address">Payment address</option>
+                                            <option value="stake_key">Stake key</option>
+                                        </select>
                                         <button class="governance-vote-secondary" id="raffle-lost-stake-select-all" type="button">Select all</button>
                                         <button class="governance-vote-secondary" id="raffle-lost-stake-clear" type="button">Clear selection</button>
                                     </div>

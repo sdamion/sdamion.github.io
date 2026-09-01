@@ -52,7 +52,7 @@ let raffleAdminUsers = [];
 let raffleAdminView = 'menu';
 let raffleOverlayRootView = 'menu';
 let lostStakePayload = null;
-let lostStakeSortDescending = true;
+let lostStakeSortMode = 'ada_desc';
 let lostStakeVisibleCount = LOST_STAKE_RENDER_BATCH_SIZE;
 const lostStakeSelectedAddresses = new Set();
 const lostStakeMessagedAddresses = new Set(readLostStakeMessagedAddresses());
@@ -344,6 +344,53 @@ function getLostStakeIdentitySortRank(delegator) {
     const type = getLostStakeDisplayIdentity(delegator).type;
     if (type === 'ada_handle' || type === 'wallet_address') return 0;
     return 2;
+}
+
+function compareLostStakeText(left, right) {
+    return String(left || '').localeCompare(String(right || ''), undefined, {
+        numeric: true,
+        sensitivity: 'base'
+    });
+}
+
+function compareLostStakeAmountDesc(left, right) {
+    const leftAmount = BigInt(String(left?.amount_lovelace || '0'));
+    const rightAmount = BigInt(String(right?.amount_lovelace || '0'));
+    if (rightAmount !== leftAmount) return rightAmount > leftAmount ? 1 : -1;
+    return 0;
+}
+
+function compareLostStakeDelegators(left, right) {
+    if (lostStakeSortMode === 'ada_handle') {
+        const leftHandle = String(left?.ada_handle || '').trim();
+        const rightHandle = String(right?.ada_handle || '').trim();
+        if (leftHandle && !rightHandle) return -1;
+        if (!leftHandle && rightHandle) return 1;
+        const handleOrder = compareLostStakeText(leftHandle, rightHandle);
+        if (handleOrder) return handleOrder;
+        return compareLostStakeAmountDesc(left, right);
+    }
+    if (lostStakeSortMode === 'payment_address') {
+        const leftAddress = getLostStakePaymentAddress(left);
+        const rightAddress = getLostStakePaymentAddress(right);
+        if (leftAddress && !rightAddress) return -1;
+        if (!leftAddress && rightAddress) return 1;
+        const addressOrder = compareLostStakeText(leftAddress, rightAddress);
+        if (addressOrder) return addressOrder;
+        return compareLostStakeAmountDesc(left, right);
+    }
+    if (lostStakeSortMode === 'stake_key') {
+        const stakeOrder = compareLostStakeText(left?.stake_address, right?.stake_address);
+        if (stakeOrder) return stakeOrder;
+        return compareLostStakeAmountDesc(left, right);
+    }
+
+    const amountOrder = compareLostStakeAmountDesc(left, right);
+    if (amountOrder) return amountOrder;
+    const leftRank = getLostStakeIdentitySortRank(left);
+    const rightRank = getLostStakeIdentitySortRank(right);
+    if (leftRank !== rightRank) return leftRank - rightRank;
+    return compareLostStakeText(getLostStakeDisplayIdentity(left).value, getLostStakeDisplayIdentity(right).value);
 }
 
 function getLostStakeVisibleMessageRecipients(selectedDelegators) {
@@ -705,18 +752,7 @@ function createLostStakeDelegatorCard(delegator) {
 
 function renderLostStake(payload = lostStakePayload) {
     lostStakePayload = payload || {};
-    const delegators = getLostStakeDelegators().slice().sort((left, right) => {
-        const leftAmount = BigInt(String(left.amount_lovelace || '0'));
-        const rightAmount = BigInt(String(right.amount_lovelace || '0'));
-        const leftRank = getLostStakeIdentitySortRank(left);
-        const rightRank = getLostStakeIdentitySortRank(right);
-        if (leftRank !== rightRank) return leftRank - rightRank;
-        if (rightAmount !== leftAmount) {
-            const result = rightAmount > leftAmount ? 1 : -1;
-            return lostStakeSortDescending ? result : -result;
-        }
-        return getLostStakeDisplayIdentity(left).value.localeCompare(getLostStakeDisplayIdentity(right).value);
-    });
+    const delegators = getLostStakeDelegators().slice().sort(compareLostStakeDelegators);
     const dashboardCount = document.getElementById('raffle-dashboard-lost-stake-count');
     const menuCount = document.getElementById('raffle-menu-lost-stake-count');
     const countText = `${delegators.length.toLocaleString('en-US')} stake keys over ${formatAda(lostStakePayload.minimum_lovelace || '200000000')}`;
@@ -727,7 +763,7 @@ function renderLostStake(payload = lostStakePayload) {
         summary.textContent = `${delegators.length.toLocaleString('en-US')} stake keys · ${formatAda(lostStakePayload.total_lovelace || '0')} on retired pools`;
     }
     const sort = document.getElementById('raffle-lost-stake-sort');
-    if (sort) setTranslatedText(sort, lostStakeSortDescending ? 'Sort: highest stake first' : 'Sort: lowest stake first');
+    if (sort) sort.value = lostStakeSortMode;
     const list = document.getElementById('raffle-lost-stake-list');
     if (!list) return;
     list.replaceChildren();
@@ -1685,8 +1721,10 @@ async function init(options = {}) {
     document.getElementById('raffle-prizes-close')?.addEventListener('click', () => setPrizeOverlay(false));
     document.getElementById('raffle-admin-users-open')?.addEventListener('click', () => setRaffleOverlay(true, 'admins'));
     document.getElementById('raffle-lost-stake-open')?.addEventListener('click', () => setRaffleOverlay(true, 'lost_stake'));
-    document.getElementById('raffle-lost-stake-sort')?.addEventListener('click', () => {
-        lostStakeSortDescending = !lostStakeSortDescending;
+    document.getElementById('raffle-lost-stake-sort')?.addEventListener('change', event => {
+        lostStakeSortMode = ['ada_desc', 'ada_handle', 'payment_address', 'stake_key'].includes(event.target.value)
+            ? event.target.value
+            : 'ada_desc';
         lostStakeVisibleCount = LOST_STAKE_RENDER_BATCH_SIZE;
         renderLostStake(lostStakePayload);
     });
