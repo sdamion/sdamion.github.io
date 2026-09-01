@@ -555,7 +555,15 @@ function renderLostStakeError(message) {
 }
 
 async function loadLostStake() {
-    const payload = await authorizedRequest(ENDPOINTS.lostStake);
+    let payload;
+    try {
+        payload = await authorizedRequest(ENDPOINTS.lostStake);
+    } catch (error) {
+        if (/HTTP 404/i.test(error?.message || '')) {
+            throw new Error('Lost stake data route is not available in the running Koios proxy yet. Pull the latest proxy image, restart the container and restart the local test server, then reload this page.');
+        }
+        throw error;
+    }
     renderLostStake(payload);
     return payload;
 }
