@@ -1162,6 +1162,16 @@ p {
     margin-top: 2px;
 }
 
+.tdsp-tile-grid span.starch-miner-status-lines .starch-miner-status-bar {
+    display: grid;
+    width: min(100%, 220px);
+    margin-top: 8px;
+}
+
+.tdsp-tile-grid span.starch-miner-status-lines .starch-miner-status-bar span {
+    display: inline;
+}
+
 .tdsp-tile-grid .pool-provider-label {
     display: inline-flex;
     align-items: center;

@@ -8,6 +8,7 @@ const STARCH_DIRECTORY_URL = STARCH_IS_LOCAL_PREVIEW
 const TDSP_STARCH_COMPANY_ID = 'B0ADAD';
 
 let starchDirectory = { miners: [], companies: [] };
+let starchDirectoryLoadPromise = null;
 let minerChartInstance = null;
 let tdspStarchCompanyEnabled = null;
 let tdspStarchMinerCount = null;
@@ -128,23 +129,90 @@ function loadStarchCompanySummary(companyId) {
 }
 
 async function fetchStarchDirectory() {
-    try {
-        const payload = await window.TDSPRuntime.fetchJson(STARCH_DIRECTORY_URL);
-        starchDirectory = {
-            miners: Array.isArray(payload?.miners) ? payload.miners : [],
-            companies: consolidateStarchCompanies(payload?.companies)
-        };
-        updateStarchDirectoryTiles({
-            ...payload,
-            companies: starchDirectory.companies,
-            company_count: starchDirectory.companies.length
-        });
-    } catch (error) {
-        console.error(`Starch directory failed: ${error.message}`);
-        if (!starchDirectory.miners.length && !starchDirectory.companies.length) {
-            updateStarchDirectoryTiles(null);
+    if (starchDirectoryLoadPromise) return starchDirectoryLoadPromise;
+    starchDirectoryLoadPromise = (async () => {
+        try {
+            const payload = await window.TDSPRuntime.fetchJson(STARCH_DIRECTORY_URL);
+            starchDirectory = {
+                miners: Array.isArray(payload?.miners) ? payload.miners : [],
+                companies: consolidateStarchCompanies(payload?.companies)
+            };
+            updateStarchDirectoryTiles({
+                ...payload,
+                companies: starchDirectory.companies,
+                company_count: starchDirectory.companies.length
+            });
+            return starchDirectory;
+        } catch (error) {
+            console.error(`Starch directory failed: ${error.message}`);
+            if (!starchDirectory.miners.length && !starchDirectory.companies.length) {
+                updateStarchDirectoryTiles(null);
+            }
+            return starchDirectory;
+        } finally {
+            starchDirectoryLoadPromise = null;
         }
+    })();
+    return starchDirectoryLoadPromise;
+}
+
+function getStarchDirectoryRecords(type) {
+    return Array.isArray(starchDirectory[type]) ? starchDirectory[type] : [];
+}
+
+function createStarchDirectoryLoading(title) {
+    const body = document.createElement('div');
+    body.className = 'governance-drep-directory-list';
+    const message = window.TDSPRuntime.createSmallText(`Loading ${title.toLowerCase()}...`, { className: 'governance-empty' });
+    body.appendChild(message);
+    return body;
+}
+
+function renderStarchDirectoryOverlay(type, title, returnFocus, records) {
+    const overlayId = `starch-${type}-overlay`;
+    document.getElementById(overlayId)?.remove();
+    createPoolMenuOverlay({
+        id: overlayId,
+        titleId: `starch-${type}-title`,
+        titleText: title,
+        headerMeta: `${records.length.toLocaleString('en-US')} ${title.toLowerCase()}`,
+        closeLabel: `Close ${title}`,
+        closeOverlay: () => closePoolMenuOverlay(overlayId),
+        returnFocus,
+        rootTitle: title,
+        bodyNode: createStarchDirectoryList(records, type, title)
+    });
+}
+
+function renderStarchDirectoryLoadingOverlay(type, title, returnFocus) {
+    const overlayId = `starch-${type}-overlay`;
+    document.getElementById(overlayId)?.remove();
+    createPoolMenuOverlay({
+        id: overlayId,
+        titleId: `starch-${type}-title`,
+        titleText: title,
+        headerMeta: window.TDSPI18n?.translateText?.('Loading...') || 'Loading...',
+        closeLabel: `Close ${title}`,
+        closeOverlay: () => closePoolMenuOverlay(overlayId),
+        returnFocus,
+        rootTitle: title,
+        bodyNode: createStarchDirectoryLoading(title)
+    });
+}
+
+async function openStarchDirectoryOverlay(type, title, returnFocus) {
+    const overlayId = `starch-${type}-overlay`;
+    let records = getStarchDirectoryRecords(type);
+    if (records.length) {
+        renderStarchDirectoryOverlay(type, title, returnFocus, records);
+        return;
     }
+
+    renderStarchDirectoryLoadingOverlay(type, title, returnFocus);
+    await fetchStarchDirectory();
+    if (!document.getElementById(overlayId)) return;
+    records = getStarchDirectoryRecords(type);
+    renderStarchDirectoryOverlay(type, title, returnFocus, records);
 }
 
 async function fetchTdspStarchMinerCount() {
@@ -175,6 +243,41 @@ function renderTdspStarchPoolTile() {
         minerLabel.setAttribute('data-i18n-auto-original', label);
         minerLabel.textContent = window.TDSPI18n?.translateText?.(label) || label;
     }
+}
+
+function createStarchMinerStatusBar(onlineCount, offlineCount, totalCount) {
+    const safeTotal = Math.max(Number(totalCount) || 0, 0);
+    if (!safeTotal) return null;
+
+    const online = Math.max(Number(onlineCount) || 0, 0);
+    const offline = Math.max(Number(offlineCount) || 0, 0);
+    const onlinePercent = Math.max(0, Math.min((online / safeTotal) * 100, 100));
+    const offlinePercent = Math.max(0, Math.min((offline / safeTotal) * 100, 100));
+
+    const bar = document.createElement('div');
+    bar.className = 'governance-vote-bar starch-miner-status-bar';
+
+    const track = document.createElement('div');
+    track.className = 'governance-vote-bar-track';
+    track.setAttribute('aria-label', `Online ${online.toLocaleString('en-US')}, Offline ${offline.toLocaleString('en-US')}`);
+
+    const onlineFill = document.createElement('span');
+    onlineFill.className = 'governance-vote-bar-fill governance-vote-bar-fill--yes';
+    onlineFill.style.flexBasis = `${onlinePercent}%`;
+
+    const offlineFill = document.createElement('span');
+    offlineFill.className = 'governance-vote-bar-fill governance-vote-bar-fill--no';
+    offlineFill.style.flexBasis = `${offlinePercent}%`;
+    track.append(onlineFill, offlineFill);
+
+    const label = document.createElement('span');
+    label.className = 'tdsp-bar-legend governance-vote-bar-label';
+    const onlineLabel = window.TDSPI18n?.translateText?.('Online') || 'Online';
+    const offlineLabel = window.TDSPI18n?.translateText?.('Offline') || 'Offline';
+    label.innerHTML = `<span class="governance-vote-label-item--yes">${onlineLabel} ${online.toLocaleString('en-US')}</span> <span class="governance-vote-label-item--no">${offlineLabel} ${offline.toLocaleString('en-US')}</span>`;
+
+    bar.append(track, label);
+    return bar;
 }
 
 function updateStarchDirectoryTiles(payload) {
@@ -210,7 +313,9 @@ function updateStarchDirectoryTiles(payload) {
                 offlineText.setAttribute('data-i18n-auto', '');
                 offlineText.setAttribute('data-i18n-auto-original', offlineLabel);
                 offlineText.textContent = window.TDSPI18n?.translateText?.(offlineLabel) || offlineLabel;
+                const statusBar = createStarchMinerStatusBar(activeCount, inactiveCount, registeredCount);
                 minerStatus.append(labelText, offlineText);
+                if (statusBar) minerStatus.appendChild(statusBar);
             }
         } else {
             window.TDSPRuntime?.setText?.('starchMinerCount', Number.isFinite(registeredCount)
@@ -258,23 +363,6 @@ function bindStarchDirectoryTiles() {
             focus: false,
             errorMessage: 'Starch directory could not be opened.'
         });
-    });
-}
-
-function openStarchDirectoryOverlay(type, title, returnFocus) {
-    const records = Array.isArray(starchDirectory[type]) ? starchDirectory[type] : [];
-    const overlayId = `starch-${type}-overlay`;
-    document.getElementById(overlayId)?.remove();
-    createPoolMenuOverlay({
-        id: overlayId,
-        titleId: `starch-${type}-title`,
-        titleText: title,
-        headerMeta: `${records.length.toLocaleString('en-US')} ${title.toLowerCase()}`,
-        closeLabel: `Close ${title}`,
-        closeOverlay: () => closePoolMenuOverlay(overlayId),
-        returnFocus,
-        rootTitle: title,
-        bodyNode: createStarchDirectoryList(records, type, title)
     });
 }
 
@@ -599,10 +687,11 @@ async function renderStarchCompanyDetail(content, company, summary, options = {}
 
 function createStarchStatTile(value, label) {
     const tile = document.createElement('div');
+    tile.className = 'governance-menu-card';
     if (window.TDSPRuntime?.appendUniversalTileContent) {
         window.TDSPRuntime.appendUniversalTileContent(tile, {
-            value,
             title: label,
+            primaryText: value,
             translate: setStarchAutoTranslatedText
         });
     } else {
