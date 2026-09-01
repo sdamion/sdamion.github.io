@@ -6422,7 +6422,7 @@ function closeSpoDirectoryOverlay() {
 
 function openRetiredSpoDirectoryOverlay(returnFocus) {
     const retiredSpos = (Array.isArray(spoDirectoryState?.retired_spos) ? spoDirectoryState.retired_spos : [])
-        .filter(hasPositiveRetiredSpoStake);
+        .filter(hasVisibleRetiredSpoStake);
     const panel = document.createElement('div');
     panel.className = 'governance-drep-directory-list';
     if (retiredSpos.length) {
@@ -6468,7 +6468,7 @@ function openRetiredSpoDirectoryOverlay(returnFocus) {
     }).then(payload => {
         if (!panel.isConnected) return;
         const retired = (Array.isArray(payload?.retired_spos) ? payload.retired_spos : [])
-            .filter(hasPositiveRetiredSpoStake);
+            .filter(hasVisibleRetiredSpoStake);
         const retiredTotalDelegated = retired.reduce((sum, spo) => {
             try {
                 return sum + BigInt(String(spo?.current_delegated_lovelace || spo?.delegated_lovelace || '0'));
@@ -6510,7 +6510,9 @@ function closeRetiredSpoDirectoryOverlay() {
     removeGovernanceMenuOverlay('governance-retired-spo-directory-overlay');
 }
 
-function hasPositiveRetiredSpoStake(spo) {
+const RETIRED_SPO_VISIBLE_STAKE_MIN_LOVELACE = 10_000_000n;
+
+function hasVisibleRetiredSpoStake(spo) {
     try {
         return BigInt(String(
             spo?.current_delegated_lovelace
@@ -6518,7 +6520,7 @@ function hasPositiveRetiredSpoStake(spo) {
             || spo?.live_stake_lovelace
             || spo?.active_stake_lovelace
             || '0'
-        )) > 0n;
+        )) >= RETIRED_SPO_VISIBLE_STAKE_MIN_LOVELACE;
     } catch {
         return false;
     }
@@ -6548,7 +6550,7 @@ async function loadRetiredSpoDirectory() {
 
 function applyRetiredSpoDirectoryPayload(payload) {
     const retiredSpos = (Array.isArray(payload?.retired_spos) ? payload.retired_spos : [])
-        .filter(hasPositiveRetiredSpoStake);
+        .filter(hasVisibleRetiredSpoStake);
     const retiredTotalDelegated = retiredSpos.reduce((sum, spo) => {
         try {
             return sum + BigInt(String(spo?.current_delegated_lovelace || spo?.delegated_lovelace || '0'));
