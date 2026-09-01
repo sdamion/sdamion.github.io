@@ -924,9 +924,19 @@ function createLostStakeDelegatorCard(delegator) {
         { className: 'pool-delegator-copy-button raffle-lost-stake-copy' }
     );
     copyIdentity?.addEventListener('click', event => event.stopPropagation());
-    const checkboxWrap = document.createElement('label');
+    const toggleLostStakeSelection = checked => {
+        if (checked) lostStakeSelectedAddresses.add(delegator.stake_address);
+        else lostStakeSelectedAddresses.delete(delegator.stake_address);
+        updateLostStakeSelectionStatus();
+    };
+    const checkboxWrap = document.createElement('div');
     checkboxWrap.className = 'raffle-lost-stake-select-wrap';
-    checkboxWrap.addEventListener('click', event => event.stopPropagation());
+    checkboxWrap.addEventListener('click', event => {
+        event.stopPropagation();
+        if (event.target === checkbox) return;
+        checkbox.checked = !checkbox.checked;
+        toggleLostStakeSelection(checkbox.checked);
+    });
     checkboxWrap.addEventListener('keydown', event => event.stopPropagation());
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
@@ -935,11 +945,7 @@ function createLostStakeDelegatorCard(delegator) {
     checkbox.checked = lostStakeSelectedAddresses.has(delegator.stake_address);
     checkbox.setAttribute('data-lost-stake-select', '');
     checkbox.setAttribute('aria-label', t(`Select ${identityInfo.value}`));
-    checkbox.addEventListener('change', () => {
-        if (checkbox.checked) lostStakeSelectedAddresses.add(delegator.stake_address);
-        else lostStakeSelectedAddresses.delete(delegator.stake_address);
-        updateLostStakeSelectionStatus();
-    });
+    checkbox.addEventListener('change', () => toggleLostStakeSelection(checkbox.checked));
     checkbox.addEventListener('click', event => event.stopPropagation());
     checkboxWrap.appendChild(checkbox);
     const notificationKey = getLostStakeNotificationKey(delegator);
