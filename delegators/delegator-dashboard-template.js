@@ -12,7 +12,7 @@
         if (!(root instanceof HTMLElement)) return;
         root.querySelectorAll('p, h1, h2, strong, span, button, label, legend, summary').forEach(element => {
             if (!(element instanceof HTMLElement)) return;
-            if (element.closest('#raffle-wallet-list, #raffle-draws, #raffle-prizes-list, #raffle-exclusion-list, #raffle-admin-user-list')) return;
+            if (element.closest('#raffle-wallet-list, #raffle-draws, #raffle-prizes-list, #raffle-exclusion-list, #raffle-admin-user-list, #raffle-lost-stake-list')) return;
             if (element.querySelector('input, textarea, code, img, span.governance-close-icon')) return;
             const text = String(element.textContent || '').replace(/\s+/g, ' ').trim();
             if (!text) return;
@@ -146,6 +146,10 @@
                                 <strong class="governance-card-title">Admin Users</strong>
                                 <span class="governance-card-detail" id="raffle-dashboard-admin-count">1 admin</span>
                             </button>
+                            <button class="governance-menu-card raffle-open-tile" id="raffle-lost-stake-open" type="button">
+                                <strong class="governance-card-title">Lost stake</strong>
+                                <span class="governance-card-detail" id="raffle-dashboard-lost-stake-count">Stake on retired pools</span>
+                            </button>
                         </div>
                     </section>
                     <p id="raffle-status" class="wallet-status raffle-status" role="status" aria-live="polite" hidden></p>
@@ -178,6 +182,10 @@
                                 <button class="governance-menu-card raffle-open-tile" type="button" data-raffle-view="history">
                                     <strong class="governance-card-title">History</strong>
                                     <span class="governance-card-detail" id="raffle-menu-history-count">0 published raffles</span>
+                                </button>
+                                <button class="governance-menu-card raffle-open-tile" type="button" data-raffle-view="lost_stake">
+                                    <strong class="governance-card-title">Lost stake</strong>
+                                    <span class="governance-card-detail" id="raffle-menu-lost-stake-count">Stake keys on retired pools</span>
                                 </button>
                             </div>
 
@@ -238,6 +246,32 @@
                                     <div class="raffle-exclusion-list" id="raffle-admin-user-list"></div>
                                     <button class="governance-vote-secondary" type="submit">Add Admin Users</button>
                                     <p class="raffle-inline-status" id="raffle-admin-users-status" role="status" aria-live="polite"></p>
+                                </form>
+                            </section>
+
+                            <section class="raffle-admin-panel" data-raffle-view-panel="lost_stake" hidden>
+                                <div class="governance-menu-card raffle-form">
+                                    <h2 class="governance-card-title">Lost stake</h2>
+                                    <p class="governance-card-detail" id="raffle-lost-stake-summary">Stake keys with more than 200 ADA connected to retired pools.</p>
+                                    <div class="raffle-exclusion-actions">
+                                        <button class="governance-vote-secondary" id="raffle-lost-stake-sort" type="button">Sort: highest stake first</button>
+                                        <button class="governance-vote-secondary" id="raffle-lost-stake-select-all" type="button">Select all</button>
+                                        <button class="governance-vote-secondary" id="raffle-lost-stake-clear" type="button">Clear selection</button>
+                                    </div>
+                                    <div class="raffle-exclusion-list" id="raffle-lost-stake-list"></div>
+                                </div>
+                                <form class="governance-menu-card raffle-form" id="raffle-lost-stake-message-form">
+                                    <h2 class="governance-card-title">On-chain message</h2>
+                                    <p class="governance-card-detail">Write a message for the selected stake keys. Ask AI can spell-check it and make it more appealing before you publish it on-chain.</p>
+                                    <label for="raffle-lost-stake-message">Message</label>
+                                    <textarea id="raffle-lost-stake-message" name="message" maxlength="5000" rows="7" placeholder="Hi, your ADA still appears connected to a retired stake pool. Please review your delegation and consider moving it to an active pool."></textarea>
+                                    <label for="raffle-lost-stake-improved-message">AI improved message</label>
+                                    <textarea id="raffle-lost-stake-improved-message" name="improved_message" maxlength="5000" rows="7"></textarea>
+                                    <div class="raffle-exclusion-actions">
+                                        <button class="governance-vote-secondary" id="raffle-lost-stake-improve" type="button">Ask AI to improve</button>
+                                        <button class="governance-vote-button" type="submit">Publish message on-chain</button>
+                                    </div>
+                                    <p class="raffle-inline-status" id="raffle-lost-stake-status" role="status" aria-live="polite"></p>
                                 </form>
                             </section>
                         </div>
