@@ -3,9 +3,9 @@
     const DEFAULT_LANGUAGE = 'en';
     const LANGUAGE_CONFIG = Object.freeze({
         en: { label: 'English', flag: '🇺🇸' },
-        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20260902-treasury-ncl-combined' },
-        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20260902-treasury-ncl-combined' },
-        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20260902-treasury-ncl-combined' }
+        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20260902-spo-website-link' },
+        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20260902-spo-website-link' },
+        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20260902-spo-website-link' }
     });
     const TRANSLATION_ATTR = 'data-i18n';
     const TRANSLATION_ORIGINAL_ATTR = 'data-i18n-original';
@@ -493,6 +493,7 @@
         ['Realfi SPO', 'realfi_spo'],
         ['RealFi Docs is an external website. DYOR before clicking external links inside this embedded page.', 'realfi_docs_external_notice'],
         ['RealFi Docs only allows embedding from HTTPS websites. Test this overlay on the production HTTPS site.', 'realfi_docs_https_only'],
+        ['Open SPO website', 'open_spo_website'],
         ['Rejected Actions', 'rejected_actions'],
         ['Register as DRep', 'register_as_drep'],
         ['Registering a DRep on Cardano Mainnet', 'registering_drep_mainnet'],

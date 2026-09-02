@@ -7306,6 +7306,7 @@ function createSpoOperatorGroupCard(domain, members, options = {}) {
 function createSpoOperatorGroupListLine(domain, members) {
     const line = document.createElement('span');
     line.className = 'governance-card-detail governance-treasury-withdrawal-amount governance-cc-member-stats';
+    const retiredGroup = Array.isArray(members) && members.length > 0 && members.every(isRetiredOrRetiringSpo);
 
     const combined = document.createElement('span');
     combined.className = 'governance-card-detail governance-directory-list-note';
@@ -7315,7 +7316,7 @@ function createSpoOperatorGroupListLine(domain, members) {
     setGovernanceAutoTranslatedText(label, 'Delegation:');
 
     const value = document.createElement('span');
-    value.className = 'pool-status-value is-active';
+    value.className = `pool-status-value ${retiredGroup ? 'is-inactive' : 'is-active'}`;
     value.textContent = formatCompactAdaFromLovelace(domain?.stake_lovelace || 0);
 
     line.append(combined, document.createTextNode(' • '), label, document.createTextNode(' '), value);
@@ -7837,6 +7838,18 @@ function renderSpoDetails(container, spo) {
         stats.appendChild(card);
     });
     container.appendChild(stats);
+
+    const websiteUrl = firstNonEmptyText(spo.website_url, spo.website, spo.homepage, spo.url);
+    if (websiteUrl) {
+        const actions = document.createElement('div');
+        actions.className = 'governance-action-buttons';
+        actions.appendChild(createGovernanceProposalActionButton(
+            'Open SPO website',
+            'governance-catalyst-source-button',
+            event => openExternalSiteWarning(websiteUrl, event.currentTarget)
+        ));
+        container.appendChild(actions);
+    }
 
     const relayTitle = document.createElement('strong');
     setGovernanceAutoTranslatedText(relayTitle, `Relay nodes (${Number(spo.relay_count || spo.relays?.length || 0).toLocaleString('en-US')})`);
