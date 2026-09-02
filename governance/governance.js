@@ -418,7 +418,6 @@ function setupGovernanceMenuCards() {
         ['gov-committee-card', openConstitutionalCommitteeOverlay],
         ['gov-drep-card', openDrepDirectoryOverlay],
         ['gov-drep-top10-card', openTopDrepPowerOverlay],
-        ['gov-ncl-card', event => openNclSummaryOverlay(event?.currentTarget || document.getElementById('gov-ncl-card'))],
         ['gov-active-card', () => openGovernanceActionGroupOverlay(
             'active',
             'Active Governance Actions',
@@ -482,6 +481,7 @@ async function loadTreasuryData() {
             ? `Income ${window.TDSPRuntime.formatTileAdaFromLovelace(latestIncome, { fixedFractionDigits: 2 })}`
             : 'Income ₳ --'
     );
+    updateTreasuryFlowTile(payload);
     updateBusinessSummary(payload, catalystPayload);
     if (governanceState) updateNclSummaryTile();
     updateCatalystTreasuryFundingSummary();
@@ -3345,6 +3345,165 @@ function getTreasuryIncomeLovelace(payload, epoch = getTreasuryEpoch(payload)) {
     return Math.max(0, currentTreasury - previousTreasury + withdrawals);
 }
 
+function getTreasuryFlowTotals(payload, period = governanceNcl?.getPeriod?.()) {
+    const periodStart = Number(period?.startEpoch);
+    const periodEnd = Number(period?.endEpoch);
+    const history = (Array.isArray(payload?.treasury_history) ? payload.treasury_history : [])
+        .map(item => ({
+            epoch: Number(item?.epoch_no),
+            treasury: Number(item?.treasury)
+        }))
+        .filter(item => Number.isFinite(item.epoch) && Number.isFinite(item.treasury))
+        .filter(item => !Number.isFinite(periodStart) || item.epoch >= periodStart - 1)
+        .filter(item => !Number.isFinite(periodEnd) || item.epoch <= periodEnd)
+        .sort((left, right) => left.epoch - right.epoch);
+    if (history.length < 2) return null;
+
+    const withdrawalsByEpoch = new Map();
+    getTreasuryWithdrawals(payload).forEach(withdrawal => {
+        const epoch = Number(withdrawal?.enacted_epoch);
+        const amount = Number(withdrawal?.amount_lovelace);
+        if (!Number.isFinite(epoch) || !Number.isFinite(amount) || amount <= 0) return;
+        if (Number.isFinite(periodStart) && epoch < periodStart) return;
+        if (Number.isFinite(periodEnd) && epoch > periodEnd) return;
+        withdrawalsByEpoch.set(epoch, (withdrawalsByEpoch.get(epoch) || 0) + amount);
+    });
+
+    let totalIn = 0;
+    let totalOut = 0;
+    for (let index = 1; index < history.length; index += 1) {
+        const current = history[index];
+        const previous = history[index - 1];
+        const withdrawal = withdrawalsByEpoch.get(current.epoch) || 0;
+        const income = current.treasury - previous.treasury + withdrawal;
+        if (Number.isFinite(income) && income > 0) totalIn += income;
+        totalOut += withdrawal;
+    }
+
+    return {
+        totalIn,
+        totalOut,
+        firstEpoch: Number.isFinite(periodStart) ? periodStart : history[0].epoch,
+        lastEpoch: Number.isFinite(periodEnd) ? periodEnd : history[history.length - 1].epoch
+    };
+}
+
+function updateTreasuryFlowTile(payload) {
+    const flowContainer = document.getElementById('gov-treasury-flow');
+    const nclContainer = document.getElementById('gov-treasury-ncl-flow');
+    if (!flowContainer && !nclContainer) return;
+
+    const totals = getTreasuryFlowTotals(payload);
+    if (!totals || totals.totalIn + totals.totalOut <= 0) {
+        flowContainer?.replaceChildren();
+        nclContainer?.replaceChildren();
+        flowContainer?.removeAttribute('title');
+        nclContainer?.removeAttribute('title');
+        return;
+    }
+
+    const nclValues = getNclSummaryValues();
+    const limit = Math.max(0, Number(nclValues?.limit) || 0);
+    const spent = Math.max(0, Number(nclValues?.spent) || 0);
+    const left = Math.max(0, Number(nclValues?.balance) || 0);
+    const flowBar = createTreasuryTileBar([
+        {
+            label: 'In',
+            value: totals.totalIn,
+            className: 'governance-vote-bar-fill--yes',
+            labelClassName: 'governance-vote-label-item--yes'
+        },
+        {
+            label: 'Out',
+            value: totals.totalOut,
+            className: 'governance-vote-bar-fill--no',
+            labelClassName: 'governance-vote-label-item--no'
+        }
+    ], 'Treasury flow');
+    const nclBar = createTreasuryTileBar([
+        {
+            label: 'NCL Out',
+            value: spent,
+            className: 'governance-vote-bar-fill--no',
+            labelClassName: 'governance-vote-label-item--no'
+        },
+        {
+            label: 'Left',
+            value: left,
+            className: 'treasury-flow-bar-fill--left',
+            labelClassName: 'treasury-flow-label-item--left'
+        }
+    ], 'NCL out and left', limit || spent + left, [
+        {
+            label: 'Total',
+            value: limit || spent + left,
+            labelClassName: 'treasury-flow-label-item--total'
+        }
+    ]);
+    flowContainer?.replaceChildren(...[flowBar].filter(Boolean));
+    nclContainer?.replaceChildren(...[nclBar].filter(Boolean));
+    if (flowContainer) flowContainer.title = `Treasury flow from epoch ${totals.firstEpoch} to ${totals.lastEpoch}`;
+    if (nclContainer) nclContainer.title = `NCL out and left from epoch ${totals.firstEpoch} to ${totals.lastEpoch}`;
+}
+
+function createTreasuryTileBar(items, ariaPrefix, totalOverride = null, trailingItems = []) {
+    const normalizedItems = items
+        .map(item => ({
+            ...item,
+            value: Math.max(0, Number(item.value) || 0)
+        }))
+        .filter(item => item.value > 0);
+    const total = Number.isFinite(Number(totalOverride)) && Number(totalOverride) > 0
+        ? Number(totalOverride)
+        : normalizedItems.reduce((sum, item) => sum + item.value, 0);
+    if (!normalizedItems.length || total <= 0) return null;
+
+    const bar = document.createElement('span');
+    bar.className = 'governance-vote-bar treasury-flow-bar-inner';
+
+    const track = document.createElement('span');
+    track.className = 'governance-vote-bar-track';
+
+    const label = document.createElement('span');
+    label.className = 'tdsp-bar-legend governance-vote-bar-label';
+    const ariaLabels = [];
+    normalizedItems.forEach((item, index) => {
+        const percentage = Math.max(0, Math.min(100, (item.value / total) * 100));
+        const fill = document.createElement('span');
+        fill.className = `governance-vote-bar-fill ${item.className}`;
+        fill.style.flexBasis = `${percentage}%`;
+        track.appendChild(fill);
+
+        const labelItem = document.createElement('span');
+        labelItem.className = `treasury-flow-label-item ${item.labelClassName}`;
+        const labelText = `${item.label} ${window.TDSPRuntime.formatTileAdaFromLovelace(item.value, { fixedFractionDigits: 2 })}`;
+        setGovernanceAutoTranslatedText(labelItem, labelText);
+        if (index > 0) label.appendChild(document.createTextNode(' • '));
+        label.appendChild(labelItem);
+        ariaLabels.push(`${item.label} ${formatPercentage(percentage)}`);
+    });
+    trailingItems
+        .map(item => ({
+            ...item,
+            value: Math.max(0, Number(item.value) || 0)
+        }))
+        .filter(item => item.value > 0)
+        .forEach(item => {
+            const labelItem = document.createElement('span');
+            labelItem.className = `treasury-flow-label-item ${item.labelClassName || ''}`.trim();
+            setGovernanceAutoTranslatedText(
+                labelItem,
+                `${item.label} ${window.TDSPRuntime.formatTileAdaFromLovelace(item.value, { fixedFractionDigits: 2 })}`
+            );
+            label.appendChild(document.createTextNode(' • '));
+            label.appendChild(labelItem);
+        });
+    track.setAttribute('aria-label', `${ariaPrefix}: ${ariaLabels.join(', ')}`);
+
+    bar.append(track, label);
+    return bar;
+}
+
 function getTreasuryHeaderAmount(payload) {
     const treasuryLovelace = getTreasuryLovelace(payload);
     return Number.isFinite(treasuryLovelace)
@@ -3478,6 +3637,7 @@ function updateNclSummaryCard(nclLimit, remaining) {
 
 function updateNclEpochCountdown() {
     governanceNcl.updateEpochCountdown();
+    governanceNcl.updateHeaderPeriod();
 }
 
 function removeDrepPowerSplitCard() {
@@ -4420,6 +4580,7 @@ function updateNclSummaryTile() {
 
 function applyDashboardNclSummary(payload) {
     governanceNcl.applyDashboardSummary(payload);
+    if (treasuryState) updateTreasuryFlowTile(treasuryState);
 }
 
 function getActiveGovernanceCardMetadata(proposal) {

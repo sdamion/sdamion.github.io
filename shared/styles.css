@@ -820,6 +820,28 @@ h2 {
     line-height: 1;
 }
 
+.section-heading-line {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    max-width: 100%;
+    min-width: 0;
+    margin-bottom: 18px;
+}
+
+.section-heading-line h2 {
+    margin-bottom: 0;
+}
+
+.section-heading-meta {
+    color: var(--muted);
+    font-size: var(--tdsp-tile-detail-size);
+    font-weight: var(--tdsp-tile-detail-weight);
+    line-height: var(--tdsp-tile-detail-line-height);
+    overflow-wrap: anywhere;
+}
+
 p {
     max-width: 760px;
     color: var(--muted);
@@ -1170,6 +1192,23 @@ p {
 
 .tdsp-tile-grid span.starch-miner-status-lines .starch-miner-status-bar span {
     display: inline;
+}
+
+.tdsp-tile-grid .treasury-flow-bar {
+    display: block;
+    width: min(100%, 220px);
+}
+
+.tdsp-tile-grid #gov-treasury-card {
+    align-content: start;
+}
+
+.tdsp-tile-grid #gov-treasury-ncl-flow {
+    margin-top: auto;
+}
+
+.tdsp-tile-grid .treasury-flow-bar-inner {
+    margin-top: 8px;
 }
 
 .tdsp-tile-grid .pool-provider-label {
@@ -2162,6 +2201,10 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     background: #38bdf8;
 }
 
+.treasury-flow-bar-fill--left {
+    background: #34d399;
+}
+
 .governance-vote-bar-fill--yes {
     background: #34d399;
 }
@@ -2198,6 +2241,14 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 
 .governance-vote-label-item--no {
     color: #fb7185;
+}
+
+.treasury-flow-label-item--left {
+    color: #34d399;
+}
+
+.treasury-flow-label-item--total {
+    color: var(--muted);
 }
 
 #gov-spo-scan-status[hidden] {

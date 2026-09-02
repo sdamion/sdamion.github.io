@@ -3,9 +3,9 @@
     const DEFAULT_LANGUAGE = 'en';
     const LANGUAGE_CONFIG = Object.freeze({
         en: { label: 'English', flag: '🇺🇸' },
-        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20260901-lost-stake-backend-message-state' },
-        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20260901-lost-stake-backend-message-state' },
-        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20260901-lost-stake-backend-message-state' }
+        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20260902-treasury-ncl-combined' },
+        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20260902-treasury-ncl-combined' },
+        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20260902-treasury-ncl-combined' }
     });
     const TRANSLATION_ATTR = 'data-i18n';
     const TRANSLATION_ORIGINAL_ATTR = 'data-i18n-original';
@@ -792,6 +792,9 @@
         const approvedUnapprovedMatch = normalized.match(/^Approved\s+(.+?)\s+•\s+Unapproved\s+(.+)$/i);
         if (approvedUnapprovedMatch) return `Aprobado ${approvedUnapprovedMatch[1]} • No aprobado ${approvedUnapprovedMatch[2]}`;
 
+        const nclPeriodWithLeftMatch = normalized.match(/^NCL Period Epoch\s+(.+?)\s+•\s+(\d+)\s+epochs?\s+left$/i);
+        if (nclPeriodWithLeftMatch) return `Período NCL epoch ${nclPeriodWithLeftMatch[1]} • quedan ${nclPeriodWithLeftMatch[2]} epochs`;
+
         if (normalized.includes(' • ')) {
             return normalized
                 .split(' • ')
@@ -847,6 +850,21 @@
 
         const livePledgeMatch = normalized.match(/^Live pledge\s+(.+)$/i);
         if (livePledgeMatch) return `${translations.live_pledge || 'Pledge en vivo'} ${livePledgeMatch[1]}`;
+
+        const treasuryInMatch = normalized.match(/^In\s+(.+)$/i);
+        if (treasuryInMatch) return `Entrada ${treasuryInMatch[1]}`;
+
+        const treasuryOutMatch = normalized.match(/^Out\s+(.+)$/i);
+        if (treasuryOutMatch) return `Salida ${treasuryOutMatch[1]}`;
+
+        const nclOutMatch = normalized.match(/^NCL Out\s+(.+)$/i);
+        if (nclOutMatch) return `Salida NCL ${nclOutMatch[1]}`;
+
+        const treasuryLeftMatch = normalized.match(/^Left\s+(.+)$/i);
+        if (treasuryLeftMatch) return `Restante ${treasuryLeftMatch[1]}`;
+
+        const totalValueMatch = normalized.match(/^Total\s+(.+)$/i);
+        if (totalValueMatch) return `Total ${totalValueMatch[1]}`;
 
         const companyIdsMatch = normalized.match(/^(\d[\d,]*)\s+Company IDs$/i);
         if (companyIdsMatch) return `${companyIdsMatch[1]} IDs de empresa`;
@@ -1301,6 +1319,24 @@
 
             const incomeMatch = normalized.match(/^Income\s+(.+)$/i);
             if (incomeMatch) return `収入 ${incomeMatch[1]}`;
+
+            const nclPeriodWithLeftMatch = normalized.match(/^NCL Period Epoch\s+(.+?)\s+•\s+(\d+)\s+epochs?\s+left$/i);
+            if (nclPeriodWithLeftMatch) return `NCL期間 エポック ${nclPeriodWithLeftMatch[1]} • 残り${nclPeriodWithLeftMatch[2]}エポック`;
+
+            const treasuryInMatch = normalized.match(/^In\s+(.+)$/i);
+            if (treasuryInMatch) return `流入 ${treasuryInMatch[1]}`;
+
+            const treasuryOutMatch = normalized.match(/^Out\s+(.+)$/i);
+            if (treasuryOutMatch) return `流出 ${treasuryOutMatch[1]}`;
+
+            const nclOutMatch = normalized.match(/^NCL Out\s+(.+)$/i);
+            if (nclOutMatch) return `NCL流出 ${nclOutMatch[1]}`;
+
+            const treasuryLeftMatch = normalized.match(/^Left\s+(.+)$/i);
+            if (treasuryLeftMatch) return `残り ${treasuryLeftMatch[1]}`;
+
+            const totalValueMatch = normalized.match(/^Total\s+(.+)$/i);
+            if (totalValueMatch) return `合計 ${totalValueMatch[1]}`;
 
             const nclBalanceMatch = normalized.match(/^NCL Balance\s+(.+)$/i);
             if (nclBalanceMatch) return `NCL残高 ${nclBalanceMatch[1]}`;
@@ -1812,6 +1848,24 @@
 
         const incomeMatch = normalized.match(/^Income\s+(.+)$/i);
         if (incomeMatch) return `Inkomen ${incomeMatch[1]}`;
+
+        const nclPeriodWithLeftMatch = normalized.match(/^NCL Period Epoch\s+(.+?)\s+•\s+(\d+)\s+epochs?\s+left$/i);
+        if (nclPeriodWithLeftMatch) return `NCL periode epoch ${nclPeriodWithLeftMatch[1]} • ${nclPeriodWithLeftMatch[2]} epochs over`;
+
+        const treasuryInMatch = normalized.match(/^In\s+(.+)$/i);
+        if (treasuryInMatch) return `In ${treasuryInMatch[1]}`;
+
+        const treasuryOutMatch = normalized.match(/^Out\s+(.+)$/i);
+        if (treasuryOutMatch) return `Uit ${treasuryOutMatch[1]}`;
+
+        const nclOutMatch = normalized.match(/^NCL Out\s+(.+)$/i);
+        if (nclOutMatch) return `NCL uit ${nclOutMatch[1]}`;
+
+        const treasuryLeftMatch = normalized.match(/^Left\s+(.+)$/i);
+        if (treasuryLeftMatch) return `Over ${treasuryLeftMatch[1]}`;
+
+        const totalValueMatch = normalized.match(/^Total\s+(.+)$/i);
+        if (totalValueMatch) return `Totaal ${totalValueMatch[1]}`;
 
         const nclBalanceMatch = normalized.match(/^NCL Balance\s+(.+)$/i);
         if (nclBalanceMatch) return `NCL balans ${nclBalanceMatch[1]}`;

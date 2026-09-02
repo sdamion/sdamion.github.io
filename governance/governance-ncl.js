@@ -141,6 +141,7 @@
                 'gov-ncl-balance',
                 `Balance ${formatCompactAda(remaining, { fixedFractionDigits: 2 })}`
             );
+            updateHeaderPeriod();
             updateEpochCountdown();
         }
 
@@ -167,6 +168,33 @@
                 ? 'Reset due'
                 : `Reset in ${epochsLeft} epoch${epochsLeft === 1 ? '' : 's'}`);
             const title = `Next NCL period starts in epoch ${resetEpoch}`;
+            element.title = window.TDSPI18n?.translateText?.(title) || title;
+        }
+
+        function updateHeaderPeriod() {
+            const element = document.getElementById('gov-ncl-header-period');
+            if (!element) return;
+
+            const period = getPeriod();
+            const currentEpoch = Number(getClockEpochSnapshot()?.epoch);
+            if (!period) {
+                window.TDSPRuntime.setText('gov-ncl-header-period', '');
+                element.removeAttribute('title');
+                return;
+            }
+
+            const endEpoch = Math.trunc(Number(period.endEpoch));
+            const epochsLeft = Number.isFinite(currentEpoch)
+                ? Math.max(endEpoch + 1 - Math.trunc(currentEpoch), 0)
+                : null;
+            const suffix = Number.isFinite(epochsLeft)
+                ? ` • ${epochsLeft} epoch${epochsLeft === 1 ? '' : 's'} left`
+                : '';
+            window.TDSPRuntime.setText(
+                'gov-ncl-header-period',
+                `NCL Period Epoch ${period.startEpoch}-${period.endEpoch}${suffix}`
+            );
+            const title = `Next NCL period starts in epoch ${endEpoch + 1}`;
             element.title = window.TDSPI18n?.translateText?.(title) || title;
         }
 
@@ -246,6 +274,7 @@
             openOverlay,
             updateCard,
             updateEpochCountdown,
+            updateHeaderPeriod,
             updateTile
         });
     }
