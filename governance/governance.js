@@ -6551,7 +6551,9 @@ function openSpoDirectoryOverlay() {
 
     loadSpoDirectory().then(payload => {
         if (!panel.isConnected) return;
-        renderSpoDirectory(panel, payload.spos);
+        renderSpoDirectory(panel, payload.spos, {
+            layout: 'list'
+        });
         updateGovernanceMenuHeaderMeta(
             'governance-spo-directory-overlay',
             `${payload.count.toLocaleString('en-US')} SPOs`,
@@ -6590,6 +6592,7 @@ function openRetiredSpoDirectoryOverlay(returnFocus) {
         renderSpoDirectory(panel, retiredSpos, {
             showChart: false,
             combineOperators: false,
+            layout: 'list',
             emptyMessage: 'No retired SPOs are available.'
         });
     } else {
@@ -6634,6 +6637,7 @@ function openRetiredSpoDirectoryOverlay(returnFocus) {
         renderSpoDirectory(panel, retired, {
             showChart: false,
             combineOperators: false,
+            layout: 'list',
             emptyMessage: 'No retired SPOs are available.'
         });
         updateGovernanceMenuHeaderMeta(
@@ -7225,8 +7229,10 @@ function renderSpoDirectory(container, spos, options = {}) {
     const fragment = document.createDocumentFragment();
     orderedEntries.forEach(entry => {
         fragment.appendChild(entry.type === 'group'
-            ? createSpoOperatorGroupCard(entry.domain, entry.members)
-            : createSpoDirectoryCard(entry.spo));
+            ? createSpoOperatorGroupCard(entry.domain, entry.members, { layout: options.layout })
+            : options.layout === 'list'
+                ? createSpoDirectoryListCard(entry.spo)
+                : createSpoDirectoryCard(entry.spo));
     });
     container.appendChild(fragment);
 }
@@ -7252,11 +7258,15 @@ function createSpoOperatorDirectoryEntries(spos) {
     return entries;
 }
 
-function createSpoOperatorGroupCard(domain, members) {
+function createSpoOperatorGroupCard(domain, members, options = {}) {
     const totalDelegators = members.reduce((sum, spo) => sum + (Number(spo?.delegator_count) || 0), 0);
+    const listLayout = options.layout === 'list';
     const row = document.createElement('div');
-    row.className = 'governance-card governance-menu-card governance-cc-member governance-cc-member-clickable governance-spo-directory-card';
+    row.className = listLayout
+        ? 'governance-card governance-menu-card governance-cc-member-clickable governance-directory-list-card governance-spo-directory-list-card'
+        : 'governance-card governance-menu-card governance-cc-member governance-cc-member-clickable governance-spo-directory-card';
     row.dataset.searchText = members.flatMap(spo => [
+        domain?.label,
         spo?.name,
         spo?.ticker,
         spo?.pool_id,
@@ -7271,18 +7281,45 @@ function createSpoOperatorGroupCard(domain, members) {
     row.setAttribute('role', 'button');
     row.tabIndex = 0;
     setGovernanceAutoTranslatedAriaLabel(row, `Show ${domain?.label || 'operator'} combined stake pools`);
-    window.TDSPRuntime?.appendUniversalTileContent?.(row, {
-        title: domain?.label || 'SPO Operator',
-        titleClassName: 'governance-title governance-cc-member-hash',
-        primaryText: `Delegation: ${formatCompactAdaFromLovelace(domain?.stake_lovelace || 0)}`,
-        primaryClassName: 'governance-card-detail governance-treasury-withdrawal-amount governance-cc-member-stats',
-        detailItems: [
-            { text: `${members.length.toLocaleString('en-US')} combined pools`, className: 'governance-card-detail governance-cc-member-meta' },
-            { text: `Delegators: ${totalDelegators.toLocaleString('en-US')}`, className: 'governance-card-detail governance-cc-member-meta' }
-        ]
-    });
+    if (listLayout) {
+        window.TDSPRuntime?.appendUniversalTileContent?.(row, {
+            title: domain?.label || 'SPO Operator',
+            titleClassName: 'governance-title governance-cc-member-hash',
+            primaryNode: createSpoOperatorGroupListLine(domain, members)
+        });
+    } else {
+        window.TDSPRuntime?.appendUniversalTileContent?.(row, {
+            title: domain?.label || 'SPO Operator',
+            titleClassName: 'governance-title governance-cc-member-hash',
+            primaryText: `Delegation: ${formatCompactAdaFromLovelace(domain?.stake_lovelace || 0)}`,
+            primaryClassName: 'governance-card-detail governance-treasury-withdrawal-amount governance-cc-member-stats',
+            detailItems: [
+                { text: `${members.length.toLocaleString('en-US')} combined pools`, className: 'governance-card-detail governance-cc-member-meta' },
+                { text: `Delegators: ${totalDelegators.toLocaleString('en-US')}`, className: 'governance-card-detail governance-cc-member-meta' }
+            ]
+        });
+    }
     bindGovernanceMenuTrigger(row, event => openSpoOperatorGroupPools(domain, event.currentTarget));
     return row;
+}
+
+function createSpoOperatorGroupListLine(domain, members) {
+    const line = document.createElement('span');
+    line.className = 'governance-card-detail governance-treasury-withdrawal-amount governance-cc-member-stats';
+
+    const combined = document.createElement('span');
+    combined.className = 'governance-card-detail governance-directory-list-note';
+    setGovernanceAutoTranslatedText(combined, `${members.length.toLocaleString('en-US')} combined pools`);
+
+    const label = document.createElement('span');
+    setGovernanceAutoTranslatedText(label, 'Delegation:');
+
+    const value = document.createElement('span');
+    value.className = 'pool-status-value is-active';
+    value.textContent = formatCompactAdaFromLovelace(domain?.stake_lovelace || 0);
+
+    line.append(combined, document.createTextNode(' • '), label, document.createTextNode(' '), value);
+    return line;
 }
 
 function createSpoDirectoryCard(spo) {
@@ -7339,10 +7376,51 @@ function createSpoDirectoryCard(spo) {
     return row;
 }
 
+function createSpoDirectoryListCard(spo) {
+    const relayAddressSummary = getSpoRelayAddressSummary(spo);
+    const relaySearchText = getSpoRelaySearchText(spo);
+    const retired = isRetiredOrRetiringSpo(spo);
+    const row = document.createElement('div');
+    row.className = 'governance-card governance-menu-card governance-cc-member-clickable governance-directory-list-card governance-spo-directory-list-card';
+    row.dataset.searchText = [spo.name, spo.ticker, spo.pool_id, relayAddressSummary, relaySearchText]
+        .filter(Boolean)
+        .join(' ');
+    row.dataset.sortName = window.TDSPRuntime.normalizeSearchText(getSpoDisplayName(spo));
+    row.dataset.sortAmount = String(Number(spo.delegated_lovelace) || 0);
+    row.dataset.sortDelegators = String(Number(spo.delegator_count) || 0);
+    row.dataset.sortSaturation = String(Number(spo.saturation_pct) || 0);
+    if (Number.isInteger(Number(spo.retiring_epoch)) && Number(spo.retiring_epoch) > 0) {
+        row.dataset.sortLifecycleEpoch = String(Number(spo.retiring_epoch));
+    }
+    const pinRank = getSpoPinRank(spo);
+    if (Number.isFinite(pinRank)) row.dataset.overlayPinRank = String(pinRank);
+    row.setAttribute('role', 'button');
+    row.tabIndex = 0;
+    row.setAttribute('aria-label', `Show ${getSpoDisplayName(spo)} stake pool details`);
+
+    window.TDSPRuntime?.appendUniversalTileContent?.(row, {
+        title: getSpoDisplayName(spo),
+        titleClassName: 'governance-title governance-cc-member-hash',
+        primaryNode: createSpoDelegationLine(spo.delegated_lovelace, {
+            greenAmount: !retired,
+            redAmount: retired
+        })
+    });
+    bindGovernanceMenuTrigger(row, event => openSpoDetailOverlay(spo, event.currentTarget));
+    bindGovernanceEntityPreload(
+        row,
+        `spo:${String(spo.pool_id || '').toLowerCase()}`,
+        () => fetchJson(getSpoDetailApiUrl(spo.pool_id), { cache: 'no-store' })
+    );
+    return row;
+}
+
 function createSpoDelegationLine(lovelace, options = {}) {
     return createValueLine('Delegation:', formatCompactAdaFromLovelace(lovelace), {
         className: 'governance-card-detail governance-treasury-withdrawal-amount governance-cc-member-stats',
-        valueClassName: options.redAmount ? 'pool-status-value is-inactive' : ''
+        valueClassName: options.redAmount
+            ? 'pool-status-value is-inactive'
+            : options.greenAmount ? 'pool-status-value is-active' : ''
     });
 }
 
@@ -8814,7 +8892,9 @@ async function loadDrepDirectoryOverlay(container) {
         }),
         container
     );
-    renderDrepDirectory(container, dreps);
+    renderDrepDirectory(container, dreps, {
+        layout: 'list'
+    });
 }
 
 function renderDrepDirectory(container, dreps, options = {}) {
@@ -8833,44 +8913,75 @@ function renderDrepDirectory(container, dreps, options = {}) {
 
     const fragment = document.createDocumentFragment();
     dreps.forEach(drep => {
-        const row = document.createElement('div');
-        row.className = 'governance-card governance-menu-card governance-cc-member governance-drep-directory-card';
-        row.dataset.searchText = `${drep.id || ''} ${drep.searchIds || ''}`.trim();
-        row.dataset.sortName = window.TDSPRuntime.normalizeSearchText(drep.name);
-        row.dataset.sortPower = String(Number(drep.votingPower) || 0);
-        row.dataset.sortStatus = drep.active ? '1' : '0';
-        row.dataset.sortNcl = String(governanceDrepNcl.getSortValue(drep));
-        const pinRank = getDrepPinRank(drep);
-        if (Number.isFinite(pinRank)) row.dataset.overlayPinRank = String(pinRank);
-
-        row.classList.add(drep.active ? 'governance-drep-member--active' : 'governance-drep-member--inactive');
-
-        window.TDSPRuntime?.appendUniversalTileContent?.(row, {
-            title: drep.name,
-            titleClassName: 'governance-title governance-cc-member-hash',
-            primaryText: `Voting power: ${formatCompactAdaFromLovelace(drep.votingPower)}`,
-            primaryClassName: 'governance-card-detail governance-treasury-withdrawal-amount governance-cc-member-stats',
-            detailItems: [
-                {
-                    text: drep.active ? 'Active' : 'Inactive',
-                    className: 'governance-card-detail governance-drep-member-status'
-                }
-            ]
-        });
-        bindDrepNameProfileTrigger(row.querySelector('.governance-cc-member-hash'), drep);
-        row.classList.add('governance-cc-member-clickable');
-        row.setAttribute('role', 'button');
-        row.tabIndex = 0;
-        row.setAttribute('aria-label', `Show votes by ${drep.name}`);
-        bindGovernanceMenuTrigger(row, event => openDrepActionHistoryOverlay(drep, event.currentTarget));
-        bindGovernanceEntityPreload(
-            row,
-            `drep:${String(drep.id || '').toLowerCase()}`,
-            () => fetchJson(getDrepDetailApiUrl(drep.id), { cache: 'no-store' })
-        );
+        const row = options.layout === 'list'
+            ? createDrepDirectoryListCard(drep)
+            : createDrepDirectoryCard(drep);
         fragment.appendChild(row);
     });
     container.appendChild(fragment);
+}
+
+function createDrepDirectoryCard(drep) {
+    const row = createDrepDirectoryBaseCard(drep, 'governance-card governance-menu-card governance-cc-member governance-drep-directory-card');
+    window.TDSPRuntime?.appendUniversalTileContent?.(row, {
+        title: drep.name,
+        titleClassName: 'governance-title governance-cc-member-hash',
+        primaryText: `Voting power: ${formatCompactAdaFromLovelace(drep.votingPower)}`,
+        primaryClassName: 'governance-card-detail governance-treasury-withdrawal-amount governance-cc-member-stats',
+        detailItems: [
+            {
+                text: drep.active ? 'Active' : 'Inactive',
+                className: 'governance-card-detail governance-drep-member-status'
+            }
+        ]
+    });
+    bindDrepNameProfileTrigger(row.querySelector('.governance-cc-member-hash'), drep);
+    bindDrepDirectoryCard(row, drep);
+    return row;
+}
+
+function createDrepDirectoryListCard(drep) {
+    const row = createDrepDirectoryBaseCard(
+        drep,
+        'governance-card governance-menu-card governance-directory-list-card governance-drep-directory-list-card'
+    );
+    window.TDSPRuntime?.appendUniversalTileContent?.(row, {
+        title: drep.name,
+        titleClassName: 'governance-title governance-cc-member-hash',
+        primaryNode: createValueLine('Voting power:', formatCompactAdaFromLovelace(drep.votingPower), {
+            className: 'governance-card-detail governance-treasury-withdrawal-amount governance-cc-member-stats'
+        })
+    });
+    bindDrepNameProfileTrigger(row.querySelector('.governance-cc-member-hash'), drep);
+    bindDrepDirectoryCard(row, drep);
+    return row;
+}
+
+function createDrepDirectoryBaseCard(drep, className) {
+    const row = document.createElement('div');
+    row.className = className;
+    row.dataset.searchText = `${drep.id || ''} ${drep.searchIds || ''} ${drep.name || ''}`.trim();
+    row.dataset.sortName = window.TDSPRuntime.normalizeSearchText(drep.name);
+    row.dataset.sortPower = String(Number(drep.votingPower) || 0);
+    row.dataset.sortStatus = drep.active ? '1' : '0';
+    row.dataset.sortNcl = String(governanceDrepNcl.getSortValue(drep));
+    const pinRank = getDrepPinRank(drep);
+    if (Number.isFinite(pinRank)) row.dataset.overlayPinRank = String(pinRank);
+    row.classList.add(drep.active ? 'governance-drep-member--active' : 'governance-drep-member--inactive');
+    row.classList.add('governance-cc-member-clickable');
+    row.setAttribute('role', 'button');
+    row.tabIndex = 0;
+    row.setAttribute('aria-label', `Show votes by ${drep.name}`);
+    return row;
+}
+
+function bindDrepDirectoryCard(row, drep) {
+    bindGovernanceMenuTrigger(row, event => openDrepActionHistoryOverlay(drep, event.currentTarget));
+    bindGovernanceEntityPreload(
+        row,
+        `drep:${String(drep.id || '').toLowerCase()}`,
+        () => fetchJson(getDrepDetailApiUrl(drep.id), { cache: 'no-store' })
+    );
 }
 
 function getDrepPinRank(drep) {
