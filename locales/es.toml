@@ -98,6 +98,7 @@ constitutional_committee_members_could_not_load = "No se pudieron cargar los mie
 read = "Leer"
 constitution = "Constitución"
 cardano_constitution = "Constitución de Cardano"
+cardano_constitution_context = "Contexto de la Constitución de Cardano"
 active_mithril_signers = "Firmantes Mithril activos"
 admin_area = "Área de administración"
 admin_users = "Usuarios admin"

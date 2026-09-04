@@ -150,6 +150,7 @@
 
         function getConstitutionChatContextLabel(context) {
             if (context?.kind === 'cip') return translateAssistantText('CIP context');
+            if (context?.kind === 'constitution') return translateAssistantText('Cardano Constitution context');
             if (context?.kind === 'catalyst_proposal') return translateAssistantText('Catalyst proposal context');
             if (context?.kind === 'governance_action') return translateAssistantText('Governance action context');
             if (context?.kind === 'governance_vote') return translateAssistantText('DRep vote context');
@@ -188,7 +189,14 @@
                 closeOnBackdrop: false,
                 showBack: false,
                 enableSearch: false,
-                returnFocus: document.getElementById('constitution-document-open')
+                returnFocus: document.getElementById('constitution-document-open'),
+                botContext: {
+                    kind: 'constitution',
+                    id: 'cardano-constitution',
+                    title: 'Cardano Constitution',
+                    root: 'Cardano Constitution',
+                    summary: 'Currently enacted Cardano Blockchain Ecosystem Constitution'
+                }
             });
 
             try {

@@ -98,6 +98,7 @@ constitutional_committee_members_could_not_load = "憲法委員会メンバー�
 read = "読む"
 constitution = "憲法"
 cardano_constitution = "Cardano憲法"
+cardano_constitution_context = "Cardano憲法コンテキスト"
 active_mithril_signers = "アクティブなMithril署名者"
 admin_area = "管理エリア"
 admin_users = "管理ユーザー"

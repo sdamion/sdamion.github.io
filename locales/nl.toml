@@ -98,6 +98,7 @@ constitutional_committee_members_could_not_load = "Constitutional Committee-lede
 read = "Lees"
 constitution = "Constitutie"
 cardano_constitution = "Cardano Constitutie"
+cardano_constitution_context = "Cardano Constitutie-context"
 active_mithril_signers = "Actieve Mithril Signers"
 admin_area = "Admin omgeving"
 admin_users = "Admin gebruikers"

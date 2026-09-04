@@ -1,7 +1,7 @@
 (function () {
     const GOVERNANCE_RICH_TEXT_SCRIPT_SRC = 'governance/governance-rich-text.js?v=20260818-continuation-lists';
     const GOVERNANCE_API_SCRIPT_SRC = 'governance/governance-api.js?v=20260831-retired-spo-only';
-    const GOVERNANCE_ASSISTANT_SCRIPT_SRC = 'governance/governance-assistant.js?v=20260827-translation-pending';
+    const GOVERNANCE_ASSISTANT_SCRIPT_SRC = 'governance/governance-assistant.js?v=20260904-constitution-context';
     const GOVERNANCE_FUNDING_DIRECTORY_SCRIPT_SRC = 'governance/governance-funding-directory.js?v=20260817-modular-funding-directory';
     const GOVERNANCE_BUSINESS_LINKS_SCRIPT_SRC = 'governance/governance-business-links.js?v=20260818-modular-business-links-domain';
     const GOVERNANCE_TREASURY_ADMINS_SCRIPT_SRC = 'governance/governance-treasury-admins.js?v=20260819-modular-treasury-admins';

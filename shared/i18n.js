@@ -82,6 +82,7 @@
         ['CC vote data unavailable', 'cc_vote_data_unavailable'],
         ['CC vote not applicable', 'cc_vote_not_applicable'],
         ['Cardano Constitution', 'cardano_constitution'],
+        ['Cardano Constitution context', 'cardano_constitution_context'],
         ['Cardano Decentralization', 'cardano_decentralization'],
         ['Cardano Decentralization / Nakamoto Coefficients', 'cardano_decentralization_nakamoto'],
         ['Cardano Events', 'cardano_events'],
