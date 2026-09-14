@@ -1,4 +1,5 @@
 [strings]
+lifetime_blocks = "Bloques producidos en total"
 nav_home = "Inicio"
 nav_spo = "SPO"
 nav_drep = "DRep"

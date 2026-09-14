@@ -1,4 +1,5 @@
 [strings]
+lifetime_blocks = "累計生成ブロック数"
 nav_home = "ホーム"
 nav_spo = "SPO"
 nav_drep = "DRep"

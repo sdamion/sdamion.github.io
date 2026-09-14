@@ -51,12 +51,12 @@
     <link rel="stylesheet" href="delegators/raffle.css?v=20260901-lost-stake-mail-toggle-hitarea-2">
 
     <script src="shared/runtime.js?v=20260819-universal-tile-i18n" defer></script>
-    <script src="shared/i18n.js?v=20260902-spo-website-link" defer></script>
+    <script src="shared/i18n.js?v=20260914-lifetime-blocks" defer></script>
     <script src="shared/site-controls.js?v=20260901-pool-delegators-live-refresh" defer></script>
     <script src="shared/database-status.js?v=20260819-database-status-module" defer></script>
     <script src="vendor/chart-loader.js?v=20260817-section-folders" defer></script>
     <script src="pool/linked-pool-lists.js?v=20260818-linked-pool-lists" defer></script>
-    <script src="pool/status.js?v=20260901-pool-delegators-live-refresh" defer></script>
+    <script src="pool/status.js?v=20260914-lifetime-blocks" defer></script>
     <script src="delegators/pool-delegators-list.js?v=20260820-delegator-usd" defer></script>
     <script src="delegators/delegator-dashboard-template.js?v=20260901-lost-stake-mail-toggle-hitarea-2" defer></script>
     <script src="home/news-overlay.js?v=20260818-news-overlay-module" defer></script>
@@ -232,6 +232,18 @@
                         <span class="pool-provider-label">
                             <span class="pool-provider-icon pool-provider-symbol" aria-hidden="true">₳</span>
                             <span class="pool-provider-label-text" data-i18n="fixed_cost">Fixed cost</span>
+                        </span>
+                    </div>
+                    <div aria-live="polite">
+                        <strong id="pool-lifetime-blocks">...</strong>
+                        <span class="pool-provider-label">
+                            <svg class="pool-provider-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="m21 8-9 5-9-5"></path>
+                                <path d="m3 8 9-5 9 5v8l-9 5-9-5Z"></path>
+                                <path d="m12 13 9-5"></path>
+                                <path d="M12 13v8"></path>
+                            </svg>
+                            <span class="pool-provider-label-text" data-i18n="lifetime_blocks">Lifetime Blocks</span>
                         </span>
                     </div>
                     <div id="leader-schedule" aria-live="polite">

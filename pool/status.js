@@ -120,6 +120,7 @@
     function renderPoolStatus(pool) {
         state.poolDelegators = Array.isArray(pool?.delegators) ? [...pool.delegators] : [];
         window.TDSPRuntime.setText('pool-delegators', window.TDSPRuntime.formatInteger(pool?.delegator_count));
+        window.TDSPRuntime.setText('pool-lifetime-blocks', window.TDSPRuntime.formatInteger(pool?.blocks_lifetime ?? undefined));
         window.TDSPRuntime.setText('pool-live-stake', window.TDSPRuntime.formatAdaFromLovelace(pool?.live_stake_lovelace));
         window.TDSPRuntime.setText('pool-saturation', window.TDSPRuntime.formatRatioPercentage(pool?.saturation_pct ?? pool?.raw?.live_saturation, { smallValueFractionDigits: 3 }));
         window.TDSPRuntime.setText('pool-pledge', window.TDSPRuntime.formatAdaFromLovelace(pool?.pledge_lovelace ?? pool?.raw?.pledge));
@@ -177,6 +178,9 @@
             renderPoolStatus(await window.TDSPRuntime.fetchJson(POOL_API_URL, options.force ? { cache: 'no-store' } : {}));
         } catch (error) {
             setRelayCardStatus(null, null);
+            if (document.getElementById('pool-lifetime-blocks')?.textContent === '...') {
+                window.TDSPRuntime.setText('pool-lifetime-blocks', 'N/A');
+            }
             relaysEl.textContent = '';
             const message = document.createElement('p');
             message.className = 'small-text';

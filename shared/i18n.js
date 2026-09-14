@@ -3,9 +3,9 @@
     const DEFAULT_LANGUAGE = 'en';
     const LANGUAGE_CONFIG = Object.freeze({
         en: { label: 'English', flag: '🇺🇸' },
-        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20260902-spo-website-link' },
-        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20260902-spo-website-link' },
-        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20260902-spo-website-link' }
+        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20260914-lifetime-blocks' },
+        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20260914-lifetime-blocks' },
+        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20260914-lifetime-blocks' }
     });
     const TRANSLATION_ATTR = 'data-i18n';
     const TRANSLATION_ORIGINAL_ATTR = 'data-i18n-original';
@@ -446,6 +446,7 @@
         ['Pipeline', 'pipeline'],
         ['Pledge', 'pledge'],
         ['Possible Blocks Current Epoch', 'possible_blocks_current_epoch'],
+        ['Lifetime Blocks', 'lifetime_blocks'],
         ['Prize', 'prize'],
         ['For example: 100 ADA', 'raffle_prize_placeholder'],
         ['Prices', 'prizes'],
