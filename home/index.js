@@ -7,6 +7,9 @@ const NEWS_API_URL = IS_LOCAL_PREVIEW ? '/__news_proxy__' : 'https://api.tdsp.on
 const CARDANO_EVENTS_API_URL = IS_LOCAL_PREVIEW ? '/__events_proxy__' : 'https://api.tdsp.online/api/events';
 const REALFI_DOCS_URL = 'https://docs.realfi.co/';
 const DEFAULT_SITE_ALERT_SETTINGS = Object.freeze({
+    delegators: true,
+    recovery: true,
+    blocks: true,
     governance: true,
     news: true,
     events: true
@@ -405,7 +408,7 @@ document.addEventListener("DOMContentLoaded", () => {
         { key: 'prices', callback: () => fetchPrices({ force: true }), interval: 30000 },
         { key: 'news', callback: fetchCryptoNews, interval: 300000 },
         { key: 'events', callback: fetchCardanoEvents, interval: 900000, options: { selector: '#calendar' } },
-        { key: 'pool', callback: fetchPoolStatus, interval: 300000, options: { selector: '#pool' } },
+        { key: 'pool', callback: fetchPoolStatus, interval: 300000 },
         { key: 'mithril', callback: fetchMithrilStatus, interval: 300000, options: { selector: '#pool' } },
         { key: 'icebreaker', callback: fetchIcebreakerStatus, interval: 300000, options: { selector: '#pool' } },
         { key: 'starch-pools', callback: fetchStarchPoolStatus, interval: 300000, options: { selector: '#pool' } },
@@ -611,7 +614,7 @@ async function fetchLeaderSchedule() {
 
 function loadPoolStatusModule() {
     if (window.TDSPPoolStatus) return Promise.resolve(window.TDSPPoolStatus);
-    return window.TDSPRuntime.loadScript('pool/status.js?v=20260901-pool-delegators-live-refresh', {
+    return window.TDSPRuntime.loadScript('pool/status.js?v=20260914-delegator-alerts', {
         datasetName: 'poolStatus',
         selector: 'script[data-pool-status]',
         ready: () => window.TDSPPoolStatus || null

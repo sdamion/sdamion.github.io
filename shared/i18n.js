@@ -3,9 +3,9 @@
     const DEFAULT_LANGUAGE = 'en';
     const LANGUAGE_CONFIG = Object.freeze({
         en: { label: 'English', flag: '🇺🇸' },
-        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20260914-lifetime-blocks' },
-        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20260914-lifetime-blocks' },
-        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20260914-lifetime-blocks' }
+        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20260914-delegator-alerts' },
+        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20260914-delegator-alerts' },
+        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20260914-delegator-alerts' }
     });
     const TRANSLATION_ATTR = 'data-i18n';
     const TRANSLATION_ORIGINAL_ATTR = 'data-i18n-original';
@@ -447,6 +447,16 @@
         ['Pledge', 'pledge'],
         ['Possible Blocks Current Epoch', 'possible_blocks_current_epoch'],
         ['Lifetime Blocks', 'lifetime_blocks'],
+        ['TDSP delegators', 'alert_delegators'],
+        ['New TDSP delegators', 'delegators_joined'],
+        ['Delegators left TDSP', 'delegators_left'],
+        ['Recovery notifications', 'alert_recovery'],
+        ['Connection restored', 'connection_restored'],
+        ['Previously unavailable data is loading again.', 'data_recovered'],
+        ['TDSP relay restored', 'relay_restored'],
+        ['TDSP blocks', 'alert_blocks'],
+        ['TDSP produced a new block', 'block_notification_title'],
+        ['New blocks', 'new_blocks'],
         ['Prize', 'prize'],
         ['For example: 100 ADA', 'raffle_prize_placeholder'],
         ['Prices', 'prizes'],

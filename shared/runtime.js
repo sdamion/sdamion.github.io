@@ -1,6 +1,28 @@
 (function initializeTdspRuntime() {
     const DETAIL_CACHE_TTL_MS = 2 * 60 * 1000;
     const detailCache = new Map();
+    const requestHealth = new Map();
+    let requestSequence = 0;
+
+    function recordRequestHealth(key, sequence, failed) {
+        const previous = requestHealth.get(key);
+        if (previous && previous.sequence > sequence) return;
+        requestHealth.delete(key);
+        requestHealth.set(key, { sequence, failed });
+        if (requestHealth.size > 500) requestHealth.delete(requestHealth.keys().next().value);
+        if (failed || !previous?.failed) return;
+        const translate = text => window.TDSPI18n?.translateText?.(text) || text;
+        try {
+            window.TDSPAlerts?.send(
+                translate('Connection restored'),
+                translate('Previously unavailable data is loading again.'),
+                'tdsp-data-recovered',
+                'recovery'
+            );
+        } catch (error) {
+            console.warn('Recovery notification could not be displayed', error);
+        }
+    }
     const preloadObserver = 'IntersectionObserver' in window
         ? new IntersectionObserver(entries => {
             entries.forEach(entry => {
@@ -31,12 +53,27 @@
         } catch {
             detail = '';
         }
-        throw new Error(detail ? `HTTP ${response.status}: ${detail}` : `HTTP ${response.status}`);
+        const error = new Error(detail ? `HTTP ${response.status}: ${detail}` : `HTTP ${response.status}`);
+        error.status = response.status;
+        throw error;
     }
 
     async function fetchJson(url, options = {}) {
-        const response = await fetchResponse(url, options);
-        return response.json();
+        const sequence = ++requestSequence;
+        const key = String(url);
+        const track = String(options.method || 'GET').toUpperCase() === 'GET';
+        try {
+            const response = await fetchResponse(url, options);
+            const payload = await response.json();
+            if (track) recordRequestHealth(key, sequence, false);
+            return payload;
+        } catch (error) {
+            // Cancelled requests and input/authentication errors are not outages.
+            if (track && error.name !== 'AbortError' && (!error.status || error.status >= 500)) {
+                recordRequestHealth(key, sequence, true);
+            }
+            throw error;
+        }
     }
 
     function loadDetail(key, loader, options = {}) {

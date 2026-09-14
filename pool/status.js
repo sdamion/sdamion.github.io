@@ -7,6 +7,99 @@
     const LEADER_SCHEDULE_API_URL = IS_LOCAL_PREVIEW ? '/__leader_schedule_proxy__' : 'https://api.tdsp.online/api/leader-schedule';
 
     const notifiedRelayMaintenance = new Set();
+    const delegatorSnapshots = new Map();
+
+    function checkDelegatorNotifications(pool) {
+        const id = String(pool?.pool_id || '').trim();
+        if (!id || !Array.isArray(pool?.delegators)) return;
+        const count = pool.delegator_count;
+        if (count === null || count === undefined || count === '') return;
+        const expected = Number(count);
+        if (!Number.isSafeInteger(expected) || expected < 0) return;
+        const members = new Map();
+        for (const delegator of pool.delegators) {
+            const address = String(delegator?.stake_address || '').trim();
+            if (!address || members.has(address)) return;
+            members.set(address, String(delegator?.ada_handle || '').trim() || address);
+        }
+        // A failed or partial delegator fetch must never look like departures.
+        if (members.size !== expected) return;
+        const updatedAt = Date.parse(pool.updated_at);
+        if (!Number.isFinite(updatedAt)) return;
+        const previous = delegatorSnapshots.get(id);
+        if (previous && updatedAt <= previous.updatedAt) return;
+        delegatorSnapshots.set(id, { members, updatedAt });
+        if (!previous) return;
+        const joined = [...members].filter(([address]) => !previous.members.has(address));
+        const left = [...previous.members].filter(([address]) => !members.has(address));
+        const translate = text => window.TDSPI18n?.translateText?.(text) || text;
+        for (const [changes, title, kind] of [
+            [joined, 'New TDSP delegators', 'joined'],
+            [left, 'Delegators left TDSP', 'left']
+        ]) {
+            if (!changes.length) continue;
+            const labels = changes.slice(0, 3).map(([, label]) => label);
+            const body = `${changes.length}: ${labels.join(', ')}${changes.length > 3 ? ' ...' : ''}`;
+            try {
+                window.TDSPAlerts?.send(translate(title), body,
+                    `tdsp-delegators-${id}-${kind}`, 'delegators');
+            } catch (error) {
+                console.warn('Delegator notification could not be displayed', error);
+            }
+        }
+    }
+    const relayHealth = new Map();
+
+    function checkRelayRecovery(pool) {
+        for (const relay of Array.isArray(pool?.relays) ? pool.relays : []) {
+            if (typeof relay.up !== 'boolean' || !relay.host) continue;
+            const key = `${pool.pool_id}:${relay.host}:${relay.port || ''}`;
+            const previous = relayHealth.get(key);
+            relayHealth.set(key, relay.up);
+            if (previous !== false || relay.up !== true) continue;
+            const translate = text => window.TDSPI18n?.translateText?.(text) || text;
+            try {
+                window.TDSPAlerts?.send(translate('TDSP relay restored'),
+                    `${relay.host}${relay.port ? `:${relay.port}` : ''}`,
+                    `tdsp-relay-restored-${key}`, 'recovery');
+            } catch (error) {
+                console.warn('Relay recovery notification could not be displayed', error);
+            }
+        }
+    }
+    const observedBlockCounts = new Map();
+
+    function checkBlockNotifications(pool) {
+        const id = String(pool?.pool_id || '').trim();
+        const rawCount = pool?.blocks_lifetime;
+        if (!id || rawCount === null || rawCount === undefined || rawCount === '') return;
+        const count = Number(rawCount);
+        if (!Number.isSafeInteger(count) || count < 0) return;
+        const previous = observedBlockCounts.get(id);
+        const storageKey = `tdsp-block-notification-v1:${id}`;
+        let stored = null;
+        try {
+            const raw = localStorage.getItem(storageKey);
+            if (raw !== null && /^\d+$/.test(raw)) stored = Number(raw);
+        } catch {}
+        // Keep a high-water mark so stale responses and other tabs cannot repeat alerts.
+        const baseline = Math.max(previous ?? count, Number.isSafeInteger(stored) ? stored : (previous ?? count));
+        const next = Math.max(baseline, count);
+        observedBlockCounts.set(id, next);
+        try { localStorage.setItem(storageKey, String(next)); } catch {}
+        if (previous === undefined || count <= baseline) return;
+        const translate = text => window.TDSPI18n?.translateText?.(text) || text;
+        try {
+            window.TDSPAlerts?.send(
+                translate('TDSP produced a new block'),
+                `${translate('New blocks')}: ${count - baseline} · ${translate('Lifetime Blocks')}: ${count}`,
+                `tdsp-block-${id}-${count}`,
+                'blocks'
+            );
+        } catch (error) {
+            console.warn('Block notification could not be displayed', error);
+        }
+    }
     const state = {
         poolDelegators: [],
         mithrilSigners: [],
@@ -118,6 +211,9 @@
     }
 
     function renderPoolStatus(pool) {
+        checkDelegatorNotifications(pool);
+        checkRelayRecovery(pool);
+        checkBlockNotifications(pool);
         state.poolDelegators = Array.isArray(pool?.delegators) ? [...pool.delegators] : [];
         window.TDSPRuntime.setText('pool-delegators', window.TDSPRuntime.formatInteger(pool?.delegator_count));
         window.TDSPRuntime.setText('pool-lifetime-blocks', window.TDSPRuntime.formatInteger(pool?.blocks_lifetime ?? undefined));

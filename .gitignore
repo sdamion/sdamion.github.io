@@ -1,2 +1,3 @@
 local-dev-server.js
-dev-server.mjs
+.env
+.env.local

@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <!-- Bump this version on release; entry script/style versions are also monitored. -->
+    <meta name="tdsp-site-version" content="20260914-auto-refresh">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
     <meta name="description" content="Dutch Bare-Metal, No fee stake pool for Staking $ADA and $IAG. Find a reliable DRep here.">
     <meta name="keywords" content="Cardano, ADA, IAG, staking, DRep, Dutch stake pool">
@@ -50,19 +52,20 @@
     <link rel="stylesheet" href="shared/styles.css?v=20260902-multipool-combined-small">
     <link rel="stylesheet" href="delegators/raffle.css?v=20260901-lost-stake-mail-toggle-hitarea-2">
 
-    <script src="shared/runtime.js?v=20260819-universal-tile-i18n" defer></script>
-    <script src="shared/i18n.js?v=20260914-lifetime-blocks" defer></script>
+    <script src="shared/runtime.js?v=20260914-recovery-alerts" defer></script>
+    <script src="shared/site-updates.js?v=20260914-auto-refresh" defer></script>
+    <script src="shared/i18n.js?v=20260914-delegator-alerts" defer></script>
     <script src="shared/site-controls.js?v=20260901-pool-delegators-live-refresh" defer></script>
     <script src="shared/database-status.js?v=20260819-database-status-module" defer></script>
     <script src="vendor/chart-loader.js?v=20260817-section-folders" defer></script>
     <script src="pool/linked-pool-lists.js?v=20260818-linked-pool-lists" defer></script>
-    <script src="pool/status.js?v=20260914-lifetime-blocks" defer></script>
+    <script src="pool/status.js?v=20260914-delegator-alerts" defer></script>
     <script src="delegators/pool-delegators-list.js?v=20260820-delegator-usd" defer></script>
     <script src="delegators/delegator-dashboard-template.js?v=20260901-lost-stake-mail-toggle-hitarea-2" defer></script>
     <script src="home/news-overlay.js?v=20260818-news-overlay-module" defer></script>
     <script src="home/cardano-events.js?v=20260819-language-flags" defer></script>
     <script src="home/prices.js?v=20260819-price-language" defer></script>
-    <script src="home/index.js?v=20260901-lost-stake-mail-toggle-hitarea-2" defer></script>
+    <script src="home/index.js?v=20260914-delegator-alerts" defer></script>
 </head>
 <body>
     <header class="site-header" id="site-header">
@@ -92,6 +95,9 @@
                             </button>
                             <div class="site-alerts-menu" id="site-alerts-menu" hidden>
                                 <strong data-i18n="alert_options">Alert Options</strong>
+                                <label><input type="checkbox" id="site-alert-delegators" name="site_alert_delegators" data-alert-topic="delegators"> <span data-i18n="alert_delegators">TDSP delegators</span></label>
+                                <label><input type="checkbox" id="site-alert-recovery" name="site_alert_recovery" data-alert-topic="recovery"> <span data-i18n="alert_recovery">Recovery notifications</span></label>
+                                <label><input type="checkbox" id="site-alert-blocks" name="site_alert_blocks" data-alert-topic="blocks"> <span data-i18n="alert_blocks">TDSP blocks</span></label>
                                 <label><input type="checkbox" id="site-alert-governance" name="site_alert_governance" data-alert-topic="governance"> <span data-i18n="alert_governance">Governance</span></label>
                                 <label><input type="checkbox" id="site-alert-news" name="site_alert_news" data-alert-topic="news"> <span data-i18n="alert_news">News</span></label>
                                 <label><input type="checkbox" id="site-alert-events" name="site_alert_events" data-alert-topic="events"> <span data-i18n="alert_events">Cardano Events</span></label>
