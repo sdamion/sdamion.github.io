@@ -735,7 +735,7 @@ function getDelegatorDashboardTemplates() {
 
 function loadDelegatorAccessModule() {
     if (window.TDSPDelegatorAccess?.initOverlay) return Promise.resolve(window.TDSPDelegatorAccess);
-    return window.TDSPRuntime.loadScript('delegators/delegator-access.js?v=20260901-lost-stake-mail-toggle-hitarea-2', {
+    return window.TDSPRuntime.loadScript('delegators/delegator-access.js?v=20260917-admin-universal-navigation', {
         datasetName: 'delegatorAccess',
         selector: 'script[data-delegator-access]',
         ready: () => window.TDSPDelegatorAccess?.initOverlay ? window.TDSPDelegatorAccess : null
@@ -907,7 +907,7 @@ function getTopGovernanceMenuOverlay(id = '') {
     const selector = id
         ? `.governance-menu-overlay[data-governance-overlay-id="${CSS.escape(id)}"]`
         : '.governance-menu-overlay';
-    const overlays = Array.from(document.querySelectorAll(selector));
+    const overlays = Array.from(document.querySelectorAll(selector)).filter(overlay => !overlay.closest('[hidden]'));
     return overlays.reduce((top, overlay) => {
         if (!top) return overlay;
         const overlayZIndex = Number.parseInt(getComputedStyle(overlay).zIndex, 10) || 0;
@@ -933,6 +933,7 @@ function syncGovernanceMenuOverlayAccessibility() {
     overlays.forEach(overlay => {
         const dialog = overlay.querySelector('.governance-dialog');
         if (dialog) dialog.setAttribute('aria-modal', 'false');
+        if (overlay.closest('[hidden]')) return;
         const zIndex = Number.parseInt(getComputedStyle(overlay).zIndex, 10);
         if (Number.isFinite(zIndex) && zIndex >= topZIndex) {
             topOverlay = overlay;
@@ -952,6 +953,7 @@ function setupUniversalOverlayKeyboard() {
         const topOverlay = getTopGovernanceMenuOverlay();
         if (topOverlay?.governanceCloseOnEscape === false) return;
         if (typeof topOverlay?.governanceCloseOverlay === 'function') {
+            event.preventDefault();
             topOverlay.governanceCloseOverlay();
         }
     });

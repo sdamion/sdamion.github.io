@@ -46,7 +46,7 @@ const ADMIN_SESSION_KEY = 'tdsp-raffle-session-admin';
 let meshPromise = null;
 let SESSION_KEY = `tdsp-raffle-session-${ROLE}`;
 let sessionToken = sessionStorage.getItem(SESSION_KEY) || '';
-let raffleOverlayReturnFocus = null;
+const dashboardChildOverlays = new Map();
 let adminTransactionWallet = null;
 let raffleAnchorSupported = false;
 let raffleExclusionsSupported = false;
@@ -54,7 +54,6 @@ let raffleExclusionTogglesSupported = false;
 let raffleStakeKeyExclusions = [];
 let raffleAdminUsers = [];
 let raffleAdminView = 'menu';
-let raffleOverlayRootView = 'menu';
 let lostStakePayload = null;
 let lostStakeSortMode = 'ada_desc';
 let lostStakeVisibleCount = LOST_STAKE_RENDER_BATCH_SIZE;
@@ -540,64 +539,70 @@ function setRaffleAdminView(view = 'menu', { focus = true } = {}) {
     if (ROLE !== 'admin') return;
     const normalizedView = Object.hasOwn(RAFFLE_ADMIN_VIEW_TITLES, view) ? view : 'menu';
     raffleAdminView = normalizedView;
-    const menu = document.getElementById('raffle-admin-menu');
-    if (menu) menu.hidden = normalizedView !== 'menu';
-    document.querySelectorAll('[data-raffle-view-panel]').forEach(panel => {
-        panel.hidden = panel.dataset.raffleViewPanel !== normalizedView;
-    });
-
-    const title = document.getElementById('raffle-overlay-title');
-    if (title) setTranslatedText(title, RAFFLE_ADMIN_VIEW_TITLES[normalizedView]);
-    const back = document.getElementById('raffle-overlay-back');
-    if (back) back.hidden = false;
-
+    // Sibling views replace one another; the Raffles menu stays underneath.
+    closeDashboardChildOverlay('raffle-view');
+    const content = normalizedView === 'menu'
+        ? document.getElementById('raffle-admin-menu')
+        : document.querySelector(`[data-raffle-view-panel="${normalizedView}"]`);
+    openDashboardChildOverlay(normalizedView === 'menu' ? 'raffles' : 'raffle-view',
+        RAFFLE_ADMIN_VIEW_TITLES[normalizedView], content);
     if (normalizedView === 'lost_stake' && !lostStakePayload) {
         loadLostStake().catch(error => renderLostStakeError(error.message));
     }
-    if (!focus) return;
-    if (normalizedView === 'menu') document.querySelector('[data-raffle-view]')?.focus();
-    else back?.focus();
+}
+
+function closeDashboardChildOverlay(key) {
+    dashboardChildOverlays.get(key)?.();
+}
+
+function openDashboardChildOverlay(key, title, content) {
+    if (!content || dashboardChildOverlays.has(key)) return;
+    const placeholder = document.createComment('dashboard panel');
+    content.before(placeholder);
+    const wasHidden = content.hidden;
+    content.hidden = false;
+    const wrapper = document.createElement('div');
+    wrapper.className = 'raffle-page raffle-embedded raffle-overlay-page';
+    wrapper.appendChild(content);
+    const returnFocus = document.activeElement;
+    const close = () => {
+        placeholder.replaceWith(content);
+        content.hidden = wasHidden;
+        elements.overlay.remove();
+        dashboardChildOverlays.delete(key);
+        window.syncGovernanceMenuOverlayAccessibility?.();
+        if (returnFocus?.isConnected) returnFocus.focus();
+    };
+    const elements = window.createUniversalOverlay({
+        id: `dashboard-${key}-overlay`,
+        titleId: `dashboard-${key}-title`,
+        titleText: title,
+        closeLabel: 'Close',
+        closeOverlay: close,
+        returnFocus,
+        bodyNodes: [wrapper],
+        enableSearch: false
+    });
+    dashboardChildOverlays.set(key, close);
 }
 
 function setRaffleOverlay(open, initialAdminView = 'menu') {
-    const overlay = document.getElementById('raffle-overlay');
-    if (!overlay) return;
     if (open) {
-        raffleOverlayReturnFocus = document.activeElement;
-        raffleOverlayRootView = initialAdminView;
-        if (ROLE === 'admin') setRaffleAdminView(initialAdminView, { focus: false });
-        overlay.hidden = false;
-        document.body.classList.add('raffle-overlay-open');
-        if (ROLE === 'admin' && initialAdminView !== 'menu') {
-            document.getElementById('raffle-overlay-back')?.focus();
-        } else {
-            document.querySelector('[data-raffle-view]')?.focus();
-        }
+        if (ROLE === 'admin') setRaffleAdminView(initialAdminView);
+        else openDashboardChildOverlay('raffles', 'Raffles', document.getElementById('raffle-draws'));
         return;
     }
-    overlay.hidden = true;
-    if (ROLE === 'admin') setRaffleAdminView('menu', { focus: false });
-    raffleOverlayRootView = 'menu';
-    document.body.classList.remove('raffle-overlay-open');
-    raffleOverlayReturnFocus?.focus?.();
-    raffleOverlayReturnFocus = null;
+    closeDashboardChildOverlay('raffle-view');
+    closeDashboardChildOverlay('raffles');
 }
 
 function setPrizeOverlay(open) {
-    const overlay = document.getElementById('raffle-prizes-overlay');
-    if (!overlay) return;
     if (open) {
-        raffleOverlayReturnFocus = document.activeElement;
-        overlay.hidden = false;
-        document.body.classList.add('raffle-overlay-open');
-        document.getElementById('raffle-prizes-close')?.focus();
+        openDashboardChildOverlay('prizes', 'Prizes', document.getElementById('raffle-prizes-list'));
         loadRafflePrizes().catch(error => renderRafflePrizesError(error.message));
         return;
     }
-    overlay.hidden = true;
-    document.body.classList.remove('raffle-overlay-open');
-    raffleOverlayReturnFocus?.focus?.();
-    raffleOverlayReturnFocus = null;
+    closeDashboardChildOverlay('prizes');
 }
 
 function formatPrizeLine(asset) {
@@ -1974,8 +1979,6 @@ async function init(options = {}) {
     document.getElementById('raffle-logout')?.addEventListener('click', logout);
     document.getElementById('raffle-open')?.addEventListener('click', () => setRaffleOverlay(true));
     document.getElementById('raffle-prizes-open')?.addEventListener('click', () => setPrizeOverlay(true));
-    document.getElementById('raffle-prizes-back')?.addEventListener('click', () => setPrizeOverlay(false));
-    document.getElementById('raffle-prizes-close')?.addEventListener('click', () => setPrizeOverlay(false));
     document.getElementById('raffle-admin-users-open')?.addEventListener('click', () => setRaffleOverlay(true, 'admins'));
     document.getElementById('raffle-lost-stake-open')?.addEventListener('click', () => setRaffleOverlay(true, 'lost_stake'));
     document.getElementById('raffle-lost-stake-sort')?.addEventListener('change', event => {
@@ -2008,20 +2011,8 @@ async function init(options = {}) {
         renderLostStake(lostStakePayload);
     });
     document.getElementById('raffle-lost-stake-improve')?.addEventListener('click', improveLostStakeMessage);
-    document.getElementById('raffle-overlay-back')?.addEventListener('click', () => {
-        if (ROLE === 'admin' && raffleAdminView !== 'menu' && raffleOverlayRootView === 'menu') setRaffleAdminView('menu');
-        else if (ROLE === 'admin') setRaffleOverlay(false);
-        else setRaffleOverlay(false);
-    });
-    document.getElementById('raffle-overlay-close')?.addEventListener('click', () => setRaffleOverlay(false));
     document.querySelectorAll('[data-raffle-view]').forEach(tile => {
         tile.addEventListener('click', () => setRaffleAdminView(tile.dataset.raffleView));
-    });
-    document.getElementById('raffle-overlay')?.addEventListener('click', event => {
-        if (event.target === event.currentTarget) setRaffleOverlay(false);
-    });
-    document.getElementById('raffle-prizes-overlay')?.addEventListener('click', event => {
-        if (event.target === event.currentTarget) setPrizeOverlay(false);
     });
     document.getElementById('raffle-draw-form')?.addEventListener('submit', submitDraw);
     document.getElementById('raffle-exclusions-form')?.addEventListener('submit', submitExclusions);
@@ -2049,15 +2040,6 @@ window.TDSPDelegatorAccess = {
     }
 };
 window.TDSPRaffleAccess = window.TDSPDelegatorAccess;
-
-document.addEventListener('keydown', event => {
-    if (event.key === 'Escape' && !document.getElementById('raffle-overlay')?.hidden) {
-        setRaffleOverlay(false);
-    }
-    if (event.key === 'Escape' && !document.getElementById('raffle-prizes-overlay')?.hidden) {
-        setPrizeOverlay(false);
-    }
-});
 
 if (document.body.classList.contains('raffle-page')) {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
