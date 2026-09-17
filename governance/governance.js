@@ -6508,7 +6508,7 @@ async function loadCouncilMembers() {
         ? '/__drep_council_proxy__' : 'https://api.tdsp.online/api/dreps/council');
     const power = document.getElementById('drep-council-power');
     if (power) setGovernanceAutoTranslatedText(power,
-        `Voting power: ${formatCompactAdaFromLovelace(payload.total_voting_power)}`);
+        formatCompactAdaFromLovelace(payload.total_voting_power));
     return payload;
 }
 
