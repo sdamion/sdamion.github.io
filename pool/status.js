@@ -20,7 +20,10 @@
         for (const delegator of pool.delegators) {
             const address = String(delegator?.stake_address || '').trim();
             if (!address || members.has(address)) return;
-            members.set(address, String(delegator?.ada_handle || '').trim() || address);
+            members.set(address, {
+                label: String(delegator?.ada_handle || '').trim() || address,
+                amount: delegator?.amount_lovelace
+            });
         }
         // A failed or partial delegator fetch must never look like departures.
         if (members.size !== expected) return;
@@ -38,7 +41,11 @@
             [left, 'Delegators left TDSP', 'left']
         ]) {
             if (!changes.length) continue;
-            const labels = changes.slice(0, 3).map(([, label]) => label);
+            const labels = changes.slice(0, 3).map(([, member]) => {
+                const amount = String(member.amount ?? '');
+                if (kind !== 'joined' || !/^\d+$/.test(amount)) return member.label;
+                return `${member.label} (${window.TDSPRuntime.formatLovelaceAmount(amount)})`;
+            });
             const body = `${changes.length}: ${labels.join(', ')}${changes.length > 3 ? ' ...' : ''}`;
             try {
                 window.TDSPAlerts?.send(translate(title), body,

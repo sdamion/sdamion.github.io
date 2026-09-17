@@ -4,6 +4,10 @@ import vm from 'node:vm';
 import { test } from 'node:test';
 
 const code = readFileSync(new URL('../pool/status.js', import.meta.url), 'utf8');
+const runtimeCode = readFileSync(new URL('../shared/runtime.js', import.meta.url), 'utf8');
+const formatStart = runtimeCode.indexOf('    function parseLovelaceBigInt(');
+const formatEnd = runtimeCode.indexOf('    function getLovelaceAmount(', formatStart);
+const formatLovelaceAmount = vm.runInNewContext(`${runtimeCode.slice(formatStart, formatEnd)}\nformatLovelaceAmount`);
 
 function setup() {
     let payload;
@@ -13,6 +17,7 @@ function setup() {
     }]));
     const runtime = new Proxy({
         fetchJson: async () => payload,
+        formatLovelaceAmount,
         createSmallText: () => ({})
     }, { get: (target, key) => target[key] || (() => {}) });
     const window = {
@@ -51,6 +56,24 @@ test('silent baseline; detects joins and departures even at the same count', asy
     assert.match(alerts[1][1], /stakeB/);
     assert.equal(alerts[0][3], 'delegators');
     await load(['stakeA', 'stakeC'], 4);
+    assert.equal(alerts.length, 2);
+});
+
+test('new delegator notifications include their delegated ADA, not an invented zero', async () => {
+    const { load, alerts } = setup();
+    await load(['stakeA'], 1);
+    await load(['stakeA', 'stakeB', 'stakeC'], 2, { delegators: [
+        { stake_address: 'stakeA' },
+        { stake_address: 'stakeB', ada_handle: '$bob', amount_lovelace: '12345678900' },
+        { stake_address: 'stakeC', amount_lovelace: '250000000' }
+    ] });
+    assert.equal(alerts[0][1], '2: $bob (₳ 12,345.68), stakeC (₳ 250.00)');
+    await load(['stakeA', 'stakeB', 'stakeC', 'stakeD'], 3);
+    assert.equal(alerts[1][1], '1: stakeD');
+    await load(['stakeA', 'stakeB', 'stakeC', 'stakeD'], 4, { delegators: [
+        { stake_address: 'stakeA' }, { stake_address: 'stakeB', amount_lovelace: '1' },
+        { stake_address: 'stakeC' }, { stake_address: 'stakeD' }
+    ] });
     assert.equal(alerts.length, 2);
 });
 

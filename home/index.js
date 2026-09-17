@@ -614,7 +614,7 @@ async function fetchLeaderSchedule() {
 
 function loadPoolStatusModule() {
     if (window.TDSPPoolStatus) return Promise.resolve(window.TDSPPoolStatus);
-    return window.TDSPRuntime.loadScript('pool/status.js?v=20260917-tile-only-refresh', {
+    return window.TDSPRuntime.loadScript('pool/status.js?v=20260917-delegator-alert-amount', {
         datasetName: 'poolStatus',
         selector: 'script[data-pool-status]',
         ready: () => window.TDSPPoolStatus || null
