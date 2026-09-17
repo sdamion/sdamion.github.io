@@ -1,4 +1,5 @@
 [strings]
+drep_council_member = "評議会メンバー"
 inactive_dreps = "非アクティブなDRep"
 alert_delegators = "TDSPの委任者"
 delegators_joined = "TDSPの新しい委任者"

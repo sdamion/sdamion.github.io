@@ -1,4 +1,5 @@
 [strings]
+drep_council_member = "Miembro del consejo"
 inactive_dreps = "DReps inactivos"
 alert_delegators = "Delegadores de TDSP"
 delegators_joined = "Nuevos delegadores de TDSP"
