@@ -1,4 +1,5 @@
 const GOVERNANCE_IS_LOCAL_PREVIEW = window.TDSPRuntime?.isLocalPreview === true;
+const governanceCardSnapshots = new WeakMap();
 const DASHBOARD_API_URL = 'https://api.tdsp.online/api/dashboard';
 const COMPACT_DASHBOARD_API_URL = 'https://api.tdsp.online/api/dashboard/compact';
 const COMMITTEE_INFO_API_URL = 'https://api.tdsp.online/api/committee/directory';
@@ -417,6 +418,7 @@ function setupGovernanceMenuCards() {
         ['spo-nakamoto-card', event => openSpoNakamotoOverlay(event?.currentTarget)],
         ['gov-committee-card', openConstitutionalCommitteeOverlay],
         ['gov-drep-card', openDrepDirectoryOverlay],
+        ['gov-drep-inactive-card', () => openDrepDirectoryOverlay('inactive')],
         ['gov-drep-top10-card', openTopDrepPowerOverlay],
         ['gov-active-card', () => openGovernanceActionGroupOverlay(
             'active',
@@ -4307,18 +4309,39 @@ function shouldShowVotePercentages(proposal) {
 }
 
 function renderGovernanceGroup(container, proposals, emptyMessage, options = {}) {
-    container.textContent = '';
-
     if (!proposals.length) {
+        if (container.dataset.emptyMessage === emptyMessage && container.children.length === 1) return;
         const empty = document.createElement('p');
         empty.className = 'small-text';
         empty.textContent = emptyMessage;
-        container.appendChild(empty);
+        container.replaceChildren(empty);
+        container.dataset.emptyMessage = emptyMessage;
         return;
     }
-
+    delete container.dataset.emptyMessage;
+    const existing = new Map(Array.from(container.children)
+        .filter(child => child.dataset.proposalId)
+        .map(child => [child.dataset.proposalId, child]));
+    const retained = new Set();
+    let cursor = container.firstElementChild;
     proposals.forEach(proposal => {
-        container.appendChild(createGovernanceCard(proposal, options));
+        const signature = JSON.stringify([proposal, options, window.TDSPI18n?.getLanguage?.()]);
+        let card = existing.get(proposal.proposal_id);
+        if (!card || governanceCardSnapshots.get(card) !== signature) {
+            const replacement = createGovernanceCard(proposal, options);
+            governanceCardSnapshots.set(replacement, signature);
+            if (card) {
+                if (cursor === card) cursor = replacement;
+                card.replaceWith(replacement);
+            }
+            card = replacement;
+        }
+        retained.add(card);
+        if (card !== cursor) container.insertBefore(card, cursor);
+        cursor = card.nextElementSibling;
+    });
+    Array.from(container.children).forEach(child => {
+        if (!retained.has(child)) child.remove();
     });
 }
 
@@ -6477,7 +6500,8 @@ function closeDrepVotesOverlay() {
     removeGovernanceMenuOverlay('governance-drep-overlay');
 }
 
-function openDrepDirectoryOverlay() {
+function openDrepDirectoryOverlay(status = 'active') {
+    const inactive = status === 'inactive';
     const becomeDrep = document.createElement('button');
     becomeDrep.type = 'button';
     becomeDrep.className = 'governance-become-drep-button';
@@ -6495,7 +6519,7 @@ function openDrepDirectoryOverlay() {
     createGovernanceMenuOverlay({
         id: 'governance-drep-directory-overlay',
         titleId: 'governance-drep-directory-title',
-        titleText: 'DReps',
+        titleText: inactive ? 'Inactive DReps' : 'DReps',
         closeLabel: 'Close DRep directory',
         closeOverlay: closeDrepDirectoryOverlay,
         bodyNodes: [becomeDrep, panel],
@@ -6508,7 +6532,7 @@ function openDrepDirectoryOverlay() {
         })
     });
 
-    loadDrepDirectoryOverlay(panel).catch(() => {
+    loadDrepDirectoryOverlay(panel, inactive).catch(() => {
         if (!panel.isConnected) return;
         panel.textContent = '';
         const message = document.createElement('p');
@@ -8846,7 +8870,7 @@ async function submitDrepRegistration(container, context, submitButton) {
     }
 }
 
-async function loadDrepDirectoryOverlay(container) {
+async function loadDrepDirectoryOverlay(container, inactive = false) {
     const [infoPayload, directory, voteStatsPayload] = await Promise.all([
         fetchDrepInfoPayload(),
         loadDrepDirectory(),
@@ -8890,22 +8914,23 @@ async function loadDrepDirectoryOverlay(container) {
         dreps,
         totalVotingPower: dreps.reduce((sum, drep) => sum + (Number(drep.votingPower) || 0), 0)
     };
+    const visibleDreps = dreps.filter(drep => inactive ? !drep.active : drep.active);
     updateGovernanceMenuHeaderMeta(
         'governance-drep-directory-overlay',
-        `${dreps.length.toLocaleString('en-US')} DReps`,
+        `${visibleDreps.length.toLocaleString('en-US')} DReps`,
         container
     );
     updateGovernanceOverlayBotContext(
         'governance-drep-directory-overlay',
         createWebsiteSectionBotContext('DReps', {
-            title: 'DReps',
-            count: dreps.length,
-            amount_ada: dreps.reduce((sum, drep) => sum + (Number(drep.votingPower) || 0), 0) / 1_000_000,
-            summary: `${dreps.length.toLocaleString('en-US')} registered DReps`
+            title: inactive ? 'Inactive DReps' : 'DReps',
+            count: visibleDreps.length,
+            amount_ada: visibleDreps.reduce((sum, drep) => sum + (Number(drep.votingPower) || 0), 0) / 1_000_000,
+            summary: `${visibleDreps.length.toLocaleString('en-US')} ${inactive ? 'inactive' : 'active'} registered DReps`
         }),
         container
     );
-    renderDrepDirectory(container, dreps, {
+    renderDrepDirectory(container, visibleDreps, {
         layout: 'list'
     });
 }
@@ -11310,9 +11335,13 @@ function getDashboardDrepStats(payload) {
 }
 
 function renderDrepSummaryStats(stats) {
-    window.TDSPRuntime.setText('gov-drep-count', stats.count.toLocaleString('en-US'));
-    hideDrepVotingPowerSummaryLine();
-    renderDrepVotingPowerBar(stats);
+    window.TDSPRuntime.setText('gov-drep-count', stats.activeCount.toLocaleString('en-US'));
+    window.TDSPRuntime.setText('gov-drep-inactive-count', stats.inactiveCount.toLocaleString('en-US'));
+    window.TDSPRuntime.setText('gov-drep-total-power', formatCompactAdaFromLovelace(stats.activePower));
+    window.TDSPRuntime.setText('gov-drep-inactive-power', formatCompactAdaFromLovelace(stats.inactivePower));
+    const power = document.getElementById('gov-drep-total-power');
+    if (power) power.hidden = false;
+    document.querySelector('#gov-drep-card .drep-voting-power-bar')?.remove();
     renderDrepTop10PowerTile(stats);
     window.TDSPRuntime.setText('gov-drep-top10-count', 'Voting Power');
 }
@@ -11324,53 +11353,13 @@ function hideDrepVotingPowerSummaryLine() {
     element.hidden = true;
 }
 
-function renderDrepVotingPowerBar(stats) {
-    const card = document.getElementById('gov-drep-card');
-    if (!card) return;
-
-    card.querySelector('.drep-voting-power-bar')?.remove();
-    const totalPower = Number(stats?.totalPower);
-    const activePower = Number(stats?.activePower);
-    const inactivePower = Number(stats?.inactivePower);
-    if (![totalPower, activePower, inactivePower].every(Number.isFinite) || totalPower <= 0) return;
-
-    const activePercent = Math.max(0, Math.min((activePower / totalPower) * 100, 100));
-    const inactivePercent = Math.max(0, Math.min((inactivePower / totalPower) * 100, 100));
-    const bar = document.createElement('div');
-    bar.className = 'governance-vote-bar drep-voting-power-bar';
-
-    const track = document.createElement('div');
-    track.className = 'governance-vote-bar-track';
-    track.setAttribute('aria-label', `Active voting power ${formatCompactAdaFromLovelace(activePower)}, inactive voting power ${formatCompactAdaFromLovelace(inactivePower)}`);
-
-    const activeFill = document.createElement('span');
-    activeFill.className = 'governance-vote-bar-fill governance-vote-bar-fill--yes';
-    activeFill.style.flexBasis = `${activePercent}%`;
-
-    const inactiveFill = document.createElement('span');
-    inactiveFill.className = 'governance-vote-bar-fill governance-vote-bar-fill--no';
-    inactiveFill.style.flexBasis = `${inactivePercent}%`;
-    track.append(activeFill, inactiveFill);
-
-    const label = document.createElement('span');
-    label.className = 'tdsp-bar-legend governance-vote-bar-label';
-    const activeLabel = window.TDSPI18n?.translateText?.('Active voting power') || 'Active voting power';
-    const inactiveLabel = window.TDSPI18n?.translateText?.('Inactive voting power') || 'Inactive voting power';
-    const activeText = document.createElement('span');
-    activeText.className = 'governance-vote-label-item--yes';
-    activeText.textContent = `${activeLabel} ${formatCompactAdaFromLovelace(activePower)}`;
-    const inactiveText = document.createElement('span');
-    inactiveText.className = 'governance-vote-label-item--no';
-    inactiveText.textContent = `${inactiveLabel} ${formatCompactAdaFromLovelace(inactivePower)}`;
-    label.append(activeText, document.createTextNode(' '), inactiveText);
-
-    bar.append(track, label);
-    card.appendChild(bar);
-}
 
 function renderDrepTop10PowerTile(stats) {
     const element = document.getElementById('gov-drep-top10-power');
     if (!element || !Number.isFinite(Number(stats?.top10Power))) return;
+    const signature = JSON.stringify([stats.top10Power, stats.totalPower, window.TDSPI18n?.getLanguage?.()]);
+    if (element.dataset.powerSignature === signature) return;
+    element.dataset.powerSignature = signature;
 
     element.replaceChildren(document.createTextNode(window.TDSPRuntime.formatTileAdaFromLovelace(stats.top10Power, { fixedFractionDigits: 2 })));
     const totalPower = Number(stats?.totalPower);

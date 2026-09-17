@@ -115,7 +115,7 @@
                     const y = spread === 0 ? 18 : 33 - (((sample.value - minimum) / spread) * 30);
                     return `${x.toFixed(2)},${y.toFixed(2)}`;
                 }).join(' ');
-            line.setAttribute('points', points);
+            if (line.getAttribute('points') !== points) line.setAttribute('points', points);
         });
     }
 

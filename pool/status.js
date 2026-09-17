@@ -112,6 +112,8 @@
         const element = document.getElementById(id);
         if (!element) return;
         const text = String(value || '').trim();
+        if (element.dataset.identifierValue === text) return;
+        element.dataset.identifierValue = text;
         element.textContent = text;
         if (window.TDSPRuntime?.createResponsiveIdentifier && text && text !== 'N/A') {
             element.replaceChildren(window.TDSPRuntime.createResponsiveIdentifier(text));

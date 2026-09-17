@@ -1,4 +1,5 @@
 [strings]
+inactive_dreps = "Inactieve DReps"
 alert_delegators = "TDSP-delegatoren"
 delegators_joined = "Nieuwe TDSP-delegatoren"
 delegators_left = "Delegatoren hebben TDSP verlaten"

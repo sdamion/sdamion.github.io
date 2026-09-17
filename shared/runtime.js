@@ -445,9 +445,11 @@
         const element = document.getElementById(id);
         if (element) {
             const text = String(value);
+            const translated = window.TDSPI18n?.translateText?.(text) || text;
+            if (element.textContent === translated && element.getAttribute('data-i18n-auto-original') === text) return;
             element.setAttribute('data-i18n-auto', '');
             element.setAttribute('data-i18n-auto-original', text);
-            element.textContent = window.TDSPI18n?.translateText?.(text) || text;
+            if (element.textContent !== translated) element.textContent = translated;
         }
     }
 

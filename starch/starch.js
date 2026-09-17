@@ -299,7 +299,9 @@ function updateStarchDirectoryTiles(payload) {
                 : Math.max(registeredCount - activeCount, 0);
             window.TDSPRuntime?.setText?.('starchMinerCount', registeredCount.toLocaleString('en-US'));
             minerCount.classList.remove('is-online');
-            if (minerStatus) {
+            const statusSignature = JSON.stringify([activeCount, inactiveCount, registeredCount, window.TDSPI18n?.getLanguage?.()]);
+            if (minerStatus && minerStatus.dataset.statusSignature !== statusSignature) {
+                minerStatus.dataset.statusSignature = statusSignature;
                 minerStatus.textContent = '';
                 minerStatus.classList.remove('is-offline');
                 minerStatus.classList.add('starch-miner-status-lines');
@@ -317,6 +319,7 @@ function updateStarchDirectoryTiles(payload) {
                 : 'N/A');
             if (minerStatus) {
                 minerStatus.classList.remove('starch-miner-status-lines');
+                delete minerStatus.dataset.statusSignature;
                 minerStatus.setAttribute('data-i18n-auto', '');
                 minerStatus.setAttribute('data-i18n-auto-original', 'Miners');
                 minerStatus.textContent = window.TDSPI18n?.translateText?.('Miners') || 'Miners';

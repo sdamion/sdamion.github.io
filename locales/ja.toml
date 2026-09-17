@@ -1,4 +1,5 @@
 [strings]
+inactive_dreps = "非アクティブなDRep"
 alert_delegators = "TDSPの委任者"
 delegators_joined = "TDSPの新しい委任者"
 delegators_left = "委任者がTDSPへの委任を終了しました"
