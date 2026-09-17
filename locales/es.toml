@@ -1,4 +1,6 @@
 [strings]
+hosting_providers = "Proveedores de alojamiento"
+hosting_only_methodology = "Número mínimo de proveedores de alojamiento identificados cuya participación conjunta alcanza el 51% de la participación total de la red. Solo se cuentan los pools cuyos relays utilizan todos el mismo proveedor. Se excluyen los pools mixtos, desconocidos y sin alojamiento en la nube; operadores como Coinbase no son proveedores de alojamiento."
 drep_council = "Consejo DRep"
 council_status_pending = "Todavía se están cargando los estados de algunos miembros."
 drep_council_member = "Miembro del consejo"

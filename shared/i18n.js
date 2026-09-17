@@ -3,9 +3,9 @@
     const DEFAULT_LANGUAGE = 'en';
     const LANGUAGE_CONFIG = Object.freeze({
         en: { label: 'English', flag: '🇺🇸' },
-        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20260917-council-overlay' },
-        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20260917-council-overlay' },
-        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20260917-council-overlay' }
+        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20260917-hosting-only' },
+        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20260917-hosting-only' },
+        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20260917-hosting-only' }
     });
     const TRANSLATION_ATTR = 'data-i18n';
     const TRANSLATION_ORIGINAL_ATTR = 'data-i18n-original';
@@ -449,6 +449,8 @@
         ['Lifetime Blocks', 'lifetime_blocks'],
         ['Inactive DReps', 'inactive_dreps'],
         ['DRep Council', 'drep_council'],
+        ['Hosting providers', 'hosting_providers'],
+        ['Minimum identified hosting providers whose combined stake reaches 51% of total network stake. Only pools with every relay assigned to the same hosting provider are counted. Mixed, unknown and non-cloud pools are excluded; pool operators such as Coinbase are not hosting providers.', 'hosting_only_methodology'],
         ['Some member statuses are still loading.', 'council_status_pending'],
         ['TDSP delegators', 'alert_delegators'],
         ['New TDSP delegators', 'delegators_joined'],

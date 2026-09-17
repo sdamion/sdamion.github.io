@@ -1,4 +1,6 @@
 [strings]
+hosting_providers = "Hostingproviders"
+hosting_only_methodology = "Minimumaantal vastgestelde hostingproviders waarvan de gezamenlijke stake 51% van de totale netwerkstake bereikt. Alleen pools waarvan alle relays dezelfde hostingprovider gebruiken tellen mee. Gemengde, onbekende en niet-cloudpools zijn uitgesloten; pooloperators zoals Coinbase zijn geen hostingproviders."
 drep_council = "DRep-raad"
 council_status_pending = "Enkele ledenstatussen worden nog geladen."
 drep_council_member = "Raadslid"

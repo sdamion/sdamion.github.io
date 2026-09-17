@@ -1,4 +1,6 @@
 [strings]
+hosting_providers = "ホスティングプロバイダー"
+hosting_only_methodology = "合計ステークがネットワーク全体の51%に達する、特定済みホスティングプロバイダーの最小数。すべてのリレーが同じプロバイダーを利用するプールのみを集計します。複数プロバイダー、不明、非クラウドのプールは除外します。Coinbaseなどのプール運営者はホスティングプロバイダーではありません。"
 drep_council = "DRep評議会"
 council_status_pending = "一部のメンバーのステータスを読み込み中です。"
 drep_council_member = "評議会メンバー"

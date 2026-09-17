@@ -6871,10 +6871,19 @@ function createSpoNakamotoMetricSection(titleText, metric) {
     setGovernanceAutoTranslatedText(methodology, metric?.methodology || '');
     section.appendChild(methodology);
 
-    const domains = Array.isArray(metric?.threshold_domains) ? metric.threshold_domains : [];
+    const hosting = titleText === 'Hosting-provider NC';
+    if (hosting) {
+        const coverageText = document.createElement('p');
+        coverageText.className = 'small-text';
+        setGovernanceAutoTranslatedText(coverageText, `Known stake coverage ${formatPercentage(Number(metric?.coverage_stake_pct) || 0)}`);
+        section.appendChild(coverageText);
+    }
+    const domains = hosting
+        ? (metric?.provider_domains || metric?.top_domains || []).filter(domain => domain.type === 'cloud_provider' && !/coinbase/i.test(`${domain.id} ${domain.label}`))
+        : Array.isArray(metric?.threshold_domains) ? metric.threshold_domains : [];
     if (domains.length) {
         const domainTitle = document.createElement('strong');
-        setGovernanceAutoTranslatedText(domainTitle, 'Domains reaching the 51% threshold');
+        setGovernanceAutoTranslatedText(domainTitle, hosting ? 'Hosting providers' : 'Domains reaching the 51% threshold');
         section.appendChild(domainTitle);
 
         const list = document.createElement('div');
