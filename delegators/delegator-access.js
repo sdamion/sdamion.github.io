@@ -1620,8 +1620,8 @@ function renderAdmin(payload) {
         exclusionsStatus.textContent = t(RAFFLE_EXCLUSIONS_UNAVAILABLE);
         exclusionsStatus.classList.add('is-error');
     }
-    document.getElementById('raffle-eligible-count').textContent = Number(payload.pool?.eligible_count || 0).toLocaleString('en-US');
-    document.getElementById('raffle-total-stake').textContent = formatAda(payload.pool?.total_eligible_lovelace);
+    setTranslatedText(document.getElementById('raffle-eligible-count'), Number(payload.pool?.eligible_count || 0).toLocaleString('en-US'));
+    setTranslatedText(document.getElementById('raffle-total-stake'), formatAda(payload.pool?.total_eligible_lovelace));
     setTranslatedText(document.getElementById('raffle-snapshot-time'), payload.pool?.updated_at
         ? `Pool snapshot ${formatDate(payload.pool.updated_at)}`
         : 'Pool snapshot time unavailable');
