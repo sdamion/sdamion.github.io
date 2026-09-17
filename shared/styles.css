@@ -443,6 +443,13 @@ html {
     cursor: pointer;
 }
 
+.ai-unavailable #tdspbot-open,
+.ai-unavailable #raffle-lost-stake-improve,
+.ai-unavailable .governance-overlay-bot-button,
+.ai-unavailable .governance-tdspbot-button {
+    display: none !important;
+}
+
 .tdspbot-nav-icon {
     display: block;
     width: 18px;

@@ -240,7 +240,27 @@
         button.addEventListener('click', () => openTdspBot(button));
     }
 
+    let aiAvailabilityStarted = false;
+    function startAiAvailability() {
+        if (aiAvailabilityStarted) return;
+        aiAvailabilityStarted = true;
+        const endpoint = window.TDSPRuntime.isLocalPreview
+            ? '/__health_proxy__' : 'https://api.tdsp.online/health';
+        const refresh = async () => {
+            let available = false;
+            try {
+                const response = await fetch(endpoint, { cache: 'no-store', signal: AbortSignal.timeout(8000) });
+                const payload = response.ok ? await response.json() : null;
+                available = payload?.providers?.ai?.available === true;
+            } catch {}
+            document.documentElement.classList.toggle('ai-unavailable', !available);
+        };
+        refresh();
+        window.setInterval(refresh, 60000);
+    }
+
     function init() {
+        startAiAvailability();
         initThemeToggle();
         startEpochClock();
         initUi();
