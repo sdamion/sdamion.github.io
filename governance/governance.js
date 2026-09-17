@@ -6881,7 +6881,7 @@ function createSpoNakamotoMetricSection(titleText, metric) {
         list.className = 'governance-vote-legend governance-vote-legend--stacked';
         domains.forEach(domain => {
             list.appendChild(createGovernanceStatBox({
-                label: normalizeSpoProviderName(domain.label || domain.id || 'Unknown domain'),
+                label: getSpoDomainLabel(domain),
                 detail: `${formatCompactAdaFromLovelace(domain.stake_lovelace || 0)} • ${formatPercentage(Number(domain.stake_pct) || 0)} • ${Number(domain.pool_count || 0).toLocaleString('en-US')} SPOs`,
                 color: domain.type === 'cloud_provider' ? '#f87171' : '#34d399',
                 onClick: Array.isArray(domain?.pool_ids) && domain.pool_ids.length
@@ -7183,10 +7183,15 @@ function getSpoGroupMembers(domain, spos = spoDirectoryState?.spos) {
         .filter(spo => ids.has(String(spo?.pool_id || '').trim().toLowerCase()));
 }
 
+function getSpoDomainLabel(domain) {
+    const label = domain?.label || domain?.id || 'Unknown domain';
+    return domain?.type === 'cloud_provider' ? normalizeSpoProviderName(label) : label;
+}
+
 function openSpoOperatorGroupPools(domain, returnFocus) {
     const members = getSpoGroupMembers(domain);
     openSpoStatusListOverlay(
-        `${normalizeSpoProviderName(domain?.label || 'Operator')} Pools`,
+        `${getSpoDomainLabel(domain)} Pools`,
         members,
         returnFocus,
         { combineOperators: false }
