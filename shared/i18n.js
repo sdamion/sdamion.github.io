@@ -3,9 +3,9 @@
     const DEFAULT_LANGUAGE = 'en';
     const LANGUAGE_CONFIG = Object.freeze({
         en: { label: 'English', flag: '🇺🇸' },
-        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20260917-hosting-only' },
-        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20260917-hosting-only' },
-        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20260917-hosting-only' }
+        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20260917-raffle-eligibility' },
+        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20260917-raffle-eligibility' },
+        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20260917-raffle-eligibility' }
     });
     const TRANSLATION_ATTR = 'data-i18n';
     const TRANSLATION_ORIGINAL_ATTR = 'data-i18n-original';
@@ -450,6 +450,13 @@
         ['Inactive DReps', 'inactive_dreps'],
         ['DRep Council', 'drep_council'],
         ['Hosting providers', 'hosting_providers'],
+        ['Minimum ADA', 'raffle_minimum_ada'],
+        ['Eligible wallets', 'raffle_eligible_wallets'],
+        ['Checking eligible wallets...', 'raffle_checking_wallets'],
+        ['Eligible wallets could not be loaded.', 'raffle_wallets_error'],
+        ['Confirm draw', 'raffle_confirm_draw'],
+        ['Leave empty for no minimum. The exclusion list still applies.', 'raffle_minimum_hint'],
+        ['Update the backend before using a minimum ADA amount.', 'raffle_minimum_update'],
         ['Minimum identified hosting providers whose combined stake reaches 51% of total network stake. Only pools with every relay assigned to the same hosting provider are counted. Mixed, unknown and non-cloud pools are excluded; pool operators such as Coinbase are not hosting providers.', 'hosting_only_methodology'],
         ['Some member statuses are still loading.', 'council_status_pending'],
         ['TDSP delegators', 'alert_delegators'],

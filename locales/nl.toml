@@ -1,4 +1,11 @@
 [strings]
+raffle_eligible_wallets = "Geschikte wallets"
+raffle_checking_wallets = "Geschikte wallets controleren..."
+raffle_wallets_error = "Geschikte wallets konden niet worden geladen."
+raffle_minimum_ada = "Minimale ADA-inleg"
+raffle_confirm_draw = "Bevestig trekking"
+raffle_minimum_hint = "Laat leeg voor geen minimum. De uitsluitingslijst blijft gelden."
+raffle_minimum_update = "Werk de backend bij voordat je een minimale ADA-inleg gebruikt."
 hosting_providers = "Hostingproviders"
 hosting_only_methodology = "Minimumaantal vastgestelde hostingproviders waarvan de gezamenlijke stake 51% van de totale netwerkstake bereikt. Alleen pools waarvan alle relays dezelfde hostingprovider gebruiken tellen mee. Gemengde, onbekende en niet-cloudpools zijn uitgesloten; pooloperators zoals Coinbase zijn geen hostingproviders."
 drep_council = "DRep-raad"

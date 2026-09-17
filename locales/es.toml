@@ -1,4 +1,11 @@
 [strings]
+raffle_eligible_wallets = "Wallets elegibles"
+raffle_checking_wallets = "Comprobando wallets elegibles..."
+raffle_wallets_error = "No se pudieron cargar las wallets elegibles."
+raffle_minimum_ada = "Importe mínimo de ADA"
+raffle_confirm_draw = "Confirmar sorteo"
+raffle_minimum_hint = "Déjalo vacío para no aplicar un mínimo. La lista de exclusiones sigue vigente."
+raffle_minimum_update = "Actualiza el backend antes de utilizar un importe mínimo de ADA."
 hosting_providers = "Proveedores de alojamiento"
 hosting_only_methodology = "Número mínimo de proveedores de alojamiento identificados cuya participación conjunta alcanza el 51% de la participación total de la red. Solo se cuentan los pools cuyos relays utilizan todos el mismo proveedor. Se excluyen los pools mixtos, desconocidos y sin alojamiento en la nube; operadores como Coinbase no son proveedores de alojamiento."
 drep_council = "Consejo DRep"

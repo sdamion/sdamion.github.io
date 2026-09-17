@@ -19,6 +19,7 @@ const ENDPOINTS = IS_LOCAL ? {
     verify: '/__raffle_auth_verify_proxy__',
     admin: '/__raffle_admin_proxy__',
     draw: '/__raffle_admin_draw_proxy__',
+    preview: '/__raffle_admin_preview_proxy__',
     exclusions: '/__raffle_admin_exclusions_proxy__',
     admins: '/__raffle_admin_users_proxy__',
     anchor: '/__raffle_admin_anchor_proxy__',
@@ -32,6 +33,7 @@ const ENDPOINTS = IS_LOCAL ? {
     verify: 'https://api.tdsp.online/api/raffle/auth/verify',
     admin: 'https://api.tdsp.online/api/raffle/admin',
     draw: 'https://api.tdsp.online/api/raffle/admin/draw',
+    preview: 'https://api.tdsp.online/api/raffle/admin/draw/preview',
     exclusions: 'https://api.tdsp.online/api/raffle/admin/exclusions',
     admins: 'https://api.tdsp.online/api/raffle/admin/users',
     anchor: 'https://api.tdsp.online/api/raffle/admin/anchor',
@@ -49,6 +51,7 @@ let sessionToken = sessionStorage.getItem(SESSION_KEY) || '';
 const dashboardChildOverlays = new Map();
 let adminTransactionWallet = null;
 let raffleAnchorSupported = false;
+let raffleMinimumSupported = false;
 let raffleExclusionsSupported = false;
 let raffleExclusionTogglesSupported = false;
 let raffleStakeKeyExclusions = [];
@@ -313,6 +316,7 @@ function buildRaffleMetadata(draw) {
         winner_handle: splitMetadataText(draw.winner?.ada_handle),
         eligible_count: Number(draw.eligible_count),
         total_eligible_lovelace: String(draw.total_eligible_lovelace || '0'),
+        minimum_stake_lovelace: String(draw.minimum_stake_lovelace || '0'),
         snapshot_sha256: draw.snapshot_sha256,
         selection_entropy: draw.selection_entropy,
         selection_index: Number(draw.selection_index)
@@ -1532,6 +1536,12 @@ function createDrawCard(draw, viewerAddress = null) {
     proofText.className = 'governance-card-detail';
     setTranslatedText(proofText, `${draw.eligible_count.toLocaleString('en-US')} eligible delegators · index ${draw.selection_index}`);
     proof.append(summary, proofText, addressLine(draw.snapshot_sha256, 'snapshot hash'), addressLine(draw.selection_entropy, 'selection entropy'));
+    const minimum = document.createElement('p');
+    minimum.className = 'governance-card-detail';
+    const minimumLabel = document.createElement('span');
+    setTranslatedText(minimumLabel, 'Minimum ADA');
+    minimum.append(minimumLabel, `: ${formatAda(draw.minimum_stake_lovelace || '0')}`);
+    proof.appendChild(minimum);
     if (draw.on_chain_tx_hash) {
         const onChain = document.createElement('div');
         onChain.className = 'raffle-on-chain-proof';
@@ -1591,6 +1601,7 @@ function renderDraws(draws, viewerAddress = null) {
 }
 
 function renderAdmin(payload) {
+    raffleMinimumSupported = payload.capabilities?.minimum_stake === true;
     raffleAnchorSupported = payload.capabilities?.on_chain_proof === true;
     raffleExclusionsSupported = payload.capabilities?.stake_key_exclusions === true;
     raffleExclusionTogglesSupported = payload.capabilities?.stake_key_exclusion_toggles === true;
@@ -1900,21 +1911,105 @@ async function loadProtectedArea() {
     }
 }
 
+function confirmRaffleMinimum() {
+    return new Promise(resolve => {
+        const form = document.createElement('form');
+        form.className = 'raffle-form';
+        const label = document.createElement('label');
+        label.htmlFor = 'raffle-minimum-ada';
+        setTranslatedText(label, 'Minimum ADA');
+        const input = document.createElement('input');
+        input.id = 'raffle-minimum-ada';
+        input.name = 'minimum_ada';
+        input.type = 'number';
+        input.min = '0';
+        input.max = '45000000000';
+        input.step = '0.000001';
+        input.inputMode = 'decimal';
+        const hint = document.createElement('p');
+        hint.className = 'small-text';
+        setTranslatedText(hint, 'Leave empty for no minimum. The exclusion list still applies.');
+        const confirm = document.createElement('button');
+        confirm.type = 'submit';
+        confirm.className = 'governance-vote-primary';
+        setTranslatedText(confirm, 'Confirm draw');
+        confirm.disabled = true;
+        const count = document.createElement('p');
+        count.className = 'governance-card-detail';
+        count.setAttribute('role', 'status');
+        form.append(label, input, hint, count, confirm);
+        let revision = 0;
+        let timer;
+        let closed = false;
+        const finish = value => {
+            closed = true;
+            clearTimeout(timer);
+            elements.overlay.remove();
+            window.syncGovernanceMenuOverlayAccessibility?.();
+            if (returnFocus?.isConnected) returnFocus.focus();
+            resolve(value);
+        };
+        const returnFocus = document.activeElement;
+        const elements = window.createUniversalOverlay({
+            id: 'raffle-minimum-overlay', titleId: 'raffle-minimum-title',
+            titleText: 'Minimum ADA', closeLabel: 'Cancel', closeOverlay: () => finish(null),
+            bodyNodes: [form], enableSearch: false, showClose: false, returnFocus
+        });
+        form.addEventListener('submit', event => {
+            event.preventDefault();
+            if (!confirm.disabled && form.reportValidity()) finish(input.value);
+        });
+        const refreshCount = () => {
+            const requestRevision = ++revision;
+            clearTimeout(timer);
+            confirm.disabled = true;
+            setTranslatedText(count, 'Checking eligible wallets...');
+            if (!input.validity.valid) {
+                count.textContent = '';
+                return;
+            }
+            timer = setTimeout(async () => {
+                try {
+                    const preview = await authorizedRequest(ENDPOINTS.preview, {
+                        method: 'POST', body: JSON.stringify({ minimum_ada: input.value })
+                    });
+                    if (closed || requestRevision !== revision) return;
+                    const countLabel = document.createElement('span');
+                    setTranslatedText(countLabel, 'Eligible wallets');
+                    count.removeAttribute('data-i18n-auto');
+                    count.removeAttribute('data-i18n-auto-original');
+                    count.replaceChildren(countLabel, `: ${Number(preview.eligible_count).toLocaleString('en-US')}`);
+                    confirm.disabled = !(Number(preview.eligible_count) > 0);
+                } catch (error) {
+                    if (!closed && requestRevision === revision) setTranslatedText(count, 'Eligible wallets could not be loaded.');
+                }
+            }, 250);
+        };
+        input.addEventListener('input', refreshCount);
+        refreshCount();
+        input.focus();
+    });
+}
+
 async function submitDraw(event) {
     event.preventDefault();
     const form = event.currentTarget;
     const submit = form.querySelector('button[type="submit"]');
     submit.disabled = true;
     const publishOnChain = form.elements.publish_mode?.value === 'on_chain';
-    setStatus('Selecting and publishing a winner...');
     try {
+        const minimumAda = await confirmRaffleMinimum();
+        if (minimumAda === null) return;
+        if (Number(minimumAda) > 0 && !raffleMinimumSupported) throw new Error(t('Update the backend before using a minimum ADA amount.'));
+        setStatus('Selecting and publishing a winner...');
         if (publishOnChain && !raffleAnchorSupported) throw new Error(RAFFLE_ANCHOR_UNAVAILABLE);
         const result = await authorizedRequest(ENDPOINTS.draw, {
             method: 'POST',
             body: JSON.stringify({
                 title: form.elements.title.value,
                 prize: form.elements.prize.value,
-                notes: form.elements.notes.value
+                notes: form.elements.notes.value,
+                minimum_ada: minimumAda
             })
         });
         form.reset();

@@ -1,4 +1,11 @@
 [strings]
+raffle_eligible_wallets = "参加資格のあるウォレット"
+raffle_checking_wallets = "参加資格のあるウォレットを確認中..."
+raffle_wallets_error = "参加資格のあるウォレットを読み込めませんでした。"
+raffle_minimum_ada = "最低ADA額"
+raffle_confirm_draw = "抽選を確定"
+raffle_minimum_hint = "最低額を設定しない場合は空欄にしてください。除外リストは引き続き適用されます。"
+raffle_minimum_update = "最低ADA額を使用する前にバックエンドを更新してください。"
 hosting_providers = "ホスティングプロバイダー"
 hosting_only_methodology = "合計ステークがネットワーク全体の51%に達する、特定済みホスティングプロバイダーの最小数。すべてのリレーが同じプロバイダーを利用するプールのみを集計します。複数プロバイダー、不明、非クラウドのプールは除外します。Coinbaseなどのプール運営者はホスティングプロバイダーではありません。"
 drep_council = "DRep評議会"

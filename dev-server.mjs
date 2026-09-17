@@ -201,6 +201,7 @@ const proxyRoutes = {
     `${TDSP_API_ORIGIN}/api/raffle/auth/verify`,
   '/__raffle_admin_proxy__': () =>
     `${TDSP_API_ORIGIN}/api/raffle/admin`,
+  '/__raffle_admin_preview_proxy__': () => `${TDSP_API_ORIGIN}/api/raffle/admin/draw/preview`,
   '/__raffle_admin_draw_proxy__': () =>
     `${TDSP_API_ORIGIN}/api/raffle/admin/draw`,
   '/__raffle_admin_exclusions_proxy__': () =>
@@ -731,6 +732,7 @@ const server = createServer(async (req, res) => {
         '/__raffle_auth_verify_proxy__',
         '/__raffle_admin_proxy__',
         '/__raffle_admin_draw_proxy__',
+        '/__raffle_admin_preview_proxy__',
         '/__raffle_admin_exclusions_proxy__',
         '/__raffle_admin_users_proxy__',
         '/__raffle_admin_lost_stake_proxy__',
