@@ -9,6 +9,7 @@ const code = source.slice(source.indexOf('async function loadDrepDirectoryOverla
 for (const inactive of [false, true]) {
     test(`DRep directory filters ${inactive ? 'inactive' : 'active'} entries without changing the shared directory`, async () => {
         let rendered;
+        let renderOptions;
         let bot;
         const context = {
             fetchDrepInfoPayload: async () => [
@@ -27,12 +28,14 @@ for (const inactive of [false, true]) {
             updateGovernanceMenuHeaderMeta() {},
             updateGovernanceOverlayBotContext: (_, value) => { bot = value; },
             createWebsiteSectionBotContext: (_, value) => value,
-            renderDrepDirectory: (_, entries) => { rendered = entries; }
+            renderDrepDirectory: (_, entries, options) => { rendered = entries; renderOptions = options; }
         };
         vm.createContext(context);
         vm.runInContext(code, context);
         await context.loadDrepDirectoryOverlay({ isConnected: true }, inactive);
         assert.equal(rendered.length, 1);
+        assert.equal(renderOptions.showChart, false);
+        assert.equal(renderOptions.layout, 'list');
         assert.equal(rendered[0].id, inactive ? 'b' : 'a');
         assert.equal(bot.amount_ada, inactive ? 1 : 2);
         assert.equal(bot.count, 1);

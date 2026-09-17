@@ -8931,6 +8931,7 @@ async function loadDrepDirectoryOverlay(container, inactive = false) {
         container
     );
     renderDrepDirectory(container, visibleDreps, {
+        showChart: false,
         layout: 'list'
     });
 }
@@ -11337,8 +11338,16 @@ function getDashboardDrepStats(payload) {
 function renderDrepSummaryStats(stats) {
     window.TDSPRuntime.setText('gov-drep-count', stats.activeCount.toLocaleString('en-US'));
     window.TDSPRuntime.setText('gov-drep-inactive-count', stats.inactiveCount.toLocaleString('en-US'));
-    window.TDSPRuntime.setText('gov-drep-total-power', formatCompactAdaFromLovelace(stats.activePower));
-    window.TDSPRuntime.setText('gov-drep-inactive-power', formatCompactAdaFromLovelace(stats.inactivePower));
+    window.TDSPRuntime.setText('gov-drep-total-power', `Delegated ${formatCompactAdaFromLovelace(stats.activePower)}`);
+    const inactivePower = document.getElementById('gov-drep-inactive-power');
+    const inactiveAmount = formatCompactAdaFromLovelace(stats.inactivePower);
+    const inactiveSignature = JSON.stringify([inactiveAmount, window.TDSPI18n?.getLanguage?.()]);
+    if (inactivePower && inactivePower.dataset.valueSignature !== inactiveSignature) {
+        inactivePower.replaceChildren(createValueLine('Delegated', inactiveAmount, {
+            valueClassName: 'pool-status-value is-inactive'
+        }));
+        inactivePower.dataset.valueSignature = inactiveSignature;
+    }
     const power = document.getElementById('gov-drep-total-power');
     if (power) power.hidden = false;
     document.querySelector('#gov-drep-card .drep-voting-power-bar')?.remove();

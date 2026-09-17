@@ -72,8 +72,8 @@
                     <a class="nav-link nav-home-link" href="#home" data-i18n="nav_home">Home</a>
                     <a class="nav-link" href="#pool" data-i18n="nav_spo">SPO</a>
                     <a class="nav-link" href="#drep" data-i18n="nav_drep">DRep</a>
-                    <a class="nav-link" href="#starch" data-i18n="nav_starch">Starch</a>
                     <a class="nav-link" href="#governance" data-i18n="nav_governance">Governance</a>
+                    <a class="nav-link" href="#starch" data-i18n="nav_starch">Starch</a>
                     <span class="nav-row-break" aria-hidden="true"></span>
                     <a class="nav-link" href="#calendar" data-i18n="nav_events">Events</a>
                     <a class="nav-link" href="#stakenow" data-stake-open data-i18n="nav_stake">Stake Now</a>
@@ -346,9 +346,12 @@
                         <span class="governance-summary-subvalue" id="gov-drep-total-power" hidden></span>
                     </div>
                     <div id="gov-drep-inactive-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show inactive DReps">
-                        <strong id="gov-drep-inactive-count" class="governance-vote-label-item--no">0</strong>
+                        <strong id="gov-drep-inactive-count" class="pool-status-value is-inactive">0</strong>
                         <span data-i18n="inactive_dreps">Inactive DReps</span>
-                        <span class="governance-summary-subvalue governance-vote-label-item--no" id="gov-drep-inactive-power"></span>
+                        <span class="governance-summary-subvalue" id="gov-drep-inactive-power">
+                            <span data-i18n="delegated">Delegated</span>
+                            <span class="pool-status-value is-inactive">₳ 0</span>
+                        </span>
                     </div>
                     <div id="gov-drep-top10-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show top 10 DReps by voting power">
                         <strong id="gov-drep-top10-power">₳ 0</strong>
@@ -356,27 +359,6 @@
                         <span class="governance-summary-subvalue" id="gov-drep-top10-count" data-i18n="voting_power">Voting Power</span>
                     </div>
                 </div>
-            </div>
-        </section>
-
-        <section class="section" id="starch">
-            <div class="section-inner">
-                <h2 data-i18n="starch_stats">Starch Stats</h2>
-                <div class="tdsp-tile-grid tdsp-tile-grid--section">
-                    <div id="starch-pools-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show Starch pools">
-                        <strong id="starch-pool-count">Loading...</strong>
-                        <span data-i18n="starch_pools">Starch Pools</span>
-                    </div>
-                    <div id="starch-companies-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show Starch companies">
-                        <strong id="starchCompanyCount">Loading...</strong>
-                        <span data-i18n="companies">Companies</span>
-                    </div>
-                    <div id="starch-miners-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show Starch miners">
-                        <strong id="starchMinerCount">Loading...</strong>
-                        <span id="starchMinerStatus">Miners</span>
-                    </div>
-                </div>
-                <p class="small-text"><span data-i18n="source">Source:</span> <a href="https://starch.one" target="_blank" rel="noopener noreferrer" aria-label="Starch.one">starch.one</a></p>
             </div>
         </section>
 
@@ -436,6 +418,27 @@
             </div>
         </section>
 
+        <section class="section" id="starch">
+            <div class="section-inner">
+                <h2 data-i18n="starch_stats">Starch Stats</h2>
+                <div class="tdsp-tile-grid tdsp-tile-grid--section">
+                    <div id="starch-pools-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show Starch pools">
+                        <strong id="starch-pool-count">Loading...</strong>
+                        <span data-i18n="starch_pools">Starch Pools</span>
+                    </div>
+                    <div id="starch-companies-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show Starch companies">
+                        <strong id="starchCompanyCount">Loading...</strong>
+                        <span data-i18n="companies">Companies</span>
+                    </div>
+                    <div id="starch-miners-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show Starch miners">
+                        <strong id="starchMinerCount">Loading...</strong>
+                        <span id="starchMinerStatus">Miners</span>
+                    </div>
+                </div>
+                <p class="small-text"><span data-i18n="source">Source:</span> <a href="https://starch.one" target="_blank" rel="noopener noreferrer" aria-label="Starch.one">starch.one</a></p>
+            </div>
+        </section>
+
         <section class="section cardano-calendar-section" id="calendar">
             <div class="section-inner">
                 <h2 data-i18n="events">Events</h2>
@@ -466,7 +469,7 @@
     </template>
 
     <script src="starch/starch-loader.js?v=20260917-tile-only-refresh" defer></script>
-    <script src="governance/governance-loader.js?v=20260917-tile-only-refresh" defer></script>
+    <script src="governance/governance-loader.js?v=20260917-drep-directory-no-pie" defer></script>
     <script src="stake/stake-loader.js?v=20260825-lace-account-change" defer></script>
 </body>
 </html>
