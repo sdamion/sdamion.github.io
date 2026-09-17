@@ -3451,6 +3451,13 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     display: grid;
     gap: 4px;
     min-width: 0;
+    width: 100%;
+    justify-items: start;
+    text-align: left;
+}
+
+.governance-vote-legend-copy > * {
+    text-align: left;
 }
 
 .governance-vote-legend-copy strong {

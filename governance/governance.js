@@ -6833,7 +6833,7 @@ function createSpoNakamotoMetricSection(titleText, metric) {
         list.className = 'governance-vote-legend governance-vote-legend--stacked';
         domains.forEach(domain => {
             list.appendChild(createGovernanceStatBox({
-                label: domain.label || domain.id || 'Unknown domain',
+                label: normalizeSpoProviderName(domain.label || domain.id || 'Unknown domain'),
                 detail: `${formatCompactAdaFromLovelace(domain.stake_lovelace || 0)} • ${formatPercentage(Number(domain.stake_pct) || 0)} • ${Number(domain.pool_count || 0).toLocaleString('en-US')} SPOs`,
                 color: domain.type === 'cloud_provider' ? '#f87171' : '#34d399',
                 onClick: Array.isArray(domain?.pool_ids) && domain.pool_ids.length
@@ -7138,7 +7138,7 @@ function getSpoGroupMembers(domain, spos = spoDirectoryState?.spos) {
 function openSpoOperatorGroupPools(domain, returnFocus) {
     const members = getSpoGroupMembers(domain);
     openSpoStatusListOverlay(
-        `${domain?.label || 'Operator'} Pools`,
+        `${normalizeSpoProviderName(domain?.label || 'Operator')} Pools`,
         members,
         returnFocus,
         { combineOperators: false }
@@ -8095,11 +8095,20 @@ function createSpoPoolIdLine(poolId) {
     return line;
 }
 
+function normalizeSpoProviderName(value) {
+    const name = String(value || '').trim();
+    const key = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+    return ['aws', 'amazonaws', 'amazoneaws', 'amazonwebservices', 'amazonewebservices',
+        'amazonwebservicesaws', 'amazon', 'amazoncom', 'amazoncominc'].includes(key)
+        ? 'Amazon Web Services'
+        : name;
+}
+
 function createSpoProviderBadge(provider) {
     const badge = document.createElement('span');
     badge.className = 'governance-spo-provider';
     const name = document.createElement('span');
-    setGovernanceAutoTranslatedText(name, `Cloud Service: ${provider?.name || 'Not identified'}`);
+    setGovernanceAutoTranslatedText(name, `Cloud Service: ${normalizeSpoProviderName(provider?.name) || 'Not identified'}`);
     badge.appendChild(name);
     badge.setAttribute('aria-label', name.textContent);
     return badge;
@@ -8111,7 +8120,7 @@ function getSpoDisplayName(spo) {
 }
 
 function getSpoCloudServiceText(spo) {
-    const compactService = firstNonEmptyText(spo?.cloud_service);
+    const compactService = (firstNonEmptyText(spo?.cloud_service) || '').split(',').map(normalizeSpoProviderName).filter(Boolean).join(', ');
     const providerNames = getSpoCloudProviders(spo).map(provider => provider.name);
     const service = compactService || (providerNames.length ? providerNames.join(', ') : '');
     if (!service) return 'Not identified';
@@ -8123,8 +8132,9 @@ function getSpoCloudServiceText(spo) {
 function getSpoCloudProviders(spo) {
     const providers = new Map();
     const addProvider = provider => {
-        const id = firstNonEmptyText(provider?.id);
-        const name = firstNonEmptyText(provider?.name);
+        const name = normalizeSpoProviderName(provider?.id) === 'Amazon Web Services'
+            ? 'Amazon Web Services' : normalizeSpoProviderName(provider?.name);
+        const id = name === 'Amazon Web Services' ? 'aws' : firstNonEmptyText(provider?.id);
         if (id && name) providers.set(id, { id, name });
     };
 
@@ -8132,14 +8142,15 @@ function getSpoCloudProviders(spo) {
     (Array.isArray(spo?.relays) ? spo.relays : []).forEach(relay => addProvider(relay?.provider));
     (firstNonEmptyText(spo?.cloud_service) || '')
         .split(',')
-        .map(name => name.trim())
+        .map(normalizeSpoProviderName)
         .filter(Boolean)
         .forEach(name => {
             const exists = [...providers.values()]
                 .some(provider => provider.name.toLowerCase() === name.toLowerCase());
             if (!exists) {
-                providers.set(`compact:${name.toLowerCase()}`, {
-                    id: `compact:${name.toLowerCase()}`,
+                const id = name === 'Amazon Web Services' ? 'aws' : `compact:${name.toLowerCase()}`;
+                providers.set(id, {
+                    id,
                     name
                 });
             }
