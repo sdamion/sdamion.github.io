@@ -282,6 +282,7 @@ const proxyRoutes = {
     if (type === 'info') return `${TDSP_API_ORIGIN}/api/dreps/info`;
     return null;
   },
+  '/__drep_council_proxy__': () => `${TDSP_API_ORIGIN}/api/dreps/council`,
   '/__drep_correlation_proxy__': () =>
     `${TDSP_API_ORIGIN}/api/dreps/correlation`,
   '/__drep_vote_stats_proxy__': url => {

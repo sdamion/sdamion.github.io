@@ -1,4 +1,6 @@
 [strings]
+drep_council = "DRep評議会"
+council_status_pending = "一部のメンバーのステータスを読み込み中です。"
 drep_council_member = "評議会メンバー"
 inactive_dreps = "非アクティブなDRep"
 alert_delegators = "TDSPの委任者"

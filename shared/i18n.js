@@ -3,9 +3,9 @@
     const DEFAULT_LANGUAGE = 'en';
     const LANGUAGE_CONFIG = Object.freeze({
         en: { label: 'English', flag: '🇺🇸' },
-        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20260917-drep-council' },
-        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20260917-drep-council' },
-        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20260917-drep-council' }
+        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20260917-council-overlay' },
+        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20260917-council-overlay' },
+        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20260917-council-overlay' }
     });
     const TRANSLATION_ATTR = 'data-i18n';
     const TRANSLATION_ORIGINAL_ATTR = 'data-i18n-original';
@@ -448,6 +448,8 @@
         ['Possible Blocks Current Epoch', 'possible_blocks_current_epoch'],
         ['Lifetime Blocks', 'lifetime_blocks'],
         ['Inactive DReps', 'inactive_dreps'],
+        ['DRep Council', 'drep_council'],
+        ['Some member statuses are still loading.', 'council_status_pending'],
         ['TDSP delegators', 'alert_delegators'],
         ['New TDSP delegators', 'delegators_joined'],
         ['Delegators left TDSP', 'delegators_left'],

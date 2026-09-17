@@ -1,4 +1,6 @@
 [strings]
+drep_council = "DRep-raad"
+council_status_pending = "Enkele ledenstatussen worden nog geladen."
 drep_council_member = "Raadslid"
 inactive_dreps = "Inactieve DReps"
 alert_delegators = "TDSP-delegatoren"

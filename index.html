@@ -51,7 +51,7 @@
     <link rel="stylesheet" href="delegators/raffle.css?v=20260901-lost-stake-mail-toggle-hitarea-2">
 
     <script src="shared/runtime.js?v=20260917-tile-only-refresh" defer></script>
-    <script src="shared/i18n.js?v=20260917-drep-council" defer></script>
+    <script src="shared/i18n.js?v=20260917-council-overlay" defer></script>
     <script src="shared/site-controls.js?v=20260901-pool-delegators-live-refresh" defer></script>
     <script src="shared/database-status.js?v=20260819-database-status-module" defer></script>
     <script src="vendor/chart-loader.js?v=20260817-section-folders" defer></script>
@@ -340,10 +340,11 @@
                         <strong id="tdsp-drep-voted">Loading...</strong>
                         <span data-i18n="voted_gov_actions">Voted Gov Actions</span>
                     </div>
-                    <a id="drep-council-card" class="governance-summary-clickable governance-menu-card" href="https://drepcouncil.org/" target="_blank" rel="noopener noreferrer">
+                    <div id="drep-council-card" class="governance-summary-clickable governance-menu-card">
                         <strong data-i18n="drep_council_member">Council Member</strong>
                         <span class="pool-provider-label"><img class="pool-provider-icon" src="drep-council-logo.svg" width="20" height="20" alt="DRep Council"><span class="pool-provider-label-text">DamionDutch</span></span>
-                    </a>
+                        <span id="drep-council-power">...</span>
+                    </div>
                     <div id="gov-drep-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show DRep directory">
                         <strong id="gov-drep-count">0</strong>
                         <span data-i18n="dreps">DReps</span>

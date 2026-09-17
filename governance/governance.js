@@ -323,6 +323,7 @@ function initGovernance() {
     setupTdspDrepStatsCards();
     loadGovernanceActions();
     loadDrepDirectory().catch(() => {});
+    loadCouncilMembers().catch(() => window.TDSPRuntime.setText('drep-council-power', 'Unavailable'));
     loadSpoDirectory().catch(() => {});
     pollSpoRescanStatus();
     loadTreasuryData().catch(() => {});
@@ -418,6 +419,7 @@ function setupGovernanceMenuCards() {
         ['spo-nakamoto-card', event => openSpoNakamotoOverlay(event?.currentTarget)],
         ['gov-committee-card', openConstitutionalCommitteeOverlay],
         ['gov-drep-card', openDrepDirectoryOverlay],
+        ['drep-council-card', openCouncilOverlay],
         ['gov-drep-inactive-card', () => openDrepDirectoryOverlay('inactive')],
         ['gov-drep-top10-card', openTopDrepPowerOverlay],
         ['gov-active-card', () => openGovernanceActionGroupOverlay(
@@ -3751,6 +3753,7 @@ function scheduleActiveRefresh() {
     governanceRefreshTimer = window.setInterval(() => {
         if (document.visibilityState !== 'visible') return;
         refreshActiveGovernanceGroup().catch(() => {});
+        loadCouncilMembers().catch(() => {});
     }, ACTIVE_REFRESH_INTERVAL_MS);
 }
 
@@ -6498,6 +6501,43 @@ function openDrepVotesOverlay(item, drepVotes, returnFocus, proposal = null) {
 
 function closeDrepVotesOverlay() {
     removeGovernanceMenuOverlay('governance-drep-overlay');
+}
+
+async function loadCouncilMembers() {
+    const payload = await fetchJson(GOVERNANCE_IS_LOCAL_PREVIEW
+        ? '/__drep_council_proxy__' : 'https://api.tdsp.online/api/dreps/council');
+    const power = document.getElementById('drep-council-power');
+    if (power) setGovernanceAutoTranslatedText(power,
+        `Voting power: ${formatCompactAdaFromLovelace(payload.total_voting_power)}`);
+    return payload;
+}
+
+function openCouncilOverlay() {
+    const panel = document.createElement('div');
+    panel.className = 'governance-drep-directory-list';
+    setGovernanceAutoTranslatedText(panel, 'Loading DRep data...');
+    createGovernanceMenuOverlay({
+        id: 'governance-council-overlay',
+        titleId: 'governance-council-title',
+        titleText: 'DRep Council',
+        closeLabel: 'Close DRep directory',
+        closeOverlay: () => removeGovernanceMenuOverlay('governance-council-overlay'),
+        bodyNodes: [panel]
+    });
+    loadCouncilMembers().then(payload => {
+        if (!panel.isConnected) return;
+        renderDrepDirectory(panel, payload.members, { showChart: false, layout: 'list' });
+        updateGovernanceMenuHeaderMeta('governance-council-overlay',
+            `Voting power: ${formatCompactAdaFromLovelace(payload.total_voting_power)}`, panel);
+        if (payload.unknown_count) {
+            const notice = document.createElement('p');
+            notice.className = 'small-text';
+            setGovernanceAutoTranslatedText(notice, 'Some member statuses are still loading.');
+            panel.prepend(notice);
+        }
+    }).catch(() => {
+        if (panel.isConnected) setGovernanceAutoTranslatedText(panel, 'DRep data could not be loaded.');
+    });
 }
 
 function openDrepDirectoryOverlay(status = 'active') {
