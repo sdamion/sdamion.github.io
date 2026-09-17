@@ -6516,7 +6516,7 @@ function openCouncilOverlay() {
     const panel = document.createElement('div');
     panel.className = 'governance-drep-directory-list';
     setGovernanceAutoTranslatedText(panel, 'Loading DRep data...');
-    createGovernanceMenuOverlay({
+    const { title } = createGovernanceMenuOverlay({
         id: 'governance-council-overlay',
         titleId: 'governance-council-title',
         titleText: 'DRep Council',
@@ -6524,6 +6524,14 @@ function openCouncilOverlay() {
         closeOverlay: () => removeGovernanceMenuOverlay('governance-council-overlay'),
         bodyNodes: [panel]
     });
+    const website = document.createElement('a');
+    website.href = 'https://drepcouncil.org/';
+    website.target = '_blank';
+    website.rel = 'noopener noreferrer';
+    setGovernanceAutoTranslatedText(website, 'DRep Council');
+    title.removeAttribute('data-i18n-auto');
+    title.removeAttribute('data-i18n-auto-original');
+    title.replaceChildren(website);
     loadCouncilMembers().then(payload => {
         if (!panel.isConnected) return;
         renderDrepDirectory(panel, payload.members, { showChart: false, layout: 'list' });
