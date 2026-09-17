@@ -9065,6 +9065,24 @@ function createDrepDirectoryListCard(drep) {
         })
     });
     bindDrepNameProfileTrigger(row.querySelector('.governance-cc-member-hash'), drep);
+    if (typeof drep.image === 'string' && drep.image.length <= 350000
+        && /^data:image\/webp;base64,[A-Za-z0-9+/]+={0,2}$/.test(drep.image)) {
+        row.classList.add('governance-business-card', 'has-company-logo');
+        const frame = document.createElement('span');
+        frame.className = 'governance-business-logo-frame';
+        const photo = document.createElement('img');
+        photo.className = 'governance-business-logo';
+        photo.src = drep.image;
+        photo.alt = drep.name;
+        photo.loading = 'lazy';
+        photo.decoding = 'async';
+        photo.addEventListener('error', () => {
+            frame.remove();
+            row.classList.remove('has-company-logo');
+        }, { once: true });
+        frame.appendChild(photo);
+        row.appendChild(frame);
+    }
     bindDrepDirectoryCard(row, drep);
     return row;
 }
