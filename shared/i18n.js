@@ -3,9 +3,9 @@
     const DEFAULT_LANGUAGE = 'en';
     const LANGUAGE_CONFIG = Object.freeze({
         en: { label: 'English', flag: '🇺🇸' },
-        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20260917-raffle-eligibility' },
-        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20260917-raffle-eligibility' },
-        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20260917-raffle-eligibility' }
+        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20260918-ask-followups' },
+        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20260918-ask-followups' },
+        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20260918-ask-followups' }
     });
     const TRANSLATION_ATTR = 'data-i18n';
     const TRANSLATION_ORIGINAL_ATTR = 'data-i18n-original';
@@ -173,6 +173,7 @@
         ['Close SPO directory', 'close_spo_directory'],
         ['Close Stake to TDSP', 'close_stake_to_tdsp'],
         ['Close external site warning', 'close_external_site_warning'],
+        ['Ask', 'ask_question'],
         ['Continue Chat', 'continue_chat'],
         ['Continue', 'continue'],
         ['Continue with conversation history', 'continue_with_history'],

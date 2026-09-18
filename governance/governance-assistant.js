@@ -103,7 +103,7 @@
             const input = document.createElement('textarea');
             input.id = 'constitution-chat-question';
             input.name = 'question';
-            input.rows = 1;
+            input.rows = 4;
             input.maxLength = 5000;
             input.autocomplete = 'off';
             input.setAttribute('data-i18n-placeholder-original', 'Search Cardano data or ask about the Constitution');
@@ -112,18 +112,11 @@
             const submit = document.createElement('button');
             submit.id = 'constitution-chat-submit';
             submit.type = 'submit';
-            submit.className = 'governance-vote-secondary';
-            setAssistantText(submit, 'Continue Chat');
-            submit.setAttribute('aria-label', translateAssistantText('Continue with conversation history'));
-            const newQuestion = document.createElement('button');
-            newQuestion.id = 'constitution-chat-new-question';
-            newQuestion.type = 'submit';
-            newQuestion.className = 'governance-vote-button';
-            setAssistantText(newQuestion, 'New Chat');
-            newQuestion.setAttribute('aria-label', translateAssistantText('Ask a new question without conversation history'));
+            submit.className = 'governance-vote-button';
+            setAssistantText(submit, 'Ask');
             const formActions = document.createElement('div');
             formActions.className = 'constitution-chat-form-actions';
-            formActions.append(newQuestion, submit);
+            formActions.append(submit);
             form.append(label, input, formActions);
 
             const status = document.createElement('p');
@@ -337,11 +330,9 @@
             const input = panel?.querySelector('#constitution-chat-question');
             const messages = panel?.querySelector('#constitution-chat-messages');
             const submit = panel?.querySelector('#constitution-chat-submit');
-            const newQuestion = panel?.querySelector('#constitution-chat-new-question');
             const status = panel?.querySelector('#constitution-chat-status');
-            if (!form || !input || !messages || !submit || !newQuestion || !status) return;
+            if (!form || !input || !messages || !submit || !status) return;
             const conversation = [];
-            let pendingNewChatSubmit = false;
 
             const clearConversation = () => {
                 conversation.length = 0;
@@ -354,26 +345,21 @@
             };
             const resizeInput = () => {
                 input.style.height = 'auto';
-                input.style.height = `${Math.min(input.scrollHeight, 128)}px`;
+                input.style.height = `${Math.max(128, Math.min(input.scrollHeight, 240))}px`;
             };
             input.addEventListener('input', resizeInput);
             input.addEventListener('keydown', event => {
-                if (event.key === 'Enter' && !event.shiftKey) {
+                if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
                     event.preventDefault();
-                    pendingNewChatSubmit = true;
-                    form.requestSubmit(newQuestion);
+                    form.requestSubmit(submit);
                 }
-            });
-            newQuestion.addEventListener('click', () => {
-                clearConversation();
             });
 
             form.addEventListener('submit', async event => {
                 event.preventDefault();
                 const question = input.value.replace(/\s+/g, ' ').trim();
-                const startsNewConversation = pendingNewChatSubmit || event.submitter === newQuestion;
-                pendingNewChatSubmit = false;
-                if (!question || submit.disabled || newQuestion.disabled) return;
+                const startsNewConversation = conversation.filter(message => message.role === 'assistant').length >= 5;
+                if (!question || submit.disabled) return;
 
                 if (startsNewConversation) {
                     clearConversation();
@@ -383,12 +369,11 @@
                 appendConstitutionChatMessage(messages, question, 'question');
                 const history = startsNewConversation
                     ? []
-                    : getConstitutionChatHistoryForQuestion(conversation, question);
+                    : getConstitutionChatHistory(conversation);
                 conversation.push({ role: 'user', content: question });
                 input.value = '';
                 resizeInput();
                 submit.disabled = true;
-                newQuestion.disabled = true;
                 input.disabled = true;
                 setAssistantText(status, 'Consulting the Constitution...');
                 let pendingAnswerMessage = null;
@@ -454,7 +439,6 @@
                     setAssistantText(status, '');
                 } finally {
                     submit.disabled = false;
-                    newQuestion.disabled = false;
                     input.disabled = false;
                     input.focus();
                 }
@@ -462,29 +446,12 @@
         }
 
         function getConstitutionChatHistory(conversation) {
-            const history = [];
-            let remaining = 4000;
-            for (const message of conversation.slice(-6).reverse()) {
-                if (remaining <= 0) break;
-                const content = String(message.content || '').slice(0, remaining);
-                if (!content) continue;
-                history.push({ role: message.role, content });
-                remaining -= content.length;
-            }
-            return history.reverse();
-        }
-
-        function getConstitutionChatHistoryForQuestion(conversation, question) {
-            const normalizedQuestion = String(question || '').replace(/\s+/g, ' ').trim().toLowerCase();
-            for (let index = 0; index < conversation.length; index += 1) {
-                const message = conversation[index];
-                if (message.role !== 'user') continue;
-                const previousQuestion = String(message.content || '').replace(/\s+/g, ' ').trim().toLowerCase();
-                if (previousQuestion === normalizedQuestion) {
-                    return getConstitutionChatHistory(conversation.slice(0, index));
-                }
-            }
-            return getConstitutionChatHistory(conversation);
+            const messages = conversation.slice(-8);
+            const perMessageLimit = Math.floor(4000 / Math.max(1, messages.length));
+            return messages.map(message => ({
+                role: message.role,
+                content: String(message.content || '').slice(0, perMessageLimit)
+            })).filter(message => message.content);
         }
 
         function getConstitutionChatApiUrl() {

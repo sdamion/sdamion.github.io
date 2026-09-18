@@ -1,4 +1,5 @@
 [strings]
+ask_question = "質問する"
 raffle_eligible_wallets = "参加資格のあるウォレット"
 raffle_checking_wallets = "参加資格のあるウォレットを確認中..."
 raffle_wallets_error = "参加資格のあるウォレットを読み込めませんでした。"

@@ -1,4 +1,5 @@
 [strings]
+ask_question = "Vraag"
 raffle_eligible_wallets = "Geschikte wallets"
 raffle_checking_wallets = "Geschikte wallets controleren..."
 raffle_wallets_error = "Geschikte wallets konden niet worden geladen."
