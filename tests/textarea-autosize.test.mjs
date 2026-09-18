@@ -4,6 +4,15 @@ import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 
 const code = readFileSync(new URL('../shared/runtime.js', import.meta.url), 'utf8');
+const css = readFileSync(new URL('../shared/styles.css', import.meta.url), 'utf8');
+
+test('chat form stretches despite left-aligned tile children and keeps Ask below the input', () => {
+    const form = css.match(/\.constitution-chat-form\s*\{([^}]+)\}/)[1];
+    assert.match(form, /width:\s*100%/);
+    assert.match(form, /min-width:\s*0/);
+    assert.match(form, /justify-self:\s*stretch/);
+    assert.match(form, /grid-template-columns:\s*minmax\(0, 1fr\)\s*;/);
+});
 const start = code.indexOf('    function resizeTextarea(');
 const end = code.indexOf('\n    onReady(', start);
 const resize = vm.runInNewContext(code.slice(start, end) + '\nresizeTextarea', {
