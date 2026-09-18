@@ -104,6 +104,7 @@
             input.id = 'constitution-chat-question';
             input.name = 'question';
             input.rows = 4;
+            input.setAttribute('data-auto-size', '');
             input.maxLength = 5000;
             input.autocomplete = 'off';
             input.setAttribute('data-i18n-placeholder-original', 'Search Cardano data or ask about the Constitution');
@@ -343,11 +344,8 @@
                 messages.appendChild(empty);
                 status.textContent = '';
             };
-            const resizeInput = () => {
-                input.style.height = 'auto';
-                input.style.height = `${Math.max(128, Math.min(input.scrollHeight, 240))}px`;
-            };
-            input.addEventListener('input', resizeInput);
+            const resizeInput = () => window.TDSPRuntime.resizeTextarea(input);
+            resizeInput();
             input.addEventListener('keydown', event => {
                 if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
                     event.preventDefault();

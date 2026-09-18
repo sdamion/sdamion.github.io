@@ -2037,16 +2037,23 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 
 .constitution-chat-form {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
     gap: 10px;
     align-items: end;
+}
+
+textarea[data-auto-size] {
+    width: 100%;
+    min-width: 0;
+    min-height: 128px;
+    max-height: min(240px, 40vh);
+    resize: none;
+    overflow-y: auto;
 }
 
 .constitution-chat-form textarea {
     width: 100%;
     min-width: 0;
-    min-height: 128px;
-    max-height: 240px;
     padding: 10px 12px;
     resize: none;
     border: 1px solid var(--line);
@@ -2930,7 +2937,7 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
 
     .constitution-chat-form-actions {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: minmax(0, 1fr);
     }
 
     .constitution-chat-form-actions .governance-vote-button,
@@ -2938,10 +2945,6 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
         width: 100%;
         min-width: 0;
         padding-inline: 10px;
-    }
-
-    .constitution-chat-form textarea {
-        min-height: 128px;
     }
 
     .governance-vote-choices {

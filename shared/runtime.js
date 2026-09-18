@@ -698,7 +698,24 @@
         });
     }
 
-    onReady(() => normalizeUniversalTileLabels());
+    function resizeTextarea(input) {
+        input.style.height = 'auto';
+        const style = window.getComputedStyle(input);
+        const minimum = parseFloat(style.minHeight) || 128;
+        const maximum = parseFloat(style.maxHeight) || 240;
+        const border = (parseFloat(style.borderTopWidth) || 0) + (parseFloat(style.borderBottomWidth) || 0);
+        input.style.height = `${Math.max(minimum, Math.min(input.scrollHeight + border, maximum))}px`;
+    }
+
+    onReady(() => {
+        normalizeUniversalTileLabels();
+        document.addEventListener('input', event => {
+            if (event.target.matches?.('textarea[data-auto-size]')) resizeTextarea(event.target);
+        });
+        window.addEventListener('resize', () => {
+            document.querySelectorAll('textarea[data-auto-size]').forEach(resizeTextarea);
+        });
+    });
 
     window.TDSPRuntime = Object.freeze({
         isLocalPreview: isLocalPreviewHostname(window.location.hostname),
@@ -713,6 +730,7 @@
         bindIntentLoad,
         bindViewportLoad,
         onReady,
+        resizeTextarea,
         setStatusClasses,
         setBinaryStatusClasses,
         formatInteger,

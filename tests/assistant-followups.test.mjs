@@ -16,6 +16,7 @@ function setup() {
     const panel = { querySelector(selector) { return elements[selector.replace('#constitution-chat-', '')]; } };
     const code = source.slice(source.indexOf('        function setupConstitutionChat('), source.indexOf('        function getConstitutionChatApiUrl('));
     vm.runInNewContext(code + '\nsetupConstitutionChat(panel, { id: "proposal-1" });', {
+        window: { TDSPRuntime: { resizeTextarea(element) { element.style.height = '128px'; } } },
         panel, document: { createElement: () => ({}) },
         setAssistantText() {}, translateAssistantText: text => text,
         appendConstitutionChatMessage: () => ({ message: { remove() {} }, body: {}, stakePrompt: {} }),
@@ -53,4 +54,5 @@ test('one Ask submit button replaces the two chat modes', () => {
     assert.match(source, /setAssistantText\(submit, 'Ask'\)/);
     assert.doesNotMatch(source, /constitution-chat-new-question|Continue Chat|New Chat/);
     assert.match(source, /input.rows = 4/);
+    assert.match(source, /window.TDSPRuntime.resizeTextarea\(input\)/);
 });
