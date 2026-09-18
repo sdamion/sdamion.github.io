@@ -447,7 +447,31 @@ html {
 .ai-unavailable #raffle-lost-stake-improve,
 .ai-unavailable .governance-overlay-bot-button,
 .ai-unavailable .governance-tdspbot-button {
-    display: none !important;
+    color: var(--ai-unavailable-color, #c62828) !important;
+    text-decoration: line-through;
+    cursor: not-allowed;
+}
+
+.ai-unavailable #tdspbot-open span,
+.ai-unavailable #raffle-lost-stake-improve span,
+.ai-unavailable .governance-overlay-bot-button span,
+.ai-unavailable .governance-tdspbot-button span {
+    color: inherit;
+    text-decoration: line-through;
+}
+
+.ai-unavailable .tdspbot-nav-icon {
+    animation: none;
+}
+
+html[data-theme="dark"].ai-unavailable {
+    --ai-unavailable-color: #ff6b7a;
+}
+
+@media (prefers-color-scheme: dark) {
+    html:not([data-theme="light"]).ai-unavailable {
+        --ai-unavailable-color: #ff6b7a;
+    }
 }
 
 .tdspbot-nav-icon {

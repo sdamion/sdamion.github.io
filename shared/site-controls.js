@@ -241,9 +241,33 @@
     }
 
     let aiAvailabilityStarted = false;
+    const aiControlSelector = '#tdspbot-open, #raffle-lost-stake-improve, .governance-overlay-bot-button, .governance-tdspbot-button';
+    function syncAiControls() {
+        const unavailable = document.documentElement.classList.contains('ai-unavailable');
+        document.querySelectorAll(aiControlSelector).forEach(control => {
+            if (unavailable && !control.hasAttribute('data-ai-disabled')) {
+                control.dataset.aiDisabled = control.getAttribute('aria-disabled') ?? '';
+                control.setAttribute('aria-disabled', 'true');
+            } else if (!unavailable && control.hasAttribute('data-ai-disabled')) {
+                const previous = control.dataset.aiDisabled;
+                if (previous) control.setAttribute('aria-disabled', previous);
+                else control.removeAttribute('aria-disabled');
+                delete control.dataset.aiDisabled;
+            }
+        });
+    }
+
     function startAiAvailability() {
         if (aiAvailabilityStarted) return;
         aiAvailabilityStarted = true;
+        document.addEventListener('click', event => {
+            if (document.documentElement.classList.contains('ai-unavailable') && event.target.closest?.(aiControlSelector)) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+            }
+        }, true);
+        new MutationObserver(syncAiControls).observe(document.body, { childList: true, subtree: true });
+        syncAiControls();
         const endpoint = window.TDSPRuntime.isLocalPreview
             ? '/__health_proxy__' : 'https://api.tdsp.online/health';
         const refresh = async () => {
@@ -254,6 +278,7 @@
                 available = payload?.providers?.ai?.available === true;
             } catch {}
             document.documentElement.classList.toggle('ai-unavailable', !available);
+            syncAiControls();
         };
         refresh();
         window.setInterval(refresh, 60000);
