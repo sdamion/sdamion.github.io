@@ -1,5 +1,5 @@
 export function assetImageCandidates(id:string,metadata:unknown[]=[]):string[]{
-  const urls=metadata.map(assetImageUrl).filter((url):url is string=>url!==null);
+  const urls=metadata.map(assetImageUrl).filter((url):url is string=>url!==null).flatMap(url=>url.startsWith('https://ipfs.io/ipfs/')?[url,url.replace('https://ipfs.io/ipfs/','https://dweb.link/ipfs/')]:[url]);
   if(id==='lovelace')urls.push('/cardano_logo_ico.webp');
   else if(/^[a-f0-9]{56}(?:[a-f0-9]{2}){0,32}$/.test(id))urls.push(`https://asset-logos.minswap.org/${id}`);
   return [...new Set(urls)];

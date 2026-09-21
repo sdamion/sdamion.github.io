@@ -135,7 +135,8 @@ export default function Home({memberStake}:{memberStake:string}){
         setStatus(`Balances updated · loading token prices ${Math.floor(i/50)+1} / ${Math.ceil(assetIds.length/50)}`);
         const r=await portfolioFetch('/api/markets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({assets:assetIds.slice(i,i+50)}),signal});
         if(!r.ok){warnings.push('Some token prices are unavailable. Unpriced assets are excluded from the subtotal.');break;}
-        const data=await r.json() as {tokens:Market[]};for(const m of data.tokens)next.markets[m.token_id]={...m,decimals:m.decimals??next.markets[m.token_id]?.decimals};
+        const data=await r.json() as {tokens:Market[];pricing_unavailable?:boolean};for(const m of data.tokens)next.markets[m.token_id]={...m,decimals:m.decimals??next.markets[m.token_id]?.decimals};
+        if(data.pricing_unavailable)warnings.push('Token market prices unavailable; asset images and transaction price estimates can still load.');
       }
       signal.throwIfAborted();setSnapshot({...next});setNotice(warnings.join(' '));
       const persist=async()=>{try{await saveCache(key,next);}catch{setCacheNotice('The browser could not save the cache. Keep this page open or retry later.');}};
