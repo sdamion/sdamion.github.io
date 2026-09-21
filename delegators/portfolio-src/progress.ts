@@ -1,3 +1,9 @@
+export function analysisProgress(busy:boolean,current:{done:number;total:number}|null,cachedDone:number,cachedTotal:number){
+  const done=busy?(current?.done??0):cachedDone;
+  const total=busy?(current?.total??0):cachedTotal;
+  return {done,total,percent:total>0?done/total*100:0};
+}
+
 export function durationLabel(seconds:number):string {
   const value=Math.max(0,Math.ceil(seconds));
   return value<60?`${value}s`:`${Math.floor(value/60)}m ${value%60}s`;

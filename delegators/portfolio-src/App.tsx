@@ -14,7 +14,7 @@ import {portfolioFetch} from './transport';
 import {CexAddresses} from './CexAddresses';
 import {normalizeCexAddresses,cexDestinations,cexAdjustedFact} from './cex';
 import type {CexAddress} from './cex';
-import {durationLabel,remainingSeconds} from './progress';
+import {durationLabel,remainingSeconds,analysisProgress} from './progress';
 import {memberWallets,resolveWalletGroups,validWalletAddress,validStakeAddress,sameTrackedAddresses,walletTransactionCount} from './member';
 const num=(n:number,max=6)=>n.toLocaleString('en-US',{maximumFractionDigits:max});
 const usd=(n:number)=>n.toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:Math.abs(n)>0&&Math.abs(n)<0.01?8:2});
@@ -135,16 +135,20 @@ export default function Home({memberStake}:{memberStake:string}){
       const missing=next.txs.filter((t,i)=>i<20||!next.facts[t.tx_hash]||!Array.isArray(next.facts[t.tx_hash].externalOutputs));
       setSnapshot({...next});const owned=new Set(addresses);
       const analysisStarted=Date.now();
+      const refreshedHashes=new Set<string>();
       setCounting(null);
       setAnalysis({started:analysisStarted,done:0,total:missing.length});
       for(let i=0;i<missing.length;i+=50){
         setStatus('Step 2 of 2 · Analysing transactions…');
         const batch=missing.slice(i,i+50);const details=await request<Detail[]>('tx_info',{_tx_hashes:batch.map(t=>t.tx_hash),_inputs:true,_assets:true,_metadata:false,_withdrawals:false,_certs:false,_scripts:false,_bytecode:false},signal);
-        for(const d of details)next.facts[d.tx_hash]=analyse(d,owned);
+        for(const d of details){
+          if(!batch.some(tx=>tx.tx_hash===d.tx_hash))continue;
+          next.facts[d.tx_hash]=analyse(d,owned);refreshedHashes.add(d.tx_hash);
+        }
         signal.throwIfAborted();setSnapshot({...next,facts:{...next.facts}});await persist();
-        setAnalysis({started:analysisStarted,done:Math.min(i+batch.length,missing.length),total:missing.length});
+        setAnalysis({started:analysisStarted,done:refreshedHashes.size,total:missing.length});
       }
-      next.complete=next.txs.every(t=>!!next.facts[t.tx_hash]);await persist();signal.throwIfAborted();setSnapshot({...next});
+      next.complete=next.txs.every(t=>!!next.facts[t.tx_hash])&&missing.every(t=>refreshedHashes.has(t.tx_hash));await persist();signal.throwIfAborted();setSnapshot({...next});
       setStatus(next.complete?`Updated ${new Date(next.updated).toLocaleString()}`:'Some transactions are awaiting analysis. Refresh to retry.');
     }catch(e){if(!signal.aborted){setError(e instanceof Error?e.message:'Could not update this portfolio.');setStatus('Refresh incomplete · showing available data');}}
     finally{if(!signal.aborted){setClock(Date.now());setBusy(false);setCounting(null);}}
@@ -182,7 +186,7 @@ export default function Home({memberStake}:{memberStake:string}){
   const fees=Object.values(snapshot?.facts||{}).reduce((s,f)=>s+Number(f.feeRaw||0)/1e6,0);
   const transactionTotal=snapshot?.txs.length||0;
   const analysedTotal=snapshot?.txs.filter(tx=>!!snapshot.facts[tx.tx_hash]).length||0;
-  const analysisPercent=transactionTotal?analysedTotal/transactionTotal*100:0;
+  const progress=analysisProgress(busy,analysis,analysedTotal,transactionTotal);
   const eta=analysis?remainingSeconds(analysis.started,clock,analysis.done,analysis.total):null;
   const refreshTiming=refreshStarted?`${busy?'Elapsed':'Refresh duration'}: ${durationLabel((clock-refreshStarted)/1000)}${busy?(eta!==null?` · Estimated analysis remaining: ${durationLabel(eta)}`:' · Estimating remaining time…'):''}`:'';
   const shown=(snapshot?.txs||[]).filter(t=>{const f=classifiedFacts[t.tx_hash];return (filter==='all'||f&&kindOf(f)===filter)&&(!query||t.tx_hash.includes(query.toLowerCase().trim())||(f?.wallets||[]).some(a=>displayWallets.find(w=>w.address===a)?.label.toLowerCase().includes(query.toLowerCase())));});
@@ -196,7 +200,7 @@ export default function Home({memberStake}:{memberStake:string}){
       <Metric label="ADA across wallets" value={snapshot?num(ada)+' ₳':'—'} note="Unspent balance at your tracked addresses"/>
       <Metric label={provisional?'Unrealised gain / loss · estimate':'Unrealised gain / loss'} value={covered.length?(provisional?'≈ ':'')+signed(gain):snapshot?.complete?'Basis unavailable':'Calculating…'} note={covered.length?`${provisional?'Provisional · loaded receipts only · ':''}${covered.length} of ${rows.length} holdings${costTotal>0?' · '+num(gain/costTotal*100,2)+'%':''}`:adaBasisStatus} tone={covered.length?gain>=0?'positive':'negative':''}/>
       <Metric label="Network fees paid" value={snapshot?num(fees)+' ₳':'—'} note="Shared-input fees excluded"/>
-    </div><p role="status" className="status-line">{status}{(liveQuote?.at||snapshot?.priceAt)?' · Price quote '+new Date((liveQuote?.at||snapshot?.priceAt)!).toLocaleTimeString()+' · refreshes every minute':''}</p><p className="small muted" role="timer">{refreshTiming}</p>{counting!==null?<div><p className="small muted" role="status">Counting transactions · {num(counting,0)} unique transactions found so far · total not yet known</p><progress aria-label="Counting transactions"/></div>:snapshot&&<div><p className="small muted" role="status">{num(analysedTotal,0)} / {num(transactionTotal,0)} transactions analysed · {num(analysisPercent,1)}%{busy&&!analysis?' · Cached count; checking for new transactions…':''}</p><progress aria-label="Transactions analysed" aria-valuetext={`${analysedTotal} of ${transactionTotal} transactions analysed`} max={Math.max(1,transactionTotal)} value={analysedTotal}/></div>}</section>
+    </div><p role="status" className="status-line">{status}{(liveQuote?.at||snapshot?.priceAt)?' · Price quote '+new Date((liveQuote?.at||snapshot?.priceAt)!).toLocaleTimeString()+' · refreshes every minute':''}</p><p className="small muted" role="timer">{refreshTiming}</p>{counting!==null?<div><p className="small muted" role="status">Counting transactions · {num(counting,0)} unique transactions found so far · total not yet known</p><progress aria-label="Counting transactions"/></div>:snapshot&&<div><p className="small muted" role="status">{busy&&!analysis?'Preparing refresh · 0%':`${num(progress.done,0)} / ${num(progress.total,0)} transactions analysed${busy?' this refresh':''} · ${num(progress.percent,1)}%`}</p><progress aria-label="Transactions analysed" aria-valuetext={`${progress.done} of ${progress.total} transactions analysed${busy?' this refresh':''}`} max={Math.max(1,progress.total)} value={progress.done}/></div>}</section>
     {error&&<p role="alert" className="message error">{error}</p>}{notice&&<p className="message">{notice}</p>}{cacheNotice&&<p role="status" className="message">{cacheNotice}</p>}
 
     <section className="portfolio-section"><div className="section-heading"><div><h2>Wallets in this portfolio</h2><p className="muted">Wallet 1 is your verified stake address, including all linked payment and change addresses. Add other stake addresses or payment addresses you own. Unclaimed rewards and assets locked in contracts are excluded.</p></div></div>
