@@ -12,7 +12,7 @@ import type {Snapshot} from '@/lib/portfolio-cache';
 
 import {portfolioFetch} from './transport';
 import {durationLabel,remainingSeconds} from './progress';
-import {memberWallets,resolveWalletGroups,validWalletAddress,validStakeAddress,sameTrackedAddresses} from './member';
+import {memberWallets,resolveWalletGroups,validWalletAddress,validStakeAddress,sameTrackedAddresses,walletTransactionCount} from './member';
 const num=(n:number,max=6)=>n.toLocaleString('en-US',{maximumFractionDigits:max});
 const usd=(n:number)=>n.toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:Math.abs(n)>0&&Math.abs(n)<0.01?8:2});
 const signed=(n:number)=>`${n>0?'+':''}${usd(n)}`;
@@ -182,7 +182,7 @@ export default function Home({memberStake}:{memberStake:string}){
       <Metric label={valued.length===rows.length?'Combined current value':'Priced holdings subtotal'} value={snapshot&&valued.length?usd(subtotal):'—'} note={`${valued.length} of ${rows.length} assets priced · USD`}/>
       <Metric label="ADA across wallets" value={snapshot?num(ada)+' ₳':'—'} note="Unspent balance at your tracked addresses"/>
       <Metric label={provisional?'Unrealised gain / loss · estimate':'Unrealised gain / loss'} value={covered.length?(provisional?'≈ ':'')+signed(gain):snapshot?.complete?'Basis unavailable':'Calculating…'} note={covered.length?`${provisional?'Provisional · loaded receipts only · ':''}${covered.length} of ${rows.length} holdings${costTotal>0?' · '+num(gain/costTotal*100,2)+'%':''}`:adaBasisStatus} tone={covered.length?gain>=0?'positive':'negative':''}/>
-      <Metric label="Network fees paid" value={snapshot?num(fees)+' ₳':'—'} note={`${Object.keys(snapshot?.facts||{}).length} / ${snapshot?.txs.length||0} transactions analysed · shared-input fees excluded`}/>
+      <Metric label="Network fees paid" value={snapshot?num(fees)+' ₳':'—'} note="Shared-input fees excluded"/>
     </div><p role="status" className="status-line">{status}{(liveQuote?.at||snapshot?.priceAt)?' · Price quote '+new Date((liveQuote?.at||snapshot?.priceAt)!).toLocaleTimeString()+' · refreshes every minute':''}</p><p className="small muted" role="timer">{refreshTiming}</p>{counting!==null?<div><p className="small muted" role="status">Counting transactions · {num(counting,0)} unique transactions found so far · total not yet known</p><progress aria-label="Counting transactions"/></div>:snapshot&&<div><p className="small muted" role="status">{num(analysedTotal,0)} / {num(transactionTotal,0)} transactions analysed · {num(analysisPercent,1)}%{busy&&!analysis?' · Cached count; checking for new transactions…':''}</p><progress aria-label="Transactions analysed" aria-valuetext={`${analysedTotal} of ${transactionTotal} transactions analysed`} max={Math.max(1,transactionTotal)} value={analysedTotal}/></div>}</section>
     {error&&<p role="alert" className="message error">{error}</p>}{notice&&<p className="message">{notice}</p>}{cacheNotice&&<p role="status" className="message">{cacheNotice}</p>}
 
@@ -215,12 +215,15 @@ export default function Home({memberStake}:{memberStake:string}){
 
 function WalletCard({wallet:w,primary,snapshot,remove}:{wallet:Wallet;primary:boolean;snapshot:Snapshot|null;remove:()=>void}){
   const addresses=snapshot?.groups?.[w.address];
+  const facts=Object.values(snapshot?.facts||{});
+  const countLabel=(linked:string[])=>`${num(walletTransactionCount(facts,linked),0)} transactions${snapshot?.complete?'':' · analysed so far'}`;
   return <div className="governance-menu-card"><div className="wallet-title"><strong className="governance-card-title">{w.label}</strong><button className="governance-vote-secondary" disabled={primary} onClick={remove} aria-label={`Remove ${w.label} from portfolio`}><Trash2 size={16}/></button></div>
     <a className="address" href={`https://cardanoscan.io/${validStakeAddress(w.address)?'stakekey':'address'}/${w.address}`} target="_blank" rel="noreferrer" title={w.address}>{short(w.address)} <ExternalLink size={12}/></a>
     <div className="governance-card-detail">{addresses?'₳ '+num(snapshot!.infos.filter(i=>addresses.includes(i.address)).reduce((total,i)=>total+Number(i.balance)/1e6,0)):'Loading balance…'}</div>
+    <div className="small muted">{addresses?countLabel(addresses):'Loading transaction count…'}</div>
     {validStakeAddress(w.address)&&addresses&&<details className="portfolio-linked-addresses"><summary>{addresses.length} linked addresses · includes spent addresses</summary>{addresses.map(address=>{
       const info=snapshot!.infos.find(row=>row.address===address);
-      return <div className="governance-detail-row" key={address}><a className="address" href={`https://cardanoscan.io/address/${address}`} target="_blank" rel="noreferrer">{address} <ExternalLink size={12}/></a><span>{info?'₳ '+num(Number(info.balance)/1e6):'Balance unavailable'}</span></div>;
+      return <div className="governance-detail-row" key={address}><a className="address" href={`https://cardanoscan.io/address/${address}`} target="_blank" rel="noreferrer" title={address}>{short(address)} <ExternalLink size={12}/></a><span>{info?'₳ '+num(Number(info.balance)/1e6):'Balance unavailable'}</span><span className="small muted">{countLabel([address])}</span></div>;
     })}</details>}
   </div>;
 }

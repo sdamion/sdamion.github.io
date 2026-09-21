@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {memberWallets,validStakeAddress,resolveWalletGroups,sameTrackedAddresses} from './member.ts';
+import {memberWallets,validStakeAddress,resolveWalletGroups,sameTrackedAddresses,walletTransactionCount} from './member.ts';
 import {analyse,liveAdaBasis} from './core.ts';
 const stake='stake1u9ex0jtl4nv84rlzwuft5rczy2hgkjygewla04mgy7v2nccx4p4yr';
 // Synthetic addresses, never a member's personal wallet history.
@@ -25,4 +25,8 @@ assert.throws(()=>resolveWalletGroups(wallets,[]),/completely/);
 const io=(address:string,value:string)=>({payment_addr:{bech32:address},value});
 const f=analyse({tx_hash:'internal',tx_timestamp:1,fee:'200000',inputs:[io(a,'10000000')],outputs:[io(b,'9800000')]},owned);
 assert.equal(f.internal,true);assert.equal(f.adaRaw,'-200000');assert.equal(liveAdaBasis([f],{},'9800000',false).receiptCount,0);
+assert.equal(walletTransactionCount([f,f],[a,b]),1);
+assert.equal(walletTransactionCount([f],[a]),1);
+assert.equal(walletTransactionCount([f],[b]),1);
+assert.equal(walletTransactionCount([f],[]),0);
 console.log('PASS: verified primary stake wallet, settings isolation, address resolution, overlap deduplication and internal-transfer basis.');

@@ -1,4 +1,8 @@
 import {validAddress} from './core.ts';
+export function walletTransactionCount(facts:{hash:string;wallets:string[]}[],addresses:string[]):number {
+  const owned=new Set(addresses);
+  return new Set(facts.filter(f=>f.wallets.some(address=>owned.has(address))).map(f=>f.hash)).size;
+}
 export function validStakeAddress(s:string){
   if(!/^stake1[023456789acdefghjklmnpqrstuvwxyz]{53}$/.test(s))return false;
   const alphabet='qpzry9x8gf2tvdw0s3jn54khce6mua7l',hrp='stake';
