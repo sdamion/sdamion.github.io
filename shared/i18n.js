@@ -2083,6 +2083,7 @@
 
     function translateAutoElement(element) {
         if (!(element instanceof HTMLElement)) return;
+        if (element.closest?.('[translate="no"]')) return;
         if (element.hasAttribute(TRANSLATION_ATTR)) return;
         if (element.children.length > 0) return;
 
@@ -2193,6 +2194,7 @@
             entries.forEach(entry => {
                 if (entry.type === 'characterData') {
                     const parent = entry.target?.parentElement;
+                    if (parent?.closest?.('[translate="no"]')) return;
                     if (parent?.matches?.(AUTO_TRANSLATION_SELECTOR) && !parent.hasAttribute(TRANSLATION_ATTR)) {
                         parent.removeAttribute(AUTO_TRANSLATION_ORIGINAL_ATTR);
                         translateAutoElement(parent);

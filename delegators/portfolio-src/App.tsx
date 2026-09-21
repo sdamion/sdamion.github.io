@@ -295,7 +295,7 @@ function WalletCard({wallet:w,primary,snapshot,remove}:{wallet:Wallet;primary:bo
     })}</details>}
   </div>;
 }
-function Metric({label,value,secondaryValue,note,tone=''}:{label:string;value:string;secondaryValue?:string;note:string;tone?:string}){return <div className="governance-menu-card"><strong data-i18n-auto-original={value} className={`governance-card-title ${tone}${secondaryValue?' pool-delegator-amount':''}`}>{value}{secondaryValue&&<span className="pool-delegator-usd">{secondaryValue}</span>}</strong><div className="governance-card-detail" data-i18n-auto-original={label}>{label}</div><p className="small muted">{note}</p></div>;}
+function Metric({label,value,secondaryValue,note,tone=''}:{label:string;value:string;secondaryValue?:string;note:string;tone?:string}){return <div className="governance-menu-card"><strong translate="no" className={`governance-card-title ${tone}${secondaryValue?' pool-delegator-amount':''}`}>{value}{secondaryValue&&<span className="pool-delegator-usd">{secondaryValue}</span>}</strong><div className="governance-card-detail" data-i18n-auto-original={label}>{label}</div><p className="small muted">{note}</p></div>;}
 function Transaction({tx,fact,markets,wallets,history,cexAddresses}:{tx:Tx;fact?:Fact;markets:Record<string,Market>;wallets:Wallet[];history:Record<string,number>;cexAddresses:CexAddress[]}){
   const kind=fact?kindOf(fact):null,trade=fact?tradeOf(fact):null;
   const destinations=fact?cexDestinations(fact,cexAddresses):[];

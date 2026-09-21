@@ -6,11 +6,29 @@ const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 const i18n=read('shared/i18n.js');
 const translate=i18n.slice(i18n.indexOf('    function translateAutoElement('),i18n.indexOf('    function translatePlaceholderElement('));
 
-test('Portfolio metrics update their translation source with every value and label',()=>{
+test('Portfolio live values are owned by React and labels update their translation source',()=>{
     const app=read('delegators/portfolio-src/App.tsx');
     const metric=app.slice(app.indexOf('function Metric('),app.indexOf('function Transaction('));
-    assert.match(metric, /<strong data-i18n-auto-original=\{value\}/);
+    assert.match(metric, /<strong translate="no"/);
     assert.match(metric, /className="governance-card-detail" data-i18n-auto-original=\{label\}/);
+});
+
+test('translator never replaces React-owned text nodes, even during the initial waiting state',()=>{
+    class Element {
+        children=[];
+        textContent='Waiting for transaction details';
+        closest(){return this;}
+        hasAttribute(){return false;}
+        setAttribute(){assert.fail('must not cache React-owned text');}
+    }
+    const context=vm.createContext({HTMLElement:Element});
+    vm.runInContext(translate,context);
+    const node=new Element();
+    context.translateAutoElement(node);
+    node.textContent='$4,892.12';
+    context.translateAutoElement(node);
+    assert.equal(node.textContent,'$4,892.12');
+    assert.match(i18n,/parent\?\.closest\?\.\('\[translate="no"\]'\)/);
 });
 
 test('completed metrics survive repeated translation passes in every language',()=>{
