@@ -12,7 +12,7 @@ import type {Snapshot} from '@/lib/portfolio-cache';
 
 import {portfolioFetch} from './transport';
 import {CexAddresses} from './CexAddresses';
-import {normalizeCexAddresses,cexDestinations,cexAdjustedFact} from './cex';
+import {normalizeCexAddresses,cexDestinations,cexSources,cexAdjustedFact} from './cex';
 import type {CexAddress} from './cex';
 import {durationLabel,remainingSeconds,analysisProgress} from './progress';
 import {memberWallets,resolveWalletGroups,validWalletAddress,validStakeAddress,sameTrackedAddresses,walletTransactionCount} from './member';
@@ -132,7 +132,7 @@ export default function Home({memberStake}:{memberStake:string}){
       }
       next.txs=[...map.values()].sort((a,b)=>b.block_time-a.block_time||a.tx_hash.localeCompare(b.tx_hash));
       next.facts=Object.fromEntries(Object.entries(next.facts).filter(([hash])=>map.has(hash)));
-      const missing=next.txs.filter((t,i)=>i<20||!next.facts[t.tx_hash]||!Array.isArray(next.facts[t.tx_hash].externalOutputs));
+      const missing=next.txs.filter((t,i)=>i<20||!next.facts[t.tx_hash]||!Array.isArray(next.facts[t.tx_hash].externalInputs));
       setSnapshot({...next});const owned=new Set(addresses);
       const analysisStarted=Date.now();
       const refreshedHashes=new Set<string>();
@@ -194,7 +194,7 @@ export default function Home({memberStake}:{memberStake:string}){
   return <main className="member-portfolio"><header className="portfolio-header"><div><span className="ada-logo">₳</span><strong>TDSP</strong><span className="muted"> / Portfolio</span></div><button onClick={()=>void refresh()} disabled={busy||!ready} className="governance-vote-secondary"><RefreshCw size={16} className={busy?'animate-spin':''}/> Refresh</button></header>
     <div className="portfolio-body">
     <CexAddresses entries={cexAddresses} owned={Object.values(snapshot?.groups||{}).flat().concat(wallets.map(wallet=>wallet.address))} onChange={saveCexAddresses}/>
-    {cexAddresses.length>0&&Object.values(snapshot?.facts||{}).some(fact=>!Array.isArray(fact.externalOutputs))&&<p className="small muted">Refresh to load destination addresses for older cached transactions.</p>}
+    {cexAddresses.length>0&&Object.values(snapshot?.facts||{}).some(fact=>!Array.isArray(fact.externalInputs))&&<p className="small muted">Refresh to load sender and recipient stake addresses for older cached transactions.</p>}
     <section className="portfolio-hero"><div className="eyebrow">{wallets.length} wallets · mainnet</div><h1>Your member portfolio</h1><p className="muted">Internal transfers keep your combined holdings unchanged, apart from fees.</p><div className="tdsp-tile-grid">
       <Metric label={valued.length===rows.length?'Combined current value':'Priced holdings subtotal'} value={snapshot&&valued.length?usd(subtotal):'—'} note={`${valued.length} of ${rows.length} assets priced · USD`}/>
       <Metric label="ADA across wallets" value={snapshot?num(ada)+' ₳':'—'} note="Unspent balance at your tracked addresses"/>
@@ -248,9 +248,10 @@ function Metric({label,value,note,tone=''}:{label:string;value:string;note:strin
 function Transaction({tx,fact,markets,wallets,history,cexAddresses}:{tx:Tx;fact?:Fact;markets:Record<string,Market>;wallets:Wallet[];history:Record<string,number>;cexAddresses:CexAddress[]}){
   const kind=fact?kindOf(fact):null,trade=fact?tradeOf(fact):null;
   const destinations=fact?cexDestinations(fact,cexAddresses):[];
+  const sources=fact?cexSources(fact,cexAddresses):[];
   const quantity=trade?units(trade.raw,markets[trade.id]?.decimals??fact?.decimals?.[trade.id]):null;
   const daily=history[new Date(tx.block_time*1000).toISOString().slice(0,10)];
-  return <TableRow><TableCell><a href={`https://cardanoscan.io/transaction/${tx.tx_hash}`} target="_blank" rel="noreferrer" className="address">{short(tx.tx_hash)} <ExternalLink size={12}/></a><div className={`tx-kind ${kind==='internal'?'internal':''}`}>{kind==='internal'&&<ArrowRightLeft size={14}/>} {destinations.length?(fact?.feeRaw===null?'CEX output · mixed inputs':'Sent to CEX'):trade?`${trade.side==='buy'?'Buy':'Sell'} ${markets[trade.id]?.ticker||assetName(trade.id)} · inferred`:kind==='send'?'ADA / assets spent or sent':kind==='internal'?'Transfer between own wallets':kind?labels[kind]:'Awaiting analysis'}</div>{destinations.map((destination,i)=><div className="small muted" key={`${destination.address}:${i}`}><a href={`https://cardanoscan.io/address/${destination.address}`} target="_blank" rel="noreferrer" title={destination.address}>{destination.name} · {short(destination.address)}</a> · ₳ {num(Number(destination.lovelace)/1e6)} · user label</div>)}</TableCell>
+  return <TableRow><TableCell><a href={`https://cardanoscan.io/transaction/${tx.tx_hash}`} target="_blank" rel="noreferrer" className="address">{short(tx.tx_hash)} <ExternalLink size={12}/></a><div className={`tx-kind ${kind==='internal'?'internal':''}`}>{kind==='internal'&&<ArrowRightLeft size={14}/>} {destinations.length?(fact?.feeRaw===null?'CEX output · mixed inputs':'Sent to CEX'):sources.length?(kind==='receive'?'Received · CEX input':'CEX input · mixed transaction'):trade?`${trade.side==='buy'?'Buy':'Sell'} ${markets[trade.id]?.ticker||assetName(trade.id)} · inferred`:kind==='send'?'ADA / assets spent or sent':kind==='internal'?'Transfer between own wallets':kind?labels[kind]:'Awaiting analysis'}</div>{destinations.map((destination,i)=><div className="small muted" key={`${destination.address}:${i}`}>To: <a href={`https://cardanoscan.io/address/${destination.address}`} target="_blank" rel="noreferrer" title={destination.address}>{destination.name} · {short(destination.address)}</a> · ₳ {num(Number(destination.lovelace)/1e6)} · user label</div>)}{[...new Map(sources.map(source=>[source.address,source])).values()].map(source=><div className="small muted" key={`source:${source.address}`}>CEX source: <a href={`https://cardanoscan.io/address/${source.address}`} target="_blank" rel="noreferrer" title={source.address}>{source.name} · {short(source.address)}</a> · user label</div>)}</TableCell>
     <TableCell>{new Date(tx.block_time*1000).toLocaleDateString()}<div className="small muted">{new Date(tx.block_time*1000).toLocaleTimeString()}</div></TableCell>
     <TableCell>{[...new Set(fact?.wallets.map(a=>wallets.find(w=>w.address===a)?.label||short(a)))].map(label=><div key={label}>{label}</div>)}</TableCell>
     <TableCell>{fact?<><div className={BigInt(fact.adaRaw)>=0n?'positive':'negative'}>{BigInt(fact.adaRaw)>0n?'+':''}{num(Number(fact.adaRaw)/1e6)} ₳</div>{Object.entries(fact.assets).map(([id,raw])=>{const q=units(raw,markets[id]?.decimals??fact.decimals?.[id]);return <div className="small" key={id}>{BigInt(raw)>0n?'+':''}{q===null?raw+' raw':num(q)} {markets[id]?.ticker||assetName(id)}</div>;})}{fact.internal&&<div className="small muted">Internal transfer · fee only</div>}</>:'—'}</TableCell>
