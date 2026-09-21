@@ -23,9 +23,9 @@ export function resolveWalletGroups(wallets:{address:string}[],accounts:{stake_a
   const groups:Record<string,string[]>={};
   for(const wallet of wallets){
     if(validStakeAddress(wallet.address)){
-      const row=accounts.find(a=>a.stake_address===wallet.address);
-      if(!row||!Array.isArray(row.addresses)||row.addresses.some(a=>!validAddress(a)))throw new Error('Linked addresses were not returned completely. Saved balances are retained.');
-      groups[wallet.address]=[...new Set(row.addresses)];
+      const rows=accounts.filter(a=>a.stake_address===wallet.address);
+      if(!rows.length||rows.some(row=>!Array.isArray(row.addresses)||row.addresses.some(a=>!validAddress(a))))throw new Error('Linked addresses were not returned completely. Saved balances are retained.');
+      groups[wallet.address]=[...new Set(rows.flatMap(row=>row.addresses))];
     }else if(validAddress(wallet.address))groups[wallet.address]=[wallet.address];
     else throw new Error('Invalid wallet address.');
   }

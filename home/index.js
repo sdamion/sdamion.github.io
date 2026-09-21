@@ -735,7 +735,7 @@ function getDelegatorDashboardTemplates() {
 
 function loadDelegatorAccessModule() {
     if (window.TDSPDelegatorAccess?.initOverlay) return Promise.resolve(window.TDSPDelegatorAccess);
-    return window.TDSPRuntime.loadScript('delegators/delegator-access.js?v=20260921-member-portfolio', {
+    return window.TDSPRuntime.loadScript('delegators/delegator-access.js?v=20260921-member-stay-open', {
         datasetName: 'delegatorAccess',
         selector: 'script[data-delegator-access]',
         ready: () => window.TDSPDelegatorAccess?.initOverlay ? window.TDSPDelegatorAccess : null
@@ -759,6 +759,7 @@ function openDelegatorsDashboardOverlay(event) {
         titleText: 'Dashboard',
         headerMeta: 'TDSP Delegator',
         closeLabel: 'Close delegators dashboard',
+        closeOnBackdrop: false,
         closeOverlay: closeDelegatorsDashboardOverlay,
         returnFocus: event?.currentTarget || document.activeElement,
         rootTitle: 'Delegators',
@@ -824,6 +825,7 @@ function openAdminDashboardOverlay(event) {
         titleText: 'Admin Area',
         headerMeta: 'TDSP Admin',
         closeLabel: 'Close admin area',
+        closeOnBackdrop: false,
         closeOverlay: closeAdminDashboardOverlay,
         returnFocus: event?.currentTarget || document.activeElement,
         rootTitle: 'Admin',

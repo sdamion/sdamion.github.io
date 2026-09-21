@@ -201,7 +201,11 @@ async function requestJson(url, options = {}) {
     } catch {
         payload = null;
     }
-    if (!response.ok) throw new Error(payload?.error || `HTTP ${response.status}`);
+    if (!response.ok) {
+        const error = new Error(payload?.error || `HTTP ${response.status}`);
+        error.status = response.status;
+        throw error;
+    }
     return payload;
 }
 
@@ -534,7 +538,7 @@ function cardanoscanTransactionLink(txHash) {
 }
 
 function showAuthenticatedUi(authenticated) {
-    if (!authenticated) closePortfolio?.();
+    if (!authenticated) window.dispatchEvent(new CustomEvent('tdsp:portfolio-session-expired'));
     const access = document.getElementById('raffle-access');
     const protectedArea = document.getElementById('raffle-protected');
     if (access) access.hidden = authenticated;
@@ -584,6 +588,7 @@ function openDashboardChildOverlay(key, title, content) {
         titleId: `dashboard-${key}-title`,
         titleText: title,
         closeLabel: 'Close',
+        closeOnBackdrop: false,
         closeOverlay: close,
         returnFocus,
         bodyNodes: [wrapper],
@@ -630,12 +635,13 @@ async function openMemberPortfolio() {
     const elements = window.createUniversalOverlay({
         id: 'member-portfolio-overlay', titleId: 'member-portfolio-title', titleText: 'Portfolio',
         closeLabel: 'Close portfolio', closeOverlay: close, returnFocus,
-        bodyNodes: [container], enableSearch: false, dialogClass: 'member-portfolio-dialog'
+        closeOnBackdrop: false,
+        bodyNodes: [container], enableSearch: false
     });
     closePortfolio = close;
     container.textContent = t('Loading member portfolio…');
     try {
-        const module = await import('./portfolio/app.js?v=20260921');
+        const module = await import('./portfolio/app.js?v=20260921-refresh-progress');
         if (closed) return;
         container.replaceChildren();
         dispose = module.mountPortfolio(container, { role: ROLE });
@@ -1939,9 +1945,11 @@ async function loadProtectedArea() {
         if (ROLE === 'admin') renderAdmin(payload);
         else renderDelegator(payload);
     } catch (error) {
-        sessionToken = '';
-        sessionStorage.removeItem(SESSION_KEY);
-        showAuthenticatedUi(false);
+        if (error.status === 401 || error.status === 403) {
+            sessionToken = '';
+            sessionStorage.removeItem(SESSION_KEY);
+            showAuthenticatedUi(false);
+        }
         throw error;
     }
 }
@@ -2072,6 +2080,7 @@ async function submitDraw(event) {
 }
 
 function logout() {
+    closePortfolio?.();
     setRaffleOverlay(false);
     sessionToken = '';
     sessionStorage.removeItem(SESSION_KEY);
@@ -2153,7 +2162,13 @@ async function init(options = {}) {
         try {
             await loadProtectedArea();
             return;
-        } catch {
+        } catch (error) {
+            if (sessionToken) {
+                document.body.classList.remove('raffle-auth-gate-pending');
+                showAuthenticatedUi(false);
+                setStatus(error.message || 'Dashboard could not be loaded. Please try again.', true);
+                return;
+            }
             if (!overlayMode && ROLE === 'admin') {
                 window.location.replace('index.html#pool');
                 return;

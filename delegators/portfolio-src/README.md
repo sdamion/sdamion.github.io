@@ -2,11 +2,11 @@
 
 The members and admin dashboards load this React widget only after wallet authentication. Its first wallet comes from the authenticated `/api/portfolio/session` response, never a URL parameter or a fixed personal address. Stake wallets expand to all associated payment addresses, including empty/spent addresses. Extra wallets and IndexedDB snapshots are scoped to the verified member and wallet set.
 
-The widget mounts in a Shadow DOM inside the existing dashboard overlay. Its CSS is isolated; the site's CSP, signing flow and wallet permissions are unchanged. Closing or locking the dashboard unmounts it and aborts pending requests.
+The widget mounts inside the existing universal dashboard overlay and uses the website's shared stylesheet, tiles, tables and buttons. It has no Shadow DOM or separate stylesheet. The site's CSP, signing flow and wallet permissions are unchanged. Closing or locking the dashboard unmounts it and aborts pending requests.
 
 ## Build
 
-Run `npm install` and `npm run build` in this directory. Commit the generated `../portfolio/app.js` and `../portfolio/styles.css` with source changes. An existing compatible dependency installation may be passed to `node build.mjs /absolute/path/to/dependency-project`.
+Run `npm install` and `npm run build` in this directory. Commit the generated `../portfolio/app.js` with source changes. An existing compatible dependency installation may be passed to `node build.mjs /absolute/path/to/dependency-project`.
 
 ## Backend and rollout
 

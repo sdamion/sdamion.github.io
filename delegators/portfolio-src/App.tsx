@@ -11,6 +11,7 @@ import {readCache,saveCache} from '@/lib/portfolio-cache';
 import type {Snapshot} from '@/lib/portfolio-cache';
 
 import {portfolioFetch} from './transport';
+import {durationLabel,remainingSeconds,loadedDateRange} from './progress';
 import {memberWallets,resolveWalletGroups,validWalletAddress,validStakeAddress,sameTrackedAddresses} from './member';
 const num=(n:number,max=6)=>n.toLocaleString('en-US',{maximumFractionDigits:max});
 const usd=(n:number)=>n.toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:Math.abs(n)>0&&Math.abs(n)<0.01?8:2});
@@ -47,6 +48,8 @@ export default function Home({memberStake}:{memberStake:string}){
   const [page,setPage]=useState(0);
   const [liveQuote,setLiveQuote]=useState<{usd:number;at:string}|null>(null);
   const controller=useRef<AbortController|null>(null);
+  const [refreshStarted,setRefreshStarted]=useState(0),[clock,setClock]=useState(0);
+  const [analysis,setAnalysis]=useState<{started:number;done:number;total:number}|null>(null);
   const key=memberStake+'::'+wallets.map(w=>w.address).sort().join('|');
   const overrideKey='tdsp-member-basis:'+key;
 
@@ -55,6 +58,11 @@ export default function Home({memberStake}:{memberStake:string}){
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[ready,key]);
   useEffect(()=>setPage(0),[filter,query,key]);
+  useEffect(()=>{
+    if(!busy)return;
+    const timer=setInterval(()=>setClock(Date.now()),1000);
+    return()=>clearInterval(timer);
+  },[busy]);
   useEffect(()=>{
     if(!ready)return;
     const control=new AbortController();let pending=false;
@@ -67,6 +75,7 @@ export default function Home({memberStake}:{memberStake:string}){
 
   async function refresh(){
     controller.current?.abort();const control=new AbortController();controller.current=control;const signal=control.signal;
+    const started=Date.now();setRefreshStarted(started);setClock(started);setAnalysis(null);
     setBusy(true);setError('');setNotice('');setStatus('Loading local cache…');
     try{
       let cached:Snapshot|null=null;try{cached=await readCache(key);}catch{setCacheNotice('Local cache unavailable. Live data will still load.');}
@@ -113,16 +122,19 @@ export default function Home({memberStake}:{memberStake:string}){
       next.facts=Object.fromEntries(Object.entries(next.facts).filter(([hash])=>map.has(hash)));
       const missing=next.txs.filter((t,i)=>i<20||!next.facts[t.tx_hash]);
       setSnapshot({...next});const owned=new Set(addresses);
+      const analysisStarted=Date.now();
+      setAnalysis({started:analysisStarted,done:0,total:missing.length});
       for(let i=0;i<missing.length;i+=50){
         setStatus(`Analysing ${num(Object.keys(next.facts).length,0)} / ${num(next.txs.length,0)} transactions`);
         const batch=missing.slice(i,i+50);const details=await request<Detail[]>('tx_info',{_tx_hashes:batch.map(t=>t.tx_hash),_inputs:true,_assets:true,_metadata:false,_withdrawals:false,_certs:false,_scripts:false,_bytecode:false},signal);
         for(const d of details)next.facts[d.tx_hash]=analyse(d,owned);
         signal.throwIfAborted();setSnapshot({...next,facts:{...next.facts}});await persist();
+        setAnalysis({started:analysisStarted,done:Math.min(i+batch.length,missing.length),total:missing.length});
       }
       next.complete=next.txs.every(t=>!!next.facts[t.tx_hash]);await persist();signal.throwIfAborted();setSnapshot({...next});
       setStatus(next.complete?`Updated ${new Date(next.updated).toLocaleString()}`:'Some transactions are awaiting analysis. Refresh to retry.');
     }catch(e){if(!signal.aborted){setError(e instanceof Error?e.message:'Could not update this portfolio.');setStatus('Refresh incomplete · showing available data');}}
-    finally{if(!signal.aborted)setBusy(false);}
+    finally{if(!signal.aborted){setClock(Date.now());setBusy(false);}}
   }
 
   function saveWallets(next:Wallet[]){next=memberWallets(memberStake,next);controller.current?.abort();try{localStorage.setItem(SETTINGS,JSON.stringify(next));}catch{setCacheNotice('Wallet settings could not be saved in this browser.');}setWallets(next);}
@@ -150,24 +162,31 @@ export default function Home({memberStake}:{memberStake:string}){
   const adaBasisStatus=!snapshot?.complete?adaLive?.usd!==null&&adaLive?.usd!==undefined?`Provisional · ${num(adaLive.receiptCount,0)} priced receipts${adaLive.missingReceiptAda>0?' · some receipt prices missing':''}`:'Waiting for a priced ADA receipt…':!adaLive?.reconciled?'History / balance mismatch — refresh to reconcile':adaLive.usd===null?'Missing receipt prices':'Receipt-date weighted average';
   const displayWallets=wallets.flatMap(w=>(snapshot?.groups?.[w.address]||[w.address]).map(address=>({...w,address})));
   const fees=Object.values(snapshot?.facts||{}).reduce((s,f)=>s+Number(f.feeRaw||0)/1e6,0);
+  const transactionTotal=snapshot?.txs.length||0;
+  const analysedTotal=snapshot?.txs.filter(tx=>!!snapshot.facts[tx.tx_hash]).length||0;
+  const analysisPercent=transactionTotal?analysedTotal/transactionTotal*100:0;
+  const historyDates=loadedDateRange(Object.values(snapshot?.facts||{}).map(f=>f.time));
+  const feeDates=loadedDateRange(Object.values(snapshot?.facts||{}).filter(f=>f.feeRaw!==null).map(f=>f.time));
+  const eta=analysis?remainingSeconds(analysis.started,clock,analysis.done,analysis.total):null;
+  const refreshTiming=refreshStarted?`${busy?'Elapsed':'Refresh duration'}: ${durationLabel((clock-refreshStarted)/1000)}${busy?(eta!==null?` · Estimated analysis remaining: ${durationLabel(eta)}`:' · Estimating remaining time…'):''}`:'';
   const shown=(snapshot?.txs||[]).filter(t=>{const f=snapshot?.facts[t.tx_hash];return (filter==='all'||f&&kindOf(f)===filter)&&(!query||t.tx_hash.includes(query.toLowerCase().trim())||(f?.wallets||[]).some(a=>displayWallets.find(w=>w.address===a)?.label.toLowerCase().includes(query.toLowerCase())));});
 
-  return <main className="portfolio"><header className="portfolio-header"><div><span className="ada-logo">₳</span><strong>TDSP</strong><span className="muted"> / Portfolio</span></div><button onClick={()=>void refresh()} disabled={busy||!ready} className="action"><RefreshCw size={16} className={busy?'animate-spin':''}/> Refresh</button></header>
-    <div className="portfolio-body"><section className="portfolio-hero"><div className="eyebrow">{wallets.length} wallets · mainnet</div><h1>Your member portfolio</h1><p className="muted">Internal transfers keep your combined holdings unchanged, apart from fees.</p><div className="metrics">
+  return <main className="member-portfolio"><header className="portfolio-header"><div><span className="ada-logo">₳</span><strong>TDSP</strong><span className="muted"> / Portfolio</span></div><button onClick={()=>void refresh()} disabled={busy||!ready} className="governance-vote-secondary"><RefreshCw size={16} className={busy?'animate-spin':''}/> Refresh</button></header>
+    <div className="portfolio-body"><section className="portfolio-hero"><div className="eyebrow">{wallets.length} wallets · mainnet</div><h1>Your member portfolio</h1><p className="muted">Internal transfers keep your combined holdings unchanged, apart from fees.</p><div className="tdsp-tile-grid">
       <Metric label={valued.length===rows.length?'Combined current value':'Priced holdings subtotal'} value={snapshot&&valued.length?usd(subtotal):'—'} note={`${valued.length} of ${rows.length} assets priced · USD`}/>
       <Metric label="ADA across wallets" value={snapshot?num(ada)+' ₳':'—'} note="Unspent balance at your tracked addresses"/>
-      <Metric label={provisional?'Unrealised gain / loss · estimate':'Unrealised gain / loss'} value={covered.length?(provisional?'≈ ':'')+signed(gain):snapshot?.complete?'Basis unavailable':'Calculating…'} note={covered.length?`${provisional?'Provisional · loaded receipts only · ':''}${covered.length} of ${rows.length} holdings${costTotal>0?' · '+num(gain/costTotal*100,2)+'%':''}`:adaBasisStatus} tone={covered.length?gain>=0?'positive':'negative':''}/>
-      <Metric label="Network fees paid" value={snapshot?num(fees)+' ₳':'—'} note={`${Object.keys(snapshot?.facts||{}).length} / ${snapshot?.txs.length||0} transactions analysed · shared-input fees excluded`}/>
-    </div><p role="status" className="status-line">{status}{(liveQuote?.at||snapshot?.priceAt)?' · Price quote '+new Date((liveQuote?.at||snapshot?.priceAt)!).toLocaleTimeString()+' · refreshes every minute':''}</p></section>
+      <Metric label={provisional?'Unrealised gain / loss · estimate':'Unrealised gain / loss'} value={covered.length?(provisional?'≈ ':'')+signed(gain):snapshot?.complete?'Basis unavailable':'Calculating…'} note={covered.length?`${provisional?'Provisional · loaded receipts only · ':''}${covered.length} of ${rows.length} holdings${costTotal>0?' · '+num(gain/costTotal*100,2)+'%':''}`:adaBasisStatus} tone={covered.length?gain>=0?'positive':'negative':''} dates={`Loaded history: ${historyDates}${snapshot?.complete?'':' · Partial'} · ADA quote: ${(liveQuote?.at||snapshot?.priceAt)?new Date((liveQuote?.at||snapshot?.priceAt)!).toLocaleString():'Unavailable'} · Token snapshot: ${snapshot?new Date(snapshot.updated).toLocaleString():'Unavailable'}`}/>
+      <Metric label="Network fees paid" value={snapshot?num(fees)+' ₳':'—'} note={`${Object.keys(snapshot?.facts||{}).length} / ${snapshot?.txs.length||0} transactions analysed · shared-input fees excluded`} dates={`Loaded fee history: ${feeDates}${snapshot?.complete?'':' · Partial'}`}/>
+    </div><p role="status" className="status-line">{status}{(liveQuote?.at||snapshot?.priceAt)?' · Price quote '+new Date((liveQuote?.at||snapshot?.priceAt)!).toLocaleTimeString()+' · refreshes every minute':''}</p><p className="small muted" role="timer">{refreshTiming}</p>{snapshot&&<div><p className="small muted" role="status">{num(analysedTotal,0)} / {num(transactionTotal,0)} transactions analysed · {num(analysisPercent,1)}%{busy&&!analysis?' · Cached count; checking for new transactions…':''}</p><progress aria-label="Transactions analysed" aria-valuetext={`${analysedTotal} of ${transactionTotal} transactions analysed`} max={Math.max(1,transactionTotal)} value={analysedTotal}/></div>}</section>
     {error&&<p role="alert" className="message error">{error}</p>}{notice&&<p className="message">{notice}</p>}{cacheNotice&&<p role="status" className="message">{cacheNotice}</p>}
 
-    <section className="panel"><div className="section-heading"><div><h2>Wallets in this portfolio</h2><p className="muted">Wallet 1 is your verified stake address, including all linked payment and change addresses. Add other stake addresses or payment addresses you own. Unclaimed rewards and assets locked in contracts are excluded.</p></div></div>
-      <div className="wallet-grid">{wallets.map((w,i)=><div className="wallet-card" key={w.address}><div className="wallet-title"><strong>{w.label}</strong><button className="icon-button" disabled={i===0} onClick={()=>saveWallets(wallets.filter(x=>x.address!==w.address))} aria-label={`Remove ${w.label} from portfolio`}><Trash2 size={16}/></button></div><a className="address" href={`https://cardanoscan.io/${validStakeAddress(w.address)?'stakekey':'address'}/${w.address}`} target="_blank" rel="noreferrer" title={w.address}>{short(w.address)} <ExternalLink size={12}/></a><div className="wallet-balance">{snapshot?.groups?.[w.address]?num(snapshot.infos.filter(i=>snapshot.groups?.[w.address]?.includes(i.address)).reduce((total,i)=>total+Number(i.balance)/1e6,0))+' ₳':'Loading balance…'}</div></div>)}</div>
-      <form onSubmit={addWallet} className="wallet-form"><label>Wallet name<Input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Savings" maxLength={60}/></label><label className="address-field">Stake or payment address<Input value={address} onChange={e=>setAddress(e.target.value)} placeholder="stake1… or addr1…" aria-describedby="wallet-error" required/></label><button className="action primary" type="submit"><Plus size={16}/>Add wallet</button></form><p id="wallet-error" role="status" className="negative">{walletError}</p>
+    <section className="portfolio-section"><div className="section-heading"><div><h2>Wallets in this portfolio</h2><p className="muted">Wallet 1 is your verified stake address, including all linked payment and change addresses. Add other stake addresses or payment addresses you own. Unclaimed rewards and assets locked in contracts are excluded.</p></div></div>
+      <div className="tdsp-tile-grid">{wallets.map((w,i)=><WalletCard key={w.address} wallet={w} primary={i===0} snapshot={snapshot} remove={()=>saveWallets(wallets.filter(x=>x.address!==w.address))}/>)}</div>
+      <form onSubmit={addWallet} className="wallet-form governance-drep-registration-form"><label>Wallet name<Input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Savings" maxLength={60}/></label><label className="address-field">Stake or payment address<Input value={address} onChange={e=>setAddress(e.target.value)} placeholder="stake1… or addr1…" aria-describedby="wallet-error" required/></label><button className="governance-vote-primary" type="submit"><Plus size={16}/>Add wallet</button></form><p id="wallet-error" role="status" className="negative">{walletError}</p>
       <p className="small muted">Wallets, prices you enter, and cached history are saved in this browser. Adding or removing a wallet recalculates the entire portfolio; average costs are saved separately for each wallet combination.</p>
     </section>
 
-    <section className="panel"><div className="section-heading"><div><h2>Current holdings & performance</h2><p className="muted">ADA buy price is calculated automatically from receipt-date market prices across your tracked wallets. Gain / loss = current value − remaining cost.</p></div></div>
+    <section className="portfolio-section"><div className="section-heading"><div><h2>Current holdings & performance</h2><p className="muted">ADA buy price is calculated automatically from receipt-date market prices across your tracked wallets. Gain / loss = current value − remaining cost.</p></div></div>
       <Table><TableHeader><TableRow>{['Asset','Balance','Current price · USD','Current value','Average buy · USD / unit','Unrealised gain / loss'].map(t=><TableHead key={t}>{t}</TableHead>)}</TableRow></TableHeader><TableBody>{rows.map(r=><TableRow key={r.id}>
         <TableCell><strong title={r.id}>{r.name}</strong><div className="small muted" title={r.id}>{r.id==='lovelace'?'Cardano':short(r.id)}</div></TableCell>
         <TableCell>{r.qty===null?`${r.raw} raw units`:num(r.qty)}{r.qty===null&&<div className="small muted">Token decimals unavailable</div>}</TableCell>
@@ -179,16 +198,27 @@ export default function Home({memberStake}:{memberStake:string}){
       <p className="small muted table-note">During sync, the provisional ADA estimate applies the weighted average of loaded, priced external receipts to your current balance. It updates after each batch; missing receipt prices are excluded from this estimate, never treated as zero. It may change substantially as older transactions load. Once all history is available and matches the balance, the remaining-cost calculation includes proportional cost removed by sends, spends and fees. Internal transfers never reset the average. Daily closing prices approximate receipt-time prices; today’s price is provisional. This is your receipt-price benchmark, not an exchange execution price or tax calculation. Token costs use inferred FIFO trades or your entry. Performance excludes realised gains; current holdings already reflect fees.</p>
     </section>
 
-    <section className="panel"><div className="section-heading"><div><h2>Combined transaction history <span className="muted">{num(snapshot?.txs.length||0,0)}</span></h2><p className="muted">Each transaction appears once, even when it touches multiple wallets.</p></div><Input aria-label="Search transactions or wallet names" placeholder="Transaction hash or wallet name" value={query} onChange={e=>setQuery(e.target.value)} className="search-input"/></div>
+    <section className="portfolio-section"><div className="section-heading"><div><h2>Combined transaction history <span className="muted">{num(snapshot?.txs.length||0,0)}</span></h2><p className="muted">Each transaction appears once, even when it touches multiple wallets.</p></div><Input aria-label="Search transactions or wallet names" placeholder="Transaction hash or wallet name" value={query} onChange={e=>setQuery(e.target.value)} className="search-input"/></div>
       <div className="filter-row">{Object.entries(labels).map(([id,label])=><button key={id} aria-pressed={filter===id} onClick={()=>setFilter(id)} className={filter===id?'active':''}>{label}</button>)}</div>
       <div className="history-table"><Table><TableHeader><TableRow>{['Transaction / type','Date','Wallets','Portfolio change','ADA / trade price / fee'].map(t=><TableHead key={t}>{t}</TableHead>)}</TableRow></TableHeader><TableBody>{shown.slice(page*100,(page+1)*100).map(t=><Transaction key={t.tx_hash} tx={t} fact={snapshot?.facts[t.tx_hash]} wallets={displayWallets} markets={snapshot?.markets||{}} history={snapshot?.history||{}}/>)}</TableBody></Table></div>{!shown.length&&<p className="empty">{busy?'Loading transactions…':'No matching transactions.'}</p>}
-      <Pagination className="mt-4"><PaginationContent><PaginationItem><button className="action" disabled={page===0} onClick={()=>setPage(p=>p-1)}>Previous</button></PaginationItem><PaginationItem><span className="small px-3">Page {page+1} / {Math.max(1,Math.ceil(shown.length/100))} · {num(shown.length,0)} transactions</span></PaginationItem><PaginationItem><button className="action" disabled={(page+1)*100>=shown.length} onClick={()=>setPage(p=>p+1)}>Next</button></PaginationItem></PaginationContent></Pagination>
+      <Pagination className="mt-4"><PaginationContent><PaginationItem><button className="governance-vote-secondary" disabled={page===0} onClick={()=>setPage(p=>p-1)}>Previous</button></PaginationItem><PaginationItem><span className="small px-3">Page {page+1} / {Math.max(1,Math.ceil(shown.length/100))} · {num(shown.length,0)} transactions</span></PaginationItem><PaginationItem><button className="governance-vote-secondary" disabled={(page+1)*100>=shown.length} onClick={()=>setPage(p=>p+1)}>Next</button></PaginationItem></PaginationContent></Pagination>
       <p className="small muted table-note">Internal transfers require all inputs and outputs to belong to tracked addresses. Their net change is only the fee. Mixed transactions remain separate. Buy/sell labels are inferred from opposing ADA and token changes; multi-step DEX orders may need further reconciliation.</p>
     </section><footer>Balances: Koios · Token quotes: <a href="https://docs.minswap.org/developer/aggregator-api" target="_blank" rel="noreferrer">Minswap</a> · Daily ADA prices: <a href="https://docs.coinmetrics.io/network-data/network-data-overview/market/price" target="_blank" rel="noreferrer">Coin Metrics</a> · Recent gaps: Coinbase · USD</footer></div>
   </main>;
 }
 
-function Metric({label,value,note,tone=''}:{label:string;value:string;note:string;tone?:string}){return <div className="metric"><div className="muted">{label}</div><strong className={tone}>{value}</strong><p className="small muted">{note}</p></div>;}
+function WalletCard({wallet:w,primary,snapshot,remove}:{wallet:Wallet;primary:boolean;snapshot:Snapshot|null;remove:()=>void}){
+  const addresses=snapshot?.groups?.[w.address];
+  return <div className="governance-menu-card"><div className="wallet-title"><strong className="governance-card-title">{w.label}</strong><button className="governance-vote-secondary" disabled={primary} onClick={remove} aria-label={`Remove ${w.label} from portfolio`}><Trash2 size={16}/></button></div>
+    <a className="address" href={`https://cardanoscan.io/${validStakeAddress(w.address)?'stakekey':'address'}/${w.address}`} target="_blank" rel="noreferrer" title={w.address}>{short(w.address)} <ExternalLink size={12}/></a>
+    <div className="governance-card-detail">{addresses?'₳ '+num(snapshot!.infos.filter(i=>addresses.includes(i.address)).reduce((total,i)=>total+Number(i.balance)/1e6,0)):'Loading balance…'}</div>
+    {validStakeAddress(w.address)&&addresses&&<details className="portfolio-linked-addresses"><summary>{addresses.length} linked addresses · includes spent addresses</summary>{addresses.map(address=>{
+      const info=snapshot!.infos.find(row=>row.address===address);
+      return <div className="governance-detail-row" key={address}><a className="address" href={`https://cardanoscan.io/address/${address}`} target="_blank" rel="noreferrer">{address} <ExternalLink size={12}/></a><span>{info?'₳ '+num(Number(info.balance)/1e6):'Balance unavailable'}</span></div>;
+    })}</details>}
+  </div>;
+}
+function Metric({label,value,note,tone='',dates}:{label:string;value:string;note:string;tone?:string;dates?:string}){return <div className="governance-menu-card"><strong className={`governance-card-title ${tone}`}>{value}</strong><div className="governance-card-detail">{label}</div><p className="small muted">{note}</p>{dates&&<p className="small muted">{dates}</p>}</div>;}
 function Transaction({tx,fact,markets,wallets,history}:{tx:Tx;fact?:Fact;markets:Record<string,Market>;wallets:Wallet[];history:Record<string,number>}){
   const kind=fact?kindOf(fact):null,trade=fact?tradeOf(fact):null;
   const quantity=trade?units(trade.raw,markets[trade.id]?.decimals??fact?.decimals?.[trade.id]):null;

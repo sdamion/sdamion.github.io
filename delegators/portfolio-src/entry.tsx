@@ -17,13 +17,11 @@ function MemberPortfolio(){
     }).catch(e=>{if(!control.signal.aborted)setError(e.message);});
     return()=>{control.abort();window.removeEventListener('tdsp:portfolio-session-expired',lock);};
   },[]);
-  return stake?<Home key={stake} memberStake={stake}/>:<main className="portfolio"><div className="portfolio-body"><h1>Member portfolio</h1><p role="status">{error}</p></div></main>;
+  return stake?<Home key={stake} memberStake={stake}/>:<main className="member-portfolio"><div className="portfolio-body"><h1>Member portfolio</h1><p role="status">{error}</p></div></main>;
 }
 export function mountPortfolio(container:HTMLElement,{role='delegator'}:{role?:'delegator'|'admin'}={}){
   setSessionRole(role);
-  const shadow=container.attachShadow({mode:'open'});
-  const stylesheet=document.createElement('link');stylesheet.rel='stylesheet';stylesheet.href=new URL('./styles.css?v=20260921',import.meta.url).href;
-  const content=document.createElement('div');shadow.append(stylesheet,content);
+  const content=document.createElement('div');container.append(content);
   const root=createRoot(content);root.render(<MemberPortfolio/>);
   return ()=>{root.unmount();container.replaceChildren();};
 }

@@ -1,6 +1,63 @@
 /* Fonts */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;700&display=swap&font-display=swap');
 
+/* Portfolio uses the same visual tokens and components as the other overlays. */
+.member-portfolio-host,
+.member-portfolio {
+    width: 100%;
+    min-width: 0;
+}
+.member-portfolio {
+    color: var(--tdsp-tile-detail-color);
+    font: inherit;
+    font-size: var(--tdsp-tile-detail-size);
+}
+.member-portfolio :is(.portfolio-body, .portfolio-hero, .portfolio-section, .portfolio-linked-addresses) {
+    display: grid;
+    gap: 18px;
+    min-width: 0;
+}
+.member-portfolio :is(.portfolio-header, .section-heading, .wallet-title, .wallet-form, .filter-row) {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    min-width: 0;
+}
+.member-portfolio :is(.portfolio-header, .wallet-title) { justify-content: space-between; }
+.member-portfolio :is(h1, h2) {
+    color: var(--tdsp-tile-title-color);
+    font-size: var(--tdsp-tile-title-size);
+    font-weight: var(--tdsp-tile-title-weight);
+    letter-spacing: 0;
+    margin: 0;
+}
+.member-portfolio :is(.small, .muted, .status-line, footer) {
+    color: var(--tdsp-tile-detail-color);
+    font-size: var(--tdsp-tile-detail-size);
+}
+.member-portfolio .positive { color: var(--accent-strong); }
+.member-portfolio .negative { color: var(--ai-unavailable-color, #c62828); }
+.member-portfolio :is(.address, .message) { overflow-wrap: anywhere; }
+.member-portfolio .address { color: var(--accent-strong); }
+.member-portfolio .wallet-form label { display: grid; gap: 8px; min-width: 0; flex: 1 1 220px; }
+.member-portfolio input {
+    min-width: 0;
+    max-width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    color: var(--text);
+    background: var(--surface);
+    font: inherit;
+}
+.member-portfolio .table-shell { overflow-x: auto; }
+.member-portfolio .table-shell table { min-width: 640px; }
+.member-portfolio .governance-action-buttons { list-style: none; padding: 0; }
+.member-portfolio .portfolio-linked-addresses { width: 100%; }
+.member-portfolio .portfolio-linked-addresses:not([open]) { display: block; }
+.member-portfolio .portfolio-linked-addresses > div { padding-block: 8px; border-bottom: 1px solid var(--line); }
+
 /* Base Reset */
 * {
     margin: 0;

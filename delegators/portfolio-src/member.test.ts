@@ -19,6 +19,7 @@ const wallets=memberWallets(stake,[{address:b,label:'Savings'},{address:stake,la
 assert.equal(wallets[0].address,stake);assert.equal(wallets[0].label,'Wallet 1 · Member stake address');assert.equal(wallets.length,2);
 assert.deepEqual(memberWallets(stake,null),[{address:stake,label:'Wallet 1 · Member stake address'}]);
 const groups=resolveWalletGroups(wallets,[{stake_address:stake,addresses:[a,b]}]);
+assert.deepEqual(resolveWalletGroups([{address:stake}],[{stake_address:stake,addresses:[a]},{stake_address:stake,addresses:[b,a]}])[stake],[a,b]);
 const owned=new Set(Object.values(groups).flat());assert.equal(owned.size,2);
 assert.throws(()=>resolveWalletGroups(wallets,[]),/completely/);
 const io=(address:string,value:string)=>({payment_addr:{bech32:address},value});
