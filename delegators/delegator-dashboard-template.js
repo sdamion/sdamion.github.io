@@ -57,6 +57,10 @@
                                 <strong class="governance-card-title">Prizes</strong>
                                 <span class="governance-card-detail" id="raffle-prizes-summary">Raffle wallet tokens</span>
                             </button>
+                            <button class="governance-menu-card raffle-open-tile" id="member-portfolio-open" type="button">
+                                <strong class="governance-card-title">Portfolio</strong>
+                                <span class="governance-card-detail">Wallet transactions, average ADA cost and gain / loss</span>
+                            </button>
                         </div>
                     </section>
                     <p id="raffle-status" class="wallet-status raffle-status" role="status" aria-live="polite" hidden></p>
@@ -149,6 +153,10 @@
                             <button class="governance-menu-card raffle-open-tile" id="raffle-lost-stake-open" type="button">
                                 <strong class="governance-card-title">Lost stake</strong>
                                 <span class="governance-card-detail" id="raffle-dashboard-lost-stake-count">Stake on retired pools</span>
+                            </button>
+                            <button class="governance-menu-card raffle-open-tile" id="member-portfolio-open" type="button">
+                                <strong class="governance-card-title">Portfolio</strong>
+                                <span class="governance-card-detail">Your stake wallet and portfolio</span>
                             </button>
                         </div>
                     </section>

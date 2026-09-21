@@ -1,0 +1,11 @@
+import React from 'react';
+export const Input=(props:React.ComponentProps<'input'>)=><input {...props}/>;
+export const Table=(props:React.ComponentProps<'table'>)=><div data-slot="table-container"><table {...props}/></div>;
+export const TableHeader=(props:React.ComponentProps<'thead'>)=><thead {...props}/>;
+export const TableBody=(props:React.ComponentProps<'tbody'>)=><tbody {...props}/>;
+export const TableRow=(props:React.ComponentProps<'tr'>)=><tr {...props}/>;
+export const TableHead=(props:React.ComponentProps<'th'>)=><th {...props}/>;
+export const TableCell=(props:React.ComponentProps<'td'>)=><td {...props}/>;
+export const Pagination=(props:React.ComponentProps<'nav'>)=><nav aria-label="pagination" {...props}/>;
+export const PaginationContent=(props:React.ComponentProps<'ul'>)=><ul {...props}/>;
+export const PaginationItem=(props:React.ComponentProps<'li'>)=><li {...props}/>;

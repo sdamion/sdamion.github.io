@@ -694,6 +694,17 @@ const server = createServer(async (req, res) => {
   const route = proxyRoutes[url.pathname];
 
   try {
+    if (url.pathname.startsWith('/api/portfolio/')) {
+      if (!/^\/api\/portfolio\/(session|cardano|markets|price|historical-prices)$/.test(url.pathname) || !['GET', 'POST'].includes(req.method)) {
+        sendJson(res, 404, { error: 'Portfolio endpoint not found' });
+        return;
+      }
+      const body = req.method === 'POST' ? await readRequestBody(req) : null;
+      await proxyRequest(`${process.env.PORTFOLIO_API_ORIGIN || TDSP_API_ORIGIN}${url.pathname}`, res, {
+        method: req.method, body, authorization: String(req.headers.authorization || ''), timeoutMs: 45000
+      });
+      return;
+    }
     if (route) {
       const target = route(url);
       if (!target) {

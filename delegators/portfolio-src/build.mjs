@@ -1,0 +1,13 @@
+import {createRequire} from 'node:module';
+import {fileURLToPath} from 'node:url';
+import path from 'node:path';
+import {mkdir,copyFile} from 'node:fs/promises';
+const source=path.dirname(fileURLToPath(import.meta.url));
+const dependencyRoot=process.argv[2]?path.resolve(process.argv[2]):source;
+const require=createRequire(path.join(dependencyRoot,'package.json'));
+const {build}=require('esbuild');
+const output=path.join(source,'../portfolio');
+await mkdir(output,{recursive:true});
+await build({entryPoints:[path.join(source,'entry.tsx')],outfile:path.join(output,'app.js'),bundle:true,minify:true,format:'esm',target:'es2020',jsx:'automatic',nodePaths:[path.join(dependencyRoot,'node_modules')],define:{'process.env.NODE_ENV':'"production"'},alias:{'@/lib/portfolio':path.join(source,'core.ts'),'@/lib/portfolio-cache':path.join(source,'cache.ts'),'@/components/ui/input':path.join(source,'ui.tsx'),'@/components/ui/table':path.join(source,'ui.tsx'),'@/components/ui/pagination':path.join(source,'ui.tsx')}});
+await copyFile(path.join(source,'styles.css'),path.join(output,'styles.css'));
+console.log('Member portfolio built.');

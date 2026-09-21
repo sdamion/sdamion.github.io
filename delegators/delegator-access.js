@@ -49,6 +49,7 @@ let meshPromise = null;
 let SESSION_KEY = `tdsp-raffle-session-${ROLE}`;
 let sessionToken = sessionStorage.getItem(SESSION_KEY) || '';
 const dashboardChildOverlays = new Map();
+let closePortfolio = null;
 let adminTransactionWallet = null;
 let raffleAnchorSupported = false;
 let raffleMinimumSupported = false;
@@ -533,6 +534,7 @@ function cardanoscanTransactionLink(txHash) {
 }
 
 function showAuthenticatedUi(authenticated) {
+    if (!authenticated) closePortfolio?.();
     const access = document.getElementById('raffle-access');
     const protectedArea = document.getElementById('raffle-protected');
     if (access) access.hidden = authenticated;
@@ -607,6 +609,39 @@ function setPrizeOverlay(open) {
         return;
     }
     closeDashboardChildOverlay('prizes');
+}
+
+async function openMemberPortfolio() {
+    if (closePortfolio || !sessionToken || document.getElementById('raffle-protected')?.hidden) return;
+    const container = document.createElement('div');
+    container.className = 'member-portfolio-host';
+    const returnFocus = document.activeElement;
+    let dispose = null;
+    let closed = false;
+    const close = () => {
+        if (closed) return;
+        closed = true;
+        dispose?.();
+        elements.overlay.remove();
+        closePortfolio = null;
+        window.syncGovernanceMenuOverlayAccessibility?.();
+        if (returnFocus?.isConnected) returnFocus.focus();
+    };
+    const elements = window.createUniversalOverlay({
+        id: 'member-portfolio-overlay', titleId: 'member-portfolio-title', titleText: 'Portfolio',
+        closeLabel: 'Close portfolio', closeOverlay: close, returnFocus,
+        bodyNodes: [container], enableSearch: false, dialogClass: 'member-portfolio-dialog'
+    });
+    closePortfolio = close;
+    container.textContent = t('Loading member portfolio…');
+    try {
+        const module = await import('./portfolio/app.js?v=20260921');
+        if (closed) return;
+        container.replaceChildren();
+        dispose = module.mountPortfolio(container, { role: ROLE });
+    } catch {
+        if (!closed) container.textContent = t('Portfolio could not be loaded. Close and try again.');
+    }
 }
 
 function formatPrizeLine(asset) {
@@ -2074,6 +2109,7 @@ async function init(options = {}) {
     document.getElementById('raffle-logout')?.addEventListener('click', logout);
     document.getElementById('raffle-open')?.addEventListener('click', () => setRaffleOverlay(true));
     document.getElementById('raffle-prizes-open')?.addEventListener('click', () => setPrizeOverlay(true));
+    document.getElementById('member-portfolio-open')?.addEventListener('click', openMemberPortfolio);
     document.getElementById('raffle-admin-users-open')?.addEventListener('click', () => setRaffleOverlay(true, 'admins'));
     document.getElementById('raffle-lost-stake-open')?.addEventListener('click', () => setRaffleOverlay(true, 'lost_stake'));
     document.getElementById('raffle-lost-stake-sort')?.addEventListener('change', event => {
@@ -2130,6 +2166,7 @@ async function init(options = {}) {
 }
 
 window.TDSPDelegatorAccess = {
+    closePortfolio() { closePortfolio?.(); },
     initOverlay(role) {
         return init({ role, overlay: true });
     }

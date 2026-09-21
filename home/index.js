@@ -735,7 +735,7 @@ function getDelegatorDashboardTemplates() {
 
 function loadDelegatorAccessModule() {
     if (window.TDSPDelegatorAccess?.initOverlay) return Promise.resolve(window.TDSPDelegatorAccess);
-    return window.TDSPRuntime.loadScript('delegators/delegator-access.js?v=20260917-raffle-eligibility', {
+    return window.TDSPRuntime.loadScript('delegators/delegator-access.js?v=20260921-member-portfolio', {
         datasetName: 'delegatorAccess',
         selector: 'script[data-delegator-access]',
         ready: () => window.TDSPDelegatorAccess?.initOverlay ? window.TDSPDelegatorAccess : null
@@ -797,6 +797,7 @@ function openDelegatorsDashboardOverlay(event) {
 }
 
 function closeDelegatorsDashboardOverlay() {
+    window.TDSPDelegatorAccess?.closePortfolio?.();
     if (delegatorsDashboardMessageHandler) {
         window.removeEventListener('tdsp:delegator-dashboard-identity', delegatorsDashboardMessageHandler);
         delegatorsDashboardMessageHandler = null;
@@ -845,6 +846,7 @@ function openAdminDashboardOverlay(event) {
 }
 
 function closeAdminDashboardOverlay(restoreFocus = true) {
+    window.TDSPDelegatorAccess?.closePortfolio?.();
     window.TDSPRaffleOverlayActive = false;
     document.body.classList.remove('raffle-overlay-open');
     closePoolMenuOverlay('admin-dashboard-overlay', restoreFocus);
