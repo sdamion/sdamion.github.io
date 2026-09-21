@@ -17,8 +17,8 @@ assert.equal(sameTrackedAddresses({wallet:[a,b]},{wallet:[b,a],extra:[a]}),true)
 assert.equal(sameTrackedAddresses(undefined,{wallet:[a]}),false);
 assert.equal(validStakeAddress(stake),true);assert.equal(validStakeAddress(stake.slice(0,-1)+'x'),false);
 const wallets=memberWallets(stake,[{address:b,label:'Savings'},{address:stake,label:'Modified'},{address:b,label:'Savings'}]);
-assert.equal(wallets[0].address,stake);assert.equal(wallets[0].label,'Wallet 1 · Member stake address');assert.equal(wallets.length,2);
-assert.deepEqual(memberWallets(stake,null),[{address:stake,label:'Wallet 1 · Member stake address'}]);
+assert.equal(wallets[0].address,stake);assert.equal(wallets[0].label,'Member stake address');assert.equal(wallets.length,2);
+assert.deepEqual(memberWallets(stake,null),[{address:stake,label:'Member stake address'}]);
 const groups=resolveWalletGroups(wallets,[{stake_address:stake,addresses:[a,b]}]);
 assert.deepEqual(resolveWalletGroups([{address:stake}],[{stake_address:stake,addresses:[a]},{stake_address:stake,addresses:[b,a]}])[stake],[a,b]);
 const owned=new Set(Object.values(groups).flat());assert.equal(owned.size,2);
