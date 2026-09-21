@@ -11,7 +11,7 @@ import {readCache,saveCache} from '@/lib/portfolio-cache';
 import type {Snapshot} from '@/lib/portfolio-cache';
 
 import {portfolioFetch} from './transport';
-import {durationLabel,remainingSeconds,loadedDateRange} from './progress';
+import {durationLabel,remainingSeconds} from './progress';
 import {memberWallets,resolveWalletGroups,validWalletAddress,validStakeAddress,sameTrackedAddresses} from './member';
 const num=(n:number,max=6)=>n.toLocaleString('en-US',{maximumFractionDigits:max});
 const usd=(n:number)=>n.toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:Math.abs(n)>0&&Math.abs(n)<0.01?8:2});
@@ -173,8 +173,6 @@ export default function Home({memberStake}:{memberStake:string}){
   const transactionTotal=snapshot?.txs.length||0;
   const analysedTotal=snapshot?.txs.filter(tx=>!!snapshot.facts[tx.tx_hash]).length||0;
   const analysisPercent=transactionTotal?analysedTotal/transactionTotal*100:0;
-  const historyDates=loadedDateRange(Object.values(snapshot?.facts||{}).map(f=>f.time));
-  const feeDates=loadedDateRange(Object.values(snapshot?.facts||{}).filter(f=>f.feeRaw!==null).map(f=>f.time));
   const eta=analysis?remainingSeconds(analysis.started,clock,analysis.done,analysis.total):null;
   const refreshTiming=refreshStarted?`${busy?'Elapsed':'Refresh duration'}: ${durationLabel((clock-refreshStarted)/1000)}${busy?(eta!==null?` · Estimated analysis remaining: ${durationLabel(eta)}`:' · Estimating remaining time…'):''}`:'';
   const shown=(snapshot?.txs||[]).filter(t=>{const f=snapshot?.facts[t.tx_hash];return (filter==='all'||f&&kindOf(f)===filter)&&(!query||t.tx_hash.includes(query.toLowerCase().trim())||(f?.wallets||[]).some(a=>displayWallets.find(w=>w.address===a)?.label.toLowerCase().includes(query.toLowerCase())));});
@@ -183,8 +181,8 @@ export default function Home({memberStake}:{memberStake:string}){
     <div className="portfolio-body"><section className="portfolio-hero"><div className="eyebrow">{wallets.length} wallets · mainnet</div><h1>Your member portfolio</h1><p className="muted">Internal transfers keep your combined holdings unchanged, apart from fees.</p><div className="tdsp-tile-grid">
       <Metric label={valued.length===rows.length?'Combined current value':'Priced holdings subtotal'} value={snapshot&&valued.length?usd(subtotal):'—'} note={`${valued.length} of ${rows.length} assets priced · USD`}/>
       <Metric label="ADA across wallets" value={snapshot?num(ada)+' ₳':'—'} note="Unspent balance at your tracked addresses"/>
-      <Metric label={provisional?'Unrealised gain / loss · estimate':'Unrealised gain / loss'} value={covered.length?(provisional?'≈ ':'')+signed(gain):snapshot?.complete?'Basis unavailable':'Calculating…'} note={covered.length?`${provisional?'Provisional · loaded receipts only · ':''}${covered.length} of ${rows.length} holdings${costTotal>0?' · '+num(gain/costTotal*100,2)+'%':''}`:adaBasisStatus} tone={covered.length?gain>=0?'positive':'negative':''} dates={`Loaded history: ${historyDates}${snapshot?.complete?'':' · Partial'} · ADA quote: ${(liveQuote?.at||snapshot?.priceAt)?new Date((liveQuote?.at||snapshot?.priceAt)!).toLocaleString():'Unavailable'} · Token snapshot: ${snapshot?new Date(snapshot.updated).toLocaleString():'Unavailable'}`}/>
-      <Metric label="Network fees paid" value={snapshot?num(fees)+' ₳':'—'} note={`${Object.keys(snapshot?.facts||{}).length} / ${snapshot?.txs.length||0} transactions analysed · shared-input fees excluded`} dates={`Loaded fee history: ${feeDates}${snapshot?.complete?'':' · Partial'}`}/>
+      <Metric label={provisional?'Unrealised gain / loss · estimate':'Unrealised gain / loss'} value={covered.length?(provisional?'≈ ':'')+signed(gain):snapshot?.complete?'Basis unavailable':'Calculating…'} note={covered.length?`${provisional?'Provisional · loaded receipts only · ':''}${covered.length} of ${rows.length} holdings${costTotal>0?' · '+num(gain/costTotal*100,2)+'%':''}`:adaBasisStatus} tone={covered.length?gain>=0?'positive':'negative':''}/>
+      <Metric label="Network fees paid" value={snapshot?num(fees)+' ₳':'—'} note={`${Object.keys(snapshot?.facts||{}).length} / ${snapshot?.txs.length||0} transactions analysed · shared-input fees excluded`}/>
     </div><p role="status" className="status-line">{status}{(liveQuote?.at||snapshot?.priceAt)?' · Price quote '+new Date((liveQuote?.at||snapshot?.priceAt)!).toLocaleTimeString()+' · refreshes every minute':''}</p><p className="small muted" role="timer">{refreshTiming}</p>{counting!==null?<div><p className="small muted" role="status">Counting transactions · {num(counting,0)} unique transactions found so far · total not yet known</p><progress aria-label="Counting transactions"/></div>:snapshot&&<div><p className="small muted" role="status">{num(analysedTotal,0)} / {num(transactionTotal,0)} transactions analysed · {num(analysisPercent,1)}%{busy&&!analysis?' · Cached count; checking for new transactions…':''}</p><progress aria-label="Transactions analysed" aria-valuetext={`${analysedTotal} of ${transactionTotal} transactions analysed`} max={Math.max(1,transactionTotal)} value={analysedTotal}/></div>}</section>
     {error&&<p role="alert" className="message error">{error}</p>}{notice&&<p className="message">{notice}</p>}{cacheNotice&&<p role="status" className="message">{cacheNotice}</p>}
 
@@ -226,7 +224,7 @@ function WalletCard({wallet:w,primary,snapshot,remove}:{wallet:Wallet;primary:bo
     })}</details>}
   </div>;
 }
-function Metric({label,value,note,tone='',dates}:{label:string;value:string;note:string;tone?:string;dates?:string}){return <div className="governance-menu-card"><strong className={`governance-card-title ${tone}`}>{value}</strong><div className="governance-card-detail">{label}</div><p className="small muted">{note}</p>{dates&&<p className="small muted">{dates}</p>}</div>;}
+function Metric({label,value,note,tone=''}:{label:string;value:string;note:string;tone?:string}){return <div className="governance-menu-card"><strong className={`governance-card-title ${tone}`}>{value}</strong><div className="governance-card-detail">{label}</div><p className="small muted">{note}</p></div>;}
 function Transaction({tx,fact,markets,wallets,history}:{tx:Tx;fact?:Fact;markets:Record<string,Market>;wallets:Wallet[];history:Record<string,number>}){
   const kind=fact?kindOf(fact):null,trade=fact?tradeOf(fact):null;
   const quantity=trade?units(trade.raw,markets[trade.id]?.decimals??fact?.decimals?.[trade.id]):null;
