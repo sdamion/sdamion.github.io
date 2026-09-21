@@ -15,6 +15,7 @@ import {runPipeline} from './pipeline';
 import {createHistoryIndex} from './history-index';
 import {keepRefreshSessionAlive} from './refresh-session';
 import {transactionPrices} from './transaction-prices';
+import {assetImageUrl} from './asset-image';
 import {unrealisedStatus} from './metric-status';
 import {CexAddresses} from './CexAddresses';
 import {normalizeCexAddresses,cexDestinations,cexSources,cexAdjustedFact,isCexTransaction,cexAdaTransfer,cexAdaNetPosition,cexUsdNetPosition} from './cex';
@@ -266,7 +267,7 @@ export default function Home({memberStake}:{memberStake:string}){
 
     <section className="portfolio-section"><div className="section-heading"><div><h2>Current holdings & performance</h2><p className="muted">ADA buy price is calculated automatically from receipt-date market prices across your tracked wallets. Gain / loss = current value − remaining cost.</p></div></div>
       <Table><TableHeader><TableRow>{['Asset','Balance','Current price · USD','Current value','Average buy · USD / unit','Unrealised gain / loss'].map(t=><TableHead key={t}>{t}</TableHead>)}</TableRow></TableHeader><TableBody>{rows.map(r=><TableRow key={r.id}>
-        <TableCell><strong title={r.id}>{r.name}</strong><div className="small muted" title={r.id}>{r.id==='lovelace'?'Cardano':short(r.id)}</div></TableCell>
+        <TableCell><AssetImage id={r.id} name={r.name} market={snapshot?.markets[r.id]}/></TableCell>
         <TableCell>{r.qty===null?`${r.raw} raw units`:num(r.qty)}{r.qty===null&&<div className="small muted">Token decimals unavailable</div>}</TableCell>
         <TableCell>{r.price!==null?(r.historyPrice?'≈ ':'')+usd(r.price):'Unavailable'}<div className="small muted">{r.manualPrice!==null?'Your price':r.historyPrice?<a href={`https://cardanoscan.io/transaction/${r.historyPrice.hash}`} target="_blank" rel="noreferrer">Inferred transaction price · {new Date(r.historyPrice.time*1000).toLocaleDateString()} · not a live quote</a>:r.price!==null?'Market estimate':''}</div><details><summary className="small">Set current price</summary><Input aria-label={`Current USD price for ${r.name}`} type="number" min="0" step="any" value={overrides[r.id]?.price||''} onChange={e=>updateOverride(r.id,'price',e.target.value)} placeholder="Use market quote"/></details></TableCell>
         <TableCell>{r.value===null?'—':usd(r.value)}</TableCell>
@@ -299,6 +300,12 @@ function WalletCard({wallet:w,primary,snapshot,remove}:{wallet:Wallet;primary:bo
     })}</details>}
   </div>;
 }
+function AssetImage({id,name,market}:{id:string;name:string;market?:Market}){
+  const source=assetImageUrl(market?.image)||assetImageUrl(market?.image_url)||assetImageUrl(market?.logo);
+  const [failed,setFailed]=useState<string|null>(null);
+  return source&&failed!==source?<a href={`https://cardanoscan.io/token/${id}`} target="_blank" rel="noreferrer" title={name} aria-label={name}><img className="portfolio-asset-image" src={source} alt={name} width={48} height={48} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={()=>setFailed(source)}/></a>:<><strong title={id}>{name}</strong><div className="small muted" title={id}>{id==='lovelace'?'Cardano':short(id)}</div></>;
+}
+
 function Metric({label,value,secondaryValue,note,tone=''}:{label:string;value:string;secondaryValue?:string;note:string;tone?:string}){return <div className="governance-menu-card"><strong translate="no" className={`governance-card-title ${tone}${secondaryValue?' pool-delegator-amount':''}`}>{value}{secondaryValue&&<span className="pool-delegator-usd">{secondaryValue}</span>}</strong><div className="governance-card-detail" data-i18n-auto-original={label}>{label}</div><p className="small muted">{note}</p></div>;}
 function Transaction({tx,fact,markets,wallets,history,cexAddresses}:{tx:Tx;fact?:Fact;markets:Record<string,Market>;wallets:Wallet[];history:Record<string,number>;cexAddresses:CexAddress[]}){
   const kind=fact?kindOf(fact):null,trade=fact?tradeOf(fact):null;

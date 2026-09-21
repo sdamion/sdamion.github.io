@@ -52,6 +52,7 @@
     font: inherit;
 }
 .member-portfolio .table-shell { overflow-x: auto; }
+.portfolio-asset-image { display: block; width: 48px; height: 48px; object-fit: contain; }
 .member-portfolio .table-shell table { min-width: 640px; }
 .member-portfolio .governance-action-buttons { list-style: none; padding: 0; }
 .member-portfolio .portfolio-linked-addresses { width: 100%; }

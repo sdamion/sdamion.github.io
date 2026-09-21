@@ -7,7 +7,7 @@ export type Io = { value:string; payment_addr?:{bech32?:string}; stake_addr?:str
 export type Detail = { tx_hash:string; tx_timestamp:number; fee:string; inputs:Io[]; outputs:Io[] };
 export type Counterparty = {address:string;lovelace:string;stakeAddress?:string|null};
 export type Fact = { hash:string; time:number; adaRaw:string; assets:Record<string,string>; decimals:Record<string,number>; feeRaw:string|null; internal:boolean; wallets:string[]; swapCandidate:boolean; externalOutputs?:Counterparty[]; externalInputs?:Counterparty[] };
-export type Market = { token_id:string; ticker?:string|null; decimals?:number|null; price_by_ada?:number|null; price_by_usd?:number|null; is_verified?:boolean|null };
+export type Market = { token_id:string; ticker?:string|null; decimals?:number|null; price_by_ada?:number|null; price_by_usd?:number|null; is_verified?:boolean|null; logo?:string|null; image?:string|string[]|null; image_url?:string|null };
 export type Holding = { id:string; raw:string };
 export type Trade = { side:'buy'|'sell'; id:string; raw:string; ada:number; costAda:number };
 export const assetId=(a:Asset)=>a.policy_id+a.asset_name;
