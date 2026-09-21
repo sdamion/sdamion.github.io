@@ -1,4 +1,5 @@
 import {validWalletAddress} from './member.ts';
+import {adaReceiptBasis} from './core.ts';
 import type {Fact,Counterparty} from './core.ts';
 export type CexAddress={address:string;name:string};
 export function normalizeCexAddresses(value:unknown):CexAddress[]{
@@ -29,4 +30,34 @@ export function cexAdjustedFact(fact:Fact,entries:CexAddress[]):Fact{
 }
 export function isCexTransaction(fact:Fact|undefined,entries:CexAddress[]):boolean{
   return !!fact&&(cexDestinations(fact,entries).length>0||cexSources(fact,entries).length>0);
+}
+
+export function cexAdaTransfer(fact:Fact,entries:CexAddress[]){
+  const sources=cexSources(fact,entries),destinations=cexDestinations(fact,entries);
+  const net=BigInt(fact.adaRaw)+BigInt(fact.feeRaw||'0');
+  if(net>0n&&sources.length>0&&sources.length===fact.externalInputs?.length&&destinations.length===0)
+    return {side:'buy' as const,raw:net};
+  const sold=destinations.reduce((sum,row)=>sum+BigInt(row.lovelace),0n);
+  if(sold>0n&&fact.feeRaw!==null&&sold<=-net)
+    return {side:'sell' as const,raw:sold};
+  return null;
+}
+
+export function cexAdaPerformance(facts:Fact[],entries:CexAddress[],history:Record<string,number>,complete:boolean){
+  let bought=0n,sold=0n,realised=0,unpricedSales=0;
+  const unique=[...new Map(facts.map(fact=>[fact.hash,fact])).values()];
+  const transfers=new Map(unique.map(fact=>[fact.hash,cexAdaTransfer(fact,entries)]));
+  for(const transfer of transfers.values()){
+    if(transfer?.side==='buy')bought+=transfer.raw;
+    if(transfer?.side==='sell')sold+=transfer.raw;
+  }
+  adaReceiptBasis(unique,history,(fact,average)=>{
+    const transfer=transfers.get(fact.hash);
+    if(transfer?.side!=='sell')return;
+    const price=history[new Date(fact.time*1000).toISOString().slice(0,10)];
+    if(average===null||!Number.isFinite(price)||price<=0){unpricedSales++;return;}
+    realised+=Number(transfer.raw)/1e6*(price-average);
+  });
+  const metadataComplete=unique.every(fact=>Array.isArray(fact.externalInputs));
+  return {boughtRaw:String(bought),soldRaw:String(sold),realisedUsd:complete&&metadataComplete&&unpricedSales===0?realised:null};
 }

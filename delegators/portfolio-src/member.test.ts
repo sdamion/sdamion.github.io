@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {memberWallets,validStakeAddress,resolveWalletGroups,sameTrackedAddresses,walletTransactionCount} from './member.ts';
 import {analyse,liveAdaBasis,tradeOf} from './core.ts';
-import {normalizeCexAddresses,cexDestinations,cexSources,cexAdjustedFact,isCexTransaction} from './cex.ts';
+import {normalizeCexAddresses,cexDestinations,cexSources,cexAdjustedFact,isCexTransaction,cexAdaTransfer,cexAdaPerformance} from './cex.ts';
 const stake='stake1u9ex0jtl4nv84rlzwuft5rczy2hgkjygewla04mgy7v2nccx4p4yr';
 // Synthetic addresses, never a member's personal wallet history.
 function fixtureAddress(seed:number){
@@ -60,4 +60,16 @@ assert.equal(isCexTransaction(f,exchanges),false);
 assert.equal(isCexTransaction(outbound,[]),false);
 assert.equal(isCexTransaction(undefined,exchanges),false);
 assert.equal(cexDestinations({...outbound,externalOutputs:[{address:b,lovelace:'8000000',stakeAddress:stake}]},stakeEntries)[0].name,'Stake Exchange');
+const buy={...receipt,hash:'buy',time:1704067200,adaRaw:'100000000'};
+const sell={...outbound,hash:'sell',time:1704153600,adaRaw:'-60200000',externalOutputs:[{address:b,lovelace:'60000000',stakeAddress:stake}]};
+const prices={'2024-01-01':1,'2024-01-02':2};
+assert.deepEqual(cexAdaTransfer(buy,stakeEntries),{side:'buy',raw:100000000n});
+assert.deepEqual(cexAdaTransfer(sell,stakeEntries),{side:'sell',raw:60000000n});
+assert.deepEqual(cexAdaPerformance([buy,sell,buy],stakeEntries,prices,true),{boughtRaw:'100000000',soldRaw:'60000000',realisedUsd:60});
+assert.equal(cexAdaPerformance([buy,sell],stakeEntries,prices,false).realisedUsd,null);
+assert.equal(cexAdaPerformance([buy,sell],stakeEntries,{'2024-01-01':1},true).realisedUsd,null);
+assert.equal(cexAdaPerformance([sell],stakeEntries,prices,true).realisedUsd,null);
+assert.equal(cexAdaTransfer({...buy,externalInputs:[...buy.externalInputs!,{address:a,lovelace:'1'}]},stakeEntries),null);
+assert.equal(cexAdaTransfer({...sell,feeRaw:null},stakeEntries),null);
+assert.equal(cexAdaTransfer(f,stakeEntries),null);
 console.log('PASS: verified primary stake wallet, settings isolation, address resolution, overlap deduplication and internal-transfer basis.');

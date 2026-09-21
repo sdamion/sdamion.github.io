@@ -524,6 +524,7 @@ async function proxyRequest(target, res, options = {}) {
   const upstream = await requestUpstream(target, options);
   res.writeHead(upstream.statusCode, {
     'cache-control': 'no-store',
+    ...(upstream.sessionToken ? { 'x-tdsp-session': upstream.sessionToken } : {}),
     'content-type': upstream.contentType || 'application/json; charset=utf-8'
   });
   res.end(upstream.body);
@@ -627,6 +628,7 @@ function requestUpstream(target, options = {}) {
           complete({
             body,
             contentType: upstream.headers['content-type'],
+            sessionToken: upstream.headers['x-tdsp-session'],
             statusCode: upstream.statusCode || 502
           });
         } catch (error) {

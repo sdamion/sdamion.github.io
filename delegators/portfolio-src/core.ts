@@ -52,7 +52,7 @@ export function currentPrice(id:string, markets:Record<string,Market>, adaUsd:nu
 // User-defined receipt valuation, not exchange execution cost or tax basis.
 // Combine owned inputs/outputs first so change and self transfers cannot be buys.
 // Outgoing ADA and fees remove proportional cost, preserving the remaining average.
-export function adaReceiptBasis(facts:Fact[], history:Record<string,number>){
+export function adaReceiptBasis(facts:Fact[], history:Record<string,number>,onSpend?:(fact:Fact,averageUsd:number|null)=>void){
   let raw=0n,usd:number|null=0,valid=true,missingPrices=0;
   const seen=new Set<string>();
   // Receipts first within a block-time bucket avoid false deficits when an output
@@ -69,6 +69,7 @@ export function adaReceiptBasis(facts:Fact[], history:Record<string,number>){
       raw+=received;
     }
     const spent=received-delta;
+    if(spent>0n)onSpend?.(f,valid&&spent<=raw&&raw>0n&&usd!==null?usd/(Number(raw)/1e6):null);
     if(spent>raw){valid=false;usd=null;}
     else if(spent>0n&&usd!==null&&raw>0n)usd*=Number(raw-spent)/Number(raw);
     raw-=spent;

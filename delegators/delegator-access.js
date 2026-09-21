@@ -210,6 +210,7 @@ async function requestJson(url, options = {}) {
 }
 
 function authorizedRequest(url, options = {}) {
+    sessionToken = sessionStorage.getItem(SESSION_KEY) || '';
     return requestJson(url, {
         ...options,
         headers: { ...(options.headers || {}), authorization: `Bearer ${sessionToken}` }
@@ -641,7 +642,7 @@ async function openMemberPortfolio() {
     closePortfolio = close;
     container.textContent = t('Loading member portfolio…');
     try {
-        const module = await import('./portfolio/app.js?v=20260921-cex-addresses');
+        const module = await import('./portfolio/app.js?v=20260921-session-renewal');
         if (closed) return;
         container.replaceChildren();
         dispose = module.mountPortfolio(container, { role: ROLE });
