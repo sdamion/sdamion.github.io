@@ -19,3 +19,5 @@ Koios calls use the proxy's existing authenticated scheduler and provider cooldo
 For local testing, the normal `dev-server.mjs` forwards `/api/portfolio/*` to `TDSP_API_ORIGIN`. Set `PORTFOLIO_API_ORIGIN` to a locally running updated backend when the public backend has not yet been updated. Existing members sessions must be valid for the selected backend.
 
 Portfolio prices use Coin Metrics daily ADA closes, Coinbase for recent gaps and Minswap current prices. P/L during history sync is explicitly provisional; full history is reconciled to UTxO balances before remaining-cost results become final. Unclaimed rewards and assets held by untracked scripts are excluded.
+
+While syncing, CEX sales without a reconciled running balance can use the weighted average of priced, loaded receipts preceding the sale. This provisional benchmark excludes sales with no earlier priced receipts and is not a verified realised result. Completion restores the strict chronological calculation. A fresh ADA quote can fill today's missing candle only, never an older transaction date.

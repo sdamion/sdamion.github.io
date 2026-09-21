@@ -63,6 +63,11 @@ assert.equal(cexDestinations({...outbound,externalOutputs:[{address:b,lovelace:'
 const buy={...receipt,hash:'buy',time:1704067200,adaRaw:'100000000'};
 const sell={...outbound,hash:'sell',time:1704153600,adaRaw:'-60200000',externalOutputs:[{address:b,lovelace:'60000000',stakeAddress:stake}]};
 const prices={'2024-01-01':1,'2024-01-02':2};
+// A receipt can price current holdings immediately, without complete history.
+assert.equal(liveAdaBasis([buy],prices,'100000000',false).usd,100);
+assert.equal(liveAdaBasis([sell,buy],prices,'39800000',false).usd,39.8);
+assert.equal(liveAdaBasis([sell],prices,'39800000',false).usd,null);
+assert.equal(Number(sell.feeRaw)/1e6,0.2);
 assert.deepEqual(cexAdaTransfer(buy,stakeEntries),{side:'buy',raw:100000000n});
 assert.deepEqual(cexAdaTransfer(sell,stakeEntries),{side:'sell',raw:60000000n});
 assert.deepEqual(cexAdaPerformance([buy,sell,buy],stakeEntries,prices,true),{boughtRaw:'100000000',soldRaw:'60000000',realisedUsd:60,provisional:false,pricedSales:1,unpricedSales:0,metadataComplete:true});
@@ -78,6 +83,11 @@ assert.equal(cexAdaPerformance([buy,sell,laterSale],stakeEntries,{...prices,'202
 assert.equal(cexAdaPerformance([buy,sell],stakeEntries,{...prices,'2024-01-02':0.5},false).realisedUsd,-30);
 assert.equal(cexAdaPerformance([buy,sell],stakeEntries,{'2024-01-01':1},true).realisedUsd,null);
 assert.equal(cexAdaPerformance([sell],stakeEntries,prices,true).realisedUsd,null);
+const earlySpend={...sell,hash:'early-spend',time:1703980800};
+assert.equal(cexAdaPerformance([earlySpend,buy,sell],stakeEntries,prices,false).realisedUsd,60);
+assert.equal(cexAdaPerformance([earlySpend,buy,sell],stakeEntries,prices,false).unpricedSales,1);
+assert.equal(cexAdaPerformance([earlySpend,buy,sell],stakeEntries,prices,true).realisedUsd,null);
+assert.equal(cexAdaPerformance([earlySpend,buy],stakeEntries,prices,false).realisedUsd,null);
 assert.equal(cexAdaTransfer({...buy,externalInputs:[...buy.externalInputs!,{address:a,lovelace:'1'}]},stakeEntries),null);
 assert.equal(cexAdaTransfer({...sell,feeRaw:null},stakeEntries),null);
 assert.equal(cexAdaTransfer(f,stakeEntries),null);

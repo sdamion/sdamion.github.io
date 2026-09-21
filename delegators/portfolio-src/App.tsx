@@ -12,6 +12,7 @@ import type {Snapshot} from '@/lib/portfolio-cache';
 
 import {portfolioFetch} from './transport';
 import {runPipeline} from './pipeline';
+import {unrealisedStatus,cexStatus} from './metric-status';
 import {CexAddresses} from './CexAddresses';
 import {normalizeCexAddresses,cexDestinations,cexSources,cexAdjustedFact,isCexTransaction,cexAdaTransfer,cexAdaPerformance} from './cex';
 import type {CexAddress} from './cex';
@@ -114,7 +115,11 @@ export default function Home({memberStake}:{memberStake:string}){
       setSnapshot({...next});
       setStatus('Balances updated · loading historical prices…');
       const hist=await historicalPrices(signal);signal.throwIfAborted();
-      if(hist?.prices?.length)next.history=Object.fromEntries(hist.prices.map(([t,p])=>[new Date(t).toISOString().slice(0,10),p]));
+      if(hist?.prices?.length)next.history={...next.history,...Object.fromEntries(hist.prices.filter(([t,p])=>Number.isFinite(t)&&Number.isFinite(p)&&p>0).map(([t,p])=>[new Date(t).toISOString().slice(0,10),p]))};
+      // Today's closing candle may not exist yet; only today's receipts can use
+      // the fresh quote provisionally. Never backfill older dates with it.
+      const today=new Date().toISOString().slice(0,10);
+      if(!next.history[today]&&freshPrice!==null&&freshPrice>0)next.history[today]=freshPrice;
       const warnings:string[]=[];if(freshPrice===null)warnings.push('Current ADA/USD price unavailable.');if(!hist?.prices?.length)warnings.push('Historical ADA/USD refresh failed. Saved prices are retained; missing receipt prices will not be counted as zero.');
       const assetIds=holdings.filter(h=>h.id!=='lovelace').map(h=>h.id);
       for(let i=0;i<assetIds.length;i+=50){
@@ -165,7 +170,8 @@ export default function Home({memberStake}:{memberStake:string}){
           if(!batch.some(tx=>tx.tx_hash===d.tx_hash))continue;
           next.facts[d.tx_hash]=analyse(d,owned);refreshedHashes.add(d.tx_hash);
         }
-        setSnapshot({...next,facts:{...next.facts}});await persist();active.throwIfAborted();updateAnalysis();
+        setSnapshot({...next,facts:{...next.facts}});updateAnalysis();
+        await persist();active.throwIfAborted();
       },signal);
       next.facts=Object.fromEntries(Object.entries(next.facts).filter(([hash])=>map.has(hash)));
       next.complete=next.txs.every(t=>!!next.facts[t.tx_hash])&&[...scheduled].every(hash=>refreshedHashes.has(hash));await persist();signal.throwIfAborted();setSnapshot({...next});
@@ -211,6 +217,10 @@ export default function Home({memberStake}:{memberStake:string}){
   const adaBasisStatus=!snapshot?.complete?adaLive?.usd!==null&&adaLive?.usd!==undefined?`Provisional · ${num(adaLive.receiptCount,0)} priced receipts${adaLive.missingReceiptAda>0?' · some receipt prices missing':''}`:'Waiting for a priced ADA receipt…':!adaLive?.reconciled?'History / balance mismatch — refresh to reconcile':adaLive.usd===null?'Missing receipt prices':'Receipt-date weighted average';
   const displayWallets=wallets.flatMap(w=>(snapshot?.groups?.[w.address]||[w.address]).map(address=>({...w,address})));
   const fees=Object.values(snapshot?.facts||{}).reduce((s,f)=>s+Number(f.feeRaw||0)/1e6,0);
+  const loadedFacts=Object.keys(classifiedFacts).length;
+  const hasHistoricalPrices=Object.values(snapshot?.history||{}).some(price=>Number.isFinite(price)&&price>0);
+  const gainStatus=unrealisedStatus(loadedFacts,adaLive?.receiptCount||0,hasHistoricalPrices,adaRow?.price!=null,snapshot?.complete===true,adaLive?.reconciled===true);
+  const realisedStatus=cexStatus(loadedFacts,hasHistoricalPrices,cexPerformance.boughtRaw,cexPerformance.soldRaw,cexPerformance.metadataComplete,snapshot?.complete===true);
   const transactionTotal=snapshot?.txs.length||0;
   const analysedTotal=snapshot?.txs.filter(tx=>!!snapshot.facts[tx.tx_hash]).length||0;
   const progress=analysisProgress(busy,analysis,analysedTotal,transactionTotal);
@@ -222,9 +232,9 @@ export default function Home({memberStake}:{memberStake:string}){
     <div className="portfolio-body">
     <section className="portfolio-hero"><div className="eyebrow">{wallets.length} wallets · mainnet</div><h1>Your member portfolio</h1><p className="muted">Internal transfers keep your combined holdings unchanged, apart from fees.</p><div className="tdsp-tile-grid">
       <Metric label="ADA across wallets" value={snapshot?num(ada)+' ₳':'—'} secondaryValue={snapshot&&valued.length?usd(subtotal):'—'} note={`${valued.length} of ${rows.length} assets priced · USD subtotal of priced holdings`}/>
-      <Metric label={provisional?'Unrealised gain / loss · estimate':'Unrealised gain / loss'} value={covered.length?(provisional?'≈ ':'')+signed(gain):snapshot?.complete?'Basis unavailable':'Calculating…'} note={covered.length?`${provisional?'Provisional · loaded receipts only · ':''}${covered.length} of ${rows.length} holdings${costTotal>0?' · '+num(gain/costTotal*100,2)+'%':''}`:adaBasisStatus} tone={covered.length?gain>=0?'positive':'negative':''}/>
-      <Metric label="Network fees paid" value={snapshot?num(fees)+' ₳':'—'} note="Shared-input fees excluded"/>
-      {cexAddresses.length>0&&<Metric label="Realised CEX gain / loss · estimate" value={cexPerformance.realisedUsd===null?'Calculating / basis unavailable':`${cexPerformance.provisional?'≈ ':''}${signed(cexPerformance.realisedUsd)}`} tone={cexPerformance.realisedUsd===null?'':cexPerformance.realisedUsd>=0?'positive':'negative'} note={`${cexPerformance.provisional?'Provisional · loaded history only · ':''}Bought ₳ ${num(Number(cexPerformance.boughtRaw)/1e6)} · Sold ₳ ${num(Number(cexPerformance.soldRaw)/1e6)} · ${num(cexPerformance.pricedSales,0)} priced sales${cexPerformance.unpricedSales?` · ${num(cexPerformance.unpricedSales,0)} sales awaiting basis / price (excluded)`:''}${!cexPerformance.metadataComplete?' · some counterparty data still missing':''} · Transfer-day prices; before network fees`}/>}
+      <Metric label={provisional?'Unrealised gain / loss · estimate':'Unrealised gain / loss'} value={covered.length?(provisional?'≈ ':'')+signed(gain):gainStatus} note={covered.length?`${provisional?'Provisional · loaded receipts only · ':''}${covered.length} of ${rows.length} holdings${costTotal>0?' · '+num(gain/costTotal*100,2)+'%':''}`:adaBasisStatus} tone={covered.length?gain>=0?'positive':'negative':''}/>
+      <Metric label="Network fees paid" value={loadedFacts||snapshot?.complete?num(fees)+' ₳':'Waiting for transaction details'} note={`${snapshot?.complete?'':'Loaded history only · '}Shared-input fees excluded`}/>
+      {cexAddresses.length>0&&<Metric label="Realised CEX gain / loss · estimate" value={cexPerformance.realisedUsd===null?realisedStatus:`${cexPerformance.provisional?'≈ ':''}${signed(cexPerformance.realisedUsd)}`} tone={cexPerformance.realisedUsd===null?'':cexPerformance.realisedUsd>=0?'positive':'negative'} note={`${cexPerformance.provisional?'Provisional · loaded history only · ':''}Bought ₳ ${num(Number(cexPerformance.boughtRaw)/1e6)} · Sold ₳ ${num(Number(cexPerformance.soldRaw)/1e6)} · ${num(cexPerformance.pricedSales,0)} priced sales${cexPerformance.unpricedSales?` · ${num(cexPerformance.unpricedSales,0)} sales awaiting basis / price (excluded)`:''}${!cexPerformance.metadataComplete?' · some counterparty data still missing':''} · Transfer-day prices; before network fees`}/>}
     </div><p role="status" className="status-line">{status}{(liveQuote?.at||snapshot?.priceAt)?' · Price quote '+new Date((liveQuote?.at||snapshot?.priceAt)!).toLocaleTimeString()+' · refreshes every minute':''}</p><p className="small muted" role="timer">{refreshTiming}</p>
     {counting!==null&&<div><p className="small muted" role="status">Counting transactions · {num(counting,0)} unique transactions found so far · total not yet known</p><progress aria-label="Counting transactions"/></div>}
     {counted!==null&&<p className="small muted" role="status">Counting complete · {num(counted,0)} unique transactions</p>}

@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {unrealisedStatus,cexStatus} from './metric-status.ts';
+assert.equal(unrealisedStatus(0,0,true,true,false,false),'Waiting for transaction details');
+assert.equal(unrealisedStatus(50,0,false,true,false,false),'Historical prices unavailable');
+assert.equal(unrealisedStatus(50,0,true,true,false,false),'Waiting for priced receipts');
+assert.equal(unrealisedStatus(50,10,true,false,false,false),'Current price unavailable');
+assert.equal(unrealisedStatus(50,10,true,true,true,false),'History / balance mismatch');
+assert.equal(cexStatus(0,true,'0','0',true,false),'Waiting for transaction details');
+assert.equal(cexStatus(50,true,'100','0',true,false),'No CEX sales loaded yet');
+assert.equal(cexStatus(50,false,'100','50',true,false),'Historical prices unavailable');
+assert.equal(cexStatus(50,true,'0','50',true,false),'Waiting for purchase history');
+assert.equal(cexStatus(50,true,'100','50',true,false),'Waiting for earlier receipts / prices');
+assert.equal(cexStatus(50,true,'100','50',true,true),'Sale cost basis / price unavailable');
