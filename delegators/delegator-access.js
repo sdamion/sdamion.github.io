@@ -635,6 +635,7 @@ async function openMemberPortfolio() {
     };
     const elements = window.createUniversalOverlay({
         id: 'member-portfolio-overlay', titleId: 'member-portfolio-title', titleText: 'Portfolio',
+        dialogClass: 'governance-dialog-wide',
         closeLabel: 'Close portfolio', closeOverlay: close, returnFocus,
         closeOnBackdrop: false,
         bodyNodes: [container], enableSearch: false

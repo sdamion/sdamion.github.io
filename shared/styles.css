@@ -3731,6 +3731,12 @@ textarea[data-auto-size] {
     max-height: min(88vh, 960px);
 }
 
+.governance-dialog-wide {
+    width: min(1920px, 100%);
+    height: calc(100dvh - 48px);
+    max-height: calc(100dvh - 48px);
+}
+
 .governance-drep-title {
     margin: 8px 0 16px;
     color: var(--text);

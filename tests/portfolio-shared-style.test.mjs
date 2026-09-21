@@ -21,6 +21,13 @@ test('Portfolio mounts in the universal overlay without a shadow or private styl
     assert.match(read('delegators/portfolio-src/App.tsx'), /className="tdsp-tile-grid"/);
 });
 
+test('Portfolio uses the shared wide dialog with full-screen mobile sizing', () => {
+    assert.match(read('delegators/delegator-access.js'), /dialogClass: 'governance-dialog-wide'/);
+    const css = read('shared/styles.css');
+    assert.match(css, /\.governance-dialog-wide\s*\{\s*width: min\(1920px, 100%\);\s*height: calc\(100dvh - 48px\);\s*max-height: calc\(100dvh - 48px\);/);
+    assert.match(css, /\.governance-menu-overlay > \.governance-dialog\s*\{[^}]*height: 100dvh;/);
+});
+
 test('all linked addresses feed balances and transaction history, including spent addresses', () => {
     const app = read('delegators/portfolio-src/App.tsx');
     assert.match(app, /_empty:true/);
