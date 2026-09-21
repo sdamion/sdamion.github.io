@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {transactionPrices} from './transaction-prices.ts';
+import type {Fact} from './core.ts';
+const buy:Fact={hash:'buy',time:1704067200,adaRaw:'-10200000',feeRaw:'200000',assets:{token:'2000000'},decimals:{token:6},wallets:[],internal:false,swapCandidate:true};
+const history={'2024-01-01':0.5,'2024-01-02':1};
+assert.equal(transactionPrices([buy],{},history).token.usd,2.5);
+assert.equal(transactionPrices([buy],{},history).token.ada,5);
+const sale={...buy,hash:'sale',time:1704153600,adaRaw:'19800000',assets:{token:'-2000000'}};
+assert.equal(transactionPrices([buy,sale],{},history).token.usd,10);
+assert.equal(transactionPrices([buy],{},{}).token,undefined);
+assert.equal(transactionPrices([{...buy,decimals:{}}],{},history).token,undefined);
+assert.equal(transactionPrices([{...buy,internal:true}],{},history).token,undefined);
+assert.equal(transactionPrices([{...buy,swapCandidate:false}],{},history).token,undefined);
+assert.equal(transactionPrices([{...buy,assets:{token:'2000000',other:'1'}}],{},history).token,undefined);
