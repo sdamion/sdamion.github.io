@@ -50,6 +50,7 @@ export default function Home({memberStake}:{memberStake:string}){
   const controller=useRef<AbortController|null>(null);
   const [refreshStarted,setRefreshStarted]=useState(0),[clock,setClock]=useState(0);
   const [analysis,setAnalysis]=useState<{started:number;done:number;total:number}|null>(null);
+  const [counting,setCounting]=useState<number|null>(null);
   const key=memberStake+'::'+wallets.map(w=>w.address).sort().join('|');
   const overrideKey='tdsp-member-basis:'+key;
 
@@ -75,7 +76,7 @@ export default function Home({memberStake}:{memberStake:string}){
 
   async function refresh(){
     controller.current?.abort();const control=new AbortController();controller.current=control;const signal=control.signal;
-    const started=Date.now();setRefreshStarted(started);setClock(started);setAnalysis(null);
+    const started=Date.now();setRefreshStarted(started);setClock(started);setAnalysis(null);setCounting(null);
     setBusy(true);setError('');setNotice('');setStatus('Loading local cache…');
     try{
       let cached:Snapshot|null=null;try{cached=await readCache(key);}catch{setCacheNotice('Local cache unavailable. Live data will still load.');}
@@ -89,21 +90,25 @@ export default function Home({memberStake}:{memberStake:string}){
       const addresses=[...new Set(Object.values(groups).flat())];
       const addressBatches=Array.from({length:Math.ceil(addresses.length/40)},(_,i)=>addresses.slice(i*40,(i+1)*40));
       const loadInfos=async()=>{const all:AddressInfo[]=[];for(const batch of addressBatches)all.push(...await request<AddressInfo[]>('address_info',{_addresses:batch},signal));return all;};
-      const [infos,quote,hist]=await Promise.all([
-        loadInfos(),
-        portfolioFetch('/api/price',{signal}).then(async r=>r.ok?await r.json() as {cardano?:{usd:number}}:null).catch(()=>null),
-        historicalPrices(signal)
-      ]);signal.throwIfAborted();
+      const infos=await loadInfos();signal.throwIfAborted();
       if(addresses.some(a=>!infos.some(i=>i.address===a)))throw new Error('Some wallet balances were not returned. The combined balance has not been replaced.');
       const holdings=combineHoldings(infos);
-      const freshPrice=quote?.cardano?.usd??null;
-      if(freshPrice!==null)setLiveQuote({usd:freshPrice,at:new Date().toISOString()});
-      const next:Snapshot={groups,infos,txs:cached?.txs||[],facts:reusableFacts,markets:{},adaUsd:freshPrice,history:cached?.history||{},updated:new Date().toISOString(),priceAt:freshPrice!==null?new Date().toISOString():null,complete:false};
+      const next:Snapshot={groups,infos,txs:cached?.txs||[],facts:reusableFacts,markets:{},adaUsd:cached?.adaUsd??null,history:cached?.history||{},updated:new Date().toISOString(),priceAt:cached?.priceAt??null,complete:false};
       for(const info of infos)for(const u of info.utxo_set||[])for(const a of u.asset_list||[]){const id=a.policy_id+a.asset_name;next.markets[id]={token_id:id,decimals:a.decimals};}
+      setSnapshot({...next});
+      setStatus('Balances updated · updating prices…');
+      const quote=await portfolioFetch('/api/price',{signal}).then(async r=>r.ok?await r.json() as {cardano?:{usd:number}}:null).catch(()=>null);
+      signal.throwIfAborted();
+      const freshPrice=quote?.cardano?.usd??null;
+      if(freshPrice!==null){next.adaUsd=freshPrice;next.priceAt=new Date().toISOString();setLiveQuote({usd:freshPrice,at:next.priceAt});}
+      setSnapshot({...next});
+      setStatus('Balances updated · loading historical prices…');
+      const hist=await historicalPrices(signal);signal.throwIfAborted();
       if(hist?.prices?.length)next.history=Object.fromEntries(hist.prices.map(([t,p])=>[new Date(t).toISOString().slice(0,10),p]));
       const warnings:string[]=[];if(freshPrice===null)warnings.push('Current ADA/USD price unavailable.');if(!hist?.prices?.length)warnings.push('Historical ADA/USD refresh failed. Saved prices are retained; missing receipt prices will not be counted as zero.');
       const assetIds=holdings.filter(h=>h.id!=='lovelace').map(h=>h.id);
       for(let i=0;i<assetIds.length;i+=50){
+        setStatus(`Balances updated · loading token prices ${Math.floor(i/50)+1} / ${Math.ceil(assetIds.length/50)}`);
         const r=await portfolioFetch('/api/markets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({assets:assetIds.slice(i,i+50)}),signal});
         if(!r.ok){warnings.push('Some token prices are unavailable. Unpriced assets are excluded from the subtotal.');break;}
         const data=await r.json() as {tokens:Market[]};for(const m of data.tokens)next.markets[m.token_id]={...m,decimals:m.decimals??next.markets[m.token_id]?.decimals};
@@ -111,10 +116,12 @@ export default function Home({memberStake}:{memberStake:string}){
       signal.throwIfAborted();setSnapshot({...next});setNotice(warnings.join(' '));
       const persist=async()=>{try{await saveCache(key,next);}catch{setCacheNotice('The browser could not save the cache. Keep this page open or retry later.');}};
       await persist();const map=new Map<string,Tx>();const seenPages=new Set<string>();
+      setCounting(0);
       for(const addressBatch of addressBatches)for(let offset=0;;offset+=1000){
-        setStatus(`Loading transaction history · ${num(map.size,0)} found`);
+        setStatus('Step 1 of 2 · Counting transactions before analysis…');
         const page=await request<Tx[]>('address_txs',{_addresses:addressBatch},signal,`${offset}-${offset+999}`);
         const pageKey=addressBatch.join(',')+':'+page.map(t=>t.tx_hash).join('|');for(const t of page)map.set(t.tx_hash,t);
+        signal.throwIfAborted();setCounting(map.size);
         if(page.length===1000&&seenPages.has(pageKey))throw new Error('The indexer repeated a history page. Please refresh to complete the history.');
         seenPages.add(pageKey);if(page.length<1000)break;
       }
@@ -123,9 +130,10 @@ export default function Home({memberStake}:{memberStake:string}){
       const missing=next.txs.filter((t,i)=>i<20||!next.facts[t.tx_hash]);
       setSnapshot({...next});const owned=new Set(addresses);
       const analysisStarted=Date.now();
+      setCounting(null);
       setAnalysis({started:analysisStarted,done:0,total:missing.length});
       for(let i=0;i<missing.length;i+=50){
-        setStatus(`Analysing ${num(Object.keys(next.facts).length,0)} / ${num(next.txs.length,0)} transactions`);
+        setStatus('Step 2 of 2 · Analysing transactions…');
         const batch=missing.slice(i,i+50);const details=await request<Detail[]>('tx_info',{_tx_hashes:batch.map(t=>t.tx_hash),_inputs:true,_assets:true,_metadata:false,_withdrawals:false,_certs:false,_scripts:false,_bytecode:false},signal);
         for(const d of details)next.facts[d.tx_hash]=analyse(d,owned);
         signal.throwIfAborted();setSnapshot({...next,facts:{...next.facts}});await persist();
@@ -134,7 +142,7 @@ export default function Home({memberStake}:{memberStake:string}){
       next.complete=next.txs.every(t=>!!next.facts[t.tx_hash]);await persist();signal.throwIfAborted();setSnapshot({...next});
       setStatus(next.complete?`Updated ${new Date(next.updated).toLocaleString()}`:'Some transactions are awaiting analysis. Refresh to retry.');
     }catch(e){if(!signal.aborted){setError(e instanceof Error?e.message:'Could not update this portfolio.');setStatus('Refresh incomplete · showing available data');}}
-    finally{if(!signal.aborted){setClock(Date.now());setBusy(false);}}
+    finally{if(!signal.aborted){setClock(Date.now());setBusy(false);setCounting(null);}}
   }
 
   function saveWallets(next:Wallet[]){next=memberWallets(memberStake,next);controller.current?.abort();try{localStorage.setItem(SETTINGS,JSON.stringify(next));}catch{setCacheNotice('Wallet settings could not be saved in this browser.');}setWallets(next);}
@@ -177,7 +185,7 @@ export default function Home({memberStake}:{memberStake:string}){
       <Metric label="ADA across wallets" value={snapshot?num(ada)+' ₳':'—'} note="Unspent balance at your tracked addresses"/>
       <Metric label={provisional?'Unrealised gain / loss · estimate':'Unrealised gain / loss'} value={covered.length?(provisional?'≈ ':'')+signed(gain):snapshot?.complete?'Basis unavailable':'Calculating…'} note={covered.length?`${provisional?'Provisional · loaded receipts only · ':''}${covered.length} of ${rows.length} holdings${costTotal>0?' · '+num(gain/costTotal*100,2)+'%':''}`:adaBasisStatus} tone={covered.length?gain>=0?'positive':'negative':''} dates={`Loaded history: ${historyDates}${snapshot?.complete?'':' · Partial'} · ADA quote: ${(liveQuote?.at||snapshot?.priceAt)?new Date((liveQuote?.at||snapshot?.priceAt)!).toLocaleString():'Unavailable'} · Token snapshot: ${snapshot?new Date(snapshot.updated).toLocaleString():'Unavailable'}`}/>
       <Metric label="Network fees paid" value={snapshot?num(fees)+' ₳':'—'} note={`${Object.keys(snapshot?.facts||{}).length} / ${snapshot?.txs.length||0} transactions analysed · shared-input fees excluded`} dates={`Loaded fee history: ${feeDates}${snapshot?.complete?'':' · Partial'}`}/>
-    </div><p role="status" className="status-line">{status}{(liveQuote?.at||snapshot?.priceAt)?' · Price quote '+new Date((liveQuote?.at||snapshot?.priceAt)!).toLocaleTimeString()+' · refreshes every minute':''}</p><p className="small muted" role="timer">{refreshTiming}</p>{snapshot&&<div><p className="small muted" role="status">{num(analysedTotal,0)} / {num(transactionTotal,0)} transactions analysed · {num(analysisPercent,1)}%{busy&&!analysis?' · Cached count; checking for new transactions…':''}</p><progress aria-label="Transactions analysed" aria-valuetext={`${analysedTotal} of ${transactionTotal} transactions analysed`} max={Math.max(1,transactionTotal)} value={analysedTotal}/></div>}</section>
+    </div><p role="status" className="status-line">{status}{(liveQuote?.at||snapshot?.priceAt)?' · Price quote '+new Date((liveQuote?.at||snapshot?.priceAt)!).toLocaleTimeString()+' · refreshes every minute':''}</p><p className="small muted" role="timer">{refreshTiming}</p>{counting!==null?<div><p className="small muted" role="status">Counting transactions · {num(counting,0)} unique transactions found so far · total not yet known</p><progress aria-label="Counting transactions"/></div>:snapshot&&<div><p className="small muted" role="status">{num(analysedTotal,0)} / {num(transactionTotal,0)} transactions analysed · {num(analysisPercent,1)}%{busy&&!analysis?' · Cached count; checking for new transactions…':''}</p><progress aria-label="Transactions analysed" aria-valuetext={`${analysedTotal} of ${transactionTotal} transactions analysed`} max={Math.max(1,transactionTotal)} value={analysedTotal}/></div>}</section>
     {error&&<p role="alert" className="message error">{error}</p>}{notice&&<p className="message">{notice}</p>}{cacheNotice&&<p role="status" className="message">{cacheNotice}</p>}
 
     <section className="portfolio-section"><div className="section-heading"><div><h2>Wallets in this portfolio</h2><p className="muted">Wallet 1 is your verified stake address, including all linked payment and change addresses. Add other stake addresses or payment addresses you own. Unclaimed rewards and assets locked in contracts are excluded.</p></div></div>
