@@ -3,6 +3,15 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 const read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
 
+test('wallet changes show initialisation before counting, even without a snapshot', () => {
+    const app = read('delegators/portfolio-src/App.tsx');
+    const save = app.slice(app.indexOf('function saveWallets('), app.indexOf('function saveCexAddresses('));
+    assert.ok(save.indexOf('setBusy(true)') < save.indexOf('setWallets(next)'));
+    assert.match(save, /setAnalysis\(null\);setCounting\(null\)/);
+    assert.match(app, /busy&&!analysis&&counting===null&&<div role="status">/);
+    assert.match(app, /<progress aria-label="Initialising wallets"\/>/);
+});
+
 test('Portfolio mounts in the universal overlay without a shadow or private stylesheet', () => {
     const entry = read('delegators/portfolio-src/entry.tsx');
     assert.doesNotMatch(entry, /attachShadow|createElement\('link'\)|styles\.css/);

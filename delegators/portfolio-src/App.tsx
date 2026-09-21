@@ -82,11 +82,11 @@ export default function Home({memberStake}:{memberStake:string}){
   async function refresh(){
     controller.current?.abort();const control=new AbortController();controller.current=control;const signal=control.signal;
     const started=Date.now();setRefreshStarted(started);setClock(started);setAnalysis(null);setCounting(null);
-    setBusy(true);setError('');setNotice('');setStatus('Loading local cache…');
+    setBusy(true);setError('');setNotice('');setStatus('Initialising wallets · loading saved data…');
     try{
       let cached:Snapshot|null=null;try{cached=await readCache(key);}catch{setCacheNotice('Local cache unavailable. Live data will still load.');}
       signal.throwIfAborted();if(cached)setSnapshot(cached);
-      setStatus('Updating balances and prices…');
+      setStatus('Initialising wallets · finding linked addresses…');
       const stakes=wallets.map(w=>w.address).filter(validStakeAddress);
       const accounts:{stake_address:string;addresses:string[]}[]=[];
       for(let i=0;i<stakes.length;i+=40)accounts.push(...await request<{stake_address:string;addresses:string[]}[]>('account_addresses',{_stake_addresses:stakes.slice(i,i+40),_first_only:false,_empty:true},signal));
@@ -94,7 +94,10 @@ export default function Home({memberStake}:{memberStake:string}){
       const reusableFacts=sameTrackedAddresses(cached?.groups,groups)?cached?.facts||{}:{};
       const addresses=[...new Set(Object.values(groups).flat())];
       const addressBatches=Array.from({length:Math.ceil(addresses.length/40)},(_,i)=>addresses.slice(i*40,(i+1)*40));
-      const loadInfos=async()=>{const all:AddressInfo[]=[];for(const batch of addressBatches)all.push(...await request<AddressInfo[]>('address_info',{_addresses:batch},signal));return all;};
+      const loadInfos=async()=>{const all:AddressInfo[]=[];for(const [index,batch] of addressBatches.entries()){
+        setStatus(`Initialising wallets · loading balances ${index+1} / ${addressBatches.length}`);
+        all.push(...await request<AddressInfo[]>('address_info',{_addresses:batch},signal));
+      }return all;};
       const infos=await loadInfos();signal.throwIfAborted();
       if(addresses.some(a=>!infos.some(i=>i.address===a)))throw new Error('Some wallet balances were not returned. The combined balance has not been replaced.');
       const holdings=combineHoldings(infos);
@@ -154,7 +157,13 @@ export default function Home({memberStake}:{memberStake:string}){
     finally{if(!signal.aborted){setClock(Date.now());setBusy(false);setCounting(null);}}
   }
 
-  function saveWallets(next:Wallet[]){next=memberWallets(memberStake,next);controller.current?.abort();try{localStorage.setItem(SETTINGS,JSON.stringify(next));}catch{setCacheNotice('Wallet settings could not be saved in this browser.');}setWallets(next);}
+  function saveWallets(next:Wallet[]){
+    next=memberWallets(memberStake,next);controller.current?.abort();
+    setBusy(true);setAnalysis(null);setCounting(null);setStatus('Initialising wallets…');
+    const started=Date.now();setRefreshStarted(started);setClock(started);
+    try{localStorage.setItem(SETTINGS,JSON.stringify(next));}catch{setCacheNotice('Wallet settings could not be saved in this browser.');}
+    setWallets(next);
+  }
   function saveCexAddresses(entries:CexAddress[]){
     try{localStorage.setItem(CEX_SETTINGS,JSON.stringify(entries));setCexAddresses(entries);return true;}
     catch{setCacheNotice('CEX addresses could not be saved in this browser.');return false;}
@@ -204,6 +213,7 @@ export default function Home({memberStake}:{memberStake:string}){
     {cexAddresses.length>0&&Object.values(snapshot?.facts||{}).some(fact=>!Array.isArray(fact.externalInputs))&&<p className="small muted">Refresh to load sender and recipient stake addresses for older cached transactions.</p>}
 
     <section className="portfolio-section"><div className="section-heading"><div><h2>Wallets in this portfolio</h2><p className="muted">Wallet 1 is your verified stake address, including all linked payment and change addresses. Add other stake addresses or payment addresses you own. Unclaimed rewards and assets locked in contracts are excluded.</p></div></div>
+      {busy&&!analysis&&counting===null&&<div role="status"><p className="small muted">Initialising wallets before counting transactions…</p><progress aria-label="Initialising wallets"/></div>}
       <div className="tdsp-tile-grid">{wallets.map((w,i)=><WalletCard key={w.address} wallet={w} primary={i===0} snapshot={snapshot} remove={()=>saveWallets(wallets.filter(x=>x.address!==w.address))}/>)}</div>
       <form onSubmit={addWallet} className="wallet-form governance-drep-registration-form"><label>Wallet name<Input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Savings" maxLength={60}/></label><label className="address-field">Stake or payment address<Input value={address} onChange={e=>setAddress(e.target.value)} placeholder="stake1… or addr1…" aria-describedby="wallet-error" required/></label><button className="governance-vote-primary" type="submit"><Plus size={16}/>Add wallet</button></form><p id="wallet-error" role="status" className="negative">{walletError}</p>
       <p className="small muted">Wallets, prices you enter, and cached history are saved in this browser. Adding or removing a wallet recalculates the entire portfolio; average costs are saved separately for each wallet combination.</p>
