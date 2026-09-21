@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {createHistoryIndex} from './history-index.ts';
+const tx=(id:number)=>({tx_hash:String(id),block_time:id,block_height:id});
+const history=createHistoryIndex([tx(1),tx(2)],true);
+assert.equal(history.size,2);
+assert.equal(history.add([tx(3),tx(2)]).reachedSavedHistory,false);
+assert.equal(history.size,3);
+assert.equal(history.add([tx(2),tx(1)]).reachedSavedHistory,true);
+assert.equal(history.size,3);
+assert.deepEqual(history.add([tx(3),tx(2)]).discovered,[]);
+assert.deepEqual(history.rows().map(row=>row.tx_hash),['3','2','1']);
+const partial=createHistoryIndex([tx(3)],false);
+assert.equal(partial.add([tx(3)]).reachedSavedHistory,false);
+partial.add([tx(2),tx(1)]);
+assert.equal(partial.size,3);
+const changedWallet=createHistoryIndex([],false);
+assert.equal(changedWallet.size,0);
+assert.equal(changedWallet.add([]).reachedSavedHistory,false);

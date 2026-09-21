@@ -12,6 +12,7 @@ import type {Snapshot} from '@/lib/portfolio-cache';
 
 import {portfolioFetch} from './transport';
 import {runPipeline} from './pipeline';
+import {createHistoryIndex} from './history-index';
 import {unrealisedStatus,cexStatus} from './metric-status';
 import {CexAddresses} from './CexAddresses';
 import {normalizeCexAddresses,cexDestinations,cexSources,cexAdjustedFact,isCexTransaction,cexAdaTransfer,cexAdaPerformance} from './cex';
@@ -94,7 +95,8 @@ export default function Home({memberStake}:{memberStake:string}){
       const accounts:{stake_address:string;addresses:string[]}[]=[];
       for(let i=0;i<stakes.length;i+=40)accounts.push(...await request<{stake_address:string;addresses:string[]}[]>('account_addresses',{_stake_addresses:stakes.slice(i,i+40),_first_only:false,_empty:true},signal));
       const groups=resolveWalletGroups(wallets,accounts);
-      const reusableFacts=sameTrackedAddresses(cached?.groups,groups)?cached?.facts||{}:{};
+      const sameAddresses=sameTrackedAddresses(cached?.groups,groups);
+      const reusableFacts=sameAddresses?cached?.facts||{}:{};
       const addresses=[...new Set(Object.values(groups).flat())];
       const addressBatches=Array.from({length:Math.ceil(addresses.length/40)},(_,i)=>addresses.slice(i*40,(i+1)*40));
       const loadInfos=async()=>{const all:AddressInfo[]=[];for(const [index,batch] of addressBatches.entries()){
@@ -104,7 +106,7 @@ export default function Home({memberStake}:{memberStake:string}){
       const infos=await loadInfos();signal.throwIfAborted();
       if(addresses.some(a=>!infos.some(i=>i.address===a)))throw new Error('Some wallet balances were not returned. The combined balance has not been replaced.');
       const holdings=combineHoldings(infos);
-      const next:Snapshot={groups,infos,txs:cached?.txs||[],facts:reusableFacts,markets:{},adaUsd:cached?.adaUsd??null,history:cached?.history||{},updated:new Date().toISOString(),priceAt:cached?.priceAt??null,complete:false};
+      const next:Snapshot={groups,infos,txs:sameAddresses?cached?.txs||[]:[],facts:reusableFacts,markets:{},adaUsd:cached?.adaUsd??null,history:cached?.history||{},updated:new Date().toISOString(),priceAt:cached?.priceAt??null,complete:false};
       for(const info of infos)for(const u of info.utxo_set||[])for(const a of u.asset_list||[]){const id=a.policy_id+a.asset_name;next.markets[id]={token_id:id,decimals:a.decimals};}
       setSnapshot({...next});
       setStatus('Balances updated · updating prices…');
@@ -130,15 +132,17 @@ export default function Home({memberStake}:{memberStake:string}){
       }
       signal.throwIfAborted();setSnapshot({...next});setNotice(warnings.join(' '));
       const persist=async()=>{try{await saveCache(key,next);}catch{setCacheNotice('The browser could not save the cache. Keep this page open or retry later.');}};
-      await persist();const map=new Map<string,Tx>();const seenPages=new Set<string>();
+      const incremental=sameAddresses&&cached?.complete===true&&next.txs.every(tx=>Array.isArray(next.facts[tx.tx_hash]?.externalInputs));
+      const historyIndex=createHistoryIndex(next.txs,incremental);
+      await persist();const seenPages=new Set<string>();
       const owned=new Set(addresses);
       const analysisStarted=Date.now();
       const refreshedHashes=new Set<string>();
       const scheduled=new Set<string>();
       const recent=new Map<string,Tx>();
       const updateAnalysis=()=>setAnalysis({started:analysisStarted,done:refreshedHashes.size,total:scheduled.size});
-      setCounting(0);updateAnalysis();
-      setStatus('Counting and analysing transactions…');
+      setCounting(historyIndex.size);updateAnalysis();
+      setStatus(incremental?'Checking for new transactions…':'Loading remaining transaction history…');
       await runPipeline<Tx>(async(enqueue,active)=>{
         for(const addressBatch of addressBatches)for(let offset=0;;offset+=1000){
           const page=await request<Tx[]>('address_txs',{_addresses:addressBatch},active,`${offset}-${offset+999}`);
@@ -147,22 +151,22 @@ export default function Home({memberStake}:{memberStake:string}){
           if(page.length===1000&&seenPages.has(pageKey))throw new Error('The indexer repeated a history page. Please refresh to complete the history.');
           seenPages.add(pageKey);
           const pending:Tx[]=[];
-          for(const tx of page){
-            if(map.has(tx.tx_hash))continue;
-            map.set(tx.tx_hash,tx);recent.set(tx.tx_hash,tx);
+          const {discovered,reachedSavedHistory}=historyIndex.add(page);
+          for(const tx of discovered){
+            recent.set(tx.tx_hash,tx);
             const fact=next.facts[tx.tx_hash];
             if(!fact||!Array.isArray(fact.externalInputs)){scheduled.add(tx.tx_hash);pending.push(tx);}
           }
           // Refresh the newest 20 discovered transactions even when already cached.
           const newest=[...recent.values()].sort((a,b)=>b.block_time-a.block_time||a.tx_hash.localeCompare(b.tx_hash)).slice(0,20);
           recent.clear();for(const tx of newest){recent.set(tx.tx_hash,tx);if(!scheduled.has(tx.tx_hash)){scheduled.add(tx.tx_hash);pending.push(tx);}}
-          next.txs=[...map.values()].sort((a,b)=>b.block_time-a.block_time||a.tx_hash.localeCompare(b.tx_hash));
-          setCounting(map.size);updateAnalysis();setSnapshot({...next,facts:{...next.facts}});
+          next.txs=historyIndex.rows();
+          setCounting(historyIndex.size);updateAnalysis();setSnapshot({...next,facts:{...next.facts}});
           enqueue(pending);
-          if(page.length<1000)break;
+          if(page.length<1000||reachedSavedHistory)break;
         }
-        active.throwIfAborted();setCounting(null);setCounted(map.size);
-        setStatus(`Counting complete · ${num(map.size,0)} unique transactions · finishing analysis…`);
+        active.throwIfAborted();setCounting(null);setCounted(historyIndex.size);
+        setStatus(`Transaction check complete · ${num(historyIndex.size,0)} unique transactions · finishing analysis…`);
       },async(batch,active)=>{
         const details=await request<Detail[]>('tx_info',{_tx_hashes:batch.map(t=>t.tx_hash),_inputs:true,_assets:true,_metadata:false,_withdrawals:false,_certs:false,_scripts:false,_bytecode:false},active);
         active.throwIfAborted();
@@ -173,7 +177,8 @@ export default function Home({memberStake}:{memberStake:string}){
         setSnapshot({...next,facts:{...next.facts}});updateAnalysis();
         await persist();active.throwIfAborted();
       },signal);
-      next.facts=Object.fromEntries(Object.entries(next.facts).filter(([hash])=>map.has(hash)));
+      const historyHashes=new Set(next.txs.map(tx=>tx.tx_hash));
+      next.facts=Object.fromEntries(Object.entries(next.facts).filter(([hash])=>historyHashes.has(hash)));
       next.complete=next.txs.every(t=>!!next.facts[t.tx_hash])&&[...scheduled].every(hash=>refreshedHashes.has(hash));await persist();signal.throwIfAborted();setSnapshot({...next});
       setStatus(next.complete?`Updated ${new Date(next.updated).toLocaleString()}`:'Some transactions are awaiting analysis. Refresh to retry.');
     }catch(e){if(!signal.aborted){setError(e instanceof Error?e.message:'Could not update this portfolio.');setStatus('Refresh incomplete · showing available data');}}
@@ -236,8 +241,8 @@ export default function Home({memberStake}:{memberStake:string}){
       <Metric label="Network fees paid" value={loadedFacts||snapshot?.complete?num(fees)+' ₳':'Waiting for transaction details'} note={`${snapshot?.complete?'':'Loaded history only · '}Shared-input fees excluded`}/>
       {cexAddresses.length>0&&<Metric label="Realised CEX gain / loss · estimate" value={cexPerformance.realisedUsd===null?realisedStatus:`${cexPerformance.provisional?'≈ ':''}${signed(cexPerformance.realisedUsd)}`} tone={cexPerformance.realisedUsd===null?'':cexPerformance.realisedUsd>=0?'positive':'negative'} note={`${cexPerformance.provisional?'Provisional · loaded history only · ':''}Bought ₳ ${num(Number(cexPerformance.boughtRaw)/1e6)} · Sold ₳ ${num(Number(cexPerformance.soldRaw)/1e6)} · ${num(cexPerformance.pricedSales,0)} priced sales${cexPerformance.unpricedSales?` · ${num(cexPerformance.unpricedSales,0)} sales awaiting basis / price (excluded)`:''}${!cexPerformance.metadataComplete?' · some counterparty data still missing':''} · Transfer-day prices; before network fees`}/>}
     </div><p role="status" className="status-line">{status}{(liveQuote?.at||snapshot?.priceAt)?' · Price quote '+new Date((liveQuote?.at||snapshot?.priceAt)!).toLocaleTimeString()+' · refreshes every minute':''}</p><p className="small muted" role="timer">{refreshTiming}</p>
-    {counting!==null&&<div><p className="small muted" role="status">Counting transactions · {num(counting,0)} unique transactions found so far · total not yet known</p><progress aria-label="Counting transactions"/></div>}
-    {counted!==null&&<p className="small muted" role="status">Counting complete · {num(counted,0)} unique transactions</p>}
+    {counting!==null&&<div><p className="small muted" role="status">{num(counting,0)} unique transactions · checking for additional history</p><progress aria-label="Checking for additional transactions"/></div>}
+    {counted!==null&&<p className="small muted" role="status">Transaction check complete · {num(counted,0)} unique transactions</p>}
     {snapshot&&<div><p className="small muted" role="status">{counting!==null?`${num(progress.done,0)} transactions analysed this refresh · ${num(progress.total,0)} discovered for analysis so far`:busy&&!analysis?'Preparing refresh · 0%':`${num(progress.done,0)} / ${num(progress.total,0)} transactions analysed${busy?' this refresh':''} · ${num(progress.percent,1)}%`}</p><progress aria-label="Transactions analysed" aria-valuetext={counting!==null?`${progress.done} transactions analysed; counting continues`:`${progress.done} of ${progress.total} transactions analysed${busy?' this refresh':''}`} max={Math.max(1,progress.total)} value={counting!==null?undefined:progress.done}/></div>}</section>
     {error&&<p role="alert" className="message error">{error}</p>}{notice&&<p className="message">{notice}</p>}{cacheNotice&&<p role="status" className="message">{cacheNotice}</p>}
     <CexAddresses entries={cexAddresses} owned={Object.values(snapshot?.groups||{}).flat().concat(wallets.map(wallet=>wallet.address))} onChange={saveCexAddresses}/>
