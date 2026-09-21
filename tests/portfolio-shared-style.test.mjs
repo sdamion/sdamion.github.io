@@ -28,6 +28,13 @@ test('Portfolio uses the shared wide dialog with full-screen mobile sizing', () 
     assert.match(css, /\.governance-menu-overlay > \.governance-dialog\s*\{[^}]*height: 100dvh;/);
 });
 
+test('shared metric gain and loss tones override the default tile header colour', () => {
+    const css = read('shared/styles.css');
+    assert.match(css, /\.tdsp-tile-grid > \.governance-menu-card > strong\.negative\s*\{\s*color: var\(--ai-unavailable-color, #c62828\);/);
+    assert.match(css, /\.tdsp-tile-grid > \.governance-menu-card > strong\.positive\s*\{\s*color: var\(--accent-strong\);/);
+    assert.match(read('delegators/portfolio-src/App.tsx'), /tone=\{covered.length\?gain>=0\?'positive':'negative':''\}/);
+});
+
 test('all linked addresses feed balances and transaction history, including spent addresses', () => {
     const app = read('delegators/portfolio-src/App.tsx');
     assert.match(app, /_empty:true/);

@@ -2210,6 +2210,14 @@ textarea[data-auto-size] {
     line-height: var(--tdsp-tile-value-line-height);
 }
 
+.tdsp-tile-grid > .governance-menu-card > strong.negative {
+    color: var(--ai-unavailable-color, #c62828);
+}
+
+.tdsp-tile-grid > .governance-menu-card > strong.positive {
+    color: var(--accent-strong);
+}
+
 .governance-summary-inline-percent {
     color: var(--muted) !important;
     display: inline-block;

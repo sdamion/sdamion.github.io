@@ -643,7 +643,7 @@ async function openMemberPortfolio() {
     closePortfolio = close;
     container.textContent = t('Loading member portfolio…');
     try {
-        const module = await import('./portfolio/app.js?v=20260921-portfolio-pipeline');
+        const module = await import('./portfolio/app.js?v=20260921-live-cex-gains');
         if (closed) return;
         container.replaceChildren();
         dispose = module.mountPortfolio(container, { role: ROLE });

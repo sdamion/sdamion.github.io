@@ -44,7 +44,7 @@ export function cexAdaTransfer(fact:Fact,entries:CexAddress[]){
 }
 
 export function cexAdaPerformance(facts:Fact[],entries:CexAddress[],history:Record<string,number>,complete:boolean){
-  let bought=0n,sold=0n,realised=0,unpricedSales=0;
+  let bought=0n,sold=0n,realised=0,unpricedSales=0,pricedSales=0;
   const unique=[...new Map(facts.map(fact=>[fact.hash,fact])).values()];
   const transfers=new Map(unique.map(fact=>[fact.hash,cexAdaTransfer(fact,entries)]));
   for(const transfer of transfers.values()){
@@ -56,8 +56,10 @@ export function cexAdaPerformance(facts:Fact[],entries:CexAddress[],history:Reco
     if(transfer?.side!=='sell')return;
     const price=history[new Date(fact.time*1000).toISOString().slice(0,10)];
     if(average===null||!Number.isFinite(price)||price<=0){unpricedSales++;return;}
+    pricedSales++;
     realised+=Number(transfer.raw)/1e6*(price-average);
   });
   const metadataComplete=unique.every(fact=>Array.isArray(fact.externalInputs));
-  return {boughtRaw:String(bought),soldRaw:String(sold),realisedUsd:complete&&metadataComplete&&unpricedSales===0?realised:null};
+  const final=complete&&metadataComplete&&unpricedSales===0;
+  return {boughtRaw:String(bought),soldRaw:String(sold),realisedUsd:final||(!complete&&pricedSales>0)?realised:null,provisional:!complete,pricedSales,unpricedSales,metadataComplete};
 }
