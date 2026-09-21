@@ -1,5 +1,10 @@
 import assert from 'node:assert/strict';
-import {assetImageUrl} from './asset-image.ts';
+import {assetImageUrl,assetImageCandidates} from './asset-image.ts';
+const id='a'.repeat(56)+'abcd';
+assert.deepEqual(assetImageCandidates(id),[`https://asset-logos.minswap.org/${id}`]);
+assert.deepEqual(assetImageCandidates('lovelace'),['/cardano_logo_ico.webp']);
+assert.deepEqual(assetImageCandidates('invalid'),[]);
+assert.deepEqual(assetImageCandidates(id,['ipfs://Qmabc']),['https://ipfs.io/ipfs/Qmabc',`https://asset-logos.minswap.org/${id}`]);
 assert.equal(assetImageUrl('ipfs://bafyabc/image.png'),'https://ipfs.io/ipfs/bafyabc/image.png');
 assert.equal(assetImageUrl(['ipfs://ipfs/','Qmabc']),'https://ipfs.io/ipfs/Qmabc');
 assert.equal(assetImageUrl('https://asset-logos.minswap.org/token'),'https://asset-logos.minswap.org/token');

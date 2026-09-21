@@ -15,7 +15,7 @@ import {runPipeline} from './pipeline';
 import {createHistoryIndex} from './history-index';
 import {keepRefreshSessionAlive} from './refresh-session';
 import {transactionPrices} from './transaction-prices';
-import {assetImageUrl} from './asset-image';
+import {assetImageCandidates} from './asset-image';
 import {unrealisedStatus} from './metric-status';
 import {CexAddresses} from './CexAddresses';
 import {normalizeCexAddresses,cexDestinations,cexSources,cexAdjustedFact,isCexTransaction,cexAdaTransfer,cexAdaNetPosition,cexUsdNetPosition} from './cex';
@@ -301,9 +301,10 @@ function WalletCard({wallet:w,primary,snapshot,remove}:{wallet:Wallet;primary:bo
   </div>;
 }
 function AssetImage({id,name,market}:{id:string;name:string;market?:Market}){
-  const source=assetImageUrl(market?.image)||assetImageUrl(market?.image_url)||assetImageUrl(market?.logo);
-  const [failed,setFailed]=useState<string|null>(null);
-  return source&&failed!==source?<a href={`https://cardanoscan.io/token/${id}`} target="_blank" rel="noreferrer" title={name} aria-label={name}><img className="portfolio-asset-image" src={source} alt={name} width={48} height={48} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={()=>setFailed(source)}/></a>:<><strong title={id}>{name}</strong><div className="small muted" title={id}>{id==='lovelace'?'Cardano':short(id)}</div></>;
+  const [failed,setFailed]=useState<string[]>([]);
+  const source=assetImageCandidates(id,[market?.image,market?.image_url,market?.logo]).find(url=>!failed.includes(url));
+  const image=source?<img className="portfolio-asset-image" src={source} alt={name} title={name} width={48} height={48} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={()=>setFailed(previous=>[...previous,source])}/>:null;
+  return image?(id==='lovelace'?image:<a href={`https://cardanoscan.io/token/${id}`} target="_blank" rel="noreferrer" title={name} aria-label={name}>{image}</a>):<><strong title={id}>{name}</strong><div className="small muted" title={id}>{id==='lovelace'?'Cardano':short(id)}</div></>;
 }
 
 function Metric({label,value,secondaryValue,note,tone=''}:{label:string;value:string;secondaryValue?:string;note:string;tone?:string}){return <div className="governance-menu-card"><strong translate="no" className={`governance-card-title ${tone}${secondaryValue?' pool-delegator-amount':''}`}>{value}{secondaryValue&&<span className="pool-delegator-usd">{secondaryValue}</span>}</strong><div className="governance-card-detail" data-i18n-auto-original={label}>{label}</div><p className="small muted">{note}</p></div>;}
