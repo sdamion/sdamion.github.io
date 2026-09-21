@@ -5,7 +5,7 @@ export type AddressInfo = { address:string; balance:string; utxo_set?:Utxo[] };
 export type Tx = { tx_hash:string; block_time:number; block_height:number };
 export type Io = { value:string; payment_addr?:{bech32?:string}; asset_list?:Asset[] };
 export type Detail = { tx_hash:string; tx_timestamp:number; fee:string; inputs:Io[]; outputs:Io[] };
-export type Fact = { hash:string; time:number; adaRaw:string; assets:Record<string,string>; decimals:Record<string,number>; feeRaw:string|null; internal:boolean; wallets:string[]; swapCandidate:boolean };
+export type Fact = { hash:string; time:number; adaRaw:string; assets:Record<string,string>; decimals:Record<string,number>; feeRaw:string|null; internal:boolean; wallets:string[]; swapCandidate:boolean; externalOutputs?:{address:string;lovelace:string}[] };
 export type Market = { token_id:string; ticker?:string|null; decimals?:number|null; price_by_ada?:number|null; price_by_usd?:number|null; is_verified?:boolean|null };
 export type Holding = { id:string; raw:string };
 export type Trade = { side:'buy'|'sell'; id:string; raw:string; ada:number; costAda:number };
@@ -34,7 +34,8 @@ export function analyse(detail:Detail, addresses:Set<string>):Fact {
   const allOutputs=detail.outputs.length>0&&detail.outputs.every(x=>addresses.has(x.payment_addr?.bech32||''));
   const fee=BigInt(detail.fee||'0');const assets=Object.fromEntries([...amounts].filter(([,v])=>v!==0n).map(([k,v])=>[k,String(v)]));
   for(const row of [...detail.inputs,...detail.outputs])for(const a of row.asset_list||[])if(a.decimals!=null)decimals[assetId(a)]=a.decimals;
-  return {hash:detail.tx_hash,time:detail.tx_timestamp,adaRaw:String(ada),assets,decimals,feeRaw:allInputs?String(fee):null,internal:allInputs&&allOutputs&&Object.keys(assets).length===0&&ada===-fee,wallets:[...touched],swapCandidate:detail.inputs.some(x=>!addresses.has(x.payment_addr?.bech32||''))||detail.outputs.some(x=>!addresses.has(x.payment_addr?.bech32||''))};
+  const externalOutputs=detail.inputs.some(row=>addresses.has(row.payment_addr?.bech32||''))?detail.outputs.filter(row=>row.payment_addr?.bech32&&!addresses.has(row.payment_addr.bech32)).map(row=>({address:row.payment_addr!.bech32!,lovelace:row.value})):[];
+  return {hash:detail.tx_hash,time:detail.tx_timestamp,adaRaw:String(ada),assets,decimals,feeRaw:allInputs?String(fee):null,internal:allInputs&&allOutputs&&Object.keys(assets).length===0&&ada===-fee,wallets:[...touched],externalOutputs,swapCandidate:detail.inputs.some(x=>!addresses.has(x.payment_addr?.bech32||''))||detail.outputs.some(x=>!addresses.has(x.payment_addr?.bech32||''))};
 }
 export function tradeOf(f:Fact):Trade|null{
   if(f.internal||!f.swapCandidate)return null;const changed=Object.entries(f.assets);if(changed.length!==1)return null;

@@ -11,6 +11,9 @@ import {readCache,saveCache} from '@/lib/portfolio-cache';
 import type {Snapshot} from '@/lib/portfolio-cache';
 
 import {portfolioFetch} from './transport';
+import {CexAddresses} from './CexAddresses';
+import {normalizeCexAddresses,cexDestinations,cexAdjustedFact} from './cex';
+import type {CexAddress} from './cex';
 import {durationLabel,remainingSeconds} from './progress';
 import {memberWallets,resolveWalletGroups,validWalletAddress,validStakeAddress,sameTrackedAddresses,walletTransactionCount} from './member';
 const num=(n:number,max=6)=>n.toLocaleString('en-US',{maximumFractionDigits:max});
@@ -40,6 +43,8 @@ async function request<T>(path:string,body:object,signal:AbortSignal,range?:stri
 
 export default function Home({memberStake}:{memberStake:string}){
   const SETTINGS='tdsp-member-wallets-v1:'+memberStake;
+  const CEX_SETTINGS='tdsp-member-cex-v1:'+memberStake;
+  const [cexAddresses,setCexAddresses]=useState<CexAddress[]>(()=>{try{return normalizeCexAddresses(JSON.parse(localStorage.getItem(CEX_SETTINGS)||'[]'));}catch{return [];}});
   const [wallets,setWallets]=useState<Wallet[]>(()=>memberWallets(memberStake,[])),[ready,setReady]=useState(false);
   const [snapshot,setSnapshot]=useState<Snapshot|null>(null),[busy,setBusy]=useState(false),[status,setStatus]=useState('Starting…');
   const [error,setError]=useState(''),[notice,setNotice]=useState(''),[cacheNotice,setCacheNotice]=useState('');
@@ -127,7 +132,7 @@ export default function Home({memberStake}:{memberStake:string}){
       }
       next.txs=[...map.values()].sort((a,b)=>b.block_time-a.block_time||a.tx_hash.localeCompare(b.tx_hash));
       next.facts=Object.fromEntries(Object.entries(next.facts).filter(([hash])=>map.has(hash)));
-      const missing=next.txs.filter((t,i)=>i<20||!next.facts[t.tx_hash]);
+      const missing=next.txs.filter((t,i)=>i<20||!next.facts[t.tx_hash]||!Array.isArray(next.facts[t.tx_hash].externalOutputs));
       setSnapshot({...next});const owned=new Set(addresses);
       const analysisStarted=Date.now();
       setCounting(null);
@@ -146,12 +151,17 @@ export default function Home({memberStake}:{memberStake:string}){
   }
 
   function saveWallets(next:Wallet[]){next=memberWallets(memberStake,next);controller.current?.abort();try{localStorage.setItem(SETTINGS,JSON.stringify(next));}catch{setCacheNotice('Wallet settings could not be saved in this browser.');}setWallets(next);}
+  function saveCexAddresses(entries:CexAddress[]){
+    try{localStorage.setItem(CEX_SETTINGS,JSON.stringify(entries));setCexAddresses(entries);return true;}
+    catch{setCacheNotice('CEX addresses could not be saved in this browser.');return false;}
+  }
   function addWallet(e:React.FormEvent){e.preventDefault();const a=address.trim().toLowerCase();if(!validWalletAddress(a)){setWalletError('Enter a valid mainnet stake address (stake1…) or payment address (addr1…).');return;}if(wallets.some(w=>w.address===a)){setWalletError('This address is already included.');return;}saveWallets([...wallets,{address:a,label:name.trim()||`Wallet ${wallets.length+1}`}]);setAddress('');setName('');setWalletError('');}
   function updateOverride(id:string,field:'average'|'price',value:string){if(value!==''&&parseAmount(value)===null)return;const next={...overrides,[id]:{...overrides[id],[field]:value}};setOverrides(next);try{localStorage.setItem(overrideKey,JSON.stringify(next));}catch{setCacheNotice('Your price entries could not be saved locally.');}}
 
   const holdings=useMemo(()=>snapshot?combineHoldings(snapshot.infos):[],[snapshot]);
-  const basis=useMemo(()=>snapshot?.complete?remainingBasis(Object.values(snapshot.facts),snapshot.history):{},[snapshot]);
-  const adaLive=useMemo(()=>snapshot?liveAdaBasis(Object.values(snapshot.facts),snapshot.history,holdings.find(h=>h.id==='lovelace')?.raw||'0',snapshot.complete):null,[snapshot,holdings]);
+  const classifiedFacts=useMemo(()=>Object.fromEntries(Object.entries(snapshot?.facts||{}).map(([hash,fact])=>[hash,cexAdjustedFact(fact,cexAddresses)])),[snapshot,cexAddresses]);
+  const basis=useMemo(()=>snapshot?.complete?remainingBasis(Object.values(classifiedFacts),snapshot.history):{},[snapshot,classifiedFacts]);
+  const adaLive=useMemo(()=>snapshot?liveAdaBasis(Object.values(classifiedFacts),snapshot.history,holdings.find(h=>h.id==='lovelace')?.raw||'0',snapshot.complete):null,[snapshot,holdings,classifiedFacts]);
   const rows=holdings.map(h=>{
     const m=snapshot?.markets[h.id],decimals=h.id==='lovelace'?6:m?.decimals;
     const qty=units(h.raw,decimals);const manualPrice=parseAmount(overrides[h.id]?.price);
@@ -175,7 +185,7 @@ export default function Home({memberStake}:{memberStake:string}){
   const analysisPercent=transactionTotal?analysedTotal/transactionTotal*100:0;
   const eta=analysis?remainingSeconds(analysis.started,clock,analysis.done,analysis.total):null;
   const refreshTiming=refreshStarted?`${busy?'Elapsed':'Refresh duration'}: ${durationLabel((clock-refreshStarted)/1000)}${busy?(eta!==null?` · Estimated analysis remaining: ${durationLabel(eta)}`:' · Estimating remaining time…'):''}`:'';
-  const shown=(snapshot?.txs||[]).filter(t=>{const f=snapshot?.facts[t.tx_hash];return (filter==='all'||f&&kindOf(f)===filter)&&(!query||t.tx_hash.includes(query.toLowerCase().trim())||(f?.wallets||[]).some(a=>displayWallets.find(w=>w.address===a)?.label.toLowerCase().includes(query.toLowerCase())));});
+  const shown=(snapshot?.txs||[]).filter(t=>{const f=classifiedFacts[t.tx_hash];return (filter==='all'||f&&kindOf(f)===filter)&&(!query||t.tx_hash.includes(query.toLowerCase().trim())||(f?.wallets||[]).some(a=>displayWallets.find(w=>w.address===a)?.label.toLowerCase().includes(query.toLowerCase())));});
 
   return <main className="member-portfolio"><header className="portfolio-header"><div><span className="ada-logo">₳</span><strong>TDSP</strong><span className="muted"> / Portfolio</span></div><button onClick={()=>void refresh()} disabled={busy||!ready} className="governance-vote-secondary"><RefreshCw size={16} className={busy?'animate-spin':''}/> Refresh</button></header>
     <div className="portfolio-body"><section className="portfolio-hero"><div className="eyebrow">{wallets.length} wallets · mainnet</div><h1>Your member portfolio</h1><p className="muted">Internal transfers keep your combined holdings unchanged, apart from fees.</p><div className="tdsp-tile-grid">
@@ -192,6 +202,8 @@ export default function Home({memberStake}:{memberStake:string}){
       <p className="small muted">Wallets, prices you enter, and cached history are saved in this browser. Adding or removing a wallet recalculates the entire portfolio; average costs are saved separately for each wallet combination.</p>
     </section>
 
+    <CexAddresses entries={cexAddresses} owned={Object.values(snapshot?.groups||{}).flat().concat(wallets.map(wallet=>wallet.address))} onChange={saveCexAddresses}/>
+    {cexAddresses.length>0&&Object.values(snapshot?.facts||{}).some(fact=>!Array.isArray(fact.externalOutputs))&&<p className="small muted">Refresh to load destination addresses for older cached transactions.</p>}
     <section className="portfolio-section"><div className="section-heading"><div><h2>Current holdings & performance</h2><p className="muted">ADA buy price is calculated automatically from receipt-date market prices across your tracked wallets. Gain / loss = current value − remaining cost.</p></div></div>
       <Table><TableHeader><TableRow>{['Asset','Balance','Current price · USD','Current value','Average buy · USD / unit','Unrealised gain / loss'].map(t=><TableHead key={t}>{t}</TableHead>)}</TableRow></TableHeader><TableBody>{rows.map(r=><TableRow key={r.id}>
         <TableCell><strong title={r.id}>{r.name}</strong><div className="small muted" title={r.id}>{r.id==='lovelace'?'Cardano':short(r.id)}</div></TableCell>
@@ -206,7 +218,7 @@ export default function Home({memberStake}:{memberStake:string}){
 
     <section className="portfolio-section"><div className="section-heading"><div><h2>Combined transaction history <span className="muted">{num(snapshot?.txs.length||0,0)}</span></h2><p className="muted">Each transaction appears once, even when it touches multiple wallets.</p></div><Input aria-label="Search transactions or wallet names" placeholder="Transaction hash or wallet name" value={query} onChange={e=>setQuery(e.target.value)} className="search-input"/></div>
       <div className="filter-row">{Object.entries(labels).map(([id,label])=><button key={id} aria-pressed={filter===id} onClick={()=>setFilter(id)} className={filter===id?'active':''}>{label}</button>)}</div>
-      <div className="history-table"><Table><TableHeader><TableRow>{['Transaction / type','Date','Wallets','Portfolio change','ADA / trade price / fee'].map(t=><TableHead key={t}>{t}</TableHead>)}</TableRow></TableHeader><TableBody>{shown.slice(page*100,(page+1)*100).map(t=><Transaction key={t.tx_hash} tx={t} fact={snapshot?.facts[t.tx_hash]} wallets={displayWallets} markets={snapshot?.markets||{}} history={snapshot?.history||{}}/>)}</TableBody></Table></div>{!shown.length&&<p className="empty">{busy?'Loading transactions…':'No matching transactions.'}</p>}
+      <div className="history-table"><Table><TableHeader><TableRow>{['Transaction / type','Date','Wallets','Portfolio change','ADA / trade price / fee'].map(t=><TableHead key={t}>{t}</TableHead>)}</TableRow></TableHeader><TableBody>{shown.slice(page*100,(page+1)*100).map(t=><Transaction key={t.tx_hash} tx={t} fact={classifiedFacts[t.tx_hash]} wallets={displayWallets} markets={snapshot?.markets||{}} history={snapshot?.history||{}} cexAddresses={cexAddresses}/>)}</TableBody></Table></div>{!shown.length&&<p className="empty">{busy?'Loading transactions…':'No matching transactions.'}</p>}
       <Pagination className="mt-4"><PaginationContent><PaginationItem><button className="governance-vote-secondary" disabled={page===0} onClick={()=>setPage(p=>p-1)}>Previous</button></PaginationItem><PaginationItem><span className="small px-3">Page {page+1} / {Math.max(1,Math.ceil(shown.length/100))} · {num(shown.length,0)} transactions</span></PaginationItem><PaginationItem><button className="governance-vote-secondary" disabled={(page+1)*100>=shown.length} onClick={()=>setPage(p=>p+1)}>Next</button></PaginationItem></PaginationContent></Pagination>
       <p className="small muted table-note">Internal transfers require all inputs and outputs to belong to tracked addresses. Their net change is only the fee. Mixed transactions remain separate. Buy/sell labels are inferred from opposing ADA and token changes; multi-step DEX orders may need further reconciliation.</p>
     </section><footer>Balances: Koios · Token quotes: <a href="https://docs.minswap.org/developer/aggregator-api" target="_blank" rel="noreferrer">Minswap</a> · Daily ADA prices: <a href="https://docs.coinmetrics.io/network-data/network-data-overview/market/price" target="_blank" rel="noreferrer">Coin Metrics</a> · Recent gaps: Coinbase · USD</footer></div>
@@ -228,11 +240,12 @@ function WalletCard({wallet:w,primary,snapshot,remove}:{wallet:Wallet;primary:bo
   </div>;
 }
 function Metric({label,value,note,tone=''}:{label:string;value:string;note:string;tone?:string}){return <div className="governance-menu-card"><strong className={`governance-card-title ${tone}`}>{value}</strong><div className="governance-card-detail">{label}</div><p className="small muted">{note}</p></div>;}
-function Transaction({tx,fact,markets,wallets,history}:{tx:Tx;fact?:Fact;markets:Record<string,Market>;wallets:Wallet[];history:Record<string,number>}){
+function Transaction({tx,fact,markets,wallets,history,cexAddresses}:{tx:Tx;fact?:Fact;markets:Record<string,Market>;wallets:Wallet[];history:Record<string,number>;cexAddresses:CexAddress[]}){
   const kind=fact?kindOf(fact):null,trade=fact?tradeOf(fact):null;
+  const destinations=fact?cexDestinations(fact,cexAddresses):[];
   const quantity=trade?units(trade.raw,markets[trade.id]?.decimals??fact?.decimals?.[trade.id]):null;
   const daily=history[new Date(tx.block_time*1000).toISOString().slice(0,10)];
-  return <TableRow><TableCell><a href={`https://cardanoscan.io/transaction/${tx.tx_hash}`} target="_blank" rel="noreferrer" className="address">{short(tx.tx_hash)} <ExternalLink size={12}/></a><div className={`tx-kind ${kind==='internal'?'internal':''}`}>{kind==='internal'&&<ArrowRightLeft size={14}/>} {trade?`${trade.side==='buy'?'Buy':'Sell'} ${markets[trade.id]?.ticker||assetName(trade.id)} · inferred`:kind?labels[kind]:'Awaiting analysis'}</div></TableCell>
+  return <TableRow><TableCell><a href={`https://cardanoscan.io/transaction/${tx.tx_hash}`} target="_blank" rel="noreferrer" className="address">{short(tx.tx_hash)} <ExternalLink size={12}/></a><div className={`tx-kind ${kind==='internal'?'internal':''}`}>{kind==='internal'&&<ArrowRightLeft size={14}/>} {destinations.length?(fact?.feeRaw===null?'CEX output · mixed inputs':'Sent to CEX'):trade?`${trade.side==='buy'?'Buy':'Sell'} ${markets[trade.id]?.ticker||assetName(trade.id)} · inferred`:kind==='send'?'ADA / assets spent or sent':kind==='internal'?'Transfer between own wallets':kind?labels[kind]:'Awaiting analysis'}</div>{destinations.map((destination,i)=><div className="small muted" key={`${destination.address}:${i}`}><a href={`https://cardanoscan.io/address/${destination.address}`} target="_blank" rel="noreferrer" title={destination.address}>{destination.name} · {short(destination.address)}</a> · ₳ {num(Number(destination.lovelace)/1e6)} · user label</div>)}</TableCell>
     <TableCell>{new Date(tx.block_time*1000).toLocaleDateString()}<div className="small muted">{new Date(tx.block_time*1000).toLocaleTimeString()}</div></TableCell>
     <TableCell>{[...new Set(fact?.wallets.map(a=>wallets.find(w=>w.address===a)?.label||short(a)))].map(label=><div key={label}>{label}</div>)}</TableCell>
     <TableCell>{fact?<><div className={BigInt(fact.adaRaw)>=0n?'positive':'negative'}>{BigInt(fact.adaRaw)>0n?'+':''}{num(Number(fact.adaRaw)/1e6)} ₳</div>{Object.entries(fact.assets).map(([id,raw])=>{const q=units(raw,markets[id]?.decimals??fact.decimals?.[id]);return <div className="small" key={id}>{BigInt(raw)>0n?'+':''}{q===null?raw+' raw':num(q)} {markets[id]?.ticker||assetName(id)}</div>;})}{fact.internal&&<div className="small muted">Internal transfer · fee only</div>}</>:'—'}</TableCell>
