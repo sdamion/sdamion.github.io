@@ -13,6 +13,7 @@ import type {Snapshot} from '@/lib/portfolio-cache';
 import {portfolioFetch} from './transport';
 import {runPipeline} from './pipeline';
 import {createHistoryIndex} from './history-index';
+import {keepRefreshSessionAlive} from './refresh-session';
 import {unrealisedStatus,cexStatus} from './metric-status';
 import {CexAddresses} from './CexAddresses';
 import {normalizeCexAddresses,cexDestinations,cexSources,cexAdjustedFact,isCexTransaction,cexAdaTransfer,cexAdaPerformance} from './cex';
@@ -68,6 +69,10 @@ export default function Home({memberStake}:{memberStake:string}){
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[ready,key]);
   useEffect(()=>setPage(0),[filter,query,key]);
+  useEffect(()=>{
+    if(!busy||!ready)return;
+    return keepRefreshSessionAlive(signal=>portfolioFetch('/session',{signal}));
+  },[busy,ready]);
   useEffect(()=>{
     if(!busy)return;
     const timer=setInterval(()=>setClock(Date.now()),1000);
