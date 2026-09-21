@@ -35,6 +35,14 @@ test('shared metric gain and loss tones override the default tile header colour'
     assert.match(read('delegators/portfolio-src/App.tsx'), /tone=\{covered.length\?gain>=0\?'positive':'negative':''\}/);
 });
 
+test('ADA summary includes the priced holdings subtotal using shared delegator amount styles', () => {
+    const app = read('delegators/portfolio-src/App.tsx');
+    assert.doesNotMatch(app, /<Metric label=\{valued.length===rows.length/);
+    assert.match(app, /<Metric label="ADA across wallets"[^\n]*secondaryValue=\{snapshot&&valued.length\?usd\(subtotal\):'—'\}/);
+    assert.match(app, /\$\{valued.length\} of \$\{rows.length\} assets priced/);
+    assert.match(app, /<span className="pool-delegator-usd">\{secondaryValue\}<\/span>/);
+});
+
 test('all linked addresses feed balances and transaction history, including spent addresses', () => {
     const app = read('delegators/portfolio-src/App.tsx');
     assert.match(app, /_empty:true/);
