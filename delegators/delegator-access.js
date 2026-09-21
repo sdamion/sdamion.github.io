@@ -643,7 +643,7 @@ async function openMemberPortfolio() {
     closePortfolio = close;
     container.textContent = t('Loading member portfolio…');
     try {
-        const module = await import('./portfolio/app.js?v=20260922-react-metric-ownership');
+        const module = await import('./portfolio/app.js?v=20260922-cex-historical-usd');
         if (closed) return;
         container.replaceChildren();
         dispose = module.mountPortfolio(container, { role: ROLE });

@@ -43,6 +43,30 @@ export function cexAdaTransfer(fact:Fact,entries:CexAddress[]){
   return null;
 }
 
+export function cexUsdNetPosition(facts:Fact[],entries:CexAddress[],walletRaw:string,history:Record<string,number>,currentUsd:number|null){
+  let transferredUsd=0,missingPrices=0;
+  for(const fact of new Map(facts.map(fact=>[fact.hash,fact])).values()){
+    const transfer=cexAdaTransfer(fact,entries);
+    if(!transfer)continue;
+    const price=history[new Date(fact.time*1000).toISOString().slice(0,10)];
+    if(!Number.isFinite(price)||price<=0){missingPrices++;continue;}
+    transferredUsd+=(transfer.side==='sell'?1:-1)*Number(transfer.raw)/1e6*price;
+  }
+  const wallet=BigInt(walletRaw);
+  const walletUsd=wallet===0n?0:currentUsd!==null&&Number.isFinite(currentUsd)&&currentUsd>0?Number(wallet)/1e6*currentUsd:null;
+  return {usd:missingPrices||walletUsd===null?null:transferredUsd+walletUsd,missingPrices};
+}
+
+export function cexAdaNetPosition(facts:Fact[],entries:CexAddress[],walletRaw:string){
+  let received=0n,sent=0n;
+  for(const fact of new Map(facts.map(fact=>[fact.hash,fact])).values()){
+    const transfer=cexAdaTransfer(fact,entries);
+    if(transfer?.side==='buy')received+=transfer.raw;
+    if(transfer?.side==='sell')sent+=transfer.raw;
+  }
+  return {receivedRaw:String(received),sentRaw:String(sent),netRaw:String(sent+BigInt(walletRaw)-received)};
+}
+
 export function cexAdaPerformance(facts:Fact[],entries:CexAddress[],history:Record<string,number>,complete:boolean){
   let bought=0n,sold=0n,realised=0,unpricedSales=0,pricedSales=0;
   const unique=[...new Map(facts.map(fact=>[fact.hash,fact])).values()];

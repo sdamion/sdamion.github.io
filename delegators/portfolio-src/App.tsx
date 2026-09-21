@@ -14,9 +14,9 @@ import {portfolioFetch} from './transport';
 import {runPipeline} from './pipeline';
 import {createHistoryIndex} from './history-index';
 import {keepRefreshSessionAlive} from './refresh-session';
-import {unrealisedStatus,cexStatus} from './metric-status';
+import {unrealisedStatus} from './metric-status';
 import {CexAddresses} from './CexAddresses';
-import {normalizeCexAddresses,cexDestinations,cexSources,cexAdjustedFact,isCexTransaction,cexAdaTransfer,cexAdaPerformance} from './cex';
+import {normalizeCexAddresses,cexDestinations,cexSources,cexAdjustedFact,isCexTransaction,cexAdaTransfer,cexAdaNetPosition,cexUsdNetPosition} from './cex';
 import type {CexAddress} from './cex';
 import {durationLabel,remainingSeconds,analysisProgress} from './progress';
 import {memberWallets,resolveWalletGroups,validWalletAddress,validStakeAddress,sameTrackedAddresses,walletTransactionCount} from './member';
@@ -206,7 +206,8 @@ export default function Home({memberStake}:{memberStake:string}){
 
   const holdings=useMemo(()=>snapshot?combineHoldings(snapshot.infos):[],[snapshot]);
   const classifiedFacts=useMemo(()=>Object.fromEntries(Object.entries(snapshot?.facts||{}).map(([hash,fact])=>[hash,cexAdjustedFact(fact,cexAddresses)])),[snapshot,cexAddresses]);
-  const cexPerformance=useMemo(()=>cexAdaPerformance(Object.values(classifiedFacts),cexAddresses,snapshot?.history||{},snapshot?.complete===true),[classifiedFacts,cexAddresses,snapshot]);
+  const cexPosition=useMemo(()=>cexAdaNetPosition(Object.values(classifiedFacts),cexAddresses,holdings.find(h=>h.id==='lovelace')?.raw||'0'),[classifiedFacts,cexAddresses,holdings]);
+  const cexDollars=useMemo(()=>cexUsdNetPosition(Object.values(classifiedFacts),cexAddresses,holdings.find(h=>h.id==='lovelace')?.raw||'0',snapshot?.history||{},liveQuote?.usd??snapshot?.adaUsd??null),[classifiedFacts,cexAddresses,holdings,snapshot,liveQuote]);
   const basis=useMemo(()=>snapshot?.complete?remainingBasis(Object.values(classifiedFacts),snapshot.history):{},[snapshot,classifiedFacts]);
   const adaLive=useMemo(()=>snapshot?liveAdaBasis(Object.values(classifiedFacts),snapshot.history,holdings.find(h=>h.id==='lovelace')?.raw||'0',snapshot.complete):null,[snapshot,holdings,classifiedFacts]);
   const rows=holdings.map(h=>{
@@ -230,7 +231,6 @@ export default function Home({memberStake}:{memberStake:string}){
   const loadedFacts=Object.keys(classifiedFacts).length;
   const hasHistoricalPrices=Object.values(snapshot?.history||{}).some(price=>Number.isFinite(price)&&price>0);
   const gainStatus=unrealisedStatus(loadedFacts,adaLive?.receiptCount||0,hasHistoricalPrices,adaRow?.price!=null,snapshot?.complete===true,adaLive?.reconciled===true);
-  const realisedStatus=cexStatus(loadedFacts,hasHistoricalPrices,cexPerformance.boughtRaw,cexPerformance.soldRaw,cexPerformance.metadataComplete,snapshot?.complete===true);
   const transactionTotal=snapshot?.txs.length||0;
   const analysedTotal=snapshot?.txs.filter(tx=>!!snapshot.facts[tx.tx_hash]).length||0;
   const progress=analysisProgress(busy,analysis,analysedTotal,transactionTotal);
@@ -244,7 +244,7 @@ export default function Home({memberStake}:{memberStake:string}){
       <Metric label="ADA across wallets" value={snapshot?num(ada)+' ₳':'—'} secondaryValue={snapshot&&valued.length?usd(subtotal):'—'} note={`${valued.length} of ${rows.length} assets priced · USD subtotal of priced holdings`}/>
       <Metric label={provisional?'Unrealised gain / loss · estimate':'Unrealised gain / loss'} value={covered.length?(provisional?'≈ ':'')+signed(gain):gainStatus} note={covered.length?`${provisional?'Provisional · loaded receipts only · ':''}${covered.length} of ${rows.length} holdings${costTotal>0?' · '+num(gain/costTotal*100,2)+'%':''}`:adaBasisStatus} tone={covered.length?gain>=0?'positive':'negative':''}/>
       <Metric label="Network fees paid" value={loadedFacts||snapshot?.complete?num(fees)+' ₳':'Waiting for transaction details'} note={`${snapshot?.complete?'':'Loaded history only · '}Shared-input fees excluded`}/>
-      {cexAddresses.length>0&&<Metric label="Realised CEX gain / loss · estimate" value={cexPerformance.realisedUsd===null?realisedStatus:`${cexPerformance.provisional?'≈ ':''}${signed(cexPerformance.realisedUsd)}`} tone={cexPerformance.realisedUsd===null?'':cexPerformance.realisedUsd>=0?'positive':'negative'} note={`${cexPerformance.provisional?'Provisional · loaded history only · ':''}Bought ₳ ${num(Number(cexPerformance.boughtRaw)/1e6)} · Sold ₳ ${num(Number(cexPerformance.soldRaw)/1e6)} · ${num(cexPerformance.pricedSales,0)} priced sales${cexPerformance.unpricedSales?` · ${num(cexPerformance.unpricedSales,0)} sales awaiting basis / price (excluded)`:''}${!cexPerformance.metadataComplete?' · some counterparty data still missing':''} · Transfer-day prices; before network fees`}/>}
+      {cexAddresses.length>0&&<Metric label="ADA gain / loss · CEX + wallets" value={snapshot?`${snapshot.complete?'':'≈ '}${BigInt(cexPosition.netRaw)>0n?'+':''}${num(Number(cexPosition.netRaw)/1e6)} ₳`:'Waiting for wallet balances'} secondaryValue={snapshot&&cexDollars.usd!==null?`≈ ${signed(cexDollars.usd)}`:'USD unavailable'} tone={snapshot?BigInt(cexPosition.netRaw)>=0n?'positive':'negative':''} note={`${snapshot?.complete?'':'Provisional · loaded history only · '}Sent to CEX ₳ ${num(Number(cexPosition.sentRaw)/1e6)} + In wallets ₳ ${num(ada)} − Received from CEX ₳ ${num(Number(cexPosition.receivedRaw)/1e6)} · USD: transfer-day prices + current wallet value${cexDollars.missingPrices?` · ${cexDollars.missingPrices} transfers missing historical prices`:''} · Your net-flow rule, not trading profit`}/>}
     </div><p role="status" className="status-line">{status}{(liveQuote?.at||snapshot?.priceAt)?' · Price quote '+new Date((liveQuote?.at||snapshot?.priceAt)!).toLocaleTimeString()+' · refreshes every minute':''}</p><p className="small muted" role="timer">{refreshTiming}</p>
     {counting!==null&&<div><p className="small muted" role="status">{num(counting,0)} unique transactions · checking for additional history</p><progress aria-label="Checking for additional transactions"/></div>}
     {counted!==null&&<p className="small muted" role="status">Transaction check complete · {num(counted,0)} unique transactions</p>}
