@@ -25,5 +25,8 @@ export function cexSources(fact:Fact,entries:CexAddress[]){
   return fact.internal?[]:matchCounterparties(fact.externalInputs||[],entries);
 }
 export function cexAdjustedFact(fact:Fact,entries:CexAddress[]):Fact{
-  return cexDestinations(fact,entries).length||cexSources(fact,entries).length?{...fact,swapCandidate:false}:fact;
+  return isCexTransaction(fact,entries)?{...fact,swapCandidate:false}:fact;
+}
+export function isCexTransaction(fact:Fact|undefined,entries:CexAddress[]):boolean{
+  return !!fact&&(cexDestinations(fact,entries).length>0||cexSources(fact,entries).length>0);
 }

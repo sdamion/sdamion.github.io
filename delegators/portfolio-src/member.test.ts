@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {memberWallets,validStakeAddress,resolveWalletGroups,sameTrackedAddresses,walletTransactionCount} from './member.ts';
 import {analyse,liveAdaBasis,tradeOf} from './core.ts';
-import {normalizeCexAddresses,cexDestinations,cexSources,cexAdjustedFact} from './cex.ts';
+import {normalizeCexAddresses,cexDestinations,cexSources,cexAdjustedFact,isCexTransaction} from './cex.ts';
 const stake='stake1u9ex0jtl4nv84rlzwuft5rczy2hgkjygewla04mgy7v2nccx4p4yr';
 // Synthetic addresses, never a member's personal wallet history.
 function fixtureAddress(seed:number){
@@ -54,5 +54,10 @@ assert.equal(cexSources(receipt,[...stakeEntries,...exchanges])[0].name,'Exchang
 assert.equal(cexSources(incoming,stakeEntries).length,0);
 assert.equal(cexSources(f,stakeEntries).length,0);
 assert.equal(cexAdjustedFact(receipt,stakeEntries).swapCandidate,false);
+assert.equal(isCexTransaction(receipt,stakeEntries),true);
+assert.equal(isCexTransaction(outbound,exchanges),true);
+assert.equal(isCexTransaction(f,exchanges),false);
+assert.equal(isCexTransaction(outbound,[]),false);
+assert.equal(isCexTransaction(undefined,exchanges),false);
 assert.equal(cexDestinations({...outbound,externalOutputs:[{address:b,lovelace:'8000000',stakeAddress:stake}]},stakeEntries)[0].name,'Stake Exchange');
 console.log('PASS: verified primary stake wallet, settings isolation, address resolution, overlap deduplication and internal-transfer basis.');
