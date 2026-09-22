@@ -7,13 +7,28 @@ export function AdaUsdAmount({ada,usd}:{ada:number|null;usd:number|null}){
   },[ada,usd]);
   return <span ref={ref}/>;
 }
-export function MenuTile({title,value,onOpen}:{title:string;value:string;onOpen:()=>void}){
+export function MenuTile({title,value,onOpen,analysis}:{title:string;value:string;onOpen:()=>void;analysis?:{done:number;total:number;counting:boolean;busy:boolean}}){
   const ref=React.useRef<HTMLButtonElement>(null);
   React.useLayoutEffect(()=>{
     const button=ref.current;if(!button)return;
     button.replaceChildren();
     (window as unknown as {TDSPRuntime:{appendUniversalTileContent:(node:HTMLElement,options:Record<string,unknown>)=>void}}).TDSPRuntime.appendUniversalTileContent(button,{title,primaryText:value});
-  },[title,value]);
+    if(analysis){
+      const {done,total,counting,busy}=analysis;
+      const percent=total>0?Math.min(100,done/total*100):0;
+      const label=document.createElement('span');label.className='tdsp-bar-legend';
+      label.textContent=counting?`${done.toLocaleString()} analysed · counting transactions…`:`${done.toLocaleString()} of ${total.toLocaleString()} ${busy?'analysing':'analysed'}`;
+      const row=document.createElement('span');row.className='section-heading';row.style.width='100%';
+      const track=document.createElement('span');track.className='governance-vote-bar-track';track.style.flex='1';
+      track.setAttribute('role','progressbar');track.setAttribute('aria-label','Transactions analysed');
+      track.setAttribute('aria-valuemin','0');track.setAttribute('aria-valuemax','100');
+      track.setAttribute('aria-valuetext',label.textContent);
+      if(!counting)track.setAttribute('aria-valuenow',String(percent));
+      const fill=document.createElement('span');fill.className='governance-vote-bar-fill governance-vote-bar-fill--yes';fill.style.flexBasis=`${counting?0:percent}%`;track.append(fill);
+      const percentage=document.createElement('span');percentage.className='tdsp-bar-legend';percentage.textContent=counting?'…':`${percent.toLocaleString(undefined,{maximumFractionDigits:1})}%`;
+      row.append(track,percentage);button.append(label,row);
+    }
+  },[title,value,analysis?.done,analysis?.total,analysis?.counting,analysis?.busy]);
   return <button ref={ref} type="button" className="governance-card governance-menu-card" onClick={onOpen} aria-label={`Open ${title}`}/>;
 }
 export const Input=(props:React.ComponentProps<'input'>)=><input {...props}/>;

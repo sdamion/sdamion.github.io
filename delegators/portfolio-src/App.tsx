@@ -305,11 +305,9 @@ export default function Home({memberStake}:{memberStake:string}){
 
   return <main className="member-portfolio"><div className="section-heading" aria-label="Portfolio refresh">
     <button onClick={()=>void refresh()} disabled={busy||!ready} className="governance-vote-secondary"><RefreshCw size={16} className={busy?'animate-spin':''}/> Refresh</button>
+    {busy&&<span className="small muted" role="timer">{refreshTiming}</span>}
     <div className="portfolio-section">
-      <p role="status" className="status-line">{status}</p>
-      {busy&&<p className="small muted" role="timer">{refreshTiming}</p>}
-      {counting!==null&&<div><p className="small muted" role="status">{num(counting,0)} unique transactions · checking for additional history</p><progress aria-label="Checking for additional transactions"/></div>}
-      {busy&&snapshot&&<div><p className="small muted" role="status">{counting!==null?`${num(progress.done,0)} transactions analysed · counting continues`:!analysis?'Preparing refresh':`${num(progress.done,0)} / ${num(progress.total,0)} transactions analysed · ${num(progress.percent,1)}%`}</p><progress aria-label="Transactions analysed" aria-valuetext={counting!==null?`${progress.done} transactions analysed; counting continues`:`${progress.done} of ${progress.total} transactions analysed`} max={Math.max(1,progress.total)} value={counting!==null?undefined:progress.done}/></div>}
+      {!(busy&&analysis)&&<p role="status" className="status-line">{status}</p>}
       {error&&<p role="alert" className="message error">{error}</p>}{notice&&<p className="message">{notice}</p>}{cacheNotice&&<p role="status" className="message">{cacheNotice}</p>}
     </div>
   </div>
@@ -324,7 +322,7 @@ export default function Home({memberStake}:{memberStake:string}){
       <MenuTile title="Wallet addresses" value={num(wallets.length,0)} onOpen={()=>setSection('wallets')}/>
       <MenuTile title="DEX / CEX addresses" value={num(cexAddresses.length,0)} onOpen={()=>setSection('exchanges')}/>
       <MenuTile title="Current holdings & performance" value={num(rows.length,0)} onOpen={()=>setSection('holdings')}/>
-      <MenuTile title="Transactions" value={num(transactionTotal,0)} onOpen={()=>setSection('transactions')}/>
+      <MenuTile title="Transactions" value={num(counting??transactionTotal,0)} analysis={snapshot?{done:progress.done,total:progress.total,counting:counting!==null,busy}:undefined} onOpen={()=>setSection('transactions')}/>
     </div>
     {section==='exchanges'&&<AssetOverlay id="portfolio-exchanges-overlay" name="DEX / CEX addresses" onClose={()=>setSection(null)}>
     <CexAddresses entries={cexAddresses} owned={Object.values(snapshot?.groups||{}).flat().concat(wallets.map(wallet=>wallet.address))} onChange={saveCexAddresses}/>
