@@ -53,6 +53,8 @@
 }
 .member-portfolio .table-shell { overflow-x: auto; }
 .portfolio-asset-image { display: block; width: 48px; height: 48px; object-fit: contain; }
+.portfolio-asset-button { flex-direction: column; align-items: flex-start; }
+.portfolio-asset-name { display: block; overflow-wrap: anywhere; white-space: normal; }
 .member-portfolio .table-shell table { min-width: 640px; }
 .member-portfolio .governance-action-buttons { list-style: none; padding: 0; }
 .member-portfolio .portfolio-linked-addresses { width: 100%; }

@@ -9,7 +9,7 @@ export type Counterparty = {address:string;lovelace:string;stakeAddress?:string|
 export type Fact = { hash:string; time:number; adaRaw:string; assets:Record<string,string>; decimals:Record<string,number>; feeRaw:string|null; internal:boolean; wallets:string[]; swapCandidate:boolean; externalOutputs?:Counterparty[]; externalInputs?:Counterparty[]; minted?:Record<string,string>; inputRefs?:string[]; ownedInputCount?:number };
 export type Acquisition = {raw:string;ada:number;time:number;paymentHash:string;source:'mint'|'linked-mint'|'confirmed'};
 export type Acquisitions = Record<string,Record<string,Acquisition>>;
-export type Market = { token_id:string; ticker?:string|null; decimals?:number|null; price_by_ada?:number|null; price_by_usd?:number|null; is_verified?:boolean|null; logo?:string|null; image?:string|string[]|null; image_url?:string|null; is_nft?:boolean; wayup_floor_ada?:number; wayup_quoted_at?:string };
+export type Market = { token_id:string; ticker?:string|null; decimals?:number|null; price_by_ada?:number|null; price_by_usd?:number|null; is_verified?:boolean|null; logo?:string|null; image?:string|string[]|null; image_url?:string|null; is_nft?:boolean; wayup_image?:string; wayup_floor_ada?:number; wayup_quoted_at?:string };
 export type Holding = { id:string; raw:string };
 export type Trade = { side:'buy'|'sell'; id:string; raw:string; ada:number; costAda:number };
 export const assetId=(a:Asset)=>a.policy_id+a.asset_name;
