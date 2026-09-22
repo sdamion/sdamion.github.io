@@ -8,8 +8,8 @@ test('wallet changes show initialisation before counting, even without a snapsho
     const save = app.slice(app.indexOf('function saveWallets('), app.indexOf('function saveCexAddresses('));
     assert.ok(save.indexOf('setBusy(true)') < save.indexOf('setWallets(next)'));
     assert.match(save, /setAnalysis\(null\);setCounting\(null\)/);
-    assert.match(app, /busy&&!analysis&&counting===null&&<div role="status">/);
-    assert.match(app, /<progress aria-label="Initialising wallets"\/>/);
+    assert.match(app, /value=\{initialising\?'Initialising':num\(wallets.length,0\)\} loading=\{initialising\}/);
+    assert.match(read('delegators/portfolio-src/ui.tsx'), /progress.setAttribute\('aria-label','Initialising'\)/);
 });
 
 test('Portfolio mounts in the universal overlay without a shadow or private stylesheet', () => {

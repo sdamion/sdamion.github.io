@@ -63,6 +63,7 @@ export default function Home({memberStake}:{memberStake:string}){
   const [cexAddresses,setCexAddresses]=useState<CexAddress[]>(()=>{try{return normalizeCexAddresses(JSON.parse(localStorage.getItem(CEX_SETTINGS)||'[]'));}catch{return [];}});
   const [wallets,setWallets]=useState<Wallet[]>(()=>memberWallets(memberStake,[])),[ready,setReady]=useState(false);
   const [snapshot,setSnapshot]=useState<Snapshot|null>(null),[busy,setBusy]=useState(false),[status,setStatus]=useState('Starting…');
+  const [initialising,setInitialising]=useState(false);
   const [error,setError]=useState(''),[notice,setNotice]=useState(''),[cacheNotice,setCacheNotice]=useState('');
   const [address,setAddress]=useState(''),[name,setName]=useState(''),[walletError,setWalletError]=useState('');
   const [filter,setFilter]=useState('all'),[query,setQuery]=useState(''),[overrides,setOverrides]=useState<Overrides>({});
@@ -108,7 +109,7 @@ export default function Home({memberStake}:{memberStake:string}){
   async function refresh(){
     controller.current?.abort();const control=new AbortController();controller.current=control;const signal=control.signal;
     const started=Date.now();setRefreshStarted(started);setClock(started);setAnalysis(null);setCounting(null);setCounted(null);
-    setBusy(true);setError('');setNotice('');setStatus('Initialising wallets · loading saved data…');
+    setBusy(true);setInitialising(true);setError('');setNotice('');setStatus('Initialising wallets · loading saved data…');
     try{
       let cached:Snapshot|null=null;try{cached=await readCache(key);}catch{setCacheNotice('Local cache unavailable. Live data will still load.');}
       signal.throwIfAborted();if(cached)setSnapshot(cached);
@@ -131,7 +132,7 @@ export default function Home({memberStake}:{memberStake:string}){
       const next:Snapshot={groups,infos,txs:sameAddresses?cached?.txs||[]:[],facts:reusableFacts,markets:{...(sameAddresses?cached?.markets:{})},adaUsd:cached?.adaUsd??null,history:cached?.history||{},updated:new Date().toISOString(),priceAt:cached?.priceAt??null,complete:false};
       for(const info of infos)for(const u of info.utxo_set||[])for(const a of u.asset_list||[]){const id=a.policy_id+a.asset_name;next.markets[id]={...next.markets[id],token_id:id,decimals:a.decimals??next.markets[id]?.decimals};}
       setSnapshot({...next});
-      setStatus('Balances updated · updating prices…');
+      setInitialising(false);setStatus('Balances updated · updating prices…');
       const quote=await portfolioFetch('/api/price',{signal}).then(async r=>r.ok?await r.json() as {cardano?:{usd:number}}:null).catch(()=>null);
       signal.throwIfAborted();
       const freshPrice=quote?.cardano?.usd??null;
@@ -209,12 +210,12 @@ export default function Home({memberStake}:{memberStake:string}){
       next.complete=next.txs.every(t=>!!next.facts[t.tx_hash])&&[...scheduled].every(hash=>refreshedHashes.has(hash));await persist();signal.throwIfAborted();setSnapshot({...next});
       setStatus(next.complete?`Updated ${new Date(next.updated).toLocaleString()}`:'Some transactions are awaiting analysis. Refresh to retry.');
     }catch(e){if(!signal.aborted){setError(e instanceof Error?e.message:'Could not update this portfolio.');setStatus('Refresh incomplete · showing available data');}}
-    finally{if(!signal.aborted){setClock(Date.now());setBusy(false);setCounting(null);}}
+    finally{if(!signal.aborted){setClock(Date.now());setBusy(false);setInitialising(false);setCounting(null);}}
   }
 
   function saveWallets(next:Wallet[]){
     next=memberWallets(memberStake,next);controller.current?.abort();
-    setBusy(true);setAnalysis(null);setCounting(null);setCounted(null);setStatus('Initialising wallets…');
+    setBusy(true);setInitialising(true);setAnalysis(null);setCounting(null);setCounted(null);setStatus('Initialising wallets…');
     const started=Date.now();setRefreshStarted(started);setClock(started);
     try{localStorage.setItem(SETTINGS,JSON.stringify(next));}catch{setCacheNotice('Wallet settings could not be saved in this browser.');}
     setWallets(next);
@@ -307,7 +308,7 @@ export default function Home({memberStake}:{memberStake:string}){
     <button onClick={()=>void refresh()} disabled={busy||!ready} className="governance-vote-secondary"><RefreshCw size={16} className={busy?'animate-spin':''}/> Refresh</button>
     {busy&&<span className="small muted" role="timer">{refreshTiming}</span>}
     <div className="portfolio-section">
-      {!(busy&&analysis)&&<p role="status" className="status-line">{status}</p>}
+      {!initialising&&!(busy&&analysis)&&<p role="status" className="status-line">{status}</p>}
       {error&&<p role="alert" className="message error">{error}</p>}{notice&&<p className="message">{notice}</p>}{cacheNotice&&<p role="status" className="message">{cacheNotice}</p>}
     </div>
   </div>
@@ -319,7 +320,7 @@ export default function Home({memberStake}:{memberStake:string}){
       {cexAddresses.length>0&&<Metric label="ADA gain / loss · CEX + wallets" value="Waiting for wallet balances" amount={snapshot?{ada:Number(cexPosition.netRaw)/1e6,usd:cexDollars.usd}:undefined} note={`${snapshot?.complete?'':'Partial · '}Net flow, not trading profit${cexDollars.missingPrices?` · ${cexDollars.missingPrices} unpriced transfers`:''}`}/>}
     </div></section>
     <div className="tdsp-tile-grid">
-      <MenuTile title="Wallet addresses" value={num(wallets.length,0)} onOpen={()=>setSection('wallets')}/>
+      <MenuTile title="Wallet addresses" value={initialising?'Initialising':num(wallets.length,0)} loading={initialising} onOpen={()=>setSection('wallets')}/>
       <MenuTile title="DEX / CEX addresses" value={num(cexAddresses.length,0)} onOpen={()=>setSection('exchanges')}/>
       <MenuTile title="Current holdings & performance" value={num(rows.length,0)} onOpen={()=>setSection('holdings')}/>
       <MenuTile title="Transactions" value={num(counting??transactionTotal,0)} analysis={snapshot?{done:progress.done,total:progress.total,counting:counting!==null,busy}:undefined} onOpen={()=>setSection('transactions')}/>
@@ -332,7 +333,6 @@ export default function Home({memberStake}:{memberStake:string}){
     </AssetOverlay>}
     {section==='wallets'&&<AssetOverlay id="portfolio-wallets-overlay" name="Wallet addresses" onClose={()=>setSection(null)}>
     <section className="portfolio-section"><p className="small muted">Your member stake address includes its linked payment addresses. Add only wallets you own.</p>
-      {busy&&!analysis&&counting===null&&<div role="status"><p className="small muted">Initialising wallets before counting transactions…</p><progress aria-label="Initialising wallets"/></div>}
       <div className="tdsp-tile-grid">{wallets.map((w,i)=><WalletCard key={w.address} wallet={w} primary={i===0} snapshot={snapshot} remove={()=>saveWallets(wallets.filter(x=>x.address!==w.address))}/>)}</div>
       <form onSubmit={addWallet} className="wallet-form governance-drep-registration-form"><label>Wallet name<Input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Savings" maxLength={60}/></label><label className="address-field">Stake or payment address<Input value={address} onChange={e=>setAddress(e.target.value)} placeholder="stake1… or addr1…" aria-describedby="wallet-error" required/></label><button className="governance-vote-primary" type="submit"><Plus size={16}/>Add wallet</button></form><p id="wallet-error" role="status" className="negative">{walletError}</p>
       <p className="small muted">Wallets, prices you enter, and cached history are saved in this browser. Adding or removing a wallet recalculates the entire portfolio; average costs are saved separately for each wallet combination.</p>
