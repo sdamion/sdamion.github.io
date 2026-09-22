@@ -304,7 +304,7 @@ export default function Home({memberStake}:{memberStake:string}){
   const refreshTiming=refreshStarted?`${busy?'Elapsed':'Refresh duration'}: ${durationLabel((clock-refreshStarted)/1000)}${busy?(eta!==null?` · Estimated analysis remaining: ${durationLabel(eta)}`:' · Estimating remaining time…'):''}`:'';
   const shown=(snapshot?.txs||[]).filter(t=>{const f=classifiedFacts[t.tx_hash];return (filter==='all'||(filter==='cex'?isCexTransaction(f,cexAddresses):f&&kindOf(f)===filter))&&matchesTransaction(query,t.tx_hash,f,snapshot?.markets||{},displayWallets);});
 
-  return <main className="member-portfolio"><div className="section-heading" aria-label="Portfolio refresh">
+  return <main className="member-portfolio"><div className="portfolio-body"><div className="section-heading" aria-label="Portfolio refresh">
     <button onClick={()=>void refresh()} disabled={busy||!ready} className="governance-vote-secondary"><RefreshCw size={16} className={busy?'animate-spin':''}/> Refresh</button>
     {busy&&<span className="small muted" role="timer">{refreshTiming}</span>}
     <div className="portfolio-section">
@@ -312,7 +312,6 @@ export default function Home({memberStake}:{memberStake:string}){
       {error&&<p role="alert" className="message error">{error}</p>}{notice&&<p className="message">{notice}</p>}{cacheNotice&&<p role="status" className="message">{cacheNotice}</p>}
     </div>
   </div>
-    <div className="portfolio-body">
     <section className="portfolio-section"><div className="tdsp-tile-grid">
       <Metric label="ADA across wallets" value="—" amount={snapshot?{ada,usd:valued.length?subtotal:null}:undefined} note={`${valued.length} / ${included.length} assets valued${excludedCount?` · ${excludedCount} excluded`:''}`}/>
       <Metric label={coverage.partial?'Unrealised gain / loss · partial estimate':provisional||estimatedGains?'Unrealised gain / loss · estimate':'Unrealised gain / loss'} value={covered.length?(provisional||estimatedGains||coverage.partial?'≈ ':'')+signed(gain):gainStatus} note={`${coverage.covered} / ${coverage.total} costs matched${costTotal>0?' · '+num(gain/costTotal*100,2)+'%':''}${estimatedGains?' · Estimated values':''}`} tone={covered.length?gain>=0?'positive':'negative':''}/>
