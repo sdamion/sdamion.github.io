@@ -13,6 +13,7 @@ import type {Snapshot} from '@/lib/portfolio-cache';
 import {portfolioFetch} from './transport';
 import {runPipeline} from './pipeline';
 import {createHistoryIndex} from './history-index';
+import {hasCounterpartyData,needsFactRefresh} from './fact-refresh';
 import {keepRefreshSessionAlive} from './refresh-session';
 import {currentValuation} from './current-valuation';
 import {valuationCoverage} from './valuation-coverage';
@@ -174,7 +175,7 @@ export default function Home({memberStake}:{memberStake:string}){
       setStatus(incremental?'Checking for new transactions…':'Loading remaining transaction history…');
       await runPipeline<Tx>(async(enqueue,active)=>{
         // Upgrade receipts and outgoing payments once to retain their UTxO links.
-        const legacy=next.txs.filter(tx=>{const f=next.facts[tx.tx_hash];return f&&((f.marketplaceVersion!==3&&Object.values(f.assets).some(raw=>BigInt(raw)>0n))||(f.inputRefs===undefined&&paymentBudget(f)!==null));});
+        const legacy=next.txs.filter(tx=>needsFactRefresh(next.facts[tx.tx_hash]));
         for(const tx of legacy)scheduled.add(tx.tx_hash);
         enqueue(legacy);updateAnalysis();
         for(const addressBatch of addressBatches)for(let offset=0;;offset+=1000){
@@ -188,7 +189,7 @@ export default function Home({memberStake}:{memberStake:string}){
           for(const tx of discovered){
             recent.set(tx.tx_hash,tx);
             const fact=next.facts[tx.tx_hash];
-            if((!fact||!Array.isArray(fact.externalInputs))&&!scheduled.has(tx.tx_hash)){scheduled.add(tx.tx_hash);pending.push(tx);}
+            if(needsFactRefresh(fact)&&!scheduled.has(tx.tx_hash)){scheduled.add(tx.tx_hash);pending.push(tx);}
           }
           // Refresh the newest 20 discovered transactions even when already cached.
           const newest=[...recent.values()].sort((a,b)=>b.block_time-a.block_time||a.tx_hash.localeCompare(b.tx_hash)).slice(0,20);
@@ -212,7 +213,7 @@ export default function Home({memberStake}:{memberStake:string}){
       },signal);
       const historyHashes=new Set(next.txs.map(tx=>tx.tx_hash));
       next.facts=Object.fromEntries(Object.entries(next.facts).filter(([hash])=>historyHashes.has(hash)));
-      next.complete=next.txs.every(t=>!!next.facts[t.tx_hash])&&[...scheduled].every(hash=>refreshedHashes.has(hash));await persist();signal.throwIfAborted();setSnapshot({...next});
+      next.complete=next.txs.every(t=>hasCounterpartyData(next.facts[t.tx_hash]))&&[...scheduled].every(hash=>refreshedHashes.has(hash));await persist();signal.throwIfAborted();setSnapshot({...next});
       setStatus(next.complete?`Updated ${new Date(next.updated).toLocaleString()}`:'Some transactions are awaiting analysis. Refresh to retry.');
     }catch(e){if(!signal.aborted){setError(e instanceof Error?e.message:'Could not update this portfolio.');setStatus('Refresh incomplete · showing available data');}}
     finally{if(!signal.aborted){setClock(Date.now());setBusy(false);setInitialising(false);setCounting(null);}}
@@ -303,6 +304,8 @@ export default function Home({memberStake}:{memberStake:string}){
   const hasHistoricalPrices=Object.values(snapshot?.history||{}).some(price=>Number.isFinite(price)&&price>0);
   const gainStatus=unrealisedStatus(loadedFacts,adaLive?.receiptCount||0,hasHistoricalPrices,adaRow?.price!=null,snapshot?.complete===true,adaLive?.reconciled===true);
   const transactionTotal=snapshot?.txs.length||0;
+  const cexPending=snapshot?.txs.filter(tx=>!hasCounterpartyData(snapshot.facts[tx.tx_hash])).length||0;
+  const cexUnresolved=Object.values(classifiedFacts).filter(f=>isCexTransaction(f,cexAddresses)&&!cexAdaTransfer(f,cexAddresses)).length;
   const analysedTotal=snapshot?.txs.filter(tx=>!!snapshot.facts[tx.tx_hash]).length||0;
   const progress=analysisProgress(busy,analysis,analysedTotal,transactionTotal);
   const eta=analysis&&counted!==null?remainingSeconds(analysis.started,clock,analysis.done,analysis.total):null;
@@ -320,13 +323,13 @@ export default function Home({memberStake}:{memberStake:string}){
       <Metric label="ADA across wallets" value="—" amount={snapshot?{ada,usd:valued.length?subtotal:null}:undefined} note={`${valued.length} / ${included.length} assets valued${excludedCount?` · ${excludedCount} excluded`:''}`}/>
       <Metric label={coverage.partial?'Unrealised gain / loss · partial estimate':provisional||estimatedGains?'Unrealised gain / loss · estimate':'Unrealised gain / loss'} value={covered.length?(provisional||estimatedGains||coverage.partial?'≈ ':'')+signed(gain):gainStatus} note={`${coverage.covered} / ${coverage.total} costs matched${costTotal>0?' · '+num(gain/costTotal*100,2)+'%':''}${estimatedGains?' · Estimated values':''}`} tone={covered.length?gain>=0?'positive':'negative':''}/>
       <Metric label="Network fees paid" value={loadedFacts||snapshot?.complete?num(fees)+' ₳':'Waiting for transaction details'} note={`${snapshot?.complete?'':'Loaded history only · '}Shared-input fees excluded`}/>
-      {cexAddresses.length>0&&<Metric label="ADA gain / loss · CEX + wallets" value="Waiting for wallet balances" amount={snapshot?{ada:Number(cexPosition.netRaw)/1e6,usd:cexDollars.usd}:undefined} note={`${snapshot?.complete?'':'Partial · '}Net flow, not trading profit${cexDollars.missingPrices?` · ${cexDollars.missingPrices} unpriced transfers`:''}`}/>}
+      {cexAddresses.length>0&&<Metric label="ADA gain / loss · CEX + wallets" value="Waiting for wallet balances" onOpen={()=>{setQuery('');setFilter('cex');setPage(0);setSection('transactions');}} amount={snapshot?{ada:Number(cexPosition.netRaw)/1e6,usd:cexDollars.usd}:undefined} note={`${snapshot?.complete&&!cexPending&&!cexUnresolved?'':'Partial · '}Net flow, not trading profit${cexPending?` · ${num(cexPending,0)} transactions need CEX address checks`:''}${cexUnresolved?` · ${num(cexUnresolved,0)} mixed CEX transactions excluded`:''}${cexDollars.missingPrices?` · ${cexDollars.missingPrices} unpriced transfers`:''}`}/>}
     </div></section>
     <div className="tdsp-tile-grid">
       <MenuTile title="Wallet addresses" value={initialising?'Initialising':num(wallets.length,0)} loading={initialising} onOpen={()=>setSection('wallets')}/>
       <MenuTile title="DEX / CEX addresses" value={num(cexAddresses.length,0)} onOpen={()=>setSection('exchanges')}/>
       <MenuTile title="Current holdings & performance" value={num(rows.length,0)} onOpen={()=>setSection('holdings')}/>
-      <MenuTile title="Transactions" value={num(counting??transactionTotal,0)} analysis={snapshot?{done:progress.done,total:progress.total,counting:counting!==null,busy}:undefined} onOpen={()=>setSection('transactions')}/>
+      <MenuTile title="Transactions" value={num(counting??transactionTotal,0)} analysis={snapshot?{done:progress.done,total:progress.total,counting:counting!==null,busy}:undefined} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('transactions');}}/>
     </div>
     {section==='exchanges'&&<AssetOverlay id="portfolio-exchanges-overlay" name="DEX / CEX addresses" onClose={()=>setSection(null)}>
     <CexAddresses entries={cexAddresses} owned={Object.values(snapshot?.groups||{}).flat().concat(wallets.map(wallet=>wallet.address))} onChange={saveCexAddresses}/>
@@ -408,7 +411,10 @@ function AssetImage({id,name,market,onOpen}:{id:string;name:string;market?:Marke
   return onOpen?<button type="button" className="governance-vote-secondary portfolio-asset-button" onClick={onOpen} aria-label={`View ${name} details`}>{content}</button>:<div>{content}</div>;
 }
 
-function Metric({label,value,amount,note,tone=''}:{label:string;value:string;amount?:{ada:number;usd:number|null};note:string;tone?:string}){return <div className="governance-menu-card"><strong translate="no" className={`governance-card-title ${tone}`}>{amount?<AdaUsdAmount {...amount}/>:value}</strong><div className="governance-card-detail" data-i18n-auto-original={label}>{label}</div><p className="small muted">{note}</p></div>;}
+function Metric({label,value,amount,note,tone='',onOpen}:{label:string;value:string;amount?:{ada:number;usd:number|null};note:string;tone?:string;onOpen?:()=>void}){
+  const Tag=onOpen?'button':'div';
+  return <Tag type={onOpen?'button':undefined} onClick={onOpen} aria-label={onOpen?`Open ${label}`:undefined} className="governance-menu-card"><strong translate="no" className={`governance-card-title ${tone}`}>{amount?<AdaUsdAmount {...amount}/>:value}</strong><span className="governance-card-detail" data-i18n-auto-original={label}>{label}</span><span className="small muted">{note}</span></Tag>;
+}
 function Transaction({tx,fact,markets,wallets,history,cexAddresses}:{tx:Tx;fact?:Fact;markets:Record<string,Market>;wallets:Wallet[];history:Record<string,number>;cexAddresses:CexAddress[]}){
   const kind=fact?kindOf(fact):null,trade=fact?tradeOf(fact):null;
   const destinations=fact?cexDestinations(fact,cexAddresses):[];
