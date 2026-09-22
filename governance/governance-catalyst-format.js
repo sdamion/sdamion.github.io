@@ -135,6 +135,9 @@
         }
 
         function createFundingAmountRow(usdValue, adaValue = null, usdPending = false, options = {}) {
+            if (adaValue !== null && Number.isFinite(Number(adaValue))) {
+                return window.TDSPRuntime.createAdaUsdAmount(Number(adaValue), usdPending || usdValue == null ? null : Number(usdValue));
+            }
             const row = document.createElement('span');
             row.className = 'governance-card-amount-row';
 

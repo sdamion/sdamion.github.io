@@ -386,30 +386,44 @@
         return Number.isFinite(parsedPrice) && parsedPrice > 0 ? parsedPrice : NaN;
     }
 
+    function formatAdaUsdAmount(ada, usd = null) {
+        const valid = value => typeof value === 'number' && Number.isFinite(value);
+        const tone = value => !valid(value) || value === 0 ? '' : value < 0 ? 'negative' : 'positive';
+        return {
+            ada: valid(ada) ? `₳ ${new Intl.NumberFormat('en-US', { maximumFractionDigits: 6 }).format(Math.abs(ada))}` : '—',
+            usd: valid(usd) ? `≈ $${new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(usd))}` : '',
+            adaTone: tone(ada), usdTone: tone(usd)
+        };
+    }
+
+    function createAdaUsdAmount(ada, usd = null) {
+        const formatted = formatAdaUsdAmount(ada, usd);
+        const amount = document.createElement('span');
+        amount.className = 'pool-delegator-amount';
+        amount.setAttribute('translate', 'no');
+        for (const currency of ['ada', 'usd']) {
+            if (!formatted[currency]) continue;
+            const part = document.createElement(currency === 'usd' ? 'small' : 'span');
+            if (currency === 'usd') part.className = 'pool-delegator-usd';
+            part.dataset.amountTone = formatted[currency + 'Tone'];
+            part.setAttribute('aria-label', `${formatted[currency + 'Tone'] || 'zero'} ${currency.toUpperCase()} ${formatted[currency]}`);
+            part.textContent = formatted[currency];
+            amount.appendChild(part);
+        }
+        return amount;
+    }
+
     function formatDelegatorUsd(lovelace) {
         const price = getAdaUsdPrice();
         const ada = Number(lovelace) / 1_000_000;
         if (!Number.isFinite(price) || !Number.isFinite(ada)) return '';
-        return `≈ $${new Intl.NumberFormat('en-US', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        }).format(ada * price)}`;
+        return formatAdaUsdAmount(ada, ada * price).usd;
     }
 
     function createDelegatorAmount(lovelace) {
-        const amount = document.createElement('span');
-        amount.className = 'pool-delegator-amount';
-        amount.appendChild(document.createTextNode(formatLovelaceAmount(lovelace)));
-
-        const usdValue = formatDelegatorUsd(lovelace);
-        if (usdValue) {
-            const usd = document.createElement('small');
-            usd.className = 'pool-delegator-usd';
-            usd.textContent = usdValue;
-            amount.appendChild(usd);
-        }
-
-        return amount;
+        const ada = Number(lovelace) / 1_000_000;
+        const price = getAdaUsdPrice();
+        return createAdaUsdAmount(ada, Number.isFinite(price) ? ada * price : null);
     }
 
     function formatPercentageValue(value, options = {}) {
@@ -745,6 +759,8 @@
         formatTileAdaFromLovelace,
         getAdaUsdPrice,
         formatDelegatorUsd,
+        formatAdaUsdAmount,
+        createAdaUsdAmount,
         createDelegatorAmount,
         formatPercentageValue,
         formatRatioPercentage,

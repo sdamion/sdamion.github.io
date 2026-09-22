@@ -1466,6 +1466,9 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     line-height: var(--tdsp-tile-detail-line-height);
 }
 
+.pool-delegator-amount [data-amount-tone="negative"] { color: var(--ai-unavailable-color, #c62828); }
+.pool-delegator-amount [data-amount-tone="positive"] { color: var(--accent-strong); }
+
 .pool-delegator-wallet-address {
     color: var(--tdsp-tile-detail-color);
     font-size: var(--tdsp-tile-detail-size);

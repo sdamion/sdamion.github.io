@@ -2044,6 +2044,11 @@ function closeApprovedGovernanceFundingOverlay() {
 }
 
 function createCatalystFundAmountLine(label, usdValue, adaValue, tone = '') {
+    if (adaValue != null && Number.isFinite(Number(adaValue))) {
+        const amount = window.TDSPRuntime.createAdaUsdAmount(Number(adaValue), usdValue == null ? null : Number(usdValue));
+        if (label) amount.prepend(document.createTextNode(`${label} `));
+        return amount;
+    }
     const row = document.createElement('span');
     row.className = 'governance-card-detail funding-recipient-amount-line';
     if (tone) row.classList.add(`funding-recipient-amount-line--${tone}`);

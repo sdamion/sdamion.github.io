@@ -1,4 +1,12 @@
 import React from 'react';
+export function AdaUsdAmount({ada,usd}:{ada:number|null;usd:number|null}){
+  const ref=React.useRef<HTMLSpanElement>(null);
+  React.useLayoutEffect(()=>{
+    const host=ref.current;if(!host)return;
+    host.replaceChildren((window as unknown as {TDSPRuntime:{createAdaUsdAmount:(ada:number|null,usd:number|null)=>HTMLElement}}).TDSPRuntime.createAdaUsdAmount(ada,usd));
+  },[ada,usd]);
+  return <span ref={ref}/>;
+}
 export function MenuTile({title,value,onOpen}:{title:string;value:string;onOpen:()=>void}){
   const ref=React.useRef<HTMLButtonElement>(null);
   React.useLayoutEffect(()=>{

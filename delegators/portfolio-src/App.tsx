@@ -24,7 +24,7 @@ import {mintPayments,paymentBudget} from './mint-payments';
 import type {PaymentLink} from './mint-payments';
 import {PaymentLinks} from './PaymentLinks';
 import {AssetOverlay} from './AssetOverlay';
-import {MenuTile} from './ui';
+import {MenuTile,AdaUsdAmount} from './ui';
 import {matchesTransaction} from './transaction-search';
 import {unrealisedStatus} from './metric-status';
 import {CexAddresses} from './CexAddresses';
@@ -34,7 +34,7 @@ import {durationLabel,remainingSeconds,analysisProgress} from './progress';
 import {memberWallets,resolveWalletGroups,validWalletAddress,validStakeAddress,sameTrackedAddresses,walletTransactionCount} from './member';
 const num=(n:number,max=6)=>n.toLocaleString('en-US',{maximumFractionDigits:max});
 const usd=(n:number)=>n.toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:Math.abs(n)>0&&Math.abs(n)<0.01?8:2});
-const signed=(n:number)=>`${n>0?'+':''}${usd(n)}`;
+const signed=(n:number)=>usd(Math.abs(n));
 const labels:Record<string,string>={all:'All',cex:'CEX',trade:'Trades',send:'Sends',receive:'Receives',internal:'Internal',mixed:'Mixed',other:'Other'};
 type Overrides=Record<string,{average?:string;price?:string;decimals?:string;excluded?:boolean}>;
 function parseAmount(s?:string):number|null {if(!s?.trim())return null;const n=Number(s);return Number.isFinite(n)&&n>=0?n:null;}
@@ -303,17 +303,23 @@ export default function Home({memberStake}:{memberStake:string}){
   const refreshTiming=refreshStarted?`${busy?'Elapsed':'Refresh duration'}: ${durationLabel((clock-refreshStarted)/1000)}${busy?(eta!==null?` · Estimated analysis remaining: ${durationLabel(eta)}`:' · Estimating remaining time…'):''}`:'';
   const shown=(snapshot?.txs||[]).filter(t=>{const f=classifiedFacts[t.tx_hash];return (filter==='all'||(filter==='cex'?isCexTransaction(f,cexAddresses):f&&kindOf(f)===filter))&&matchesTransaction(query,t.tx_hash,f,snapshot?.markets||{},displayWallets);});
 
-  return <main className="member-portfolio"><div className="governance-action-buttons"><button onClick={()=>void refresh()} disabled={busy||!ready} className="governance-vote-secondary"><RefreshCw size={16} className={busy?'animate-spin':''}/> Refresh</button></div>
+  return <main className="member-portfolio"><div className="section-heading" aria-label="Portfolio refresh">
+    <button onClick={()=>void refresh()} disabled={busy||!ready} className="governance-vote-secondary"><RefreshCw size={16} className={busy?'animate-spin':''}/> Refresh</button>
+    <div className="portfolio-section">
+      <p role="status" className="status-line">{status}</p>
+      {busy&&<p className="small muted" role="timer">{refreshTiming}</p>}
+      {counting!==null&&<div><p className="small muted" role="status">{num(counting,0)} unique transactions · checking for additional history</p><progress aria-label="Checking for additional transactions"/></div>}
+      {busy&&snapshot&&<div><p className="small muted" role="status">{counting!==null?`${num(progress.done,0)} transactions analysed · counting continues`:!analysis?'Preparing refresh':`${num(progress.done,0)} / ${num(progress.total,0)} transactions analysed · ${num(progress.percent,1)}%`}</p><progress aria-label="Transactions analysed" aria-valuetext={counting!==null?`${progress.done} transactions analysed; counting continues`:`${progress.done} of ${progress.total} transactions analysed`} max={Math.max(1,progress.total)} value={counting!==null?undefined:progress.done}/></div>}
+      {error&&<p role="alert" className="message error">{error}</p>}{notice&&<p className="message">{notice}</p>}{cacheNotice&&<p role="status" className="message">{cacheNotice}</p>}
+    </div>
+  </div>
     <div className="portfolio-body">
     <section className="portfolio-section"><div className="tdsp-tile-grid">
-      <Metric label="ADA across wallets" value={snapshot?num(ada)+' ₳':'—'} secondaryValue={snapshot&&valued.length?usd(subtotal):'—'} note={`${valued.length} / ${included.length} assets valued${excludedCount?` · ${excludedCount} excluded`:''}`}/>
+      <Metric label="ADA across wallets" value="—" amount={snapshot?{ada,usd:valued.length?subtotal:null}:undefined} note={`${valued.length} / ${included.length} assets valued${excludedCount?` · ${excludedCount} excluded`:''}`}/>
       <Metric label={coverage.partial?'Unrealised gain / loss · partial estimate':provisional||estimatedGains?'Unrealised gain / loss · estimate':'Unrealised gain / loss'} value={covered.length?(provisional||estimatedGains||coverage.partial?'≈ ':'')+signed(gain):gainStatus} note={`${coverage.covered} / ${coverage.total} costs matched${costTotal>0?' · '+num(gain/costTotal*100,2)+'%':''}${estimatedGains?' · Estimated values':''}`} tone={covered.length?gain>=0?'positive':'negative':''}/>
       <Metric label="Network fees paid" value={loadedFacts||snapshot?.complete?num(fees)+' ₳':'Waiting for transaction details'} note={`${snapshot?.complete?'':'Loaded history only · '}Shared-input fees excluded`}/>
-      {cexAddresses.length>0&&<Metric label="ADA gain / loss · CEX + wallets" value={snapshot?`${snapshot.complete?'':'≈ '}${BigInt(cexPosition.netRaw)>0n?'+':''}${num(Number(cexPosition.netRaw)/1e6)} ₳`:'Waiting for wallet balances'} secondaryValue={snapshot&&cexDollars.usd!==null?`≈ ${signed(cexDollars.usd)}`:'USD unavailable'} tone={snapshot?BigInt(cexPosition.netRaw)>=0n?'positive':'negative':''} note={`${snapshot?.complete?'':'Partial · '}Net flow, not trading profit${cexDollars.missingPrices?` · ${cexDollars.missingPrices} unpriced transfers`:''}`}/>}
-    </div><p role="status" className="status-line">{status}</p>{busy&&<p className="small muted" role="timer">{refreshTiming}</p>}
-    {counting!==null&&<div><p className="small muted" role="status">{num(counting,0)} unique transactions · checking for additional history</p><progress aria-label="Checking for additional transactions"/></div>}
-    {busy&&snapshot&&<div><p className="small muted" role="status">{counting!==null?`${num(progress.done,0)} transactions analysed · counting continues`:!analysis?'Preparing refresh':`${num(progress.done,0)} / ${num(progress.total,0)} transactions analysed · ${num(progress.percent,1)}%`}</p><progress aria-label="Transactions analysed" aria-valuetext={counting!==null?`${progress.done} transactions analysed; counting continues`:`${progress.done} of ${progress.total} transactions analysed`} max={Math.max(1,progress.total)} value={counting!==null?undefined:progress.done}/></div>}</section>
-    {error&&<p role="alert" className="message error">{error}</p>}{notice&&<p className="message">{notice}</p>}{cacheNotice&&<p role="status" className="message">{cacheNotice}</p>}
+      {cexAddresses.length>0&&<Metric label="ADA gain / loss · CEX + wallets" value="Waiting for wallet balances" amount={snapshot?{ada:Number(cexPosition.netRaw)/1e6,usd:cexDollars.usd}:undefined} note={`${snapshot?.complete?'':'Partial · '}Net flow, not trading profit${cexDollars.missingPrices?` · ${cexDollars.missingPrices} unpriced transfers`:''}`}/>}
+    </div></section>
     <div className="tdsp-tile-grid">
       <MenuTile title="Wallet addresses" value={num(wallets.length,0)} onOpen={()=>setSection('wallets')}/>
       <MenuTile title="DEX / CEX addresses" value={num(cexAddresses.length,0)} onOpen={()=>setSection('exchanges')}/>
@@ -399,7 +405,7 @@ function AssetImage({id,name,market,onOpen}:{id:string;name:string;market?:Marke
   return onOpen?<button type="button" className="governance-vote-secondary portfolio-asset-button" onClick={onOpen} aria-label={`View ${name} details`}>{content}</button>:<div>{content}</div>;
 }
 
-function Metric({label,value,secondaryValue,note,tone=''}:{label:string;value:string;secondaryValue?:string;note:string;tone?:string}){return <div className="governance-menu-card"><strong translate="no" className={`governance-card-title ${tone}${secondaryValue?' pool-delegator-amount':''}`}>{value}{secondaryValue&&<span className="pool-delegator-usd">{secondaryValue}</span>}</strong><div className="governance-card-detail" data-i18n-auto-original={label}>{label}</div><p className="small muted">{note}</p></div>;}
+function Metric({label,value,amount,note,tone=''}:{label:string;value:string;amount?:{ada:number;usd:number|null};note:string;tone?:string}){return <div className="governance-menu-card"><strong translate="no" className={`governance-card-title ${tone}`}>{amount?<AdaUsdAmount {...amount}/>:value}</strong><div className="governance-card-detail" data-i18n-auto-original={label}>{label}</div><p className="small muted">{note}</p></div>;}
 function Transaction({tx,fact,markets,wallets,history,cexAddresses}:{tx:Tx;fact?:Fact;markets:Record<string,Market>;wallets:Wallet[];history:Record<string,number>;cexAddresses:CexAddress[]}){
   const kind=fact?kindOf(fact):null,trade=fact?tradeOf(fact):null;
   const destinations=fact?cexDestinations(fact,cexAddresses):[];
