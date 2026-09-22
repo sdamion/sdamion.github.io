@@ -31,3 +31,13 @@ test('portfolio sections use separate shared overlays and the universal tile ren
   assert.match(overlay,/governance-dialog-wide/);
   assert.doesNotMatch(overlay,/\.css|abort\(|refresh\(/);
 });
+test('closing Portfolio detaches its view without unmounting the active refresh',()=>{
+  const entry=source('entry.tsx');
+  const close=entry.slice(entry.indexOf('// Closing the view'));
+  assert.match(close,/instance.content.remove\(\)/);
+  assert.doesNotMatch(close,/root.unmount|abort\(/);
+  assert.match(entry,/if\(!portfolioInstance\)/);
+  assert.match(entry,/addEventListener\('tdsp:portfolio-session-expired',instance.destroy\)/);
+  assert.match(entry,/portfolioInstance.role!==role\)portfolioInstance.destroy\(\)/);
+  assert.match(source('App.tsx'),/tdsp:portfolio-hidden/);
+});

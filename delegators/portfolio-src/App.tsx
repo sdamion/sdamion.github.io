@@ -88,6 +88,11 @@ export default function Home({memberStake}:{memberStake:string}){
   },[ready,key]);
   useEffect(()=>setPage(0),[filter,query,key]);
   useEffect(()=>{
+    const hide=()=>{setSelectedAsset(null);setSection(null);};
+    window.addEventListener('tdsp:portfolio-hidden',hide);
+    return()=>window.removeEventListener('tdsp:portfolio-hidden',hide);
+  },[]);
+  useEffect(()=>{
     if(!busy||!ready)return;
     return keepRefreshSessionAlive(signal=>portfolioFetch('/session',{signal}));
   },[busy,ready]);

@@ -19,9 +19,27 @@ function MemberPortfolio(){
   },[]);
   return stake?<Home key={stake} memberStake={stake}/>:<main className="member-portfolio"><div className="portfolio-body"><h1>Member portfolio</h1><p role="status">{error}</p></div></main>;
 }
+let portfolioInstance:{role:string;content:HTMLElement;destroy:()=>void}|null=null;
 export function mountPortfolio(container:HTMLElement,{role='delegator'}:{role?:'delegator'|'admin'}={}){
+  if(portfolioInstance&&portfolioInstance.role!==role)portfolioInstance.destroy();
   setSessionRole(role);
-  const content=document.createElement('div');container.append(content);
-  const root=createRoot(content);root.render(<MemberPortfolio/>);
-  return ()=>{root.unmount();container.replaceChildren();};
+  if(!portfolioInstance){
+    const content=document.createElement('div');
+    const root=createRoot(content);
+    const instance={role,content,destroy:()=>{
+      window.removeEventListener('tdsp:portfolio-session-expired',instance.destroy);
+      root.unmount();content.remove();
+      if(portfolioInstance===instance)portfolioInstance=null;
+    }};
+    portfolioInstance=instance;
+    window.addEventListener('tdsp:portfolio-session-expired',instance.destroy);
+    root.render(<MemberPortfolio/>);
+  }
+  const instance=portfolioInstance;
+  container.append(instance.content);
+  // Closing the view must not abort its refresh or session keepalive.
+  return ()=>{
+    window.dispatchEvent(new Event('tdsp:portfolio-hidden'));
+    instance.content.remove();
+  };
 }
