@@ -17,6 +17,7 @@ import {keepRefreshSessionAlive} from './refresh-session';
 import {currentValuation} from './current-valuation';
 import {valuationCoverage} from './valuation-coverage';
 import {includedAssets} from './asset-exclusions';
+import {averageBuy} from './average-buy';
 import {assetImageCandidates} from './asset-image';
 import {knownDecimals,tokenDecimals,holdingValue} from './valuation';
 import {mintPayments,paymentBudget} from './mint-payments';
@@ -230,6 +231,36 @@ export default function Home({memberStake}:{memberStake:string}){
     setOverrides(next);
     try{localStorage.setItem(overrideKey,JSON.stringify(next));}catch{setCacheNotice('Your asset exclusions could not be saved locally.');}
   }
+  async function refreshAssetPurchases(id:string){
+    if(busy||!snapshot)return;
+    controller.current?.abort();const control=new AbortController();controller.current=control;
+    const {signal}=control;
+    setBusy(true);setError('');setStatus('Refreshing asset purchase data…');
+    try{
+      const hashes=Object.values(snapshot.facts).filter(f=>BigInt(f.assets[id]||'0')>0n).map(f=>f.hash);
+      if(!hashes.length)throw new Error('No receipt is loaded for this asset. Refresh the wallet history first.');
+      const owned=new Set(Object.values(snapshot.groups||{}).flat());
+      if(!owned.size)throw new Error('Wallet addresses are unavailable. Refresh the wallet history first.');
+      const next={...snapshot,facts:{...snapshot.facts},history:{...snapshot.history}};
+      for(let i=0;i<hashes.length;i+=20){
+        const batch=hashes.slice(i,i+20);
+        const details=await request<Detail[]>('tx_info',{_tx_hashes:batch,_inputs:true,_assets:true,_metadata:false,_scripts:false,_bytecode:false},signal);
+        signal.throwIfAborted();
+        if(batch.some(hash=>!details.some(d=>d.tx_hash===hash)))throw new Error('Some purchase transactions were not returned. Saved data is retained.');
+        for(const d of details)if(batch.includes(d.tx_hash)){
+          if(d.marketplace_version!==3)throw new Error('Purchase decoding is unavailable or the backend needs an update. Saved data is retained; retry after updating koios-proxy.');
+          next.facts[d.tx_hash]=analyse(d,owned);
+        }
+      }
+      const hist=await historicalPrices(signal);signal.throwIfAborted();
+      for(const [time,price] of hist?.prices||[])if(Number.isFinite(time)&&Number.isFinite(price)&&price>0)next.history[new Date(time).toISOString().slice(0,10)]=price;
+      await saveCache(key,next);signal.throwIfAborted();setSnapshot(next);
+      const result=mintPayments(Object.values(next.facts).map(f=>cexAdjustedFact(f,cexAddresses)),paymentLinks);
+      const costs=Object.values(result.acquisitions).flatMap(a=>a[id]?[a[id]]:[]);
+      setStatus(!costs.length?'Purchase data refreshed; no verified purchase allocation found. Check saved payment links.':costs.some(a=>!next.history[new Date(a.time*1000).toISOString().slice(0,10)])?'Purchase cost loaded in ADA; historical USD price is still unavailable.':'Asset purchase costs and historical prices refreshed.');
+    }catch(e){if(!signal.aborted)setError(e instanceof Error?e.message:'Could not refresh asset purchase data.');}
+    finally{if(controller.current===control)setBusy(false);}
+  }
   const holdings=useMemo(()=>snapshot?combineHoldings(snapshot.infos):[],[snapshot]);
   const classifiedFacts=useMemo(()=>Object.fromEntries(Object.entries(snapshot?.facts||{}).map(([hash,fact])=>[hash,cexAdjustedFact(fact,cexAddresses)])),[snapshot,cexAddresses]);
   const assetDecimals=useMemo(()=>knownDecimals(snapshot?.infos||[],Object.values(classifiedFacts)),[snapshot,classifiedFacts]);
@@ -300,7 +331,7 @@ export default function Home({memberStake}:{memberStake:string}){
         <TableCell>{r.qty===null?`${r.raw} raw units`:num(r.qty)}{r.id!=='lovelace'&&r.automaticDecimals==null&&<label className="small muted">Token decimals<Input aria-label={`Token decimals for ${r.name}`} type="number" min="0" max="30" step="1" value={overrides[r.id]?.decimals??''} onChange={e=>updateOverride(r.id,'decimals',e.target.value)} placeholder="Required to calculate value"/></label>}</TableCell>
         <TableCell>{r.quote.source==='fallback'?'2 ADA per asset row':r.price!==null?(r.quote.source==='wayup'?'≈ ':'')+usd(r.price):'Unavailable'}<div className="small muted">{r.quote.source==='manual'?'Your price':r.quote.source==='wayup'?<a href={`https://www.wayup.io/collection/${r.id.slice(0,56)}`} target="_blank" rel="noreferrer">Wayup collection floor · {num(r.quote.ada!)} ADA · estimate, not a sale guarantee</a>:r.quote.source==='fallback'?'User-defined fallback, not a market quote':r.price!==null?'Market estimate':''}</div><details><summary className="small">Set current price</summary><Input aria-label={`Current USD price for ${r.name}`} type="number" min="0" step="any" value={overrides[r.id]?.price||''} onChange={e=>updateOverride(r.id,'price',e.target.value)} placeholder="Use market quote"/></details></TableCell>
         <TableCell>{r.value===null?'—':usd(r.value)}</TableCell>
-        <TableCell>{r.id==='lovelace'?<><strong className={r.cost===null||!r.qty||r.cost<0?'negative':''}>{r.cost!==null&&r.qty?(adaLive?.provisional?'≈ $':'$')+num(r.cost/r.qty,6):'—'}</strong><div className="small muted">{adaBasisStatus}</div>{r.cost!==null&&<div className="small muted">{'Remaining cost'}: {usd(r.cost)}</div>}</>:<><Input className="cost-input" aria-label={`Average buy price in USD for ${r.name}`} type="number" min="0" step="any" value={overrides[r.id]?.average||''} onChange={e=>updateOverride(r.id,'average',e.target.value)} placeholder={r.automatic&&r.qty?num((r.cost||0)/r.qty,8):'Enter cost'}/><div className="small muted">{r.automatic?'Estimated FIFO · trades / linked payments':parseAmount(overrides[r.id]?.average)!==null?'Your average cost':'Purchase cost unknown'}</div></>}</TableCell>
+        <TableCell>{r.id==='lovelace'?<><strong className={r.cost===null||!r.qty||r.cost<0?'negative':''}>{r.cost!==null&&r.qty?(adaLive?.provisional?'≈ $':'$')+num(r.cost/r.qty,6):'—'}</strong><div className="small muted">{adaBasisStatus}</div>{r.cost!==null&&<div className="small muted">{'Remaining cost'}: {usd(r.cost)}</div>}</>:<><strong>{averageBuy(r.cost,r.qty)!==null?usd(averageBuy(r.cost,r.qty)!):'Unavailable'}</strong><div className="small muted">{r.cost!==null&&r.qty===null?'Token decimals required for per-unit price':r.automatic?'Estimated FIFO · trades / linked payments':parseAmount(overrides[r.id]?.average)!==null?'Your average cost':'Purchase cost or historical USD price missing'}</div><details><summary className="small">Set average buy price</summary><Input className="cost-input" aria-label={`Average buy price in USD for ${r.name}`} type="number" min="0" step="any" value={overrides[r.id]?.average||''} onChange={e=>updateOverride(r.id,'average',e.target.value)} placeholder="Use calculated purchase cost"/></details></>}</TableCell>
         <TableCell className={r.pnl===null?'muted':r.pnl>=0?'positive':'negative'}>{r.pnl===null?'—':(r.id==='lovelace'&&provisional?'≈ ':'')+signed(r.pnl)}{r.pnl===null&&r.value!==null&&<div className="small muted">Purchase cost required for gain / loss</div>}{r.pnl!==null&&r.cost!==null&&r.cost>0&&<div className="small">{num(r.pnl/r.cost*100,2)}%{r.id==='lovelace'&&provisional?' · provisional':''}</div>}</TableCell>
       </TableRow>)}</TableBody></Table>{!rows.length&&<p className="empty">{busy?'Fetching balances…':'No unspent holdings at the tracked addresses.'}</p>}
       <p className="small muted table-note">Remaining cost uses the same calculation during and after refresh. ADA history must reconcile with the wallet balance; token lots must match the current holding. Missing history or receipt prices are not treated as zero. Values update as new facts and prices arrive, not because refresh finishes. Sends, spends and fees remove proportional ADA cost; internal transfers never reset the average. Daily prices approximate receipt-time prices. This is your receipt-price benchmark, not an exchange execution price or tax calculation. Token costs use FIFO trades, linked mint payments or your entry. Performance excludes realised gains; current holdings already reflect fees.</p>
@@ -316,6 +347,7 @@ export default function Home({memberStake}:{memberStake:string}){
       <section className="portfolio-section">
         <AssetImage id={r.id} name={r.name} market={snapshot?.markets[r.id]}/>
         <p className="address">{r.id}</p>
+        {r.id!=='lovelace'&&<><button type="button" className="governance-vote-secondary" disabled={busy} onClick={()=>void refreshAssetPurchases(r.id)}>Refresh purchase data</button><p className="small muted" role="status">{status}</p>{error&&<p role="alert" className="negative">{error}</p>}</>}
         {r.id!=='lovelace'&&<><label><input type="checkbox" checked={overrides[r.id]?.excluded===true} onChange={e=>excludeAsset(r.id,e.target.checked)}/> Exclude from calculations</label><p className="small muted">Excludes this asset's value, purchase cost and gain/loss from portfolio totals and coverage. Individual details stay visible. Actual ADA movements and network fees remain unchanged. Saved for this portfolio in this browser.</p></>}
         {r.id!=='lovelace'&&<a href={`https://cardanoscan.io/token/${r.id}`} target="_blank" rel="noreferrer">View asset on Cardanoscan <ExternalLink size={14}/></a>}
         <div className="tdsp-tile-grid">
