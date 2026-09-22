@@ -336,7 +336,7 @@ function WalletCard({wallet:w,primary,snapshot,remove}:{wallet:Wallet;primary:bo
 }
 function AssetImage({id,name,market,onOpen}:{id:string;name:string;market?:Market;onOpen?:()=>void}){
   const [failed,setFailed]=useState<string[]>([]);
-  const source=assetImageCandidates(id,[market?.wayup_image,market?.image,market?.image_url,market?.logo]).find(url=>!failed.includes(url));
+  const source=assetImageCandidates(id,[market?.cached_image,market?.wayup_image,market?.image,market?.image_url,market?.logo]).find(url=>!failed.includes(url));
   const image=source?<img className="portfolio-asset-image" src={source} alt={name} title={name} width={48} height={48} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={()=>setFailed(previous=>[...previous,source])}/>:null;
   const content=<>{image}<span className="portfolio-asset-name" title={id}>{name}</span></>;
   return onOpen?<button type="button" className="governance-vote-secondary portfolio-asset-button" onClick={onOpen} aria-label={`View ${name} details`}>{content}</button>:<div>{content}</div>;

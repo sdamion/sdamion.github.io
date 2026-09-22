@@ -9,6 +9,7 @@ export function assetImageUrl(value:unknown):string|null{
   const text=Array.isArray(value)&&value.every(part=>typeof part==='string')?value.join(''):typeof value==='string'?value:'';
   const source=text.trim();
   if(!source)return null;
+  if(/^\/api\/portfolio\/images\/[a-f0-9]{64}\.(png|jpg|gif|webp)$/.test(source))return `https://api.tdsp.online${source}`;
   if(source.startsWith('ipfs://')){
     const path=source.slice(7).replace(/^ipfs\//,'');
     if(!/^[a-zA-Z0-9]+(?:\/[^?#]*)?$/.test(path))return null;
