@@ -643,7 +643,7 @@ async function openMemberPortfolio() {
     closePortfolio = close;
     container.textContent = t('Loading member portfolio…');
     try {
-        const module = await import('./portfolio/app.js?v=20260922-refresh-spacing');
+        const module = await import('./portfolio/app.js?v=20260922-refresh-timer-bottom');
         if (closed) return;
         container.replaceChildren();
         dispose = module.mountPortfolio(container, { role: ROLE });

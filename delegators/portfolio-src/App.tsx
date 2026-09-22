@@ -306,7 +306,6 @@ export default function Home({memberStake}:{memberStake:string}){
 
   return <main className="member-portfolio"><div className="portfolio-body"><div className="section-heading" aria-label="Portfolio refresh">
     <button onClick={()=>void refresh()} disabled={busy||!ready} className="governance-vote-secondary"><RefreshCw size={16} className={busy?'animate-spin':''}/> Refresh</button>
-    {busy&&<span className="small muted" role="timer">{refreshTiming}</span>}
     <div className="portfolio-section">
       {!initialising&&!(busy&&analysis)&&<p role="status" className="status-line">{status}</p>}
       {error&&<p role="alert" className="message error">{error}</p>}{notice&&<p className="message">{notice}</p>}{cacheNotice&&<p role="status" className="message">{cacheNotice}</p>}
@@ -360,7 +359,9 @@ export default function Home({memberStake}:{memberStake:string}){
       <div className="history-table"><Table><TableHeader><TableRow>{['Transaction / type','Date','Wallets','Portfolio change','ADA / trade price / fee'].map(t=><TableHead key={t}>{t}</TableHead>)}</TableRow></TableHeader><TableBody>{shown.slice(page*100,(page+1)*100).map(t=><Transaction key={t.tx_hash} tx={t} fact={classifiedFacts[t.tx_hash]} wallets={displayWallets} markets={snapshot?.markets||{}} history={snapshot?.history||{}} cexAddresses={cexAddresses}/>)}</TableBody></Table></div>{!shown.length&&<p className="empty">{busy?'Loading transactions…':'No matching transactions.'}</p>}
       <Pagination className="mt-4"><PaginationContent><PaginationItem><button className="governance-vote-secondary" disabled={page===0} onClick={()=>setPage(p=>p-1)}>Previous</button></PaginationItem><PaginationItem><span className="small px-3">Page {page+1} / {Math.max(1,Math.ceil(shown.length/100))} · {num(shown.length,0)} transactions</span></PaginationItem><PaginationItem><button className="governance-vote-secondary" disabled={(page+1)*100>=shown.length} onClick={()=>setPage(p=>p+1)}>Next</button></PaginationItem></PaginationContent></Pagination>
       <p className="small muted table-note">Internal transfers require all inputs and outputs to belong to tracked addresses. Their net change is only the fee. Mixed transactions remain separate. Buy/sell labels are inferred from opposing ADA and token changes; multi-step DEX orders may need further reconciliation.</p>
-    </section></AssetOverlay>}</div>
+    </section></AssetOverlay>}
+    {busy&&<p className="small muted" role="timer">{refreshTiming}</p>}
+    </div>
     {selectedAsset&&rows.filter(r=>r.id===selectedAsset).map(r=><AssetOverlay key={r.id} name={r.name} onClose={()=>setSelectedAsset(null)}>
       <section className="portfolio-section">
         <AssetImage id={r.id} name={r.name} market={snapshot?.markets[r.id]}/>
