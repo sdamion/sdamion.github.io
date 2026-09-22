@@ -16,6 +16,7 @@ import {createHistoryIndex} from './history-index';
 import {keepRefreshSessionAlive} from './refresh-session';
 import {transactionPrices} from './transaction-prices';
 import {assetImageCandidates} from './asset-image';
+import {knownDecimals,tokenDecimals,holdingValue} from './valuation';
 import {unrealisedStatus} from './metric-status';
 import {CexAddresses} from './CexAddresses';
 import {normalizeCexAddresses,cexDestinations,cexSources,cexAdjustedFact,isCexTransaction,cexAdaTransfer,cexAdaNetPosition,cexUsdNetPosition} from './cex';
@@ -26,7 +27,7 @@ const num=(n:number,max=6)=>n.toLocaleString('en-US',{maximumFractionDigits:max}
 const usd=(n:number)=>n.toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:Math.abs(n)>0&&Math.abs(n)<0.01?8:2});
 const signed=(n:number)=>`${n>0?'+':''}${usd(n)}`;
 const labels:Record<string,string>={all:'All',cex:'CEX',trade:'Trades',send:'Sends',receive:'Receives',internal:'Internal',mixed:'Mixed',other:'Other'};
-type Overrides=Record<string,{average?:string;price?:string}>;
+type Overrides=Record<string,{average?:string;price?:string;decimals?:string}>;
 function parseAmount(s?:string):number|null {if(!s?.trim())return null;const n=Number(s);return Number.isFinite(n)&&n>=0?n:null;}
 
 async function historicalPrices(signal:AbortSignal):Promise<{prices?:[number,number][]}|null>{
@@ -205,26 +206,26 @@ export default function Home({memberStake}:{memberStake:string}){
     catch{setCacheNotice('CEX addresses could not be saved in this browser.');return false;}
   }
   function addWallet(e:React.FormEvent){e.preventDefault();const a=address.trim().toLowerCase();if(!validWalletAddress(a)){setWalletError('Enter a valid mainnet stake address (stake1…) or payment address (addr1…).');return;}if(wallets.some(w=>w.address===a)){setWalletError('This address is already included.');return;}saveWallets([...wallets,{address:a,label:name.trim()||`Wallet ${wallets.length+1}`}]);setAddress('');setName('');setWalletError('');}
-  function updateOverride(id:string,field:'average'|'price',value:string){if(value!==''&&parseAmount(value)===null)return;const next={...overrides,[id]:{...overrides[id],[field]:value}};setOverrides(next);try{localStorage.setItem(overrideKey,JSON.stringify(next));}catch{setCacheNotice('Your price entries could not be saved locally.');}}
+  function updateOverride(id:string,field:'average'|'price'|'decimals',value:string){if(value!==''&&(parseAmount(value)===null||(field==='decimals'&&tokenDecimals(Number(value))===null)))return;const next={...overrides,[id]:{...overrides[id],[field]:value}};setOverrides(next);try{localStorage.setItem(overrideKey,JSON.stringify(next));}catch{setCacheNotice('Your price entries could not be saved locally.');}}
 
   const holdings=useMemo(()=>snapshot?combineHoldings(snapshot.infos):[],[snapshot]);
   const classifiedFacts=useMemo(()=>Object.fromEntries(Object.entries(snapshot?.facts||{}).map(([hash,fact])=>[hash,cexAdjustedFact(fact,cexAddresses)])),[snapshot,cexAddresses]);
   const historicalTokenPrices=useMemo(()=>transactionPrices(Object.values(classifiedFacts),snapshot?.markets||{},snapshot?.history||{}),[classifiedFacts,snapshot]);
+  const assetDecimals=useMemo(()=>knownDecimals(snapshot?.infos||[],Object.values(classifiedFacts)),[snapshot,classifiedFacts]);
   const cexPosition=useMemo(()=>cexAdaNetPosition(Object.values(classifiedFacts),cexAddresses,holdings.find(h=>h.id==='lovelace')?.raw||'0'),[classifiedFacts,cexAddresses,holdings]);
   const cexDollars=useMemo(()=>cexUsdNetPosition(Object.values(classifiedFacts),cexAddresses,holdings.find(h=>h.id==='lovelace')?.raw||'0',snapshot?.history||{},liveQuote?.usd??snapshot?.adaUsd??null),[classifiedFacts,cexAddresses,holdings,snapshot,liveQuote]);
   const basis=useMemo(()=>snapshot?.complete?remainingBasis(Object.values(classifiedFacts),snapshot.history):{},[snapshot,classifiedFacts]);
   const adaLive=useMemo(()=>snapshot?liveAdaBasis(Object.values(classifiedFacts),snapshot.history,holdings.find(h=>h.id==='lovelace')?.raw||'0',snapshot.complete):null,[snapshot,holdings,classifiedFacts]);
   const rows=holdings.map(h=>{
-    const m=snapshot?.markets[h.id],decimals=h.id==='lovelace'?6:m?.decimals??historicalTokenPrices[h.id]?.decimals;
-    const qty=units(h.raw,decimals);const manualPrice=parseAmount(overrides[h.id]?.price);
+    const m=snapshot?.markets[h.id],automaticDecimals=tokenDecimals(m?.decimals)??assetDecimals[h.id]??historicalTokenPrices[h.id]?.decimals;
+    const decimals=h.id==='lovelace'?6:tokenDecimals(parseAmount(overrides[h.id]?.decimals))??automaticDecimals;
+    const manualPrice=parseAmount(overrides[h.id]?.price);
     const marketPrice=currentPrice(h.id,snapshot?.markets||{},liveQuote?.usd??snapshot?.adaUsd??null);
     const historyPrice=manualPrice===null&&marketPrice===null?historicalTokenPrices[h.id]:undefined;
     const price=manualPrice??marketPrice??historyPrice?.usd??null;
-    const value=qty!==null&&price!==null?qty*price:null;
     const avg=h.id==='lovelace'?null:parseAmount(overrides[h.id]?.average);const automatic=h.id==='lovelace'?adaLive:basis[h.id];
-    const cost=qty!==null&&avg!==null?qty*avg:automatic?.raw===h.raw?automatic.usd:null;
-    const pnl=value!==null&&cost!==null?value-cost:null;
-    return {...h,name:m?.ticker||assetName(h.id),qty,price,value,cost,pnl,manualPrice,historyPrice,automatic:avg===null&&cost!==null};
+    const {qty,value,cost,pnl}=holdingValue(h.raw,decimals,price,avg,automatic);
+    return {...h,name:m?.ticker||assetName(h.id),qty,price,value,cost,pnl,manualPrice,historyPrice,automaticDecimals,automatic:avg===null&&cost!==null};
   }).sort((a,b)=>a.id==='lovelace'?-1:b.id==='lovelace'?1:(b.value??-1)-(a.value??-1));
   const valued=rows.filter(r=>r.value!==null),covered=rows.filter(r=>r.pnl!==null);
   const subtotal=valued.reduce((s,r)=>s+(r.value||0),0),gain=covered.reduce((s,r)=>s+(r.pnl||0),0),costTotal=covered.reduce((s,r)=>s+(r.cost||0),0);
@@ -269,11 +270,11 @@ export default function Home({memberStake}:{memberStake:string}){
     <section className="portfolio-section"><div className="section-heading"><div><h2>Current holdings & performance</h2><p className="muted">ADA buy price is calculated automatically from receipt-date market prices across your tracked wallets. Gain / loss = current value − remaining cost.</p></div></div>
       <Table><TableHeader><TableRow>{['Asset','Balance','Current price · USD','Current value','Average buy · USD / unit','Unrealised gain / loss'].map(t=><TableHead key={t}>{t}</TableHead>)}</TableRow></TableHeader><TableBody>{rows.map(r=><TableRow key={r.id}>
         <TableCell><AssetImage id={r.id} name={r.name} market={snapshot?.markets[r.id]}/></TableCell>
-        <TableCell>{r.qty===null?`${r.raw} raw units`:num(r.qty)}{r.qty===null&&<div className="small muted">Token decimals unavailable</div>}</TableCell>
+        <TableCell>{r.qty===null?`${r.raw} raw units`:num(r.qty)}{r.id!=='lovelace'&&r.automaticDecimals==null&&<label className="small muted">Token decimals<Input aria-label={`Token decimals for ${r.name}`} type="number" min="0" max="30" step="1" value={overrides[r.id]?.decimals??''} onChange={e=>updateOverride(r.id,'decimals',e.target.value)} placeholder="Required to calculate value"/></label>}</TableCell>
         <TableCell>{r.price!==null?(r.historyPrice?'≈ ':'')+usd(r.price):'Unavailable'}<div className="small muted">{r.manualPrice!==null?'Your price':r.historyPrice?<a href={`https://cardanoscan.io/transaction/${r.historyPrice.hash}`} target="_blank" rel="noreferrer">Inferred transaction price · {new Date(r.historyPrice.time*1000).toLocaleDateString()} · not a live quote</a>:r.price!==null?'Market estimate':''}</div><details><summary className="small">Set current price</summary><Input aria-label={`Current USD price for ${r.name}`} type="number" min="0" step="any" value={overrides[r.id]?.price||''} onChange={e=>updateOverride(r.id,'price',e.target.value)} placeholder="Use market quote"/></details></TableCell>
         <TableCell>{r.value===null?'—':usd(r.value)}</TableCell>
         <TableCell>{r.id==='lovelace'?<><strong className={r.cost===null||!r.qty||r.cost<0?'negative':''}>{r.cost!==null&&r.qty?(adaLive?.provisional?'≈ $':'$')+num(r.cost/r.qty,6):'—'}</strong><div className="small muted">{adaBasisStatus}</div>{r.cost!==null&&<div className="small muted">{adaLive?.provisional?'Projected cost':'Remaining cost'}: {usd(r.cost)}</div>}</>:<><Input className="cost-input" aria-label={`Average buy price in USD for ${r.name}`} type="number" min="0" step="any" value={overrides[r.id]?.average||''} onChange={e=>updateOverride(r.id,'average',e.target.value)} placeholder={r.automatic&&r.qty?num((r.cost||0)/r.qty,8):'Enter cost'}/><div className="small muted">{r.automatic?'Estimated FIFO · inferred trades':parseAmount(overrides[r.id]?.average)!==null?'Your average cost':'Purchase cost unknown'}</div></>}</TableCell>
-        <TableCell className={r.pnl===null?'muted':r.pnl>=0?'positive':'negative'}>{r.pnl===null?'—':(r.id==='lovelace'&&provisional?'≈ ':'')+signed(r.pnl)}{r.pnl!==null&&r.cost!==null&&r.cost>0&&<div className="small">{num(r.pnl/r.cost*100,2)}%{r.id==='lovelace'&&provisional?' · provisional':''}</div>}</TableCell>
+        <TableCell className={r.pnl===null?'muted':r.pnl>=0?'positive':'negative'}>{r.pnl===null?'—':(r.id==='lovelace'&&provisional?'≈ ':'')+signed(r.pnl)}{r.pnl===null&&r.value!==null&&<div className="small muted">Purchase cost required for gain / loss</div>}{r.pnl!==null&&r.cost!==null&&r.cost>0&&<div className="small">{num(r.pnl/r.cost*100,2)}%{r.id==='lovelace'&&provisional?' · provisional':''}</div>}</TableCell>
       </TableRow>)}</TableBody></Table>{!rows.length&&<p className="empty">{busy?'Fetching balances…':'No unspent holdings at the tracked addresses.'}</p>}
       <p className="small muted table-note">During sync, the provisional ADA estimate applies the weighted average of loaded, priced external receipts to your current balance. It updates after each batch; missing receipt prices are excluded from this estimate, never treated as zero. It may change substantially as older transactions load. Once all history is available and matches the balance, the remaining-cost calculation includes proportional cost removed by sends, spends and fees. Internal transfers never reset the average. Daily closing prices approximate receipt-time prices; today’s price is provisional. This is your receipt-price benchmark, not an exchange execution price or tax calculation. Token costs use inferred FIFO trades or your entry. Performance excludes realised gains; current holdings already reflect fees.</p>
     </section>

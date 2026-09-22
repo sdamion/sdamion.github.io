@@ -1,0 +1,27 @@
+import assert from 'node:assert/strict';
+import {knownDecimals,holdingValue,tokenDecimals} from './valuation.ts';
+import type {AddressInfo,Fact} from './core.ts';
+
+const id='a'.repeat(56)+'01';
+const facts=[{time:1,decimals:{[id]:6}}] as Fact[];
+assert.equal(knownDecimals([],facts)[id],6);
+const infos=[{address:'wallet',balance:'0',utxo_set:[{tx_hash:'tx',tx_index:0,value:'0',asset_list:[{policy_id:'a'.repeat(56),asset_name:'01',quantity:'2000000',decimals:6}]}]}] as AddressInfo[];
+assert.equal(knownDecimals(infos,[])[id],6);
+const before=holdingValue('2000000',6,null,3);
+const after=holdingValue('2000000',6,5,3);
+assert.equal(before.value,null);
+assert.equal(before.pnl,null);
+assert.deepEqual(after,{qty:2,value:10,cost:6,pnl:4});
+const summary=(rows:ReturnType<typeof holdingValue>[])=>({priced:rows.filter(r=>r.value!==null).length,covered:rows.filter(r=>r.pnl!==null).length,total:rows.reduce((sum,r)=>sum+(r.value??0),0),gain:rows.reduce((sum,r)=>sum+(r.pnl??0),0)});
+assert.deepEqual(summary([before]),{priced:0,covered:0,total:0,gain:0});
+assert.deepEqual(summary([after]),{priced:1,covered:1,total:10,gain:4});
+assert.deepEqual(summary([holdingValue('2000000',6,5,null)]),{priced:1,covered:0,total:10,gain:0});
+assert.equal(holdingValue('2000000',6,8,3).pnl,10);
+assert.equal(holdingValue('2000000',6,5,null).pnl,null);
+assert.equal(holdingValue('2000000',undefined,5,3).value,null);
+assert.equal(holdingValue('1',0,5,3).pnl,2);
+assert.equal(holdingValue('1',0,0,3).pnl,-3);
+assert.equal(holdingValue('2',0,5,null,{raw:'2',usd:6}).pnl,4);
+assert.equal(holdingValue('2',0,5,null,{raw:'3',usd:6}).pnl,null);
+for(const value of [null,undefined,-1,1.5,31,NaN])assert.equal(tokenDecimals(value),null);
+console.log('Portfolio manual valuation tests passed');
