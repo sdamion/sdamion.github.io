@@ -53,3 +53,12 @@ test('closing Portfolio detaches its view without unmounting the active refresh'
   assert.match(entry,/portfolioInstance.role!==role\)portfolioInstance.destroy\(\)/);
   assert.match(source('App.tsx'),/tdsp:portfolio-hidden/);
 });
+test('CEX timeline reuses table and amount modules inside the shared overlay',()=>{
+  assert.match(source('App.tsx'),/filter==='cex'[^\n]*<CexTimeline/);
+  const timeline=source('CexTimeline.tsx');
+  assert.match(timeline,/<TableHead>Bought<\/TableHead><TableHead>Sold<\/TableHead>/);
+  assert.match(timeline,/<AdaUsdAmount ada=\{row.ada\} usd=\{row.usd\}/);
+  assert.match(timeline,/cardanoscan.io\/transaction/);
+  assert.match(timeline,/rows.slice\(current\*25,\(current\+1\)\*25\)/);
+  assert.doesNotMatch(timeline,/\.css/);
+});

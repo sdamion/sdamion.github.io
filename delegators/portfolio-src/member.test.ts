@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {memberWallets,validStakeAddress,resolveWalletGroups,sameTrackedAddresses,walletTransactionCount} from './member.ts';
 import {analyse,liveAdaBasis,tradeOf} from './core.ts';
-import {normalizeCexAddresses,cexDestinations,cexSources,cexAdjustedFact,isCexTransaction,cexAdaTransfer,cexAdaPerformance,cexAdaNetPosition,cexUsdNetPosition} from './cex.ts';
+import {normalizeCexAddresses,cexDestinations,cexSources,cexAdjustedFact,isCexTransaction,cexAdaTransfer,cexAdaPerformance,cexAdaNetPosition,cexUsdNetPosition,cexTimeline} from './cex.ts';
 const stake='stake1u9ex0jtl4nv84rlzwuft5rczy2hgkjygewla04mgy7v2nccx4p4yr';
 // Synthetic addresses, never a member's personal wallet history.
 function fixtureAddress(seed:number){
@@ -63,6 +63,14 @@ assert.equal(cexDestinations({...outbound,externalOutputs:[{address:b,lovelace:'
 const buy={...receipt,hash:'buy',time:1704067200,adaRaw:'100000000'};
 const sell={...outbound,hash:'sell',time:1704153600,adaRaw:'-60200000',externalOutputs:[{address:b,lovelace:'60000000',stakeAddress:stake}]};
 const prices={'2024-01-01':1,'2024-01-02':2};
+assert.deepEqual(cexTimeline([buy,sell,buy,f],stakeEntries,prices),[
+  {hash:sell.hash,time:sell.time,side:'sell',ada:60,usd:120},
+  {hash:buy.hash,time:buy.time,side:'buy',ada:100,usd:100}
+]);
+assert.equal(cexTimeline([buy],stakeEntries,{})[0].usd,null);
+assert.deepEqual(cexTimeline([buy,sell],[],prices),[]);
+const timeline=cexTimeline([buy,sell,buy],stakeEntries,prices);
+assert.equal(timeline.reduce((sum,row)=>sum+(row.side==='sell'?row.ada:-row.ada),40),Number(cexAdaNetPosition([buy,sell],stakeEntries,'40000000').netRaw)/1e6);
 assert.deepEqual(cexUsdNetPosition([buy,sell,buy],stakeEntries,'40000000',prices,3),{usd:140,missingPrices:0,boughtUsd:100,soldUsd:120});
 assert.deepEqual(cexUsdNetPosition([buy,sell],stakeEntries,'40000000',{'2024-01-01':1},3),{usd:null,missingPrices:1,boughtUsd:100,soldUsd:null});
 assert.deepEqual(cexUsdNetPosition([buy,sell],stakeEntries,'40000000',{'2024-01-02':2},3),{usd:null,missingPrices:1,boughtUsd:null,soldUsd:120});

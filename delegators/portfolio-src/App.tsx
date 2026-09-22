@@ -26,6 +26,7 @@ import type {PaymentLink} from './mint-payments';
 import {PaymentLinks} from './PaymentLinks';
 import {AssetOverlay} from './AssetOverlay';
 import {MenuTile,AdaUsdAmount} from './ui';
+import {CexTimeline} from './CexTimeline';
 import {matchesTransaction} from './transaction-search';
 import {unrealisedStatus} from './metric-status';
 import {CexAddresses} from './CexAddresses';
@@ -366,6 +367,7 @@ export default function Home({memberStake}:{memberStake:string}){
       {snapshot&&<><p className="small muted">Bought <AdaUsdAmount ada={Number(cexPosition.receivedRaw)/1e6} usd={cexDollars.boughtUsd}/>{cexDollars.boughtUsd===null?' · Historical USD unavailable':''}</p><p className="small muted">Sold <AdaUsdAmount ada={Number(cexPosition.sentRaw)/1e6} usd={cexDollars.soldUsd}/>{cexDollars.soldUsd===null?' · Historical USD unavailable':''}</p></>}
       <p className="small muted">{`${snapshot?.complete&&!cexPending&&!cexUnresolved?'':'Partial · '}Net flow, not trading profit · Transfer-day USD${cexPending?` · ${num(cexPending,0)} transactions need CEX address checks`:''}${cexUnresolved?` · ${num(cexUnresolved,0)} mixed CEX transactions excluded`:''}${cexDollars.missingPrices?` · ${cexDollars.missingPrices} unpriced transfers`:''}`}</p>
     </section>}
+    {filter==='cex'&&cexAddresses.length>0&&<CexTimeline facts={classifiedFacts} entries={cexAddresses} history={snapshot?.history||{}} busy={busy}/>}
     <section className="portfolio-section"><div className="section-heading"><Input aria-label="Search asset names, transaction hashes or wallet names" placeholder="Asset name, transaction hash or wallet name" value={query} onChange={e=>{setQuery(e.target.value);setFilter('all');}} className="search-input"/></div>
       <div className="filter-row">{Object.entries(labels).map(([id,label])=><button key={id} aria-pressed={filter===id} onClick={()=>setFilter(id)} className={filter===id?'active':''}>{label}</button>)}</div>
       <div className="history-table"><Table><TableHeader><TableRow>{['Transaction / type','Date','Wallets','Portfolio change','ADA / trade price / fee'].map(t=><TableHead key={t}>{t}</TableHead>)}</TableRow></TableHeader><TableBody>{shown.slice(page*100,(page+1)*100).map(t=><Transaction key={t.tx_hash} tx={t} fact={classifiedFacts[t.tx_hash]} wallets={displayWallets} markets={snapshot?.markets||{}} history={snapshot?.history||{}} cexAddresses={cexAddresses}/>)}</TableBody></Table></div>{!shown.length&&<p className="empty">{busy?'Loading transactions…':'No matching transactions.'}</p>}

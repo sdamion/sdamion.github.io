@@ -43,6 +43,15 @@ export function cexAdaTransfer(fact:Fact,entries:CexAddress[]){
   return null;
 }
 
+export function cexTimeline(facts:Fact[],entries:CexAddress[],history:Record<string,number>){
+  return [...new Map(facts.map(fact=>[fact.hash,fact])).values()].flatMap(fact=>{
+    const transfer=cexAdaTransfer(fact,entries);
+    if(!transfer)return [];
+    const price=history[new Date(fact.time*1000).toISOString().slice(0,10)];
+    return [{hash:fact.hash,time:fact.time,side:transfer.side,ada:Number(transfer.raw)/1e6,usd:Number.isFinite(price)&&price>0?Number(transfer.raw)/1e6*price:null}];
+  }).sort((a,b)=>b.time-a.time||a.hash.localeCompare(b.hash));
+}
+
 export function cexUsdNetPosition(facts:Fact[],entries:CexAddress[],walletRaw:string,history:Record<string,number>,currentUsd:number|null){
   let transferredUsd=0,missingPrices=0,boughtUsd=0,soldUsd=0,missingBuyPrices=0,missingSellPrices=0;
   for(const fact of new Map(facts.map(fact=>[fact.hash,fact])).values()){
