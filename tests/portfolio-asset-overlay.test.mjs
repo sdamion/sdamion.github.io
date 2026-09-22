@@ -33,7 +33,13 @@ test('portfolio sections use separate shared overlays and the universal tile ren
 });
 test('CEX metric opens the shared transaction list without stale search or pagination',()=>{
   const app=source('App.tsx');
-  assert.match(app,/<Metric label="ADA gain \/ loss · CEX \+ wallets"[^\n]*onOpen=\{\(\)=>\{setQuery\(''\);setFilter\('cex'\);setPage\(0\);setSection\('transactions'\);\}\}/);
+  assert.match(app,/<Metric label="ADA Gain\/ loss"[^\n]*onOpen=\{\(\)=>\{setQuery\(''\);setFilter\('cex'\);setPage\(0\);setSection\('transactions'\);\}\}/);
+  const tile=app.split('\n').find(line=>line.includes('<Metric label="ADA Gain/ loss"'));
+  assert.doesNotMatch(tile,/note=|breakdown=|Bought|Sold/);
+  const transactions=app.slice(app.indexOf("{section==='transactions'"),app.indexOf('{busy&&<p'));
+  assert.match(transactions,/Bought <AdaUsdAmount/);
+  assert.match(transactions,/Sold <AdaUsdAmount/);
+  assert.match(transactions,/Transfer-day USD/);
   assert.match(app,/<MenuTile title="Transactions"[^\n]*setFilter\('all'\)/);
   assert.match(app,/const Tag=onOpen\?'button':'div'/);
 });
