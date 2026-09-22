@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {analyse,remainingBasis,tradeOf} from './core.ts';
 import {adaToLovelace,mintPayments,paymentBudget} from './mint-payments.ts';
 import {transactionPrices} from './transaction-prices.ts';
+import {holdingValue} from './valuation.ts';
 import type {Detail} from './core.ts';
 
 const policy='a'.repeat(56),id=policy+'01';
@@ -15,8 +16,11 @@ assert.equal(tradeOf(fact),null);
 let result=mintPayments([fact],[]);
 assert.equal(result.acquisitions.mint[id].ada,10);
 assert.equal(remainingBasis([fact],history,result.acquisitions)[id].usd,5);
-assert.equal(transactionPrices([fact],{},history,result.acquisitions)[id].usd,2.5);
-assert.equal(transactionPrices([fact],{[id]:{token_id:id,price_by_usd:99}},history,result.acquisitions)[id].source,'mint');
+assert.equal(transactionPrices([fact],{},history,result.acquisitions)[id],undefined);
+const mintBasis=remainingBasis([fact],history,result.acquisitions)[id];
+assert.equal(holdingValue('2',0,null,null,mintBasis).pnl,null);
+assert.equal(holdingValue('2',0,4,null,mintBasis).pnl,3);
+assert.equal(holdingValue('2',0,1,null,mintBasis).pnl,-3);
 assert.equal(transactionPrices([fact],{}, {},result.acquisitions)[id],undefined);
 assert.equal(paymentBudget({...fact,feeRaw:null}),null);
 assert.equal(paymentBudget({...fact,adaRaw:'-12200000'}),null); // deposit is not mint cost
@@ -42,7 +46,7 @@ const receipt={...fact,hash:'receipt',time:1704153600,adaRaw:'2000000',feeRaw:nu
 result=mintPayments([payment,receipt],[{assetId:id,receiptHash:'receipt',paymentHash:'payment',lovelace:'10000000'}]);
 assert.equal(result.errors.length,0);
 assert.equal(remainingBasis([payment,receipt],history,result.acquisitions)[id].usd,5); // payment date, not receipt date
-assert.equal(transactionPrices([payment,receipt],{},history,result.acquisitions)[id].hash,'payment');
+assert.equal(transactionPrices([payment,receipt],{},history,result.acquisitions)[id],undefined);
 assert.equal(mintPayments([fact,receipt],[{assetId:id,receiptHash:'receipt',paymentHash:'mint',lovelace:'10000000'}]).errors.length,1); // no double use of a different acquisition
 const sale={...fact,hash:'sale',time:1704153600,assets:{[id]:'-1'},minted:{},adaRaw:'19800000'};
 assert.deepEqual(remainingBasis([fact,sale],history,mintPayments([fact],[]).acquisitions)[id],{raw:'1',usd:2.5});
@@ -62,7 +66,7 @@ assert.equal(result.acquisitions.receipt[id].ada,8); // 10 paid, 2 returned
 assert.equal(result.acquisitions.receipt[id].source,'linked-mint');
 assert.equal(result.acquisitions.receipt[id].paymentHash,'payment');
 assert.equal(remainingBasis([linkedPayment,linkedReceipt],history,result.acquisitions)[id].usd,4);
-assert.equal(transactionPrices([linkedPayment,linkedReceipt],{},history,result.acquisitions)[id].usd,2);
+assert.equal(transactionPrices([linkedPayment,linkedReceipt],{},history,result.acquisitions)[id],undefined);
 assert.deepEqual(mintPayments([linkedPayment,{...linkedReceipt,inputRefs:['payment:0']}],[]).acquisitions,{});
 assert.deepEqual(mintPayments([linkedPayment,{...linkedReceipt,ownedInputCount:1}],[]).acquisitions,{});
 assert.deepEqual(mintPayments([linkedPayment,{...linkedReceipt,adaRaw:'10000000'}],[]).acquisitions,{});
