@@ -164,7 +164,7 @@ export default function Home({memberStake}:{memberStake:string}){
       setStatus(incremental?'Checking for new transactions…':'Loading remaining transaction history…');
       await runPipeline<Tx>(async(enqueue,active)=>{
         // Upgrade receipts and outgoing payments once to retain their UTxO links.
-        const legacy=next.txs.filter(tx=>{const f=next.facts[tx.tx_hash];return f&&((f.marketplaceVersion!==2&&Object.values(f.assets).some(raw=>BigInt(raw)>0n))||(f.inputRefs===undefined&&paymentBudget(f)!==null));});
+        const legacy=next.txs.filter(tx=>{const f=next.facts[tx.tx_hash];return f&&((f.marketplaceVersion!==3&&Object.values(f.assets).some(raw=>BigInt(raw)>0n))||(f.inputRefs===undefined&&paymentBudget(f)!==null));});
         for(const tx of legacy)scheduled.add(tx.tx_hash);
         enqueue(legacy);updateAnalysis();
         for(const addressBatch of addressBatches)for(let offset=0;;offset+=1000){
