@@ -38,7 +38,7 @@ export function mintPayments(facts:Fact[],links:PaymentLink[]) {
     if(!f.internal&&f.swapCandidate){
       for(const [id,p] of Object.entries(f.marketplacePurchases||{})){
         if(links.some(l=>l.receiptHash===f.hash&&l.assetId===id)||f.assets[id]!==p.raw||!/^\d+$/.test(p.lovelace)||BigInt(p.lovelace)<=0n)continue;
-        (acquisitions[f.hash]??={})[id]={raw:p.raw,ada:Number(p.lovelace)/1e6,time:f.time,paymentHash:f.hash,source:'marketplace'};
+        (acquisitions[f.hash]??={})[id]={raw:p.raw,ada:Number(p.lovelace)/1e6,time:f.time,paymentHash:f.hash,source:p.source};
       }
     }
     if(blockedReceipts.has(f.hash)||blockedPayments.has(f.hash))continue;
