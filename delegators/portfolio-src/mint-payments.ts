@@ -44,5 +44,33 @@ export function mintPayments(facts:Fact[],links:PaymentLink[]) {
     const budget=paymentBudget(f);if(budget===null)continue;
     acquisitions[f.hash]={[id]:{raw,ada:Number(budget)/1e6,time:f.time,paymentHash:f.hash,source:'mint'}};
   }
+  // Follow the exact payment output consumed by the mint transaction. Never
+  // match by date, similar amounts or a shared service address alone.
+  const candidates=new Map<string,{receipt:Fact;payment:Fact;id:string;raw:string;paid:bigint}[]>();
+  for(const receipt of byHash.values()){
+    if(blockedReceipts.has(receipt.hash)||acquisitions[receipt.hash]||receipt.internal||!receipt.swapCandidate||receipt.ownedInputCount!==0)continue;
+    const assets=Object.entries(receipt.assets),minted=Object.entries(receipt.minted||{});
+    if(assets.length!==1||minted.length!==1)continue;
+    const [id,raw]=assets[0];
+    if(BigInt(raw)<=0n||receipt.minted?.[id]!==raw)continue;
+    const refs=new Set(receipt.inputRefs||[]);
+    const matches=[...new Set([...refs].map(ref=>ref.split(':')[0]))].flatMap(hash=>{
+      const payment=byHash.get(hash);
+      if(!payment||blockedPayments.has(hash)||Object.keys(payment.assets).length||payment.time>receipt.time)return [];
+      const budget=paymentBudget(payment);
+      if(budget===null||!payment.externalOutputs?.every(o=>o.txHash===hash&&Number.isInteger(o.txIndex)&&refs.has(hash+':'+o.txIndex)))return [];
+      const returned=BigInt(receipt.adaRaw);
+      if(returned<0n||returned>=budget)return [];
+      return [{receipt,payment,id,raw,paid:budget-returned}];
+    });
+    if(matches.length!==1)continue;
+    const match=matches[0];
+    candidates.set(match.payment.hash,[...(candidates.get(match.payment.hash)||[]),match]);
+  }
+  for(const matches of candidates.values()){
+    if(matches.length!==1)continue;
+    const {receipt,payment,id,raw,paid}=matches[0];
+    acquisitions[receipt.hash]={[id]:{raw,ada:Number(paid)/1e6,time:payment.time,paymentHash:payment.hash,source:'linked-mint'}};
+  }
   return {acquisitions,errors};
 }

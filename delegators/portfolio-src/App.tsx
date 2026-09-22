@@ -17,7 +17,7 @@ import {keepRefreshSessionAlive} from './refresh-session';
 import {transactionPrices} from './transaction-prices';
 import {assetImageCandidates} from './asset-image';
 import {knownDecimals,tokenDecimals,holdingValue} from './valuation';
-import {mintPayments} from './mint-payments';
+import {mintPayments,paymentBudget} from './mint-payments';
 import type {PaymentLink} from './mint-payments';
 import {PaymentLinks} from './PaymentLinks';
 import {unrealisedStatus} from './metric-status';
@@ -158,8 +158,8 @@ export default function Home({memberStake}:{memberStake:string}){
       setCounting(historyIndex.size);updateAnalysis();
       setStatus(incremental?'Checking for new transactions…':'Loading remaining transaction history…');
       await runPipeline<Tx>(async(enqueue,active)=>{
-        // Upgrade only cached asset receipts that predate mint metadata support.
-        const legacy=next.txs.filter(tx=>{const f=next.facts[tx.tx_hash];return f&&f.minted===undefined&&Object.values(f.assets).some(raw=>BigInt(raw)>0n);});
+        // Upgrade receipts and outgoing payments once to retain their UTxO links.
+        const legacy=next.txs.filter(tx=>{const f=next.facts[tx.tx_hash];return f&&f.inputRefs===undefined&&(Object.values(f.assets).some(raw=>BigInt(raw)>0n)||paymentBudget(f)!==null);});
         for(const tx of legacy)scheduled.add(tx.tx_hash);
         enqueue(legacy);updateAnalysis();
         for(const addressBatch of addressBatches)for(let offset=0;;offset+=1000){

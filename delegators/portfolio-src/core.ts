@@ -3,11 +3,11 @@ export type Asset = { policy_id:string; asset_name:string; quantity:string; deci
 export type Utxo = { tx_hash:string; tx_index:number; value:string; asset_list?:Asset[] };
 export type AddressInfo = { address:string; balance:string; utxo_set?:Utxo[] };
 export type Tx = { tx_hash:string; block_time:number; block_height:number };
-export type Io = { value:string; payment_addr?:{bech32?:string}; stake_addr?:string|null; asset_list?:Asset[] };
+export type Io = { value:string; payment_addr?:{bech32?:string}; stake_addr?:string|null; asset_list?:Asset[]; tx_hash?:string; tx_index?:number };
 export type Detail = { tx_hash:string; tx_timestamp:number; fee:string; inputs:Io[]; outputs:Io[]; assets_minted?:Asset[] };
-export type Counterparty = {address:string;lovelace:string;stakeAddress?:string|null};
-export type Fact = { hash:string; time:number; adaRaw:string; assets:Record<string,string>; decimals:Record<string,number>; feeRaw:string|null; internal:boolean; wallets:string[]; swapCandidate:boolean; externalOutputs?:Counterparty[]; externalInputs?:Counterparty[]; minted?:Record<string,string> };
-export type Acquisition = {raw:string;ada:number;time:number;paymentHash:string;source:'mint'|'confirmed'};
+export type Counterparty = {address:string;lovelace:string;stakeAddress?:string|null;txHash?:string;txIndex?:number};
+export type Fact = { hash:string; time:number; adaRaw:string; assets:Record<string,string>; decimals:Record<string,number>; feeRaw:string|null; internal:boolean; wallets:string[]; swapCandidate:boolean; externalOutputs?:Counterparty[]; externalInputs?:Counterparty[]; minted?:Record<string,string>; inputRefs?:string[]; ownedInputCount?:number };
+export type Acquisition = {raw:string;ada:number;time:number;paymentHash:string;source:'mint'|'linked-mint'|'confirmed'};
 export type Acquisitions = Record<string,Record<string,Acquisition>>;
 export type Market = { token_id:string; ticker?:string|null; decimals?:number|null; price_by_ada?:number|null; price_by_usd?:number|null; is_verified?:boolean|null; logo?:string|null; image?:string|string[]|null; image_url?:string|null };
 export type Holding = { id:string; raw:string };
@@ -37,11 +37,13 @@ export function analyse(detail:Detail, addresses:Set<string>):Fact {
   const allOutputs=detail.outputs.length>0&&detail.outputs.every(x=>addresses.has(x.payment_addr?.bech32||''));
   const fee=BigInt(detail.fee||'0');const assets=Object.fromEntries([...amounts].filter(([,v])=>v!==0n).map(([k,v])=>[k,String(v)]));
   for(const row of [...detail.inputs,...detail.outputs])for(const a of row.asset_list||[])if(a.decimals!=null)decimals[assetId(a)]=a.decimals;
-  const counterparties=(rows:Io[])=>rows.filter(row=>row.payment_addr?.bech32&&!addresses.has(row.payment_addr.bech32)).map(row=>({address:row.payment_addr!.bech32!,lovelace:row.value,stakeAddress:row.stake_addr??null}));
+  const counterparties=(rows:Io[])=>rows.filter(row=>row.payment_addr?.bech32&&!addresses.has(row.payment_addr.bech32)).map(row=>({address:row.payment_addr!.bech32!,lovelace:row.value,stakeAddress:row.stake_addr??null,...(row.tx_hash&&Number.isInteger(row.tx_index)?{txHash:row.tx_hash,txIndex:row.tx_index}:{})}));
   const externalOutputs=detail.inputs.some(row=>addresses.has(row.payment_addr?.bech32||''))?counterparties(detail.outputs):[];
   const externalInputs=detail.outputs.some(row=>addresses.has(row.payment_addr?.bech32||''))?counterparties(detail.inputs):[];
   const minted=Object.fromEntries((detail.assets_minted||[]).filter(a=>BigInt(a.quantity)>0n).map(a=>[assetId(a),a.quantity]));
-  return {hash:detail.tx_hash,time:detail.tx_timestamp,adaRaw:String(ada),assets,decimals,minted,feeRaw:allInputs?String(fee):null,internal:allInputs&&allOutputs&&Object.keys(assets).length===0&&ada===-fee,wallets:[...touched],externalOutputs,externalInputs,swapCandidate:detail.inputs.some(x=>!addresses.has(x.payment_addr?.bech32||''))||detail.outputs.some(x=>!addresses.has(x.payment_addr?.bech32||''))};
+  const inputRefs=detail.inputs.filter(r=>r.tx_hash&&Number.isInteger(r.tx_index)).map(r=>r.tx_hash+':'+r.tx_index);
+  const ownedInputCount=detail.inputs.filter(r=>addresses.has(r.payment_addr?.bech32||'')).length;
+  return {hash:detail.tx_hash,time:detail.tx_timestamp,adaRaw:String(ada),assets,decimals,minted,inputRefs,ownedInputCount,feeRaw:allInputs?String(fee):null,internal:allInputs&&allOutputs&&Object.keys(assets).length===0&&ada===-fee,wallets:[...touched],externalOutputs,externalInputs,swapCandidate:detail.inputs.some(x=>!addresses.has(x.payment_addr?.bech32||''))||detail.outputs.some(x=>!addresses.has(x.payment_addr?.bech32||''))};
 }
 export function tradeOf(f:Fact):Trade|null{
   if(Object.keys(f.minted||{}).length)return null;

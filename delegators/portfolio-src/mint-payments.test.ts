@@ -49,3 +49,27 @@ assert.deepEqual(remainingBasis([fact,sale],history,mintPayments([fact],[]).acqu
 assert.equal(adaToLovelace('12.345678'),'12345678');
 for(const invalid of ['-1','1e3','1.1234567','bad',''])assert.equal(adaToLovelace(invalid),null);
 console.log('Mint payment linking tests passed');
+
+const linkedPayment={...payment,externalOutputs:[{address:'shop',lovelace:'10000000',txHash:'payment',txIndex:1}],inputRefs:['funding:0'],ownedInputCount:1};
+const referenced=analyse({...detail,inputs:[{...detail.inputs[0],tx_hash:'funding',tx_index:0}],outputs:detail.outputs.map((o,i)=>({...o,tx_hash:'mint',tx_index:i}))},new Set(['own']));
+assert.deepEqual(referenced.inputRefs,['funding:0']);
+assert.equal(referenced.externalOutputs?.[0].txIndex,1);
+assert.equal(referenced.externalOutputs?.[0].txHash,'mint');
+assert.equal(referenced.ownedInputCount,1);
+const linkedReceipt={...receipt,inputRefs:['payment:1'],ownedInputCount:0};
+result=mintPayments([linkedPayment,linkedReceipt],[]);
+assert.equal(result.acquisitions.receipt[id].ada,8); // 10 paid, 2 returned
+assert.equal(result.acquisitions.receipt[id].source,'linked-mint');
+assert.equal(result.acquisitions.receipt[id].paymentHash,'payment');
+assert.equal(remainingBasis([linkedPayment,linkedReceipt],history,result.acquisitions)[id].usd,4);
+assert.equal(transactionPrices([linkedPayment,linkedReceipt],{},history,result.acquisitions)[id].usd,2);
+assert.deepEqual(mintPayments([linkedPayment,{...linkedReceipt,inputRefs:['payment:0']}],[]).acquisitions,{});
+assert.deepEqual(mintPayments([linkedPayment,{...linkedReceipt,ownedInputCount:1}],[]).acquisitions,{});
+assert.deepEqual(mintPayments([linkedPayment,{...linkedReceipt,adaRaw:'10000000'}],[]).acquisitions,{});
+assert.deepEqual(mintPayments([linkedPayment,{...linkedReceipt,minted:{[id]:'3'}}],[]).acquisitions,{});
+assert.deepEqual(mintPayments([linkedPayment,linkedReceipt,{...linkedReceipt,hash:'second'}],[]).acquisitions,{});
+const otherPayment={...linkedPayment,hash:'other',externalOutputs:[{address:'shop',lovelace:'10000000',txHash:'other',txIndex:1}]};
+assert.deepEqual(mintPayments([linkedPayment,otherPayment,{...linkedReceipt,inputRefs:['payment:1','other:1']}],[]).acquisitions,{});
+result=mintPayments([linkedPayment,linkedReceipt],[{assetId:id,receiptHash:'receipt',paymentHash:'payment',lovelace:'6000000'}]);
+assert.equal(result.acquisitions.receipt[id].ada,6);
+assert.equal(result.acquisitions.receipt[id].source,'confirmed');

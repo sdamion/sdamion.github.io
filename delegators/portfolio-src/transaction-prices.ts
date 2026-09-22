@@ -1,12 +1,12 @@
 import {tradeOf,units} from './core.ts';
-import type {Fact,Market,Acquisitions} from './core.ts';
+import type {Fact,Market,Acquisitions,Acquisition} from './core.ts';
 
 export function transactionPrices(facts:Fact[],markets:Record<string,Market>,history:Record<string,number>,acquisitions:Acquisitions={}){
-  const prices:Record<string,{usd:number;ada:number;time:number;hash:string;decimals:number;source?:'mint'|'confirmed'}>={};
+  const prices:Record<string,{usd:number;ada:number;time:number;hash:string;decimals:number;source?:Acquisition['source']}>={};
   for(const fact of [...facts].sort((a,b)=>b.time-a.time||a.hash.localeCompare(b.hash))){
     const trade=tradeOf(fact);
     const linked=acquisitions[fact.hash]||{};
-    const candidates:{id:string;raw:string;ada:number;time:number;hash:string;source?:'mint'|'confirmed'}[]=Object.entries(linked).map(([id,a])=>({id,...a,hash:a.paymentHash}));
+    const candidates:{id:string;raw:string;ada:number;time:number;hash:string;source?:Acquisition['source']}[]=Object.entries(linked).map(([id,a])=>({id,...a,hash:a.paymentHash}));
     if(trade&&!linked[trade.id])candidates.push({...trade,time:fact.time,hash:fact.hash});
     for(const candidate of candidates){
     if(prices[candidate.id]||!Number.isFinite(candidate.time)||candidate.time<=0)continue;

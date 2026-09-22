@@ -6,6 +6,8 @@ The widget mounts inside the existing universal dashboard overlay and uses the w
 
 ## Build
 
+Separate mint payments also link automatically when the single-asset mint receipt consumes every external output of exactly one tracked ADA-only payment. The matcher requires exact transaction hash and output index references, no owned inputs in the receipt, and the entire minted quantity returning to the portfolio. Returned ADA is subtracted. Ambiguous batches, duplicate payment use, unrelated transfers, and missing references remain unlinked. A refresh upgrades older cached receipts and outgoing payments once; confirmed manual allocations take precedence.
+
 Transaction discovery and analysis run concurrently through `pipeline.ts`: one history-page worker queues deduplicated hashes and one detail worker analyses batches of up to 50. Counting reports unique transactions while analysis reports completed work; the final count, percentage and remaining-time estimate appear after discovery finishes. Detail batches are cached incrementally. Failure or cancellation stops both workers before the refresh finishes. Test this lifecycle with `node --experimental-strip-types pipeline.test.ts`.
 
 Run `npm install` and `npm run build` in this directory. Commit the generated `../portfolio/app.js` with source changes. An existing compatible dependency installation may be passed to `node build.mjs /absolute/path/to/dependency-project`.
