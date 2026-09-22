@@ -7,8 +7,8 @@ import type {CexAddress} from './cex';
 
 export function CexAddresses({entries,owned,onChange}:{entries:CexAddress[];owned:string[];onChange:(entries:CexAddress[])=>boolean}){
   const [name,setName]=useState(''),[address,setAddress]=useState(''),[error,setError]=useState('');
-  return <section className="portfolio-section"><h2>CEX addresses</h2>
-    <p className="small muted">Your rule: ADA received from these exchanges is a buy; ADA sent to them is a sell. Values use transfer-day market prices, not exchange execution prices. Labels are saved in this browser.</p>
+  return <section className="portfolio-section">
+    <p className="small muted">Saved exchange addresses use your CEX rule: incoming ADA is a buy, outgoing ADA a sell. This does not decode DEX swaps. Saved in this browser.</p>
     <form className="wallet-form governance-drep-registration-form" onSubmit={event=>{
       event.preventDefault();const value=address.trim().toLowerCase();setError('');
       if(!validWalletAddress(value)){setError('Enter a valid mainnet payment or stake address (addr1… or stake1…).');return;}

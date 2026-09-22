@@ -7,18 +7,19 @@ type OverlayHost = Window & {
   syncGovernanceMenuOverlayAccessibility?: ()=>void;
 };
 
-export function AssetOverlay({name,onClose,children}:{name:string;onClose:()=>void;children:ReactNode}){
+export function AssetOverlay({name,onClose,children,id='portfolio-asset-overlay'}:{name:string;onClose:()=>void;children:ReactNode;id?:string}){
   const [body,setBody]=useState<HTMLElement|null>(null);
   const closeRef=useRef(onClose);
   closeRef.current=onClose;
   useEffect(()=>{
     const host=window as unknown as OverlayHost;
     const content=document.createElement('div');
-    content.className='member-portfolio-host';
+    content.className='member-portfolio-host member-portfolio';
     const returnFocus=document.activeElement as HTMLElement|null;
     const elements=host.createUniversalOverlay({
-      id:'portfolio-asset-overlay',titleId:'portfolio-asset-title',titleText:name,
-      closeLabel:'Close asset details',closeOverlay:()=>closeRef.current(),
+      id,titleId:`${id}-title`,titleText:name,
+      dialogClass:['portfolio-holdings-overlay','portfolio-transactions-overlay'].includes(id)?'governance-dialog-wide':'governance-drep-dialog',
+      closeLabel:`Back from ${name}`,closeOverlay:()=>closeRef.current(),
       bodyNodes:[content],returnFocus,enableSearch:false,closeOnBackdrop:false,
       showClose:false,showBack:true
     });
@@ -28,6 +29,6 @@ export function AssetOverlay({name,onClose,children}:{name:string;onClose:()=>vo
       host.syncGovernanceMenuOverlayAccessibility?.();
       if(returnFocus?.isConnected)returnFocus.focus();
     };
-  },[name]);
+  },[name,id]);
   return body?createPortal(children,body):null;
 }

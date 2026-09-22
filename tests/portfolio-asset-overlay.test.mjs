@@ -19,3 +19,15 @@ test('holdings show names below images and move payment details into the overlay
   assert.doesNotMatch(app,/<TableCell>[^\n]*<PaymentLinks/);
   assert.doesNotMatch(source('PaymentLinks.tsx'),/<details|<summary/);
 });
+test('portfolio sections use separate shared overlays and the universal tile renderer',()=>{
+  const app=source('App.tsx'),overlay=source('AssetOverlay.tsx');
+  for(const section of ['wallets','exchanges','holdings','transactions']){
+    assert.ok(app.includes(`section==='${section}'&&<AssetOverlay id="portfolio-${section}-overlay"`));
+    assert.ok(app.includes(`onOpen={()=>setSection('${section}')}`));
+  }
+  assert.match(source('ui.tsx'),/TDSPRuntime.appendUniversalTileContent\(button/);
+  assert.match(source('ui.tsx'),/type="button".*onClick=\{onOpen\}/);
+  assert.match(overlay,/titleId:`\$\{id\}-title`/);
+  assert.match(overlay,/governance-dialog-wide/);
+  assert.doesNotMatch(overlay,/\.css|abort\(|refresh\(/);
+});
