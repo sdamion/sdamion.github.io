@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import {assetTransactions} from './asset-transactions.ts';
+import type {Fact} from './core.ts';
+const fact:Fact={hash:'buy',time:1,adaRaw:'-10200000',feeRaw:'200000',assets:{asset:'1'},decimals:{},internal:false,wallets:[],swapCandidate:true};
+const sale={...fact,hash:'sale',time:2,adaRaw:'12000000',assets:{asset:'-1'}};
+const gift={...fact,hash:'gift',time:3,adaRaw:'2000000',feeRaw:null};
+const rows=assetTransactions('asset',[fact,fact,sale,gift],{});
+assert.equal(rows.length,3);
+assert.equal(rows.find(r=>r.hash==='buy')?.costAda,10.2);
+assert.equal(rows.find(r=>r.hash==='buy')?.costKnown,true);
+assert.equal(rows.find(r=>r.hash==='sale')?.kind,'Sell');
+assert.equal(rows.find(r=>r.hash==='gift')?.costKnown,false);
+assert.equal(assetTransactions('other',[fact],{}).length,0);
+const linked=assetTransactions('asset',[gift],{gift:{asset:{raw:'1',ada:8,time:1,paymentHash:'order',source:'linked-purchase'}}});
+assert.equal(linked[0].paymentHash,'order');assert.equal(linked[0].costAda,8);
+console.log('Asset transaction history includes buys, sells, receipts and linked payments');

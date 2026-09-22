@@ -4,6 +4,7 @@ import {short} from './core';
 import type {Fact,Acquisitions} from './core';
 import {adaToLovelace,mintPayments,paymentBudget} from './mint-payments';
 import type {PaymentLink} from './mint-payments';
+import {assetTransactions} from './asset-transactions';
 
 export function PaymentLinks({id,facts,links,acquisitions,onSave,loading=false}:{id:string;facts:Fact[];links:PaymentLink[];acquisitions:Acquisitions;onSave:(links:PaymentLink[])=>void;loading?:boolean}){
   const [receipt,setReceipt]=useState(''),[payment,setPayment]=useState(''),[amount,setAmount]=useState(''),[error,setError]=useState('');
@@ -11,14 +12,23 @@ export function PaymentLinks({id,facts,links,acquisitions,onSave,loading=false}:
   const receipts=facts.filter(f=>!f.internal&&BigInt(f.assets[id]||0)>0n).sort((a,b)=>b.time-a.time);
   const label=(f:Fact)=>new Date(f.time*1000).toLocaleDateString()+' · '+short(f.hash);
   const existing=Object.entries(acquisitions).filter(([,assets])=>!!assets[id]);
-  const unmatched=receipts.filter(f=>!acquisitions[f.hash]?.[id]);
+  const transactions=assetTransactions(id,facts,acquisitions);
+  const unmatched=transactions.filter(f=>BigInt(f.raw)>0n&&!f.costKnown);
+  const known=transactions.filter(f=>f.costKnown);
   const selectedReceipt=receipt||(receipts.length===1?receipts[0].hash:'');
   const allocated=adaToLovelace(amount);
   const paymentFact=facts.find(f=>f.hash===payment.trim().toLowerCase());
   const canConfirm=!!selectedReceipt&&allocated!==null&&BigInt(allocated)>0n&&!!paymentFact&&paymentBudget(paymentFact)!==null;
-  return <section className="portfolio-section"><h3>Mint / purchase payment</h3>
-    {existing.map(([hash,assets])=><p className="small" key={hash}><a href={`https://cardanoscan.io/transaction/${assets[id].paymentHash}`} target="_blank" rel="noreferrer">{assets[id].source==='linked-mint'?'Automatically linked mint payment':assets[id].source==='mint'?'Inferred mint payment':'Confirmed payment'}: {assets[id].ada.toLocaleString()} ADA</a> · fees excluded{assets[id].source==='confirmed'&&<button type="button" className="governance-vote-secondary" onClick={()=>onSave(links.filter(l=>l.receiptHash!==hash||l.assetId!==id))}>Remove link</button>}</p>)}
-    <p role="status" className="small muted">{loading?'Automatic payment matching updates as transaction details load.':unmatched.length||!existing.length?'No reliable automatic payment link was found for some receipts in the loaded history. Unknown costs remain excluded; payments are not guessed.':'Payments linked automatically or previously confirmed. No selection is needed.'}</p>
+  return <section className="portfolio-section"><h3>Asset transactions & purchase payments</h3>
+    <p className="small muted">{transactions.length} loaded asset transactions · {known.length} receipts with purchase costs · {unmatched.length} receipts without matched costs</p>
+    {transactions.map(tx=><div className="governance-detail-row" key={tx.hash}>
+      <a href={`https://cardanoscan.io/transaction/${tx.hash}`} target="_blank" rel="noreferrer">{new Date(tx.time*1000).toLocaleDateString()} · {tx.kind} · {short(tx.hash)}</a>
+      <span className="small">{tx.raw} raw asset units</span>
+      {tx.costAda!==null?<span className="small">Purchase cost: ₳ {tx.costAda.toLocaleString(undefined,{maximumFractionDigits:6})}</span>:BigInt(tx.raw)>0n&&<span className="small muted">Purchase cost not linked</span>}
+      {tx.paymentHash&&tx.paymentHash!==tx.hash&&<a className="small" href={`https://cardanoscan.io/transaction/${tx.paymentHash}`} target="_blank" rel="noreferrer">Payment: {short(tx.paymentHash)}</a>}
+    </div>)}
+    {existing.map(([hash,assets])=><p className="small" key={hash}><a href={`https://cardanoscan.io/transaction/${assets[id].paymentHash}`} target="_blank" rel="noreferrer">{assets[id].source==='marketplace'?'Decoded marketplace purchase':assets[id].source==='linked-mint'?'Automatically linked mint payment':assets[id].source==='linked-purchase'?'Inferred linked purchase payment':assets[id].source==='mint'?'Inferred mint payment':'Confirmed payment'}: {assets[id].ada.toLocaleString()} ADA</a> · network fees excluded{assets[id].source==='confirmed'&&<button type="button" className="governance-vote-secondary" onClick={()=>onSave(links.filter(l=>l.receiptHash!==hash||l.assetId!==id))}>Remove link</button>}</p>)}
+    <p role="status" className="small muted">{loading?'Automatic payment matching updates as transaction details load.':unmatched.length?'Some loaded receipts have no reliable purchase cost. Unknown costs remain excluded; payments are not guessed.':known.length?'Purchase costs linked automatically or previously confirmed. No selection is needed.':'No purchase receipts are present in the loaded history for this asset.'}</p>
     {existing.length>0&&<p className="small muted">Linked mint payments are purchase costs, not current prices. Gain / loss needs a separate market price or a current price you enter.</p>}
     {links.filter(l=>l.assetId===id&&!acquisitions[l.receiptHash]?.[id]).map((link,index)=><p className="small" key={index}>Saved link pending validation: {short(link.paymentHash)} <button type="button" className="governance-vote-secondary" onClick={()=>onSave(links.filter(l=>l!==link))}>Remove link</button></p>)}
     <button type="button" className="governance-vote-secondary" aria-expanded={editing} onClick={()=>setEditing(!editing)}>{editing?'Hide payment editor':'Manually link or override a payment'}</button>

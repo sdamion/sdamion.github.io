@@ -77,3 +77,17 @@ assert.deepEqual(mintPayments([linkedPayment,otherPayment,{...linkedReceipt,inpu
 result=mintPayments([linkedPayment,linkedReceipt],[{assetId:id,receiptHash:'receipt',paymentHash:'payment',lovelace:'6000000'}]);
 assert.equal(result.acquisitions.receipt[id].ada,6);
 assert.equal(result.acquisitions.receipt[id].source,'confirmed');
+
+const purchasedReceipt={...linkedReceipt,minted:{}};
+result=mintPayments([linkedPayment,purchasedReceipt],[]);
+assert.equal(result.acquisitions.receipt[id].ada,8);
+assert.equal(result.acquisitions.receipt[id].source,'linked-purchase');
+assert.equal(remainingBasis([linkedPayment,purchasedReceipt],history,result.acquisitions)[id].usd,4);
+assert.deepEqual(mintPayments([linkedPayment,{...purchasedReceipt,inputRefs:['unrelated:1']}],[]).acquisitions,{});
+assert.deepEqual(mintPayments([linkedPayment,{...purchasedReceipt,assets:{[id]:'2',other:'1'}}],[]).acquisitions,{});
+assert.deepEqual(mintPayments([linkedPayment,purchasedReceipt,{...purchasedReceipt,hash:'duplicate-receipt'}],[]).acquisitions,{});
+const marketplace={...receipt,marketplacePurchases:{[id]:{raw:'2',lovelace:'95000000',buyer:'own',source:'marketplace' as const}}};
+const decoded=mintPayments([marketplace],[]).acquisitions;
+assert.equal(decoded.receipt[id].ada,95);
+assert.equal(decoded.receipt[id].source,'marketplace');
+assert.equal(remainingBasis([marketplace],history,decoded)[id].usd,95);

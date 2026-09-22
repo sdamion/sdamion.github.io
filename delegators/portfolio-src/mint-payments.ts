@@ -35,6 +35,12 @@ export function mintPayments(facts:Fact[],links:PaymentLink[]) {
     (acquisitions[receipt.hash]??={})[link.assetId]={raw,ada:Number(amount)/1e6,time:payment.time,paymentHash:payment.hash,source:'confirmed'};
   }
   for(const f of byHash.values()){
+    if(!f.internal&&f.swapCandidate){
+      for(const [id,p] of Object.entries(f.marketplacePurchases||{})){
+        if(links.some(l=>l.receiptHash===f.hash&&l.assetId===id)||f.assets[id]!==p.raw||!/^\d+$/.test(p.lovelace)||BigInt(p.lovelace)<=0n)continue;
+        (acquisitions[f.hash]??={})[id]={raw:p.raw,ada:Number(p.lovelace)/1e6,time:f.time,paymentHash:f.hash,source:'marketplace'};
+      }
+    }
     if(blockedReceipts.has(f.hash)||blockedPayments.has(f.hash))continue;
     const entries=Object.entries(f.assets);
     if(entries.length!==1)continue;
@@ -44,15 +50,15 @@ export function mintPayments(facts:Fact[],links:PaymentLink[]) {
     const budget=paymentBudget(f);if(budget===null)continue;
     acquisitions[f.hash]={[id]:{raw,ada:Number(budget)/1e6,time:f.time,paymentHash:f.hash,source:'mint'}};
   }
-  // Follow the exact payment output consumed by the mint transaction. Never
+  // Follow the exact payment output consumed by the asset receipt. Never
   // match by date, similar amounts or a shared service address alone.
   const candidates=new Map<string,{receipt:Fact;payment:Fact;id:string;raw:string;paid:bigint}[]>();
   for(const receipt of byHash.values()){
     if(blockedReceipts.has(receipt.hash)||acquisitions[receipt.hash]||receipt.internal||!receipt.swapCandidate||receipt.ownedInputCount!==0)continue;
     const assets=Object.entries(receipt.assets),minted=Object.entries(receipt.minted||{});
-    if(assets.length!==1||minted.length!==1)continue;
+    if(assets.length!==1||minted.length>1)continue;
     const [id,raw]=assets[0];
-    if(BigInt(raw)<=0n||receipt.minted?.[id]!==raw)continue;
+    if(BigInt(raw)<=0n||(minted.length===1&&receipt.minted?.[id]!==raw))continue;
     const refs=new Set(receipt.inputRefs||[]);
     const matches=[...new Set([...refs].map(ref=>ref.split(':')[0]))].flatMap(hash=>{
       const payment=byHash.get(hash);
@@ -70,7 +76,7 @@ export function mintPayments(facts:Fact[],links:PaymentLink[]) {
   for(const matches of candidates.values()){
     if(matches.length!==1)continue;
     const {receipt,payment,id,raw,paid}=matches[0];
-    acquisitions[receipt.hash]={[id]:{raw,ada:Number(paid)/1e6,time:payment.time,paymentHash:payment.hash,source:'linked-mint'}};
+    acquisitions[receipt.hash]={[id]:{raw,ada:Number(paid)/1e6,time:payment.time,paymentHash:payment.hash,source:receipt.minted?.[id]===raw?'linked-mint':'linked-purchase'}};
   }
   return {acquisitions,errors};
 }

@@ -163,7 +163,7 @@ export default function Home({memberStake}:{memberStake:string}){
       setStatus(incremental?'Checking for new transactions…':'Loading remaining transaction history…');
       await runPipeline<Tx>(async(enqueue,active)=>{
         // Upgrade receipts and outgoing payments once to retain their UTxO links.
-        const legacy=next.txs.filter(tx=>{const f=next.facts[tx.tx_hash];return f&&f.inputRefs===undefined&&(Object.values(f.assets).some(raw=>BigInt(raw)>0n)||paymentBudget(f)!==null);});
+        const legacy=next.txs.filter(tx=>{const f=next.facts[tx.tx_hash];return f&&((f.marketplaceVersion!==1&&Object.values(f.assets).some(raw=>BigInt(raw)>0n))||(f.inputRefs===undefined&&paymentBudget(f)!==null));});
         for(const tx of legacy)scheduled.add(tx.tx_hash);
         enqueue(legacy);updateAnalysis();
         for(const addressBatch of addressBatches)for(let offset=0;;offset+=1000){
@@ -285,7 +285,7 @@ export default function Home({memberStake}:{memberStake:string}){
 
     <section className="portfolio-section"><div className="section-heading"><div><h2>Current holdings & performance</h2><p className="muted">ADA buy price is calculated automatically from receipt-date market prices across your tracked wallets. Gain / loss = current value − remaining cost.</p></div></div>
       <label className="small"><input type="checkbox" checked={missingCostsOnly} onChange={e=>setMissingCostsOnly(e.target.checked)}/> Show holdings with missing purchase cost ({coverage.missingCost})</label>
-      {payments.errors.length>0&&<p role="status" className="negative">Some saved payment links cannot be applied to the loaded history. Open Mint / purchase payment to review them.</p>}
+      {payments.errors.length>0&&<p role="status" className="negative">Some saved payment links cannot be applied to the loaded history. Open the asset image to review its purchase payments.</p>}
       <Table><TableHeader><TableRow>{['Asset','Balance','Current price · USD','Current value','Average buy · USD / unit','Unrealised gain / loss'].map(t=><TableHead key={t}>{t}</TableHead>)}</TableRow></TableHeader><TableBody>{rows.filter(r=>!missingCostsOnly||r.cost===null).map(r=><TableRow key={r.id}>
         <TableCell><AssetImage id={r.id} name={r.name} market={snapshot?.markets[r.id]} onOpen={()=>setSelectedAsset(r.id)}/></TableCell>
         <TableCell>{r.qty===null?`${r.raw} raw units`:num(r.qty)}{r.id!=='lovelace'&&r.automaticDecimals==null&&<label className="small muted">Token decimals<Input aria-label={`Token decimals for ${r.name}`} type="number" min="0" max="30" step="1" value={overrides[r.id]?.decimals??''} onChange={e=>updateOverride(r.id,'decimals',e.target.value)} placeholder="Required to calculate value"/></label>}</TableCell>
