@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {currentValuation} from './current-valuation.ts';
+const id='a'.repeat(56)+'01',at=1000000;
+const nft={token_id:id,is_nft:true,wayup_floor_ada:10,wayup_quoted_at:new Date(at).toISOString()};
+assert.equal(currentValuation(id,1,null,nft,0.5,at).value,5);
+assert.equal(currentValuation(id,1,3,nft,0.5,at).value,3);
+assert.equal(currentValuation(id,1,0,nft,0.5,at).value,0);
+assert.equal(currentValuation(id,1,null,nft,0.5,at+900001).source,'fallback');
+assert.equal(currentValuation(id,1000000,null,undefined,0.5).value,1);
+assert.equal(currentValuation(id,null,null,undefined,0.5).value,1);
+assert.equal(currentValuation(id,1,null,undefined,null).value,null);
+assert.equal(currentValuation('lovelace',10,null,undefined,0.5).value,5);
+assert.equal(currentValuation('lovelace',10,null,undefined,null).source,'unavailable');
+assert.equal(currentValuation(id,10,null,{token_id:id,price_by_usd:2},0.5).value,20);
+console.log('Current prices are independent from purchase history');

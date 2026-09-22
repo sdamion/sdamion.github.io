@@ -9,7 +9,7 @@ export type Counterparty = {address:string;lovelace:string;stakeAddress?:string|
 export type Fact = { hash:string; time:number; adaRaw:string; assets:Record<string,string>; decimals:Record<string,number>; feeRaw:string|null; internal:boolean; wallets:string[]; swapCandidate:boolean; externalOutputs?:Counterparty[]; externalInputs?:Counterparty[]; minted?:Record<string,string>; inputRefs?:string[]; ownedInputCount?:number };
 export type Acquisition = {raw:string;ada:number;time:number;paymentHash:string;source:'mint'|'linked-mint'|'confirmed'};
 export type Acquisitions = Record<string,Record<string,Acquisition>>;
-export type Market = { token_id:string; ticker?:string|null; decimals?:number|null; price_by_ada?:number|null; price_by_usd?:number|null; is_verified?:boolean|null; logo?:string|null; image?:string|string[]|null; image_url?:string|null };
+export type Market = { token_id:string; ticker?:string|null; decimals?:number|null; price_by_ada?:number|null; price_by_usd?:number|null; is_verified?:boolean|null; logo?:string|null; image?:string|string[]|null; image_url?:string|null; is_nft?:boolean; wayup_floor_ada?:number; wayup_quoted_at?:string };
 export type Holding = { id:string; raw:string };
 export type Trade = { side:'buy'|'sell'; id:string; raw:string; ada:number; costAda:number };
 export const assetId=(a:Asset)=>a.policy_id+a.asset_name;
@@ -83,10 +83,10 @@ export function adaReceiptBasis(facts:Fact[], history:Record<string,number>,onSp
   }
   return {raw:String(raw),usd:valid?usd:null,valid,missingPrices};
 }
-// While history is incomplete, project the average of priced, loaded receipts
-// onto the current balance. This is explicitly NOT the reconciled remaining cost.
+// Use the same remaining-cost calculation during and after refresh. Loaded
+// history must reconcile to the current balance before it can value that balance.
 export function liveAdaBasis(facts:Fact[],history:Record<string,number>,currentRaw:string,complete:boolean){
-  let receiptRaw=0n,pricedRaw=0n,receiptUsd=0,receiptCount=0;
+  let receiptRaw=0n,pricedRaw=0n,receiptCount=0;
   const seen=new Set<string>();
   for(const f of facts){
     if(seen.has(f.hash)||f.internal)continue;seen.add(f.hash);
@@ -95,17 +95,19 @@ export function liveAdaBasis(facts:Fact[],history:Record<string,number>,currentR
     receiptRaw+=received;
     const price=history[new Date(f.time*1000).toISOString().slice(0,10)];
     if(!Number.isFinite(price)||price<=0)continue;
-    pricedRaw+=received;receiptUsd+=Number(received)/1e6*price;receiptCount++;
+    pricedRaw+=received;receiptCount++;
   }
-  const exact=complete?adaReceiptBasis(facts,history):null;
-  const average=pricedRaw>0n?receiptUsd/(Number(pricedRaw)/1e6):null;
-  const usd=complete?(exact?.raw===currentRaw?exact.usd:null):average===null?null:average*Number(currentRaw)/1e6;
-  return {raw:currentRaw,usd,provisional:!complete,receiptCount,pricedReceiptAda:Number(pricedRaw)/1e6,missingReceiptAda:Number(receiptRaw-pricedRaw)/1e6,reconciled:complete&&exact?.valid===true&&exact.raw===currentRaw};
+  const exact=adaReceiptBasis(facts,history);
+  const reconciled=exact.valid&&exact.raw===currentRaw;
+  const usd=reconciled?exact.usd:null;
+  return {raw:currentRaw,usd,provisional:!complete,receiptCount,pricedReceiptAda:Number(pricedRaw)/1e6,missingReceiptAda:Number(receiptRaw-pricedRaw)/1e6,reconciled};
 }
 // Tokens use FIFO across the portfolio; ADA uses the receipt-price method above.
 // Incoming token transfers retain unknown acquisition cost, unlike ADA receipts.
 export function remainingBasis(facts:Fact[], history:Record<string,number>,acquisitions:Acquisitions={}):Record<string,{raw:string;usd:number|null}>{
   const lots=new Map<string,{raw:bigint;usd:number|null}[]>();
-  for(const f of [...facts].sort((a,b)=>a.time-b.time||a.hash.localeCompare(b.hash))){if(f.internal)continue;const trade=tradeOf(f);for(const [id,v] of Object.entries(f.assets)){const amount=BigInt(v);const rows=lots.get(id)||[];if(amount>0n){const acquisition=acquisitions[f.hash]?.[id];const price=history[new Date((acquisition?.time??f.time)*1000).toISOString().slice(0,10)];const costAda=acquisition?.ada??(trade?.side==='buy'?trade.costAda:null);rows.push({raw:amount,usd:costAda!==null&&price>0?costAda*price:null});}else{let consume=-amount;while(consume>0n&&rows.length){const first=rows[0],take=consume<first.raw?consume:first.raw;if(first.usd!==null)first.usd*=Number(first.raw-take)/Number(first.raw);first.raw-=take;consume-=take;if(first.raw===0n)rows.shift();}}lots.set(id,rows);}}
-  return {...Object.fromEntries([...lots].map(([id,rows])=>[id,{raw:String(rows.reduce((s,r)=>s+r.raw,0n)),usd:rows.some(r=>r.usd===null)?null:rows.reduce((s,r)=>s+(r.usd||0),0)}])),lovelace:adaReceiptBasis(facts,history)};
+  const incomplete=new Set<string>();
+  const unique=[...new Map(facts.map(f=>[f.hash,f])).values()];
+  for(const f of unique.sort((a,b)=>a.time-b.time||a.hash.localeCompare(b.hash))){if(f.internal)continue;const trade=tradeOf(f);for(const [id,v] of Object.entries(f.assets)){const amount=BigInt(v);const rows=lots.get(id)||[];if(amount>0n){const acquisition=acquisitions[f.hash]?.[id];const price=history[new Date((acquisition?.time??f.time)*1000).toISOString().slice(0,10)];const costAda=acquisition?.ada??(trade?.side==='buy'?trade.costAda:null);rows.push({raw:amount,usd:costAda!==null&&price>0?costAda*price:null});}else{let consume=-amount;while(consume>0n&&rows.length){const first=rows[0],take=consume<first.raw?consume:first.raw;if(first.usd!==null)first.usd*=Number(first.raw-take)/Number(first.raw);first.raw-=take;consume-=take;if(first.raw===0n)rows.shift();}if(consume>0n)incomplete.add(id);}lots.set(id,rows);}}
+  return {...Object.fromEntries([...lots].map(([id,rows])=>[id,{raw:String(rows.reduce((s,r)=>s+r.raw,0n)),usd:incomplete.has(id)||rows.some(r=>r.usd===null)?null:rows.reduce((s,r)=>s+(r.usd||0),0)}])),lovelace:adaReceiptBasis(facts,history)};
 }

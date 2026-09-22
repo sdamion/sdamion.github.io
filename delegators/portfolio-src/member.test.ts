@@ -72,7 +72,7 @@ assert.equal(cexAdaNetPosition([buy,sell],stakeEntries,'50000000').netRaw,'10000
 assert.equal(cexAdaNetPosition([buy,sell],stakeEntries,'40000000').netRaw,'0');
 // A receipt can price current holdings immediately, without complete history.
 assert.equal(liveAdaBasis([buy],prices,'100000000',false).usd,100);
-assert.equal(liveAdaBasis([sell,buy],prices,'39800000',false).usd,39.8);
+assert.ok(Math.abs(liveAdaBasis([sell,buy],prices,'39800000',false).usd!-39.8)<1e-9);
 assert.equal(liveAdaBasis([sell],prices,'39800000',false).usd,null);
 assert.equal(Number(sell.feeRaw)/1e6,0.2);
 assert.deepEqual(cexAdaTransfer(buy,stakeEntries),{side:'buy',raw:100000000n});
