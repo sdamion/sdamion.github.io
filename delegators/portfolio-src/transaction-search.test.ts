@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {matchesTransaction} from './transaction-search.ts';
+import type {Fact} from './core.ts';
+const id='a'.repeat(56)+Buffer.from('MallardOrder1176').toString('hex');
+const fact:Fact={hash:'abcdef',time:1,adaRaw:'0',assets:{[id]:'1'},decimals:{},feeRaw:null,internal:false,wallets:['own'],swapCandidate:true};
+for(const query of ['MallardOrder1176','mallard','Mallard Order #1176','1176',' ABCDEF ',' Savings ',''])assert.equal(matchesTransaction(query,fact.hash,fact,{},[{address:'own',label:'Savings'}]),true);
+assert.equal(matchesTransaction('other NFT',fact.hash,fact,{},[]),false);
+assert.equal(matchesTransaction('Mallard',fact.hash,undefined,{},[]),false);
+assert.equal(matchesTransaction('ABC',fact.hash,undefined,{},[]),true);
+assert.equal(matchesTransaction('DUCK',fact.hash,fact,{[id]:{token_id:id,ticker:'DUCK'}},[]),true);
+console.log('Transaction asset-name, ticker, hash and wallet search passed');
