@@ -1,5 +1,5 @@
 export function assetImageCandidates(id:string,metadata:unknown[]=[]):string[]{
-  const urls=metadata.map(assetImageUrl).filter((url):url is string=>url!==null).flatMap(url=>url.startsWith('https://ipfs.io/ipfs/')?[url,url.replace('https://ipfs.io/ipfs/','https://dweb.link/ipfs/')]:[url]);
+  const urls=metadata.map(assetImageUrl).filter((url):url is string=>url!==null);
   if(id==='lovelace')urls.push('/cardano_logo_ico.webp');
   else if(/^[a-f0-9]{56}(?:[a-f0-9]{2}){0,32}$/.test(id))urls.push(`https://asset-logos.minswap.org/${id}`);
   return [...new Set(urls)];
@@ -13,7 +13,7 @@ export function assetImageUrl(value:unknown):string|null{
   if(source.startsWith('ipfs://')){
     const path=source.slice(7).replace(/^ipfs\//,'');
     if(!/^[a-zA-Z0-9]+(?:\/[^?#]*)?$/.test(path))return null;
-    return `https://ipfs.io/ipfs/${path}`;
+    return `https://gateway.pinata.cloud/ipfs/${path}`;
   }
-  try{const url=new URL(source);return url.protocol==='https:'&&!url.username&&!url.password?url.href:null;}catch{return null;}
+  try{const url=new URL(source);if(['ipfs.io','dweb.link'].includes(url.hostname)&&url.pathname.startsWith('/ipfs/'))url.hostname='gateway.pinata.cloud';return url.protocol==='https:'&&!url.username&&!url.password?url.href:null;}catch{return null;}
 }
