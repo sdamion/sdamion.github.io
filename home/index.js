@@ -735,7 +735,7 @@ function getDelegatorDashboardTemplates() {
 
 function loadDelegatorAccessModule() {
     if (window.TDSPDelegatorAccess?.initOverlay) return Promise.resolve(window.TDSPDelegatorAccess);
-    return window.TDSPRuntime.loadScript('delegators/delegator-access.js?v=20260922-general-bundle-costs', {
+    return window.TDSPRuntime.loadScript('delegators/delegator-access.js?v=20260922-asset-exclusions', {
         datasetName: 'delegatorAccess',
         selector: 'script[data-delegator-access]',
         ready: () => window.TDSPDelegatorAccess?.initOverlay ? window.TDSPDelegatorAccess : null

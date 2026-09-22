@@ -16,6 +16,7 @@ import {createHistoryIndex} from './history-index';
 import {keepRefreshSessionAlive} from './refresh-session';
 import {currentValuation} from './current-valuation';
 import {valuationCoverage} from './valuation-coverage';
+import {includedAssets} from './asset-exclusions';
 import {assetImageCandidates} from './asset-image';
 import {knownDecimals,tokenDecimals,holdingValue} from './valuation';
 import {mintPayments,paymentBudget} from './mint-payments';
@@ -33,7 +34,7 @@ const num=(n:number,max=6)=>n.toLocaleString('en-US',{maximumFractionDigits:max}
 const usd=(n:number)=>n.toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:Math.abs(n)>0&&Math.abs(n)<0.01?8:2});
 const signed=(n:number)=>`${n>0?'+':''}${usd(n)}`;
 const labels:Record<string,string>={all:'All',cex:'CEX',trade:'Trades',send:'Sends',receive:'Receives',internal:'Internal',mixed:'Mixed',other:'Other'};
-type Overrides=Record<string,{average?:string;price?:string;decimals?:string}>;
+type Overrides=Record<string,{average?:string;price?:string;decimals?:string;excluded?:boolean}>;
 function parseAmount(s?:string):number|null {if(!s?.trim())return null;const n=Number(s);return Number.isFinite(n)&&n>=0?n:null;}
 
 async function historicalPrices(signal:AbortSignal):Promise<{prices?:[number,number][]}|null>{
@@ -223,6 +224,12 @@ export default function Home({memberStake}:{memberStake:string}){
   function updateOverride(id:string,field:'average'|'price'|'decimals',value:string){if(value!==''&&(parseAmount(value)===null||(field==='decimals'&&tokenDecimals(Number(value))===null)))return;const next={...overrides,[id]:{...overrides[id],[field]:value}};setOverrides(next);try{localStorage.setItem(overrideKey,JSON.stringify(next));}catch{setCacheNotice('Your price entries could not be saved locally.');}}
   function savePaymentLinks(links:PaymentLink[]){setPaymentLinks(links);try{localStorage.setItem(paymentKey,JSON.stringify(links));}catch{setCacheNotice('Your payment links could not be saved locally.');}}
 
+  function excludeAsset(id:string,excluded:boolean){
+    if(id==='lovelace')return;
+    const next={...overrides,[id]:{...overrides[id],excluded}};
+    setOverrides(next);
+    try{localStorage.setItem(overrideKey,JSON.stringify(next));}catch{setCacheNotice('Your asset exclusions could not be saved locally.');}
+  }
   const holdings=useMemo(()=>snapshot?combineHoldings(snapshot.infos):[],[snapshot]);
   const classifiedFacts=useMemo(()=>Object.fromEntries(Object.entries(snapshot?.facts||{}).map(([hash,fact])=>[hash,cexAdjustedFact(fact,cexAddresses)])),[snapshot,cexAddresses]);
   const assetDecimals=useMemo(()=>knownDecimals(snapshot?.infos||[],Object.values(classifiedFacts)),[snapshot,classifiedFacts]);
@@ -242,8 +249,9 @@ export default function Home({memberStake}:{memberStake:string}){
     const value=quote.value,pnl=value!==null&&cost!==null?value-cost:null;
     return {...h,name:m?.ticker||assetName(h.id),qty,price,value,cost,pnl,manualPrice,quote,automaticDecimals,automatic:avg===null&&cost!==null};
   }).sort((a,b)=>a.id==='lovelace'?-1:b.id==='lovelace'?1:(b.value??-1)-(a.value??-1));
-  const valued=rows.filter(r=>r.value!==null),covered=rows.filter(r=>r.pnl!==null);
-  const coverage=valuationCoverage(rows);
+  const included=includedAssets(rows,overrides),excludedCount=rows.length-included.length;
+  const valued=included.filter(r=>r.value!==null),covered=included.filter(r=>r.pnl!==null);
+  const coverage=valuationCoverage(included);
   const subtotal=valued.reduce((s,r)=>s+(r.value||0),0),gain=covered.reduce((s,r)=>s+(r.pnl||0),0),costTotal=covered.reduce((s,r)=>s+(r.cost||0),0);
   const ada=Number(holdings.find(h=>h.id==='lovelace')?.raw||0)/1e6;
   const adaRow=rows.find(r=>r.id==='lovelace');
@@ -265,7 +273,7 @@ export default function Home({memberStake}:{memberStake:string}){
   return <main className="member-portfolio"><header className="portfolio-header"><div><span className="ada-logo">₳</span><strong>TDSP</strong><span className="muted"> / Portfolio</span></div><button onClick={()=>void refresh()} disabled={busy||!ready} className="governance-vote-secondary"><RefreshCw size={16} className={busy?'animate-spin':''}/> Refresh</button></header>
     <div className="portfolio-body">
     <section className="portfolio-hero"><div className="eyebrow">{wallets.length} wallets · mainnet</div><h1>Your member portfolio</h1><p className="muted">Internal transfers keep your combined holdings unchanged, apart from fees.</p><div className="tdsp-tile-grid">
-      <Metric label="ADA across wallets" value={snapshot?num(ada)+' ₳':'—'} secondaryValue={snapshot&&valued.length?usd(subtotal):'—'} note={`${valued.length} of ${rows.length} assets valued · USD subtotal${rows.some(r=>r.quote.source==='wayup')?` · ${rows.filter(r=>r.quote.source==='wayup').length} Wayup floor estimates`:''}${rows.some(r=>r.quote.source==='fallback')?` · ${rows.filter(r=>r.quote.source==='fallback').length} fallback valuations (2 ADA per asset row)`:''}`}/>
+      <Metric label="ADA across wallets" value={snapshot?num(ada)+' ₳':'—'} secondaryValue={snapshot&&valued.length?usd(subtotal):'—'} note={`${valued.length} of ${included.length} assets valued · USD subtotal${excludedCount?` · ${excludedCount} assets excluded`:''}${included.some(r=>r.quote.source==='wayup')?` · ${included.filter(r=>r.quote.source==='wayup').length} Wayup floor estimates`:''}${included.some(r=>r.quote.source==='fallback')?` · ${included.filter(r=>r.quote.source==='fallback').length} fallback valuations (2 ADA per asset row)`:''}`}/>
       <Metric label={coverage.partial?'Unrealised gain / loss · partial estimate':provisional||estimatedGains?'Unrealised gain / loss · estimate':'Unrealised gain / loss'} value={covered.length?(provisional||estimatedGains||coverage.partial?'≈ ':'')+signed(gain):gainStatus} note={`${coverage.valued} of ${coverage.total} current values available · ${coverage.covered} purchase costs matched${coverage.partial?` · ${coverage.missingCost} missing purchase costs; ${coverage.missingValue} missing values · excluded from gain/loss`:''}${costTotal>0?' · '+num(gain/costTotal*100,2)+'% on matched holdings only':''}${estimatedGains?' · Includes floor-price or 2 ADA fallback estimates':''}`} tone={covered.length?gain>=0?'positive':'negative':''}/>
       <Metric label="Network fees paid" value={loadedFacts||snapshot?.complete?num(fees)+' ₳':'Waiting for transaction details'} note={`${snapshot?.complete?'':'Loaded history only · '}Shared-input fees excluded`}/>
       {cexAddresses.length>0&&<Metric label="ADA gain / loss · CEX + wallets" value={snapshot?`${snapshot.complete?'':'≈ '}${BigInt(cexPosition.netRaw)>0n?'+':''}${num(Number(cexPosition.netRaw)/1e6)} ₳`:'Waiting for wallet balances'} secondaryValue={snapshot&&cexDollars.usd!==null?`≈ ${signed(cexDollars.usd)}`:'USD unavailable'} tone={snapshot?BigInt(cexPosition.netRaw)>=0n?'positive':'negative':''} note={`${snapshot?.complete?'':'Provisional · loaded history only · '}Sent to CEX ₳ ${num(Number(cexPosition.sentRaw)/1e6)} + In wallets ₳ ${num(ada)} − Received from CEX ₳ ${num(Number(cexPosition.receivedRaw)/1e6)} · USD: transfer-day prices + current wallet value${cexDollars.missingPrices?` · ${cexDollars.missingPrices} transfers missing historical prices`:''} · Your net-flow rule, not trading profit`}/>}
@@ -287,8 +295,8 @@ export default function Home({memberStake}:{memberStake:string}){
     <section className="portfolio-section"><div className="section-heading"><div><h2>Current holdings & performance</h2><p className="muted">ADA buy price is calculated automatically from receipt-date market prices across your tracked wallets. Gain / loss = current value − remaining cost.</p></div></div>
       <label className="small"><input type="checkbox" checked={missingCostsOnly} onChange={e=>setMissingCostsOnly(e.target.checked)}/> Show holdings with missing purchase cost ({coverage.missingCost})</label>
       {payments.errors.length>0&&<p role="status" className="negative">Some saved payment links cannot be applied to the loaded history. Open the asset image to review its purchase payments.</p>}
-      <Table><TableHeader><TableRow>{['Asset','Balance','Current price · USD','Current value','Average buy · USD / unit','Unrealised gain / loss'].map(t=><TableHead key={t}>{t}</TableHead>)}</TableRow></TableHeader><TableBody>{rows.filter(r=>!missingCostsOnly||r.cost===null).map(r=><TableRow key={r.id}>
-        <TableCell><AssetImage id={r.id} name={r.name} market={snapshot?.markets[r.id]} onOpen={()=>setSelectedAsset(r.id)}/></TableCell>
+      <Table><TableHeader><TableRow>{['Asset','Balance','Current price · USD','Current value','Average buy · USD / unit','Unrealised gain / loss'].map(t=><TableHead key={t}>{t}</TableHead>)}</TableRow></TableHeader><TableBody>{rows.filter(r=>!missingCostsOnly||(r.cost===null&&(r.id==='lovelace'||overrides[r.id]?.excluded!==true))).map(r=><TableRow key={r.id}>
+        <TableCell><AssetImage id={r.id} name={r.name} market={snapshot?.markets[r.id]} onOpen={()=>setSelectedAsset(r.id)}/>{overrides[r.id]?.excluded&&r.id!=='lovelace'&&<div className="small muted">Excluded from calculations</div>}</TableCell>
         <TableCell>{r.qty===null?`${r.raw} raw units`:num(r.qty)}{r.id!=='lovelace'&&r.automaticDecimals==null&&<label className="small muted">Token decimals<Input aria-label={`Token decimals for ${r.name}`} type="number" min="0" max="30" step="1" value={overrides[r.id]?.decimals??''} onChange={e=>updateOverride(r.id,'decimals',e.target.value)} placeholder="Required to calculate value"/></label>}</TableCell>
         <TableCell>{r.quote.source==='fallback'?'2 ADA per asset row':r.price!==null?(r.quote.source==='wayup'?'≈ ':'')+usd(r.price):'Unavailable'}<div className="small muted">{r.quote.source==='manual'?'Your price':r.quote.source==='wayup'?<a href={`https://www.wayup.io/collection/${r.id.slice(0,56)}`} target="_blank" rel="noreferrer">Wayup collection floor · {num(r.quote.ada!)} ADA · estimate, not a sale guarantee</a>:r.quote.source==='fallback'?'User-defined fallback, not a market quote':r.price!==null?'Market estimate':''}</div><details><summary className="small">Set current price</summary><Input aria-label={`Current USD price for ${r.name}`} type="number" min="0" step="any" value={overrides[r.id]?.price||''} onChange={e=>updateOverride(r.id,'price',e.target.value)} placeholder="Use market quote"/></details></TableCell>
         <TableCell>{r.value===null?'—':usd(r.value)}</TableCell>
@@ -308,6 +316,7 @@ export default function Home({memberStake}:{memberStake:string}){
       <section className="portfolio-section">
         <AssetImage id={r.id} name={r.name} market={snapshot?.markets[r.id]}/>
         <p className="address">{r.id}</p>
+        {r.id!=='lovelace'&&<><label><input type="checkbox" checked={overrides[r.id]?.excluded===true} onChange={e=>excludeAsset(r.id,e.target.checked)}/> Exclude from calculations</label><p className="small muted">Excludes this asset's value, purchase cost and gain/loss from portfolio totals and coverage. Individual details stay visible. Actual ADA movements and network fees remain unchanged. Saved for this portfolio in this browser.</p></>}
         {r.id!=='lovelace'&&<a href={`https://cardanoscan.io/token/${r.id}`} target="_blank" rel="noreferrer">View asset on Cardanoscan <ExternalLink size={14}/></a>}
         <div className="tdsp-tile-grid">
           <Metric label="Balance" value={r.qty===null?`${r.raw} raw units`:num(r.qty)} note=""/>
