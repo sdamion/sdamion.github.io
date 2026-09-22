@@ -44,17 +44,19 @@ export function cexAdaTransfer(fact:Fact,entries:CexAddress[]){
 }
 
 export function cexUsdNetPosition(facts:Fact[],entries:CexAddress[],walletRaw:string,history:Record<string,number>,currentUsd:number|null){
-  let transferredUsd=0,missingPrices=0;
+  let transferredUsd=0,missingPrices=0,boughtUsd=0,soldUsd=0,missingBuyPrices=0,missingSellPrices=0;
   for(const fact of new Map(facts.map(fact=>[fact.hash,fact])).values()){
     const transfer=cexAdaTransfer(fact,entries);
     if(!transfer)continue;
     const price=history[new Date(fact.time*1000).toISOString().slice(0,10)];
-    if(!Number.isFinite(price)||price<=0){missingPrices++;continue;}
-    transferredUsd+=(transfer.side==='sell'?1:-1)*Number(transfer.raw)/1e6*price;
+    if(!Number.isFinite(price)||price<=0){missingPrices++;if(transfer.side==='buy')missingBuyPrices++;else missingSellPrices++;continue;}
+    const value=Number(transfer.raw)/1e6*price;
+    if(transfer.side==='buy')boughtUsd+=value;else soldUsd+=value;
+    transferredUsd+=(transfer.side==='sell'?1:-1)*value;
   }
   const wallet=BigInt(walletRaw);
   const walletUsd=wallet===0n?0:currentUsd!==null&&Number.isFinite(currentUsd)&&currentUsd>0?Number(wallet)/1e6*currentUsd:null;
-  return {usd:missingPrices||walletUsd===null?null:transferredUsd+walletUsd,missingPrices};
+  return {usd:missingPrices||walletUsd===null?null:transferredUsd+walletUsd,missingPrices,boughtUsd:missingBuyPrices?null:boughtUsd,soldUsd:missingSellPrices?null:soldUsd};
 }
 
 export function cexAdaNetPosition(facts:Fact[],entries:CexAddress[],walletRaw:string){

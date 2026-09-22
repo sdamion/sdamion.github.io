@@ -1,6 +1,7 @@
 "use client";
 
 import {useEffect,useMemo,useRef,useState} from 'react';
+import type {ReactNode} from 'react';
 import {ExternalLink,RefreshCw,Plus,Trash2,ArrowRightLeft} from 'lucide-react';
 import {Input} from '@/components/ui/input';
 import {Pagination,PaginationContent,PaginationItem} from '@/components/ui/pagination';
@@ -323,7 +324,7 @@ export default function Home({memberStake}:{memberStake:string}){
       <Metric label="ADA across wallets" value="—" amount={snapshot?{ada,usd:valued.length?subtotal:null}:undefined} note={`${valued.length} / ${included.length} assets valued${excludedCount?` · ${excludedCount} excluded`:''}`}/>
       <Metric label={coverage.partial?'Unrealised gain / loss · partial estimate':provisional||estimatedGains?'Unrealised gain / loss · estimate':'Unrealised gain / loss'} value={covered.length?(provisional||estimatedGains||coverage.partial?'≈ ':'')+signed(gain):gainStatus} note={`${coverage.covered} / ${coverage.total} costs matched${costTotal>0?' · '+num(gain/costTotal*100,2)+'%':''}${estimatedGains?' · Estimated values':''}`} tone={covered.length?gain>=0?'positive':'negative':''}/>
       <Metric label="Network fees paid" value={loadedFacts||snapshot?.complete?num(fees)+' ₳':'Waiting for transaction details'} note={`${snapshot?.complete?'':'Loaded history only · '}Shared-input fees excluded`}/>
-      {cexAddresses.length>0&&<Metric label="ADA gain / loss · CEX + wallets" value="Waiting for wallet balances" onOpen={()=>{setQuery('');setFilter('cex');setPage(0);setSection('transactions');}} amount={snapshot?{ada:Number(cexPosition.netRaw)/1e6,usd:cexDollars.usd}:undefined} note={`${snapshot?.complete&&!cexPending&&!cexUnresolved?'':'Partial · '}Net flow, not trading profit${cexPending?` · ${num(cexPending,0)} transactions need CEX address checks`:''}${cexUnresolved?` · ${num(cexUnresolved,0)} mixed CEX transactions excluded`:''}${cexDollars.missingPrices?` · ${cexDollars.missingPrices} unpriced transfers`:''}`}/>}
+      {cexAddresses.length>0&&<Metric label="ADA Gain/ loss" value="Waiting for wallet balances" onOpen={()=>{setQuery('');setFilter('cex');setPage(0);setSection('transactions');}} amount={snapshot?{ada:Number(cexPosition.netRaw)/1e6,usd:cexDollars.usd}:undefined} breakdown={snapshot?<><span className="small muted">Bought <AdaUsdAmount ada={Number(cexPosition.receivedRaw)/1e6} usd={cexDollars.boughtUsd}/>{cexDollars.boughtUsd===null?' · Historical USD unavailable':''}</span><span className="small muted">Sold <AdaUsdAmount ada={Number(cexPosition.sentRaw)/1e6} usd={cexDollars.soldUsd}/>{cexDollars.soldUsd===null?' · Historical USD unavailable':''}</span></>:undefined} note={`${snapshot?.complete&&!cexPending&&!cexUnresolved?'':'Partial · '}Net flow, not trading profit · Transfer-day USD${cexPending?` · ${num(cexPending,0)} transactions need CEX address checks`:''}${cexUnresolved?` · ${num(cexUnresolved,0)} mixed CEX transactions excluded`:''}${cexDollars.missingPrices?` · ${cexDollars.missingPrices} unpriced transfers`:''}`}/>}
     </div></section>
     <div className="tdsp-tile-grid">
       <MenuTile title="Wallet addresses" value={initialising?'Initialising':num(wallets.length,0)} loading={initialising} onOpen={()=>setSection('wallets')}/>
@@ -411,9 +412,9 @@ function AssetImage({id,name,market,onOpen}:{id:string;name:string;market?:Marke
   return onOpen?<button type="button" className="governance-vote-secondary portfolio-asset-button" onClick={onOpen} aria-label={`View ${name} details`}>{content}</button>:<div>{content}</div>;
 }
 
-function Metric({label,value,amount,note,tone='',onOpen}:{label:string;value:string;amount?:{ada:number;usd:number|null};note:string;tone?:string;onOpen?:()=>void}){
+function Metric({label,value,amount,breakdown,note,tone='',onOpen}:{label:string;value:string;amount?:{ada:number;usd:number|null};breakdown?:ReactNode;note:string;tone?:string;onOpen?:()=>void}){
   const Tag=onOpen?'button':'div';
-  return <Tag type={onOpen?'button':undefined} onClick={onOpen} aria-label={onOpen?`Open ${label}`:undefined} className="governance-menu-card"><strong translate="no" className={`governance-card-title ${tone}`}>{amount?<AdaUsdAmount {...amount}/>:value}</strong><span className="governance-card-detail" data-i18n-auto-original={label}>{label}</span><span className="small muted">{note}</span></Tag>;
+  return <Tag type={onOpen?'button':undefined} onClick={onOpen} aria-label={onOpen?`Open ${label}`:undefined} className="governance-menu-card"><strong translate="no" className={`governance-card-title ${tone}`}>{amount?<AdaUsdAmount {...amount}/>:value}</strong><span className="governance-card-detail" data-i18n-auto-original={label}>{label}</span>{breakdown}<span className="small muted">{note}</span></Tag>;
 }
 function Transaction({tx,fact,markets,wallets,history,cexAddresses}:{tx:Tx;fact?:Fact;markets:Record<string,Market>;wallets:Wallet[];history:Record<string,number>;cexAddresses:CexAddress[]}){
   const kind=fact?kindOf(fact):null,trade=fact?tradeOf(fact):null;

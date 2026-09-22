@@ -63,7 +63,10 @@ assert.equal(cexDestinations({...outbound,externalOutputs:[{address:b,lovelace:'
 const buy={...receipt,hash:'buy',time:1704067200,adaRaw:'100000000'};
 const sell={...outbound,hash:'sell',time:1704153600,adaRaw:'-60200000',externalOutputs:[{address:b,lovelace:'60000000',stakeAddress:stake}]};
 const prices={'2024-01-01':1,'2024-01-02':2};
-assert.deepEqual(cexUsdNetPosition([buy,sell,buy],stakeEntries,'40000000',prices,3),{usd:140,missingPrices:0});
+assert.deepEqual(cexUsdNetPosition([buy,sell,buy],stakeEntries,'40000000',prices,3),{usd:140,missingPrices:0,boughtUsd:100,soldUsd:120});
+assert.deepEqual(cexUsdNetPosition([buy,sell],stakeEntries,'40000000',{'2024-01-01':1},3),{usd:null,missingPrices:1,boughtUsd:100,soldUsd:null});
+assert.deepEqual(cexUsdNetPosition([buy,sell],stakeEntries,'40000000',{'2024-01-02':2},3),{usd:null,missingPrices:1,boughtUsd:null,soldUsd:120});
+assert.deepEqual(cexUsdNetPosition([],stakeEntries,'0',{},null),{usd:0,missingPrices:0,boughtUsd:0,soldUsd:0});
 assert.equal(cexUsdNetPosition([buy,sell],stakeEntries,'40000000',{'2024-01-01':1},3).usd,null);
 assert.equal(cexUsdNetPosition([buy,sell],stakeEntries,'40000000',prices,null).usd,null);
 assert.equal(cexUsdNetPosition([buy,sell],stakeEntries,'0',prices,null).usd,20);
