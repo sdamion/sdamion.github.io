@@ -9,3 +9,7 @@ assert.equal(matchesTransaction('Mallard',fact.hash,undefined,{},[]),false);
 assert.equal(matchesTransaction('ABC',fact.hash,undefined,{},[]),true);
 assert.equal(matchesTransaction('DUCK',fact.hash,fact,{[id]:{token_id:id,ticker:'DUCK'}},[]),true);
 console.log('Transaction asset-name, ticker, hash and wallet search passed');
+const policy='6c0394ebf4b6d7ed9709cf901863c254448a40785819a57f7c39a130';
+const bundle={...fact,hash:'fc77d1402b6856568ebe899388225857822a12f4589432c3f398c046cbfbcf0e',assets:Object.fromEntries(['DaggerofSacrilege999','AmuletofInfluence2022','SpearofCircumstance1251','RingofInvocation1669','CupOfConfusionAndIntellect383'].map(name=>[policy+Buffer.from(name).toString('hex'),'1']))};
+assert.equal(matchesTransaction('AmuletofInfluence2022',bundle.hash,bundle,{},[]),true);
+assert.equal(matchesTransaction('Amulet of Influence 2022',bundle.hash,bundle,{},[]),true);
