@@ -4,9 +4,11 @@ export type Utxo = { tx_hash:string; tx_index:number; value:string; asset_list?:
 export type AddressInfo = { address:string; balance:string; utxo_set?:Utxo[] };
 export type Tx = { tx_hash:string; block_time:number; block_height:number };
 export type Io = { value:string; payment_addr?:{bech32?:string}; stake_addr?:string|null; asset_list?:Asset[] };
-export type Detail = { tx_hash:string; tx_timestamp:number; fee:string; inputs:Io[]; outputs:Io[] };
+export type Detail = { tx_hash:string; tx_timestamp:number; fee:string; inputs:Io[]; outputs:Io[]; assets_minted?:Asset[] };
 export type Counterparty = {address:string;lovelace:string;stakeAddress?:string|null};
-export type Fact = { hash:string; time:number; adaRaw:string; assets:Record<string,string>; decimals:Record<string,number>; feeRaw:string|null; internal:boolean; wallets:string[]; swapCandidate:boolean; externalOutputs?:Counterparty[]; externalInputs?:Counterparty[] };
+export type Fact = { hash:string; time:number; adaRaw:string; assets:Record<string,string>; decimals:Record<string,number>; feeRaw:string|null; internal:boolean; wallets:string[]; swapCandidate:boolean; externalOutputs?:Counterparty[]; externalInputs?:Counterparty[]; minted?:Record<string,string> };
+export type Acquisition = {raw:string;ada:number;time:number;paymentHash:string;source:'mint'|'confirmed'};
+export type Acquisitions = Record<string,Record<string,Acquisition>>;
 export type Market = { token_id:string; ticker?:string|null; decimals?:number|null; price_by_ada?:number|null; price_by_usd?:number|null; is_verified?:boolean|null; logo?:string|null; image?:string|string[]|null; image_url?:string|null };
 export type Holding = { id:string; raw:string };
 export type Trade = { side:'buy'|'sell'; id:string; raw:string; ada:number; costAda:number };
@@ -38,9 +40,11 @@ export function analyse(detail:Detail, addresses:Set<string>):Fact {
   const counterparties=(rows:Io[])=>rows.filter(row=>row.payment_addr?.bech32&&!addresses.has(row.payment_addr.bech32)).map(row=>({address:row.payment_addr!.bech32!,lovelace:row.value,stakeAddress:row.stake_addr??null}));
   const externalOutputs=detail.inputs.some(row=>addresses.has(row.payment_addr?.bech32||''))?counterparties(detail.outputs):[];
   const externalInputs=detail.outputs.some(row=>addresses.has(row.payment_addr?.bech32||''))?counterparties(detail.inputs):[];
-  return {hash:detail.tx_hash,time:detail.tx_timestamp,adaRaw:String(ada),assets,decimals,feeRaw:allInputs?String(fee):null,internal:allInputs&&allOutputs&&Object.keys(assets).length===0&&ada===-fee,wallets:[...touched],externalOutputs,externalInputs,swapCandidate:detail.inputs.some(x=>!addresses.has(x.payment_addr?.bech32||''))||detail.outputs.some(x=>!addresses.has(x.payment_addr?.bech32||''))};
+  const minted=Object.fromEntries((detail.assets_minted||[]).filter(a=>BigInt(a.quantity)>0n).map(a=>[assetId(a),a.quantity]));
+  return {hash:detail.tx_hash,time:detail.tx_timestamp,adaRaw:String(ada),assets,decimals,minted,feeRaw:allInputs?String(fee):null,internal:allInputs&&allOutputs&&Object.keys(assets).length===0&&ada===-fee,wallets:[...touched],externalOutputs,externalInputs,swapCandidate:detail.inputs.some(x=>!addresses.has(x.payment_addr?.bech32||''))||detail.outputs.some(x=>!addresses.has(x.payment_addr?.bech32||''))};
 }
 export function tradeOf(f:Fact):Trade|null{
+  if(Object.keys(f.minted||{}).length)return null;
   if(f.internal||!f.swapCandidate)return null;const changed=Object.entries(f.assets);if(changed.length!==1)return null;
   const [id,raw]=changed[0];const n=BigInt(raw);const ada=Number(f.adaRaw)/1e6;const fee=Number(f.feeRaw||0)/1e6;const exchangeAda=ada+fee;
   if(n===0n||exchangeAda===0||(n>0n)===(exchangeAda>0))return null;
@@ -98,8 +102,8 @@ export function liveAdaBasis(facts:Fact[],history:Record<string,number>,currentR
 }
 // Tokens use FIFO across the portfolio; ADA uses the receipt-price method above.
 // Incoming token transfers retain unknown acquisition cost, unlike ADA receipts.
-export function remainingBasis(facts:Fact[], history:Record<string,number>):Record<string,{raw:string;usd:number|null}>{
+export function remainingBasis(facts:Fact[], history:Record<string,number>,acquisitions:Acquisitions={}):Record<string,{raw:string;usd:number|null}>{
   const lots=new Map<string,{raw:bigint;usd:number|null}[]>();
-  for(const f of [...facts].sort((a,b)=>a.time-b.time||a.hash.localeCompare(b.hash))){if(f.internal)continue;const trade=tradeOf(f);for(const [id,v] of Object.entries(f.assets)){const amount=BigInt(v);const rows=lots.get(id)||[];if(amount>0n){const price=history[new Date(f.time*1000).toISOString().slice(0,10)];rows.push({raw:amount,usd:trade?.side==='buy'&&price>0?trade.costAda*price:null});}else{let consume=-amount;while(consume>0n&&rows.length){const first=rows[0],take=consume<first.raw?consume:first.raw;if(first.usd!==null)first.usd*=Number(first.raw-take)/Number(first.raw);first.raw-=take;consume-=take;if(first.raw===0n)rows.shift();}}lots.set(id,rows);}}
+  for(const f of [...facts].sort((a,b)=>a.time-b.time||a.hash.localeCompare(b.hash))){if(f.internal)continue;const trade=tradeOf(f);for(const [id,v] of Object.entries(f.assets)){const amount=BigInt(v);const rows=lots.get(id)||[];if(amount>0n){const acquisition=acquisitions[f.hash]?.[id];const price=history[new Date((acquisition?.time??f.time)*1000).toISOString().slice(0,10)];const costAda=acquisition?.ada??(trade?.side==='buy'?trade.costAda:null);rows.push({raw:amount,usd:costAda!==null&&price>0?costAda*price:null});}else{let consume=-amount;while(consume>0n&&rows.length){const first=rows[0],take=consume<first.raw?consume:first.raw;if(first.usd!==null)first.usd*=Number(first.raw-take)/Number(first.raw);first.raw-=take;consume-=take;if(first.raw===0n)rows.shift();}}lots.set(id,rows);}}
   return {...Object.fromEntries([...lots].map(([id,rows])=>[id,{raw:String(rows.reduce((s,r)=>s+r.raw,0n)),usd:rows.some(r=>r.usd===null)?null:rows.reduce((s,r)=>s+(r.usd||0),0)}])),lovelace:adaReceiptBasis(facts,history)};
 }
