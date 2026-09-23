@@ -2,9 +2,10 @@ import {useEffect,useMemo,useRef,useState} from 'react';
 import {cexTimelineSeries} from './cex';
 import type {CexAddress} from './cex';
 import type {Fact} from './core';
+import {withinTransactionDates} from './transaction-date';
 
-export function CexTimeline({facts,entries,history,busy}:{facts:Record<string,Fact>;entries:CexAddress[];history:Record<string,number>;busy:boolean}){
-  const points=useMemo(()=>cexTimelineSeries(Object.values(facts),entries,history),[facts,entries,history]);
+export function CexTimeline({facts,entries,history,busy,dateFrom='',dateTo=''}:{facts:Record<string,Fact>;entries:CexAddress[];history:Record<string,number>;busy:boolean;dateFrom?:string;dateTo?:string}){
+  const points=useMemo(()=>cexTimelineSeries(Object.values(facts).filter(fact=>withinTransactionDates(fact.time,dateFrom,dateTo)),entries,history),[facts,entries,history,dateFrom,dateTo]);
   const canvas=useRef<HTMLCanvasElement>(null);
   const [error,setError]=useState('');
   useEffect(()=>{
@@ -46,6 +47,6 @@ export function CexTimeline({facts,entries,history,busy}:{facts:Record<string,Fa
     {points.length>0?<div className="price-history-chart-frame"><canvas ref={canvas} role="img" aria-label="Cumulative ADA IN and ADA OUT over time">Cumulative incoming and outgoing amounts; detailed transfers are listed below.</canvas></div>:<p className="empty">{busy?'Loading CEX transfers…':'No classified CEX transfers.'}</p>}
     {error&&<p className="negative" role="status">{error}</p>}
     {points.length>0&&points[points.length-1].soldAda===0&&<p className="small muted" role="status">No outgoing CEX transfers matched in the analysed history. ADA OUT is shown at 0 ADA. Check the saved destination addresses if transfers are missing.</p>}
-    <p className="small muted">Cumulative ADA IN / ADA OUT · Transfer-day USD estimates · Classified transfers only</p>
+    <p className="small muted">Cumulative ADA IN / ADA OUT{dateFrom||dateTo?' within selected dates':''} · Transfer-day USD estimates · Classified transfers only</p>
   </section>;
 }

@@ -51,6 +51,13 @@ test('CEX metric opens the shared transaction list without stale search or pagin
   assert.match(app,/<MenuTile title="Transactions"[^\n]*setFilter\('all'\)/);
   assert.match(app,/const Tag=onOpen\?'button':'div'/);
 });
+test('gain loss shares date filters and both transaction pagers, and filters its graph',()=>{
+  const app=source('App.tsx'),chart=source('CexTimeline.tsx');
+  assert.ok(app.indexOf('name="transactions-from"')<app.indexOf('aria-label="ADA Gain/ loss breakdown"'));
+  assert.match(app,/<CexTimeline[^>]*dateFrom=\{dateFrom\} dateTo=\{dateTo\}/);
+  for(const position of ['top','bottom'])assert.ok(app.includes(`<TransactionPagination position="${position}"`));
+  assert.match(chart,/withinTransactionDates\(fact.time,dateFrom,dateTo\)/);
+});
 test('closing Portfolio detaches its view without unmounting the active refresh',()=>{
   const entry=source('entry.tsx');
   const close=entry.slice(entry.indexOf('// Closing the view'));

@@ -371,7 +371,13 @@ export default function Home({memberStake}:{memberStake:string}){
 
     </AssetOverlay>}
     {section==='transactions'&&<AssetOverlay id="portfolio-transactions-overlay" name="Transactions" onClose={()=>setSection(null)}>
+      <div className="filter-row">
+        <label>From <Input type="date" name="transactions-from" value={dateFrom} max={dateTo||undefined} onChange={event=>setDateFrom(event.target.value)}/></label>
+        <label>To <Input type="date" name="transactions-to" value={dateTo} min={dateFrom||undefined} onChange={event=>setDateTo(event.target.value)}/></label>
+        {(dateFrom||dateTo)&&<button type="button" className="governance-vote-secondary" onClick={()=>{setDateFrom('');setDateTo('');}}>Clear dates</button>}
+      </div>
     {filter==='cex'&&cexAddresses.length>0&&<section className="portfolio-section" aria-label="ADA Gain/ loss breakdown">
+      {(dateFrom||dateTo)&&<p className="small muted">Gain/loss totals cover all loaded history and current wallet balances. The date range filters the transfer graph and transaction list below.</p>}
       <strong className="governance-card-title">{snapshot?<AdaUsdAmount ada={Number(cexPosition.netRaw)/1e6} usd={cexDollars.usd}/>: 'Waiting for wallet balances'}</strong>
       <span className="governance-card-detail">ADA Gain/ loss</span>
       {snapshot&&<>
@@ -380,13 +386,8 @@ export default function Home({memberStake}:{memberStake:string}){
       </>}
       <p className="small muted">{snapshot?.complete&&!cexPending&&!cexUnresolved?'':'Partial · '}USD uses transfer-day prices plus current wallet value, not exchange execution prices.{cexPending?` ${num(cexPending,0)} transactions need CEX address checks.`:''}{cexUnresolved?` ${num(cexUnresolved,0)} mixed CEX transactions excluded.`:''}{cexDollars.missingPrices?` ${cexDollars.missingPrices} transfers have no historical USD price.`:''}</p>
     </section>}
-    {filter==='cex'&&cexAddresses.length>0&&<CexTimeline facts={classifiedFacts} entries={cexAddresses} history={snapshot?.history||{}} busy={busy}/>}
+    {filter==='cex'&&cexAddresses.length>0&&<CexTimeline facts={classifiedFacts} entries={cexAddresses} history={snapshot?.history||{}} busy={busy} dateFrom={dateFrom} dateTo={dateTo}/>}
     <section className="portfolio-section"><div className="section-heading"><Input aria-label="Search asset names, transaction hashes or wallet names" placeholder="Asset name, transaction hash or wallet name" value={query} onChange={e=>{setQuery(e.target.value);setFilter('all');}} className="search-input"/></div>
-      <div className="filter-row">
-        <label>From <Input type="date" name="transactions-from" value={dateFrom} max={dateTo||undefined} onChange={event=>setDateFrom(event.target.value)}/></label>
-        <label>To <Input type="date" name="transactions-to" value={dateTo} min={dateFrom||undefined} onChange={event=>setDateTo(event.target.value)}/></label>
-        {(dateFrom||dateTo)&&<button type="button" className="governance-vote-secondary" onClick={()=>{setDateFrom('');setDateTo('');}}>Clear dates</button>}
-      </div>
       <div className="filter-row">{Object.entries(labels).map(([id,label])=><button key={id} aria-pressed={filter===id} onClick={()=>setFilter(id)} className={filter===id?'active':''}>{label}</button>)}</div>
       <TransactionPagination position="top" page={currentPage} count={shown.length} onPage={setPage}/>
       <div className="history-table"><Table><TableHeader><TableRow>{['Transaction / type','Date','Wallets','Portfolio change','ADA / trade price / fee'].map(t=><TableHead key={t}>{t}</TableHead>)}</TableRow></TableHeader><TableBody>{shown.slice(currentPage*100,(currentPage+1)*100).map(t=><Transaction key={t.tx_hash} tx={t} fact={classifiedFacts[t.tx_hash]} wallets={displayWallets} markets={snapshot?.markets||{}} history={snapshot?.history||{}} cexAddresses={cexAddresses}/>)}</TableBody></Table></div>{!shown.length&&<p className="empty">{busy?'Loading transactions…':'No matching transactions.'}</p>}
