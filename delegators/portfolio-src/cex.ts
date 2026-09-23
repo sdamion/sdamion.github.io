@@ -1,4 +1,4 @@
-import {validWalletAddress} from './member.ts';
+import {normalizeExchangeAddress,validExchangeAddress} from './exchange-address.ts';
 import {adaReceiptBasis} from './core.ts';
 import type {Fact,Counterparty} from './core.ts';
 export type CexAddress={address:string;name:string};
@@ -7,8 +7,8 @@ export function normalizeCexAddresses(value:unknown):CexAddress[]{
   const entries=new Map<string,CexAddress>();
   for(const item of value){
     if(typeof item?.address!=='string'||typeof item?.name!=='string')continue;
-    const address=item.address.trim().toLowerCase(),name=item.name.trim().slice(0,60);
-    if(validWalletAddress(address)&&name)entries.set(address,{address,name});
+    const address=normalizeExchangeAddress(item.address),name=item.name.trim().slice(0,60);
+    if(validExchangeAddress(address)&&name)entries.set(address,{address,name});
   }
   return [...entries.values()];
 }

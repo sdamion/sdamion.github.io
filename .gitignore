@@ -1,3 +1,4 @@
 local-dev-server.js
 .env
 .env.local
+node_modules/

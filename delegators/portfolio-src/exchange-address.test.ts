@@ -1,0 +1,28 @@
+import assert from 'node:assert/strict';
+import {base58} from '@scure/base';
+import {encode,Tagged} from 'cborg';
+import CRC32 from 'crc-32';
+import {normalizeExchangeAddress,validExchangeAddress} from './exchange-address.ts';
+import {normalizeCexAddresses,cexAdaTransfer} from './cex.ts';
+import {analyse} from './core.ts';
+const byron='DdzFFzCqrhsur6w6gW7ocpi3NbxdS1HBtwfx7jcAcmv83k5zjd6nVg7WXMrhzDPhyWqrrdu24W8GLEdeCPwSRCRFvvGd2FWJz7pEPrRm';
+assert.equal(normalizeExchangeAddress(` ${byron} `),byron);
+assert.equal(validExchangeAddress(byron),true);
+for(const bad of [byron.toLowerCase(),byron.slice(0,-1)+'n',byron+'1','DdzFFinvalid'])assert.equal(validExchangeAddress(bad),false);
+const entries=normalizeCexAddresses([{address:` ${byron} `,name:'Exchange'},{address:byron,name:'Exchange'}]);
+assert.deepEqual(entries,[{address:byron,name:'Exchange'}]);
+assert.deepEqual(normalizeCexAddresses(JSON.parse(JSON.stringify(entries))),entries);
+const io=(address:string,value:string)=>({payment_addr:{bech32:address},value,asset_list:[]});
+const buy=analyse({tx_hash:'buy',tx_timestamp:1,fee:'200000',inputs:[io(byron,'10200000')],outputs:[io('owned','10000000')]},new Set(['owned']));
+const sell=analyse({tx_hash:'sell',tx_timestamp:2,fee:'200000',inputs:[io('owned','10000000')],outputs:[io(byron,'9800000')]},new Set(['owned']));
+assert.deepEqual(cexAdaTransfer(buy,entries),{side:'buy',raw:10000000n});
+assert.deepEqual(cexAdaTransfer(sell,entries),{side:'sell',raw:9800000n});
+function address(network?:number){
+  const attributes=new Map();if(network!==undefined)attributes.set(2,encode(network));
+  const payload=encode([new Uint8Array(28),attributes,0]);
+  return base58.encode(encode([new Tagged(24,payload),CRC32.buf(payload)>>>0]));
+}
+assert.equal(validExchangeAddress(address()),true);
+assert.equal(validExchangeAddress(address(1097911063)),false);
+assert.equal(normalizeExchangeAddress('ADDR1EXAMPLE'),'addr1example');
+console.log('PASS: Byron validation, casing, saved settings and incoming/outgoing CEX matching.');

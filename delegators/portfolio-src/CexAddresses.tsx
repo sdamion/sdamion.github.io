@@ -2,7 +2,8 @@ import {useState} from 'react';
 import {Plus,Trash2,ExternalLink} from 'lucide-react';
 import {Input} from './ui';
 import {short} from './core';
-import {validWalletAddress,validStakeAddress} from './member';
+import {validStakeAddress} from './member';
+import {normalizeExchangeAddress,validExchangeAddress} from './exchange-address';
 import type {CexAddress} from './cex';
 
 export function CexAddresses({entries,owned,onChange}:{entries:CexAddress[];owned:string[];onChange:(entries:CexAddress[])=>boolean}){
@@ -10,14 +11,14 @@ export function CexAddresses({entries,owned,onChange}:{entries:CexAddress[];owne
   return <section className="portfolio-section">
     <p className="small muted">Saved exchange addresses use your CEX rule: incoming ADA is a buy, outgoing ADA a sell. This does not decode DEX swaps. Saved in this browser.</p>
     <form className="wallet-form governance-drep-registration-form" onSubmit={event=>{
-      event.preventDefault();const value=address.trim().toLowerCase();setError('');
-      if(!validWalletAddress(value)){setError('Enter a valid mainnet payment or stake address (addr1… or stake1…).');return;}
+      event.preventDefault();const value=normalizeExchangeAddress(address);setError('');
+      if(!validExchangeAddress(value)){setError('Enter a valid mainnet payment, stake or Byron address (addr1…, stake1…, DdzFF… or Ae2…).');return;}
       if(owned.includes(value)){setError('This address belongs to a wallet in your portfolio.');return;}
       if(entries.some(entry=>entry.address===value)){setError('This CEX address is already saved.');return;}
       if(onChange([...entries,{address:value,name:name.trim()}])){setName('');setAddress('');}
     }}>
       <label htmlFor="portfolio-cex-name">Exchange name<Input id="portfolio-cex-name" name="exchange_name" value={name} onChange={event=>setName(event.target.value)} maxLength={60} required pattern=".*\S.*" placeholder="Exchange name"/></label>
-      <label className="address-field" htmlFor="portfolio-cex-address">Payment or stake address<Input id="portfolio-cex-address" name="exchange_address" value={address} onChange={event=>setAddress(event.target.value)} required placeholder="addr1… or stake1…"/></label>
+      <label className="address-field" htmlFor="portfolio-cex-address">Payment, stake or Byron address<Input id="portfolio-cex-address" name="exchange_address" value={address} onChange={event=>setAddress(event.target.value)} autoCapitalize="none" spellCheck={false} required placeholder="addr1…, stake1…, DdzFF… or Ae2…"/></label>
       <button className="governance-vote-primary" type="submit"><Plus size={16}/>Add CEX address</button>
     </form><p className="negative" role="status">{error}</p>
     <div className="tdsp-tile-grid">{entries.map(entry=><div className="governance-menu-card" key={entry.address}>
