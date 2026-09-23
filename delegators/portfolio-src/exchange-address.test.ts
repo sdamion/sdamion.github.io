@@ -3,7 +3,7 @@ import {base58} from '@scure/base';
 import {encode,Tagged} from 'cborg';
 import CRC32 from 'crc-32';
 import {normalizeExchangeAddress,validExchangeAddress} from './exchange-address.ts';
-import {normalizeCexAddresses,cexAdaTransfer} from './cex.ts';
+import {normalizeCexAddresses,cexAdaTransfer,displayedCexAddresses,cexSources} from './cex.ts';
 import {analyse} from './core.ts';
 const byron='DdzFFzCqrhsur6w6gW7ocpi3NbxdS1HBtwfx7jcAcmv83k5zjd6nVg7WXMrhzDPhyWqrrdu24W8GLEdeCPwSRCRFvvGd2FWJz7pEPrRm';
 assert.equal(normalizeExchangeAddress(` ${byron} `),byron);
@@ -17,6 +17,11 @@ const buy=analyse({tx_hash:'buy',tx_timestamp:1,fee:'200000',inputs:[io(byron,'1
 const sell=analyse({tx_hash:'sell',tx_timestamp:2,fee:'200000',inputs:[io('owned','10000000')],outputs:[io(byron,'9800000')]},new Set(['owned']));
 assert.deepEqual(cexAdaTransfer(buy,entries),{side:'buy',raw:10000000n});
 assert.deepEqual(cexAdaTransfer(sell,entries),{side:'sell',raw:9800000n});
+assert.equal(displayedCexAddresses(cexSources(buy,entries),entries)[0].address,byron);
+const counterparties=[{address:'addr1first',stakeAddress:'stake1shared',name:'CEX',lovelace:'3'},{address:'addr1second',stakeAddress:'stake1shared',name:'CEX',lovelace:'5'},{address:'addr1first',stakeAddress:'stake1shared',name:'CEX',lovelace:'7'}];
+assert.deepEqual(displayedCexAddresses(counterparties,[{address:'stake1shared',name:'CEX'}]),[]);
+assert.deepEqual(displayedCexAddresses(counterparties,[{address:'stake1shared',name:'CEX'},{address:'addr1first',name:'CEX'}]),[{...counterparties[0],lovelace:'10'}]);
+assert.equal(counterparties[0].lovelace,'3');
 function address(network?:number){
   const attributes=new Map();if(network!==undefined)attributes.set(2,encode(network));
   const payload=encode([new Uint8Array(28),attributes,0]);

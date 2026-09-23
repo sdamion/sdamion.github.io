@@ -25,6 +25,16 @@ function matchCounterparties(rows:Counterparty[],entries:CexAddress[]){
 export function cexSources(fact:Fact,entries:CexAddress[]){
   return fact.internal?[]:matchCounterparties(fact.externalInputs||[],entries);
 }
+export function displayedCexAddresses(rows:(Counterparty&{name:string})[],entries:CexAddress[]){
+  const explicit=new Set(entries.map(entry=>entry.address));
+  const addresses=new Map<string,Counterparty&{name:string}>();
+  for(const row of rows){
+    if(!explicit.has(row.address))continue;
+    const previous=addresses.get(row.address);
+    addresses.set(row.address,{...row,lovelace:String(BigInt(previous?.lovelace||'0')+BigInt(row.lovelace))});
+  }
+  return [...addresses.values()];
+}
 export function cexAdjustedFact(fact:Fact,entries:CexAddress[]):Fact{
   return isCexTransaction(fact,entries)?{...fact,swapCandidate:false}:fact;
 }
