@@ -646,7 +646,7 @@ async function openMemberPortfolio() {
     closePortfolio = close;
     container.textContent = t('Loading member portfolio…');
     try {
-        const module = await import('./portfolio/app.js?v=20260923-all-incoming-ada-average');
+        const module = await import('./portfolio/app.js?v=20260923-gain-loss-exchange-wallets');
         if (closed) return;
         container.replaceChildren();
         dispose = module.mountPortfolio(container, { role: ROLE, getWallet: () => portfolioUnlockWallet });

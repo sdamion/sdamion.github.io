@@ -25,6 +25,14 @@ function matchCounterparties(rows:Counterparty[],entries:CexAddress[]){
 export function cexSources(fact:Fact,entries:CexAddress[]){
   return fact.internal?[]:matchCounterparties(fact.externalInputs||[],entries);
 }
+export function transactionExchangeWallets(fact:Fact|undefined,entries:CexAddress[]){
+  if(!fact)return [];
+  const rows=new Map<string,{address:string;name:string;direction:'From'|'To'}>();
+  for(const [direction,matches] of [['From',cexSources(fact,entries)],['To',cexDestinations(fact,entries)]] as const){
+    for(const row of matches)rows.set(`${direction}:${row.address}`,{address:row.address,name:row.name,direction});
+  }
+  return [...rows.values()];
+}
 export function displayedCexAddresses(rows:(Counterparty&{name:string})[],entries:CexAddress[]){
   const explicit=new Set(entries.map(entry=>entry.address));
   const addresses=new Map<string,Counterparty&{name:string}>();
