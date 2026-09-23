@@ -24,9 +24,11 @@ export function memberWallets(stake:string,saved:unknown){
   const extras=Array.isArray(saved)?saved.filter(w=>w&&typeof w.address==='string'&&(validWalletAddress(w.address)||(w.group==='swap'&&validByronAddress(w.address)))&&w.address!==stake&&typeof w.label==='string').map(w=>({address:w.address,label:w.group==='swap'?'Swap':w.label,...(w.group==='swap'?{group:'swap' as const}:{})})):[];
   return [{address:stake,label:'Member stake address'},...[...new Map(extras.map(w=>[w.address,w])).values()]];
 }
-export function resolveWalletGroups(wallets:{address:string}[],accounts:{stake_address:string;addresses:string[]}[]){
+export function resolveWalletGroups(wallets:{address:string;group?:'swap'}[],accounts:{stake_address:string;addresses:string[]}[]){
   const groups:Record<string,string[]>={};
   for(const wallet of wallets){
+    // A service label does not establish ownership of every UTxO at that address.
+    if(wallet.group==='swap')continue;
     if(validStakeAddress(wallet.address)){
       const rows=accounts.filter(a=>a.stake_address===wallet.address);
       if(!rows.length||rows.some(row=>!Array.isArray(row.addresses)||row.addresses.some(a=>!validAddress(a))))throw new Error('Linked addresses were not returned completely. Saved balances are retained.');

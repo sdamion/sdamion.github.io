@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {base58,bech32} from '@scure/base';
 import {encode,Tagged} from 'cborg';
 import CRC32 from 'crc-32';
-import {addSwapWallet,trackedWalletAddresses,excludeInternalExchanges} from './swap-wallets.ts';
+import {addSwapWallet,trackedWalletAddresses,excludeInternalExchanges,swapOwnershipScope} from './swap-wallets.ts';
 import {memberWallets,resolveWalletGroups} from './member.ts';
 import {analyseAndCache,planRefresh} from './refresh-plan.ts';
 import {cexAdaTransfer} from './cex.ts';
@@ -21,7 +21,12 @@ assert.equal(wallets[1].label,'Swap');
 assert.throws(()=>addSwapWallet(wallets,byron),/already included/);
 assert.throws(()=>addSwapWallet(wallets,'invalid'),/valid mainnet/);
 assert.throws(()=>addSwapWallet(wallets,stake),/valid mainnet/);
-const groups=resolveWalletGroups(wallets,[{stake_address:stake,addresses:[]}]);
+assert.deepEqual(resolveWalletGroups(wallets,[{stake_address:stake,addresses:[]}]),{[stake]:[]});
+assert.notEqual(swapOwnershipScope(wallets),swapOwnershipScope([]));
+assert.deepEqual(memberWallets(stake,[{address:byron,label:'Swap',group:'swap',ownsAddress:true}])[1],{address:byron,label:'Swap',group:'swap'});
+// Swap labels do not override addresses independently resolved from the owned stake key.
+assert.deepEqual(resolveWalletGroups(wallets,[{stake_address:stake,addresses:[normal]}]),{[stake]:[normal]});
+const groups=resolveWalletGroups([{address:byron},{address:normal}],[]);
 const owned=trackedWalletAddresses(wallets,groups);
 assert.ok(owned.includes(byron)&&owned.includes(normal));
 const entries=[{address:byron,name:'Byron CEX'},{address:normal,name:'Exchange'},{address:'external',name:'Other'}];
@@ -38,3 +43,25 @@ assert.equal(discoveredByronAddresses([old],owned,entries).some(row=>row.address
 assert.equal(plan.batches.find(batch=>batch.addresses.includes(byron))?.incremental,false);
 assert.equal(plan.batches.find(batch=>batch.addresses.includes(normal))?.incremental,true);
 console.log('Swap wallets: persistence, validation, internal transfers and CEX exclusion passed.');
+
+// A shared sender must not convert the member receipt into the other output's amount.
+const sender='addr1v8qtg8wsfv8vqky8xfsr7x9nwyjdsz5c2p05vyd2zjheu7qvax8ad';
+const recipient='addr1qya8a5majq3ttgvxgr9sh3nhv0jn0e0zemacdkw63qp20j9ks6tde9vhwlml0j75jdh7rff4mxcrneyll72zhszd28lqfhtxjm';
+const other='addr1v8mn6dmk7tf9u26kr09a05lmvc9j4k9d940a88ta3hdczqgyt7whl';
+const hash='520c53702a98433f6e7a907fc2ac3be1c1b5797ecc0c291b940f62ceb014df68';
+const tx={tx_hash:hash,tx_timestamp:1788908579,fee:'197381',inputs:[io(sender,'5299835643')],outputs:[io(recipient,'4631268208'),io(other,'668370054')]};
+const wrong=analyseAndCache(tx,new Set([sender,recipient]));
+assert.equal(wrong.adaRaw,'-668567435');
+const labels=addSwapWallet(memberWallets(stake,[]),sender);
+const fixedGroups=resolveWalletGroups(labels,[{stake_address:stake,addresses:[recipient]}]);
+const unrelated=analyseAndCache({...tx,tx_hash:'unrelated',outputs:[io(other,'5299638262')]},new Set([sender,recipient]));
+const repaired=planRefresh({groups:{[stake]:[recipient],[sender]:[sender]},facts:{[hash]:wrong,unrelated},txs:[{tx_hash:hash,block_time:tx.tx_timestamp},{tx_hash:'unrelated',block_time:1}],complete:true} as any,fixedGroups);
+assert.equal(repaired.facts[hash].adaRaw,'4631268208');
+assert.equal(repaired.facts[hash].hash,hash);
+assert.equal(repaired.facts[hash].feeRaw,null);
+assert.equal(repaired.facts[hash].internal,false);
+assert.equal(repaired.facts[hash].source?.outputs[1].value,'668370054');
+assert.equal(repaired.txs.length,1);
+assert.ok(repaired.batches.every(batch=>!batch.addresses.includes(sender)));
+assert.equal(excludeInternalExchanges([{address:sender,name:'CEX'}],trackedWalletAddresses(labels,fixedGroups)).length,0);
+console.log('PASS: shared Swap receipt remains 4,631.268208 ADA at its original hash; unrelated transactions removed.');

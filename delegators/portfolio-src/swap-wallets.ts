@@ -9,6 +9,11 @@ export function addSwapWallet(wallets:Wallet[],value:string):Wallet[]{
   return [...wallets,{address,label:'Swap',group:'swap'}];
 }
 
+export function swapOwnershipScope(wallets:Wallet[]){
+  const swaps=wallets.filter(wallet=>wallet.group==='swap');
+  return swaps.length?'::swap-verified-ownership-v3':'';
+}
+
 export function trackedWalletAddresses(wallets:Wallet[],groups:Record<string,string[]>={}){
   return [...new Set(wallets.flatMap(wallet=>[wallet.address,...(groups[wallet.address]||[])]))];
 }

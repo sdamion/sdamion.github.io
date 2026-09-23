@@ -13,7 +13,7 @@ export function SwapWallets({wallets,onChange}:{wallets:Wallet[];onChange:(walle
     <MenuTile title="Swap" value={String(members.length)} onOpen={()=>setOpen(true)}/>
     {open&&<AssetOverlay id="portfolio-swap-wallets-overlay" name="Swap" onClose={()=>setOpen(false)}>
       <section className="portfolio-section">
-        <p className="small muted">Owned internal wallets. Balances and transactions are combined with your portfolio. These addresses cannot be selected in Combined Byron CEX or DEX / CEX.</p>
+        <p className="small muted">Swap addresses are excluded from CEX. Transaction amounts are matched to your tracked wallet addresses, including addresses linked to your member stake key. Other recipients and shared service balances are not counted as yours.</p>
         <div className="history-table"><Table><TableHeader><TableRow><TableHead>Wallet address</TableHead><TableHead>Remove</TableHead></TableRow></TableHeader><TableBody>{members.map(wallet=><TableRow key={wallet.address}>
           <TableCell><a className="address" title={wallet.address} href={`https://cardanoscan.io/address/${wallet.address}`} target="_blank" rel="noreferrer">{short(wallet.address)}</a></TableCell>
           <TableCell><button type="button" className="governance-vote-secondary" aria-label={`Remove ${wallet.address} from Swap`} title="Remove wallet" onClick={()=>onChange(wallets.filter(item=>item.address!==wallet.address))}><Trash2 size={16}/></button></TableCell>

@@ -39,7 +39,7 @@ import {ByronExchanges} from './ByronExchanges';
 import {SwapWallets} from './SwapWallets';
 import {WalletMenu} from './WalletMenu';
 import {validByronAddress} from './byron-address';
-import {trackedWalletAddresses,excludeInternalExchanges} from './swap-wallets';
+import {trackedWalletAddresses,excludeInternalExchanges,swapOwnershipScope} from './swap-wallets';
 import {normalizeCexAddresses,cexDestinations,cexSources,cexAdjustedFact,isCexTransaction,cexAdaTransfer,cexAdaNetPosition,cexUsdNetPosition,displayedCexAddresses,transactionExchangeWallets} from './cex';
 import type {CexAddress} from './cex';
 import {durationLabel,remainingSeconds,analysisProgress} from './progress';
@@ -91,11 +91,12 @@ export default function Home({memberStake}:{memberStake:string}){
   const [analysis,setAnalysis]=useState<{started:number;done:number;total:number}|null>(null);
   const [counting,setCounting]=useState<number|null>(null);
   const [counted,setCounted]=useState<number|null>(null);
-  const key=memberStake+'::'+wallets.map(w=>w.address).sort().join('|');
+  const walletKey=memberStake+'::'+wallets.map(w=>w.address).sort().join('|');
+  const key=walletKey+swapOwnershipScope(wallets);
   const ownedAddresses=useMemo(()=>trackedWalletAddresses(wallets,snapshot?.groups),[wallets,snapshot?.groups]);
   const cexAddresses=useMemo(()=>excludeInternalExchanges(savedCexAddresses,ownedAddresses),[savedCexAddresses,ownedAddresses]);
-  const overrideKey='tdsp-member-basis:'+key;
-  const paymentKey='tdsp-member-payments:'+key;
+  const overrideKey='tdsp-member-basis:'+walletKey;
+  const paymentKey='tdsp-member-payments:'+walletKey;
   useEffect(()=>{const changed=(event:Event)=>setCacheNotice((event as CustomEvent<string>).detail);window.addEventListener('tdsp:portfolio-cache-notice',changed);return()=>window.removeEventListener('tdsp:portfolio-cache-notice',changed);},[]);
 
   useEffect(()=>{try{const saved=JSON.parse(localStorage.getItem(SETTINGS)||'null');setWallets(memberWallets(memberStake,saved));}catch{setCacheNotice('Browser storage is unavailable; wallet settings may not persist.');}setReady(true);return()=>controller.current?.abort();},[]);

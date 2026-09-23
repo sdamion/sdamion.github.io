@@ -43,6 +43,7 @@ try{
   await page.getByRole('button',{name:'Add to Swap',exact:true}).click();
   await page.waitForFunction(()=>window.saved?.length===1);
   assert.equal(await page.evaluate(()=>window.saved[0].group),'swap');
+  assert.equal(await page.getByRole('checkbox').count(),0);
   assert.equal(await page.getByRole('link').getAttribute('href'),`https://cardanoscan.io/address/${address}`);
   await page.getByLabel('Payment or Byron address').fill(address);
   await page.getByRole('button',{name:'Add to Swap',exact:true}).click();
