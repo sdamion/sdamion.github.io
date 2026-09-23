@@ -26,10 +26,18 @@ test('portfolio sections use separate shared overlays and the universal tile ren
     assert.ok(app.includes(`setSection('${section}')`));
   }
   assert.match(source('ui.tsx'),/TDSPRuntime.appendUniversalTileContent\(button/);
-  assert.match(source('ui.tsx'),/type="button".*onClick=\{onOpen\}/);
+  assert.match(source('ui.tsx'),/role="button" tabIndex=\{0\}/);
+  assert.match(source('ui.tsx'),/onKeyDown=/);
   assert.match(overlay,/titleId:`\$\{id\}-title`/);
   assert.match(overlay,/governance-dialog-wide/);
   assert.doesNotMatch(overlay,/\.css|abort\(|refresh\(/);
+});
+test('cache upload status belongs to the Transactions tile rather than the refresh header',()=>{
+  const app=source('App.tsx');
+  const header=app.slice(app.indexOf('aria-label="Portfolio refresh"'),app.indexOf('<MenuTile title="Transactions"'));
+  assert.doesNotMatch(header,/CacheUploadProgress|\{cacheNotice/);
+  assert.match(app,/<MenuTile title="Transactions"[\s\S]*?<CacheUploadProgress[\s\S]*?<\/MenuTile>/);
+  assert.match(source('ui.tsx'),/createPortal\(children,footer\)/);
 });
 test('CEX metric opens the shared transaction list without stale search or pagination',()=>{
   const app=source('App.tsx');

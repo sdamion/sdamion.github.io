@@ -1,7 +1,8 @@
 "use client";
 
 import {useEffect,useMemo,useRef,useState} from 'react';
-import {ExternalLink,RefreshCw,Plus,Trash2,ArrowRightLeft} from 'lucide-react';
+import {ExternalLink,Plus,Trash2,ArrowRightLeft} from 'lucide-react';
+import {PortfolioRefresh} from './PortfolioRefresh';
 import {Input} from '@/components/ui/input';
 import {Pagination,PaginationContent,PaginationItem} from '@/components/ui/pagination';
 import {Table,TableHeader,TableBody,TableRow,TableHead,TableCell} from '@/components/ui/table';
@@ -319,11 +320,10 @@ export default function Home({memberStake}:{memberStake:string}){
   const shown=(snapshot?.txs||[]).filter(t=>{const f=classifiedFacts[t.tx_hash];return (filter==='all'||(filter==='cex'?isCexTransaction(f,cexAddresses):f&&kindOf(f)===filter))&&matchesTransaction(query,t.tx_hash,f,snapshot?.markets||{},displayWallets);});
 
   return <main className="member-portfolio"><div className="portfolio-body"><div className="section-heading" aria-label="Portfolio refresh">
-    <button onClick={()=>void refresh()} disabled={busy||!ready} className="governance-vote-secondary"><RefreshCw size={16} className={busy?'animate-spin':''}/> Refresh</button>
+    <PortfolioRefresh onRefresh={()=>void refresh()} disabled={busy||!ready} busy={busy}/>
     <div className="portfolio-section">
       {!initialising&&!(busy&&analysis)&&<p role="status" className="status-line">{status}</p>}
-      {error&&<p role="alert" className="message error">{error}</p>}{notice&&<p className="message">{notice}</p>}{cacheNotice&&<p role="status" className="message">{cacheNotice}</p>}
-      {storageMode()==='remote'&&<CacheUploadProgress onRetry={()=>void flushVault().catch(()=>{})}/>}
+      {error&&<p role="alert" className="message error">{error}</p>}{notice&&<p className="message">{notice}</p>}
     </div>
   </div>
     <section className="portfolio-section"><div className="tdsp-tile-grid">
@@ -334,7 +334,9 @@ export default function Home({memberStake}:{memberStake:string}){
     </div></section>
     <div className="tdsp-tile-grid">
       <MenuTile title="Cardano Wallets" value={initialising?'Initialising':num(wallets.length+cexAddresses.length,0)} loading={initialising} onOpen={()=>setSection('wallets')}/>
-      <MenuTile title="Transactions" value={num(counting??transactionTotal,0)} analysis={snapshot?{done:progress.done,total:progress.total,counting:counting!==null,busy}:undefined} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('transactions');}}/>
+      <MenuTile title="Transactions" value={num(counting??transactionTotal,0)} analysis={snapshot?{done:progress.done,total:progress.total,counting:counting!==null,busy}:undefined} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('transactions');}}>
+        {storageMode()==='remote'?<CacheUploadProgress onRetry={()=>void flushVault().catch(()=>{})}/>:cacheNotice&&<p role="status" className="tdsp-bar-legend">{cacheNotice}</p>}
+      </MenuTile>
     </div>
     {section==='wallets'&&<AssetOverlay id="portfolio-wallets-overlay" name="Cardano Wallets" onClose={()=>setSection(null)}>
     <section className="portfolio-section" aria-labelledby="portfolio-wallet-addresses-title"><h2 id="portfolio-wallet-addresses-title">Wallet addresses</h2><p className="small muted">Your member stake address includes its linked payment addresses. Add only wallets you own.</p>

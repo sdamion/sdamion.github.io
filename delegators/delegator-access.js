@@ -622,6 +622,8 @@ async function openMemberPortfolio() {
     if (closePortfolio || !sessionToken || document.getElementById('raffle-protected')?.hidden) return;
     const container = document.createElement('div');
     container.className = 'member-portfolio-host';
+    const refreshAction = document.createElement('span');
+    refreshAction.id = 'portfolio-refresh-action';
     const returnFocus = document.activeElement;
     let dispose = null;
     let closed = false;
@@ -639,12 +641,12 @@ async function openMemberPortfolio() {
         dialogClass: 'governance-dialog-wide',
         closeLabel: 'Close portfolio', closeOverlay: close, returnFocus,
         closeOnBackdrop: false,
-        bodyNodes: [container], enableSearch: false
+        bodyNodes: [container], enableSearch: false, extraActions: [refreshAction]
     });
     closePortfolio = close;
     container.textContent = t('Loading member portfolio…');
     try {
-        const module = await import('./portfolio/app.js?v=20260923-incremental-cache');
+        const module = await import('./portfolio/app.js?v=20260923-portfolio-header-refresh');
         if (closed) return;
         container.replaceChildren();
         dispose = module.mountPortfolio(container, { role: ROLE, getWallet: () => portfolioUnlockWallet });
