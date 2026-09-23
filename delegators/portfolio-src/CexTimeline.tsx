@@ -17,6 +17,8 @@ export function CexTimeline({facts,entries,history,busy}:{facts:Record<string,Fa
         if(stopped||!canvas.current)return;
         const style=getComputedStyle(canvas.current),color=style.getPropertyValue('--text').trim(),grid=style.getPropertyValue('--line').trim();
         const fmt=(n:number)=>n.toLocaleString(undefined,{maximumFractionDigits:6});
+        const last=points[points.length-1];
+        const floor=-Math.max(1,Math.max(last.boughtAda,last.soldAda)*0.05);
         chart?.destroy();
         chart=new Chart(canvas.current,{
           type:'line',
@@ -29,7 +31,7 @@ export function CexTimeline({facts,entries,history,busy}:{facts:Record<string,Fa
               title:(items:{parsed:{x:number}}[])=>items.length?new Date(items[0].parsed.x).toLocaleString():'',
               label:(item:{dataset:{label:string};raw:{y:number;usd:number|null}})=>`${item.dataset.label}: ₳ ${fmt(item.raw.y)}${item.raw.usd===null?' · Historical USD unavailable':` ≈ $${item.raw.usd.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`}`
             }}},
-            scales:{x:{type:'linear',ticks:{color,maxTicksLimit:5,maxRotation:0,callback:(value:number)=>new Date(value).toLocaleDateString()},grid:{color:grid}},y:{beginAtZero:true,title:{display:true,text:'Cumulative ADA',color},ticks:{color},grid:{color:grid}}}
+            scales:{x:{type:'linear',ticks:{color,maxTicksLimit:5,maxRotation:0,callback:(value:number)=>new Date(value).toLocaleDateString()},grid:{color:grid}},y:{min:floor,title:{display:true,text:'Cumulative ADA',color},ticks:{color,callback:(value:number)=>value<0?null:fmt(value)},grid:{color:grid}}}
           }
         });
         setError('');
@@ -43,6 +45,7 @@ export function CexTimeline({facts,entries,history,busy}:{facts:Record<string,Fa
   return <section className="portfolio-section" aria-label="Bought and sold timeline graph">
     {points.length>0?<div className="price-history-chart-frame"><canvas ref={canvas} role="img" aria-label="Cumulative ADA bought and sold over time">Cumulative bought and sold amounts; detailed transfers are listed below.</canvas></div>:<p className="empty">{busy?'Loading CEX transfers…':'No classified CEX transfers.'}</p>}
     {error&&<p className="negative" role="status">{error}</p>}
+    {points.length>0&&points[points.length-1].soldAda===0&&<p className="small muted" role="status">No outgoing CEX transfers matched in the analysed history. Sold is shown at 0 ADA. Check the saved destination addresses if transfers are missing.</p>}
     <p className="small muted">Cumulative bought and sold ADA · Transfer-day USD estimates · Classified transfers only</p>
   </section>;
 }

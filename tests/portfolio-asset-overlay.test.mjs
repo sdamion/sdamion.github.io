@@ -70,7 +70,7 @@ test('gain loss overlay puts the breakdown above its graph, not in address setti
   const section=app.slice(app.indexOf("{section==='transactions'"),app.indexOf('{busy&&<p'));
   assert.ok(section.indexOf('ADA Gain/ loss breakdown')<section.indexOf('<CexTimeline'));
   assert.match(section,/Sent to CEX <AdaUsdAmount[^\n]*usd=\{cexDollars.soldUsd\}/);
-  assert.match(section,/In wallets <AdaUsdAmount ada=\{ada\} usd=\{cexWalletUsd\}/);
+  assert.doesNotMatch(section,/In wallets <AdaUsdAmount/);
   assert.match(section,/Received from CEX <AdaUsdAmount[^\n]*usd=\{cexDollars.boughtUsd\}/);
   assert.doesNotMatch(section,/<details>/);
 });

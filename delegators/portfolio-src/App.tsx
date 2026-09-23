@@ -295,8 +295,6 @@ export default function Home({memberStake}:{memberStake:string}){
   const coverage=valuationCoverage(included);
   const subtotal=valued.reduce((s,r)=>s+(r.value||0),0),gain=covered.reduce((s,r)=>s+(r.pnl||0),0),costTotal=covered.reduce((s,r)=>s+(r.cost||0),0);
   const ada=Number(holdings.find(h=>h.id==='lovelace')?.raw||0)/1e6;
-  const currentAdaUsd=liveQuote?.usd??snapshot?.adaUsd??null;
-  const cexWalletUsd=ada===0?0:currentAdaUsd!==null&&Number.isFinite(currentAdaUsd)&&currentAdaUsd>0?ada*currentAdaUsd:null;
   const adaRow=rows.find(r=>r.id==='lovelace');
   const provisional=!snapshot?.complete&&covered.length>0;
   const estimatedGains=covered.some(r=>r.quote.source==='wayup'||r.quote.source==='fallback');
@@ -366,7 +364,6 @@ export default function Home({memberStake}:{memberStake:string}){
       <span className="governance-card-detail">ADA Gain/ loss</span>
       {snapshot&&<>
         <p className="small muted">Sent to CEX <AdaUsdAmount ada={Number(cexPosition.sentRaw)/1e6} usd={cexDollars.soldUsd}/></p>
-        <p className="small muted">+ In wallets <AdaUsdAmount ada={ada} usd={cexWalletUsd}/></p>
         <p className="small muted">− Received from CEX <AdaUsdAmount ada={Number(cexPosition.receivedRaw)/1e6} usd={cexDollars.boughtUsd}/></p>
       </>}
       <p className="small muted">{snapshot?.complete&&!cexPending&&!cexUnresolved?'':'Partial · '}USD uses transfer-day prices plus current wallet value, not exchange execution prices.{cexPending?` ${num(cexPending,0)} transactions need CEX address checks.`:''}{cexUnresolved?` ${num(cexUnresolved,0)} mixed CEX transactions excluded.`:''}{cexDollars.missingPrices?` ${cexDollars.missingPrices} transfers have no historical USD price.`:''}</p>
