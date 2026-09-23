@@ -386,6 +386,13 @@
         return Number.isFinite(parsedPrice) && parsedPrice > 0 ? parsedPrice : NaN;
     }
 
+    function isMobileDevice(device = navigator) {
+        const ua = device.userAgent || '';
+        return device.userAgentData?.mobile === true
+            || /Android|iPhone|iPad|iPod|Windows Phone|IEMobile|Mobile/i.test(ua)
+            || (/MacIntel|Macintosh/i.test(`${device.platform || ''} ${ua}`) && device.maxTouchPoints > 1);
+    }
+
     function formatAdaUsdAmount(ada, usd = null) {
         const valid = value => typeof value === 'number' && Number.isFinite(value);
         const tone = value => !valid(value) || value === 0 ? '' : value < 0 ? 'negative' : 'positive';
@@ -759,6 +766,7 @@
         formatTileAdaFromLovelace,
         getAdaUsdPrice,
         formatDelegatorUsd,
+        isMobileDevice,
         formatAdaUsdAmount,
         createAdaUsdAmount,
         createDelegatorAmount,

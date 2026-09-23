@@ -641,9 +641,13 @@ async function openMemberPortfolio() {
         bodyNodes: [container], enableSearch: false
     });
     closePortfolio = close;
+    if (window.TDSPRuntime.isMobileDevice()) {
+        container.textContent = t('Portfolio is available on desktop computers only.');
+        return;
+    }
     container.textContent = t('Loading member portfolio…');
     try {
-        const module = await import('./portfolio/app.js?v=20260923-byron-default-selection');
+        const module = await import('./portfolio/app.js?v=20260923-portfolio-desktop');
         if (closed) return;
         container.replaceChildren();
         dispose = module.mountPortfolio(container, { role: ROLE });

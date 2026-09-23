@@ -21,6 +21,10 @@ function MemberPortfolio(){
 }
 let portfolioInstance:{role:string;content:HTMLElement;destroy:()=>void}|null=null;
 export function mountPortfolio(container:HTMLElement,{role='delegator'}:{role?:'delegator'|'admin'}={}){
+  if((window as unknown as {TDSPRuntime:{isMobileDevice:()=>boolean}}).TDSPRuntime.isMobileDevice()){
+    container.textContent='Portfolio is available on desktop computers only.';
+    return ()=>{container.replaceChildren();};
+  }
   if(portfolioInstance&&portfolioInstance.role!==role)portfolioInstance.destroy();
   setSessionRole(role);
   if(!portfolioInstance){
