@@ -1,0 +1,30 @@
+import assert from 'node:assert/strict';
+import {base58} from '@scure/base';
+import {encode,Tagged} from 'cborg';
+import CRC32 from 'crc-32';
+import {analyse} from './core.ts';
+import {cexAdaNetPosition,normalizeCexAddresses} from './cex.ts';
+import {discoveredByronAddresses,saveByronSelection} from './byron-exchanges.ts';
+function address(seed:number){
+  const payload=encode([new Uint8Array(28).fill(seed),new Map(),0]);
+  return base58.encode(encode([new Tagged(24,payload),CRC32.buf(payload)>>>0]));
+}
+const a=address(1),b=address(2),own=address(3),saved=address(4);
+const io=(address:string,value:string)=>({payment_addr:{bech32:address},value,asset_list:[]});
+const buy=analyse({tx_hash:'buy',tx_timestamp:1,fee:'200000',inputs:[io(a,'5000000'),io(b,'5200000')],outputs:[io(own,'10000000')]},new Set([own]));
+const sell=analyse({tx_hash:'sell',tx_timestamp:2,fee:'200000',inputs:[io(own,'10000000')],outputs:[io(a,'4000000'),io(b,'5800000')]},new Set([own]));
+const existing=[{address:saved,name:'Saved CEX'}];
+const found=discoveredByronAddresses([buy,buy,sell],[own],existing);
+assert.equal(found.length,3);
+assert.deepEqual(found.find(row=>row.address===a),{address:a,transactions:2,lastSeen:2});
+assert.deepEqual(found.find(row=>row.address===saved),{address:saved,transactions:0,lastSeen:null});
+assert.equal(discoveredByronAddresses([buy],[a,b],[]).length,0);
+const unrelated={address:'stake1existing',name:'Existing'};
+const selected=saveByronSelection([...existing,unrelated],[a,b,saved,own,'invalid'],new Set([a,b,own,'invalid']),'Exchange',[own]);
+assert.deepEqual(selected,[unrelated,{address:a,name:'Exchange'},{address:b,name:'Exchange'}]);
+const group=selected.filter(row=>row.address!==unrelated.address);
+assert.deepEqual(normalizeCexAddresses(JSON.parse(JSON.stringify(group))),group);
+assert.deepEqual(cexAdaNetPosition([buy,buy,sell,sell],group,'0'),{receivedRaw:'10000000',sentRaw:'9800000',netRaw:'-200000'});
+assert.deepEqual(cexAdaNetPosition([buy,sell],[],'0'),{receivedRaw:'0',sentRaw:'0',netRaw:'0'});
+assert.deepEqual(saveByronSelection(group,[a,b],new Set([a]),'Renamed',[]),[{address:a,name:'Exchange'}]);
+console.log('PASS: Byron discovery, explicit selection, persistence and grouped transfer deduplication.');

@@ -30,6 +30,7 @@ import {CexTimeline} from './CexTimeline';
 import {matchesTransaction} from './transaction-search';
 import {unrealisedStatus} from './metric-status';
 import {CexAddresses} from './CexAddresses';
+import {ByronExchanges} from './ByronExchanges';
 import {normalizeCexAddresses,cexDestinations,cexSources,cexAdjustedFact,isCexTransaction,cexAdaTransfer,cexAdaNetPosition,cexUsdNetPosition,displayedCexAddresses} from './cex';
 import type {CexAddress} from './cex';
 import {durationLabel,remainingSeconds,analysisProgress} from './progress';
@@ -332,13 +333,14 @@ export default function Home({memberStake}:{memberStake:string}){
     </div>
     {section==='wallets'&&<AssetOverlay id="portfolio-wallets-overlay" name="Cardano Wallets" onClose={()=>setSection(null)}>
     <section className="portfolio-section" aria-labelledby="portfolio-wallet-addresses-title"><h2 id="portfolio-wallet-addresses-title">Wallet addresses</h2><p className="small muted">Your member stake address includes its linked payment addresses. Add only wallets you own.</p>
-      <div className="tdsp-tile-grid">{wallets.map((w,i)=><WalletCard key={w.address} wallet={w} primary={i===0} snapshot={snapshot} remove={()=>saveWallets(wallets.filter(x=>x.address!==w.address))}/>)}</div>
+      <div className="history-table"><Table><TableHeader><TableRow><TableHead>Wallet</TableHead><TableHead>Address</TableHead><TableHead>ADA</TableHead><TableHead>Transactions</TableHead><TableHead>Linked addresses</TableHead><TableHead>Remove</TableHead></TableRow></TableHeader><TableBody>{wallets.map((w,i)=><WalletCard key={w.address} wallet={w} primary={i===0} snapshot={snapshot} remove={()=>saveWallets(wallets.filter(x=>x.address!==w.address))}/>)}</TableBody></Table></div>
       <form onSubmit={addWallet} className="wallet-form governance-drep-registration-form"><label>Wallet name<Input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Savings" maxLength={60}/></label><label className="address-field">Stake or payment address<Input value={address} onChange={e=>setAddress(e.target.value)} placeholder="stake1… or addr1…" aria-describedby="wallet-error" required/></label><button className="governance-vote-primary" type="submit"><Plus size={16}/>Add wallet</button></form><p id="wallet-error" role="status" className="negative">{walletError}</p>
       <p className="small muted">Wallets, prices you enter, and cached history are saved in this browser. Adding or removing a wallet recalculates the entire portfolio; average costs are saved separately for each wallet combination.</p>
     </section>
     <section className="portfolio-section" aria-labelledby="portfolio-exchange-addresses-title">
       <h2 id="portfolio-exchange-addresses-title">DEX / CEX addresses</h2>
       <CexAddresses entries={cexAddresses} owned={Object.values(snapshot?.groups||{}).flat().concat(wallets.map(wallet=>wallet.address))} onChange={saveCexAddresses}/>
+      <ByronExchanges facts={classifiedFacts} entries={cexAddresses} owned={Object.values(snapshot?.groups||{}).flat().concat(wallets.map(wallet=>wallet.address))} history={snapshot?.history||{}} complete={snapshot?.complete===true} onChange={saveCexAddresses}/>
       {cexAddresses.length>0&&Object.values(snapshot?.facts||{}).some(fact=>!Array.isArray(fact.externalInputs))&&<p className="small muted">Refresh to load sender and recipient stake addresses for older cached transactions.</p>}
     </section>
     </AssetOverlay>}
@@ -400,15 +402,16 @@ function WalletCard({wallet:w,primary,snapshot,remove}:{wallet:Wallet;primary:bo
   const addresses=snapshot?.groups?.[w.address];
   const facts=Object.values(snapshot?.facts||{});
   const countLabel=(linked:string[])=>`${num(walletTransactionCount(facts,linked),0)} transactions${snapshot?.complete?'':' · analysed so far'}`;
-  return <div className="governance-menu-card"><div className="wallet-title"><strong className="governance-card-title">{w.label}</strong><button className="governance-vote-secondary" disabled={primary} onClick={remove} aria-label={`Remove ${w.label} from portfolio`}><Trash2 size={16}/></button></div>
-    <a className="address" href={`https://cardanoscan.io/${validStakeAddress(w.address)?'stakekey':'address'}/${w.address}`} target="_blank" rel="noreferrer" title={w.address}>{short(w.address)} <ExternalLink size={12}/></a>
-    <div className="governance-card-detail">{addresses?'₳ '+num(snapshot!.infos.filter(i=>addresses.includes(i.address)).reduce((total,i)=>total+Number(i.balance)/1e6,0)):'Loading balance…'}</div>
-    <div className="small muted">{addresses?countLabel(addresses):'Loading transaction count…'}</div>
-    {validStakeAddress(w.address)&&addresses&&<details className="portfolio-linked-addresses"><summary>{addresses.length} linked addresses · includes spent addresses</summary>{addresses.map(address=>{
+  return <TableRow><TableCell>{w.label}</TableCell>
+    <TableCell><a className="address" href={`https://cardanoscan.io/${validStakeAddress(w.address)?'stakekey':'address'}/${w.address}`} target="_blank" rel="noreferrer" title={w.address}>{short(w.address)} <ExternalLink size={12}/></a></TableCell>
+    <TableCell>{addresses?'₳ '+num(snapshot!.infos.filter(i=>addresses.includes(i.address)).reduce((total,i)=>total+Number(i.balance)/1e6,0)):'Loading balance…'}</TableCell>
+    <TableCell><span className="small muted">{addresses?countLabel(addresses):'Loading transaction count…'}</span></TableCell>
+    <TableCell>{validStakeAddress(w.address)&&addresses&&<details className="portfolio-linked-addresses"><summary title="Includes spent addresses">{addresses.length} linked addresses</summary>{addresses.map(address=>{
       const info=snapshot!.infos.find(row=>row.address===address);
       return <div className="governance-detail-row" key={address}><a className="address" href={`https://cardanoscan.io/address/${address}`} target="_blank" rel="noreferrer" title={address}>{short(address)} <ExternalLink size={12}/></a><span>{info?'₳ '+num(Number(info.balance)/1e6):'Balance unavailable'}</span><span className="small muted">{countLabel([address])}</span></div>;
-    })}</details>}
-  </div>;
+    })}</details>}</TableCell>
+    <TableCell><button className="governance-vote-secondary" disabled={primary} onClick={remove} title={`Remove ${w.label} from portfolio`} aria-label={`Remove ${w.label} from portfolio`}><Trash2 size={16}/></button></TableCell>
+  </TableRow>;
 }
 function AssetImage({id,name,market,onOpen}:{id:string;name:string;market?:Market;onOpen?:()=>void}){
   const [failed,setFailed]=useState<string[]>([]);

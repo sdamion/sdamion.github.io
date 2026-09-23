@@ -48,5 +48,15 @@ test('all linked addresses feed balances and transaction history, including spen
     assert.match(app, /_empty:true/);
     assert.match(app, /new Set\(Object.values\(groups\).flat\(\)\)/);
     assert.match(app, /for\(const addressBatch of addressBatches\)/);
-    assert.match(app, /linked addresses · includes spent addresses/);
+    assert.match(app, /summary title="Includes spent addresses"/);
+});
+
+test('wallet and exchange addresses use compact shared table rows', () => {
+    const app = read('delegators/portfolio-src/App.tsx');
+    const cex = read('delegators/portfolio-src/CexAddresses.tsx');
+    const byron = read('delegators/portfolio-src/ByronExchanges.tsx');
+    assert.match(app, /return <TableRow><TableCell>\{w.label\}/);
+    assert.match(cex, /<TableRow key=\{entry.address\}>/);
+    assert.match(byron, /title=\{row.address\}/);
+    assert.match(byron, /\{short\(row.address\)\}/);
 });
