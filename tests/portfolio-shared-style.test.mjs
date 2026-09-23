@@ -8,7 +8,7 @@ test('wallet changes show initialisation before counting, even without a snapsho
     const save = app.slice(app.indexOf('function saveWallets('), app.indexOf('function saveCexAddresses('));
     assert.ok(save.indexOf('setBusy(true)') < save.indexOf('setWallets(next)'));
     assert.match(save, /setAnalysis\(null\);setCounting\(null\)/);
-    assert.match(app, /value=\{initialising\?'Initialising':num\(wallets.length\+cexAddresses.length,0\)\} loading=\{initialising\}/);
+    assert.match(app, /<MenuTile title="Cardano Wallets" value=\{initialising\?'Initialising':num\([^\n]+\)\} loading=\{initialising\}/);
     assert.match(read('delegators/portfolio-src/ui.tsx'), /progress.setAttribute\('aria-label','Initialising'\)/);
 });
 

@@ -36,6 +36,8 @@ import {matchesTransaction} from './transaction-search';
 import {unrealisedStatus} from './metric-status';
 import {CexAddresses} from './CexAddresses';
 import {ByronExchanges} from './ByronExchanges';
+import {SwapWallets} from './SwapWallets';
+import {trackedWalletAddresses,excludeInternalExchanges} from './swap-wallets';
 import {normalizeCexAddresses,cexDestinations,cexSources,cexAdjustedFact,isCexTransaction,cexAdaTransfer,cexAdaNetPosition,cexUsdNetPosition,displayedCexAddresses,transactionExchangeWallets} from './cex';
 import type {CexAddress} from './cex';
 import {durationLabel,remainingSeconds,analysisProgress} from './progress';
@@ -68,7 +70,7 @@ async function request<T>(path:string,body:object,signal:AbortSignal,range?:stri
 export default function Home({memberStake}:{memberStake:string}){
   const SETTINGS='tdsp-member-wallets-v1:'+memberStake;
   const CEX_SETTINGS='tdsp-member-cex-v1:'+memberStake;
-  const [cexAddresses,setCexAddresses]=useState<CexAddress[]>(()=>{try{return normalizeCexAddresses(JSON.parse(localStorage.getItem(CEX_SETTINGS)||'[]'));}catch{return [];}});
+  const [savedCexAddresses,setCexAddresses]=useState<CexAddress[]>(()=>{try{return normalizeCexAddresses(JSON.parse(localStorage.getItem(CEX_SETTINGS)||'[]'));}catch{return [];}});
   const [wallets,setWallets]=useState<Wallet[]>(()=>memberWallets(memberStake,[])),[ready,setReady]=useState(false);
   const [snapshot,setSnapshot]=useState<Snapshot|null>(null),[busy,setBusy]=useState(false),[status,setStatus]=useState('Starting…');
   const [initialising,setInitialising]=useState(false);
@@ -88,6 +90,8 @@ export default function Home({memberStake}:{memberStake:string}){
   const [counting,setCounting]=useState<number|null>(null);
   const [counted,setCounted]=useState<number|null>(null);
   const key=memberStake+'::'+wallets.map(w=>w.address).sort().join('|');
+  const ownedAddresses=useMemo(()=>trackedWalletAddresses(wallets,snapshot?.groups),[wallets,snapshot?.groups]);
+  const cexAddresses=useMemo(()=>excludeInternalExchanges(savedCexAddresses,ownedAddresses),[savedCexAddresses,ownedAddresses]);
   const overrideKey='tdsp-member-basis:'+key;
   const paymentKey='tdsp-member-payments:'+key;
   useEffect(()=>{const changed=(event:Event)=>setCacheNotice((event as CustomEvent<string>).detail);window.addEventListener('tdsp:portfolio-cache-notice',changed);return()=>window.removeEventListener('tdsp:portfolio-cache-notice',changed);},[]);
@@ -228,6 +232,8 @@ export default function Home({memberStake}:{memberStake:string}){
   }
 
   function saveWallets(next:Wallet[]){
+    const cleaned=excludeInternalExchanges(savedCexAddresses,trackedWalletAddresses(next,snapshot?.groups));
+    if(!saveCexAddresses(cleaned))return;
     next=memberWallets(memberStake,next);controller.current?.abort();
     setBusy(true);setInitialising(true);setAnalysis(null);setCounting(null);setCounted(null);setStatus('Initialising wallets…');
     const started=Date.now();setRefreshStarted(started);setClock(started);
@@ -235,6 +241,7 @@ export default function Home({memberStake}:{memberStake:string}){
     setWallets(next);
   }
   function saveCexAddresses(entries:CexAddress[]){
+    entries=excludeInternalExchanges(entries,ownedAddresses);
     try{localStorage.setItem(CEX_SETTINGS,JSON.stringify(entries));setCexAddresses(entries);return true;}
     catch{setCacheNotice('CEX addresses could not be saved to the selected cache.');return false;}
   }
@@ -336,21 +343,22 @@ export default function Home({memberStake}:{memberStake:string}){
       {cexAddresses.length>0&&<Metric label="ADA Gain/ loss" value="Waiting for wallet balances" onOpen={()=>{setQuery('');setFilter('cex');setPage(0);setSection('transactions');}} amount={snapshot?{ada:Number(cexPosition.netRaw)/1e6,usd:cexDollars.usd}:undefined}/>}
     </div></section>
     <div className="tdsp-tile-grid">
-      <MenuTile title="Cardano Wallets" value={initialising?'Initialising':num(wallets.length+cexAddresses.length,0)} loading={initialising} onOpen={()=>setSection('wallets')}/>
+      <MenuTile title="Cardano Wallets" value={initialising?'Initialising':num(wallets.filter(wallet=>wallet.group!=='swap').length+(wallets.some(wallet=>wallet.group==='swap')?1:0)+cexAddresses.length,0)} loading={initialising} onOpen={()=>setSection('wallets')}/>
       <MenuTile title="Transactions" value={num(counting??transactionTotal,0)} analysis={snapshot?{done:progress.done,total:progress.total,counting:counting!==null,busy}:undefined} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('transactions');}}>
         {storageMode()==='remote'?<CacheUploadProgress onRetry={()=>void flushVault().catch(()=>{})}/>:cacheNotice&&<p role="status" className="tdsp-bar-legend">{cacheNotice}</p>}
       </MenuTile>
     </div>
     {section==='wallets'&&<AssetOverlay id="portfolio-wallets-overlay" name="Cardano Wallets" onClose={()=>setSection(null)}>
     <section className="portfolio-section" aria-labelledby="portfolio-wallet-addresses-title"><h2 id="portfolio-wallet-addresses-title">Wallet addresses</h2><p className="small muted">Your member stake address includes its linked payment addresses. Add only wallets you own.</p>
-      <div className="history-table"><Table><TableHeader><TableRow><TableHead>Wallet</TableHead><TableHead>Address</TableHead><TableHead>ADA</TableHead><TableHead>Transactions</TableHead><TableHead>Linked addresses</TableHead><TableHead>Remove</TableHead></TableRow></TableHeader><TableBody>{wallets.map((w,i)=><WalletCard key={w.address} wallet={w} primary={i===0} snapshot={snapshot} remove={()=>saveWallets(wallets.filter(x=>x.address!==w.address))}/>)}</TableBody></Table></div>
+      <div className="history-table"><Table><TableHeader><TableRow><TableHead>Wallet</TableHead><TableHead>Address</TableHead><TableHead>ADA</TableHead><TableHead>Transactions</TableHead><TableHead>Linked addresses</TableHead><TableHead>Remove</TableHead></TableRow></TableHeader><TableBody>{wallets.filter(wallet=>wallet.group!=='swap').map((w,i)=><WalletCard key={w.address} wallet={w} primary={i===0} snapshot={snapshot} remove={()=>saveWallets(wallets.filter(x=>x.address!==w.address))}/>)}</TableBody></Table></div>
+      <SwapWallets wallets={wallets} onChange={saveWallets}/>
       <form onSubmit={addWallet} className="wallet-form governance-drep-registration-form"><label>Wallet name<Input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Savings" maxLength={60}/></label><label className="address-field">Stake or payment address<Input value={address} onChange={e=>setAddress(e.target.value)} placeholder="stake1… or addr1…" aria-describedby="wallet-error" required/></label><button className="governance-vote-primary" type="submit"><Plus size={16}/>Add wallet</button></form><p id="wallet-error" role="status" className="negative">{walletError}</p>
       <p className="small muted">Wallets, prices you enter, and cached history are saved in this browser. Adding or removing a wallet recalculates the entire portfolio; average costs are saved separately for each wallet combination.</p>
     </section>
     <section className="portfolio-section" aria-labelledby="portfolio-exchange-addresses-title">
       <h2 id="portfolio-exchange-addresses-title">DEX / CEX addresses</h2>
-      <CexAddresses entries={cexAddresses} owned={Object.values(snapshot?.groups||{}).flat().concat(wallets.map(wallet=>wallet.address))} onChange={saveCexAddresses}/>
-      <ByronExchanges facts={classifiedFacts} entries={cexAddresses} owned={Object.values(snapshot?.groups||{}).flat().concat(wallets.map(wallet=>wallet.address))} history={snapshot?.history||{}} complete={snapshot?.complete===true} onChange={saveCexAddresses}/>
+      <CexAddresses entries={cexAddresses} owned={ownedAddresses} onChange={saveCexAddresses}/>
+      <ByronExchanges facts={classifiedFacts} entries={cexAddresses} owned={ownedAddresses} history={snapshot?.history||{}} complete={snapshot?.complete===true} onChange={saveCexAddresses}/>
       {cexAddresses.length>0&&Object.values(snapshot?.facts||{}).some(fact=>!Array.isArray(fact.externalInputs))&&<p className="small muted">Refresh to load sender and recipient stake addresses for older cached transactions.</p>}
     </section>
     </AssetOverlay>}

@@ -1,4 +1,5 @@
 import {validAddress} from './core.ts';
+import {validByronAddress} from './byron-address.ts';
 export function walletTransactionCount(facts:{hash:string;wallets:string[]}[],addresses:string[]):number {
   const owned=new Set(addresses);
   return new Set(facts.filter(f=>f.wallets.some(address=>owned.has(address))).map(f=>f.hash)).size;
@@ -20,7 +21,7 @@ export function sameTrackedAddresses(previous:Record<string,string[]>|undefined,
 }
 export function memberWallets(stake:string,saved:unknown){
   if(!validStakeAddress(stake))throw new Error('A verified mainnet stake address is required.');
-  const extras=Array.isArray(saved)?saved.filter(w=>w&&typeof w.address==='string'&&validWalletAddress(w.address)&&w.address!==stake&&typeof w.label==='string'):[];
+  const extras=Array.isArray(saved)?saved.filter(w=>w&&typeof w.address==='string'&&(validWalletAddress(w.address)||(w.group==='swap'&&validByronAddress(w.address)))&&w.address!==stake&&typeof w.label==='string').map(w=>({address:w.address,label:w.group==='swap'?'Swap':w.label,...(w.group==='swap'?{group:'swap' as const}:{})})):[];
   return [{address:stake,label:'Member stake address'},...[...new Map(extras.map(w=>[w.address,w])).values()]];
 }
 export function resolveWalletGroups(wallets:{address:string}[],accounts:{stake_address:string;addresses:string[]}[]){
@@ -30,7 +31,7 @@ export function resolveWalletGroups(wallets:{address:string}[],accounts:{stake_a
       const rows=accounts.filter(a=>a.stake_address===wallet.address);
       if(!rows.length||rows.some(row=>!Array.isArray(row.addresses)||row.addresses.some(a=>!validAddress(a))))throw new Error('Linked addresses were not returned completely. Saved balances are retained.');
       groups[wallet.address]=[...new Set(rows.flatMap(row=>row.addresses))];
-    }else if(validAddress(wallet.address))groups[wallet.address]=[wallet.address];
+    }else if(validAddress(wallet.address)||validByronAddress(wallet.address))groups[wallet.address]=[wallet.address];
     else throw new Error('Invalid wallet address.');
   }
   return groups;

@@ -36,6 +36,7 @@ export function ByronExchanges({facts,entries,owned,history,complete,onChange}:{
   const pages=Math.max(1,Math.ceil(filtered.length/25)),current=Math.min(page,pages-1);
   return <section className="portfolio-section" aria-labelledby="portfolio-byron-title">
     <h2 id="portfolio-byron-title">Combined Byron CEX</h2>
+    <p className="small muted">Your internal wallets, including Swap, are excluded from this selection and its totals.</p>
     <div className="tdsp-tile-grid">
       <div className="governance-menu-card"><strong className="governance-card-title"><AdaUsdAmount ada={Number(totals.receivedRaw)/1e6} usd={dollars.boughtUsd}/></strong><span className="governance-card-detail">Byron ADA IN</span></div>
       <div className="governance-menu-card"><strong className="governance-card-title"><AdaUsdAmount ada={Number(totals.sentRaw)/1e6} usd={dollars.soldUsd}/></strong><span className="governance-card-detail">Byron ADA OUT</span></div>

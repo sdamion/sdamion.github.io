@@ -88,6 +88,8 @@ Run `npm install` and `npm run build` in this directory. Commit the generated `.
 
 ## Backend and rollout
 
+Cardano Wallets includes a **Swap** group for owned mainnet payment and Byron addresses. It uses the shared tile and overlay, existing member wallet settings, and the selected local/encrypted remote cache. Swap addresses are tracked for balances/history and excluded from exchange assignments and Combined Byron CEX discovery. Adding an address removes its saved exchange assignment; removing it from Swap does not automatically restore that assignment. Ownership changes reuse the existing incremental refresh/reclassification path. The backend must accept Byron addresses for the bounded `address_info` and `address_txs` requests before deploying this frontend. Regression tests: `swap-wallets.test.ts` and `tests/portfolio-swap-browser.mjs`.
+
 Requires the `member-portfolio` endpoints in the existing **koios-proxy** repository. Deploy that backend update before publishing the website changes. Session tokens go only to TDSP's backend, not to Koios or pricing providers. The backend validates the session, allowlists read-only upstream operations, caps batch sizes and rate-limits requests.
 
 Koios calls use the proxy's existing authenticated scheduler and provider cooldowns. Complete cached transactions are not periodically downloaded or analysed again, including the newest 20. Existing addresses check recent history and stop on saved history; newly linked addresses scan their own full history. Balances, linked addresses and market prices still refresh. Missing or outdated analysis is filled independently of history discovery.
