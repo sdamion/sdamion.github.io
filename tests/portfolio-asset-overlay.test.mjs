@@ -84,3 +84,10 @@ test('Cardano Wallets combines address management in one shared overlay',()=>{
   assert.match(wallets,/<h2 id="portfolio-exchange-addresses-title">DEX \/ CEX addresses<\/h2>/);
   assert.match(wallets,/<CexAddresses/);
 });
+test('ADA across wallets opens holdings without a duplicate navigation tile',()=>{
+  const app=source('App.tsx');
+  assert.match(app,/<Metric label="ADA across wallets"[^\n]*onOpen=\{\(\)=>setSection\('holdings'\)\}/);
+  assert.doesNotMatch(app,/<MenuTile title="Current holdings & performance"/);
+  assert.match(app,/id="portfolio-holdings-overlay" name="ADA across wallets"/);
+  assert.match(app,/onOpen=\{\(\)=>setSelectedAsset\(r.id\)\}/);
+});

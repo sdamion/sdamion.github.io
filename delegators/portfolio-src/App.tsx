@@ -323,14 +323,13 @@ export default function Home({memberStake}:{memberStake:string}){
     </div>
   </div>
     <section className="portfolio-section"><div className="tdsp-tile-grid">
-      <Metric label="ADA across wallets" value="—" amount={snapshot?{ada,usd:valued.length?subtotal:null}:undefined} note={`${valued.length} / ${included.length} assets valued${excludedCount?` · ${excludedCount} excluded`:''}`}/>
+      <Metric label="ADA across wallets" value="—" onOpen={()=>setSection('holdings')} amount={snapshot?{ada,usd:valued.length?subtotal:null}:undefined} note={`${valued.length} / ${included.length} assets valued${excludedCount?` · ${excludedCount} excluded`:''}`}/>
       <Metric label={coverage.partial?'Unrealised gain / loss · partial estimate':provisional||estimatedGains?'Unrealised gain / loss · estimate':'Unrealised gain / loss'} value={covered.length?(provisional||estimatedGains||coverage.partial?'≈ ':'')+signed(gain):gainStatus} note={`${coverage.covered} / ${coverage.total} costs matched${costTotal>0?' · '+num(gain/costTotal*100,2)+'%':''}${estimatedGains?' · Estimated values':''}`} tone={covered.length?gain>=0?'positive':'negative':''}/>
       <Metric label="Network fees paid" value={loadedFacts||snapshot?.complete?num(fees)+' ₳':'Waiting for transaction details'} note={`${snapshot?.complete?'':'Loaded history only · '}Shared-input fees excluded`}/>
       {cexAddresses.length>0&&<Metric label="ADA Gain/ loss" value="Waiting for wallet balances" onOpen={()=>{setQuery('');setFilter('cex');setPage(0);setSection('transactions');}} amount={snapshot?{ada:Number(cexPosition.netRaw)/1e6,usd:cexDollars.usd}:undefined}/>}
     </div></section>
     <div className="tdsp-tile-grid">
       <MenuTile title="Cardano Wallets" value={initialising?'Initialising':num(wallets.length+cexAddresses.length,0)} loading={initialising} onOpen={()=>setSection('wallets')}/>
-      <MenuTile title="Current holdings & performance" value={num(rows.length,0)} onOpen={()=>setSection('holdings')}/>
       <MenuTile title="Transactions" value={num(counting??transactionTotal,0)} analysis={snapshot?{done:progress.done,total:progress.total,counting:counting!==null,busy}:undefined} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('transactions');}}/>
     </div>
     {section==='wallets'&&<AssetOverlay id="portfolio-wallets-overlay" name="Cardano Wallets" onClose={()=>setSection(null)}>
@@ -345,7 +344,7 @@ export default function Home({memberStake}:{memberStake:string}){
       {cexAddresses.length>0&&Object.values(snapshot?.facts||{}).some(fact=>!Array.isArray(fact.externalInputs))&&<p className="small muted">Refresh to load sender and recipient stake addresses for older cached transactions.</p>}
     </section>
     </AssetOverlay>}
-    {section==='holdings'&&<AssetOverlay id="portfolio-holdings-overlay" name="Current holdings & performance" onClose={()=>setSection(null)}>
+    {section==='holdings'&&<AssetOverlay id="portfolio-holdings-overlay" name="ADA across wallets" onClose={()=>setSection(null)}>
     <section className="portfolio-section">
       <label className="small"><input type="checkbox" checked={missingCostsOnly} onChange={e=>setMissingCostsOnly(e.target.checked)}/> Show holdings with missing purchase cost ({coverage.missingCost})</label>
       {payments.errors.length>0&&<p role="status" className="negative">Some saved payment links cannot be applied to the loaded history. Open the asset image to review its purchase payments.</p>}
