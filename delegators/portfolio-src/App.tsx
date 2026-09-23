@@ -72,7 +72,7 @@ export default function Home({memberStake}:{memberStake:string}){
   const [paymentLinks,setPaymentLinks]=useState<PaymentLink[]>([]);
   const [missingCostsOnly,setMissingCostsOnly]=useState(false);
   const [selectedAsset,setSelectedAsset]=useState<string|null>(null);
-  const [section,setSection]=useState<'wallets'|'exchanges'|'holdings'|'transactions'|null>(null);
+  const [section,setSection]=useState<'wallets'|'holdings'|'transactions'|null>(null);
   const [page,setPage]=useState(0);
   const [liveQuote,setLiveQuote]=useState<{usd:number;at:string}|null>(null);
   const controller=useRef<AbortController|null>(null);
@@ -329,33 +329,21 @@ export default function Home({memberStake}:{memberStake:string}){
       {cexAddresses.length>0&&<Metric label="ADA Gain/ loss" value="Waiting for wallet balances" onOpen={()=>{setQuery('');setFilter('cex');setPage(0);setSection('transactions');}} amount={snapshot?{ada:Number(cexPosition.netRaw)/1e6,usd:cexDollars.usd}:undefined}/>}
     </div></section>
     <div className="tdsp-tile-grid">
-      <MenuTile title="Wallet addresses" value={initialising?'Initialising':num(wallets.length,0)} loading={initialising} onOpen={()=>setSection('wallets')}/>
-      <MenuTile title="DEX / CEX addresses" value={num(cexAddresses.length,0)} onOpen={()=>setSection('exchanges')}/>
+      <MenuTile title="Cardano Wallets" value={initialising?'Initialising':num(wallets.length+cexAddresses.length,0)} loading={initialising} onOpen={()=>setSection('wallets')}/>
       <MenuTile title="Current holdings & performance" value={num(rows.length,0)} onOpen={()=>setSection('holdings')}/>
       <MenuTile title="Transactions" value={num(counting??transactionTotal,0)} analysis={snapshot?{done:progress.done,total:progress.total,counting:counting!==null,busy}:undefined} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('transactions');}}/>
     </div>
-    {section==='exchanges'&&<AssetOverlay id="portfolio-exchanges-overlay" name="DEX / CEX addresses" onClose={()=>setSection(null)}>
-    <section className="portfolio-section" aria-label="ADA Gain/ loss breakdown">
-      <strong className="governance-card-title">{snapshot?<AdaUsdAmount ada={Number(cexPosition.netRaw)/1e6} usd={cexDollars.usd}/>: 'Waiting for wallet balances'}</strong>
-      <span className="governance-card-detail">ADA Gain/ loss</span>
-      {snapshot&&<>
-        <p className="small muted">Sent to CEX <AdaUsdAmount ada={Number(cexPosition.sentRaw)/1e6} usd={cexDollars.soldUsd}/></p>
-        <p className="small muted">+ In wallets <AdaUsdAmount ada={ada} usd={cexWalletUsd}/></p>
-        <p className="small muted">− Received from CEX <AdaUsdAmount ada={Number(cexPosition.receivedRaw)/1e6} usd={cexDollars.boughtUsd}/></p>
-      </>}
-      <p className="small muted">{snapshot?.complete&&!cexPending&&!cexUnresolved?'':'Partial · '}USD uses transfer-day prices plus current wallet value, not exchange execution prices.{cexDollars.missingPrices?` ${cexDollars.missingPrices} transfers have no historical USD price.`:''}</p>
-    </section>
-    <CexAddresses entries={cexAddresses} owned={Object.values(snapshot?.groups||{}).flat().concat(wallets.map(wallet=>wallet.address))} onChange={saveCexAddresses}/>
-    {cexAddresses.length>0&&Object.values(snapshot?.facts||{}).some(fact=>!Array.isArray(fact.externalInputs))&&<p className="small muted">Refresh to load sender and recipient stake addresses for older cached transactions.</p>}
-
-    </AssetOverlay>}
-    {section==='wallets'&&<AssetOverlay id="portfolio-wallets-overlay" name="Wallet addresses" onClose={()=>setSection(null)}>
-    <section className="portfolio-section"><p className="small muted">Your member stake address includes its linked payment addresses. Add only wallets you own.</p>
+    {section==='wallets'&&<AssetOverlay id="portfolio-wallets-overlay" name="Cardano Wallets" onClose={()=>setSection(null)}>
+    <section className="portfolio-section" aria-labelledby="portfolio-wallet-addresses-title"><h2 id="portfolio-wallet-addresses-title">Wallet addresses</h2><p className="small muted">Your member stake address includes its linked payment addresses. Add only wallets you own.</p>
       <div className="tdsp-tile-grid">{wallets.map((w,i)=><WalletCard key={w.address} wallet={w} primary={i===0} snapshot={snapshot} remove={()=>saveWallets(wallets.filter(x=>x.address!==w.address))}/>)}</div>
       <form onSubmit={addWallet} className="wallet-form governance-drep-registration-form"><label>Wallet name<Input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Savings" maxLength={60}/></label><label className="address-field">Stake or payment address<Input value={address} onChange={e=>setAddress(e.target.value)} placeholder="stake1… or addr1…" aria-describedby="wallet-error" required/></label><button className="governance-vote-primary" type="submit"><Plus size={16}/>Add wallet</button></form><p id="wallet-error" role="status" className="negative">{walletError}</p>
       <p className="small muted">Wallets, prices you enter, and cached history are saved in this browser. Adding or removing a wallet recalculates the entire portfolio; average costs are saved separately for each wallet combination.</p>
     </section>
-
+    <section className="portfolio-section" aria-labelledby="portfolio-exchange-addresses-title">
+      <h2 id="portfolio-exchange-addresses-title">DEX / CEX addresses</h2>
+      <CexAddresses entries={cexAddresses} owned={Object.values(snapshot?.groups||{}).flat().concat(wallets.map(wallet=>wallet.address))} onChange={saveCexAddresses}/>
+      {cexAddresses.length>0&&Object.values(snapshot?.facts||{}).some(fact=>!Array.isArray(fact.externalInputs))&&<p className="small muted">Refresh to load sender and recipient stake addresses for older cached transactions.</p>}
+    </section>
     </AssetOverlay>}
     {section==='holdings'&&<AssetOverlay id="portfolio-holdings-overlay" name="Current holdings & performance" onClose={()=>setSection(null)}>
     <section className="portfolio-section">
@@ -374,9 +362,15 @@ export default function Home({memberStake}:{memberStake:string}){
 
     </AssetOverlay>}
     {section==='transactions'&&<AssetOverlay id="portfolio-transactions-overlay" name="Transactions" onClose={()=>setSection(null)}>
-    {filter==='cex'&&cexAddresses.length>0&&<section className="portfolio-section">
-      {snapshot&&<><p className="small muted">Bought <AdaUsdAmount ada={Number(cexPosition.receivedRaw)/1e6} usd={cexDollars.boughtUsd}/>{cexDollars.boughtUsd===null?' · Historical USD unavailable':''}</p><p className="small muted">Sold <AdaUsdAmount ada={Number(cexPosition.sentRaw)/1e6} usd={cexDollars.soldUsd}/>{cexDollars.soldUsd===null?' · Historical USD unavailable':''}</p></>}
-      <p className="small muted">{`${snapshot?.complete&&!cexPending&&!cexUnresolved?'':'Partial · '}Net flow, not trading profit · Transfer-day USD${cexPending?` · ${num(cexPending,0)} transactions need CEX address checks`:''}${cexUnresolved?` · ${num(cexUnresolved,0)} mixed CEX transactions excluded`:''}${cexDollars.missingPrices?` · ${cexDollars.missingPrices} unpriced transfers`:''}`}</p>
+    {filter==='cex'&&cexAddresses.length>0&&<section className="portfolio-section" aria-label="ADA Gain/ loss breakdown">
+      <strong className="governance-card-title">{snapshot?<AdaUsdAmount ada={Number(cexPosition.netRaw)/1e6} usd={cexDollars.usd}/>: 'Waiting for wallet balances'}</strong>
+      <span className="governance-card-detail">ADA Gain/ loss</span>
+      {snapshot&&<>
+        <p className="small muted">Sent to CEX <AdaUsdAmount ada={Number(cexPosition.sentRaw)/1e6} usd={cexDollars.soldUsd}/></p>
+        <p className="small muted">+ In wallets <AdaUsdAmount ada={ada} usd={cexWalletUsd}/></p>
+        <p className="small muted">− Received from CEX <AdaUsdAmount ada={Number(cexPosition.receivedRaw)/1e6} usd={cexDollars.boughtUsd}/></p>
+      </>}
+      <p className="small muted">{snapshot?.complete&&!cexPending&&!cexUnresolved?'':'Partial · '}USD uses transfer-day prices plus current wallet value, not exchange execution prices.{cexPending?` ${num(cexPending,0)} transactions need CEX address checks.`:''}{cexUnresolved?` ${num(cexUnresolved,0)} mixed CEX transactions excluded.`:''}{cexDollars.missingPrices?` ${cexDollars.missingPrices} transfers have no historical USD price.`:''}</p>
     </section>}
     {filter==='cex'&&cexAddresses.length>0&&<CexTimeline facts={classifiedFacts} entries={cexAddresses} history={snapshot?.history||{}} busy={busy}/>}
     <section className="portfolio-section"><div className="section-heading"><Input aria-label="Search asset names, transaction hashes or wallet names" placeholder="Asset name, transaction hash or wallet name" value={query} onChange={e=>{setQuery(e.target.value);setFilter('all');}} className="search-input"/></div>
