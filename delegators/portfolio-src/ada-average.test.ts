@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import {liveAdaBasis,type Fact} from './core.ts';
+const receipt:Fact={hash:'one',time:1704067200,adaRaw:'100000000',assets:{},decimals:{},feeRaw:'0',internal:false,wallets:[],swapCandidate:true};
+const spend={...receipt,hash:'spend',time:1704153600,adaRaw:'-90000000'};
+const later={...receipt,hash:'two',time:1704240000};
+const prices={'2024-01-01':2,'2024-01-03':0.2};
+const result=liveAdaBasis([receipt,spend,later,receipt],prices,'110000000',true);
+assert.equal(result.averageReceiptUsd,1.1);
+assert.equal(result.totalReceiptAda,200);
+assert.equal(result.usd,40,'remaining cost for unrealised gain/loss is unchanged');
+assert.equal(liveAdaBasis([receipt,later],prices,'200000000',true).averageReceiptUsd,1.1);
+assert.equal(liveAdaBasis([receipt,{...spend,adaRaw:'-100000000'}],prices,'0',true).averageReceiptUsd,2,'spent ADA remains included');
+assert.equal(liveAdaBasis([receipt,later],{'2024-01-01':2},'200000000',true).averageReceiptUsd,null);
+assert.equal(liveAdaBasis([],prices,'0',true).averageReceiptUsd,null);
+assert.equal(liveAdaBasis([receipt,{...later,internal:true}],prices,'100000000',false).averageReceiptUsd,2);
+assert.equal(liveAdaBasis([receipt],prices,'0',false).provisional,true);
+console.log('PASS: all-receipt weighted ADA average, duplicate/internal exclusion and separate remaining cost.');

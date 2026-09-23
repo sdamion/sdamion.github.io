@@ -88,7 +88,7 @@ export function adaReceiptBasis(facts:Fact[], history:Record<string,number>,onSp
 // Use the same remaining-cost calculation during and after refresh. Loaded
 // history must reconcile to the current balance before it can value that balance.
 export function liveAdaBasis(facts:Fact[],history:Record<string,number>,currentRaw:string,complete:boolean){
-  let receiptRaw=0n,pricedRaw=0n,receiptCount=0;
+  let receiptRaw=0n,pricedRaw=0n,receiptCount=0,receiptUsd=0;
   const seen=new Set<string>();
   for(const f of facts){
     if(seen.has(f.hash)||f.internal)continue;seen.add(f.hash);
@@ -97,12 +97,13 @@ export function liveAdaBasis(facts:Fact[],history:Record<string,number>,currentR
     receiptRaw+=received;
     const price=history[new Date(f.time*1000).toISOString().slice(0,10)];
     if(!Number.isFinite(price)||price<=0)continue;
-    pricedRaw+=received;receiptCount++;
+    pricedRaw+=received;receiptCount++;receiptUsd+=Number(received)/1e6*price;
   }
   const exact=adaReceiptBasis(facts,history);
   const reconciled=exact.valid&&exact.raw===currentRaw;
   const usd=reconciled?exact.usd:null;
-  return {raw:currentRaw,usd,provisional:!complete,receiptCount,pricedReceiptAda:Number(pricedRaw)/1e6,missingReceiptAda:Number(receiptRaw-pricedRaw)/1e6,reconciled};
+  const averageReceiptUsd=receiptRaw>0n&&receiptRaw===pricedRaw?receiptUsd/(Number(receiptRaw)/1e6):null;
+  return {raw:currentRaw,usd,provisional:!complete,receiptCount,averageReceiptUsd,totalReceiptAda:Number(receiptRaw)/1e6,pricedReceiptAda:Number(pricedRaw)/1e6,missingReceiptAda:Number(receiptRaw-pricedRaw)/1e6,reconciled};
 }
 // Tokens use FIFO across the portfolio; ADA uses the receipt-price method above.
 // Incoming token transfers retain unknown acquisition cost, unlike ADA receipts.
