@@ -26,7 +26,8 @@ import type {PaymentLink} from './mint-payments';
 import {PaymentLinks} from './PaymentLinks';
 import {AssetOverlay} from './AssetOverlay';
 import {MenuTile,AdaUsdAmount} from './ui';
-import {portfolioSettings as localStorage,flushVault} from './vault';
+import {portfolioSettings as localStorage,flushVault,storageMode} from './vault';
+import {CacheUploadProgress} from './CacheUploadProgress';
 import {CexTimeline} from './CexTimeline';
 import {matchesTransaction} from './transaction-search';
 import {unrealisedStatus} from './metric-status';
@@ -218,7 +219,7 @@ export default function Home({memberStake}:{memberStake:string}){
       const historyHashes=new Set(next.txs.map(tx=>tx.tx_hash));
       next.facts=Object.fromEntries(Object.entries(next.facts).filter(([hash])=>historyHashes.has(hash)));
       next.complete=next.txs.every(t=>hasCounterpartyData(next.facts[t.tx_hash]))&&[...scheduled].every(hash=>refreshedHashes.has(hash));await persist();signal.throwIfAborted();setSnapshot({...next});
-      await flushVault();signal.throwIfAborted();
+      await flushVault().catch(()=>{});signal.throwIfAborted();
       setStatus(next.complete?`Updated ${new Date(next.updated).toLocaleString()}`:'Some transactions are awaiting analysis. Refresh to retry.');
     }catch(e){if(!signal.aborted){setError(e instanceof Error?e.message:'Could not update this portfolio.');setStatus('Refresh incomplete · showing available data');}}
     finally{if(!signal.aborted){setClock(Date.now());setBusy(false);setInitialising(false);setCounting(null);}}
@@ -322,6 +323,7 @@ export default function Home({memberStake}:{memberStake:string}){
     <div className="portfolio-section">
       {!initialising&&!(busy&&analysis)&&<p role="status" className="status-line">{status}</p>}
       {error&&<p role="alert" className="message error">{error}</p>}{notice&&<p className="message">{notice}</p>}{cacheNotice&&<p role="status" className="message">{cacheNotice}</p>}
+      {storageMode()==='remote'&&<CacheUploadProgress onRetry={()=>void flushVault().catch(()=>{})}/>}
     </div>
   </div>
     <section className="portfolio-section"><div className="tdsp-tile-grid">

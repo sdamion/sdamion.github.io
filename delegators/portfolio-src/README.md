@@ -22,16 +22,28 @@ Choosing remote storage requests a separate CIP-30/CIP-8 stake-key signature for
 This is NOT the login challenge. Its signature never goes to the backend or browser storage.
 The browser verifies the message, Ed25519 signature and stake-key hash, derives a
 nonextractable AES-256-GCM key with HKDF-SHA256, and keeps it in memory until logout/reload.
-The backend stores only a gzip-compressed encrypted envelope, with a new random nonce
-on every write. Wallets, CEX labels, price overrides, payment links and the latest wallet-set
-snapshot are inside that envelope. Existing local settings/current snapshot migrate after
+The backend stores gzip-compressed encrypted chunks and an encrypted index, with a new
+random nonce for each changed chunk/index. Wallets, CEX labels, price overrides, payment
+links and the latest wallet-set snapshot remain encrypted. Existing local settings/current snapshot migrate after
 unlock; legacy plaintext member caches are removed only after the encrypted save succeeds.
 
 Only the authenticated session's resolved stake identity can access its vault. There is
 no admin owner override or recovery key. Concurrent devices use revision checks: a stale
-save fails instead of overwriting newer data. Writes run at most once per 30-second change
-window, at analysis completion and on closing Portfolio. Keep the page open until the
+save fails instead of overwriting newer data. Writes run every 30 seconds when dirty, after
+500 additional analysed transactions, at analysis completion and on closing Portfolio. Keep the page open until the
 encrypted-save message; abrupt browser closure can lose unsaved changes.
+
+Transaction history/facts use stable 30-day buckets. Only changed buckets are uploaded;
+settings, balances and market data are in the encrypted index. The server publishes the
+index atomically after storing all required chunks. Opaque chunk IDs reveal no addresses
+or dates, although encrypted sizes and upload timing remain observable. Lost acknowledgements
+retry the same commit ID. Only one upload runs at a time; pending changes schedule a trailing
+checkpoint. Failed saves retry without stopping transaction analysis. The shared progress
+bar measures bytes uploaded, stays below 100% until acknowledgement, and shows the number of
+analysed transactions in the last confirmed checkpoint. Old whole-envelope caches are readable
+and migrate on their next save. Deploy the checkpoint-capable backend before this frontend.
+Replaced chunks are retained briefly for concurrent readers and cleaned on later writes or hourly pruning;
+expiry/deletion removes the entire member cache, including retained chunks.
 
 The seven-day retention clock starts/resets on an authenticated vault unlock/read or an
 explicit activity request from trusted user interaction in Portfolio (at most hourly), NOT

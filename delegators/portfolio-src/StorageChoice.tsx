@@ -1,6 +1,7 @@
 import {useState} from 'react';
 import {preferredStorage,storageMode,isPortfolioMobile} from './vault';
 import type {StorageMode} from './vault';
+import {CacheUploadProgress} from './CacheUploadProgress';
 
 export function StorageChoice({stake,active,busy,error,onApply,onDelete}:{stake:string;active:boolean;busy:boolean;error:string;onApply:(mode:StorageMode,copy:boolean)=>void;onDelete:(mode:StorageMode)=>void}){
   const mobile=isPortfolioMobile();
@@ -19,6 +20,7 @@ export function StorageChoice({stake,active,busy,error,onApply,onDelete}:{stake:
       <div className="section-heading"><button type="button" className="governance-vote-secondary" onClick={()=>setDeleting('local')}>Delete local cache</button><button type="button" className="governance-vote-secondary" onClick={()=>setDeleting('remote')}>Delete remote cache</button></div>
       {deleting&&<div className="portfolio-section"><p>Delete the {deleting} Portfolio cache for this member? Saved wallets, exchange labels, manual prices and analysis in that copy will be removed. Blockchain transactions and the other storage location are not affected.</p><div className="section-heading"><button type="button" className="governance-vote-primary" onClick={()=>{onDelete(deleting);setDeleting(null);}}>Confirm deletion</button><button type="button" className="governance-vote-secondary" onClick={()=>setDeleting(null)}>Cancel</button></div></div>}
     </fieldset>
+    {busy&&mode==='remote'&&<CacheUploadProgress/>}
     {error&&<p role="status">{error}</p>}
   </section>;
 }
