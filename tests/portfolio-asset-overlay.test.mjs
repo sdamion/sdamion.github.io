@@ -37,8 +37,8 @@ test('CEX metric opens the shared transaction list without stale search or pagin
   const tile=app.split('\n').find(line=>line.includes('<Metric label="ADA Gain/ loss"'));
   assert.doesNotMatch(tile,/note=|breakdown=|Bought|Sold/);
   const transactions=app.slice(app.indexOf("{section==='transactions'"),app.indexOf('{busy&&<p'));
-  assert.match(transactions,/Sent to CEX <AdaUsdAmount/);
-  assert.match(transactions,/Received from CEX <AdaUsdAmount/);
+  assert.match(transactions,/ADA OUT <AdaUsdAmount/);
+  assert.match(transactions,/ADA IN <AdaUsdAmount/);
   assert.match(transactions,/transfer-day prices/);
   assert.match(app,/<MenuTile title="Transactions"[^\n]*setFilter\('all'\)/);
   assert.match(app,/const Tag=onOpen\?'button':'div'/);
@@ -69,9 +69,11 @@ test('gain loss overlay puts the breakdown above its graph, not in address setti
   assert.doesNotMatch(exchange,/ADA Gain\/ loss breakdown/);
   const section=app.slice(app.indexOf("{section==='transactions'"),app.indexOf('{busy&&<p'));
   assert.ok(section.indexOf('ADA Gain/ loss breakdown')<section.indexOf('<CexTimeline'));
-  assert.match(section,/Sent to CEX <AdaUsdAmount[^\n]*usd=\{cexDollars.soldUsd\}/);
+  assert.match(section,/ADA OUT <AdaUsdAmount[^\n]*ada=\{Number\(cexPosition.sentRaw\)\/1e6\} usd=\{cexDollars.soldUsd\}/);
   assert.doesNotMatch(section,/In wallets <AdaUsdAmount/);
-  assert.match(section,/Received from CEX <AdaUsdAmount[^\n]*usd=\{cexDollars.boughtUsd\}/);
+  assert.match(section,/ADA IN <AdaUsdAmount[^\n]*ada=\{Number\(cexPosition.receivedRaw\)\/1e6\} usd=\{cexDollars.boughtUsd\}/);
+  assert.match(source('CexTimeline.tsx'),/label:'ADA IN',data:points.map\(p=>\(\{x:p.time\*1000,y:p.boughtAda,usd:p.boughtUsd/);
+  assert.match(source('CexTimeline.tsx'),/label:'ADA OUT',data:points.map\(p=>\(\{x:p.time\*1000,y:p.soldAda,usd:p.soldUsd/);
   assert.doesNotMatch(section,/<details>/);
 });
 test('Cardano Wallets combines address management in one shared overlay',()=>{

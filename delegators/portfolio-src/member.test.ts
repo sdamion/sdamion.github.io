@@ -79,6 +79,13 @@ assert.deepEqual(cexTimeline([buy,sell,buy,f],stakeEntries,prices),[
 assert.equal(cexTimeline([buy],stakeEntries,{})[0].usd,null);
 assert.deepEqual(cexTimeline([buy,sell],[],prices),[]);
 const timeline=cexTimeline([buy,sell,buy],stakeEntries,prices);
+const graphEnd=cexTimelineSeries([buy,sell,buy],stakeEntries,prices).at(-1)!;
+const flowTotals=cexAdaNetPosition([buy,sell,buy],stakeEntries,'40000000');
+const usdTotals=cexUsdNetPosition([buy,sell,buy],stakeEntries,'40000000',prices,3);
+assert.equal(graphEnd.boughtAda,Number(flowTotals.receivedRaw)/1e6);
+assert.equal(graphEnd.soldAda,Number(flowTotals.sentRaw)/1e6);
+assert.equal(graphEnd.boughtUsd,usdTotals.boughtUsd);
+assert.equal(graphEnd.soldUsd,usdTotals.soldUsd);
 assert.equal(timeline.reduce((sum,row)=>sum+(row.side==='sell'?row.ada:-row.ada),40),Number(cexAdaNetPosition([buy,sell],stakeEntries,'40000000').netRaw)/1e6);
 assert.deepEqual(cexUsdNetPosition([buy,sell,buy],stakeEntries,'40000000',prices,3),{usd:140,missingPrices:0,boughtUsd:100,soldUsd:120});
 assert.deepEqual(cexUsdNetPosition([buy,sell],stakeEntries,'40000000',{'2024-01-01':1},3),{usd:null,missingPrices:1,boughtUsd:100,soldUsd:null});

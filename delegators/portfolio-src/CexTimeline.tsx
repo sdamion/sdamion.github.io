@@ -23,8 +23,8 @@ export function CexTimeline({facts,entries,history,busy}:{facts:Record<string,Fa
         chart=new Chart(canvas.current,{
           type:'line',
           data:{datasets:[
-            {label:'Bought',data:points.map(p=>({x:p.time*1000,y:p.boughtAda,usd:p.boughtUsd})),borderColor:style.getPropertyValue('--accent-strong').trim(),backgroundColor:style.getPropertyValue('--accent-strong').trim()},
-            {label:'Sold',data:points.map(p=>({x:p.time*1000,y:p.soldAda,usd:p.soldUsd})),borderColor:style.getPropertyValue('--ai-unavailable-color').trim()||'#c62828',backgroundColor:style.getPropertyValue('--ai-unavailable-color').trim()||'#c62828'}
+            {label:'ADA IN',data:points.map(p=>({x:p.time*1000,y:p.boughtAda,usd:p.boughtUsd})),borderColor:style.getPropertyValue('--accent-strong').trim(),backgroundColor:style.getPropertyValue('--accent-strong').trim()},
+            {label:'ADA OUT',data:points.map(p=>({x:p.time*1000,y:p.soldAda,usd:p.soldUsd})),borderColor:style.getPropertyValue('--ai-unavailable-color').trim()||'#c62828',backgroundColor:style.getPropertyValue('--ai-unavailable-color').trim()||'#c62828'}
           ].map(dataset=>({...dataset,stepped:'after',borderWidth:2,pointRadius:points.length===1?3:0,pointHitRadius:10,fill:false}))},
           options:{responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:'index',intersect:false},
             plugins:{legend:{labels:{color}},tooltip:{callbacks:{
@@ -42,10 +42,10 @@ export function CexTimeline({facts,entries,history,busy}:{facts:Record<string,Fa
     observer.observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
     return ()=>{stopped=true;observer.disconnect();chart?.destroy();};
   },[points]);
-  return <section className="portfolio-section" aria-label="Bought and sold timeline graph">
-    {points.length>0?<div className="price-history-chart-frame"><canvas ref={canvas} role="img" aria-label="Cumulative ADA bought and sold over time">Cumulative bought and sold amounts; detailed transfers are listed below.</canvas></div>:<p className="empty">{busy?'Loading CEX transfers…':'No classified CEX transfers.'}</p>}
+  return <section className="portfolio-section" aria-label="ADA IN and ADA OUT timeline graph">
+    {points.length>0?<div className="price-history-chart-frame"><canvas ref={canvas} role="img" aria-label="Cumulative ADA IN and ADA OUT over time">Cumulative incoming and outgoing amounts; detailed transfers are listed below.</canvas></div>:<p className="empty">{busy?'Loading CEX transfers…':'No classified CEX transfers.'}</p>}
     {error&&<p className="negative" role="status">{error}</p>}
-    {points.length>0&&points[points.length-1].soldAda===0&&<p className="small muted" role="status">No outgoing CEX transfers matched in the analysed history. Sold is shown at 0 ADA. Check the saved destination addresses if transfers are missing.</p>}
-    <p className="small muted">Cumulative bought and sold ADA · Transfer-day USD estimates · Classified transfers only</p>
+    {points.length>0&&points[points.length-1].soldAda===0&&<p className="small muted" role="status">No outgoing CEX transfers matched in the analysed history. ADA OUT is shown at 0 ADA. Check the saved destination addresses if transfers are missing.</p>}
+    <p className="small muted">Cumulative ADA IN / ADA OUT · Transfer-day USD estimates · Classified transfers only</p>
   </section>;
 }
