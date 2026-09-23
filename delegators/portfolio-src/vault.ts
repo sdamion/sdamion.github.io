@@ -116,6 +116,7 @@ export const portfolioSettings={
   setItem(name:string,value:string){const current=active();if(!ownSetting(current.stake,name))throw new Error('Wrong Portfolio member.');current.data.settings[name]=value;changed();}
 };
 export function cachedSnapshot(name:string){const current=active();return current.data.snapshot?.key===name?current.data.snapshot.data:null;}
+export function latestMemberSnapshot(name:string){const current=active();if(!name.startsWith(current.stake+'::'))throw new Error('Wrong Portfolio member.');return current.data.snapshot?.data??null;}
 export async function cacheSnapshot(name:string,data:Snapshot){const current=active();if(!name.startsWith(current.stake+'::'))throw new Error('Wrong Portfolio member.');current.data.snapshot={key:name,data};changed();if(current.mode==='remote'){setUploadProgress({transactions:data.txs.length});if(!running&&Object.keys(data.facts).length-(current.saved||0)>=500){clearTimeout(timer);timer=undefined;schedule(0);}}}
 export async function flushVault():Promise<void>{
   if(running){await running;if(state?.dirty)return flushVault();return;}

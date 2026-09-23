@@ -6,8 +6,8 @@ export function createHistoryIndex(cached:Tx[],incremental:boolean){
   const seen=new Set<string>();
   return {
     get size(){return records.size;},
-    add(page:Tx[]){
-      const reachedSavedHistory=incremental&&page.length>0&&page.every(tx=>known.has(tx.tx_hash));
+    add(page:Tx[],allowSavedHistory=incremental){
+      const reachedSavedHistory=allowSavedHistory&&page.length>0&&page.every(tx=>known.has(tx.tx_hash));
       const discovered:Tx[]=[];
       for(const tx of page){
         records.set(tx.tx_hash,tx);

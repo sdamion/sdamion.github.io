@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {withinTransactionDates,transactionPage} from './transaction-date.ts';
+const time=(day:number,hour=0)=>new Date(2026,8,day,hour,59,59).getTime()/1000;
+assert.equal(withinTransactionDates(time(23),'',''),true);
+assert.equal(withinTransactionDates(time(23),'2026-09-23','2026-09-23'),true);
+assert.equal(withinTransactionDates(time(23,23),'2026-09-23','2026-09-23'),true);
+assert.equal(withinTransactionDates(time(22,23),'2026-09-23',''),false);
+assert.equal(withinTransactionDates(time(24),'','2026-09-23'),false);
+assert.equal(withinTransactionDates(time(23),'2026-09-24','2026-09-22'),false);
+assert.deepEqual(transactionPage(5,0),{page:0,pages:1});
+assert.deepEqual(transactionPage(5,100),{page:0,pages:1});
+assert.deepEqual(transactionPage(5,201),{page:2,pages:3});
+assert.deepEqual(transactionPage(1,201),{page:1,pages:3});
+console.log('PASS: inclusive local-date range, open bounds, empty results and pagination clamping.');

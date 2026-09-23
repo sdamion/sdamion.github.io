@@ -101,6 +101,8 @@ try{
   assert.equal(await page.evaluate(()=>window.vault.vaultUnlocked()),false);
   await page.evaluate(()=>window.vault.unlockPortfolio({signData:window.approve}));
   assert.equal(await page.evaluate(stake=>Object.keys(window.vault.cachedSnapshot(stake+'::test').facts).length,stake),2);
+  assert.equal(await page.evaluate(stake=>Object.keys(window.vault.latestMemberSnapshot(stake+'::other-wallet-set').facts).length,stake),2);
+  assert.equal(await page.evaluate(()=>{try{window.vault.latestMemberSnapshot('another-member::test');return false;}catch{return true;}}),true);
   assert.equal(await page.evaluate(setting=>window.vault.portfolioSettings.getItem(setting),setting),'private-updated-label');
   conflict=true;
   assert.equal(await page.evaluate(async setting=>{window.vault.portfolioSettings.setItem(setting,'do-not-overwrite');try{await window.vault.flushVault();return false;}catch{return !window.vault.vaultUnlocked();}},setting),true);

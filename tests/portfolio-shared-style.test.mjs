@@ -47,7 +47,9 @@ test('all linked addresses feed balances and transaction history, including spen
     const app = read('delegators/portfolio-src/App.tsx');
     assert.match(app, /_empty:true/);
     assert.match(app, /new Set\(Object.values\(groups\).flat\(\)\)/);
-    assert.match(app, /for\(const addressBatch of addressBatches\)/);
+    assert.match(app, /for\(const historyBatch of plan.batches\)/);
+    assert.match(app, /const addressBatch=historyBatch.addresses/);
+    assert.doesNotMatch(app, /Refresh the newest 20|slice\(0,20\)/);
     assert.match(app, /summary title="Includes spent addresses"/);
 });
 

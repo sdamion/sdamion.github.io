@@ -4,11 +4,13 @@ import {useEffect,useMemo,useRef,useState} from 'react';
 import {ExternalLink,Plus,Trash2,ArrowRightLeft} from 'lucide-react';
 import {PortfolioRefresh} from './PortfolioRefresh';
 import {Input} from '@/components/ui/input';
-import {Pagination,PaginationContent,PaginationItem} from '@/components/ui/pagination';
+import {TransactionPagination} from './TransactionPagination';
+import {withinTransactionDates,transactionPage} from './transaction-date';
 import {Table,TableHeader,TableBody,TableRow,TableHead,TableCell} from '@/components/ui/table';
-import {analyse,assetName,combineHoldings,kindOf,remainingBasis,liveAdaBasis,short,tradeOf,units,validAddress} from '@/lib/portfolio';
+import {assetName,combineHoldings,kindOf,remainingBasis,liveAdaBasis,short,tradeOf,units,validAddress} from '@/lib/portfolio';
 import type {AddressInfo,Detail,Fact,Market,Tx,Wallet} from '@/lib/portfolio';
-import {readCache,saveCache} from '@/lib/portfolio-cache';
+import {readCache,readRefreshCache,saveCache} from '@/lib/portfolio-cache';
+import {planRefresh,analyseAndCache} from './refresh-plan';
 import type {Snapshot} from '@/lib/portfolio-cache';
 
 import {portfolioFetch} from './transport';
@@ -37,7 +39,7 @@ import {ByronExchanges} from './ByronExchanges';
 import {normalizeCexAddresses,cexDestinations,cexSources,cexAdjustedFact,isCexTransaction,cexAdaTransfer,cexAdaNetPosition,cexUsdNetPosition,displayedCexAddresses} from './cex';
 import type {CexAddress} from './cex';
 import {durationLabel,remainingSeconds,analysisProgress} from './progress';
-import {memberWallets,resolveWalletGroups,validWalletAddress,validStakeAddress,sameTrackedAddresses,walletTransactionCount} from './member';
+import {memberWallets,resolveWalletGroups,validWalletAddress,validStakeAddress,walletTransactionCount} from './member';
 const num=(n:number,max=6)=>n.toLocaleString('en-US',{maximumFractionDigits:max});
 const usd=(n:number)=>n.toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:Math.abs(n)>0&&Math.abs(n)<0.01?8:2});
 const signed=(n:number)=>usd(Math.abs(n));
@@ -78,6 +80,7 @@ export default function Home({memberStake}:{memberStake:string}){
   const [selectedAsset,setSelectedAsset]=useState<string|null>(null);
   const [section,setSection]=useState<'wallets'|'holdings'|'transactions'|null>(null);
   const [page,setPage]=useState(0);
+  const [dateFrom,setDateFrom]=useState(''),[dateTo,setDateTo]=useState('');
   const [liveQuote,setLiveQuote]=useState<{usd:number;at:string}|null>(null);
   const controller=useRef<AbortController|null>(null);
   const [refreshStarted,setRefreshStarted]=useState(0),[clock,setClock]=useState(0);
@@ -93,7 +96,7 @@ export default function Home({memberStake}:{memberStake:string}){
   useEffect(()=>{if(!ready)return;setSnapshot(null);setError('');try{setOverrides(JSON.parse(localStorage.getItem(overrideKey)||'{}'));}catch{setOverrides({});}try{const links=JSON.parse(localStorage.getItem(paymentKey)||'[]');setPaymentLinks(Array.isArray(links)?links.filter(l=>l&&['assetId','receiptHash','paymentHash','lovelace'].every(k=>typeof l[k]==='string')):[]);}catch{setPaymentLinks([]);}void refresh();return()=>controller.current?.abort();/* wallet scope determines the cached portfolio */
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[ready,key]);
-  useEffect(()=>setPage(0),[filter,query,key]);
+  useEffect(()=>setPage(0),[filter,query,key,dateFrom,dateTo]);
   useEffect(()=>{
     const hide=()=>{setSelectedAsset(null);setSection(null);};
     window.addEventListener('tdsp:portfolio-hidden',hide);
@@ -123,15 +126,13 @@ export default function Home({memberStake}:{memberStake:string}){
     const started=Date.now();setRefreshStarted(started);setClock(started);setAnalysis(null);setCounting(null);setCounted(null);
     setBusy(true);setInitialising(true);setError('');setNotice('');setStatus('Initialising wallets · loading saved data…');
     try{
-      let cached:Snapshot|null=null;try{cached=await readCache(key);}catch{setCacheNotice('Portfolio cache is locked. Sign in and approve unlock again.');throw new Error('Portfolio cache is locked.');}
-      signal.throwIfAborted();if(cached)setSnapshot(cached);
+      let cached:Snapshot|null=null;try{const exact=await readCache(key);cached=exact||await readRefreshCache(key);signal.throwIfAborted();if(exact)setSnapshot(exact);}catch{setCacheNotice('Portfolio cache is locked. Sign in and approve unlock again.');throw new Error('Portfolio cache is locked.');}
       setStatus('Initialising wallets · finding linked addresses…');
       const stakes=wallets.map(w=>w.address).filter(validStakeAddress);
       const accounts:{stake_address:string;addresses:string[]}[]=[];
       for(let i=0;i<stakes.length;i+=40)accounts.push(...await request<{stake_address:string;addresses:string[]}[]>('account_addresses',{_stake_addresses:stakes.slice(i,i+40),_first_only:false,_empty:true},signal));
       const groups=resolveWalletGroups(wallets,accounts);
-      const sameAddresses=sameTrackedAddresses(cached?.groups,groups);
-      const reusableFacts=sameAddresses?cached?.facts||{}:{};
+      const plan=planRefresh(cached,groups);
       const addresses=[...new Set(Object.values(groups).flat())];
       const addressBatches=Array.from({length:Math.ceil(addresses.length/40)},(_,i)=>addresses.slice(i*40,(i+1)*40));
       const loadInfos=async()=>{const all:AddressInfo[]=[];for(const [index,batch] of addressBatches.entries()){
@@ -141,7 +142,7 @@ export default function Home({memberStake}:{memberStake:string}){
       const infos=await loadInfos();signal.throwIfAborted();
       if(addresses.some(a=>!infos.some(i=>i.address===a)))throw new Error('Some wallet balances were not returned. The combined balance has not been replaced.');
       const holdings=combineHoldings(infos);
-      const next:Snapshot={groups,infos,txs:sameAddresses?cached?.txs||[]:[],facts:reusableFacts,markets:{...(sameAddresses?cached?.markets:{})},adaUsd:cached?.adaUsd??null,history:cached?.history||{},updated:new Date().toISOString(),priceAt:cached?.priceAt??null,complete:false};
+      const next:Snapshot={groups,infos,txs:plan.txs,facts:plan.facts,markets:{...cached?.markets},adaUsd:cached?.adaUsd??null,history:cached?.history||{},updated:new Date().toISOString(),priceAt:cached?.priceAt??null,complete:false,pendingOwnershipAddresses:plan.pendingOwnershipAddresses};
       for(const info of infos)for(const u of info.utxo_set||[])for(const a of u.asset_list||[]){const id=a.policy_id+a.asset_name;next.markets[id]={...next.markets[id],token_id:id,decimals:a.decimals??next.markets[id]?.decimals};}
       setSnapshot({...next});
       setInitialising(false);setStatus('Balances updated · updating prices…');
@@ -168,14 +169,13 @@ export default function Home({memberStake}:{memberStake:string}){
       }
       signal.throwIfAborted();setSnapshot({...next});setNotice(warnings.join(' '));
       const persist=async()=>{try{await saveCache(key,next);}catch{setCacheNotice('Portfolio cache could not be updated. Keep this page open and check Storage settings.');}};
-      const incremental=sameAddresses&&cached?.complete===true&&next.txs.every(tx=>Array.isArray(next.facts[tx.tx_hash]?.externalInputs));
+      const incremental=plan.batches.some(batch=>batch.incremental);
       const historyIndex=createHistoryIndex(next.txs,incremental);
       await persist();const seenPages=new Set<string>();
       const owned=new Set(addresses);
       const analysisStarted=Date.now();
       const refreshedHashes=new Set<string>();
       const scheduled=new Set<string>();
-      const recent=new Map<string,Tx>();
       const updateAnalysis=()=>setAnalysis({started:analysisStarted,done:refreshedHashes.size,total:scheduled.size});
       setCounting(historyIndex.size);updateAnalysis();
       setStatus(incremental?'Checking for new transactions…':'Loading remaining transaction history…');
@@ -184,22 +184,21 @@ export default function Home({memberStake}:{memberStake:string}){
         const legacy=next.txs.filter(tx=>needsFactRefresh(next.facts[tx.tx_hash]));
         for(const tx of legacy)scheduled.add(tx.tx_hash);
         enqueue(legacy);updateAnalysis();
-        for(const addressBatch of addressBatches)for(let offset=0;;offset+=1000){
+        for(const historyBatch of plan.batches)for(let offset=0;;offset+=1000){
+          const addressBatch=historyBatch.addresses;
           const page=await request<Tx[]>('address_txs',{_addresses:addressBatch},active,`${offset}-${offset+999}`);
           active.throwIfAborted();
           const pageKey=addressBatch.join(',')+':'+page.map(t=>t.tx_hash).join('|');
           if(page.length===1000&&seenPages.has(pageKey))throw new Error('The indexer repeated a history page. Please refresh to complete the history.');
           seenPages.add(pageKey);
           const pending:Tx[]=[];
-          const {discovered,reachedSavedHistory}=historyIndex.add(page);
-          for(const tx of discovered){
-            recent.set(tx.tx_hash,tx);
+          const {reachedSavedHistory}=historyIndex.add(page,historyBatch.incremental);
+          for(const tx of page){
+            // Old derived-only caches cannot reclassify an overlap with a newly owned address.
+            if(historyBatch.newAddresses&&cached?.facts[tx.tx_hash]&&!cached.facts[tx.tx_hash].source&&!scheduled.has(tx.tx_hash))delete next.facts[tx.tx_hash];
             const fact=next.facts[tx.tx_hash];
             if(needsFactRefresh(fact)&&!scheduled.has(tx.tx_hash)){scheduled.add(tx.tx_hash);pending.push(tx);}
           }
-          // Refresh the newest 20 discovered transactions even when already cached.
-          const newest=[...recent.values()].sort((a,b)=>b.block_time-a.block_time||a.tx_hash.localeCompare(b.tx_hash)).slice(0,20);
-          recent.clear();for(const tx of newest){recent.set(tx.tx_hash,tx);if(!scheduled.has(tx.tx_hash)){scheduled.add(tx.tx_hash);pending.push(tx);}}
           next.txs=historyIndex.rows();
           setCounting(historyIndex.size);updateAnalysis();setSnapshot({...next,facts:{...next.facts}});
           enqueue(pending);
@@ -212,11 +211,13 @@ export default function Home({memberStake}:{memberStake:string}){
         active.throwIfAborted();
         for(const d of details){
           if(!batch.some(tx=>tx.tx_hash===d.tx_hash))continue;
-          next.facts[d.tx_hash]=analyse(d,owned);refreshedHashes.add(d.tx_hash);
+          next.facts[d.tx_hash]=analyseAndCache(d,owned);refreshedHashes.add(d.tx_hash);
         }
         setSnapshot({...next,facts:{...next.facts}});updateAnalysis();
         await persist();active.throwIfAborted();
       },signal);
+      next.pendingOwnershipAddresses=[];
+      next.txs=next.txs.filter(tx=>!next.facts[tx.tx_hash]||next.facts[tx.tx_hash].wallets.some(address=>owned.has(address)));
       const historyHashes=new Set(next.txs.map(tx=>tx.tx_hash));
       next.facts=Object.fromEntries(Object.entries(next.facts).filter(([hash])=>historyHashes.has(hash)));
       next.complete=next.txs.every(t=>hasCounterpartyData(next.facts[t.tx_hash]))&&[...scheduled].every(hash=>refreshedHashes.has(hash));await persist();signal.throwIfAborted();setSnapshot({...next});
@@ -265,7 +266,7 @@ export default function Home({memberStake}:{memberStake:string}){
         if(batch.some(hash=>!details.some(d=>d.tx_hash===hash)))throw new Error('Some purchase transactions were not returned. Saved data is retained.');
         for(const d of details)if(batch.includes(d.tx_hash)){
           if(d.marketplace_version!==3)throw new Error('Purchase decoding is unavailable or the backend needs an update. Saved data is retained; retry after updating koios-proxy.');
-          next.facts[d.tx_hash]=analyse(d,owned);
+          next.facts[d.tx_hash]=analyseAndCache(d,owned);
         }
       }
       const hist=await historicalPrices(signal);signal.throwIfAborted();
@@ -317,7 +318,9 @@ export default function Home({memberStake}:{memberStake:string}){
   const progress=analysisProgress(busy,analysis,analysedTotal,transactionTotal);
   const eta=analysis&&counted!==null?remainingSeconds(analysis.started,clock,analysis.done,analysis.total):null;
   const refreshTiming=refreshStarted?`${busy?'Elapsed':'Refresh duration'}: ${durationLabel((clock-refreshStarted)/1000)}${busy?(eta!==null?` · Estimated analysis remaining: ${durationLabel(eta)}`:' · Estimating remaining time…'):''}`:'';
-  const shown=(snapshot?.txs||[]).filter(t=>{const f=classifiedFacts[t.tx_hash];return (filter==='all'||(filter==='cex'?isCexTransaction(f,cexAddresses):f&&kindOf(f)===filter))&&matchesTransaction(query,t.tx_hash,f,snapshot?.markets||{},displayWallets);});
+  const shown=(snapshot?.txs||[]).filter(t=>{const f=classifiedFacts[t.tx_hash];return withinTransactionDates(t.block_time,dateFrom,dateTo)&&(filter==='all'||(filter==='cex'?isCexTransaction(f,cexAddresses):f&&kindOf(f)===filter))&&matchesTransaction(query,t.tx_hash,f,snapshot?.markets||{},displayWallets);});
+  const currentPage=transactionPage(page,shown.length).page;
+  useEffect(()=>{if(page!==currentPage)setPage(currentPage);},[page,currentPage]);
 
   return <main className="member-portfolio"><div className="portfolio-body"><div className="section-heading" aria-label="Portfolio refresh">
     <PortfolioRefresh onRefresh={()=>void refresh()} disabled={busy||!ready} busy={busy}/>
@@ -379,9 +382,15 @@ export default function Home({memberStake}:{memberStake:string}){
     </section>}
     {filter==='cex'&&cexAddresses.length>0&&<CexTimeline facts={classifiedFacts} entries={cexAddresses} history={snapshot?.history||{}} busy={busy}/>}
     <section className="portfolio-section"><div className="section-heading"><Input aria-label="Search asset names, transaction hashes or wallet names" placeholder="Asset name, transaction hash or wallet name" value={query} onChange={e=>{setQuery(e.target.value);setFilter('all');}} className="search-input"/></div>
+      <div className="filter-row">
+        <label>From <Input type="date" name="transactions-from" value={dateFrom} max={dateTo||undefined} onChange={event=>setDateFrom(event.target.value)}/></label>
+        <label>To <Input type="date" name="transactions-to" value={dateTo} min={dateFrom||undefined} onChange={event=>setDateTo(event.target.value)}/></label>
+        {(dateFrom||dateTo)&&<button type="button" className="governance-vote-secondary" onClick={()=>{setDateFrom('');setDateTo('');}}>Clear dates</button>}
+      </div>
       <div className="filter-row">{Object.entries(labels).map(([id,label])=><button key={id} aria-pressed={filter===id} onClick={()=>setFilter(id)} className={filter===id?'active':''}>{label}</button>)}</div>
-      <div className="history-table"><Table><TableHeader><TableRow>{['Transaction / type','Date','Wallets','Portfolio change','ADA / trade price / fee'].map(t=><TableHead key={t}>{t}</TableHead>)}</TableRow></TableHeader><TableBody>{shown.slice(page*100,(page+1)*100).map(t=><Transaction key={t.tx_hash} tx={t} fact={classifiedFacts[t.tx_hash]} wallets={displayWallets} markets={snapshot?.markets||{}} history={snapshot?.history||{}} cexAddresses={cexAddresses}/>)}</TableBody></Table></div>{!shown.length&&<p className="empty">{busy?'Loading transactions…':'No matching transactions.'}</p>}
-      <Pagination className="mt-4"><PaginationContent><PaginationItem><button className="governance-vote-secondary" disabled={page===0} onClick={()=>setPage(p=>p-1)}>Previous</button></PaginationItem><PaginationItem><span className="small px-3">Page {page+1} / {Math.max(1,Math.ceil(shown.length/100))} · {num(shown.length,0)} transactions</span></PaginationItem><PaginationItem><button className="governance-vote-secondary" disabled={(page+1)*100>=shown.length} onClick={()=>setPage(p=>p+1)}>Next</button></PaginationItem></PaginationContent></Pagination>
+      <TransactionPagination position="top" page={currentPage} count={shown.length} onPage={setPage}/>
+      <div className="history-table"><Table><TableHeader><TableRow>{['Transaction / type','Date','Wallets','Portfolio change','ADA / trade price / fee'].map(t=><TableHead key={t}>{t}</TableHead>)}</TableRow></TableHeader><TableBody>{shown.slice(currentPage*100,(currentPage+1)*100).map(t=><Transaction key={t.tx_hash} tx={t} fact={classifiedFacts[t.tx_hash]} wallets={displayWallets} markets={snapshot?.markets||{}} history={snapshot?.history||{}} cexAddresses={cexAddresses}/>)}</TableBody></Table></div>{!shown.length&&<p className="empty">{busy?'Loading transactions…':'No matching transactions.'}</p>}
+      <TransactionPagination position="bottom" page={currentPage} count={shown.length} onPage={setPage}/>
       <p className="small muted table-note">Internal transfers require all inputs and outputs to belong to tracked addresses. Their net change is only the fee. Mixed transactions remain separate. Buy/sell labels are inferred from opposing ADA and token changes; multi-step DEX orders may need further reconciliation.</p>
     </section></AssetOverlay>}
     {busy&&<p className="small muted" role="timer">{refreshTiming}</p>}

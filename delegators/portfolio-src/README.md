@@ -84,7 +84,9 @@ Run `npm install` and `npm run build` in this directory. Commit the generated `.
 
 Requires the `member-portfolio` endpoints in the existing **koios-proxy** repository. Deploy that backend update before publishing the website changes. Session tokens go only to TDSP's backend, not to Koios or pricing providers. The backend validates the session, allowlists read-only upstream operations, caps batch sizes and rate-limits requests.
 
-Koios calls use the proxy's existing authenticated scheduler and provider cooldowns. If the set of linked payment addresses changes, cached transaction calculations are rebuilt against the new set before final cost calculations are shown.
+Koios calls use the proxy's existing authenticated scheduler and provider cooldowns. Complete cached transactions are not periodically downloaded or analysed again, including the newest 20. Existing addresses check recent history and stop on saved history; newly linked addresses scan their own full history. Balances, linked addresses and market prices still refresh. Missing or outdated analysis is filled independently of history discovery.
+
+Wallet changes reuse the same authenticated member's latest snapshot, without displaying old wallet totals as current. Unaffected facts remain intact. New analysis saves the minimal source inputs/outputs needed to reclassify transfers locally when ownership changes. Older caches without these details fetch only affected transactions once; source data is not backfilled for unaffected transactions. Removed-wallet-only records are discarded. Pending ownership scans are checkpointed so interrupted refreshes cannot silently reuse an incorrectly classified transfer. This applies to local and encrypted remote storage alike.
 
 For local testing, the normal `dev-server.mjs` forwards `/api/portfolio/*` to `TDSP_API_ORIGIN`. Set `PORTFOLIO_API_ORIGIN` to a locally running updated backend when the public backend has not yet been updated. Existing members sessions must be valid for the selected backend.
 
