@@ -3,12 +3,16 @@ import type {Fact} from './core.ts';
 import type {CexAddress} from './cex.ts';
 import {cexAdaTransfer} from './cex.ts';
 
-export function byronAddressTransactions(facts:Fact[],address:string){
+export function byronAddressTransactions(facts:Fact[],address:string,entries:CexAddress[]=[]){
   return [...new Map(facts.map(fact=>[fact.hash,fact])).values()]
     .filter(fact=>[...fact.externalInputs||[],...fact.externalOutputs||[]].some(row=>row.address===address))
     .map(fact=>{
-      const transfer=cexAdaTransfer(fact,[{address,name:'Byron'}]);
-      return {hash:fact.hash,time:fact.time,walletChangeRaw:fact.adaRaw,side:transfer?.side??null,amountRaw:transfer?String(transfer.raw):null};
+      const individual=cexAdaTransfer(fact,[{address,name:'Byron'}]);
+      // Incoming value belongs to the transaction, not to one of its funding inputs.
+      const grouped=entries.some(entry=>entry.address===address)?cexAdaTransfer(fact,entries):null;
+      const transfer=individual||(grouped?.side==='buy'?grouped:null);
+      const sharedInputs=transfer?.side==='buy'&&new Set((fact.externalInputs||[]).map(row=>row.address)).size>1;
+      return {hash:fact.hash,time:fact.time,walletChangeRaw:fact.adaRaw,side:transfer?.side??null,amountRaw:transfer?String(transfer.raw):null,sharedInputs};
     }).sort((a,b)=>b.time-a.time||a.hash.localeCompare(b.hash));
 }
 

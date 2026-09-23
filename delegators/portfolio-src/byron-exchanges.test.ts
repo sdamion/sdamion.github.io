@@ -33,5 +33,20 @@ const group=selected.filter(row=>row.address!==unrelated.address);
 assert.deepEqual(normalizeCexAddresses(JSON.parse(JSON.stringify(group))),group);
 assert.deepEqual(cexAdaNetPosition([buy,buy,sell,sell],group,'0'),{receivedRaw:'10000000',sentRaw:'9800000',netRaw:'-200000'});
 assert.deepEqual(cexAdaNetPosition([buy,sell],[],'0'),{receivedRaw:'0',sentRaw:'0',netRaw:'0'});
+const shared=byronAddressTransactions([buy,buy,sell],a,group);
+assert.equal(shared[1].amountRaw,'10000000');
+assert.equal(shared[1].sharedInputs,true);
+assert.equal(shared[0].amountRaw,'4000000','outgoing per-address totals stay specific to their destination');
+const sourceA='DdzFFzCqrhsk5m4Q8j6ou7gXoe6gotfoSpgT4P51ChoUP6R2ZQKBzF1JU5dXkiJg1u3JHfJSykHPyTp6ZZnEMXRpqcF4asQr7uDTqffo';
+const sourceB='DdzFFzCqrhsur6w6gW7ocpi3NbxdS1HBtwfx7jcAcmv83k5zjd6nVg7WXMrhzDPhyWqrrdu24W8GLEdeCPwSRCRFvvGd2FWJz7pEPrRm';
+const actual=analyse({tx_hash:'7dcbcfed0afcd0431f30ee8ead931ceb887f5f84056a8c6572e4f752442ca399',tx_timestamp:1649356185,fee:'183321',inputs:[io(sourceA,'2525996867'),io(sourceB,'18000000')],outputs:[io(own,'209174425'),io('external-change','2334639121')]},new Set([own]));
+const assigned=normalizeCexAddresses([{address:sourceA,name:'Byron CEX'},{address:sourceB,name:'Byron CEX'}]);
+assert.equal(assigned.length,2);
+for(const address of [sourceA,sourceB]){
+  const rows=byronAddressTransactions([actual],address,assigned);
+  assert.equal(rows[0].amountRaw,'209174425');assert.equal(rows[0].sharedInputs,true);
+}
+assert.equal(cexAdaNetPosition([actual,actual],assigned,'0').receivedRaw,'209174425','received wallet amount, not the input sum; counted once');
+assert.equal(byronAddressTransactions([actual],sourceB,[assigned[1]])[0].amountRaw,null,'unknown source must not silently become an exchange');
 assert.deepEqual(saveByronSelection(group,[a,b],new Set([a]),'Renamed',[]),[{address:a,name:'Exchange'}]);
 console.log('PASS: Byron discovery, explicit selection, persistence and grouped transfer deduplication.');
