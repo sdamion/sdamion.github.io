@@ -91,14 +91,19 @@ test('gain loss overlay puts the breakdown above its graph, not in address setti
   assert.match(source('CexTimeline.tsx'),/label:'ADA OUT',data:points.map\(p=>\(\{x:p.time\*1000,y:p.soldAda,usd:p.soldUsd/);
   assert.doesNotMatch(section,/<details>/);
 });
-test('Cardano Wallets combines address management in one shared overlay',()=>{
+test('Cardano Wallets uses shared section tiles and nested address overlays',()=>{
   const app=source('App.tsx');
   assert.match(app,/<MenuTile title="Cardano Wallets"/);
   assert.doesNotMatch(app,/<MenuTile title="(?:Wallet addresses|DEX \/ CEX addresses)"|portfolio-exchanges-overlay/);
   const wallets=app.slice(app.indexOf("{section==='wallets'"),app.indexOf("{section==='holdings'"));
   assert.match(wallets,/name="Cardano Wallets"/);
-  assert.match(wallets,/<h2 id="portfolio-wallet-addresses-title">Wallet addresses<\/h2>/);
-  assert.match(wallets,/<h2 id="portfolio-exchange-addresses-title">DEX \/ CEX addresses<\/h2>/);
+  assert.match(wallets,/<WalletMenu/);
+  const menu=source('WalletMenu.tsx');
+  for(const title of ['Wallet addresses','DEX / CEX addresses','Combined Byron CEX'])assert.ok(menu.includes(title));
+  assert.match(menu,/<MenuTile/);
+  assert.match(menu,/<AssetOverlay/);
+  assert.match(menu,/onClose=\{\(\)=>setSection\(null\)\}/);
+  assert.match(wallets,/<SwapWallets/);
   assert.match(wallets,/<CexAddresses/);
 });
 test('ADA across wallets opens holdings without a duplicate navigation tile',()=>{

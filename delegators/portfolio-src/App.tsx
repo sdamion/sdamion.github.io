@@ -37,6 +37,8 @@ import {unrealisedStatus} from './metric-status';
 import {CexAddresses} from './CexAddresses';
 import {ByronExchanges} from './ByronExchanges';
 import {SwapWallets} from './SwapWallets';
+import {WalletMenu} from './WalletMenu';
+import {validByronAddress} from './byron-address';
 import {trackedWalletAddresses,excludeInternalExchanges} from './swap-wallets';
 import {normalizeCexAddresses,cexDestinations,cexSources,cexAdjustedFact,isCexTransaction,cexAdaTransfer,cexAdaNetPosition,cexUsdNetPosition,displayedCexAddresses,transactionExchangeWallets} from './cex';
 import type {CexAddress} from './cex';
@@ -349,18 +351,18 @@ export default function Home({memberStake}:{memberStake:string}){
       </MenuTile>
     </div>
     {section==='wallets'&&<AssetOverlay id="portfolio-wallets-overlay" name="Cardano Wallets" onClose={()=>setSection(null)}>
-    <section className="portfolio-section" aria-labelledby="portfolio-wallet-addresses-title"><h2 id="portfolio-wallet-addresses-title">Wallet addresses</h2><p className="small muted">Your member stake address includes its linked payment addresses. Add only wallets you own.</p>
+    <WalletMenu counts={{wallets:wallets.filter(wallet=>wallet.group!=='swap').length,exchanges:cexAddresses.filter(entry=>!validByronAddress(entry.address)).length,byron:cexAddresses.filter(entry=>validByronAddress(entry.address)).length}}
+    swap={<SwapWallets wallets={wallets} onChange={saveWallets}/>}
+    wallets={<section className="portfolio-section"><p className="small muted">Your member stake address includes its linked payment addresses. Add only wallets you own.</p>
       <div className="history-table"><Table><TableHeader><TableRow><TableHead>Wallet</TableHead><TableHead>Address</TableHead><TableHead>ADA</TableHead><TableHead>Transactions</TableHead><TableHead>Linked addresses</TableHead><TableHead>Remove</TableHead></TableRow></TableHeader><TableBody>{wallets.filter(wallet=>wallet.group!=='swap').map((w,i)=><WalletCard key={w.address} wallet={w} primary={i===0} snapshot={snapshot} remove={()=>saveWallets(wallets.filter(x=>x.address!==w.address))}/>)}</TableBody></Table></div>
-      <SwapWallets wallets={wallets} onChange={saveWallets}/>
       <form onSubmit={addWallet} className="wallet-form governance-drep-registration-form"><label>Wallet name<Input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Savings" maxLength={60}/></label><label className="address-field">Stake or payment address<Input value={address} onChange={e=>setAddress(e.target.value)} placeholder="stake1… or addr1…" aria-describedby="wallet-error" required/></label><button className="governance-vote-primary" type="submit"><Plus size={16}/>Add wallet</button></form><p id="wallet-error" role="status" className="negative">{walletError}</p>
       <p className="small muted">Wallets, prices you enter, and cached history are saved in this browser. Adding or removing a wallet recalculates the entire portfolio; average costs are saved separately for each wallet combination.</p>
-    </section>
-    <section className="portfolio-section" aria-labelledby="portfolio-exchange-addresses-title">
-      <h2 id="portfolio-exchange-addresses-title">DEX / CEX addresses</h2>
+    </section>}
+    exchanges={<section className="portfolio-section">
       <CexAddresses entries={cexAddresses} owned={ownedAddresses} onChange={saveCexAddresses}/>
-      <ByronExchanges facts={classifiedFacts} entries={cexAddresses} owned={ownedAddresses} history={snapshot?.history||{}} complete={snapshot?.complete===true} onChange={saveCexAddresses}/>
       {cexAddresses.length>0&&Object.values(snapshot?.facts||{}).some(fact=>!Array.isArray(fact.externalInputs))&&<p className="small muted">Refresh to load sender and recipient stake addresses for older cached transactions.</p>}
-    </section>
+    </section>}
+    byron={<ByronExchanges facts={classifiedFacts} entries={cexAddresses} owned={ownedAddresses} history={snapshot?.history||{}} complete={snapshot?.complete===true} onChange={saveCexAddresses}/>}/>
     </AssetOverlay>}
     {section==='holdings'&&<AssetOverlay id="portfolio-holdings-overlay" name="ADA across wallets" onClose={()=>setSection(null)}>
     <section className="portfolio-section">

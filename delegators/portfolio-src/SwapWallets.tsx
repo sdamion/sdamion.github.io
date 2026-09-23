@@ -10,7 +10,7 @@ export function SwapWallets({wallets,onChange}:{wallets:Wallet[];onChange:(walle
   const [open,setOpen]=useState(false),[address,setAddress]=useState(''),[error,setError]=useState('');
   const members=wallets.filter(wallet=>wallet.group==='swap');
   return <>
-    <div className="tdsp-tile-grid"><MenuTile title="Swap" value={`${members.length} wallets`} onOpen={()=>setOpen(true)}/></div>
+    <MenuTile title="Swap" value={String(members.length)} onOpen={()=>setOpen(true)}/>
     {open&&<AssetOverlay id="portfolio-swap-wallets-overlay" name="Swap" onClose={()=>setOpen(false)}>
       <section className="portfolio-section">
         <p className="small muted">Owned internal wallets. Balances and transactions are combined with your portfolio. These addresses cannot be selected in Combined Byron CEX or DEX / CEX.</p>

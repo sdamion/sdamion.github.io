@@ -9,7 +9,8 @@ const bundle=await build({stdin:{contents:`
   import {createRoot} from 'react-dom/client';
   import {useState} from 'react';
   import {SwapWallets} from './SwapWallets';
-  function Test(){const [wallets,setWallets]=useState([]);return <SwapWallets wallets={wallets} onChange={next=>{window.saved=next;setWallets(next);}}/>;}
+  import {WalletMenu} from './WalletMenu';
+  function Test(){const [wallets,setWallets]=useState([]);return <WalletMenu counts={{wallets:1,exchanges:2,byron:3}} wallets={<p>Owned address list</p>} exchanges={<p>Exchange address list</p>} byron={<p>Byron address list</p>} swap={<SwapWallets wallets={wallets} onChange={next=>{window.saved=next;setWallets(next);}}/>}/>;}
   createRoot(document.getElementById('app')).render(<Test/>);
 `,loader:'tsx',resolveDir:path.resolve('delegators/portfolio-src')},bundle:true,write:false,format:'esm',jsx:'automatic'});
 const browser=await chromium.launch({channel:'chrome',headless:true});
@@ -28,6 +29,13 @@ try{
     };
   });
   await page.addScriptTag({type:'module',content:bundle.outputFiles[0].text});
+  for(const [title,content] of [['Wallet addresses','Owned address list'],['DEX / CEX addresses','Exchange address list'],['Combined Byron CEX','Byron address list']]){
+    assert.equal(await page.getByText(content,{exact:true}).count(),0);
+    await page.getByRole('button',{name:new RegExp(title)}).click();
+    await page.getByText(content,{exact:true}).waitFor();
+    await page.getByRole('button',{name:'Back',exact:true}).click();
+    await page.getByText(content,{exact:true}).waitFor({state:'detached'});
+  }
   await page.getByRole('button',{name:/Swap/}).click();
   assert.equal(await page.evaluate(()=>window.overlayOptions.showBack),true);
   const address='DdzFFzCqrhsur6w6gW7ocpi3NbxdS1HBtwfx7jcAcmv83k5zjd6nVg7WXMrhzDPhyWqrrdu24W8GLEdeCPwSRCRFvvGd2FWJz7pEPrRm';
@@ -43,5 +51,5 @@ try{
   await page.getByRole('button',{name:/Swap/}).click();
   await page.getByRole('button',{name:`Remove ${address} from Swap`}).click();
   await page.waitForFunction(()=>window.saved?.length===0);
-  console.log('PASS: shared Swap tile/overlay, add, duplicate validation, saved group, link, back and remove.');
+  console.log('PASS: all wallet sections use shared tiles and child overlays; back, Swap add/remove and validation.');
 }finally{await browser.close();}
