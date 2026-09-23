@@ -9,16 +9,17 @@ import {cexAdaNetPosition,cexUsdNetPosition,isCexTransaction,cexAdaTransfer} fro
 import type {CexAddress} from './cex';
 import type {Fact} from './core';
 import {short} from './core';
+import {AssetOverlay} from './AssetOverlay';
 
 function AddressTransactions({facts,address}:{facts:Fact[];address:string}){
   const [open,setOpen]=useState(false);
   const rows=useMemo(()=>open?byronAddressTransactions(facts,address):[],[facts,address,open]);
-  return <details onToggle={event=>setOpen(event.currentTarget.open)}><summary>View ADA amounts</summary>{open&&<div className="history-table"><Table><TableHeader><TableRow><TableHead>Transaction</TableHead><TableHead>Date</TableHead><TableHead>ADA IN / OUT</TableHead><TableHead>Wallet change (after fees)</TableHead></TableRow></TableHeader><TableBody>{rows.map(row=><TableRow key={row.hash}>
+  return <><button type="button" className="governance-vote-secondary" onClick={()=>setOpen(true)}>View ADA amounts</button>{open&&<AssetOverlay id="portfolio-byron-amounts-overlay" name="Byron ADA amounts" onClose={()=>setOpen(false)}><section className="portfolio-section"><a className="address" href={`https://cardanoscan.io/address/${address}`} target="_blank" rel="noreferrer">{address} <ExternalLink size={12}/></a><div className="history-table"><Table><TableHeader><TableRow><TableHead>Transaction</TableHead><TableHead>Date</TableHead><TableHead>ADA IN / OUT</TableHead><TableHead>Wallet change (after fees)</TableHead></TableRow></TableHeader><TableBody>{rows.map(row=><TableRow key={row.hash}>
     <TableCell><a href={`https://cardanoscan.io/transaction/${row.hash}`} target="_blank" rel="noreferrer" title={row.hash}>{short(row.hash)}</a></TableCell>
     <TableCell>{new Date(row.time*1000).toLocaleString()}</TableCell>
     <TableCell>{row.amountRaw===null?'Mixed sources / unallocated':<>{row.side==='buy'?'IN':'OUT'} <AdaUsdAmount ada={Number(row.amountRaw)/1e6}/></>}</TableCell>
     <TableCell>{BigInt(row.walletChangeRaw)<0n?'OUT':'IN'} <AdaUsdAmount ada={Math.abs(Number(row.walletChangeRaw))/1e6}/></TableCell>
-  </TableRow>)}</TableBody></Table>{!rows.length&&<p className="empty">No loaded transactions.</p>}</div>}</details>;
+  </TableRow>)}</TableBody></Table>{!rows.length&&<p className="empty">No loaded transactions.</p>}</div></section></AssetOverlay>}</>;
 }
 
 export function ByronExchanges({facts,entries,owned,history,complete,onChange}:{facts:Record<string,Fact>;entries:CexAddress[];owned:string[];history:Record<string,number>;complete:boolean;onChange:(entries:CexAddress[])=>boolean}){
