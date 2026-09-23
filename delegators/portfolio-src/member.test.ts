@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {memberWallets,validStakeAddress,resolveWalletGroups,sameTrackedAddresses,walletTransactionCount} from './member.ts';
 import {analyse,liveAdaBasis,tradeOf} from './core.ts';
-import {normalizeCexAddresses,cexDestinations,cexSources,cexAdjustedFact,isCexTransaction,cexAdaTransfer,cexAdaPerformance,cexAdaNetPosition,cexUsdNetPosition,cexTimeline} from './cex.ts';
+import {normalizeCexAddresses,cexDestinations,cexSources,cexAdjustedFact,isCexTransaction,cexAdaTransfer,cexAdaPerformance,cexAdaNetPosition,cexUsdNetPosition,cexTimeline,cexTimelineSeries} from './cex.ts';
 const stake='stake1u9ex0jtl4nv84rlzwuft5rczy2hgkjygewla04mgy7v2nccx4p4yr';
 // Synthetic addresses, never a member's personal wallet history.
 function fixtureAddress(seed:number){
@@ -63,6 +63,15 @@ assert.equal(cexDestinations({...outbound,externalOutputs:[{address:b,lovelace:'
 const buy={...receipt,hash:'buy',time:1704067200,adaRaw:'100000000'};
 const sell={...outbound,hash:'sell',time:1704153600,adaRaw:'-60200000',externalOutputs:[{address:b,lovelace:'60000000',stakeAddress:stake}]};
 const prices={'2024-01-01':1,'2024-01-02':2};
+assert.deepEqual(cexTimelineSeries([sell,buy,buy],stakeEntries,prices),[
+  {time:buy.time,boughtAda:100,soldAda:0,boughtUsd:100,soldUsd:0},
+  {time:sell.time,boughtAda:100,soldAda:60,boughtUsd:100,soldUsd:120}
+]);
+assert.deepEqual(cexTimelineSeries([buy,{...sell,time:buy.time}],stakeEntries,prices),[
+  {time:buy.time,boughtAda:100,soldAda:60,boughtUsd:100,soldUsd:60}
+]);
+assert.equal(cexTimelineSeries([buy,sell],stakeEntries,{'2024-01-02':2}).at(-1)?.boughtUsd,null);
+assert.deepEqual(cexTimelineSeries([],stakeEntries,prices),[]);
 assert.deepEqual(cexTimeline([buy,sell,buy,f],stakeEntries,prices),[
   {hash:sell.hash,time:sell.time,side:'sell',ada:60,usd:120},
   {hash:buy.hash,time:buy.time,side:'buy',ada:100,usd:100}

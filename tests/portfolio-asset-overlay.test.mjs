@@ -53,12 +53,22 @@ test('closing Portfolio detaches its view without unmounting the active refresh'
   assert.match(entry,/portfolioInstance.role!==role\)portfolioInstance.destroy\(\)/);
   assert.match(source('App.tsx'),/tdsp:portfolio-hidden/);
 });
-test('CEX timeline reuses table and amount modules inside the shared overlay',()=>{
+test('CEX timeline reuses the shared chart loader and frame inside the overlay',()=>{
   assert.match(source('App.tsx'),/filter==='cex'[^\n]*<CexTimeline/);
   const timeline=source('CexTimeline.tsx');
-  assert.match(timeline,/<TableHead>Bought<\/TableHead><TableHead>Sold<\/TableHead>/);
-  assert.match(timeline,/<AdaUsdAmount ada=\{row.ada\} usd=\{row.usd\}/);
-  assert.match(timeline,/cardanoscan.io\/transaction/);
-  assert.match(timeline,/rows.slice\(current\*25,\(current\+1\)\*25\)/);
+  assert.match(timeline,/TDSPCharts.load\(\)/);
+  assert.match(timeline,/price-history-chart-frame/);
+  assert.match(timeline,/maxTicksLimit:5/);
+  assert.match(timeline,/chart\?\.destroy\(\)/);
+  assert.doesNotMatch(timeline,/<Table|<Pagination|<h3/);
   assert.doesNotMatch(timeline,/\.css/);
+});
+test('exchange overlay puts the ADA and USD calculation before address controls',()=>{
+  const app=source('App.tsx');
+  const section=app.slice(app.indexOf("{section==='exchanges'"),app.indexOf("{section==='wallets'"));
+  assert.ok(section.indexOf('ADA Gain/ loss breakdown')<section.indexOf('<CexAddresses'));
+  assert.match(section,/Sent to CEX <AdaUsdAmount[^\n]*usd=\{cexDollars.soldUsd\}/);
+  assert.match(section,/In wallets <AdaUsdAmount ada=\{ada\} usd=\{cexWalletUsd\}/);
+  assert.match(section,/Received from CEX <AdaUsdAmount[^\n]*usd=\{cexDollars.boughtUsd\}/);
+  assert.doesNotMatch(section,/<details>/);
 });

@@ -62,6 +62,18 @@ export function cexTimeline(facts:Fact[],entries:CexAddress[],history:Record<str
   }).sort((a,b)=>b.time-a.time||a.hash.localeCompare(b.hash));
 }
 
+export function cexTimelineSeries(facts:Fact[],entries:CexAddress[],history:Record<string,number>){
+  let boughtAda=0,soldAda=0,boughtUsd:number|null=0,soldUsd:number|null=0;
+  const points:{time:number;boughtAda:number;soldAda:number;boughtUsd:number|null;soldUsd:number|null}[]=[];
+  for(const row of cexTimeline(facts,entries,history).reverse()){
+    if(row.side==='buy'){boughtAda+=row.ada;boughtUsd=boughtUsd===null||row.usd===null?null:boughtUsd+row.usd;}
+    else{soldAda+=row.ada;soldUsd=soldUsd===null||row.usd===null?null:soldUsd+row.usd;}
+    if(points.at(-1)?.time===row.time)points.pop();
+    points.push({time:row.time,boughtAda,soldAda,boughtUsd,soldUsd});
+  }
+  return points;
+}
+
 export function cexUsdNetPosition(facts:Fact[],entries:CexAddress[],walletRaw:string,history:Record<string,number>,currentUsd:number|null){
   let transferredUsd=0,missingPrices=0,boughtUsd=0,soldUsd=0,missingBuyPrices=0,missingSellPrices=0;
   for(const fact of new Map(facts.map(fact=>[fact.hash,fact])).values()){

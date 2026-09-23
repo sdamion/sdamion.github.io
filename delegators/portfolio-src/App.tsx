@@ -295,6 +295,8 @@ export default function Home({memberStake}:{memberStake:string}){
   const coverage=valuationCoverage(included);
   const subtotal=valued.reduce((s,r)=>s+(r.value||0),0),gain=covered.reduce((s,r)=>s+(r.pnl||0),0),costTotal=covered.reduce((s,r)=>s+(r.cost||0),0);
   const ada=Number(holdings.find(h=>h.id==='lovelace')?.raw||0)/1e6;
+  const currentAdaUsd=liveQuote?.usd??snapshot?.adaUsd??null;
+  const cexWalletUsd=ada===0?0:currentAdaUsd!==null&&Number.isFinite(currentAdaUsd)&&currentAdaUsd>0?ada*currentAdaUsd:null;
   const adaRow=rows.find(r=>r.id==='lovelace');
   const provisional=!snapshot?.complete&&covered.length>0;
   const estimatedGains=covered.some(r=>r.quote.source==='wayup'||r.quote.source==='fallback');
@@ -333,8 +335,17 @@ export default function Home({memberStake}:{memberStake:string}){
       <MenuTile title="Transactions" value={num(counting??transactionTotal,0)} analysis={snapshot?{done:progress.done,total:progress.total,counting:counting!==null,busy}:undefined} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('transactions');}}/>
     </div>
     {section==='exchanges'&&<AssetOverlay id="portfolio-exchanges-overlay" name="DEX / CEX addresses" onClose={()=>setSection(null)}>
+    <section className="portfolio-section" aria-label="ADA Gain/ loss breakdown">
+      <strong className="governance-card-title">{snapshot?<AdaUsdAmount ada={Number(cexPosition.netRaw)/1e6} usd={cexDollars.usd}/>: 'Waiting for wallet balances'}</strong>
+      <span className="governance-card-detail">ADA Gain/ loss</span>
+      {snapshot&&<>
+        <p className="small muted">Sent to CEX <AdaUsdAmount ada={Number(cexPosition.sentRaw)/1e6} usd={cexDollars.soldUsd}/></p>
+        <p className="small muted">+ In wallets <AdaUsdAmount ada={ada} usd={cexWalletUsd}/></p>
+        <p className="small muted">− Received from CEX <AdaUsdAmount ada={Number(cexPosition.receivedRaw)/1e6} usd={cexDollars.boughtUsd}/></p>
+      </>}
+      <p className="small muted">{snapshot?.complete&&!cexPending&&!cexUnresolved?'':'Partial · '}USD uses transfer-day prices plus current wallet value, not exchange execution prices.{cexDollars.missingPrices?` ${cexDollars.missingPrices} transfers have no historical USD price.`:''}</p>
+    </section>
     <CexAddresses entries={cexAddresses} owned={Object.values(snapshot?.groups||{}).flat().concat(wallets.map(wallet=>wallet.address))} onChange={saveCexAddresses}/>
-    <details><summary>Calculation details</summary><p className="small muted">Sent to CEX ₳ {num(Number(cexPosition.sentRaw)/1e6)} + In wallets ₳ {num(ada)} − Received from CEX ₳ {num(Number(cexPosition.receivedRaw)/1e6)}. USD uses transfer-day prices plus current wallet value, not exchange execution prices.</p></details>
     {cexAddresses.length>0&&Object.values(snapshot?.facts||{}).some(fact=>!Array.isArray(fact.externalInputs))&&<p className="small muted">Refresh to load sender and recipient stake addresses for older cached transactions.</p>}
 
     </AssetOverlay>}
