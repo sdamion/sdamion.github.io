@@ -1,6 +1,16 @@
 import {validByronAddress} from './exchange-address.ts';
 import type {Fact} from './core.ts';
 import type {CexAddress} from './cex.ts';
+import {cexAdaTransfer} from './cex.ts';
+
+export function byronAddressTransactions(facts:Fact[],address:string){
+  return [...new Map(facts.map(fact=>[fact.hash,fact])).values()]
+    .filter(fact=>[...fact.externalInputs||[],...fact.externalOutputs||[]].some(row=>row.address===address))
+    .map(fact=>{
+      const transfer=cexAdaTransfer(fact,[{address,name:'Byron'}]);
+      return {hash:fact.hash,time:fact.time,walletChangeRaw:fact.adaRaw,side:transfer?.side??null,amountRaw:transfer?String(transfer.raw):null};
+    }).sort((a,b)=>b.time-a.time||a.hash.localeCompare(b.hash));
+}
 
 export function discoveredByronAddresses(facts:Fact[],owned:string[],entries:CexAddress[]){
   const excluded=new Set(owned),valid=new Map<string,boolean>();

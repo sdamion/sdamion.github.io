@@ -4,7 +4,7 @@ import {encode,Tagged} from 'cborg';
 import CRC32 from 'crc-32';
 import {analyse} from './core.ts';
 import {cexAdaNetPosition,normalizeCexAddresses} from './cex.ts';
-import {discoveredByronAddresses,saveByronSelection} from './byron-exchanges.ts';
+import {discoveredByronAddresses,saveByronSelection,byronAddressTransactions} from './byron-exchanges.ts';
 function address(seed:number){
   const payload=encode([new Uint8Array(28).fill(seed),new Map(),0]);
   return base58.encode(encode([new Tagged(24,payload),CRC32.buf(payload)>>>0]));
@@ -14,6 +14,13 @@ const io=(address:string,value:string)=>({payment_addr:{bech32:address},value,as
 const buy=analyse({tx_hash:'buy',tx_timestamp:1,fee:'200000',inputs:[io(a,'5000000'),io(b,'5200000')],outputs:[io(own,'10000000')]},new Set([own]));
 const sell=analyse({tx_hash:'sell',tx_timestamp:2,fee:'200000',inputs:[io(own,'10000000')],outputs:[io(a,'4000000'),io(b,'5800000')]},new Set([own]));
 const existing=[{address:saved,name:'Saved CEX'}];
+const verification=byronAddressTransactions([buy,buy,sell],a);
+assert.equal(verification.length,2);
+assert.equal(verification[0].amountRaw,'4000000');
+assert.equal(verification[0].side,'sell');
+assert.equal(verification[1].amountRaw,null);
+assert.equal(verification[1].walletChangeRaw,'10000000');
+assert.deepEqual(byronAddressTransactions([buy,sell],saved),[]);
 const found=discoveredByronAddresses([buy,buy,sell],[own],existing);
 assert.equal(found.length,3);
 assert.deepEqual(found.find(row=>row.address===a),{address:a,transactions:2,lastSeen:2});
