@@ -1,0 +1,9 @@
+export type LocalRecord={revision:string;expires_at:number;data:unknown};
+function open():Promise<IDBDatabase>{return new Promise((resolve,reject)=>{const req=indexedDB.open('tdsp-portfolio-local',1);req.onupgradeneeded=()=>req.result.createObjectStore('members');req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});}
+export async function loadLocal(stake:string):Promise<LocalRecord|null>{
+  const db=await open();try{return await new Promise((resolve,reject)=>{const tx=db.transaction('members','readwrite'),store=tx.objectStore('members'),req=store.get(stake);let row:LocalRecord|null=null;req.onsuccess=()=>{row=req.result||null;if(row&&row.expires_at<=Date.now()){store.delete(stake);row=null;}};tx.oncomplete=()=>resolve(row);tx.onerror=()=>reject(tx.error);});}finally{db.close();}
+}
+export async function saveLocal(stake:string,data:unknown,revision:string|null,expires_at:number):Promise<LocalRecord>{
+  const db=await open();try{return await new Promise((resolve,reject)=>{const tx=db.transaction('members','readwrite'),store=tx.objectStore('members'),req=store.get(stake);let error:Error|null=null;const next={revision:crypto.randomUUID(),expires_at,data};req.onsuccess=()=>{if((req.result?.revision??null)!==revision){error=new Error('Local cache changed in another tab. Reopen Portfolio before saving.');tx.abort();return;}store.put(next,stake);};tx.oncomplete=()=>resolve(next);tx.onabort=()=>reject(error||tx.error);tx.onerror=()=>reject(tx.error);});}finally{db.close();}
+}
+export async function removeLocal(stake:string){const db=await open();try{await new Promise<void>((resolve,reject)=>{const tx=db.transaction('members','readwrite');tx.objectStore('members').delete(stake);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);});}finally{db.close();}}

@@ -26,6 +26,7 @@ import type {PaymentLink} from './mint-payments';
 import {PaymentLinks} from './PaymentLinks';
 import {AssetOverlay} from './AssetOverlay';
 import {MenuTile,AdaUsdAmount} from './ui';
+import {portfolioSettings as localStorage,flushVault} from './vault';
 import {CexTimeline} from './CexTimeline';
 import {matchesTransaction} from './transaction-search';
 import {unrealisedStatus} from './metric-status';
@@ -84,6 +85,7 @@ export default function Home({memberStake}:{memberStake:string}){
   const key=memberStake+'::'+wallets.map(w=>w.address).sort().join('|');
   const overrideKey='tdsp-member-basis:'+key;
   const paymentKey='tdsp-member-payments:'+key;
+  useEffect(()=>{const changed=(event:Event)=>setCacheNotice((event as CustomEvent<string>).detail);window.addEventListener('tdsp:portfolio-cache-notice',changed);return()=>window.removeEventListener('tdsp:portfolio-cache-notice',changed);},[]);
 
   useEffect(()=>{try{const saved=JSON.parse(localStorage.getItem(SETTINGS)||'null');setWallets(memberWallets(memberStake,saved));}catch{setCacheNotice('Browser storage is unavailable; wallet settings may not persist.');}setReady(true);return()=>controller.current?.abort();},[]);
   useEffect(()=>{if(!ready)return;setSnapshot(null);setError('');try{setOverrides(JSON.parse(localStorage.getItem(overrideKey)||'{}'));}catch{setOverrides({});}try{const links=JSON.parse(localStorage.getItem(paymentKey)||'[]');setPaymentLinks(Array.isArray(links)?links.filter(l=>l&&['assetId','receiptHash','paymentHash','lovelace'].every(k=>typeof l[k]==='string')):[]);}catch{setPaymentLinks([]);}void refresh();return()=>controller.current?.abort();/* wallet scope determines the cached portfolio */
@@ -119,7 +121,7 @@ export default function Home({memberStake}:{memberStake:string}){
     const started=Date.now();setRefreshStarted(started);setClock(started);setAnalysis(null);setCounting(null);setCounted(null);
     setBusy(true);setInitialising(true);setError('');setNotice('');setStatus('Initialising wallets · loading saved data…');
     try{
-      let cached:Snapshot|null=null;try{cached=await readCache(key);}catch{setCacheNotice('Local cache unavailable. Live data will still load.');}
+      let cached:Snapshot|null=null;try{cached=await readCache(key);}catch{setCacheNotice('Portfolio cache is locked. Sign in and approve unlock again.');throw new Error('Portfolio cache is locked.');}
       signal.throwIfAborted();if(cached)setSnapshot(cached);
       setStatus('Initialising wallets · finding linked addresses…');
       const stakes=wallets.map(w=>w.address).filter(validStakeAddress);
@@ -163,7 +165,7 @@ export default function Home({memberStake}:{memberStake:string}){
         if(data.pricing_unavailable)warnings.push('Token market prices unavailable; asset images and fallback valuations can still load.');
       }
       signal.throwIfAborted();setSnapshot({...next});setNotice(warnings.join(' '));
-      const persist=async()=>{try{await saveCache(key,next);}catch{setCacheNotice('The browser could not save the cache. Keep this page open or retry later.');}};
+      const persist=async()=>{try{await saveCache(key,next);}catch{setCacheNotice('Portfolio cache could not be updated. Keep this page open and check Storage settings.');}};
       const incremental=sameAddresses&&cached?.complete===true&&next.txs.every(tx=>Array.isArray(next.facts[tx.tx_hash]?.externalInputs));
       const historyIndex=createHistoryIndex(next.txs,incremental);
       await persist();const seenPages=new Set<string>();
@@ -216,6 +218,7 @@ export default function Home({memberStake}:{memberStake:string}){
       const historyHashes=new Set(next.txs.map(tx=>tx.tx_hash));
       next.facts=Object.fromEntries(Object.entries(next.facts).filter(([hash])=>historyHashes.has(hash)));
       next.complete=next.txs.every(t=>hasCounterpartyData(next.facts[t.tx_hash]))&&[...scheduled].every(hash=>refreshedHashes.has(hash));await persist();signal.throwIfAborted();setSnapshot({...next});
+      await flushVault();signal.throwIfAborted();
       setStatus(next.complete?`Updated ${new Date(next.updated).toLocaleString()}`:'Some transactions are awaiting analysis. Refresh to retry.');
     }catch(e){if(!signal.aborted){setError(e instanceof Error?e.message:'Could not update this portfolio.');setStatus('Refresh incomplete · showing available data');}}
     finally{if(!signal.aborted){setClock(Date.now());setBusy(false);setInitialising(false);setCounting(null);}}
@@ -225,12 +228,12 @@ export default function Home({memberStake}:{memberStake:string}){
     next=memberWallets(memberStake,next);controller.current?.abort();
     setBusy(true);setInitialising(true);setAnalysis(null);setCounting(null);setCounted(null);setStatus('Initialising wallets…');
     const started=Date.now();setRefreshStarted(started);setClock(started);
-    try{localStorage.setItem(SETTINGS,JSON.stringify(next));}catch{setCacheNotice('Wallet settings could not be saved in this browser.');}
+    try{localStorage.setItem(SETTINGS,JSON.stringify(next));}catch{setCacheNotice('Wallet settings could not be saved to the selected cache.');}
     setWallets(next);
   }
   function saveCexAddresses(entries:CexAddress[]){
     try{localStorage.setItem(CEX_SETTINGS,JSON.stringify(entries));setCexAddresses(entries);return true;}
-    catch{setCacheNotice('CEX addresses could not be saved in this browser.');return false;}
+    catch{setCacheNotice('CEX addresses could not be saved to the selected cache.');return false;}
   }
   function addWallet(e:React.FormEvent){e.preventDefault();const a=address.trim().toLowerCase();if(!validWalletAddress(a)){setWalletError('Enter a valid mainnet stake address (stake1…) or payment address (addr1…).');return;}if(wallets.some(w=>w.address===a)){setWalletError('This address is already included.');return;}saveWallets([...wallets,{address:a,label:name.trim()||`Wallet ${wallets.length+1}`}]);setAddress('');setName('');setWalletError('');}
   function updateOverride(id:string,field:'average'|'price'|'decimals',value:string){if(value!==''&&(parseAmount(value)===null||(field==='decimals'&&tokenDecimals(Number(value))===null)))return;const next={...overrides,[id]:{...overrides[id],[field]:value}};setOverrides(next);try{localStorage.setItem(overrideKey,JSON.stringify(next));}catch{setCacheNotice('Your price entries could not be saved locally.');}}

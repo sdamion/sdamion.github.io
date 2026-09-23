@@ -50,6 +50,7 @@ let SESSION_KEY = `tdsp-raffle-session-${ROLE}`;
 let sessionToken = sessionStorage.getItem(SESSION_KEY) || '';
 const dashboardChildOverlays = new Map();
 let closePortfolio = null;
+let portfolioUnlockWallet = null;
 let adminTransactionWallet = null;
 let raffleAnchorSupported = false;
 let raffleMinimumSupported = false;
@@ -641,18 +642,14 @@ async function openMemberPortfolio() {
         bodyNodes: [container], enableSearch: false
     });
     closePortfolio = close;
-    if (window.TDSPRuntime.isMobileDevice()) {
-        container.textContent = t('Portfolio is available on desktop computers only.');
-        return;
-    }
     container.textContent = t('Loading member portfolio…');
     try {
-        const module = await import('./portfolio/app.js?v=20260923-portfolio-desktop');
+        const module = await import('./portfolio/app.js?v=20260923-mobile-remote');
         if (closed) return;
         container.replaceChildren();
-        dispose = module.mountPortfolio(container, { role: ROLE });
-    } catch {
-        if (!closed) container.textContent = t('Portfolio could not be loaded. Close and try again.');
+        dispose = module.mountPortfolio(container, { role: ROLE, getWallet: () => portfolioUnlockWallet });
+    } catch (error) {
+        if (!closed) container.textContent = t(error.message || 'Portfolio could not be loaded. Close and try again.');
     }
 }
 
@@ -1142,6 +1139,8 @@ async function authenticateAddress(wallet, address) {
     });
     sessionToken = session.token;
     sessionStorage.setItem(SESSION_KEY, sessionToken);
+    window.dispatchEvent(new CustomEvent('tdsp:portfolio-session-expired'));
+    portfolioUnlockWallet = wallet;
     setStatus('Wallet verified.');
     await loadProtectedArea();
 }
@@ -2086,6 +2085,7 @@ async function submitDraw(event) {
 }
 
 function logout() {
+    portfolioUnlockWallet = null;
     closePortfolio?.();
     setRaffleOverlay(false);
     sessionToken = '';

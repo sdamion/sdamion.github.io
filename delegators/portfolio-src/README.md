@@ -1,8 +1,64 @@
 # Member portfolio
 
+## Private encrypted cache
+
+Opening Portfolio offers local or remote storage; member sign-in itself does not request
+a Portfolio signature. Storage settings use the existing universal overlay and allow
+switching and separately confirmed local/remote deletion. Switching normally loads the
+destination's own cache. An explicit checkbox copies the current data over the destination;
+the source copy remains until the user deletes it. Changing storage stops the current
+analysis before switching, then reloads the chosen cache and resumes normal refresh.
+
+Phones and tablets may open Portfolio using encrypted remote storage with a compatible
+wallet. The chooser defaults to remote and disables local storage on mobile devices.
+Local opening is also guarded in the storage module. Desktop window width is not used.
+
+Local storage uses member-scoped IndexedDB, does not upload a Portfolio cache, and does not
+require another wallet approval. It is NOT wallet-encrypted: browser access can expose it.
+The browser can remove expired local data only when the site next runs. Local cache settings
+are not available across devices. Both modes still use backend public-data API requests.
+
+Choosing remote storage requests a separate CIP-30/CIP-8 stake-key signature for Portfolio.
+This is NOT the login challenge. Its signature never goes to the backend or browser storage.
+The browser verifies the message, Ed25519 signature and stake-key hash, derives a
+nonextractable AES-256-GCM key with HKDF-SHA256, and keeps it in memory until logout/reload.
+The backend stores only a gzip-compressed encrypted envelope, with a new random nonce
+on every write. Wallets, CEX labels, price overrides, payment links and the latest wallet-set
+snapshot are inside that envelope. Existing local settings/current snapshot migrate after
+unlock; legacy plaintext member caches are removed only after the encrypted save succeeds.
+
+Only the authenticated session's resolved stake identity can access its vault. There is
+no admin owner override or recovery key. Concurrent devices use revision checks: a stale
+save fails instead of overwriting newer data. Writes run at most once per 30-second change
+window, at analysis completion and on closing Portfolio. Keep the page open until the
+encrypted-save message; abrupt browser closure can lose unsaved changes.
+
+The seven-day retention clock starts/resets on an authenticated vault unlock/read or an
+explicit activity request from trusted user interaction in Portfolio (at most hourly), NOT
+background refresh writes. Expired vaults are inaccessible immediately and pruned on startup
+and hourly. Exclude `data/portfolio-private` from backups, snapshots and request-body logging;
+the application cannot erase external backup copies. Backend cache reads are not proof that
+decryption succeeded. They establish authenticated activity only.
+
+Wallet signature reproducibility must be tested with each supported wallet. Switching wallet
+implementations may change signed COSE headers and therefore the derived key. If decryption
+fails, no cache is overwritten; use the original signing wallet/account. No wallet/key recovery
+means no recovery of the encrypted cache. Public blockchain data can still be fetched again.
+Script/hardware stake accounts that cannot sign this message are not supported by this flow.
+
+This protects stored cache contents, not against malicious website code, browser extensions,
+or an administrator observing public transaction API requests while the portfolio is in use.
+Never approve the private unlock message on a different website or disclose its signature.
+
+Deploy **koios-proxy first**, then the website. The Dockerfile already copies all files under
+`member-portfolio`, including `vault-store.mjs`. Configure Nginx Proxy Manager to permit
+`client_max_body_size 32m;` for this API, with TLS. New authenticated GET/POST
+`/api/portfolio/vault` stores envelopes in the existing persistent data volume. Other JSON
+API routes retain their 8 KB request limit. The local development proxy supports the same route.
+
 The members and admin dashboards load this React widget only after wallet authentication. Its first wallet comes from the authenticated `/api/portfolio/session` response, never a URL parameter or a fixed personal address. Stake wallets expand to all associated payment addresses, including empty/spent addresses. Extra wallets and IndexedDB snapshots are scoped to the verified member and wallet set.
 
-The widget mounts inside the existing universal dashboard overlay and uses the website's shared stylesheet, tiles, tables and buttons. It has no Shadow DOM or separate stylesheet. The site's CSP, signing flow and wallet permissions are unchanged. Closing or locking the dashboard unmounts it and aborts pending requests.
+The widget mounts inside the existing universal dashboard overlay and uses the website's shared stylesheet, tiles, tables and buttons. It has no Shadow DOM or separate stylesheet. Closing the view keeps ongoing refresh alive; logout destroys the instance and clears in-memory keys.
 
 ## Build
 

@@ -10,7 +10,7 @@ import type {CexAddress} from './cex';
 export function CexAddresses({entries,owned,onChange}:{entries:CexAddress[];owned:string[];onChange:(entries:CexAddress[])=>boolean}){
   const [name,setName]=useState(''),[address,setAddress]=useState(''),[error,setError]=useState('');
   return <section className="portfolio-section">
-    <p className="small muted">Saved exchange addresses use your CEX rule: incoming ADA is a buy, outgoing ADA a sell. This does not decode DEX swaps. Saved in this browser.</p>
+    <p className="small muted">Saved exchange addresses use your CEX rule: incoming ADA is a buy, outgoing ADA a sell. This does not decode DEX swaps. Saved using your selected Portfolio storage.</p>
     <form className="wallet-form governance-drep-registration-form" onSubmit={event=>{
       event.preventDefault();const value=normalizeExchangeAddress(address);setError('');
       if(!validExchangeAddress(value)){setError('Enter a valid mainnet payment, stake or Byron address (addr1…, stake1…, DdzFF… or Ae2…).');return;}

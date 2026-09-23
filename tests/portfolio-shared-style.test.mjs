@@ -60,3 +60,20 @@ test('wallet and exchange addresses use compact shared table rows', () => {
     assert.match(byron, /title=\{row.address\}/);
     assert.match(byron, /\{short\(row.address\)\}/);
 });
+
+test('storage choice is inside Portfolio, optional, and uses the universal settings overlay', () => {
+    const entry = read('delegators/portfolio-src/entry.tsx');
+    const choice = read('delegators/portfolio-src/StorageChoice.tsx');
+    const access = read('delegators/delegator-access.js');
+    assert.match(entry, /<StorageChoice/);
+    assert.match(entry, /<AssetOverlay id="portfolio-storage-overlay"/);
+    assert.match(choice, /Local browser/);
+    assert.match(choice, /not wallet-encrypted/);
+    assert.match(choice, /Encrypted remote cache/);
+    assert.match(choice, /Confirm deletion/);
+    assert.match(choice, /disabled=\{mobile\}/);
+    assert.match(choice, /Available on desktop, phones and tablets/);
+    assert.doesNotMatch(entry, /Portfolio is available on desktop computers only/);
+    assert.doesNotMatch(access, /Portfolio is available on desktop computers only/);
+    assert.doesNotMatch(access, /await module\.unlockPortfolio/);
+});
