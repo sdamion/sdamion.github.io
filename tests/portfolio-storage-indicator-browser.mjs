@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 import path from 'node:path';
+import {readFile} from 'node:fs/promises';
 const require=createRequire(new URL('../delegators/portfolio-src/package.json',import.meta.url));
 const {build}=require('esbuild');
 const {chromium}=await import(process.argv[2]||'playwright');
@@ -17,7 +18,7 @@ const bundle=await build({entryPoints:[path.resolve('delegators/portfolio-src/en
     export const flushVault=async()=>{};
     export const unlockPortfolio=async()=>{};
     export const deleteStoredCache=async()=>{mode=null;};
-    export async function switchStorage(next){window.approvals=(window.approvals||0)+1;if(next==='remote')await new Promise((resolve,reject)=>window.approve=ok=>ok?resolve():reject(new Error('Wallet approval declined')));mode=next;localStorage.setItem('storage',next);}
+    export async function switchStorage(next,stake,wallet){if(next==='remote'&&!wallet)throw new Error('Reconnect your wallet in the members area to enable encrypted remote storage.');window.approvals=(window.approvals||0)+1;if(next==='remote')await new Promise((resolve,reject)=>window.approve=ok=>ok?resolve():reject(new Error('Wallet approval declined')));mode=next;localStorage.setItem('storage',next);}
   `}));
   build.onLoad({filter:/\/transport\.ts$/},()=>({loader:'ts',contents:`export const setSessionRole=()=>{};export const portfolioFetch=async()=>({ok:true,json:async()=>({stake_address:'${stake}'})});`}));
   build.onLoad({filter:/\/App\.tsx$/},()=>({loader:'tsx',contents:'export default function Home(){return <div>Portfolio contents</div>;}'}));
@@ -29,8 +30,9 @@ try{
   await page.route('**/*',route=>route.fulfill({contentType:'text/html',body:'<div id="root"></div>'}));
   await page.goto('http://127.0.0.1:8998/');
   async function mount(){
+    await page.addScriptTag({content:await readFile('shared/runtime.js','utf8')});
     await page.evaluate(()=>{window.createUniversalOverlay=options=>{const overlay=document.createElement('div');overlay.id=options.id;const back=document.createElement('button');back.textContent='Back';back.onclick=options.closeOverlay;overlay.append(back,...options.bodyNodes);document.body.append(overlay);return {overlay};};});
-    await page.addScriptTag({type:'module',content:bundle.outputFiles[0].text+'\nwindow.detach=mountPortfolio(document.getElementById("root"));'});
+    await page.addScriptTag({type:'module',content:bundle.outputFiles[0].text+'\nlet connected=!localStorage.getItem("storage");window.detach=mountPortfolio(document.getElementById("root"),{getWallet:async(reconnect)=>{if(reconnect){connected=true;window.reconnects=(window.reconnects||0)+1;}return connected?{signData:async()=>({signature:"",key:""})}:null;}});'});
   }
   await mount();
   await page.getByRole('heading',{name:'Portfolio storage',exact:true}).waitFor();
@@ -42,7 +44,10 @@ try{
   assert.equal(await page.getByRole('heading',{name:'Portfolio storage'}).count(),0);
   await page.getByRole('button',{name:'Portfolio storage: Encrypted remote. Change storage',exact:true}).waitFor();
   await page.reload();await mount();
+  await page.getByText('Reconnect your wallet in the members area to enable encrypted remote storage.',{exact:true}).waitFor();
+  await page.getByRole('button',{name:'Unlock Portfolio',exact:true}).click();
   await page.waitForFunction(()=>typeof window.approve==='function');
+  assert.equal(await page.evaluate(()=>window.reconnects),1);
   assert.equal(await page.getByRole('heading',{name:'Portfolio storage'}).count(),0);
   await page.evaluate(()=>window.approve(false));
   await page.getByText('Wallet approval declined',{exact:true}).waitFor();

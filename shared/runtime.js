@@ -738,7 +738,25 @@
         });
     });
 
+    function createWalletConnectBox({ prompt = '', id = '', content = [] } = {}) {
+        const box = document.createElement('section');
+        box.className = 'wallet-connect-box';
+        if (id) box.id = id;
+        const message = document.createElement('p');
+        message.className = 'wallet-connect-prompt';
+        message.textContent = prompt;
+        message.setAttribute('data-i18n-auto', '');
+        message.setAttribute('data-i18n-auto-original', prompt);
+        const body = document.createElement('div');
+        body.className = 'wallet-connect-content';
+        body.append(...content);
+        box.append(message, body);
+        window.TDSPI18n?.applyTranslations?.(box);
+        return { box, body };
+    }
+
     window.TDSPRuntime = Object.freeze({
+        createWalletConnectBox,
         isLocalPreview: isLocalPreviewHostname(window.location.hostname),
         fetchResponse,
         fetchJson,

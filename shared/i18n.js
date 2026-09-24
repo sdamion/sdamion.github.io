@@ -3,9 +3,9 @@
     const DEFAULT_LANGUAGE = 'en';
     const LANGUAGE_CONFIG = Object.freeze({
         en: { label: 'English', flag: '🇺🇸' },
-        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20260918-ask-followups' },
-        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20260918-ask-followups' },
-        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20260918-ask-followups' }
+        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20260924-shared-wallet-connect' },
+        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20260924-shared-wallet-connect' },
+        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20260924-shared-wallet-connect' }
     });
     const TRANSLATION_ATTR = 'data-i18n';
     const TRANSLATION_ORIGINAL_ATTR = 'data-i18n-original';
@@ -510,7 +510,7 @@
         ['Question about Cardano governance', 'question_cardano_governance'],
         ['Reason for this vote (English)', 'reason_for_vote_english'],
         ['Requesting a one-time wallet challenge...', 'requesting_wallet_challenge'],
-        ['Review and sign the access challenge in your wallet. No transaction or fee is created.', 'review_sign_access_challenge'],
+        ['Always check what you are signing. Verify the website and selected account in your wallet before approving. This request only verifies wallet ownership for dashboard access; it does not send funds or create a transaction or network fee. Cancel if the request differs from this or you are unsure.', 'review_sign_access_challenge'],
         ['Raffles', 'raffles'],
         ['Raffle title', 'raffle_title'],
         ['Raffle wallet tokens', 'raffle_wallet_tokens'],
@@ -587,7 +587,9 @@
         ['Comma-separated addresses are also accepted.', 'comma_addresses_accepted'],
         ['Admin addresses', 'admin_addresses'],
         ['Format: enter one complete Mainnet address per line. Comma-separated addresses are also accepted.', 'admin_address_format_help'],
-        ['Sign a one-time wallet challenge with a stake key currently delegated to TDSP. This does not create a transaction or cost ADA.', 'delegator_sign_challenge_help'],
+        ['Select wallet and connect', 'delegator_sign_challenge_help'],
+        ['Review and approve the wallet message to unlock your encrypted Portfolio cache. This is separate from dashboard sign-in. Never share the signature. No transaction or network fee is created.', 'portfolio_unlock_prompt'],
+        ['Open your locally saved Portfolio cache.', 'portfolio_local_open_prompt'],
         ['Stake admin', 'stake_admin'],
         ['Stake credential verified', 'stake_credential_verified'],
         ['Verified stake key', 'verified_stake_key'],

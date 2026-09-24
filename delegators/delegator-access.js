@@ -646,10 +646,10 @@ async function openMemberPortfolio() {
     closePortfolio = close;
     container.textContent = t('Loading member portfolio…');
     try {
-        const module = await import('./portfolio/app.js?v=20260924-shared-transaction-filters');
+        const module = await import('./portfolio/app.js?v=20260924-portfolio-reconnect');
         if (closed) return;
         container.replaceChildren();
-        dispose = module.mountPortfolio(container, { role: ROLE, getWallet: () => portfolioUnlockWallet });
+        dispose = module.mountPortfolio(container, { role: ROLE, getWallet: (reconnect, stake) => reconnect && !portfolioUnlockWallet ? reconnectPortfolioWallet(stake) : portfolioUnlockWallet });
     } catch (error) {
         if (!closed) container.textContent = t(error.message || 'Portfolio could not be loaded. Close and try again.');
     }
@@ -1113,6 +1113,56 @@ async function loadLostStake() {
     return payload;
 }
 
+async function reconnectPortfolioWallet(stake) {
+    const { BrowserWallet } = await loadMesh();
+    const wallets = BrowserWallet.getInstalledWallets();
+    if (!wallets.length) throw new Error(t('No CIP-30 Cardano wallet extension was detected.'));
+    return new Promise((resolve, reject) => {
+        const list = document.createElement('div');
+        list.className = 'wallet-list';
+        const status = document.createElement('p');
+        status.setAttribute('role', 'status');
+        const { box } = window.TDSPRuntime.createWalletConnectBox({ prompt: 'Select wallet and connect', content: [list, status] });
+        let settled = false;
+        const close = () => {
+            settled = true;
+            elements.overlay.remove();
+            window.syncGovernanceMenuOverlayAccessibility?.();
+        };
+        const elements = window.createUniversalOverlay({
+            id: 'portfolio-reconnect-overlay', titleId: 'portfolio-reconnect-title', titleText: 'Unlock Portfolio',
+            bodyNodes: [box], enableSearch: false, showBack: true, closeOnBackdrop: false,
+            closeOverlay: () => { close(); reject(new Error('Wallet connection cancelled.')); }
+        });
+        wallets.forEach(info => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'wallet-option';
+            button.textContent = info.name;
+            button.addEventListener('click', async () => {
+                list.querySelectorAll('button').forEach(item => { item.disabled = true; });
+                status.textContent = '';
+                try {
+                    const wallet = await BrowserWallet.enable(info.id);
+                    if (settled) return;
+                    if (await wallet.getNetworkId() !== 1) throw new Error(t('Switch your wallet to Cardano Mainnet.'));
+                    const rewards = await getWalletAddresses(wallet, 'getRewardAddresses');
+                    if (!rewards.includes(stake)) throw new Error('Select the wallet account used to sign in to this dashboard.');
+                    if (settled) return;
+                    portfolioUnlockWallet = wallet;
+                    close();
+                    resolve(wallet);
+                } catch (error) {
+                    if (settled) return;
+                    status.textContent = error?.info || error.message;
+                    list.querySelectorAll('button').forEach(item => { item.disabled = false; });
+                }
+            });
+            list.append(button);
+        });
+    });
+}
+
 async function getWalletAddresses(wallet, method) {
     try {
         const result = await wallet[method]?.();
@@ -1128,7 +1178,7 @@ async function authenticateAddress(wallet, address) {
         method: 'POST',
         body: JSON.stringify({ role: ROLE, address })
     });
-    setStatus('Review and sign the access challenge in your wallet. No transaction or fee is created.');
+    setStatus('Always check what you are signing. Verify the website and selected account in your wallet before approving. This request only verifies wallet ownership for dashboard access; it does not send funds or create a transaction or network fee. Cancel if the request differs from this or you are unsure.');
     const signed = await wallet.signData(challenge.payload, address);
     const session = await requestJson(ENDPOINTS.verify, {
         method: 'POST',
@@ -1175,8 +1225,12 @@ async function connectWallet(walletInfo) {
     if (await wallet.getNetworkId() !== 1) throw new Error(t('Switch your wallet to Cardano Mainnet.'));
 
     if (ROLE === 'delegator') {
-        const rewardAddresses = await getWalletAddresses(wallet, 'getRewardAddresses');
+        const rewardAddresses = [...new Set(await getWalletAddresses(wallet, 'getRewardAddresses'))].filter(Boolean);
         if (!rewardAddresses.length) throw new Error(t('No Cardano stake key was found in this wallet.'));
+        if (rewardAddresses.length === 1) {
+            await authenticateAddress(wallet, rewardAddresses[0]);
+            return;
+        }
         renderStakeAddressChoices(wallet, rewardAddresses);
         setStatus('Select a stake key to continue.');
         return;
@@ -1516,6 +1570,7 @@ async function populateWallets() {
     list.replaceChildren();
     setStatus('Detecting installed Cardano wallets...');
     const { BrowserWallet } = await loadMesh();
+    if (!list.isConnected) return;
     const wallets = BrowserWallet.getInstalledWallets();
     if (!wallets.length) throw new Error(t('No CIP-30 Cardano wallet extension was detected.'));
     wallets.forEach(walletInfo => {
@@ -1533,7 +1588,7 @@ async function populateWallets() {
         }));
         list.appendChild(button);
     });
-    setStatus('Choose the wallet you want to verify.');
+    setStatus('');
 }
 
 function createDrawCard(draw, viewerAddress = null) {
@@ -2097,6 +2152,7 @@ function logout() {
     postEmbeddedDelegatorIdentity();
     document.getElementById('raffle-wallet-list').replaceChildren();
     setStatus('Wallet session closed.');
+    if (ROLE === 'delegator') populateWallets().catch(error => setStatus(error.message, true));
 }
 
 function setRaffleRole(role) {
@@ -2175,6 +2231,7 @@ async function init(options = {}) {
                 document.body.classList.remove('raffle-auth-gate-pending');
                 showAuthenticatedUi(false);
                 setStatus(error.message || 'Dashboard could not be loaded. Please try again.', true);
+                if (ROLE === 'delegator') await populateWallets().catch(error => setStatus(error.message, true));
                 return;
             }
             if (!overlayMode && ROLE === 'admin') {
@@ -2186,6 +2243,7 @@ async function init(options = {}) {
     }
     document.body.classList.remove('raffle-auth-gate-pending');
     showAuthenticatedUi(false);
+    if (ROLE === 'delegator') await populateWallets().catch(error => setStatus(error.message, true));
 }
 
 window.TDSPDelegatorAccess = {

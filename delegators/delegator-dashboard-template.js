@@ -3,6 +3,15 @@
         const template = document.createElement('template');
         template.innerHTML = html.trim();
         const root = template.content.firstElementChild;
+        const connect = root.querySelector('[data-wallet-connect]');
+        if (connect) {
+            const { box } = window.TDSPRuntime.createWalletConnectBox({
+                id: connect.id,
+                prompt: 'Select wallet and connect',
+                content: [...connect.childNodes]
+            });
+            connect.replaceWith(box);
+        }
         markDashboardStaticText(root);
         window.TDSPI18n?.applyTranslations?.(root);
         return root;
@@ -32,11 +41,7 @@
         return createTemplate(`
             <div class="raffle-page raffle-embedded raffle-overlay-page">
                 <main class="raffle-main">
-                    <section class="raffle-shell" id="raffle-access">
-                        <p class="eyebrow">TDSP Delegators</p>
-                        <h1>Dashboard</h1>
-                        <p>Sign a one-time wallet challenge with a stake key currently delegated to TDSP. This does not create a transaction or cost ADA.</p>
-                        <button id="raffle-connect" class="governance-vote-button" type="button">Connect Delegator Wallet</button>
+                    <section data-wallet-connect id="raffle-access">
                         <div id="raffle-wallet-list" class="wallet-list raffle-wallet-list"></div>
                     </section>
 
