@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {byronTransactionRows} from './byron-exchanges.ts';
 import {base58} from '@scure/base';
 import {encode,Tagged} from 'cborg';
 import CRC32 from 'crc-32';
@@ -22,6 +23,11 @@ assert.equal(verification[1].amountRaw,null);
 assert.equal(verification[1].walletChangeRaw,'10000000');
 assert.deepEqual(byronAddressTransactions([buy,sell],saved),[]);
 const found=discoveredByronAddresses([buy,buy,sell],[own],existing);
+const transactionRows=byronTransactionRows([buy,buy,sell],found);
+assert.deepEqual(transactionRows.map(row=>row.id),['sell','buy',saved]);
+assert.deepEqual(transactionRows[0].addresses,[a,b].sort());
+assert.deepEqual(transactionRows[0].facts,[sell]);
+assert.equal(transactionRows[2].transactions,0);
 assert.equal(found.length,3);
 assert.deepEqual(found.find(row=>row.address===a),{address:a,transactions:2,lastSeen:2});
 assert.deepEqual(found.find(row=>row.address===saved),{address:saved,transactions:0,lastSeen:null});

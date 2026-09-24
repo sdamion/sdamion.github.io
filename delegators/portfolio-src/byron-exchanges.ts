@@ -35,6 +35,20 @@ export function discoveredByronAddresses(facts:Fact[],owned:string[],entries:Cex
   return [...found.values()].map(item=>({address:item.address,transactions:item.hashes.size,lastSeen:item.lastSeen})).sort((a,b)=>(b.lastSeen??-Infinity)-(a.lastSeen??-Infinity)||a.address.localeCompare(b.address));
 }
 
+export function byronTransactionRows(facts:Fact[],candidates:ReturnType<typeof discoveredByronAddresses>){
+  const allowed=new Set(candidates.map(row=>row.address)),seen=new Set<string>();
+  const rows:{id:string;addresses:string[];facts:Fact[];lastSeen:number|null;transactions:number}[]=[];
+  for(const fact of new Map(facts.map(fact=>[fact.hash,fact])).values()){
+    const addresses=[...new Set([...fact.externalInputs||[],...fact.externalOutputs||[]].map(row=>row.address).filter(address=>allowed.has(address)))].sort();
+    if(!addresses.length)continue;
+    addresses.forEach(address=>seen.add(address));
+    rows.push({id:fact.hash,addresses,facts:[fact],lastSeen:fact.time,transactions:1});
+  }
+  // Keep saved addresses editable even when their history has not been loaded.
+  for(const {address} of candidates)if(!seen.has(address))rows.push({id:address,addresses:[address],facts:[],lastSeen:null,transactions:0});
+  return rows.sort((a,b)=>(b.lastSeen??-Infinity)-(a.lastSeen??-Infinity)||a.id.localeCompare(b.id));
+}
+
 export function groupByronAddresses(facts:Fact[],candidates:ReturnType<typeof discoveredByronAddresses>){
   const parent=new Map(candidates.map(row=>[row.address,row.address]));
   const root=(address:string)=>{let current=address;while(parent.get(current)!==current)current=parent.get(current)!;let next=address;while(next!==current){const previous=parent.get(next)!;parent.set(next,current);next=previous;}return current;};
