@@ -7,8 +7,11 @@ import {validByronAddress} from './exchange-address';
 import {discoveredByronAddresses,saveByronSelection,byronGroupTransactions,byronTransactionRows} from './byron-exchanges';
 import {cexAdaNetPosition,cexUsdNetPosition,isCexTransaction,cexAdaTransfer} from './cex';
 import type {CexAddress} from './cex';
-import type {Fact} from './core';
-import {short} from './core';
+import type {Fact,Market} from './core';
+import {short,kindOf} from './core';
+import {TransactionFilters} from './TransactionFilters';
+import {withinTransactionDates} from './transaction-date';
+import {matchesTransaction} from './transaction-search';
 import {AssetOverlay} from './AssetOverlay';
 
 export function AddressTransactions({facts,address,addresses,entries,count,addressEditor}:{facts:Fact[];address:string;addresses?:string[];entries:CexAddress[];count:number;addressEditor?:ReactNode}){
@@ -27,8 +30,9 @@ export function AddressTransactions({facts,address,addresses,entries,count,addre
   </TableRow>)}</TableBody></Table>{!rows.length&&<p className="empty">No loaded transactions.</p>}</div></section></AssetOverlay>}</>;
 }
 
-export function ByronExchanges({facts,entries,owned,history,complete,onChange}:{facts:Record<string,Fact>;entries:CexAddress[];owned:string[];history:Record<string,number>;complete:boolean;onChange:(entries:CexAddress[])=>boolean}){
+export function ByronExchanges({facts,entries,owned,history,markets={},complete,onChange}:{facts:Record<string,Fact>;entries:CexAddress[];owned:string[];history:Record<string,number>;markets?:Record<string,Market>;complete:boolean;onChange:(entries:CexAddress[])=>boolean}){
   const [choices,setChoices]=useState<Record<string,boolean>>({}),[query,setQuery]=useState(''),[page,setPage]=useState(0),[status,setStatus]=useState('');
+  const [filter,setFilter]=useState('all'),[dateFrom,setDateFrom]=useState(''),[dateTo,setDateTo]=useState('');
   const all=useMemo(()=>Object.values(facts),[facts]);
   const [names,setNames]=useState<Record<string,string>>({});
   const savedNames=useMemo(()=>Object.fromEntries(entries.map(entry=>[entry.address,entry.name])),[entries]);
@@ -40,7 +44,12 @@ export function ByronExchanges({facts,entries,owned,history,complete,onChange}:{
   const dollars=useMemo(()=>cexUsdNetPosition(all,group,'0',history,null),[all,group,history]);
   const unresolved=useMemo(()=>all.filter(fact=>isCexTransaction(fact,group)&&!cexAdaTransfer(fact,group)).length,[all,group]);
   const combined=useMemo(()=>byronTransactionRows(all,candidates),[all,candidates]);
-  const filtered=combined.filter(row=>row.addresses.some(address=>`${address} ${names[address]??savedNames[address]??''}`.toLowerCase().includes(query.trim().toLowerCase())));
+  const filtered=combined.filter(row=>{
+    const fact=row.facts[0];
+    if((dateFrom||dateTo)&&(row.lastSeen===null||!withinTransactionDates(row.lastSeen,dateFrom,dateTo)))return false;
+    if(filter!=='all'&&(!fact||(filter==='cex'?!isCexTransaction(fact,group):kindOf(fact)!==filter)))return false;
+    return row.addresses.some(address=>`${address} ${names[address]??savedNames[address]??''}`.toLowerCase().includes(query.trim().toLowerCase()))||matchesTransaction(query,row.id,fact,markets,[]);
+  });
   const pages=Math.max(1,Math.ceil(filtered.length/25)),current=Math.min(page,pages-1);
   function saveSelection(){const next=saveByronSelection(entries,candidates.map(row=>row.address),selected,'Byron CEX',owned,names);if(onChange(next)){setNames({});setStatus('Byron names and selection saved.');}else setStatus('Could not save the selection.');}
   const renderNames=(addresses:string[])=><div className="portfolio-inline-addresses">{addresses.map(address=><div key={address}>
@@ -59,14 +68,14 @@ export function ByronExchanges({facts,entries,owned,history,complete,onChange}:{
     <p className="small muted">{group.length} saved addresses · {complete?'Loaded history':'Partial history'} · Transfer-day USD{unresolved?` · ${unresolved} mixed transfers excluded`:''}{dollars.missingPrices?` · ${dollars.missingPrices} transfers missing USD prices`:''}</p>
     <p className="small muted">All discovered Byron addresses are selected by default. Deselect any that do not belong to a CEX, then save to update totals. Exchange ownership is not verified. Saved using your selected Portfolio storage; these addresses are not added to your wallet balances.</p>
     <form className="portfolio-section" onSubmit={event=>{event.preventDefault();saveSelection();}}>
-      <div className="wallet-form"><label htmlFor="portfolio-byron-search">Search Byron addresses<Input id="portfolio-byron-search" name="byron_search" value={query} onChange={event=>{setQuery(event.target.value);setPage(0);}}/></label></div>
+      <TransactionFilters id="byron-transactions" query={query} onQuery={value=>{setQuery(value);setFilter('all');setPage(0);}} filter={filter} onFilter={value=>{setFilter(value);setPage(0);}} dateFrom={dateFrom} dateTo={dateTo} onDates={(from,to)=>{setDateFrom(from);setDateTo(to);setPage(0);}} placeholder="Asset name, transaction hash, wallet name or address"/>
       <div className="history-table portfolio-address-table portfolio-transaction-rows"><Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Address / CEX</TableHead><TableHead>Transaction</TableHead><TableHead>Last seen</TableHead><TableHead>ADA amount</TableHead></TableRow></TableHeader><TableBody>{filtered.slice(current*25,(current+1)*25).map(row=><TableRow key={row.id}>
         <TableCell>{row.addresses.length>1?[...new Set(row.addresses.map(address=>names[address]??savedNames[address]??'Byron CEX'))].join(' / '):renderNames(row.addresses)}</TableCell>
         <TableCell>{row.addresses.length>1?<span className="small muted">{row.addresses.length} mixed addresses</span>:renderAddresses(row.addresses)}</TableCell>
         <TableCell>{row.transactions?<a href={`https://cardanoscan.io/transaction/${row.id}`} title={row.id} target="_blank" rel="noreferrer">{short(row.id)}</a>:'No loaded transactions'}</TableCell><TableCell>{row.lastSeen===null?'Not in loaded history':new Date(row.lastSeen*1000).toLocaleDateString()}</TableCell>
         <TableCell><AddressTransactions facts={row.facts} address={row.addresses[0]} addresses={row.addresses} entries={group} count={row.transactions} addressEditor={row.addresses.length>1?<><div className="portfolio-section">{row.addresses.map(address=><div key={address}>{renderNames([address])}{renderAddresses([address])}</div>)}</div><button type="button" className="governance-vote-primary" onClick={saveSelection}>Save selection</button><p role="status">{status}</p></>:undefined}/></TableCell>
       </TableRow>)}</TableBody></Table></div>
-      {!filtered.length&&<p className="empty">{query?'No matching Byron addresses.':'No external Byron addresses found in loaded history yet.'}</p>}
+      {!filtered.length&&<p className="empty">{query||dateFrom||dateTo||filter!=='all'?'No matching Byron transactions.':'No external Byron addresses found in loaded history yet.'}</p>}
       {pages>1&&<Pagination><PaginationContent><PaginationItem><button type="button" className="governance-vote-secondary" disabled={current===0} onClick={()=>setPage(current-1)}>Previous</button></PaginationItem><PaginationItem><span className="small px-3">Page {current+1} / {pages}</span></PaginationItem><PaginationItem><button type="button" className="governance-vote-secondary" disabled={current===pages-1} onClick={()=>setPage(current+1)}>Next</button></PaginationItem></PaginationContent></Pagination>}
       <div className="section-heading"><button type="submit" className="governance-vote-primary">Save selection</button><span className="small muted">{selected.size} selected{pending?` · ${pending} not saved`:''}</span></div>
     </form>
