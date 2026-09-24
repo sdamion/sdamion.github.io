@@ -32,7 +32,7 @@ export function discoveredByronAddresses(facts:Fact[],owned:string[],entries:Cex
     item.lastSeen=Math.max(item.lastSeen??0,fact.time);
   }
   for(const entry of entries)get(entry.address);
-  return [...found.values()].map(item=>({address:item.address,transactions:item.hashes.size,lastSeen:item.lastSeen})).sort((a,b)=>b.transactions-a.transactions||a.address.localeCompare(b.address));
+  return [...found.values()].map(item=>({address:item.address,transactions:item.hashes.size,lastSeen:item.lastSeen})).sort((a,b)=>(b.lastSeen??-Infinity)-(a.lastSeen??-Infinity)||a.address.localeCompare(b.address));
 }
 
 export function saveByronSelection(entries:CexAddress[],candidates:string[],selected:Set<string>,name:string,owned:string[]){
