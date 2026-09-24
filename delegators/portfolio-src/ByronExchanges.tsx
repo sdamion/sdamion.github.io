@@ -28,7 +28,7 @@ export function AddressTransactions({facts,address,addresses,entries,count}:{fac
 }
 
 export function ByronExchanges({facts,entries,owned,history,complete,onChange}:{facts:Record<string,Fact>;entries:CexAddress[];owned:string[];history:Record<string,number>;complete:boolean;onChange:(entries:CexAddress[])=>boolean}){
-  const [choices,setChoices]=useState<Record<string,boolean>>({}),[name,setName]=useState('Byron CEX'),[query,setQuery]=useState(''),[page,setPage]=useState(0),[status,setStatus]=useState('');
+  const [choices,setChoices]=useState<Record<string,boolean>>({}),[query,setQuery]=useState(''),[page,setPage]=useState(0),[status,setStatus]=useState('');
   const all=useMemo(()=>Object.values(facts),[facts]);
   const [names,setNames]=useState<Record<string,string>>({});
   const savedNames=useMemo(()=>Object.fromEntries(entries.map(entry=>[entry.address,entry.name])),[entries]);
@@ -50,14 +50,14 @@ export function ByronExchanges({facts,entries,owned,history,complete,onChange}:{
     </div>
     <p className="small muted">{group.length} saved addresses · {complete?'Loaded history':'Partial history'} · Transfer-day USD{unresolved?` · ${unresolved} mixed transfers excluded`:''}{dollars.missingPrices?` · ${dollars.missingPrices} transfers missing USD prices`:''}</p>
     <p className="small muted">All discovered Byron addresses are selected by default. Deselect any that do not belong to a CEX, then save to update totals. Exchange ownership is not verified. Saved using your selected Portfolio storage; these addresses are not added to your wallet balances.</p>
-    <form className="portfolio-section" onSubmit={event=>{event.preventDefault();const next=saveByronSelection(entries,candidates.map(row=>row.address),selected,name,owned,names);if(onChange(next)){setNames({});setStatus('Byron names and selection saved.');}else setStatus('Could not save the selection.');}}>
-      <div className="wallet-form"><label htmlFor="portfolio-byron-name">Name for newly selected addresses<Input id="portfolio-byron-name" name="byron_exchange_name" maxLength={60} required pattern=".*\S.*" value={name} onChange={event=>setName(event.target.value)}/></label><label htmlFor="portfolio-byron-search">Search Byron addresses<Input id="portfolio-byron-search" name="byron_search" value={query} onChange={event=>{setQuery(event.target.value);setPage(0);}}/></label></div>
+    <form className="portfolio-section" onSubmit={event=>{event.preventDefault();const next=saveByronSelection(entries,candidates.map(row=>row.address),selected,'Byron CEX',owned,names);if(onChange(next)){setNames({});setStatus('Byron names and selection saved.');}else setStatus('Could not save the selection.');}}>
+      <div className="wallet-form"><label htmlFor="portfolio-byron-search">Search Byron addresses<Input id="portfolio-byron-search" name="byron_search" value={query} onChange={event=>{setQuery(event.target.value);setPage(0);}}/></label></div>
       <div className="history-table portfolio-address-table portfolio-transaction-rows"><Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Address / CEX</TableHead><TableHead>Transaction</TableHead><TableHead>Last seen</TableHead><TableHead>ADA amount</TableHead></TableRow></TableHeader><TableBody>{filtered.slice(current*25,(current+1)*25).map(row=><TableRow key={row.id}>
         <TableCell><div className="portfolio-inline-addresses">{row.addresses.map(address=><div key={address}>
           <Input name={`byron_name_${address}`} aria-label={`Wallet name for ${address}`} maxLength={60} placeholder="Wallet name" value={names[address]??savedNames[address]??''} onChange={event=>{const value=event.target.value;setNames(previous=>({...previous,[address]:value}));setStatus('');}}/>
         </div>)}</div></TableCell>
         <TableCell><div className="portfolio-inline-addresses">{row.addresses.map(address=><div key={address} className="portfolio-address-row">
-          <a className="address" title={address} href={`https://cardanoscan.io/address/${address}`} target="_blank" rel="noreferrer"><span>{short(address)}</span><ExternalLink size={12}/></a>
+          <a className="address" title={address} href={`https://cardanoscan.io/address/${address}`} target="_blank" rel="noreferrer"><span>{address.slice(0,6)}…{address.slice(-4)}</span><ExternalLink size={12}/></a>
           <label><input type="checkbox" name="byron_cex_selection" aria-label={`Include ${address} in Byron CEX`} checked={selected.has(address)} onChange={event=>{const checked=event.target.checked;setChoices(previous=>({...previous,[address]:checked}));setStatus('');}}/> CEX</label>{selected.has(address)&&!group.some(entry=>entry.address===address)&&<span className="small muted">Not saved</span>}
         </div>)}</div></TableCell>
         <TableCell>{row.transactions?<a href={`https://cardanoscan.io/transaction/${row.id}`} title={row.id} target="_blank" rel="noreferrer">{short(row.id)}</a>:'No loaded transactions'}</TableCell><TableCell>{row.lastSeen===null?'Not in loaded history':new Date(row.lastSeen*1000).toLocaleDateString()}</TableCell>

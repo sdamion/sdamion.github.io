@@ -46,6 +46,7 @@ try{
   await page.addStyleTag({content:await readFile('shared/styles.css','utf8')});
   await page.evaluate(()=>window.renderDirectory());
   await page.locator('.portfolio-address-row').first().waitFor();
+  assert.equal(await page.locator('#portfolio-byron-name').count(),0);
   for(const width of [1440,390]){
     await page.setViewportSize({width,height:900});
     const metrics=await page.evaluate(()=>{
@@ -53,9 +54,11 @@ try{
       const input=row.querySelector('input'),link=row.querySelector('a'),label=row.querySelector('label');
       const cells=[...document.querySelectorAll('.portfolio-address-table tbody tr:first-child > td')];
       const bounds=[input,link,label].map(node=>node.getBoundingClientRect());
-      return {centers:bounds.map(rect=>rect.y+rect.height/2),aligned:cells.length===5&&cells.every(cell=>getComputedStyle(cell).verticalAlign==='middle'),pageFits:document.documentElement.scrollWidth<=innerWidth,rows:document.querySelectorAll('.portfolio-address-table tbody tr').length};
+      const shell=document.querySelector('.portfolio-address-table .table-shell');
+      return {centers:bounds.map(rect=>rect.y+rect.height/2),tableFits:shell.scrollWidth<=shell.clientWidth+1,aligned:cells.length===5&&cells.every(cell=>getComputedStyle(cell).verticalAlign==='middle'),pageFits:document.documentElement.scrollWidth<=innerWidth,rows:document.querySelectorAll('.portfolio-address-table tbody tr').length};
     });
-    assert.ok(Math.max(...metrics.centers)-Math.min(...metrics.centers)<2);
+    if(width>=900)assert.ok(Math.max(...metrics.centers)-Math.min(...metrics.centers)<2);
+    assert.equal(metrics.tableFits,true);
     assert.equal(metrics.aligned,true);assert.equal(metrics.pageFits,true);assert.equal(metrics.rows,1);
   }
   console.log('PASS: single transaction inline ADA; multiple transactions retain shared overlay; empty history.');

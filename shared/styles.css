@@ -55,9 +55,9 @@
 .portfolio-asset-image { display: block; width: 48px; height: 48px; object-fit: contain; }
 .portfolio-asset-button { flex-direction: column; align-items: flex-start; }
 .portfolio-asset-name { display: block; overflow-wrap: anywhere; white-space: normal; }
-.member-portfolio .table-shell table { min-width: 640px; }
+.member-portfolio .table-shell table { min-width: 0; }
 .member-portfolio .portfolio-address-table .table-shell { overflow-x: auto; }
-.member-portfolio .portfolio-address-table table { min-width: 900px; }
+.member-portfolio .portfolio-address-table table { min-width: 0; }
 .member-portfolio .portfolio-address-table :is(th, td) { vertical-align: top; text-align: left; }
 .member-portfolio .portfolio-address-table :is(th, td):nth-child(1) { width: 55%; }
 .member-portfolio .portfolio-address-table :is(th, td):nth-child(2) { width: 12%; }
@@ -78,16 +78,17 @@
 .member-portfolio .portfolio-address-row label { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .member-portfolio .portfolio-address-row label input { margin: 0; padding: 0; width: 18px; height: 18px; }
 .member-portfolio .portfolio-address-row > .small { grid-column: 1 / -1; }
-.member-portfolio .portfolio-transaction-rows :is(th, td) { vertical-align: middle; white-space: nowrap; }
+.member-portfolio .portfolio-transaction-rows :is(th, td) { vertical-align: middle; white-space: normal; overflow-wrap: anywhere; }
 .member-portfolio .portfolio-transaction-rows :is(th, td):nth-child(1) { width: 19%; }
 .member-portfolio .portfolio-transaction-rows :is(th, td):nth-child(2) { width: 30%; }
 .member-portfolio .portfolio-transaction-rows :is(th, td):nth-child(3) { width: 19%; }
 .member-portfolio .portfolio-transaction-rows :is(th, td):nth-child(4) { width: 12%; }
 .member-portfolio .portfolio-transaction-rows :is(th, td):nth-child(5) { width: 20%; }
-.member-portfolio .portfolio-inline-addresses { display: flex; align-items: center; gap: 12px; overflow-x: auto; }
-.member-portfolio .portfolio-inline-addresses > div { flex: 0 0 auto; }
-.member-portfolio .portfolio-inline-addresses input:not([type="checkbox"]) { width: 140px; }
-.member-portfolio .portfolio-transaction-rows .portfolio-address-row { display: flex; margin: 0; }
+.member-portfolio .portfolio-inline-addresses { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+.member-portfolio .portfolio-inline-addresses > div { flex: 0 1 auto; min-width: 0; max-width: 100%; }
+.member-portfolio .portfolio-inline-addresses input:not([type="checkbox"]) { width: 110px; max-width: 100%; }
+.member-portfolio .portfolio-transaction-rows .portfolio-address-row { display: flex; flex-wrap: wrap; margin: 0; }
+.member-portfolio .portfolio-transaction-rows .address span { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
 .member-portfolio .governance-action-buttons { list-style: none; padding: 0; }
 .member-portfolio .portfolio-linked-addresses { width: 100%; }
 .member-portfolio .portfolio-linked-addresses:not([open]) { display: block; }
