@@ -13,6 +13,7 @@ const bundle=await build({stdin:{contents:`
   const fact=analyse({tx_hash:'one',tx_timestamp:1,fee:'200000',inputs:[io('exchange','10200000')],outputs:[io('own','10000000')]},new Set(['own']));
   const root=createRoot(document.getElementById('app'));
   window.renderCase=(count,ambiguous=false)=>root.render(<AddressTransactions count={count} facts={count===2?[fact,{...fact,hash:'two'}]:[fact]} address="exchange" entries={ambiguous?[]:[{address:'exchange',name:'Exchange'}]}/>);
+  window.renderGroup=()=>root.render(<AddressTransactions count={1} facts={[fact,fact]} address="exchange" addresses={['exchange','other']} entries={[{address:'exchange',name:'Exchange'}]}/>);
   window.renderCase(1);
 `,loader:'tsx',resolveDir:path.resolve('delegators/portfolio-src')},bundle:true,write:false,format:'esm',jsx:'automatic',alias:{'@/components/ui/table':ui,'@/components/ui/pagination':ui}});
 const browser=await chromium.launch({channel:'chrome',headless:true});
@@ -30,5 +31,10 @@ try{
   assert.equal(await page.locator('#portfolio-byron-amounts-overlay tbody tr').count(),2);
   await page.evaluate(()=>window.renderCase(0));
   await page.getByText('No loaded transactions',{exact:true}).waitFor();
+  await page.evaluate(()=>window.renderGroup());
+  await page.getByRole('button',{name:'View ADA amounts'}).waitFor();
+  await page.getByRole('button',{name:'View ADA amounts'}).click();
+  await page.locator('#portfolio-byron-amounts-overlay tbody tr').first().waitFor();
+  assert.equal(await page.locator('#portfolio-byron-amounts-overlay tbody tr').count(),1);
   console.log('PASS: single transaction inline ADA; multiple transactions retain shared overlay; empty history.');
 }finally{await browser.close();}

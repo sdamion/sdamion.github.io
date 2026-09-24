@@ -59,8 +59,9 @@ test('wallet and exchange addresses use compact shared table rows', () => {
     const byron = read('delegators/portfolio-src/ByronExchanges.tsx');
     assert.match(app, /return <TableRow><TableCell>\{w.label\}/);
     assert.match(cex, /<TableRow key=\{entry.address\}>/);
-    assert.match(byron, /title=\{row.address\}/);
-    assert.match(byron, /\{short\(row.address\)\}/);
+    assert.match(byron, /row.addresses.map\(address=>/);
+    assert.match(byron, /title=\{address\}/);
+    assert.match(byron, /\{short\(address\)\}/);
 });
 
 test('storage choice is inside Portfolio, optional, and uses the universal settings overlay', () => {
