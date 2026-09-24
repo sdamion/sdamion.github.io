@@ -3,7 +3,7 @@ import {base58} from '@scure/base';
 import {encode,Tagged} from 'cborg';
 import CRC32 from 'crc-32';
 import {analyse} from './core.ts';
-import {cexAdaNetPosition,normalizeCexAddresses} from './cex.ts';
+import {cexAdaNetPosition,cexUsdNetPosition,cexTimeline,cexAdaPerformance,normalizeCexAddresses} from './cex.ts';
 import {discoveredByronAddresses,saveByronSelection,byronAddressTransactions} from './byron-exchanges.ts';
 function address(seed:number){
   const payload=encode([new Uint8Array(28).fill(seed),new Map(),0]);
@@ -55,6 +55,16 @@ for(const address of [sourceA,sourceB]){
   assert.equal(rows[0].amountRaw,'209174425');assert.equal(rows[0].sharedInputs,true);
 }
 assert.equal(cexAdaNetPosition([actual,actual],assigned,'0').receivedRaw,'209174425','received wallet amount, not the input sum; counted once');
+const sharedDate=new Date(actual.time*1000).toISOString().slice(0,10);
+const quotes={[sharedDate]:1};
+const repeated=[actual,actual,actual];
+assert.equal(cexUsdNetPosition(repeated,assigned,'0',quotes,1).boughtUsd,209.174425,'multi-address receipt contributes to USD totals only once');
+assert.equal(cexTimeline(repeated,assigned,quotes).length,1,'one timeline row per hash, not per address');
+assert.deepEqual(cexAdaPerformance(repeated,assigned,quotes,false),cexAdaPerformance([actual],assigned,quotes,false));
+const multiOutputFacts=[buy,sell,buy,sell];
+assert.equal(cexAdaNetPosition(multiOutputFacts,group,'0').sentRaw,'9800000','different outputs in the same transaction are summed once');
+assert.equal(cexUsdNetPosition(multiOutputFacts,group,'0',{'1970-01-01':1},1).soldUsd,9.8);
+assert.equal(cexTimeline(multiOutputFacts,group,{'1970-01-01':1}).length,2);
 assert.equal(byronAddressTransactions([actual],sourceB,[assigned[1]])[0].amountRaw,null,'unknown source must not silently become an exchange');
 assert.deepEqual(saveByronSelection(group,[a,b],new Set([a]),'Renamed',[]),[{address:a,name:'Exchange'}]);
 console.log('PASS: Byron discovery, explicit selection, persistence and grouped transfer deduplication.');
