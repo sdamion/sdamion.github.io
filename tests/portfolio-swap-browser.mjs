@@ -38,18 +38,28 @@ try{
   }
   await page.getByRole('button',{name:/Swap/}).click();
   assert.equal(await page.evaluate(()=>window.overlayOptions.showBack),true);
-  await page.getByRole('button',{name:'Add to Swap',exact:true}).waitFor();
-  assert.equal(await page.getByRole('button',{name:'Add to Swap',exact:true}).locator('svg').count(),0);
+  await page.getByRole('button',{name:'Add',exact:true}).waitFor();
+  for(const width of [1100,390]){
+    await page.setViewportSize({width,height:800});
+    const layout=await page.evaluate(()=>{
+      const input=document.querySelector('#portfolio-swap-address').getBoundingClientRect();
+      const button=document.querySelector('#portfolio-swap-wallets-overlay button[type="submit"]').getBoundingClientRect();
+      return {aligned:Math.abs(input.bottom-button.bottom)<2||button.top>=input.bottom, fits:document.documentElement.scrollWidth<=innerWidth};
+    });
+    assert.equal(layout.aligned,true);
+    assert.equal(layout.fits,true);
+  }
+  assert.equal(await page.getByRole('button',{name:'Add',exact:true}).locator('svg').count(),0);
   assert.equal(await page.evaluate(()=>!!(document.querySelector('#portfolio-swap-wallets-overlay form').compareDocumentPosition(document.querySelector('#portfolio-swap-wallets-overlay table'))&Node.DOCUMENT_POSITION_FOLLOWING)),true);
   const address='DdzFFzCqrhsur6w6gW7ocpi3NbxdS1HBtwfx7jcAcmv83k5zjd6nVg7WXMrhzDPhyWqrrdu24W8GLEdeCPwSRCRFvvGd2FWJz7pEPrRm';
   await page.getByLabel('Stake, payment or Byron address').fill(address);
-  await page.getByRole('button',{name:'Add to Swap',exact:true}).click();
+  await page.getByRole('button',{name:'Add',exact:true}).click();
   await page.waitForFunction(()=>window.saved?.length===1);
   assert.equal(await page.evaluate(()=>window.saved[0].group),'swap');
   assert.equal(await page.getByRole('checkbox').count(),0);
   assert.equal(await page.getByRole('link').getAttribute('href'),`https://cardanoscan.io/address/${address}`);
   await page.getByLabel('Stake, payment or Byron address').fill(address);
-  await page.getByRole('button',{name:'Add to Swap',exact:true}).click();
+  await page.getByRole('button',{name:'Add',exact:true}).click();
   await page.getByText('This address is already included in your wallets.').waitFor();
   await page.getByRole('button',{name:'Back',exact:true}).click();
   await page.getByRole('button',{name:/Swap/}).click();
@@ -57,7 +67,7 @@ try{
   await page.waitForFunction(()=>window.saved?.length===0);
   const stake='stake1u9ex0jtl4nv84rlzwuft5rczy2hgkjygewla04mgy7v2nccx4p4yr';
   await page.getByLabel('Stake, payment or Byron address').fill(stake);
-  await page.getByRole('button',{name:'Add to Swap',exact:true}).click();
+  await page.getByRole('button',{name:'Add',exact:true}).click();
   await page.waitForFunction(()=>window.saved?.length===1);
   assert.equal(await page.getByRole('link').getAttribute('href'),`https://cardanoscan.io/stakekey/${stake}`);
   await page.getByText('Linked addresses awaiting refresh',{exact:true}).waitFor();

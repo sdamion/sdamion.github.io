@@ -41,6 +41,8 @@
 .member-portfolio :is(.address, .message) { overflow-wrap: anywhere; }
 .member-portfolio .address { color: var(--accent-strong); }
 .member-portfolio .wallet-form label { display: grid; gap: 8px; min-width: 0; flex: 1 1 220px; }
+.member-portfolio .portfolio-address-form { align-items: flex-end; }
+.member-portfolio .portfolio-address-form :is(input, button[type="submit"]) { min-height: 44px; box-sizing: border-box; }
 .member-portfolio input {
     min-width: 0;
     max-width: 100%;

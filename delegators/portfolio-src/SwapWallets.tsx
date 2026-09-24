@@ -15,9 +15,9 @@ export function SwapWallets({wallets,groups={},onChange}:{wallets:Wallet[];group
     {open&&<AssetOverlay id="portfolio-swap-wallets-overlay" name="Swap" onClose={()=>setOpen(false)}>
       <section className="portfolio-section">
         <p className="small muted">Swap addresses are excluded from CEX. Transaction amounts are matched to your tracked wallet addresses, including addresses linked to your member stake key. Other recipients and shared service balances are not counted as yours.</p>
-        <form className="wallet-form governance-drep-registration-form" onSubmit={event=>{event.preventDefault();try{onChange(addSwapWallet(wallets,address));setAddress('');setError('');}catch(reason){setError(reason instanceof Error?reason.message:'Could not add wallet.');}}}>
+        <form className="wallet-form portfolio-address-form" onSubmit={event=>{event.preventDefault();try{onChange(addSwapWallet(wallets,address));setAddress('');setError('');}catch(reason){setError(reason instanceof Error?reason.message:'Could not add wallet.');}}}>
           <label className="address-field" htmlFor="portfolio-swap-address">Stake, payment or Byron address<Input id="portfolio-swap-address" name="swap_address" value={address} onChange={event=>setAddress(event.target.value)} required aria-describedby="portfolio-swap-error"/></label>
-          <button type="submit" className="governance-vote-primary">Add to Swap</button>
+          <button type="submit" className="governance-vote-primary">Add</button>
         </form>
         <p id="portfolio-swap-error" className="negative" role="status">{error}</p>
         <div className="history-table"><Table><TableHeader><TableRow><TableHead>Wallet address</TableHead><TableHead>Remove</TableHead></TableRow></TableHeader><TableBody>{members.map(wallet=><TableRow key={wallet.address}>
