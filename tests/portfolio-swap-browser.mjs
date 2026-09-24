@@ -38,6 +38,9 @@ try{
   }
   await page.getByRole('button',{name:/Swap/}).click();
   assert.equal(await page.evaluate(()=>window.overlayOptions.showBack),true);
+  await page.getByRole('button',{name:'Add to Swap',exact:true}).waitFor();
+  assert.equal(await page.getByRole('button',{name:'Add to Swap',exact:true}).locator('svg').count(),0);
+  assert.equal(await page.evaluate(()=>!!(document.querySelector('#portfolio-swap-wallets-overlay form').compareDocumentPosition(document.querySelector('#portfolio-swap-wallets-overlay table'))&Node.DOCUMENT_POSITION_FOLLOWING)),true);
   const address='DdzFFzCqrhsur6w6gW7ocpi3NbxdS1HBtwfx7jcAcmv83k5zjd6nVg7WXMrhzDPhyWqrrdu24W8GLEdeCPwSRCRFvvGd2FWJz7pEPrRm';
   await page.getByLabel('Stake, payment or Byron address').fill(address);
   await page.getByRole('button',{name:'Add to Swap',exact:true}).click();
