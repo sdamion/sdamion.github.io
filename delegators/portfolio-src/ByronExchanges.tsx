@@ -25,6 +25,8 @@ function AddressTransactions({facts,address,entries}:{facts:Fact[];address:strin
 export function ByronExchanges({facts,entries,owned,history,complete,onChange}:{facts:Record<string,Fact>;entries:CexAddress[];owned:string[];history:Record<string,number>;complete:boolean;onChange:(entries:CexAddress[])=>boolean}){
   const [choices,setChoices]=useState<Record<string,boolean>>({}),[name,setName]=useState('Byron CEX'),[query,setQuery]=useState(''),[page,setPage]=useState(0),[status,setStatus]=useState('');
   const all=useMemo(()=>Object.values(facts),[facts]);
+  const [names,setNames]=useState<Record<string,string>>({});
+  const savedNames=useMemo(()=>Object.fromEntries(entries.map(entry=>[entry.address,entry.name])),[entries]);
   const candidates=useMemo(()=>discoveredByronAddresses(all,owned,entries),[all,owned,entries]);
   const group=useMemo(()=>entries.filter(entry=>!owned.includes(entry.address)&&validByronAddress(entry.address)),[entries,owned]);
   const selected=new Set(candidates.filter(row=>choices[row.address]??true).map(row=>row.address));
@@ -32,7 +34,7 @@ export function ByronExchanges({facts,entries,owned,history,complete,onChange}:{
   const totals=useMemo(()=>cexAdaNetPosition(all,group,'0'),[all,group]);
   const dollars=useMemo(()=>cexUsdNetPosition(all,group,'0',history,null),[all,group,history]);
   const unresolved=useMemo(()=>all.filter(fact=>isCexTransaction(fact,group)&&!cexAdaTransfer(fact,group)).length,[all,group]);
-  const filtered=candidates.filter(row=>row.address.toLowerCase().includes(query.trim().toLowerCase()));
+  const filtered=candidates.filter(row=>`${row.address} ${names[row.address]??savedNames[row.address]??''}`.toLowerCase().includes(query.trim().toLowerCase()));
   const pages=Math.max(1,Math.ceil(filtered.length/25)),current=Math.min(page,pages-1);
   return <section className="portfolio-section" aria-label="Combined Byron CEX">
     <p className="small muted">Your internal wallets, including Swap, are excluded from this selection and its totals.</p>
@@ -42,10 +44,10 @@ export function ByronExchanges({facts,entries,owned,history,complete,onChange}:{
     </div>
     <p className="small muted">{group.length} saved addresses · {complete?'Loaded history':'Partial history'} · Transfer-day USD{unresolved?` · ${unresolved} mixed transfers excluded`:''}{dollars.missingPrices?` · ${dollars.missingPrices} transfers missing USD prices`:''}</p>
     <p className="small muted">All discovered Byron addresses are selected by default. Deselect any that do not belong to a CEX, then save to update totals. Exchange ownership is not verified. Saved using your selected Portfolio storage; these addresses are not added to your wallet balances.</p>
-    <form className="portfolio-section" onSubmit={event=>{event.preventDefault();const next=saveByronSelection(entries,candidates.map(row=>row.address),selected,name,owned);if(onChange(next)){setStatus('Byron exchange selection saved.');}else setStatus('Could not save the selection.');}}>
+    <form className="portfolio-section" onSubmit={event=>{event.preventDefault();const next=saveByronSelection(entries,candidates.map(row=>row.address),selected,name,owned,names);if(onChange(next)){setNames({});setStatus('Byron names and selection saved.');}else setStatus('Could not save the selection.');}}>
       <div className="wallet-form"><label htmlFor="portfolio-byron-name">Name for newly selected addresses<Input id="portfolio-byron-name" name="byron_exchange_name" maxLength={60} required pattern=".*\S.*" value={name} onChange={event=>setName(event.target.value)}/></label><label htmlFor="portfolio-byron-search">Search Byron addresses<Input id="portfolio-byron-search" name="byron_search" value={query} onChange={event=>{setQuery(event.target.value);setPage(0);}}/></label></div>
       <div className="history-table"><Table><TableHeader><TableRow><TableHead>Byron address</TableHead><TableHead>Transactions</TableHead><TableHead>Last seen</TableHead><TableHead>ADA amounts</TableHead><TableHead>CEX</TableHead></TableRow></TableHeader><TableBody>{filtered.slice(current*25,(current+1)*25).map(row=><TableRow key={row.address}>
-        <TableCell><a className="address" title={row.address} href={`https://cardanoscan.io/address/${row.address}`} target="_blank" rel="noreferrer">{short(row.address)} <ExternalLink size={12}/></a></TableCell><TableCell>{row.transactions}</TableCell><TableCell>{row.lastSeen===null?'Not in loaded history':new Date(row.lastSeen*1000).toLocaleDateString()}</TableCell>
+        <TableCell><Input name={`byron_name_${row.address}`} aria-label={`Wallet name for ${row.address}`} maxLength={60} placeholder="Wallet name" value={names[row.address]??savedNames[row.address]??''} onChange={event=>{const value=event.target.value;setNames(previous=>({...previous,[row.address]:value}));setStatus('');}}/><a className="address" title={row.address} href={`https://cardanoscan.io/address/${row.address}`} target="_blank" rel="noreferrer">{short(row.address)} <ExternalLink size={12}/></a></TableCell><TableCell>{row.transactions}</TableCell><TableCell>{row.lastSeen===null?'Not in loaded history':new Date(row.lastSeen*1000).toLocaleDateString()}</TableCell>
         <TableCell><AddressTransactions facts={all} address={row.address} entries={group}/></TableCell><TableCell><input type="checkbox" name="byron_cex_selection" aria-label={`Include ${row.address} in Byron CEX`} checked={selected.has(row.address)} onChange={event=>{const checked=event.target.checked;setChoices(previous=>({...previous,[row.address]:checked}));setStatus('');}}/>{selected.has(row.address)&&!group.some(entry=>entry.address===row.address)&&<span className="small muted">Not saved</span>}</TableCell>
       </TableRow>)}</TableBody></Table></div>
       {!filtered.length&&<p className="empty">{query?'No matching Byron addresses.':'No external Byron addresses found in loaded history yet.'}</p>}

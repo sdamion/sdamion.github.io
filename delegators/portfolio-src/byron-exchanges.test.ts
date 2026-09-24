@@ -58,3 +58,11 @@ assert.equal(cexAdaNetPosition([actual,actual],assigned,'0').receivedRaw,'209174
 assert.equal(byronAddressTransactions([actual],sourceB,[assigned[1]])[0].amountRaw,null,'unknown source must not silently become an exchange');
 assert.deepEqual(saveByronSelection(group,[a,b],new Set([a]),'Renamed',[]),[{address:a,name:'Exchange'}]);
 console.log('PASS: Byron discovery, explicit selection, persistence and grouped transfer deduplication.');
+const renamed=saveByronSelection(group,[a,b],new Set([a,b]),'Default',[],{[a]:' My exchange ',[b]:'Second wallet'});
+assert.deepEqual(renamed,[{address:a,name:'My exchange'},{address:b,name:'Second wallet'}]);
+assert.equal(group[0].name,'Exchange','renaming does not mutate saved entries');
+assert.deepEqual(normalizeCexAddresses(JSON.parse(JSON.stringify(renamed))),renamed);
+assert.deepEqual(cexAdaNetPosition([buy,sell],renamed,'0'),cexAdaNetPosition([buy,sell],group,'0'));
+assert.equal(saveByronSelection(group,[a],new Set([a]),'Default',[],{[a]:'   '})[0].name,'Exchange');
+assert.equal(saveByronSelection([],[a],new Set([a]),'Default',[],{[a]:'New wallet'})[0].name,'New wallet');
+assert.equal(saveByronSelection([],[a],new Set([a]),'Default',[],{[a]:'x'.repeat(100)})[0].name.length,60);

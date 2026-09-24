@@ -35,12 +35,12 @@ export function discoveredByronAddresses(facts:Fact[],owned:string[],entries:Cex
   return [...found.values()].map(item=>({address:item.address,transactions:item.hashes.size,lastSeen:item.lastSeen})).sort((a,b)=>(b.lastSeen??-Infinity)-(a.lastSeen??-Infinity)||a.address.localeCompare(b.address));
 }
 
-export function saveByronSelection(entries:CexAddress[],candidates:string[],selected:Set<string>,name:string,owned:string[]){
+export function saveByronSelection(entries:CexAddress[],candidates:string[],selected:Set<string>,name:string,owned:string[],names:Record<string,string>={}){
   const allowed=new Set(candidates.filter(address=>!owned.includes(address)&&validByronAddress(address)));
-  const next=entries.filter(entry=>!allowed.has(entry.address)||selected.has(entry.address));
+  const next=entries.filter(entry=>!allowed.has(entry.address)||selected.has(entry.address)).map(entry=>allowed.has(entry.address)&&names[entry.address]?.trim()?{...entry,name:names[entry.address].trim().slice(0,60)}:entry);
   const saved=new Set(next.map(entry=>entry.address));
   for(const address of selected)if(allowed.has(address)&&!saved.has(address)){
-    next.push({address,name:name.trim().slice(0,60)||'Byron CEX'});saved.add(address);
+    next.push({address,name:(names[address]?.trim()||name.trim()).slice(0,60)||'Byron CEX'});saved.add(address);
   }
   return next;
 }
