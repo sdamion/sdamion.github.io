@@ -55,7 +55,8 @@ try{
   await page.getByText('No matching Byron transactions.').waitFor();
   await page.getByRole('button',{name:'Clear dates',exact:true}).click();
   await page.getByText('2 mixed addresses').waitFor();
-  await page.getByRole('button',{name:'Internal',exact:true}).click();
+  for(const name of ['CEX','Trades','Internal','Mixed','Other'])assert.equal(await page.getByRole('button',{name,exact:true}).count(),0);
+  await page.getByRole('button',{name:'Sends',exact:true}).click();
   await page.getByText('No matching Byron transactions.').waitFor();
   await page.getByRole('button',{name:'All',exact:true}).click();
   await page.getByText('2 mixed addresses').waitFor();

@@ -99,7 +99,7 @@ test('Cardano Wallets uses shared section tiles and nested address overlays',()=
   assert.match(wallets,/name="Cardano Wallets"/);
   assert.match(wallets,/<WalletMenu/);
   const menu=source('WalletMenu.tsx');
-  for(const title of ['Wallet addresses','DEX / CEX addresses','Combined Byron CEX'])assert.ok(menu.includes(title));
+  for(const title of ['My Wallets','DEX / CEX','Byron DEX / CEX'])assert.ok(menu.includes(title));
   assert.match(menu,/<MenuTile/);
   assert.match(menu,/<AssetOverlay/);
   assert.match(menu,/onClose=\{\(\)=>setSection\(null\)\}/);

@@ -646,7 +646,7 @@ async function openMemberPortfolio() {
     closePortfolio = close;
     container.textContent = t('Loading member portfolio…');
     try {
-        const module = await import('./portfolio/app.js?v=20260924-portfolio-reconnect');
+        const module = await import('./portfolio/app.js?v=20260924-byron-filter-options');
         if (closed) return;
         container.replaceChildren();
         dispose = module.mountPortfolio(container, { role: ROLE, getWallet: (reconnect, stake) => reconnect && !portfolioUnlockWallet ? reconnectPortfolioWallet(stake) : portfolioUnlockWallet });
@@ -1138,7 +1138,16 @@ async function reconnectPortfolioWallet(stake) {
             const button = document.createElement('button');
             button.type = 'button';
             button.className = 'wallet-option';
-            button.textContent = info.name;
+            if (info.icon) {
+                const icon = document.createElement('img');
+                icon.src = info.icon;
+                icon.alt = '';
+                icon.addEventListener('error', () => icon.remove(), { once: true });
+                button.append(icon);
+            }
+            const label = document.createElement('span');
+            label.textContent = info.name;
+            button.append(label);
             button.addEventListener('click', async () => {
                 list.querySelectorAll('button').forEach(item => { item.disabled = true; });
                 status.textContent = '';

@@ -29,7 +29,9 @@ try{
     };
   });
   await page.addScriptTag({type:'module',content:bundle.outputFiles[0].text});
-  for(const [title,content] of [['Wallet addresses','Owned address list'],['DEX / CEX addresses','Exchange address list'],['Combined Byron CEX','Byron address list']]){
+  await page.getByRole('button',{name:'Open My Wallets',exact:true}).waitFor();
+  assert.doesNotMatch(await page.getByRole('button',{name:'Open My Wallets',exact:true}).innerText(),/transactions/i);
+  for(const [title,content] of [['My Wallets','Owned address list'],['DEX / CEX','Exchange address list'],['Byron DEX / CEX','Byron address list']]){
     assert.equal(await page.getByText(content,{exact:true}).count(),0);
     await page.getByRole('button',{name:new RegExp(title)}).click();
     await page.getByText(content,{exact:true}).waitFor();
