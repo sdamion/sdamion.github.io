@@ -45,21 +45,26 @@ try{
   assert.equal(await page.locator('#portfolio-byron-amounts-overlay tbody tr').count(),1);
   await page.addStyleTag({content:await readFile('shared/styles.css','utf8')});
   await page.evaluate(()=>window.renderDirectory());
-  await page.locator('.portfolio-address-row').first().waitFor();
+  await page.getByText('2 mixed addresses').waitFor();
+  assert.equal(await page.locator('.portfolio-address-table input[type="checkbox"]').count(),0);
+  assert.equal(await page.locator('.portfolio-address-table a[href*="/address/"]').count(),0);
   assert.equal(await page.locator('#portfolio-byron-name').count(),0);
   for(const width of [1440,390]){
     await page.setViewportSize({width,height:900});
     const metrics=await page.evaluate(()=>{
-      const row=document.querySelector('.portfolio-address-row');
-      const input=row.querySelector('input'),link=row.querySelector('a'),label=row.querySelector('label');
       const cells=[...document.querySelectorAll('.portfolio-address-table tbody tr:first-child > td')];
-      const bounds=[input,link,label].map(node=>node.getBoundingClientRect());
       const shell=document.querySelector('.portfolio-address-table .table-shell');
-      return {centers:bounds.map(rect=>rect.y+rect.height/2),tableFits:shell.scrollWidth<=shell.clientWidth+1,aligned:cells.length===5&&cells.every(cell=>getComputedStyle(cell).verticalAlign==='middle'),pageFits:document.documentElement.scrollWidth<=innerWidth,rows:document.querySelectorAll('.portfolio-address-table tbody tr').length};
+      return {tableFits:shell.scrollWidth<=shell.clientWidth+1,aligned:cells.length===5&&cells.every(cell=>getComputedStyle(cell).verticalAlign==='middle'),pageFits:document.documentElement.scrollWidth<=innerWidth,rows:document.querySelectorAll('.portfolio-address-table tbody tr').length};
     });
-    if(width>=900)assert.ok(Math.max(...metrics.centers)-Math.min(...metrics.centers)<2);
     assert.equal(metrics.tableFits,true);
     assert.equal(metrics.aligned,true);assert.equal(metrics.pageFits,true);assert.equal(metrics.rows,1);
   }
+  await page.getByRole('button',{name:'View',exact:true}).click();
+  const selectors=page.locator('#portfolio-byron-amounts-overlay input[type="checkbox"]');
+  await selectors.first().waitFor();
+  assert.equal(await selectors.count(),2);
+  await selectors.first().uncheck();
+  assert.equal(await selectors.first().isChecked(),false);
+  assert.equal(await page.locator('#portfolio-byron-amounts-overlay a[href*="/address/"]').count(),2);
   console.log('PASS: single transaction inline ADA; multiple transactions retain shared overlay; empty history.');
 }finally{await browser.close();}
