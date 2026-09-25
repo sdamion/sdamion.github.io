@@ -4,7 +4,7 @@ import {useEffect,useMemo,useRef,useState} from 'react';
 import {ExternalLink,Plus,Trash2,ArrowRightLeft} from 'lucide-react';
 import {PortfolioRefresh} from './PortfolioRefresh';
 import {Input} from '@/components/ui/input';
-import {TransactionFilters} from './TransactionFilters';
+import {TransactionFilters,transactionFilters as labels} from './TransactionFilters';
 import {TransactionPagination} from './TransactionPagination';
 import {withinTransactionDates,transactionPage} from './transaction-date';
 import {Table,TableHeader,TableBody,TableRow,TableHead,TableCell} from '@/components/ui/table';
