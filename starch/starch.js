@@ -313,8 +313,9 @@ function createStarchMinerWalletList(records) {
         const address = String(miners[0].wallet_address).trim();
         const handles = [...new Set(miners.map(miner => miner.ada_handle).filter(Boolean))];
         const title = handles.length === 1 ? handles[0] : `${address.slice(0,16)}...${address.slice(-8)}`;
-        const card = document.createElement('button');
-        card.type = 'button';
+        const card = document.createElement('div');
+        card.setAttribute('role', 'button');
+        card.tabIndex = 0;
         card.className = 'governance-card governance-menu-card governance-directory-list-card governance-directory-list-card--single-line starch-miner-wallet-card';
         card.title = address;
         card.dataset.sortMiners = String(miners.length);
@@ -327,7 +328,8 @@ function createStarchMinerWalletList(records) {
             primaryClassName: `governance-card-detail pool-status-value ${groupStatus}`,
             primaryText: `${miners.length} ${window.TDSPI18n?.translateText?.('Miners') || 'Miners'}`
         });
-        card.addEventListener('click', () => {
+        card.firstElementChild.replaceWith(createStarchMinerWalletIdentity(address, title));
+        window.TDSPRuntime.bindActionTrigger(card, () => {
             const overlayId = 'starch-wallet-miners-overlay';
             createPoolMenuOverlay({
                 id: overlayId,
@@ -340,10 +342,35 @@ function createStarchMinerWalletList(records) {
                 rootTitle: 'Miners',
                 bodyNode: createStarchDirectoryList(miners, 'miners', 'Miners')
             });
-        });
+        }, { datasetKey: 'minerWalletBound', errorMessage: 'Miner wallet could not be opened.' });
         list.appendChild(card);
     });
     return list;
+}
+
+function createStarchCopyableIdentity(content, value, label) {
+    const field = document.createElement('span');
+    field.className = 'tdsp-identifier-actions';
+    field.appendChild(content);
+    if (value) {
+        const copy = window.TDSPRuntime.createCopyButton(value, label, { className: 'pool-delegator-copy-button' });
+        copy.addEventListener('keydown', event => event.stopPropagation());
+        field.appendChild(copy);
+    }
+    return field;
+}
+
+function createStarchMinerWalletIdentity(address, label) {
+    const owner = document.createElement('a');
+    owner.href = `https://cardanoscan.io/address/${encodeURIComponent(address)}`;
+    owner.target = '_blank';
+    owner.rel = 'noopener noreferrer';
+    owner.className = 'governance-title';
+    owner.textContent = label;
+    owner.title = address;
+    owner.addEventListener('click', event => event.stopPropagation());
+    owner.addEventListener('keydown', event => event.stopPropagation());
+    return createStarchCopyableIdentity(owner, address, 'Wallet address');
 }
 
 async function fetchTdspStarchMinerCount() {
@@ -557,20 +584,12 @@ function createStarchDirectoryCard(record, type) {
     if (typeof record.online === 'boolean') minerId.classList.add(record.online ? 'is-active' : 'is-inactive');
     minerId.title = `Miner ID: ${id}`;
     if (record.wallet_address) {
-        const owner = document.createElement('a');
-        owner.href = `https://cardanoscan.io/address/${encodeURIComponent(record.wallet_address)}`;
-        owner.target = '_blank';
-        owner.rel = 'noopener noreferrer';
-        owner.className = 'governance-title';
-        owner.textContent = record.ada_handle || `${record.wallet_address.slice(0,16)}...${record.wallet_address.slice(-8)}`;
-        owner.title = record.wallet_address;
-        owner.addEventListener('click', event => event.stopPropagation());
-        owner.addEventListener('keydown', event => event.stopPropagation());
-        row.appendChild(owner);
+        row.appendChild(createStarchMinerWalletIdentity(record.wallet_address,
+            record.ada_handle || `${record.wallet_address.slice(0,16)}...${record.wallet_address.slice(-8)}`));
     } else {
         window.TDSPRuntime.appendUniversalTileContent(row, { title: record.ada_handle || 'N/A' });
     }
-    row.appendChild(minerId);
+    row.appendChild(createStarchCopyableIdentity(minerId, id, 'Miner ID'));
 
     if (type === 'miners' && id) {
         const open = () => {

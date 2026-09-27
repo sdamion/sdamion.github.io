@@ -3908,6 +3908,22 @@ textarea[data-auto-size] {
     text-align: left;
 }
 
+.tdsp-identifier-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+.tdsp-identifier-actions > :first-child {
+    min-width: 0;
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .governance-spo-hosting-icon {
     position: absolute;
     top: 16px;

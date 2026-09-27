@@ -8,6 +8,12 @@ try {
     page.on('pageerror', error => errors.push(error.message));
     await page.route('**/*', route => route.fulfill({ contentType: 'text/html', body: '<!doctype html><body></body>' }));
     await page.goto('http://127.0.0.1:8998/');
+    await page.evaluate(() => {
+        window.copiedValues = [];
+        Object.defineProperty(navigator, 'clipboard', { configurable: true, value: {
+            writeText: async value => window.copiedValues.push(value)
+        } });
+    });
     await page.addStyleTag({ content: await readFile('shared/styles.css', 'utf8') });
     await page.addScriptTag({ path: 'shared/runtime.js' });
     await page.addScriptTag({ path: 'governance/governance-pie-chart.js' });
@@ -38,7 +44,11 @@ try {
     await page.locator('.governance-vote-legend button').filter({ hasText: /^Online/ }).click();
     assert.equal(await page.locator('.starch-miner-card').count(), 1);
     assert.equal(await page.getByRole('link', { name: '$owner', exact: true }).getAttribute('href'), 'https://cardanoscan.io/address/addr1test');
-    assert.equal(await page.locator('.starch-miner-card > :first-child').innerText(), '$owner');
+    assert.equal(await page.locator('.starch-miner-card > :first-child a').innerText(), '$owner');
+    await page.getByRole('button', { name: 'Copy Wallet address', exact: true }).click();
+    await page.getByRole('button', { name: 'Copy Miner ID', exact: true }).click();
+    assert.deepEqual(await page.evaluate(() => window.copiedValues), ['addr1test', 'A']);
+    assert.equal(await page.evaluate(() => Boolean(window.minerOpened)), false);
     await page.getByRole('link', { name: '$owner', exact: true }).evaluate(link => link.addEventListener('click', event => event.preventDefault()));
     await page.getByRole('link', { name: '$owner', exact: true }).click();
     assert.equal(await page.evaluate(() => Boolean(window.minerOpened)), false);
@@ -106,7 +116,13 @@ try {
         }, mode);
         assert.deepEqual(counts, mode === 'miners-desc' ? [2, 1, 1, 1] : [1, 1, 1, 2]);
     }
-    await page.locator('.starch-miner-wallet-card').click();
+    const walletGroup = page.locator('.starch-miner-wallet-card');
+    assert.equal(await walletGroup.locator('a').getAttribute('href'), 'https://cardanoscan.io/address/addr1shared');
+    await walletGroup.getByRole('button', { name: 'Copy Wallet address', exact: true }).click();
+    assert.equal(await page.locator('#starch-wallet-miners-overlay').count(), 0);
+    assert.equal(await page.evaluate(() => window.copiedValues.at(-1)), 'addr1shared');
+    await walletGroup.focus();
+    await page.keyboard.press('Enter');
     assert.equal(await page.locator('#starch-wallet-miners-overlay .starch-miner-card').count(), 2);
     assert.match(await page.locator('#starch-wallet-miners-overlay').innerText(), /W1/);
     assert.match(await page.locator('#starch-wallet-miners-overlay').innerText(), /W2/);
