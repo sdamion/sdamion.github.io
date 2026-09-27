@@ -319,8 +319,12 @@ function createStarchMinerWalletList(records) {
         card.title = address;
         card.dataset.sortMiners = String(miners.length);
         card.dataset.searchText = [address, ...handles, ...miners.flatMap(miner => [miner.id, miner.name])].join(' ');
+        const groupStatus = miners.some(miner => miner.online === false)
+            ? 'is-inactive'
+            : miners.every(miner => miner.online === true) ? 'is-active' : '';
         window.TDSPRuntime.appendUniversalTileContent(card, {
             title,
+            primaryClassName: `governance-card-detail pool-status-value ${groupStatus}`,
             primaryText: `${miners.length} ${window.TDSPI18n?.translateText?.('Miners') || 'Miners'}`
         });
         for (const online of [true, false]) {

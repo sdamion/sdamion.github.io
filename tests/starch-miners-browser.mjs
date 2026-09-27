@@ -82,6 +82,14 @@ try {
     assert.equal(await page.locator('.starch-miner-wallet-card').count(), 1);
     assert.equal(await page.locator('.starch-miner-card').count(), 3);
     assert.match(await page.locator('.starch-miner-wallet-card').innerText(), /2 Miners/);
+    assert.equal(await page.locator('.starch-miner-wallet-card .pool-status-value.is-inactive').count(), 1);
+    assert.deepEqual(await page.evaluate(() => [
+        [true, true], [true, null], [false, null]
+    ].map(states => {
+        const list = createStarchMinerWalletList(states.map((online, id) => ({ id: String(id), wallet_address: 'addr1shared', online })));
+        const amount = list.querySelector('.pool-status-value');
+        return [amount.classList.contains('is-active'), amount.classList.contains('is-inactive')];
+    })), [[true, false], [false, false], [false, true]]);
     assert.deepEqual(await page.evaluate(() => {
         const cards = [...document.querySelectorAll('.governance-menu-card')];
         return getRelevantOverlaySortOptions(cards).filter(option => option.key === 'sortMiners').map(option => option.value);
