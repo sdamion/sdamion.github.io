@@ -66,3 +66,35 @@ test('unknown data does not reset an existing offline alert', async () => {
     await monitor.check();
     assert.equal(notifications.length, 1);
 });
+test('migrates existing settings and checks multiple companies independently', async () => {
+    const { monitor, state, notifications, storage } = setup();
+    const key = 'tdsp-starch-company-alert-v1';
+    await monitor.check();
+    const saved = JSON.parse(storage.get(key));
+    assert.equal(saved.companies[0].companyId, 'B0ADAD');
+    saved.companies.push({ companyId: 'A1B2C3', offlineIds: [] });
+    storage.set(key, JSON.stringify(saved));
+    state.payload.companies.push({ id: 'A1B2C3', name: 'Second', member_ids: ['C'] });
+    state.payload.miners.push({ id: 'C', online: false });
+    await monitor.check();
+    assert.equal(notifications.length, 2);
+    assert.match(notifications[1][1], /Second.*A1B2C3/);
+    await monitor.check();
+    assert.equal(notifications.length, 2);
+    state.payload.miners[2].online = true;
+    await monitor.check();
+    state.payload.miners[2].online = false;
+    await monitor.check();
+    assert.equal(notifications.length, 3);
+    storage.set(key, JSON.stringify({ companies: [JSON.parse(storage.get(key)).companies[0]] }));
+    await monitor.check();
+    assert.equal(notifications.length, 3);
+});
+test('unavailable company does not prevent other company notifications', async () => {
+    const { monitor, storage, notifications } = setup();
+    storage.set('tdsp-starch-company-alert-v1', JSON.stringify({ companies: [
+        { companyId: 'ABCDEF' }, { companyId: 'B0ADAD' }
+    ] }));
+    await monitor.check();
+    assert.equal(notifications.length, 1);
+});

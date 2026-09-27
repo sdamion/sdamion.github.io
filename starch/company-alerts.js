@@ -4,7 +4,17 @@
     let running = false;
     const translate = text => window.TDSPI18n?.translateText?.(text) || text;
     function read() {
-        try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { return {}; }
+        try {
+            const saved = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+            const companies = Array.isArray(saved.companies) ? saved.companies : saved.companyId ? [saved] : [];
+            const unique = new Map();
+            for (const company of companies) {
+                const companyId = String(company?.companyId || '').toUpperCase();
+                if (/^[A-F0-9]{6}$/.test(companyId)) unique.set(companyId, { companyId,
+                    offlineIds: Array.isArray(company.offlineIds) ? company.offlineIds : [] });
+            }
+            return { companies: [...unique.values()] };
+        } catch { return { companies: [] }; }
     }
     function write(value) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
@@ -31,24 +41,26 @@
     }
     async function check() {
         const saved = read();
-        const companyId = saved.companyId;
-        if (running || !/^[A-F0-9]{6}$/.test(companyId || '') || !window.TDSPAlerts?.isEnabled('starchCompany')) return;
+        if (running || !saved.companies.length || !window.TDSPAlerts?.isEnabled('starchCompany')) return;
         running = true;
         try {
             const url = window.TDSPRuntime.isLocalPreview
                 ? '/__starch_directory_proxy__' : 'https://api.tdsp.online/api/starch/directory/compact';
             const payload = await window.TDSPRuntime.fetchJson(url);
-            if (read().companyId !== companyId || !window.TDSPAlerts?.isEnabled('starchCompany')) return;
+            if (JSON.stringify(read()) !== JSON.stringify(saved) || !window.TDSPAlerts?.isEnabled('starchCompany')) return;
+            const messages = [];
+            for (const company of saved.companies) {
+            const { companyId } = company;
             const status = evaluate(payload, companyId);
             if (!status || (status.unknown && !status.offline.length)) {
-                setStatus('Company status is not available yet.');
-                return;
+                messages.push(`${companyId}: ${translate('Company status is not available yet.')}`);
+                continue;
             }
-            setStatus(status.offline.length ? 'Company has offline miners.' : 'All company miners are online.');
-            const previous = new Set(Array.isArray(saved.offlineIds) ? saved.offlineIds : []);
+            messages.push(`${companyId}: ${translate(status.offline.length ? 'Company has offline miners.' : 'All company miners are online.')}`);
+            const previous = new Set(company.offlineIds);
             const newOffline = status.offline.filter(id => !previous.has(id));
             if (newOffline.length) {
-                if (!window.TDSPAlerts.canSend('starchCompany')) return;
+                if (!window.TDSPAlerts.canSend('starchCompany')) continue;
                 window.TDSPAlerts.send(
                     translate('Starch company: offline miners'),
                     `${status.company.name || companyId} (${companyId}) · ${translate('Offline')}: ${status.offline.length} · ${newOffline.slice(0, 8).join(', ')}${newOffline.length > 8 ? '…' : ''}`,
@@ -57,7 +69,10 @@
             }
             // Unknown status must not re-arm notifications for a previously offline miner.
             const offlineIds = status.unknown ? [...new Set([...previous, ...status.offline])] : status.offline;
-            write({ companyId, offlineIds });
+            company.offlineIds = offlineIds;
+            }
+            write(saved);
+            setStatus(messages.join(' '));
         } catch (error) {
             setStatus('Company status is not available yet.');
             console.warn('Starch company alert check failed:', error.message);
@@ -69,16 +84,21 @@
         const form = document.getElementById('starch-company-alert-form');
         const input = document.getElementById('starch-company-alert-id');
         if (!form || !input) return;
-        input.value = read().companyId || '';
+        input.value = read().companies.map(company => company.companyId).join(', ');
+        input.addEventListener('input', () => input.setCustomValidity(''));
         form.addEventListener('submit', event => {
             event.preventDefault();
-            const companyId = input.value.trim().toUpperCase();
-            if (companyId && !/^[A-F0-9]{6}$/.test(companyId)) return;
+            const companyIds = [...new Set(input.value.toUpperCase().split(/[\s,;]+/).filter(Boolean))];
+            if (companyIds.some(id => !/^[A-F0-9]{6}$/.test(id))) {
+                input.setCustomValidity(translate('Enter six-character company IDs separated by commas.'));
+                input.reportValidity();
+                return;
+            }
             try {
                 const previous = read();
-                write({ companyId, offlineIds: previous.companyId === companyId ? previous.offlineIds : [] });
-                input.value = companyId;
-                setStatus(companyId ? 'Company alert saved.' : 'Company alert removed.');
+                write({ companies: companyIds.map(companyId => previous.companies.find(company => company.companyId === companyId) || { companyId, offlineIds: [] }) });
+                input.value = companyIds.join(', ');
+                setStatus(companyIds.length ? 'Company alert saved.' : 'Company alert removed.');
                 void check();
             } catch {
                 setStatus('Company alert could not be saved.');

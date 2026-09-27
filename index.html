@@ -51,7 +51,7 @@
     <link rel="stylesheet" href="delegators/raffle.css?v=20260921-portfolio-shared-style">
 
     <script src="shared/runtime.js?v=20260924-byron-filter-options" defer></script>
-    <script src="shared/i18n.js?v=20260927-starch-company-alerts" defer></script>
+    <script src="shared/i18n.js?v=20260928-multiple-company-alerts" defer></script>
     <script src="shared/site-controls.js?v=20260918-ask-full-width" defer></script>
     <script src="shared/database-status.js?v=20260819-database-status-module" defer></script>
     <script src="vendor/chart-loader.js?v=20260817-section-folders" defer></script>
@@ -63,7 +63,7 @@
     <script src="home/cardano-events.js?v=20260819-language-flags" defer></script>
     <script src="home/prices.js?v=20260918-ask-full-width" defer></script>
     <script src="home/index.js?v=20260928-status-default-tiles" defer></script>
-    <script src="starch/company-alerts.js?v=20260927-starch-company-alerts" defer></script>
+    <script src="starch/company-alerts.js?v=20260928-multiple-company-alerts" defer></script>
 </head>
 <body>
     <header class="site-header" id="site-header">
@@ -101,10 +101,10 @@
                                 <label><input type="checkbox" id="site-alert-events" name="site_alert_events" data-alert-topic="events"> <span data-i18n="alert_events">Cardano Events</span></label>
                                 <label><input type="checkbox" id="site-alert-starch-company" name="site_alert_starch_company" data-alert-topic="starchCompany"> <span data-i18n="starch_company_alert">Starch company: offline miners</span></label>
                                 <form id="starch-company-alert-form">
-                                    <label for="starch-company-alert-id" data-i18n="company_id">Company ID</label>
-                                    <input id="starch-company-alert-id" name="starch_company_id" type="text" maxlength="6" pattern="[A-Fa-f0-9]{6}" placeholder="B0ADAD" autocomplete="off">
+                                    <label for="starch-company-alert-id" data-i18n="company_ids">Company IDs</label>
+                                    <input id="starch-company-alert-id" name="starch_company_ids" type="text" placeholder="B0ADAD, A1B2C3" autocomplete="off" aria-describedby="starch-company-alert-hint">
                                     <button type="submit" data-i18n-auto>Save</button>
-                                    <small data-i18n="starch_company_alert_hint">Alerts when any company miner is offline. Uses hourly cached status while this site is open. Clear the ID to remove it.</small>
+                                    <small id="starch-company-alert-hint" data-i18n="starch_company_alert_hint">Separate company IDs with commas. Alerts when any miner is offline, using hourly cached status while this site is open. Remove an ID and save to stop its alerts.</small>
                                     <small id="starch-company-alert-status" role="status" aria-live="polite"></small>
                                 </form>
                                 <button id="site-alert-permission" type="button" data-i18n="enable_notifications">Enable notifications</button>

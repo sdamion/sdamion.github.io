@@ -30,10 +30,14 @@ try {
     await page.addScriptTag({ path: 'starch/company-alerts.js' });
     await page.locator('#site-alerts-button').click();
     await page.locator('#site-alert-starch-company').check();
-    await page.locator('#starch-company-alert-id').fill('b0adad');
+    await page.locator('#starch-company-alert-id').fill('b0adad, a1b2c3, B0ADAD');
     await page.locator('#starch-company-alert-form button').click();
     await page.waitForFunction(() => window.notifications.length === 1);
-    assert.equal(await page.locator('#starch-company-alert-id').inputValue(), 'B0ADAD');
+    assert.equal(await page.locator('#starch-company-alert-id').inputValue(), 'B0ADAD, A1B2C3');
+    await page.locator('#starch-company-alert-id').fill('invalid');
+    await page.locator('#starch-company-alert-form button').click();
+    assert.equal(await page.locator('#starch-company-alert-id').evaluate(input => input.validity.valid), false);
+    await page.locator('#starch-company-alert-id').fill('B0ADAD, A1B2C3');
     await page.evaluate(() => window.TDSPStarchCompanyAlerts.check());
     assert.equal(await page.evaluate(() => window.notifications.length), 1);
     for (const width of [1280, 390]) {
@@ -47,7 +51,7 @@ try {
     }
     await page.locator('#starch-company-alert-id').fill('');
     await page.locator('#starch-company-alert-form button').click();
-    assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('tdsp-starch-company-alert-v1')).companyId), '');
+    assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('tdsp-starch-company-alert-v1')).companies), []);
     assert.deepEqual(errors, []);
     console.log('PASS: alert menu save, normalized ID, notification, deduplication, removal and responsive layout.');
 } finally { await browser.close(); }
