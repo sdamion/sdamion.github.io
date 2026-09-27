@@ -264,7 +264,10 @@ function createStarchMinerDirectoryBody(records, selected = 'all') {
         results.replaceChildren(createStarchDirectoryList(miners, 'miners', 'Miners'));
     };
     const chart = window.TDSPPieChart.create({ formatPercentage: value => `${value.toFixed(1)}%` });
-    layout.appendChild(chart.createChart(groups.filter(group => group.value), { onSegmentClick: select }));
+    layout.appendChild(chart.createChart(groups.filter(group => group.value), {
+        onSegmentClick: select,
+        labelFormatter: segment => `${window.TDSPI18n?.translateText?.(segment.label) || segment.label} ${segment.value.toLocaleString('en-US')}`
+    }));
     for (const group of [{ key: 'all', label: 'All', value: records.length }, ...groups.filter(group => group.value)]) {
         const button = document.createElement('button');
         button.type = 'button';

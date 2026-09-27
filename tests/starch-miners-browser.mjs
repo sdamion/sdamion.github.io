@@ -26,6 +26,7 @@ try {
         document.body.appendChild(overlay);
     });
     assert.equal(await page.locator('.starch-miner-card').count(), 3);
+    assert.deepEqual(await page.locator('.governance-pie-label').allTextContents(), ['Online 1', 'Offline 1', 'Status unavailable 1']);
     await page.locator('.governance-pie-chart-sector').nth(1).focus();
     await page.keyboard.press('Enter');
     assert.equal(await page.locator('.starch-miner-card').count(), 1);
