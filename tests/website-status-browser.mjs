@@ -20,9 +20,12 @@ try {
     });
     assert.match(await page.locator('main').innerText(), /Succeeded: 12/);
     assert.match(await page.locator('main').innerText(), /Waiting to retry/);
-    for (const width of [1280, 390]) {
+    for (const width of [1280, 700, 390]) {
         await page.setViewportSize({ width, height: 900 });
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+        const columns = await page.locator('.tdsp-tile-grid').evaluate(element => getComputedStyle(element).gridTemplateColumns.split(' ').length);
+        if (width <= 700) assert.equal(columns, 1);
+        else assert.ok(columns > 1);
         await page.screenshot({ path: `/tmp/website-status-${width}.png`, fullPage: true });
     }
     await page.getByRole('button', { name: 'Refresh', exact: true }).click();

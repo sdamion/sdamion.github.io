@@ -11,7 +11,7 @@ export function createWebsiteStatusPanel(request) {
     refresh.type = 'button';
     const status = node('p', '', 'governance-card-detail');
     status.setAttribute('role', 'status');
-    const grid = node('div', '', 'tdsp-tile-grid');
+    const grid = node('div', '', 'tdsp-tile-grid tdsp-tile-grid--mobile-stack');
     panel.append(refresh, status, grid);
     const date = value => value ? new Date(value).toLocaleString() : translate('Unavailable');
     const number = value => Number.isFinite(value) ? value.toLocaleString() : translate('Unavailable');
