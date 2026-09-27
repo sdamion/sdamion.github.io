@@ -1,5 +1,5 @@
 (function () {
-    const STARCH_SCRIPT_SRC = 'starch/starch.js?v=20260927-miner-pie-labels';
+    const STARCH_SCRIPT_SRC = 'starch/starch.js?v=20260927-miner-wallet-groups';
     const STARCH_TARGET_SELECTORS = [
         '#starch',
         '#pool-starch-status-card'

@@ -261,7 +261,7 @@ function createStarchMinerDirectoryBody(records, selected = 'all') {
         const miners = group ? group.records : records;
         resultLabel.textContent = `${window.TDSPI18n?.translateText?.(group?.label || 'Miners') || group?.label || 'Miners'}: ${miners.length.toLocaleString('en-US')}`;
         buttons.forEach(([button, key]) => button.setAttribute('aria-pressed', String(key === (group?.key || 'all'))));
-        results.replaceChildren(createStarchDirectoryList(miners, 'miners', 'Miners'));
+        results.replaceChildren(createStarchMinerWalletList(miners));
     };
     const chart = window.TDSPPieChart.create({ formatPercentage: value => `${value.toFixed(1)}%` });
     layout.appendChild(chart.createChart(groups.filter(group => group.value), {
@@ -291,6 +291,59 @@ function createStarchMinerDirectoryBody(records, selected = 'all') {
     body.append(panel, resultLabel, results);
     select(groups.find(group => group.key === selected) || null);
     return body;
+}
+
+function createStarchMinerWalletList(records) {
+    if (!records.length) return createStarchDirectoryList(records, 'miners', 'Miners');
+    const wallets = new Map();
+    records.forEach(miner => {
+        const address = String(miner.wallet_address || '').trim();
+        const key = address ? `wallet:${address}` : `miner:${miner.id}`;
+        if (!wallets.has(key)) wallets.set(key, []);
+        wallets.get(key).push(miner);
+    });
+    const list = document.createElement('div');
+    list.className = 'governance-drep-directory-list';
+    wallets.forEach(miners => {
+        if (miners.length === 1) {
+            list.appendChild(createStarchDirectoryCard(miners[0], 'miners'));
+            return;
+        }
+        const address = String(miners[0].wallet_address).trim();
+        const handles = [...new Set(miners.map(miner => miner.ada_handle).filter(Boolean))];
+        const title = handles.length === 1 ? handles[0] : `${address.slice(0,16)}...${address.slice(-8)}`;
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'governance-card governance-menu-card starch-miner-wallet-card';
+        card.title = address;
+        card.dataset.searchText = [address, ...handles, ...miners.flatMap(miner => [miner.id, miner.name])].join(' ');
+        window.TDSPRuntime.appendUniversalTileContent(card, {
+            title,
+            primaryText: `${miners.length} ${window.TDSPI18n?.translateText?.('Miners') || 'Miners'}`
+        });
+        const bar = createStarchMinerStatusBar(
+            miners.filter(miner => miner.online === true).length,
+            miners.filter(miner => miner.online === false).length,
+            miners.length
+        );
+        if (bar) card.appendChild(bar);
+        card.addEventListener('click', () => {
+            const overlayId = 'starch-wallet-miners-overlay';
+            createPoolMenuOverlay({
+                id: overlayId,
+                titleId: 'starch-wallet-miners-title',
+                titleText: title,
+                headerMeta: `${miners.length} ${window.TDSPI18n?.translateText?.('Miners') || 'Miners'}`,
+                closeLabel: 'Close Miners',
+                closeOverlay: () => closePoolMenuOverlay(overlayId),
+                returnFocus: card,
+                rootTitle: 'Miners',
+                bodyNode: createStarchDirectoryList(miners, 'miners', 'Miners')
+            });
+        });
+        list.appendChild(card);
+    });
+    return list;
 }
 
 async function fetchTdspStarchMinerCount() {

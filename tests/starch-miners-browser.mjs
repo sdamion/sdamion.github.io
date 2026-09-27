@@ -60,8 +60,36 @@ try {
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
         await page.screenshot({ path: `/tmp/starch-miners-${width}.png`, fullPage: true });
     }
+    await page.evaluate(() => {
+        window.createPoolMenuOverlay = options => {
+            window.walletOverlayOptions = options;
+            const overlay = document.createElement('section');
+            overlay.id = options.id;
+            overlay.appendChild(options.bodyNode);
+            document.body.appendChild(overlay);
+        };
+        window.closePoolMenuOverlay = id => document.getElementById(id)?.remove();
+        document.body.replaceChildren(createStarchMinerWalletList([
+            { id: 'W1', name: 'First shared miner', wallet_address: 'addr1shared', ada_handle: '$same', online: true },
+            { id: 'W2', name: 'Second shared miner', wallet_address: 'addr1shared', ada_handle: '$same', online: false },
+            { id: 'W3', name: 'Other wallet', wallet_address: 'addr1different', ada_handle: '$same', online: true },
+            { id: 'W4', name: 'Unknown owner one' },
+            { id: 'W5', name: 'Unknown owner two' }
+        ]));
+    });
+    assert.equal(await page.locator('.starch-miner-wallet-card').count(), 1);
+    assert.equal(await page.locator('.starch-miner-card').count(), 3);
+    assert.match(await page.locator('.starch-miner-wallet-card').innerText(), /2 Miners/);
+    await page.locator('.starch-miner-wallet-card').click();
+    assert.equal(await page.locator('#starch-wallet-miners-overlay .starch-miner-card').count(), 2);
+    assert.match(await page.locator('#starch-wallet-miners-overlay').innerText(), /First shared miner/);
+    assert.doesNotMatch(await page.locator('#starch-wallet-miners-overlay').innerText(), /Other wallet/);
+    assert.ok(await page.evaluate(() => walletOverlayOptions.returnFocus.matches('.starch-miner-wallet-card')));
+    await page.evaluate(() => walletOverlayOptions.closeOverlay());
+    assert.equal(await page.locator('#starch-wallet-miners-overlay').count(), 0);
+    assert.equal(await page.locator('.starch-miner-wallet-card').count(), 1);
     assert.deepEqual(errors, []);
-    console.log('PASS: online/offline/unknown filters, keyboard chart, wallet link, desktop/mobile layout.');
+    console.log('PASS: status filters, keyboard chart, wallet links, wallet grouping and child overlay, desktop/mobile layout.');
 } finally {
     await browser.close();
 }
