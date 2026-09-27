@@ -3891,6 +3891,23 @@ textarea[data-auto-size] {
     line-height: var(--tdsp-tile-detail-line-height);
 }
 
+.governance-directory-list-card.governance-directory-list-card--single-line {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+}
+
+.governance-directory-list-card.governance-directory-list-card--single-line > * {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin: 0;
+    text-align: left;
+}
+
 .governance-spo-hosting-icon {
     position: absolute;
     top: 16px;

@@ -314,19 +314,19 @@ function createStarchMinerWalletList(records) {
         const title = handles.length === 1 ? handles[0] : `${address.slice(0,16)}...${address.slice(-8)}`;
         const card = document.createElement('button');
         card.type = 'button';
-        card.className = 'governance-card governance-menu-card starch-miner-wallet-card';
+        card.className = 'governance-card governance-menu-card governance-directory-list-card governance-directory-list-card--single-line starch-miner-wallet-card';
         card.title = address;
         card.dataset.searchText = [address, ...handles, ...miners.flatMap(miner => [miner.id, miner.name])].join(' ');
         window.TDSPRuntime.appendUniversalTileContent(card, {
             title,
             primaryText: `${miners.length} ${window.TDSPI18n?.translateText?.('Miners') || 'Miners'}`
         });
-        const bar = createStarchMinerStatusBar(
-            miners.filter(miner => miner.online === true).length,
-            miners.filter(miner => miner.online === false).length,
-            miners.length
-        );
-        if (bar) card.appendChild(bar);
+        for (const online of [true, false]) {
+            const status = window.TDSPRuntime.createSmallText('');
+            status.classList.add('governance-directory-list-note', online ? 'governance-vote-label-item--yes' : 'governance-vote-label-item--no');
+            status.textContent = `${window.TDSPI18n?.translateText?.(online ? 'Online' : 'Offline') || (online ? 'Online' : 'Offline')} ${miners.filter(miner => miner.online === online).length}`;
+            card.appendChild(status);
+        }
         card.addEventListener('click', () => {
             const overlayId = 'starch-wallet-miners-overlay';
             createPoolMenuOverlay({
@@ -545,7 +545,8 @@ function createStarchDirectoryCard(record, type) {
     }
 
     const row = document.createElement('div');
-    row.className = 'governance-card governance-menu-card governance-treasury-withdrawal-card starch-miner-card';
+    row.className = 'governance-card governance-menu-card governance-directory-list-card governance-directory-list-card--single-line starch-miner-card';
+    row.dataset.searchText = [record.name, id, record.wallet_address, record.ada_handle].filter(Boolean).join(' ');
     row.dataset.sortName = window.TDSPRuntime.normalizeSearchText(String(record?.name || 'No Name'));
     row.setAttribute('role', id ? 'link' : 'group');
     if (id) row.tabIndex = 0;
@@ -554,11 +555,16 @@ function createStarchDirectoryCard(record, type) {
     window.TDSPRuntime?.appendUniversalTileContent?.(row, {
         title: String(record?.name || 'No Name')
     });
-    appendStarchDirectoryIdLine(row, id, 'Miner ID');
+    row.firstElementChild.title = String(record?.name || 'No Name');
+    const minerId = window.TDSPRuntime.createSmallText(id || 'N/A');
+    minerId.classList.add('governance-directory-list-note');
+    minerId.title = `Miner ID: ${id}`;
+    row.appendChild(minerId);
     if (typeof record.online === 'boolean') {
         const status = window.TDSPRuntime.createSmallText('');
         setStarchAutoTranslatedText(status, record.online ? 'Online' : 'Offline');
         status.classList.add(record.online ? 'governance-vote-label-item--yes' : 'governance-vote-label-item--no');
+        status.classList.add('governance-directory-list-note');
         row.appendChild(status);
     }
     if (record.wallet_address) {
@@ -566,6 +572,7 @@ function createStarchDirectoryCard(record, type) {
         owner.href = `https://cardanoscan.io/address/${encodeURIComponent(record.wallet_address)}`;
         owner.target = '_blank';
         owner.rel = 'noopener noreferrer';
+        owner.className = 'governance-directory-list-note';
         owner.textContent = record.ada_handle || `${record.wallet_address.slice(0,16)}...${record.wallet_address.slice(-8)}`;
         owner.title = record.wallet_address;
         owner.addEventListener('click', event => event.stopPropagation());
