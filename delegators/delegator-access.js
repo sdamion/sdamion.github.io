@@ -2193,6 +2193,24 @@ async function init(options = {}) {
     document.getElementById('raffle-prizes-open')?.addEventListener('click', () => setPrizeOverlay(true));
     document.getElementById('member-portfolio-open')?.addEventListener('click', openMemberPortfolio);
     document.getElementById('raffle-admin-users-open')?.addEventListener('click', () => setRaffleOverlay(true, 'admins'));
+    document.getElementById('website-status-open')?.addEventListener('click', async () => {
+        try {
+            const { createWebsiteStatusPanel } = await import('./website-status.js?v=20260927');
+            let panel = document.getElementById('website-status-panel');
+            if (!panel) {
+                panel = createWebsiteStatusPanel(() => authorizedRequest(IS_LOCAL
+                    ? '/__website_status_proxy__'
+                    : 'https://api.tdsp.online/api/raffle/admin/website-status', { cache: 'no-store' }));
+                panel.id = 'website-status-panel';
+                panel.hidden = true;
+                document.getElementById('website-status-open').parentElement.after(panel);
+            }
+            openDashboardChildOverlay('website-status', 'Website Status', panel);
+            panel.refresh();
+        } catch (error) {
+            setStatus(error.message, true);
+        }
+    });
     document.getElementById('raffle-lost-stake-open')?.addEventListener('click', () => setRaffleOverlay(true, 'lost_stake'));
     document.getElementById('raffle-lost-stake-sort')?.addEventListener('change', event => {
         lostStakeSortMode = ['ada_desc', 'ada_handle', 'payment_address', 'stake_key'].includes(event.target.value)

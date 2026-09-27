@@ -155,6 +155,10 @@
                                 <strong class="governance-card-title">Admin Users</strong>
                                 <span class="governance-card-detail" id="raffle-dashboard-admin-count">1 admin</span>
                             </button>
+                            <button class="governance-menu-card raffle-open-tile" id="website-status-open" type="button">
+                                <strong class="governance-card-title">Website Status</strong>
+                                <span class="governance-card-detail">Backend, API calls and caches</span>
+                            </button>
                             <button class="governance-menu-card raffle-open-tile" id="raffle-lost-stake-open" type="button">
                                 <strong class="governance-card-title">Lost stake</strong>
                                 <span class="governance-card-detail" id="raffle-dashboard-lost-stake-count">Stake on retired pools</span>
