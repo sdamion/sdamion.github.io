@@ -11,6 +11,8 @@ try {
     await page.addStyleTag({ content: await readFile('shared/styles.css', 'utf8') });
     await page.addScriptTag({ path: 'shared/runtime.js' });
     await page.addScriptTag({ path: 'governance/governance-pie-chart.js' });
+    const home = await readFile('home/index.js', 'utf8');
+    await page.addScriptTag({ content: home.slice(home.indexOf('const OVERLAY_SORT_DEFINITIONS'), home.indexOf('function installOverlaySearch(')) });
     const source = await readFile('starch/starch.js', 'utf8');
     await page.addScriptTag({ content: source.slice(0, source.lastIndexOf("if (document.readyState === 'loading')")) });
     await page.evaluate(() => {
@@ -80,6 +82,18 @@ try {
     assert.equal(await page.locator('.starch-miner-wallet-card').count(), 1);
     assert.equal(await page.locator('.starch-miner-card').count(), 3);
     assert.match(await page.locator('.starch-miner-wallet-card').innerText(), /2 Miners/);
+    assert.deepEqual(await page.evaluate(() => {
+        const cards = [...document.querySelectorAll('.governance-menu-card')];
+        return getRelevantOverlaySortOptions(cards).filter(option => option.key === 'sortMiners').map(option => option.value);
+    }), ['miners-desc', 'miners-asc']);
+    for (const mode of ['miners-asc', 'miners-desc']) {
+        const counts = await page.evaluate(mode => {
+            const cards = [...document.querySelectorAll('.governance-menu-card')];
+            sortOverlayCards(document.body, cards, mode);
+            return [...document.querySelectorAll('.governance-menu-card')].map(card => Number(card.dataset.sortMiners));
+        }, mode);
+        assert.deepEqual(counts, mode === 'miners-desc' ? [2, 1, 1, 1] : [1, 1, 1, 2]);
+    }
     await page.locator('.starch-miner-wallet-card').click();
     assert.equal(await page.locator('#starch-wallet-miners-overlay .starch-miner-card').count(), 2);
     assert.match(await page.locator('#starch-wallet-miners-overlay').innerText(), /First shared miner/);

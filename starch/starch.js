@@ -182,6 +182,7 @@ function renderStarchDirectoryOverlay(type, title, returnFocus, records) {
         closeOverlay: () => closePoolMenuOverlay(overlayId),
         returnFocus,
         rootTitle: title,
+        defaultSort: type === 'miners' ? 'miners-desc' : '',
         bodyNode: type === 'miners' ? createStarchMinerDirectoryBody(records) : createStarchDirectoryList(records, type, title)
     });
 }
@@ -316,6 +317,7 @@ function createStarchMinerWalletList(records) {
         card.type = 'button';
         card.className = 'governance-card governance-menu-card governance-directory-list-card governance-directory-list-card--single-line starch-miner-wallet-card';
         card.title = address;
+        card.dataset.sortMiners = String(miners.length);
         card.dataset.searchText = [address, ...handles, ...miners.flatMap(miner => [miner.id, miner.name])].join(' ');
         window.TDSPRuntime.appendUniversalTileContent(card, {
             title,
@@ -548,6 +550,7 @@ function createStarchDirectoryCard(record, type) {
     row.className = 'governance-card governance-menu-card governance-directory-list-card governance-directory-list-card--single-line starch-miner-card';
     row.dataset.searchText = [record.name, id, record.wallet_address, record.ada_handle].filter(Boolean).join(' ');
     row.dataset.sortName = window.TDSPRuntime.normalizeSearchText(String(record?.name || 'No Name'));
+    row.dataset.sortMiners = '1';
     row.setAttribute('role', id ? 'link' : 'group');
     if (id) row.tabIndex = 0;
     row.setAttribute('aria-label', id ? `Open ${String(record?.name || 'No Name')} on Starch` : String(record?.name || 'No Name'));
