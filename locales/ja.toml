@@ -1,4 +1,12 @@
 [strings]
+starch_company_alert = "Starch企業：オフラインのマイナー"
+starch_company_alert_hint = "企業のマイナーがオフラインの場合に通知します。サイトを開いている間、毎時更新されるキャッシュを使用します。IDを空にすると削除できます。"
+starch_company_status_unavailable = "企業の状態はまだ取得できません。"
+starch_company_offline = "企業にオフラインのマイナーがいます。"
+starch_company_online = "企業の全マイナーがオンラインです。"
+starch_company_alert_saved = "企業の通知を保存しました。"
+starch_company_alert_removed = "企業の通知を削除しました。"
+starch_company_alert_error = "企業の通知を保存できませんでした。"
 starch_attendance_note = "登録済みマイナー。オンライン状態はブロックへの参加に基づきます。"
 ask_question = "質問する"
 raffle_eligible_wallets = "参加資格のあるウォレット"

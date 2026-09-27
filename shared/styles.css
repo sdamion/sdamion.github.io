@@ -715,6 +715,8 @@ html[data-theme="dark"].ai-unavailable {
     display: grid;
     width: min(260px, calc(100vw - 28px));
     gap: 10px;
+    max-height: 80vh;
+    overflow-y: auto;
     padding: 14px;
     border: 1px solid var(--line);
     border-radius: 8px;
@@ -744,6 +746,34 @@ html[data-theme="dark"].ai-unavailable {
 
 .site-alerts-menu input {
     accent-color: var(--accent);
+}
+
+.site-alerts-menu form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+}
+
+.site-alerts-menu form label,
+.site-alerts-menu form small {
+    grid-column: 1 / -1;
+}
+
+.site-alerts-menu form input {
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
+    color: var(--text);
+    background: var(--control-surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 6px 8px;
+    font: inherit;
+}
+
+.site-alerts-menu form small {
+    color: var(--muted);
+    font-size: 0.8rem;
 }
 
 .site-alerts-menu button {

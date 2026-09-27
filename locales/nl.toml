@@ -1,4 +1,12 @@
 [strings]
+starch_company_alert = "Starch-bedrijf: offline miners"
+starch_company_alert_hint = "Melding zodra een bedrijfsminer offline is. Gebruikt de cache die elk uur wordt bijgewerkt, zolang de site open is. Wis de ID om deze te verwijderen."
+starch_company_status_unavailable = "De bedrijfsstatus is nog niet beschikbaar."
+starch_company_offline = "Het bedrijf heeft offline miners."
+starch_company_online = "Alle bedrijfsminers zijn online."
+starch_company_alert_saved = "Bedrijfsmelding opgeslagen."
+starch_company_alert_removed = "Bedrijfsmelding verwijderd."
+starch_company_alert_error = "De bedrijfsmelding kon niet worden opgeslagen."
 starch_attendance_note = "Geregistreerde miners; online status is gebaseerd op deelname aan een blok."
 ask_question = "Vraag"
 raffle_eligible_wallets = "Geschikte wallets"

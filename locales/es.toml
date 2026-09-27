@@ -1,4 +1,12 @@
 [strings]
+starch_company_alert = "Empresa Starch: mineros desconectados"
+starch_company_alert_hint = "Avisa cuando algún minero de la empresa está desconectado. Usa el estado actualizado cada hora mientras el sitio está abierto. Borra el ID para eliminarlo."
+starch_company_status_unavailable = "El estado de la empresa aún no está disponible."
+starch_company_offline = "La empresa tiene mineros desconectados."
+starch_company_online = "Todos los mineros de la empresa están conectados."
+starch_company_alert_saved = "Alerta de empresa guardada."
+starch_company_alert_removed = "Alerta de empresa eliminada."
+starch_company_alert_error = "No se pudo guardar la alerta de empresa."
 starch_attendance_note = "Mineros registrados; el estado en línea se basa en la participación en un bloque."
 ask_question = "Preguntar"
 raffle_eligible_wallets = "Wallets elegibles"

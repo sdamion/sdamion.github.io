@@ -3,9 +3,9 @@
     const DEFAULT_LANGUAGE = 'en';
     const LANGUAGE_CONFIG = Object.freeze({
         en: { label: 'English', flag: '🇺🇸' },
-        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20260927-miner-status' },
-        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20260927-miner-status' },
-        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20260927-miner-status' }
+        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20260927-starch-company-alerts' },
+        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20260927-starch-company-alerts' },
+        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20260927-starch-company-alerts' }
     });
     const TRANSLATION_ATTR = 'data-i18n';
     const TRANSLATION_ORIGINAL_ATTR = 'data-i18n-original';
@@ -153,6 +153,13 @@
         ['Companies', 'companies'],
         ['Company Balance', 'company_balance'],
         ['Company ID', 'company_id'],
+        ['Starch company: offline miners', 'starch_company_alert'],
+        ['Company status is not available yet.', 'starch_company_status_unavailable'],
+        ['Company has offline miners.', 'starch_company_offline'],
+        ['All company miners are online.', 'starch_company_online'],
+        ['Company alert saved.', 'starch_company_alert_saved'],
+        ['Company alert removed.', 'starch_company_alert_removed'],
+        ['Company alert could not be saved.', 'starch_company_alert_error'],
         ['Company IDs', 'company_ids'],
         ['Company miner data could not be loaded.', 'company_miner_data_load_failed'],
         ['Combined', 'combined'],

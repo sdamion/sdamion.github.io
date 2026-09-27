@@ -7,6 +7,7 @@ const NEWS_API_URL = IS_LOCAL_PREVIEW ? '/__news_proxy__' : 'https://api.tdsp.on
 const CARDANO_EVENTS_API_URL = IS_LOCAL_PREVIEW ? '/__events_proxy__' : 'https://api.tdsp.online/api/events';
 const REALFI_DOCS_URL = 'https://docs.realfi.co/';
 const DEFAULT_SITE_ALERT_SETTINGS = Object.freeze({
+    starchCompany: false,
     delegators: true,
     recovery: true,
     blocks: true,
@@ -25,7 +26,7 @@ function readSiteAlertSettings() {
             ...DEFAULT_SITE_ALERT_SETTINGS,
             ...Object.fromEntries(
                 Object.keys(DEFAULT_SITE_ALERT_SETTINGS)
-                    .map(key => [key, parsed[key] !== false])
+                    .map(key => [key, typeof parsed[key] === 'boolean' ? parsed[key] : DEFAULT_SITE_ALERT_SETTINGS[key]])
             )
         };
     } catch {
