@@ -447,8 +447,10 @@ function updateStarchDirectoryTiles(payload) {
         if (minerStatus) minerStatus.classList.remove('is-offline');
 
         const registeredCount = Number(payload?.miner_count);
-        const onlineCount = Number(payload?.active_miner_count);
-        const offlineCount = Number(payload?.inactive_miner_count);
+        const networkCount = payload?.network_online_miner_count;
+        const hasNetworkCount = Number.isSafeInteger(networkCount) && networkCount >= 0;
+        const onlineCount = hasNetworkCount ? networkCount : Number(payload?.active_miner_count);
+        const offlineCount = hasNetworkCount ? Math.max(registeredCount - onlineCount, 0) : Number(payload?.inactive_miner_count);
         const activeCount = onlineCount;
         const hasMinerStatus = Number.isFinite(registeredCount) && Number.isFinite(onlineCount);
         if (hasMinerStatus) {

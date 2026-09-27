@@ -22,6 +22,17 @@ try {
     const source = await readFile('starch/starch.js', 'utf8');
     await page.addScriptTag({ content: source.slice(0, source.lastIndexOf("if (document.readyState === 'loading')")) });
     await page.evaluate(() => {
+        const tile = document.createElement('div');
+        tile.id = 'status-test-tile';
+        tile.innerHTML = '<strong id="starchMinerCount"></strong><span id="starchMinerStatus"></span>';
+        document.body.append(tile);
+        updateStarchDirectoryTiles({ miner_count: 1414, active_miner_count: 261,
+            inactive_miner_count: 1153, network_online_miner_count: 1140 });
+    });
+    assert.match(await page.locator('#starchMinerStatus').innerText(), /Online 1,140/);
+    assert.match(await page.locator('#starchMinerStatus').innerText(), /Offline 274/);
+    await page.locator('#status-test-tile').evaluate(tile => tile.remove());
+    await page.evaluate(() => {
         window.openExternalSiteWarning = () => { window.minerOpened = true; };
         const data = [
             { id: 'A', name: 'Online miner', online: true, wallet_address: 'addr1test', ada_handle: '$owner' },
