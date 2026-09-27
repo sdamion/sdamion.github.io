@@ -1,4 +1,5 @@
 [strings]
+starch_attendance_note = "Mineros registrados; el estado en línea se basa en la participación en un bloque."
 ask_question = "Preguntar"
 raffle_eligible_wallets = "Wallets elegibles"
 raffle_checking_wallets = "Comprobando wallets elegibles..."

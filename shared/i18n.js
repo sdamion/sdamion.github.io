@@ -3,9 +3,9 @@
     const DEFAULT_LANGUAGE = 'en';
     const LANGUAGE_CONFIG = Object.freeze({
         en: { label: 'English', flag: '🇺🇸' },
-        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20260924-shared-wallet-connect' },
-        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20260924-shared-wallet-connect' },
-        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20260924-shared-wallet-connect' }
+        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20260927-miner-status' },
+        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20260927-miner-status' },
+        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20260927-miner-status' }
     });
     const TRANSLATION_ATTR = 'data-i18n';
     const TRANSLATION_ORIGINAL_ATTR = 'data-i18n-original';
@@ -583,6 +583,7 @@
         ['Optional: add one or more wallet addresses separated by commas or new lines.', 'manual_wallet_address_help'],
         ['Publish message on-chain', 'publish_message_onchain'],
         ['Resolving wallet addresses and ADA Handles...', 'resolving_wallet_addresses_handles'],
+        ['Registered miners; online status is based on block attendance.', 'starch_attendance_note'],
         ['Format: enter one complete Mainnet stake address per line. Example:', 'stake_address_format_intro'],
         ['Comma-separated addresses are also accepted.', 'comma_addresses_accepted'],
         ['Admin addresses', 'admin_addresses'],

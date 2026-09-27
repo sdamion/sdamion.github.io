@@ -1,4 +1,5 @@
 [strings]
+starch_attendance_note = "登録済みマイナー。オンライン状態はブロックへの参加に基づきます。"
 ask_question = "質問する"
 raffle_eligible_wallets = "参加資格のあるウォレット"
 raffle_checking_wallets = "参加資格のあるウォレットを確認中..."

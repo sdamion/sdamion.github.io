@@ -1,4 +1,5 @@
 [strings]
+starch_attendance_note = "Geregistreerde miners; online status is gebaseerd op deelname aan een blok."
 ask_question = "Vraag"
 raffle_eligible_wallets = "Geschikte wallets"
 raffle_checking_wallets = "Geschikte wallets controleren..."

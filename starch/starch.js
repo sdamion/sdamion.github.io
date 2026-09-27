@@ -134,6 +134,7 @@ async function fetchStarchDirectory() {
         try {
             const payload = await window.TDSPRuntime.fetchJson(STARCH_DIRECTORY_URL);
             starchDirectory = {
+                ...payload,
                 miners: Array.isArray(payload?.miners) ? payload.miners : [],
                 companies: consolidateStarchCompanies(payload?.companies)
             };
@@ -180,7 +181,7 @@ function renderStarchDirectoryOverlay(type, title, returnFocus, records) {
         closeOverlay: () => closePoolMenuOverlay(overlayId),
         returnFocus,
         rootTitle: title,
-        bodyNode: createStarchDirectoryList(records, type, title)
+        bodyNode: type === 'miners' ? createStarchMinerDirectoryBody(records) : createStarchDirectoryList(records, type, title)
     });
 }
 
@@ -201,6 +202,12 @@ function renderStarchDirectoryLoadingOverlay(type, title, returnFocus) {
 }
 
 async function openStarchDirectoryOverlay(type, title, returnFocus) {
+    if (type === 'miners') {
+        await window.TDSPRuntime.loadScript('governance/governance-pie-chart.js?v=20260819-not-voted-graph-language', {
+            datasetName: 'governancePieChart', selector: 'script[data-governance-pie-chart]',
+            ready: () => window.TDSPPieChart || null
+        });
+    }
     const overlayId = `starch-${type}-overlay`;
     let records = getStarchDirectoryRecords(type);
     if (records.length) {
@@ -213,6 +220,56 @@ async function openStarchDirectoryOverlay(type, title, returnFocus) {
     if (!document.getElementById(overlayId)) return;
     records = getStarchDirectoryRecords(type);
     renderStarchDirectoryOverlay(type, title, returnFocus, records);
+}
+
+function createStarchMinerDirectoryBody(records) {
+    const body = document.createElement('div');
+    const groups = [
+        { key: 'online', label: 'Online', color: '#34d399', records: records.filter(miner => miner.online === true) },
+        { key: 'offline', label: 'Offline', color: '#f87171', records: records.filter(miner => miner.online === false) },
+        { key: 'unknown', label: 'Status unavailable', color: '#94a3b8', records: records.filter(miner => typeof miner.online !== 'boolean') }
+    ].map(group => ({ ...group, value: group.records.length }));
+    const panel = document.createElement('section');
+    panel.className = 'governance-vote-chart governance-chart-panel';
+    const layout = document.createElement('div');
+    layout.className = 'governance-vote-chart-layout';
+    const legend = document.createElement('div');
+    legend.className = 'governance-vote-legend';
+    const results = document.createElement('div');
+    const resultLabel = window.TDSPRuntime.createSmallText('');
+    resultLabel.setAttribute('aria-live', 'polite');
+    const buttons = [];
+    const select = group => {
+        const miners = group ? group.records : records;
+        resultLabel.textContent = `${window.TDSPI18n?.translateText?.(group?.label || 'Miners') || group?.label || 'Miners'}: ${miners.length.toLocaleString('en-US')}`;
+        buttons.forEach(([button, key]) => button.setAttribute('aria-pressed', String(key === (group?.key || 'all'))));
+        results.replaceChildren(createStarchDirectoryList(miners, 'miners', 'Miners'));
+    };
+    const chart = window.TDSPPieChart.create({ formatPercentage: value => `${value.toFixed(1)}%` });
+    layout.appendChild(chart.createChart(groups.filter(group => group.value), { onSegmentClick: select }));
+    for (const group of [{ key: 'all', label: 'All', value: records.length }, ...groups.filter(group => group.value)]) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'governance-card';
+        window.TDSPRuntime.appendUniversalTileContent(button, {
+            title: window.TDSPI18n?.translateText?.(group.label) || group.label,
+            primaryText: String(group.value)
+        });
+        button.addEventListener('click', () => select(group.key === 'all' ? null : group));
+        buttons.push([button, group.key]);
+        legend.appendChild(button);
+    }
+    layout.appendChild(legend);
+    panel.appendChild(layout);
+    const note = window.TDSPRuntime.createSmallText('');
+    setStarchAutoTranslatedText(note, 'Registered miners; online status is based on block attendance.');
+    panel.appendChild(note);
+    if (starchDirectory.online_block != null) {
+        panel.appendChild(window.TDSPRuntime.createSmallText(`${starchDirectory.online_block} · ${new Date(starchDirectory.online_updated_at).toLocaleString()}`));
+    }
+    body.append(panel, resultLabel, results);
+    select(null);
+    return body;
 }
 
 async function fetchTdspStarchMinerCount() {
@@ -424,6 +481,23 @@ function createStarchDirectoryCard(record, type) {
         title: String(record?.name || 'No Name')
     });
     appendStarchDirectoryIdLine(row, id, 'Miner ID');
+    if (typeof record.online === 'boolean') {
+        const status = window.TDSPRuntime.createSmallText('');
+        setStarchAutoTranslatedText(status, record.online ? 'Online' : 'Offline');
+        status.classList.add(record.online ? 'governance-vote-label-item--yes' : 'governance-vote-label-item--no');
+        row.appendChild(status);
+    }
+    if (record.wallet_address) {
+        const owner = document.createElement('a');
+        owner.href = `https://cardanoscan.io/address/${encodeURIComponent(record.wallet_address)}`;
+        owner.target = '_blank';
+        owner.rel = 'noopener noreferrer';
+        owner.textContent = record.ada_handle || `${record.wallet_address.slice(0,16)}...${record.wallet_address.slice(-8)}`;
+        owner.title = record.wallet_address;
+        owner.addEventListener('click', event => event.stopPropagation());
+        owner.addEventListener('keydown', event => event.stopPropagation());
+        row.appendChild(owner);
+    }
 
     if (type === 'miners' && id) {
         const open = () => {
