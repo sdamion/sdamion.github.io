@@ -327,12 +327,6 @@ function createStarchMinerWalletList(records) {
             primaryClassName: `governance-card-detail pool-status-value ${groupStatus}`,
             primaryText: `${miners.length} ${window.TDSPI18n?.translateText?.('Miners') || 'Miners'}`
         });
-        for (const online of [true, false]) {
-            const status = window.TDSPRuntime.createSmallText('');
-            status.classList.add('governance-directory-list-note', online ? 'governance-vote-label-item--yes' : 'governance-vote-label-item--no');
-            status.textContent = `${window.TDSPI18n?.translateText?.(online ? 'Online' : 'Offline') || (online ? 'Online' : 'Offline')} ${miners.filter(miner => miner.online === online).length}`;
-            card.appendChild(status);
-        }
         card.addEventListener('click', () => {
             const overlayId = 'starch-wallet-miners-overlay';
             createPoolMenuOverlay({
@@ -553,39 +547,30 @@ function createStarchDirectoryCard(record, type) {
     const row = document.createElement('div');
     row.className = 'governance-card governance-menu-card governance-directory-list-card governance-directory-list-card--single-line starch-miner-card';
     row.dataset.searchText = [record.name, id, record.wallet_address, record.ada_handle].filter(Boolean).join(' ');
-    row.dataset.sortName = window.TDSPRuntime.normalizeSearchText(String(record?.name || 'No Name'));
+    row.dataset.sortName = window.TDSPRuntime.normalizeSearchText(record.ada_handle || record.wallet_address || id);
     row.dataset.sortMiners = '1';
     row.setAttribute('role', id ? 'link' : 'group');
     if (id) row.tabIndex = 0;
-    row.setAttribute('aria-label', id ? `Open ${String(record?.name || 'No Name')} on Starch` : String(record?.name || 'No Name'));
-
-    window.TDSPRuntime?.appendUniversalTileContent?.(row, {
-        title: String(record?.name || 'No Name')
-    });
-    row.firstElementChild.title = String(record?.name || 'No Name');
+    row.setAttribute('aria-label', `Open miner ${id} on Starch`);
     const minerId = window.TDSPRuntime.createSmallText(id || 'N/A');
-    minerId.classList.add('governance-directory-list-note');
+    minerId.classList.add('governance-directory-list-note', 'pool-status-value');
+    if (typeof record.online === 'boolean') minerId.classList.add(record.online ? 'is-active' : 'is-inactive');
     minerId.title = `Miner ID: ${id}`;
-    row.appendChild(minerId);
-    if (typeof record.online === 'boolean') {
-        const status = window.TDSPRuntime.createSmallText('');
-        setStarchAutoTranslatedText(status, record.online ? 'Online' : 'Offline');
-        status.classList.add(record.online ? 'governance-vote-label-item--yes' : 'governance-vote-label-item--no');
-        status.classList.add('governance-directory-list-note');
-        row.appendChild(status);
-    }
     if (record.wallet_address) {
         const owner = document.createElement('a');
         owner.href = `https://cardanoscan.io/address/${encodeURIComponent(record.wallet_address)}`;
         owner.target = '_blank';
         owner.rel = 'noopener noreferrer';
-        owner.className = 'governance-directory-list-note';
+        owner.className = 'governance-title';
         owner.textContent = record.ada_handle || `${record.wallet_address.slice(0,16)}...${record.wallet_address.slice(-8)}`;
         owner.title = record.wallet_address;
         owner.addEventListener('click', event => event.stopPropagation());
         owner.addEventListener('keydown', event => event.stopPropagation());
         row.appendChild(owner);
+    } else {
+        window.TDSPRuntime.appendUniversalTileContent(row, { title: record.ada_handle || 'N/A' });
     }
+    row.appendChild(minerId);
 
     if (type === 'miners' && id) {
         const open = () => {

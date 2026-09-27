@@ -32,10 +32,13 @@ try {
     await page.locator('.governance-pie-chart-sector').nth(1).focus();
     await page.keyboard.press('Enter');
     assert.equal(await page.locator('.starch-miner-card').count(), 1);
-    assert.match(await page.locator('.starch-miner-card').innerText(), /Offline miner/);
+    assert.match(await page.locator('.starch-miner-card').innerText(), /B/);
+    assert.doesNotMatch(await page.locator('.starch-miner-card').innerText(), /Offline|Online|miner/);
+    assert.equal(await page.locator('.starch-miner-card .is-inactive').count(), 1);
     await page.locator('.governance-vote-legend button').filter({ hasText: /^Online/ }).click();
     assert.equal(await page.locator('.starch-miner-card').count(), 1);
     assert.equal(await page.getByRole('link', { name: '$owner', exact: true }).getAttribute('href'), 'https://cardanoscan.io/address/addr1test');
+    assert.equal(await page.locator('.starch-miner-card > :first-child').innerText(), '$owner');
     await page.getByRole('link', { name: '$owner', exact: true }).evaluate(link => link.addEventListener('click', event => event.preventDefault()));
     await page.getByRole('link', { name: '$owner', exact: true }).click();
     assert.equal(await page.evaluate(() => Boolean(window.minerOpened)), false);
@@ -82,6 +85,7 @@ try {
     assert.equal(await page.locator('.starch-miner-wallet-card').count(), 1);
     assert.equal(await page.locator('.starch-miner-card').count(), 3);
     assert.match(await page.locator('.starch-miner-wallet-card').innerText(), /2 Miners/);
+    assert.doesNotMatch(await page.locator('.starch-miner-wallet-card').innerText(), /Online|Offline/);
     assert.equal(await page.locator('.starch-miner-wallet-card .pool-status-value.is-inactive').count(), 1);
     assert.deepEqual(await page.evaluate(() => [
         [true, true], [true, null], [false, null]
@@ -104,8 +108,9 @@ try {
     }
     await page.locator('.starch-miner-wallet-card').click();
     assert.equal(await page.locator('#starch-wallet-miners-overlay .starch-miner-card').count(), 2);
-    assert.match(await page.locator('#starch-wallet-miners-overlay').innerText(), /First shared miner/);
-    assert.doesNotMatch(await page.locator('#starch-wallet-miners-overlay').innerText(), /Other wallet/);
+    assert.match(await page.locator('#starch-wallet-miners-overlay').innerText(), /W1/);
+    assert.match(await page.locator('#starch-wallet-miners-overlay').innerText(), /W2/);
+    assert.doesNotMatch(await page.locator('#starch-wallet-miners-overlay').innerText(), /W3|First shared miner|Second shared miner/);
     assert.ok(await page.evaluate(() => walletOverlayOptions.returnFocus.matches('.starch-miner-wallet-card')));
     await page.evaluate(() => walletOverlayOptions.closeOverlay());
     assert.equal(await page.locator('#starch-wallet-miners-overlay').count(), 0);
