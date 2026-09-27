@@ -143,6 +143,7 @@ async function fetchStarchDirectory() {
                 companies: starchDirectory.companies,
                 company_count: starchDirectory.companies.length
             });
+            refreshOpenStarchMinerDirectory();
             return starchDirectory;
         } catch (error) {
             console.error(`Starch directory failed: ${error.message}`);
@@ -212,6 +213,7 @@ async function openStarchDirectoryOverlay(type, title, returnFocus) {
     let records = getStarchDirectoryRecords(type);
     if (records.length) {
         renderStarchDirectoryOverlay(type, title, returnFocus, records);
+        if (type === 'miners') void fetchStarchDirectory();
         return;
     }
 
@@ -222,8 +224,23 @@ async function openStarchDirectoryOverlay(type, title, returnFocus) {
     renderStarchDirectoryOverlay(type, title, returnFocus, records);
 }
 
-function createStarchMinerDirectoryBody(records) {
+function starchMinerDirectorySignature(records) {
+    return JSON.stringify([starchDirectory.online_updated_at, records.map(record =>
+        [record.id, record.name, record.online, record.wallet_address, record.ada_handle])]);
+}
+
+function refreshOpenStarchMinerDirectory() {
+    const body = document.querySelector('#starch-miners-overlay [data-starch-miner-directory]');
+    if (!body) return;
+    const records = getStarchDirectoryRecords('miners');
+    if (body.dataset.signature === starchMinerDirectorySignature(records)) return;
+    body.replaceWith(createStarchMinerDirectoryBody(records, body.dataset.selected));
+}
+
+function createStarchMinerDirectoryBody(records, selected = 'all') {
     const body = document.createElement('div');
+    body.dataset.starchMinerDirectory = '';
+    body.dataset.signature = starchMinerDirectorySignature(records);
     const groups = [
         { key: 'online', label: 'Online', color: '#34d399', records: records.filter(miner => miner.online === true) },
         { key: 'offline', label: 'Offline', color: '#f87171', records: records.filter(miner => miner.online === false) },
@@ -240,6 +257,7 @@ function createStarchMinerDirectoryBody(records) {
     resultLabel.setAttribute('aria-live', 'polite');
     const buttons = [];
     const select = group => {
+        body.dataset.selected = group?.key || 'all';
         const miners = group ? group.records : records;
         resultLabel.textContent = `${window.TDSPI18n?.translateText?.(group?.label || 'Miners') || group?.label || 'Miners'}: ${miners.length.toLocaleString('en-US')}`;
         buttons.forEach(([button, key]) => button.setAttribute('aria-pressed', String(key === (group?.key || 'all'))));
@@ -268,7 +286,7 @@ function createStarchMinerDirectoryBody(records) {
         panel.appendChild(window.TDSPRuntime.createSmallText(`${starchDirectory.online_block} · ${new Date(starchDirectory.online_updated_at).toLocaleString()}`));
     }
     body.append(panel, resultLabel, results);
-    select(null);
+    select(groups.find(group => group.key === selected) || null);
     return body;
 }
 
