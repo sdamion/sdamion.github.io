@@ -16,10 +16,14 @@ export function createWebsiteStatusPanel(request) {
     const date = value => value ? new Date(value).toLocaleString() : translate('Unavailable');
     const number = value => Number.isFinite(value) ? value.toLocaleString() : translate('Unavailable');
     const card = (title, value, details) => {
-        const tile = node('section', '', 'governance-menu-card');
+        const tile = node('div', '', 'governance-menu-card');
         const content = node('div', '');
-        content.append(node('strong', title, 'governance-card-title'), node('p', value, 'governance-card-detail'));
-        details.forEach(text => content.append(node('p', text, 'governance-card-detail')));
+        window.TDSPRuntime.appendUniversalTileContent(content, {
+            title,
+            primaryText: value,
+            primaryClassName: 'governance-card-detail',
+            detailItems: details
+        });
         tile.append(content);
         grid.append(tile);
     };

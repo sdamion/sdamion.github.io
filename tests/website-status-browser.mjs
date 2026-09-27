@@ -6,6 +6,7 @@ try {
     const page = await browser.newPage();
     await page.setContent('<main></main>');
     await page.addStyleTag({ content: await readFile('shared/styles.css', 'utf8') });
+    await page.addScriptTag({ content: await readFile('shared/runtime.js', 'utf8') });
     await page.addScriptTag({ content: (await readFile('delegators/website-status.js', 'utf8')).replace('export function', 'function') });
     await page.evaluate(async () => {
         let calls = 0;
@@ -26,6 +27,17 @@ try {
         const columns = await page.locator('.tdsp-tile-grid').evaluate(element => getComputedStyle(element).gridTemplateColumns.split(' ').length);
         if (width <= 700) assert.equal(columns, 1);
         else assert.ok(columns > 1);
+        const alignment = await page.locator('.governance-menu-card').first().evaluate(tile => {
+            const content = tile.firstElementChild;
+            return {
+                inset: content.getBoundingClientRect().left - tile.getBoundingClientRect().left,
+                paragraphs: content.querySelectorAll('p').length,
+                aligned: [...content.children].every(child => Math.abs(child.getBoundingClientRect().left - content.getBoundingClientRect().left) < 1)
+            };
+        });
+        assert.ok(alignment.inset >= 16);
+        assert.equal(alignment.paragraphs, 0);
+        assert.equal(alignment.aligned, true);
         await page.screenshot({ path: `/tmp/website-status-${width}.png`, fullPage: true });
     }
     await page.getByRole('button', { name: 'Refresh', exact: true }).click();
