@@ -755,7 +755,12 @@
         return { box, body };
     }
 
+    function filterMarkedRows(rows, hideMarked, isMarked) {
+        return hideMarked ? rows.filter(row => !isMarked(row)) : rows;
+    }
+
     window.TDSPRuntime = Object.freeze({
+        filterMarkedRows,
         createWalletConnectBox,
         isLocalPreview: isLocalPreviewHostname(window.location.hostname),
         fetchResponse,

@@ -10,7 +10,10 @@ import {Table,TableHeader,TableBody,TableRow,TableHead,TableCell} from './ui';
 const num=(value:number)=>value.toLocaleString('en-US',{maximumFractionDigits:6});
 export function WalletCard({wallet:w,primary,snapshot,remove,busy,excluded,onExclude}:{wallet:Wallet;primary:boolean;snapshot:Snapshot|null;remove:()=>void;busy:boolean;excluded:Set<string>;onExclude:(address:string,value:boolean)=>void}){
   const [open,setOpen]=useState(false);
+  const [hideExcluded,setHideExcluded]=useState(false);
   const addresses=snapshot?.groups?.[w.address];
+  const runtime=(window as unknown as {TDSPRuntime:{filterMarkedRows:<T>(rows:T[],hide:boolean,marked:(row:T)=>boolean)=>T[]}}).TDSPRuntime;
+  const visibleAddresses=runtime.filterMarkedRows(addresses||[],hideExcluded,address=>excluded.has(address));
   const facts=Object.values(snapshot?.facts||{});
   const count=(linked:string[])=>walletTransactionCount(facts,linked).toLocaleString('en-US');
   const link=(address:string)=><a className="address" href={`https://cardanoscan.io/${validStakeAddress(address)?'stakekey':'address'}/${address}`} target="_blank" rel="noreferrer" title={address}>{short(address)} <ExternalLink size={12}/></a>;
@@ -23,8 +26,10 @@ export function WalletCard({wallet:w,primary,snapshot,remove,busy,excluded,onExc
   </TableRow>
   {open&&<AssetOverlay id="portfolio-wallet-addresses" name={w.label} onClose={()=>setOpen(false)}>
     <p className="small muted">Excluded addresses retain their cached balances and transactions. Changes apply to the next refresh. Shared transactions may still update through another wallet address.</p>
+    <label className="raffle-lost-stake-toggle"><input type="checkbox" checked={hideExcluded} onChange={event=>setHideExcluded(event.target.checked)}/><span>Hide excluded addresses</span></label>
+    <p className="small muted" role="status">{visibleAddresses.length} shown · {(addresses?.length||0)-visibleAddresses.length} hidden</p>
     <div className="history-table"><Table><TableHeader><TableRow>{['Wallet','Address','ADA','Transactions','Exclude from refresh'].map(title=><TableHead key={title}>{title}</TableHead>)}</TableRow></TableHeader><TableBody>
-      {(addresses||[]).map(address=>{const info=snapshot?.infos.find(row=>row.address===address);return <TableRow key={address}>
+      {visibleAddresses.map(address=>{const info=snapshot?.infos.find(row=>row.address===address);return <TableRow key={address}>
         <TableCell>{w.label}</TableCell><TableCell>{link(address)}</TableCell><TableCell>{info?'₳ '+num(Number(info.balance)/1e6):'Unavailable'}</TableCell><TableCell>{count([address])}</TableCell>
         <TableCell><label title={!info&&!excluded.has(address)?'Waiting for the first cached balance':'Applies to the next refresh'}><input type="checkbox" aria-label={`Exclude ${address} from refresh`} checked={excluded.has(address)} disabled={!info&&!excluded.has(address)} onChange={event=>onExclude(address,event.target.checked)}/> Exclude</label></TableCell>
       </TableRow>;})}
