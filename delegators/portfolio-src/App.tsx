@@ -242,7 +242,6 @@ export default function Home({memberStake}:{memberStake:string}){
   }
 
   function setRefreshExcluded(address:string,value:boolean){
-    if(busy)return;
     const next=wallets.map(wallet=>{
       const exclusions=new Set(wallet.excludedRefreshAddresses||[]);
       if(value&&(snapshot?.groups?.[wallet.address]||[]).includes(address))exclusions.add(address);

@@ -9,7 +9,7 @@ const bundle=await build({stdin:{contents:`
 import {createRoot} from 'react-dom/client';
 import {useState} from 'react';
 import {WalletCard} from './WalletAddresses';
-function Test(){const [excluded,setExcluded]=useState(new Set());return <table><tbody><WalletCard wallet={{address:'stake-test',label:'Member'}} primary snapshot={{groups:{'stake-test':['addr-one','addr-two']},infos:[{address:'addr-one',balance:'2000000'},{address:'addr-two',balance:'3000000'}],facts:{a:{hash:'a',wallets:['addr-one']}}}} busy={false} excluded={excluded} onExclude={(address,value)=>setExcluded(current=>{const next=new Set(current);value?next.add(address):next.delete(address);window.excluded=[...next];return next;})} remove={()=>{}}/></tbody></table>}
+function Test(){const [excluded,setExcluded]=useState(new Set());return <table><tbody><WalletCard wallet={{address:'stake-test',label:'Member'}} primary snapshot={{groups:{'stake-test':['addr-one','addr-two']},infos:[{address:'addr-one',balance:'2000000'},{address:'addr-two',balance:'3000000'}],facts:{a:{hash:'a',wallets:['addr-one']}}}} busy={true} excluded={excluded} onExclude={(address,value)=>setExcluded(current=>{const next=new Set(current);value?next.add(address):next.delete(address);window.excluded=[...next];return next;})} remove={()=>{}}/></tbody></table>}
 createRoot(document.getElementById('app')).render(<Test/>);`,loader:'tsx',resolveDir:path.resolve('delegators/portfolio-src')},bundle:true,write:false,format:'esm',jsx:'automatic'});
 const browser=await chromium.launch({channel:'chrome',headless:true});
 try{

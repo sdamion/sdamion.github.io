@@ -26,7 +26,7 @@ export function WalletCard({wallet:w,primary,snapshot,remove,busy,excluded,onExc
     <div className="history-table"><Table><TableHeader><TableRow>{['Wallet','Address','ADA','Transactions','Exclude from refresh'].map(title=><TableHead key={title}>{title}</TableHead>)}</TableRow></TableHeader><TableBody>
       {(addresses||[]).map(address=>{const info=snapshot?.infos.find(row=>row.address===address);return <TableRow key={address}>
         <TableCell>{w.label}</TableCell><TableCell>{link(address)}</TableCell><TableCell>{info?'₳ '+num(Number(info.balance)/1e6):'Unavailable'}</TableCell><TableCell>{count([address])}</TableCell>
-        <TableCell><input type="checkbox" aria-label={`Exclude ${address} from refresh`} checked={excluded.has(address)} disabled={busy||!info} onChange={event=>onExclude(address,event.target.checked)}/></TableCell>
+        <TableCell><label title={!info&&!excluded.has(address)?'Waiting for the first cached balance':'Applies to the next refresh'}><input type="checkbox" aria-label={`Exclude ${address} from refresh`} checked={excluded.has(address)} disabled={!info&&!excluded.has(address)} onChange={event=>onExclude(address,event.target.checked)}/> Exclude</label></TableCell>
       </TableRow>;})}
     </TableBody></Table></div>
   </AssetOverlay>}</>;
