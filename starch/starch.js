@@ -238,15 +238,19 @@ function refreshOpenStarchMinerDirectory() {
     body.replaceWith(createStarchMinerDirectoryBody(records, body.dataset.selected));
 }
 
-function createStarchMinerDirectoryBody(records, selected = 'all') {
-    const body = document.createElement('div');
-    body.dataset.starchMinerDirectory = '';
-    body.dataset.signature = starchMinerDirectorySignature(records);
-    const groups = [
+function getStarchMinerStatusGroups(records) {
+    return [
         { key: 'online', label: 'Online', color: '#34d399', records: records.filter(miner => miner.online === true) },
         { key: 'offline', label: 'Offline', color: '#f87171', records: records.filter(miner => miner.online === false) },
         { key: 'unknown', label: 'Status unavailable', color: '#94a3b8', records: records.filter(miner => typeof miner.online !== 'boolean') }
     ].map(group => ({ ...group, value: group.records.length }));
+}
+
+function createStarchMinerDirectoryBody(records, selected = 'all') {
+    const body = document.createElement('div');
+    body.dataset.starchMinerDirectory = '';
+    body.dataset.signature = starchMinerDirectorySignature(records);
+    const groups = getStarchMinerStatusGroups(records);
     const panel = document.createElement('section');
     panel.className = 'governance-vote-chart governance-chart-panel';
     const layout = document.createElement('div');
@@ -433,6 +437,13 @@ function createStarchMinerStatusBar(onlineCount, offlineCount, totalCount) {
     const onlineLabel = window.TDSPI18n?.translateText?.('Online') || 'Online';
     const offlineLabel = window.TDSPI18n?.translateText?.('Offline') || 'Offline';
     label.innerHTML = `<span class="governance-vote-label-item--yes">${onlineLabel} ${online.toLocaleString('en-US')}</span> <span class="governance-vote-label-item--no">${offlineLabel} ${offline.toLocaleString('en-US')}</span>`;
+    const unknown = Math.max(safeTotal - online - offline, 0);
+    if (unknown) {
+        const unknownLabel = document.createElement('span');
+        setStarchAutoTranslatedText(unknownLabel, 'Status unavailable');
+        unknownLabel.append(` ${unknown.toLocaleString('en-US')}`);
+        label.append(unknownLabel);
+    }
 
     bar.append(track, label);
     return bar;
@@ -446,11 +457,11 @@ function updateStarchDirectoryTiles(payload) {
         minerCount.classList.remove('is-online');
         if (minerStatus) minerStatus.classList.remove('is-offline');
 
-        const registeredCount = Number(payload?.miner_count);
-        const networkCount = payload?.network_online_miner_count;
-        const hasNetworkCount = Number.isSafeInteger(networkCount) && networkCount >= 0;
-        const onlineCount = hasNetworkCount ? networkCount : Number(payload?.active_miner_count);
-        const offlineCount = hasNetworkCount ? Math.max(registeredCount - onlineCount, 0) : Number(payload?.inactive_miner_count);
+        const records = Array.isArray(payload?.miners) ? payload.miners : null;
+        const groups = records ? getStarchMinerStatusGroups(records) : null;
+        const registeredCount = records ? records.length : Number(payload?.miner_count);
+        const onlineCount = groups ? groups[0].value : Number(payload?.active_miner_count);
+        const offlineCount = groups ? groups[1].value : Number(payload?.inactive_miner_count);
         const activeCount = onlineCount;
         const hasMinerStatus = Number.isFinite(registeredCount) && Number.isFinite(onlineCount);
         if (hasMinerStatus) {

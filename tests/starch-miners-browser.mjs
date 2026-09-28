@@ -27,10 +27,13 @@ try {
         tile.innerHTML = '<strong id="starchMinerCount"></strong><span id="starchMinerStatus"></span>';
         document.body.append(tile);
         updateStarchDirectoryTiles({ miner_count: 1414, active_miner_count: 261,
-            inactive_miner_count: 1153, network_online_miner_count: 1140 });
+            inactive_miner_count: 1153, network_online_miner_count: 1140,
+            miners: [{ id: 'A', online: true }, { id: 'B', online: false }, { id: 'C', online: null }] });
     });
-    assert.match(await page.locator('#starchMinerStatus').innerText(), /Online 1,140/);
-    assert.match(await page.locator('#starchMinerStatus').innerText(), /Offline 274/);
+    assert.equal(await page.locator('#starchMinerCount').innerText(), '3');
+    assert.match(await page.locator('#starchMinerStatus').innerText(), /Online 1/);
+    assert.match(await page.locator('#starchMinerStatus').innerText(), /Offline 1/);
+    assert.match(await page.locator('#starchMinerStatus').innerText(), /Status unavailable 1/);
     await page.locator('#status-test-tile').evaluate(tile => tile.remove());
     await page.evaluate(() => {
         window.openExternalSiteWarning = () => { window.minerOpened = true; };
