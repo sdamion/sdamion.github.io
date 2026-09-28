@@ -39,6 +39,8 @@ import {CexAddresses} from './CexAddresses';
 import {ByronExchanges} from './ByronExchanges';
 import {SwapWallets} from './SwapWallets';
 import {WalletMenu} from './WalletMenu';
+import {WalletCard} from './WalletAddresses';
+import {refreshExcludedAddresses} from './member';
 import {validByronAddress} from './byron-address';
 import {exchangeExcludedAddresses,resolveSwapGroups,excludeInternalExchanges,swapOwnershipScope,swapAddressSet,isSwapTransaction} from './swap-wallets';
 import {normalizeCexAddresses,cexDestinations,cexSources,cexAdjustedFact,isCexTransaction,cexAdaTransfer,cexAdaNetPosition,cexUsdNetPosition,displayedCexAddresses,transactionExchangeWallets} from './cex';
@@ -93,6 +95,7 @@ export default function Home({memberStake}:{memberStake:string}){
   const [counted,setCounted]=useState<number|null>(null);
   const walletKey=memberStake+'::'+wallets.map(w=>w.address).sort().join('|');
   const key=walletKey+swapOwnershipScope(wallets);
+  const excludedRefresh=useMemo(()=>refreshExcludedAddresses(wallets),[wallets]);
   const ownedAddresses=useMemo(()=>exchangeExcludedAddresses(wallets,snapshot?.groups,snapshot?.swapGroups),[wallets,snapshot?.groups,snapshot?.swapGroups]);
   const swapAddresses=useMemo(()=>swapAddressSet(wallets,snapshot?.swapGroups),[wallets,snapshot?.swapGroups]);
   const cexAddresses=useMemo(()=>excludeInternalExchanges(savedCexAddresses,ownedAddresses),[savedCexAddresses,ownedAddresses]);
@@ -141,10 +144,11 @@ export default function Home({memberStake}:{memberStake:string}){
       for(let i=0;i<stakes.length;i+=40)accounts.push(...await request<{stake_address:string;addresses:string[]}[]>('account_addresses',{_stake_addresses:stakes.slice(i,i+40),_first_only:false,_empty:true},signal));
       const groups=resolveWalletGroups(wallets,accounts);
       const swapGroups=resolveSwapGroups(wallets,accounts);
-      const plan=planRefresh(cached,groups);
+      const plan=planRefresh(cached,groups,excludedRefresh);
       const addresses=[...new Set(Object.values(groups).flat())];
-      const addressBatches=Array.from({length:Math.ceil(addresses.length/40)},(_,i)=>addresses.slice(i*40,(i+1)*40));
-      const loadInfos=async()=>{const all:AddressInfo[]=[];for(const [index,batch] of addressBatches.entries()){
+      const refreshAddresses=addresses.filter(address=>!excludedRefresh.has(address));
+      const addressBatches=Array.from({length:Math.ceil(refreshAddresses.length/40)},(_,i)=>refreshAddresses.slice(i*40,(i+1)*40));
+      const loadInfos=async()=>{const all:AddressInfo[]=(cached?.infos||[]).filter(info=>addresses.includes(info.address)&&excludedRefresh.has(info.address));for(const [index,batch] of addressBatches.entries()){
         setStatus(`Initialising wallets · loading balances ${index+1} / ${addressBatches.length}`);
         all.push(...await request<AddressInfo[]>('address_info',{_addresses:batch},signal));
       }return all;};
@@ -152,6 +156,7 @@ export default function Home({memberStake}:{memberStake:string}){
       if(addresses.some(a=>!infos.some(i=>i.address===a)))throw new Error('Some wallet balances were not returned. The combined balance has not been replaced.');
       const holdings=combineHoldings(infos);
       const next:Snapshot={groups,swapGroups,infos,txs:plan.txs,facts:plan.facts,markets:{...cached?.markets},adaUsd:cached?.adaUsd??null,history:cached?.history||{},updated:new Date().toISOString(),priceAt:cached?.priceAt??null,complete:false,pendingOwnershipAddresses:plan.pendingOwnershipAddresses};
+      next.excludedRefreshAddresses=[...excludedRefresh];
       for(const info of infos)for(const u of info.utxo_set||[])for(const a of u.asset_list||[]){const id=a.policy_id+a.asset_name;next.markets[id]={...next.markets[id],token_id:id,decimals:a.decimals??next.markets[id]?.decimals};}
       setSnapshot({...next});
       setInitialising(false);setStatus('Balances updated · updating prices…');
@@ -190,7 +195,7 @@ export default function Home({memberStake}:{memberStake:string}){
       setStatus(incremental?'Checking for new transactions…':'Loading remaining transaction history…');
       await runPipeline<Tx>(async(enqueue,active)=>{
         // Upgrade receipts and outgoing payments once to retain their UTxO links.
-        const legacy=next.txs.filter(tx=>needsFactRefresh(next.facts[tx.tx_hash]));
+        const legacy=next.txs.filter(tx=>needsFactRefresh(next.facts[tx.tx_hash])&&(!next.facts[tx.tx_hash]||next.facts[tx.tx_hash].wallets.some(address=>!excludedRefresh.has(address))));
         for(const tx of legacy)scheduled.add(tx.tx_hash);
         enqueue(legacy);updateAnalysis();
         for(const historyBatch of plan.batches)for(let offset=0;;offset+=1000){
@@ -236,6 +241,17 @@ export default function Home({memberStake}:{memberStake:string}){
     finally{if(!signal.aborted){setClock(Date.now());setBusy(false);setInitialising(false);setCounting(null);}}
   }
 
+  function setRefreshExcluded(address:string,value:boolean){
+    if(busy)return;
+    const next=wallets.map(wallet=>{
+      const exclusions=new Set(wallet.excludedRefreshAddresses||[]);
+      if(value&&(snapshot?.groups?.[wallet.address]||[]).includes(address))exclusions.add(address);
+      if(!value)exclusions.delete(address);
+      return {...wallet,excludedRefreshAddresses:[...exclusions]};
+    });
+    try{localStorage.setItem(SETTINGS,JSON.stringify(next));setWallets(next);}
+    catch{setCacheNotice('Wallet settings could not be saved to the selected cache.');}
+  }
   function saveWallets(next:Wallet[]){
     const cleaned=excludeInternalExchanges(savedCexAddresses,exchangeExcludedAddresses(next,snapshot?.groups,snapshot?.swapGroups));
     if(!saveCexAddresses(cleaned))return;
@@ -357,7 +373,7 @@ export default function Home({memberStake}:{memberStake:string}){
     <WalletMenu counts={{wallets:wallets.filter(wallet=>wallet.group!=='swap').length,exchanges:cexAddresses.filter(entry=>!validByronAddress(entry.address)).length,byron:cexAddresses.filter(entry=>validByronAddress(entry.address)).length}}
     swap={<SwapWallets wallets={wallets} groups={snapshot?.swapGroups} onChange={saveWallets}/>}
     wallets={<section className="portfolio-section"><p className="small muted">Your member stake address includes its linked payment addresses. Add only wallets you own.</p>
-      <div className="history-table"><Table><TableHeader><TableRow><TableHead>Wallet</TableHead><TableHead>Address</TableHead><TableHead>ADA</TableHead><TableHead>Transactions</TableHead><TableHead>Linked addresses</TableHead><TableHead>Remove</TableHead></TableRow></TableHeader><TableBody>{wallets.filter(wallet=>wallet.group!=='swap').map((w,i)=><WalletCard key={w.address} wallet={w} primary={i===0} snapshot={snapshot} remove={()=>saveWallets(wallets.filter(x=>x.address!==w.address))}/>)}</TableBody></Table></div>
+      <div className="history-table"><Table><TableHeader><TableRow><TableHead>Wallet</TableHead><TableHead>Address</TableHead><TableHead>ADA</TableHead><TableHead>Transactions</TableHead><TableHead>Linked addresses</TableHead><TableHead>Remove</TableHead></TableRow></TableHeader><TableBody>{wallets.filter(wallet=>wallet.group!=='swap').map((w,i)=><WalletCard key={w.address} wallet={w} primary={i===0} snapshot={snapshot} busy={busy} excluded={excludedRefresh} onExclude={setRefreshExcluded} remove={()=>saveWallets(wallets.filter(x=>x.address!==w.address))}/>)}</TableBody></Table></div>
       <form onSubmit={addWallet} className="wallet-form governance-drep-registration-form"><label>Wallet name<Input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Savings" maxLength={60}/></label><label className="address-field">Stake or payment address<Input value={address} onChange={e=>setAddress(e.target.value)} placeholder="stake1… or addr1…" aria-describedby="wallet-error" required/></label><button className="governance-vote-primary" type="submit"><Plus size={16}/>Add wallet</button></form><p id="wallet-error" role="status" className="negative">{walletError}</p>
       <p className="small muted">Wallets, prices you enter, and cached history are saved in this browser. Adding or removing a wallet recalculates the entire portfolio; average costs are saved separately for each wallet combination.</p>
     </section>}
@@ -423,21 +439,6 @@ export default function Home({memberStake}:{memberStake:string}){
   </main>;
 }
 
-function WalletCard({wallet:w,primary,snapshot,remove}:{wallet:Wallet;primary:boolean;snapshot:Snapshot|null;remove:()=>void}){
-  const addresses=snapshot?.groups?.[w.address];
-  const facts=Object.values(snapshot?.facts||{});
-  const countLabel=(linked:string[])=>`${num(walletTransactionCount(facts,linked),0)} transactions${snapshot?.complete?'':' · analysed so far'}`;
-  return <TableRow><TableCell>{w.label}</TableCell>
-    <TableCell><a className="address" href={`https://cardanoscan.io/${validStakeAddress(w.address)?'stakekey':'address'}/${w.address}`} target="_blank" rel="noreferrer" title={w.address}>{short(w.address)} <ExternalLink size={12}/></a></TableCell>
-    <TableCell>{addresses?'₳ '+num(snapshot!.infos.filter(i=>addresses.includes(i.address)).reduce((total,i)=>total+Number(i.balance)/1e6,0)):'Loading balance…'}</TableCell>
-    <TableCell><span className="small muted">{addresses?countLabel(addresses):'Loading transaction count…'}</span></TableCell>
-    <TableCell>{validStakeAddress(w.address)&&addresses&&<details className="portfolio-linked-addresses"><summary title="Includes spent addresses">{addresses.length} linked addresses</summary>{addresses.map(address=>{
-      const info=snapshot!.infos.find(row=>row.address===address);
-      return <div className="governance-detail-row" key={address}><a className="address" href={`https://cardanoscan.io/address/${address}`} target="_blank" rel="noreferrer" title={address}>{short(address)} <ExternalLink size={12}/></a><span>{info?'₳ '+num(Number(info.balance)/1e6):'Balance unavailable'}</span><span className="small muted">{countLabel([address])}</span></div>;
-    })}</details>}</TableCell>
-    <TableCell><button className="governance-vote-secondary" disabled={primary} onClick={remove} title={`Remove ${w.label} from portfolio`} aria-label={`Remove ${w.label} from portfolio`}><Trash2 size={16}/></button></TableCell>
-  </TableRow>;
-}
 function AssetImage({id,name,market,onOpen}:{id:string;name:string;market?:Market;onOpen?:()=>void}){
   const [failed,setFailed]=useState<string[]>([]);
   const source=assetImageCandidates(id,[market?.cached_image,market?.wayup_image,market?.image,market?.image_url,market?.logo]).find(url=>!failed.includes(url));

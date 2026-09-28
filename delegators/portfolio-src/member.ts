@@ -1,5 +1,14 @@
 import {validAddress} from './core.ts';
 import {validByronAddress} from './byron-address.ts';
+import type {Wallet} from './core.ts';
+export function refreshExcludedAddresses(wallets:Wallet[]):Set<string>{
+  return new Set(wallets.flatMap(wallet=>wallet.excludedRefreshAddresses||[]));
+}
+function refreshSettings(wallet:unknown){
+  const values=(wallet as Wallet|undefined)?.excludedRefreshAddresses;
+  if(!Array.isArray(values)||!values.length)return {};
+  return {excludedRefreshAddresses:Array.isArray(values)?[...new Set(values.filter(address=>typeof address==='string'&&(validAddress(address)||validByronAddress(address))))]:[]};
+}
 export function walletTransactionCount(facts:{hash:string;wallets:string[]}[],addresses:string[]):number {
   const owned=new Set(addresses);
   return new Set(facts.filter(f=>f.wallets.some(address=>owned.has(address))).map(f=>f.hash)).size;
@@ -22,7 +31,8 @@ export function sameTrackedAddresses(previous:Record<string,string[]>|undefined,
 export function memberWallets(stake:string,saved:unknown){
   if(!validStakeAddress(stake))throw new Error('A verified mainnet stake address is required.');
   const extras=Array.isArray(saved)?saved.filter(w=>w&&typeof w.address==='string'&&(validWalletAddress(w.address)||(w.group==='swap'&&validByronAddress(w.address)))&&w.address!==stake&&typeof w.label==='string').map(w=>({address:w.address,label:w.group==='swap'?'Swap':w.label,...(w.group==='swap'?{group:'swap' as const}:{})})):[];
-  return [{address:stake,label:'Member stake address'},...[...new Map(extras.map(w=>[w.address,w])).values()]];
+  const savedRows=Array.isArray(saved)?saved:[];
+  return [{address:stake,label:'Member stake address',...refreshSettings(savedRows.find(w=>w?.address===stake))},...[...new Map(extras.map(w=>[w.address,{...w,...refreshSettings(savedRows.find(row=>row?.address===w.address))}])).values()]];
 }
 export function resolveWalletGroups(wallets:{address:string;group?:'swap'}[],accounts:{stake_address:string;addresses:string[]}[]){
   const groups:Record<string,string[]>={};

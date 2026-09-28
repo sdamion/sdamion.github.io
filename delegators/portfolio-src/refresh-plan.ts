@@ -7,9 +7,9 @@ export function analyseAndCache(detail:Detail,owned:Set<string>):Fact{
   const source:Detail={tx_hash:detail.tx_hash,tx_timestamp:detail.tx_timestamp,fee:detail.fee,inputs:io(detail.inputs),outputs:io(detail.outputs),assets_minted:detail.assets_minted,marketplace_version:detail.marketplace_version,marketplace_purchases:detail.marketplace_purchases};
   return {...analyse(source,owned),source};
 }
-export function planRefresh(cached:Snapshot|null,groups:Record<string,string[]>){
+export function planRefresh(cached:Snapshot|null,groups:Record<string,string[]>,excluded=new Set<string>()){
   const owned=new Set(Object.values(groups).flat()),previous=new Set(Object.values(cached?.groups||{}).flat());
-  const added=new Set([...owned].filter(address=>!previous.has(address)||cached?.pendingOwnershipAddresses?.includes(address)));
+  const added=new Set([...owned].filter(address=>!previous.has(address)||cached?.pendingOwnershipAddresses?.includes(address)||cached?.excludedRefreshAddresses?.includes(address)));
   const removed=new Set([...previous].filter(address=>!owned.has(address)));
   const changed=new Set([...added,...removed]);
   const facts:Record<string,Fact>={};
@@ -32,8 +32,9 @@ export function planRefresh(cached:Snapshot|null,groups:Record<string,string[]>)
     }
   }
   const batches:{addresses:string[];incremental:boolean;newAddresses:boolean}[]=[];
+  const resuming=new Set(cached?.excludedRefreshAddresses||[]);
   for(const fresh of [false,true]){
-    const addresses=[...owned].filter(address=>added.has(address)===fresh);
+    const addresses=[...owned].filter(address=>(added.has(address)||resuming.has(address))===fresh&&!excluded.has(address));
     for(let i=0;i<addresses.length;i+=40)batches.push({addresses:addresses.slice(i,i+40),incremental:!fresh&&!!cached?.groups&&cached.complete,newAddresses:fresh});
   }
   return {facts,txs,batches,owned,pendingOwnershipAddresses:[...added]};

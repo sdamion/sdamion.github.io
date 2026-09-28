@@ -12,6 +12,9 @@ function fixtureAddress(seed:number){
   return hrp+'1'+words.concat(Array.from({length:6},(_,i)=>(chk>>>(5*(5-i)))&31)).map(v=>chars[v]).join('');
 }
 const a=fixtureAddress(1),b=fixtureAddress(2);
+const excludedWallets=memberWallets(stake,[{address:stake,label:'Member',excludedRefreshAddresses:[a,a,'bad']},{address:b,label:'Other',excludedRefreshAddresses:[b]}]);
+assert.deepEqual(excludedWallets[0].excludedRefreshAddresses,[a]);
+assert.deepEqual(excludedWallets[1].excludedRefreshAddresses,[b]);
 assert.equal(sameTrackedAddresses({wallet:[a]},{wallet:[a,b]}),false);
 assert.equal(sameTrackedAddresses({wallet:[a,b]},{wallet:[b,a],extra:[a]}),true);
 assert.equal(sameTrackedAddresses(undefined,{wallet:[a]}),false);

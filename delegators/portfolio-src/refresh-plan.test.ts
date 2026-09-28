@@ -8,6 +8,13 @@ const detail:Detail={tx_hash:'transfer',tx_timestamp:100,fee:'2',inputs:[{value:
 const independent={...detail,tx_hash:'independent',outputs:[{value:'98',payment_addr:{bech32:'external'}}]};
 const cached:Snapshot={groups:{wallet:['a']},infos:[],txs:[detail,independent].map(d=>({tx_hash:d.tx_hash,block_time:d.tx_timestamp,block_height:1})),facts:{transfer:analyseAndCache(detail,new Set(['a'])),independent:analyseAndCache(independent,new Set(['a']))},markets:{},adaUsd:1,history:{},updated:'now',complete:true,priceAt:null};
 const unchanged=planRefresh(cached,{wallet:['a']});
+const excluded=planRefresh(cached,{wallet:['a']},new Set(['a']));
+assert.equal(excluded.batches.length,0);
+assert.equal(excluded.owned.has('a'),true);
+assert.equal(excluded.facts.transfer,cached.facts.transfer);
+assert.deepEqual(excluded.txs,cached.txs);
+const resumed=planRefresh({...cached,excludedRefreshAddresses:['a']},{wallet:['a']});
+assert.equal(resumed.batches[0].incremental,false,'resuming an address scans any history skipped while excluded');
 assert.equal(unchanged.facts.transfer,cached.facts.transfer);
 assert.equal(Object.values(unchanged.facts).filter(needsFactRefresh).length,0,'complete cached facts need no tx_info requests');
 assert.equal(unchanged.batches[0].incremental,true);

@@ -1,0 +1,35 @@
+import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
+import {readFile} from 'node:fs/promises';
+import path from 'node:path';
+const require=createRequire(new URL('../delegators/portfolio-src/package.json',import.meta.url));
+const {build}=require('esbuild');
+const {chromium}=await import(process.argv[2]);
+const bundle=await build({stdin:{contents:`
+import {createRoot} from 'react-dom/client';
+import {useState} from 'react';
+import {WalletCard} from './WalletAddresses';
+function Test(){const [excluded,setExcluded]=useState(new Set());return <table><tbody><WalletCard wallet={{address:'stake-test',label:'Member'}} primary snapshot={{groups:{'stake-test':['addr-one','addr-two']},infos:[{address:'addr-one',balance:'2000000'},{address:'addr-two',balance:'3000000'}],facts:{a:{hash:'a',wallets:['addr-one']}}}} busy={false} excluded={excluded} onExclude={(address,value)=>setExcluded(current=>{const next=new Set(current);value?next.add(address):next.delete(address);window.excluded=[...next];return next;})} remove={()=>{}}/></tbody></table>}
+createRoot(document.getElementById('app')).render(<Test/>);`,loader:'tsx',resolveDir:path.resolve('delegators/portfolio-src')},bundle:true,write:false,format:'esm',jsx:'automatic'});
+const browser=await chromium.launch({channel:'chrome',headless:true});
+try{
+  const page=await browser.newPage({viewport:{width:1100,height:800}});
+  await page.setContent('<div id="app"></div>');
+  await page.addStyleTag({content:await readFile('shared/styles.css','utf8')});
+  await page.evaluate(()=>{window.createUniversalOverlay=options=>{window.options=options;const overlay=document.createElement('div');overlay.id=options.id;const back=document.createElement('button');back.textContent='Back';back.onclick=options.closeOverlay;overlay.append(back,...options.bodyNodes);document.body.append(overlay);return {overlay};};});
+  await page.addScriptTag({type:'module',content:bundle.outputFiles[0].text});
+  await page.getByRole('button',{name:'Member',exact:true}).click();
+  const overlay=page.locator('#portfolio-wallet-addresses');
+  await overlay.waitFor();
+  assert.deepEqual(await overlay.locator('th').allTextContents(),['Wallet','Address','ADA','Transactions','Exclude from refresh']);
+  assert.equal(await overlay.locator('tbody tr').count(),2);
+  await overlay.getByRole('checkbox').first().check();
+  assert.deepEqual(await page.evaluate(()=>window.excluded),['addr-one']);
+  assert.match(await overlay.locator('tbody tr').first().innerText(),/₳ 2/);
+  await overlay.getByRole('checkbox').first().uncheck();
+  assert.deepEqual(await page.evaluate(()=>window.excluded),[]);
+  assert.equal(await page.evaluate(()=>window.options.showBack),true);
+  await page.getByRole('button',{name:'Back',exact:true}).click();
+  await overlay.waitFor({state:'detached'});
+  console.log('PASS wallet address overlay, compact rows, exclusion controls and shared navigation');
+}finally{await browser.close();}
