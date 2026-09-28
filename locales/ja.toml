@@ -1,6 +1,6 @@
 [strings]
 starch_company_alert = "Starch企業：オフラインのマイナー"
-starch_company_alert_hint = "企業IDをカンマで区切って入力してください。サイトを開いている間、毎時更新されるキャッシュからオフラインのマイナーを通知します。通知を停止するにはIDを削除して保存してください。"
+starch_company_alert_hint = "企業IDをカンマで区切って入力してください。サイトを開いている間、30分ごとに更新されるキャッシュからオフラインのマイナーを通知します。通知を停止するにはIDを削除して保存してください。"
 starch_company_ids_invalid = "6文字の企業IDをカンマで区切って入力してください。"
 starch_company_status_unavailable = "企業の状態はまだ取得できません。"
 starch_company_offline = "企業にオフラインのマイナーがいます。"

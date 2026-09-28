@@ -1,6 +1,6 @@
 [strings]
 starch_company_alert = "Empresa Starch: mineros desconectados"
-starch_company_alert_hint = "Separa los IDs de empresa con comas. Avisa de mineros desconectados usando la caché actualizada cada hora mientras el sitio está abierto. Elimina un ID y guarda para detener sus alertas."
+starch_company_alert_hint = "Separa los IDs de empresa con comas. Avisa de mineros desconectados usando la caché actualizada cada 30 minutos mientras el sitio está abierto. Elimina un ID y guarda para detener sus alertas."
 starch_company_ids_invalid = "Introduce IDs de empresa de seis caracteres separados por comas."
 starch_company_status_unavailable = "El estado de la empresa aún no está disponible."
 starch_company_offline = "La empresa tiene mineros desconectados."

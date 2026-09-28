@@ -1,6 +1,6 @@
 [strings]
 starch_company_alert = "Starch-bedrijf: offline miners"
-starch_company_alert_hint = "Scheid bedrijfs-ID's met komma's. Meldingen bij offline miners gebruiken de elk uur bijgewerkte cache zolang de site open is. Verwijder een ID en sla op om die meldingen te stoppen."
+starch_company_alert_hint = "Scheid bedrijfs-ID's met komma's. Meldingen bij offline miners gebruiken de elke 30 minuten bijgewerkte cache zolang de site open is. Verwijder een ID en sla op om die meldingen te stoppen."
 starch_company_ids_invalid = "Voer bedrijfs-ID's van zes tekens in, gescheiden door komma's."
 starch_company_status_unavailable = "De bedrijfsstatus is nog niet beschikbaar."
 starch_company_offline = "Het bedrijf heeft offline miners."
