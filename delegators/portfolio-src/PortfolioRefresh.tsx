@@ -1,16 +1,18 @@
 import {useEffect,useState} from 'react';
 import {createPortal} from 'react-dom';
-import {RefreshCw} from 'lucide-react';
+import {RefreshCw,Info} from 'lucide-react';
+import {PortfolioGuide} from './PortfolioGuide';
 
 export function PortfolioRefresh({busy,disabled,onRefresh}:{busy:boolean;disabled:boolean;onRefresh:()=>void}){
   const [host,setHost]=useState<HTMLElement|null>(null);
+  const [guide,setGuide]=useState(false);
   useEffect(()=>{
     const show=()=>setHost(document.getElementById('portfolio-refresh-action'));
-    const hide=()=>setHost(null);
+    const hide=()=>{setHost(null);setGuide(false);};
     show();
     window.addEventListener('tdsp:portfolio-shown',show);
     window.addEventListener('tdsp:portfolio-hidden',hide);
     return()=>{window.removeEventListener('tdsp:portfolio-shown',show);window.removeEventListener('tdsp:portfolio-hidden',hide);};
   },[]);
-  return host?createPortal(<button type="button" className="governance-back-to-root" title="Refresh Portfolio" aria-label="Refresh Portfolio" aria-busy={busy} disabled={disabled} onClick={onRefresh}><RefreshCw size={18} aria-hidden="true" className={busy?'animate-spin':''}/></button>,host):null;
+  return <>{host&&createPortal(<><button type="button" className="governance-back-to-root" title="Portfolio guide" aria-label="Portfolio guide" onClick={()=>setGuide(true)}><Info size={18} aria-hidden="true"/></button><button type="button" className="governance-back-to-root" title="Refresh Portfolio" aria-label="Refresh Portfolio" aria-busy={busy} disabled={disabled} onClick={onRefresh}><RefreshCw size={18} aria-hidden="true" className={busy?'animate-spin':''}/></button></>,host)}{guide&&<PortfolioGuide onClose={()=>setGuide(false)}/>}</>;
 }
