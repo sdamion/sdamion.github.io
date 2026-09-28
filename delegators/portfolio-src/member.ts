@@ -4,6 +4,11 @@ import type {Wallet} from './core.ts';
 export function refreshExcludedAddresses(wallets:Wallet[]):Set<string>{
   return new Set(wallets.flatMap(wallet=>wallet.excludedRefreshAddresses||[]));
 }
+export function walletRefreshCounts(groups:Record<string,string[]>|undefined,excluded:Set<string>){
+  if(!groups)return null;
+  const addresses=[...new Set(Object.values(groups).flat())];
+  return {active:addresses.filter(address=>!excluded.has(address)).length,total:addresses.length};
+}
 function refreshSettings(wallet:unknown){
   const values=(wallet as Wallet|undefined)?.excludedRefreshAddresses;
   if(!Array.isArray(values)||!values.length)return {};

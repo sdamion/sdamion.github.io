@@ -1,4 +1,9 @@
 import assert from 'node:assert/strict';
+import {walletRefreshCounts} from './member.ts';
+assert.deepEqual(walletRefreshCounts({one:['a','b'],two:['b','c']},new Set(['b'])),{active:2,total:3});
+assert.deepEqual(walletRefreshCounts({one:['a']},new Set(['a'])),{active:0,total:1});
+assert.deepEqual(walletRefreshCounts({},new Set()),{active:0,total:0});
+assert.equal(walletRefreshCounts(undefined,new Set()),null);
 import {memberWallets,validStakeAddress,resolveWalletGroups,sameTrackedAddresses,walletTransactionCount} from './member.ts';
 import {analyse,liveAdaBasis,tradeOf} from './core.ts';
 import {normalizeCexAddresses,cexDestinations,cexSources,cexAdjustedFact,isCexTransaction,cexAdaTransfer,cexAdaPerformance,cexAdaNetPosition,cexUsdNetPosition,cexTimeline,cexTimelineSeries} from './cex.ts';

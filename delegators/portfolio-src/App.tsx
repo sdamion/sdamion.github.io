@@ -40,7 +40,7 @@ import {ByronExchanges} from './ByronExchanges';
 import {SwapWallets} from './SwapWallets';
 import {WalletMenu} from './WalletMenu';
 import {WalletCard} from './WalletAddresses';
-import {refreshExcludedAddresses} from './member';
+import {refreshExcludedAddresses,walletRefreshCounts} from './member';
 import {validByronAddress} from './byron-address';
 import {exchangeExcludedAddresses,resolveSwapGroups,excludeInternalExchanges,swapOwnershipScope,swapAddressSet,isSwapTransaction} from './swap-wallets';
 import {normalizeCexAddresses,cexDestinations,cexSources,cexAdjustedFact,isCexTransaction,cexAdaTransfer,cexAdaNetPosition,cexUsdNetPosition,displayedCexAddresses,transactionExchangeWallets} from './cex';
@@ -96,6 +96,7 @@ export default function Home({memberStake}:{memberStake:string}){
   const walletKey=memberStake+'::'+wallets.map(w=>w.address).sort().join('|');
   const key=walletKey+swapOwnershipScope(wallets);
   const excludedRefresh=useMemo(()=>refreshExcludedAddresses(wallets),[wallets]);
+  const refreshCounts=walletRefreshCounts(snapshot?.groups,excludedRefresh);
   const ownedAddresses=useMemo(()=>exchangeExcludedAddresses(wallets,snapshot?.groups,snapshot?.swapGroups),[wallets,snapshot?.groups,snapshot?.swapGroups]);
   const swapAddresses=useMemo(()=>swapAddressSet(wallets,snapshot?.swapGroups),[wallets,snapshot?.swapGroups]);
   const cexAddresses=useMemo(()=>excludeInternalExchanges(savedCexAddresses,ownedAddresses),[savedCexAddresses,ownedAddresses]);
@@ -363,7 +364,7 @@ export default function Home({memberStake}:{memberStake:string}){
       {cexAddresses.length>0&&<Metric label="ADA Gain/ loss" value="Waiting for wallet balances" onOpen={()=>{setQuery('');setFilter('cex');setPage(0);setSection('transactions');}} amount={snapshot?{ada:Number(cexPosition.netRaw)/1e6,usd:cexDollars.usd}:undefined}/>}
     </div></section>
     <div className="tdsp-tile-grid">
-      <MenuTile title="Cardano Wallets" value={initialising?'Initialising':num(wallets.filter(wallet=>wallet.group!=='swap').length+(wallets.some(wallet=>wallet.group==='swap')?1:0)+cexAddresses.length,0)} loading={initialising} onOpen={()=>setSection('wallets')}/>
+      <MenuTile title="Cardano Wallets" value={refreshCounts?`${num(refreshCounts.active,0)} / ${num(refreshCounts.total,0)} active`:initialising?'Initialising':'— / — active'} loading={initialising} onOpen={()=>setSection('wallets')}/>
       <MenuTile title="Transactions" value={num(counting??transactionTotal,0)} analysis={snapshot?{done:progress.done,total:progress.total,counting:counting!==null,busy}:undefined} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('transactions');}}>
         {storageMode()==='remote'?<CacheUploadProgress onRetry={()=>void flushVault().catch(()=>{})}/>:cacheNotice&&<p role="status" className="tdsp-bar-legend">{cacheNotice}</p>}
       </MenuTile>
