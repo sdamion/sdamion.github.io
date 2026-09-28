@@ -623,6 +623,7 @@ async function openMemberPortfolio() {
     container.className = 'member-portfolio-host';
     const refreshAction = document.createElement('span');
     refreshAction.id = 'portfolio-refresh-action';
+    refreshAction.className = 'overlay-dialog-header-actions';
     const returnFocus = document.activeElement;
     let dispose = null;
     let closed = false;

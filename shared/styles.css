@@ -3276,6 +3276,10 @@ textarea[data-auto-size] {
     font-size: inherit;
 }
 
+#portfolio-guide-overlay .governance-markdown h2 {
+    font-size: calc(var(--tdsp-tile-detail-size) - 0.2rem);
+}
+
 .governance-markdown ul,
 .governance-markdown ol {
     margin: 0;
