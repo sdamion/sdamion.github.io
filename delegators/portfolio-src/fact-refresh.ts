@@ -11,3 +11,9 @@ export function needsFactRefresh(fact:Fact|undefined):boolean{
     (fact.marketplaceVersion!==3&&Object.values(fact.assets).some(raw=>BigInt(raw)>0n))||
     (fact.inputRefs===undefined&&paymentBudget(fact)!==null));
 }
+
+export function needsActiveFactRefresh(fact:Fact|undefined,active:Set<string>):boolean{
+  // Unknown cached transactions are discovered through active address history,
+  // not globally queued where they might belong only to excluded addresses.
+  return !!fact&&fact.wallets.some(address=>active.has(address))&&needsFactRefresh(fact);
+}

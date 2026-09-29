@@ -32,10 +32,13 @@ export function planRefresh(cached:Snapshot|null,groups:Record<string,string[]>,
     }
   }
   const batches:{addresses:string[];incremental:boolean;newAddresses:boolean}[]=[];
-  const resuming=new Set(cached?.excludedRefreshAddresses||[]);
+  const historyComplete=new Set(cached?.historyCompleteAddresses||(cached?.complete?[...previous]:[]));
+  for(const address of added)historyComplete.delete(address);
   for(const fresh of [false,true]){
-    const addresses=[...owned].filter(address=>(added.has(address)||resuming.has(address))===fresh&&!excluded.has(address));
-    for(let i=0;i<addresses.length;i+=40)batches.push({addresses:addresses.slice(i,i+40),incremental:!fresh&&!!cached?.groups&&cached.complete,newAddresses:fresh});
+    for(const incremental of [true,false]){
+      const addresses=[...owned].filter(address=>added.has(address)===fresh&&!excluded.has(address)&&(!fresh&&historyComplete.has(address))===incremental);
+      for(let i=0;i<addresses.length;i+=40)batches.push({addresses:addresses.slice(i,i+40),incremental,newAddresses:fresh});
+    }
   }
-  return {facts,txs,batches,owned,pendingOwnershipAddresses:[...added]};
+  return {facts,txs,batches,owned,pendingOwnershipAddresses:[...added],historyCompleteAddresses:[...historyComplete].filter(address=>owned.has(address))};
 }

@@ -17,7 +17,7 @@ import type {Snapshot} from '@/lib/portfolio-cache';
 import {portfolioFetch} from './transport';
 import {runPipeline} from './pipeline';
 import {createHistoryIndex} from './history-index';
-import {hasCounterpartyData,needsFactRefresh} from './fact-refresh';
+import {hasCounterpartyData,needsFactRefresh,needsActiveFactRefresh} from './fact-refresh';
 import {keepRefreshSessionAlive} from './refresh-session';
 import {currentValuation} from './current-valuation';
 import {valuationCoverage} from './valuation-coverage';
@@ -29,6 +29,8 @@ import {mintPayments,paymentBudget} from './mint-payments';
 import type {PaymentLink} from './mint-payments';
 import {PaymentLinks} from './PaymentLinks';
 import {AssetOverlay} from './AssetOverlay';
+import {UnknownOwnership} from './UnknownOwnership';
+import {unknownOwnership,verifyOwnership} from './unknown-ownership';
 import {MenuTile,AdaUsdAmount} from './ui';
 import {portfolioSettings as localStorage,flushVault,storageMode} from './vault';
 import {CacheUploadProgress} from './CacheUploadProgress';
@@ -84,7 +86,7 @@ export default function Home({memberStake}:{memberStake:string}){
   const [paymentLinks,setPaymentLinks]=useState<PaymentLink[]>([]);
   const [missingCostsOnly,setMissingCostsOnly]=useState(false);
   const [selectedAsset,setSelectedAsset]=useState<string|null>(null);
-  const [section,setSection]=useState<'wallets'|'holdings'|'transactions'|null>(null);
+  const [section,setSection]=useState<'wallets'|'holdings'|'transactions'|'unknown'|null>(null);
   const [page,setPage]=useState(0);
   const [dateFrom,setDateFrom]=useState(''),[dateTo,setDateTo]=useState('');
   const [liveQuote,setLiveQuote]=useState<{usd:number;at:string}|null>(null);
@@ -97,6 +99,8 @@ export default function Home({memberStake}:{memberStake:string}){
   const key=walletKey+swapOwnershipScope(wallets);
   const excludedRefresh=useMemo(()=>refreshExcludedAddresses(wallets),[wallets]);
   const refreshCounts=walletRefreshCounts(snapshot?.groups,excludedRefresh);
+  const trackedAddresses=useMemo(()=>new Set(Object.values(snapshot?.groups||{}).flat()),[snapshot?.groups]);
+  const unknownTransactions=useMemo(()=>unknownOwnership(snapshot?.txs||[],snapshot?.facts||{},trackedAddresses),[snapshot,trackedAddresses]);
   const ownedAddresses=useMemo(()=>exchangeExcludedAddresses(wallets,snapshot?.groups,snapshot?.swapGroups),[wallets,snapshot?.groups,snapshot?.swapGroups]);
   const swapAddresses=useMemo(()=>swapAddressSet(wallets,snapshot?.swapGroups),[wallets,snapshot?.swapGroups]);
   const cexAddresses=useMemo(()=>excludeInternalExchanges(savedCexAddresses,ownedAddresses),[savedCexAddresses,ownedAddresses]);
@@ -158,6 +162,7 @@ export default function Home({memberStake}:{memberStake:string}){
       const holdings=combineHoldings(infos);
       const next:Snapshot={groups,swapGroups,infos,txs:plan.txs,facts:plan.facts,markets:{...cached?.markets},adaUsd:cached?.adaUsd??null,history:cached?.history||{},updated:new Date().toISOString(),priceAt:cached?.priceAt??null,complete:false,pendingOwnershipAddresses:plan.pendingOwnershipAddresses};
       next.excludedRefreshAddresses=[...excludedRefresh];
+      next.historyCompleteAddresses=plan.historyCompleteAddresses;
       for(const info of infos)for(const u of info.utxo_set||[])for(const a of u.asset_list||[]){const id=a.policy_id+a.asset_name;next.markets[id]={...next.markets[id],token_id:id,decimals:a.decimals??next.markets[id]?.decimals};}
       setSnapshot({...next});
       setInitialising(false);setStatus('Balances updated · updating prices…');
@@ -191,12 +196,14 @@ export default function Home({memberStake}:{memberStake:string}){
       const analysisStarted=Date.now();
       const refreshedHashes=new Set<string>();
       const scheduled=new Set<string>();
+      const completedHistory=new Set(plan.historyCompleteAddresses);
       const updateAnalysis=()=>setAnalysis({started:analysisStarted,done:refreshedHashes.size,total:scheduled.size});
       setCounting(historyIndex.size);updateAnalysis();
       setStatus(incremental?'Checking for new transactions…':'Loading remaining transaction history…');
       await runPipeline<Tx>(async(enqueue,active)=>{
         // Upgrade receipts and outgoing payments once to retain their UTxO links.
-        const legacy=next.txs.filter(tx=>needsFactRefresh(next.facts[tx.tx_hash])&&(!next.facts[tx.tx_hash]||next.facts[tx.tx_hash].wallets.some(address=>!excludedRefresh.has(address))));
+        const activeAddresses=new Set(refreshAddresses);
+        const legacy=next.txs.filter(tx=>needsActiveFactRefresh(next.facts[tx.tx_hash],activeAddresses));
         for(const tx of legacy)scheduled.add(tx.tx_hash);
         enqueue(legacy);updateAnalysis();
         for(const historyBatch of plan.batches)for(let offset=0;;offset+=1000){
@@ -217,7 +224,10 @@ export default function Home({memberStake}:{memberStake:string}){
           next.txs=historyIndex.rows();
           setCounting(historyIndex.size);updateAnalysis();setSnapshot({...next,facts:{...next.facts}});
           enqueue(pending);
-          if(page.length<1000||reachedSavedHistory)break;
+          if(page.length<1000||reachedSavedHistory){
+            addressBatch.forEach(address=>completedHistory.add(address));
+            break;
+          }
         }
         active.throwIfAborted();setCounting(null);setCounted(historyIndex.size);
         setStatus(`Transaction check complete · ${num(historyIndex.size,0)} unique transactions · finishing analysis…`);
@@ -231,7 +241,10 @@ export default function Home({memberStake}:{memberStake:string}){
         setSnapshot({...next,facts:{...next.facts}});updateAnalysis();
         await persist();active.throwIfAborted();
       },signal);
-      next.pendingOwnershipAddresses=[];
+      if([...scheduled].every(hash=>refreshedHashes.has(hash))){
+        next.historyCompleteAddresses=[...completedHistory];
+        next.pendingOwnershipAddresses=next.pendingOwnershipAddresses?.filter(address=>!completedHistory.has(address));
+      }
       next.txs=next.txs.filter(tx=>!next.facts[tx.tx_hash]||next.facts[tx.tx_hash].wallets.some(address=>owned.has(address)));
       const historyHashes=new Set(next.txs.map(tx=>tx.tx_hash));
       next.facts=Object.fromEntries(Object.entries(next.facts).filter(([hash])=>historyHashes.has(hash)));
@@ -275,6 +288,19 @@ export default function Home({memberStake}:{memberStake:string}){
     const next={...overrides,[id]:{...overrides[id],excluded}};
     setOverrides(next);
     try{localStorage.setItem(overrideKey,JSON.stringify(next));}catch{setCacheNotice('Your asset exclusions could not be saved locally.');}
+  }
+  async function assignUnknownOwnership(hash:string,address:string){
+    if(busy||!snapshot)throw new Error('Wait for the current refresh to finish.');
+    const control=new AbortController();controller.current=control;setBusy(true);
+    try{
+      const details=await request<Detail[]>('tx_info',{_tx_hashes:[hash],_inputs:true,_assets:true,_metadata:false,_scripts:false,_bytecode:false},control.signal);
+      control.signal.throwIfAborted();
+      const detail=details.find(d=>d.tx_hash===hash);
+      if(!detail)throw new Error('Transaction details are unavailable. Try again later.');
+      verifyOwnership(detail,hash,address,trackedAddresses);
+      const next={...snapshot,facts:{...snapshot.facts,[hash]:analyseAndCache(detail,trackedAddresses)}};
+      await saveCache(key,next);control.signal.throwIfAborted();setSnapshot(next);
+    }finally{if(controller.current===control)setBusy(false);}
   }
   async function refreshAssetPurchases(id:string){
     if(busy||!snapshot)return;
@@ -365,10 +391,12 @@ export default function Home({memberStake}:{memberStake:string}){
     </div></section>
     <div className="tdsp-tile-grid">
       <MenuTile title="Cardano Wallets" value={refreshCounts?`${num(refreshCounts.active,0)} / ${num(refreshCounts.total,0)} active`:initialising?'Initialising':'— / — active'} loading={initialising} onOpen={()=>setSection('wallets')}/>
+      <MenuTile title="Unknown ownership" value={num(unknownTransactions.length,0)} onOpen={()=>setSection('unknown')}/>
       <MenuTile title="Transactions" value={num(counting??transactionTotal,0)} analysis={snapshot?{done:progress.done,total:progress.total,counting:counting!==null,busy}:undefined} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('transactions');}}>
         {storageMode()==='remote'?<CacheUploadProgress onRetry={()=>void flushVault().catch(()=>{})}/>:cacheNotice&&<p role="status" className="tdsp-bar-legend">{cacheNotice}</p>}
       </MenuTile>
     </div>
+    {section==='unknown'&&<UnknownOwnership txs={unknownTransactions} addresses={[...trackedAddresses]} busy={busy} onAssign={assignUnknownOwnership} onClose={()=>setSection(null)}/>}
     {section==='wallets'&&<AssetOverlay id="portfolio-wallets-overlay" name="Cardano Wallets" onClose={()=>setSection(null)}>
     <WalletMenu counts={{wallets:wallets.filter(wallet=>wallet.group!=='swap').length,exchanges:cexAddresses.filter(entry=>!validByronAddress(entry.address)).length,byron:cexAddresses.filter(entry=>validByronAddress(entry.address)).length}}
     swap={<SwapWallets wallets={wallets} groups={snapshot?.swapGroups} onChange={saveWallets}/>}

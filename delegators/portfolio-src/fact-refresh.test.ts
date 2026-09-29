@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {hasCounterpartyData,needsFactRefresh} from './fact-refresh.ts';
+import {hasCounterpartyData,needsFactRefresh,needsActiveFactRefresh} from './fact-refresh.ts';
 import {analyse} from './core.ts';
 import {cexAdaNetPosition} from './cex.ts';
 
@@ -11,6 +11,9 @@ assert.equal(hasCounterpartyData(old),false);
 assert.equal(needsFactRefresh({...old,counterpartyVersion:1}),true);
 assert.equal(needsFactRefresh(undefined),true);
 assert.equal(needsFactRefresh(fresh),false);
+assert.equal(needsActiveFactRefresh(undefined,new Set(['my-wallet'])),false);
+assert.equal(needsActiveFactRefresh(old,new Set()),false);
+assert.equal(needsActiveFactRefresh(old,new Set(['my-wallet'])),true);
 const entries=[{address:'cex-stake',name:'Exchange'}];
 assert.equal(cexAdaNetPosition([old],entries,'100000000').receivedRaw,'0');
 assert.equal(cexAdaNetPosition([fresh],entries,'100000000').receivedRaw,'100000000');
