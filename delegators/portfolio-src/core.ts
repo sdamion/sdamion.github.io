@@ -31,6 +31,19 @@ export function combineHoldings(infos:AddressInfo[]):Holding[]{
   for(const info of infos){if(!Array.isArray(info.utxo_set))throw new Error('The indexer did not return complete unspent outputs.');for(const u of info.utxo_set){const key=u.tx_hash+':'+u.tx_index;if(seen.has(key))continue;seen.add(key);totals.set('lovelace',(totals.get('lovelace')||0n)+BigInt(u.value));for(const a of u.asset_list||[])totals.set(assetId(a),(totals.get(assetId(a))||0n)+BigInt(a.quantity));}}
   return [...totals].filter(([,n])=>n>0n).map(([id,raw])=>({id,raw:String(raw)}));
 }
+export function holdingWalletNames(infos:AddressInfo[],wallets:Wallet[],groups:Record<string,string[]>={}):Record<string,string[]> {
+  const names=new Map<string,Set<string>>();
+  for(const info of infos){
+    const owners=wallets.filter(wallet=>wallet.group!=='swap'&&(wallet.address===info.address||groups[wallet.address]?.includes(info.address)));
+    const labels=owners.length?owners.map(wallet=>wallet.label||short(wallet.address)):[short(info.address)];
+    for(const holding of combineHoldings([info])){
+      const values=names.get(holding.id)||new Set<string>();
+      for(const label of labels)values.add(label);
+      names.set(holding.id,values);
+    }
+  }
+  return Object.fromEntries([...names].map(([id,labels])=>[id,[...labels]]));
+}
 export function analyse(detail:Detail, addresses:Set<string>):Fact {
   let ada=0n;const amounts=new Map<string,bigint>();const touched=new Set<string>();const decimals:Record<string,number>={};
   for(const [sign,rows] of [[-1n,detail.inputs],[1n,detail.outputs]] as const)for(const row of rows){const a=row.payment_addr?.bech32;if(!a||!addresses.has(a))continue;touched.add(a);ada+=sign*BigInt(row.value);for(const asset of row.asset_list||[]){const id=assetId(asset);amounts.set(id,(amounts.get(id)||0n)+sign*BigInt(asset.quantity));}}
