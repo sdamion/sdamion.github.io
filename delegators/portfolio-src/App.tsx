@@ -3,6 +3,7 @@
 import {useEffect,useMemo,useRef,useState} from 'react';
 import {ExternalLink,Plus,Trash2,ArrowRightLeft} from 'lucide-react';
 import {PortfolioRefresh} from './PortfolioRefresh';
+import {cardanoRequestContext} from './request-context';
 import {Input} from '@/components/ui/input';
 import {TransactionFilters,transactionFilters as labels} from './TransactionFilters';
 import {TransactionPagination} from './TransactionPagination';
@@ -68,7 +69,14 @@ async function request<T>(path:string,body:object,signal:AbortSignal,range?:stri
   for(let attempt=0;attempt<3;attempt++){
     const r=await portfolioFetch('/api/cardano',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path,body,range}),signal});
     if(r.ok)return r.json() as Promise<T>;
-    if(![429,502,503,504].includes(r.status)||attempt===2)throw new Error(`Cardano indexer returned ${r.status}. Your last saved data is still available.`);
+    const hashes=(body as {_tx_hashes?:string[]})._tx_hashes;
+    if(path==='tx_info'&&hashes&&hashes.length>1&&[413,502,503,504].includes(r.status)){
+      const middle=Math.ceil(hashes.length/2);
+      const left=await request<Detail[]>(path,{...body,_tx_hashes:hashes.slice(0,middle)},signal);
+      const right=await request<Detail[]>(path,{...body,_tx_hashes:hashes.slice(middle)},signal);
+      return [...left,...right] as T;
+    }
+    if(![429,502,503,504].includes(r.status)||attempt===2)throw new Error(`Cardano indexer returned HTTP ${r.status} for ${cardanoRequestContext(path,body,range)} after ${attempt+1} attempt(s). Your last saved data is still available.`);
     await new Promise(resolve=>setTimeout(resolve,1000*(attempt+1)));signal.throwIfAborted();
   }throw new Error('Indexer unavailable');
 }
@@ -266,11 +274,14 @@ export default function Home({memberStake}:{memberStake:string}){
     finally{if(!signal.aborted){setClock(Date.now());setBusy(false);setInitialising(false);setCounting(null);}}
   }
 
-  function setRefreshExcluded(address:string,value:boolean){
+  function setRefreshExcluded(selection:string|string[],value:boolean){
+    const selected=Array.isArray(selection)?selection:[selection];
     const next=wallets.map(wallet=>{
       const exclusions=new Set(wallet.excludedRefreshAddresses||[]);
-      if(value&&(snapshot?.groups?.[wallet.address]||[]).includes(address))exclusions.add(address);
-      if(!value)exclusions.delete(address);
+      for(const address of selected){
+        if(value&&(snapshot?.groups?.[wallet.address]||[]).includes(address)&&snapshot?.infos.some(info=>info.address===address))exclusions.add(address);
+        if(!value)exclusions.delete(address);
+      }
       return {...wallet,excludedRefreshAddresses:[...exclusions]};
     });
     try{localStorage.setItem(SETTINGS,JSON.stringify(next));setWallets(next);}

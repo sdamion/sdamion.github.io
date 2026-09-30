@@ -9,7 +9,7 @@ const bundle=await build({stdin:{contents:`
 import {createRoot} from 'react-dom/client';
 import {useState} from 'react';
 import {WalletCard} from './WalletAddresses';
-function Test(){const [excluded,setExcluded]=useState(new Set());return <table><tbody><WalletCard wallet={{address:'stake-test',label:'Member'}} primary snapshot={{groups:{'stake-test':['addr-one','addr-two']},infos:[{address:'addr-one',balance:'2000000'},{address:'addr-two',balance:'3000000'}],facts:{a:{hash:'a',wallets:['addr-one']}}}} busy={true} excluded={excluded} onExclude={(address,value)=>setExcluded(current=>{const next=new Set(current);value?next.add(address):next.delete(address);window.excluded=[...next];return next;})} remove={()=>{}}/></tbody></table>}
+function Test(){const [excluded,setExcluded]=useState(new Set());return <table><tbody><WalletCard wallet={{address:'stake-test',label:'Member'}} primary snapshot={{groups:{'stake-test':['addr-one','addr-two']},infos:[{address:'addr-one',balance:'2000000'},{address:'addr-two',balance:'3000000'}],facts:{a:{hash:'a',wallets:['addr-one']}}}} busy={true} excluded={excluded} onExclude={(selection,value)=>setExcluded(current=>{const next=new Set(current);for(const address of Array.isArray(selection)?selection:[selection])value?next.add(address):next.delete(address);window.excluded=[...next];return next;})} remove={()=>{}}/></tbody></table>}
 createRoot(document.getElementById('app')).render(<Test/>);`,loader:'tsx',resolveDir:path.resolve('delegators/portfolio-src')},bundle:true,write:false,format:'esm',jsx:'automatic'});
 const browser=await chromium.launch({channel:'chrome',headless:true});
 try{
@@ -22,6 +22,7 @@ try{
   await page.getByRole('button',{name:'Member',exact:true}).click();
   const overlay=page.locator('#portfolio-wallet-addresses');
   await overlay.waitFor();
+  await overlay.locator('th').first().waitFor();
   assert.deepEqual(await overlay.locator('th').allTextContents(),['Wallet','Address','ADA','Transactions','Exclude from refresh']);
   assert.equal(await overlay.locator('tbody tr').count(),2);
   const exclude=overlay.getByRole('checkbox',{name:'Exclude addr-one from refresh',exact:true});
@@ -35,6 +36,14 @@ try{
   assert.equal(await overlay.locator('tbody tr').count(),2);
   await exclude.uncheck();
   assert.deepEqual(await page.evaluate(()=>window.excluded),[]);
+  await overlay.getByRole('checkbox',{name:'Hide excluded addresses',exact:true}).check();
+  await overlay.getByRole('button',{name:'Select all',exact:true}).click();
+  assert.deepEqual(await page.evaluate(()=>window.excluded),['addr-one','addr-two']);
+  assert.equal(await overlay.locator('tbody tr').count(),0);
+  assert.equal(await overlay.getByRole('button',{name:'Select all',exact:true}).isDisabled(),true);
+  await overlay.getByRole('button',{name:'Unselect all',exact:true}).click();
+  assert.deepEqual(await page.evaluate(()=>window.excluded),[]);
+  assert.equal(await overlay.locator('tbody tr').count(),2);
   assert.equal(await page.evaluate(()=>window.options.showBack),true);
   await page.getByRole('button',{name:'Back',exact:true}).click();
   await overlay.waitFor({state:'detached'});

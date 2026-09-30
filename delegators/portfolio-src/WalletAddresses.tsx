@@ -8,10 +8,11 @@ import {AssetOverlay} from './AssetOverlay';
 import {Table,TableHeader,TableBody,TableRow,TableHead,TableCell} from './ui';
 
 const num=(value:number)=>value.toLocaleString('en-US',{maximumFractionDigits:6});
-export function WalletCard({wallet:w,primary,snapshot,remove,busy,excluded,onExclude}:{wallet:Wallet;primary:boolean;snapshot:Snapshot|null;remove:()=>void;busy:boolean;excluded:Set<string>;onExclude:(address:string,value:boolean)=>void}){
+export function WalletCard({wallet:w,primary,snapshot,remove,busy,excluded,onExclude}:{wallet:Wallet;primary:boolean;snapshot:Snapshot|null;remove:()=>void;busy:boolean;excluded:Set<string>;onExclude:(address:string|string[],value:boolean)=>void}){
   const [open,setOpen]=useState(false);
   const [hideExcluded,setHideExcluded]=useState(false);
   const addresses=snapshot?.groups?.[w.address];
+  const excludable=(addresses||[]).filter(address=>snapshot?.infos.some(info=>info.address===address));
   const runtime=(window as unknown as {TDSPRuntime:{filterMarkedRows:<T>(rows:T[],hide:boolean,marked:(row:T)=>boolean)=>T[]}}).TDSPRuntime;
   const visibleAddresses=runtime.filterMarkedRows(addresses||[],hideExcluded,address=>excluded.has(address));
   const facts=Object.values(snapshot?.facts||{});
@@ -26,6 +27,10 @@ export function WalletCard({wallet:w,primary,snapshot,remove,busy,excluded,onExc
   </TableRow>
   {open&&<AssetOverlay id="portfolio-wallet-addresses" name={w.label} onClose={()=>setOpen(false)}>
     <p className="small muted">Excluded addresses retain their cached balances and transactions. Changes apply to the next refresh. Shared transactions may still update through another wallet address.</p>
+    <div className="governance-action-buttons" role="group" aria-label="Exclude from refresh selection">
+      <button type="button" className="governance-vote-secondary" title="Exclude all addresses with a cached balance, including hidden addresses" disabled={!excludable.some(address=>!excluded.has(address))} onClick={()=>onExclude(excludable,true)}>Select all</button>
+      <button type="button" className="governance-vote-secondary" title="Enable refresh for all addresses in this wallet, including hidden addresses" disabled={!addresses?.some(address=>excluded.has(address))} onClick={()=>onExclude(addresses||[],false)}>Unselect all</button>
+    </div>
     <label className="raffle-lost-stake-toggle"><input type="checkbox" checked={hideExcluded} onChange={event=>setHideExcluded(event.target.checked)}/><span>Hide excluded addresses</span></label>
     <p className="small muted" role="status">{visibleAddresses.length} shown · {(addresses?.length||0)-visibleAddresses.length} hidden</p>
     <div className="history-table"><Table><TableHeader><TableRow>{['Wallet','Address','ADA','Transactions','Exclude from refresh'].map(title=><TableHead key={title}>{title}</TableHead>)}</TableRow></TableHeader><TableBody>
