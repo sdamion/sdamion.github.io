@@ -180,13 +180,6 @@ export default function Home({memberStake}:{memberStake:string}){
       if(!next.history[today]&&freshPrice!==null&&freshPrice>0)next.history[today]=freshPrice;
       const warnings:string[]=[];if(freshPrice===null)warnings.push('Current ADA/USD price unavailable.');if(!hist?.prices?.length)warnings.push('Historical ADA/USD refresh failed. Saved prices are retained; missing receipt prices will not be counted as zero.');
       const assetIds=holdings.filter(h=>h.id!=='lovelace').map(h=>h.id);
-      for(let i=0;i<assetIds.length;i+=50){
-        setStatus(`Balances updated · loading token prices ${Math.floor(i/50)+1} / ${Math.ceil(assetIds.length/50)}`);
-        const r=await portfolioFetch('/api/markets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({assets:assetIds.slice(i,i+50)}),signal});
-        if(!r.ok){warnings.push('Some token prices are unavailable. Unpriced assets are excluded from the subtotal.');break;}
-        const data=await r.json() as {tokens:Market[];pricing_unavailable?:boolean};for(const m of data.tokens)next.markets[m.token_id]={...m,decimals:m.decimals??next.markets[m.token_id]?.decimals};
-        if(data.pricing_unavailable)warnings.push('Token market prices unavailable; asset images and fallback valuations can still load.');
-      }
       signal.throwIfAborted();setSnapshot({...next});setNotice(warnings.join(' '));
       const persist=async()=>{try{await saveCache(key,next);}catch{setCacheNotice('Portfolio cache could not be updated. Keep this page open and check Storage settings.');}};
       const incremental=plan.batches.some(batch=>batch.incremental);
@@ -249,6 +242,24 @@ export default function Home({memberStake}:{memberStake:string}){
       const historyHashes=new Set(next.txs.map(tx=>tx.tx_hash));
       next.facts=Object.fromEntries(Object.entries(next.facts).filter(([hash])=>historyHashes.has(hash)));
       next.complete=next.txs.every(t=>hasCounterpartyData(next.facts[t.tx_hash]))&&[...scheduled].every(hash=>refreshedHashes.has(hash));await persist();signal.throwIfAborted();setSnapshot({...next});
+      // Optional metadata must not prevent transaction discovery or saving analysis.
+      for(let i=0;i<assetIds.length;i+=50){
+        setStatus(`Transactions saved · loading token prices and images ${Math.floor(i/50)+1} / ${Math.ceil(assetIds.length/50)}`);
+        try{
+          const r=await portfolioFetch('/api/markets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({assets:assetIds.slice(i,i+50)}),signal});
+          if(!r.ok)throw new Error('Token data unavailable');
+          const data=await r.json() as {tokens:Market[];pricing_unavailable?:boolean};
+          if(!Array.isArray(data.tokens))throw new Error('Invalid token data');
+          for(const m of data.tokens)next.markets[m.token_id]={...m,decimals:m.decimals??next.markets[m.token_id]?.decimals};
+          if(data.pricing_unavailable)warnings.push('Token market prices unavailable; asset images and fallback valuations can still load.');
+          await persist();signal.throwIfAborted();setSnapshot({...next,markets:{...next.markets}});
+        }catch{
+          signal.throwIfAborted();
+          warnings.push('Token prices or images could not be refreshed. Saved data and transaction analysis are retained.');
+          break;
+        }
+      }
+      setNotice(warnings.join(' '));
       await flushVault().catch(()=>{});signal.throwIfAborted();
       setStatus(next.complete?`Updated ${new Date(next.updated).toLocaleString()}`:'Some transactions are awaiting analysis. Refresh to retry.');
     }catch(e){if(!signal.aborted){setError(e instanceof Error?e.message:'Could not update this portfolio.');setStatus('Refresh incomplete · showing available data');}}

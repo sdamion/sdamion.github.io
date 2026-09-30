@@ -223,7 +223,7 @@
         checkDelegatorNotifications(pool);
         checkRelayRecovery(pool);
         checkBlockNotifications(pool);
-        state.poolDelegators = Array.isArray(pool?.delegators) ? [...pool.delegators] : [];
+        if (Array.isArray(pool?.delegators)) state.poolDelegators = [...pool.delegators];
         window.TDSPRuntime.setText('pool-delegators', window.TDSPRuntime.formatInteger(pool?.delegator_count));
         window.TDSPRuntime.setText('pool-lifetime-blocks', window.TDSPRuntime.formatInteger(pool?.blocks_lifetime ?? undefined));
         window.TDSPRuntime.setText('pool-live-stake', window.TDSPRuntime.formatAdaFromLovelace(pool?.live_stake_lovelace));

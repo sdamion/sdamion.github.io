@@ -615,7 +615,7 @@ async function fetchLeaderSchedule() {
 
 function loadPoolStatusModule() {
     if (window.TDSPPoolStatus) return Promise.resolve(window.TDSPPoolStatus);
-    return window.TDSPRuntime.loadScript('pool/status.js?v=20260917-delegator-alert-amount', {
+    return window.TDSPRuntime.loadScript('pool/status.js?v=20260929-delegator-cache', {
         datasetName: 'poolStatus',
         selector: 'script[data-pool-status]',
         ready: () => window.TDSPPoolStatus || null
@@ -716,7 +716,9 @@ async function openPoolDelegatorsOverlay() {
         id: 'pool-delegators-overlay',
         titleId: 'pool-delegators-title',
         titleText: 'Pool Delegators',
-        headerMeta: `${poolDelegators.length.toLocaleString('en-US')} delegators`,
+        headerMeta: poolDelegators.length
+            ? `${poolDelegators.length.toLocaleString('en-US')} delegators`
+            : 'Delegator details are not available yet.',
         closeLabel: 'Close pool delegators',
         closeOverlay: closePoolDelegatorsOverlay,
         returnFocus: document.getElementById('pool-delegators-card'),
@@ -736,7 +738,7 @@ function getDelegatorDashboardTemplates() {
 
 function loadDelegatorAccessModule() {
     if (window.TDSPDelegatorAccess?.initOverlay) return Promise.resolve(window.TDSPDelegatorAccess);
-    return window.TDSPRuntime.loadScript('delegators/delegator-access.js?v=20260929-transaction-count', {
+    return window.TDSPRuntime.loadScript('delegators/delegator-access.js?v=20260930-transactions-first', {
         datasetName: 'delegatorAccess',
         selector: 'script[data-delegator-access]',
         ready: () => window.TDSPDelegatorAccess?.initOverlay ? window.TDSPDelegatorAccess : null

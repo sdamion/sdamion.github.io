@@ -12,6 +12,7 @@ export function PortfolioGuide({onClose}:{onClose:()=>void}){
       <h2>Refreshing and progress</h2>
       <p>Use the refresh icon in the header. Portfolio first resolves addresses and loads balances, then counts and analyses transactions together. The Transactions tile shows progress and remote-cache uploads. Values update as analysis arrives and can be incomplete until refresh finishes.</p>
       <p>Existing cached history is reused where possible. New addresses and missing analysis may require a longer scan. Closing a child overlay does not cancel refresh; keeping the website open allows it to continue. Excluded balances remain cached and can become outdated.</p>
+      <p>Transaction loading and analysis are saved before token prices and images refresh. A token metadata failure leaves saved transactions available. The status indicates when transaction analysis has finished and token data is still loading.</p>
       <h2>Balances, values and performance</h2>
       <p>ADA across wallets shows the wallet ADA balance with its USD equivalent. Open it for current holdings and asset details. The coverage text indicates how many assets have a valuation.</p>
       <p>Unrealised gain / loss compares valued holdings with their matched remaining purchase cost. Missing history or purchase prices can make this a partial estimate. Mint and purchase costs are cost basis, not current prices. NFT floor prices and a 2 ADA fallback can be estimates, not achievable sale prices. Manual prices and exclusions can be managed in asset details.</p>
