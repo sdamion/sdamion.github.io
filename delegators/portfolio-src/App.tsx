@@ -4,6 +4,7 @@ import {useEffect,useMemo,useRef,useState} from 'react';
 import {ExternalLink,Plus,Trash2,ArrowRightLeft} from 'lucide-react';
 import {PortfolioRefresh} from './PortfolioRefresh';
 import {cardanoRequestContext} from './request-context';
+import {planWalletDiscovery} from './wallet-discovery';
 import {Input} from '@/components/ui/input';
 import {TransactionFilters,transactionFilters as labels} from './TransactionFilters';
 import {TransactionPagination} from './TransactionPagination';
@@ -151,9 +152,8 @@ export default function Home({memberStake}:{memberStake:string}){
     setBusy(true);setInitialising(true);setError('');setNotice('');setStatus('Initialising wallets · loading saved data…');
     try{
       let cached:Snapshot|null=null;try{const exact=await readCache(key);cached=exact||await readRefreshCache(key);signal.throwIfAborted();if(exact)setSnapshot(exact);}catch{setCacheNotice('Portfolio cache is locked. Sign in and approve unlock again.');throw new Error('Portfolio cache is locked.');}
-      setStatus('Initialising wallets · finding linked addresses…');
-      const stakes=wallets.map(w=>w.address).filter(validStakeAddress);
-      const accounts:{stake_address:string;addresses:string[]}[]=[];
+      const {accounts,pending:stakes}=planWalletDiscovery(wallets,cached);
+      setStatus(stakes.length?'Initialising wallets · finding linked addresses…':'Using saved wallet addresses · checking balances and transactions…');
       for(let i=0;i<stakes.length;i+=40)accounts.push(...await request<{stake_address:string;addresses:string[]}[]>('account_addresses',{_stake_addresses:stakes.slice(i,i+40),_first_only:false,_empty:true},signal));
       const groups=resolveWalletGroups(wallets,accounts);
       const swapGroups=resolveSwapGroups(wallets,accounts);
