@@ -47,7 +47,7 @@ export async function portfolioFetch(path:string,options:RequestInit={},retryRen
     const body=await response.arrayBuffer();
     return new Response(response.status===204?null:body,{status:response.status,statusText:response.statusText,headers:response.headers});
   }catch(error){
-    if(timeout.signal.aborted&&!options.signal?.aborted)throw new Error(`Portfolio ${operation} request timed out after 75 seconds. Your cached data is retained; please retry.`);
+    if(timeout.signal.aborted&&!options.signal?.aborted)throw Object.assign(new Error(`Portfolio ${operation} request timed out after 75 seconds. Your cached data is retained; please retry.`),{name:'PortfolioTimeoutError'});
     throw error;
   }finally{clearTimeout(timer);}
 }
