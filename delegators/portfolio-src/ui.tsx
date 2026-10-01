@@ -8,7 +8,7 @@ export function AdaUsdAmount({ada,usd}:{ada:number|null;usd:number|null}){
   },[ada,usd]);
   return <span ref={ref}/>;
 }
-export function MenuTile({title,value,onOpen,analysis,loading=false,children}:{title:string;value:string;onOpen:()=>void;loading?:boolean;analysis?:{done:number;total:number;counting:boolean;busy:boolean};children?:React.ReactNode}){
+export function MenuTile({title,value,onOpen,analysis,loading=false,loadingLabel='Initialising',children}:{title:string;value:string;onOpen:()=>void;loading?:boolean;loadingLabel?:string;analysis?:{done:number;total:number;counting:boolean;busy:boolean};children?:React.ReactNode}){
   const ref=React.useRef<HTMLDivElement>(null);
   const footer=React.useMemo(()=>document.createElement('div'),[]);
   React.useLayoutEffect(()=>{
@@ -16,10 +16,12 @@ export function MenuTile({title,value,onOpen,analysis,loading=false,children}:{t
     button.replaceChildren();
     (window as unknown as {TDSPRuntime:{appendUniversalTileContent:(node:HTMLElement,options:Record<string,unknown>)=>void}}).TDSPRuntime.appendUniversalTileContent(button,{title,primaryText:value});
     if(loading){
+      const label=document.createElement('span');label.className='tdsp-bar-legend';
+      label.textContent=loadingLabel;label.setAttribute('role','status');
       const progress=document.createElement('progress');
-      progress.setAttribute('aria-label','Initialising');
+      progress.setAttribute('aria-label',loadingLabel);
       progress.style.width='100%';
-      button.append(progress);
+      button.append(label,progress);
     }
     if(analysis){
       const {done,total,counting,busy}=analysis;
@@ -37,7 +39,7 @@ export function MenuTile({title,value,onOpen,analysis,loading=false,children}:{t
       row.append(track,percentage);button.append(label,row);
     }
     if(children)button.append(footer);
-  },[title,value,loading,analysis?.done,analysis?.total,analysis?.counting,analysis?.busy,!!children,footer]);
+  },[title,value,loading,loadingLabel,analysis?.done,analysis?.total,analysis?.counting,analysis?.busy,!!children,footer]);
   const interactive=(target:EventTarget|null)=>target instanceof Element&&!!target.closest('button,a,input,select,textarea');
   return <div ref={ref} role="button" tabIndex={0} className="governance-card governance-menu-card" onClick={event=>{if(!interactive(event.target))onOpen();}} onKeyDown={event=>{if(!interactive(event.target)&&(event.key==='Enter'||event.key===' ')){event.preventDefault();onOpen();}}} aria-label={`Open ${title}`} aria-busy={loading}>{children&&createPortal(children,footer)}</div>;
 }

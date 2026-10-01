@@ -147,7 +147,10 @@ export default function Home({memberStake}:{memberStake:string}){
       let cached:Snapshot|null=null;try{const exact=await readCache(key);cached=exact||await readRefreshCache(key);signal.throwIfAborted();if(exact)setSnapshot(exact);}catch{setCacheNotice('Portfolio cache is locked. Sign in and approve unlock again.');throw new Error('Portfolio cache is locked.');}
       const {accounts,pending:stakes}=planWalletDiscovery(wallets,cached);
       setStatus(stakes.length?'Initialising wallets · finding linked addresses…':'Using saved wallet addresses · checking balances and transactions…');
-      for(let i=0;i<stakes.length;i+=40)accounts.push(...await walletRequest<{stake_address:string;addresses:string[]}[]>('account_addresses',{_stake_addresses:stakes.slice(i,i+40),_first_only:false,_empty:true}));
+      for(let i=0;i<stakes.length;i+=40){
+        setStatus(`Finding linked addresses · batch ${Math.floor(i/40)+1} of ${Math.ceil(stakes.length/40)}`);
+        accounts.push(...await walletRequest<{stake_address:string;addresses:string[]}[]>('account_addresses',{_stake_addresses:stakes.slice(i,i+40),_first_only:false,_empty:true}));
+      }
       const groups=resolveWalletGroups(wallets,accounts);
       const swapGroups=resolveSwapGroups(wallets,accounts);
       const plan=planRefresh(cached,groups,excludedRefresh);
@@ -155,7 +158,7 @@ export default function Home({memberStake}:{memberStake:string}){
       const refreshAddresses=addresses.filter(address=>!excludedRefresh.has(address));
       const addressBatches=Array.from({length:Math.ceil(refreshAddresses.length/40)},(_,i)=>refreshAddresses.slice(i*40,(i+1)*40));
       const loadInfos=async()=>{const all:AddressInfo[]=(cached?.infos||[]).filter(info=>addresses.includes(info.address)&&excludedRefresh.has(info.address));for(const [index,batch] of addressBatches.entries()){
-        setStatus(`Initialising wallets · loading balances ${index+1} / ${addressBatches.length}`);
+        setStatus(`Checking balances · batch ${index+1} of ${addressBatches.length}`);
         all.push(...await walletRequest<AddressInfo[]>('address_info',{_addresses:batch}));
       }return all;};
       const infos=await loadInfos();signal.throwIfAborted();
@@ -407,7 +410,7 @@ export default function Home({memberStake}:{memberStake:string}){
       {cexAddresses.length>0&&<Metric label="ADA Gain/ loss" value="Waiting for wallet balances" onOpen={()=>{setQuery('');setFilter('cex');setPage(0);setSection('transactions');}} amount={snapshot?{ada:Number(cexPosition.netRaw)/1e6,usd:cexDollars.usd}:undefined}/>}
     </div></section>
     <div className="tdsp-tile-grid">
-      <MenuTile title="Cardano Wallets" value={refreshCounts?`${num(refreshCounts.active,0)} / ${num(refreshCounts.total,0)} active`:initialising?'Initialising':'— / — active'} loading={initialising} onOpen={()=>setSection('wallets')}/>
+      <MenuTile title="Cardano Wallets" value={refreshCounts?`${num(refreshCounts.active,0)} / ${num(refreshCounts.total,0)} active`:initialising?'Initialising':'— / — active'} loading={initialising} loadingLabel={status} onOpen={()=>setSection('wallets')}/>
       <MenuTile title="Unknown ownership" value={num(unknownTransactions.length,0)} onOpen={()=>setSection('unknown')}/>
       <MenuTile title="Transactions" value="" analysis={snapshot?{done:progress.done,total:progress.total,counting:counting!==null,busy}:undefined} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('transactions');}}>
         {storageMode()==='remote'?<CacheUploadProgress onRetry={()=>void flushVault().catch(()=>{})}/>:cacheNotice&&<p role="status" className="tdsp-bar-legend">{cacheNotice}</p>}
