@@ -197,7 +197,7 @@ export default function Home({memberStake}:{memberStake:string}){
       const completedHistory=new Set(plan.historyCompleteAddresses);
       const updateAnalysis=()=>setAnalysis({started:analysisStarted,done:refreshedHashes.size,total:scheduled.size});
       setCounting(historyIndex.size);updateAnalysis();
-      setTransactionStatus(incremental?'Checking for new transactions…':'Loading remaining transaction history…');
+      setTransactionStatus('Checking Transactions');
       await runPipeline<Tx>(async(enqueue,active)=>{
         // Upgrade receipts and outgoing payments once to retain their UTxO links.
         const activeAddresses=new Set(refreshAddresses);
@@ -228,7 +228,7 @@ export default function Home({memberStake}:{memberStake:string}){
           }
         }
         active.throwIfAborted();setCounting(null);setCounted(historyIndex.size);
-        setTransactionStatus('Transaction check complete · finishing analysis…');
+        setTransactionStatus('Analysing Transactions');
       },async(batch,active)=>{
         const details=await request<Detail[]>('tx_info',{_tx_hashes:batch.map(t=>t.tx_hash),_inputs:true,_assets:true,_metadata:false,_withdrawals:false,_certs:false,_scripts:false,_bytecode:false},active);
         active.throwIfAborted();
@@ -239,7 +239,7 @@ export default function Home({memberStake}:{memberStake:string}){
         setSnapshot({...next,facts:{...next.facts}});updateAnalysis();
         await persist();active.throwIfAborted();
       },signal);
-      setTransactionStatus('Transaction check complete');
+      setTransactionStatus('');
       if([...scheduled].every(hash=>refreshedHashes.has(hash))){
         next.historyCompleteAddresses=[...completedHistory];
         next.pendingOwnershipAddresses=next.pendingOwnershipAddresses?.filter(address=>!completedHistory.has(address));
