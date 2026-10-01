@@ -136,12 +136,18 @@ export default function Home({memberStake}:{memberStake:string}){
   async function refresh(){
     controller.current?.abort();const control=new AbortController();controller.current=control;const signal=control.signal;
     const started=Date.now();setRefreshStarted(started);setClock(started);setAnalysis(null);setCounting(null);setCounted(null);
-    setBusy(true);setInitialising(true);setError('');setNotice('');setStatus('Initialising wallets · loading saved data…');
+    setBusy(true);setInitialising(false);setError('');setNotice('');setStatus('Loading saved portfolio data…');
+    async function walletRequest<T>(endpoint:string,body:Record<string,unknown>):Promise<T>{
+      signal.throwIfAborted();
+      setInitialising(true);
+      try{return await request<T>(endpoint,body,signal);}
+      finally{if(controller.current===control)setInitialising(false);}
+    }
     try{
       let cached:Snapshot|null=null;try{const exact=await readCache(key);cached=exact||await readRefreshCache(key);signal.throwIfAborted();if(exact)setSnapshot(exact);}catch{setCacheNotice('Portfolio cache is locked. Sign in and approve unlock again.');throw new Error('Portfolio cache is locked.');}
       const {accounts,pending:stakes}=planWalletDiscovery(wallets,cached);
       setStatus(stakes.length?'Initialising wallets · finding linked addresses…':'Using saved wallet addresses · checking balances and transactions…');
-      for(let i=0;i<stakes.length;i+=40)accounts.push(...await request<{stake_address:string;addresses:string[]}[]>('account_addresses',{_stake_addresses:stakes.slice(i,i+40),_first_only:false,_empty:true},signal));
+      for(let i=0;i<stakes.length;i+=40)accounts.push(...await walletRequest<{stake_address:string;addresses:string[]}[]>('account_addresses',{_stake_addresses:stakes.slice(i,i+40),_first_only:false,_empty:true}));
       const groups=resolveWalletGroups(wallets,accounts);
       const swapGroups=resolveSwapGroups(wallets,accounts);
       const plan=planRefresh(cached,groups,excludedRefresh);
@@ -150,7 +156,7 @@ export default function Home({memberStake}:{memberStake:string}){
       const addressBatches=Array.from({length:Math.ceil(refreshAddresses.length/40)},(_,i)=>refreshAddresses.slice(i*40,(i+1)*40));
       const loadInfos=async()=>{const all:AddressInfo[]=(cached?.infos||[]).filter(info=>addresses.includes(info.address)&&excludedRefresh.has(info.address));for(const [index,batch] of addressBatches.entries()){
         setStatus(`Initialising wallets · loading balances ${index+1} / ${addressBatches.length}`);
-        all.push(...await request<AddressInfo[]>('address_info',{_addresses:batch},signal));
+        all.push(...await walletRequest<AddressInfo[]>('address_info',{_addresses:batch}));
       }return all;};
       const infos=await loadInfos();signal.throwIfAborted();
       if(addresses.some(a=>!infos.some(i=>i.address===a)))throw new Error('Some wallet balances were not returned. The combined balance has not been replaced.');
@@ -278,7 +284,7 @@ export default function Home({memberStake}:{memberStake:string}){
     const cleaned=excludeInternalExchanges(savedCexAddresses,exchangeExcludedAddresses(next,snapshot?.groups,snapshot?.swapGroups));
     if(!saveCexAddresses(cleaned))return;
     next=memberWallets(memberStake,next);controller.current?.abort();
-    setBusy(true);setInitialising(true);setAnalysis(null);setCounting(null);setCounted(null);setStatus('Initialising wallets…');
+    setBusy(true);setInitialising(false);setAnalysis(null);setCounting(null);setCounted(null);setStatus('Preparing wallet refresh…');
     const started=Date.now();setRefreshStarted(started);setClock(started);
     try{localStorage.setItem(SETTINGS,JSON.stringify(next));}catch{setCacheNotice('Wallet settings could not be saved to the selected cache.');}
     setWallets(next);
