@@ -90,6 +90,7 @@ export default function Home({memberStake}:{memberStake:string}){
   const [refreshStarted,setRefreshStarted]=useState(0),[clock,setClock]=useState(0);
   const [analysis,setAnalysis]=useState<{started:number;done:number;total:number}|null>(null);
   const [counting,setCounting]=useState<number|null>(null);
+  const [transactionStatus,setTransactionStatus]=useState('');
   const [counted,setCounted]=useState<number|null>(null);
   const walletKey=memberStake+'::'+wallets.map(w=>w.address).sort().join('|');
   const key=walletKey+swapOwnershipScope(wallets);
@@ -135,7 +136,7 @@ export default function Home({memberStake}:{memberStake:string}){
 
   async function refresh(){
     controller.current?.abort();const control=new AbortController();controller.current=control;const signal=control.signal;
-    const started=Date.now();setRefreshStarted(started);setClock(started);setAnalysis(null);setCounting(null);setCounted(null);
+    const started=Date.now();setRefreshStarted(started);setClock(started);setAnalysis(null);setCounting(null);setCounted(null);setTransactionStatus('');
     setBusy(true);setInitialising(false);setError('');setNotice('');setStatus('Loading saved portfolio data…');
     async function walletRequest<T>(endpoint:string,body:Record<string,unknown>):Promise<T>{
       signal.throwIfAborted();
@@ -196,7 +197,7 @@ export default function Home({memberStake}:{memberStake:string}){
       const completedHistory=new Set(plan.historyCompleteAddresses);
       const updateAnalysis=()=>setAnalysis({started:analysisStarted,done:refreshedHashes.size,total:scheduled.size});
       setCounting(historyIndex.size);updateAnalysis();
-      setStatus(incremental?'Checking for new transactions…':'Loading remaining transaction history…');
+      setTransactionStatus(incremental?'Checking for new transactions…':'Loading remaining transaction history…');
       await runPipeline<Tx>(async(enqueue,active)=>{
         // Upgrade receipts and outgoing payments once to retain their UTxO links.
         const activeAddresses=new Set(refreshAddresses);
@@ -227,7 +228,7 @@ export default function Home({memberStake}:{memberStake:string}){
           }
         }
         active.throwIfAborted();setCounting(null);setCounted(historyIndex.size);
-        setStatus(`Transaction check complete · ${num(historyIndex.size,0)} unique transactions · finishing analysis…`);
+        setTransactionStatus('Transaction check complete · finishing analysis…');
       },async(batch,active)=>{
         const details=await request<Detail[]>('tx_info',{_tx_hashes:batch.map(t=>t.tx_hash),_inputs:true,_assets:true,_metadata:false,_withdrawals:false,_certs:false,_scripts:false,_bytecode:false},active);
         active.throwIfAborted();
@@ -238,6 +239,7 @@ export default function Home({memberStake}:{memberStake:string}){
         setSnapshot({...next,facts:{...next.facts}});updateAnalysis();
         await persist();active.throwIfAborted();
       },signal);
+      setTransactionStatus('Transaction check complete');
       if([...scheduled].every(hash=>refreshedHashes.has(hash))){
         next.historyCompleteAddresses=[...completedHistory];
         next.pendingOwnershipAddresses=next.pendingOwnershipAddresses?.filter(address=>!completedHistory.has(address));
@@ -266,7 +268,7 @@ export default function Home({memberStake}:{memberStake:string}){
       setNotice(warnings.join(' '));
       await flushVault().catch(()=>{});signal.throwIfAborted();
       setStatus(next.complete?`Updated ${new Date(next.updated).toLocaleString()}`:'Some transactions are awaiting analysis. Refresh to retry.');
-    }catch(e){if(!signal.aborted){setError(e instanceof Error?e.message:'Could not update this portfolio.');setStatus('Refresh incomplete · showing available data');}}
+    }catch(e){if(!signal.aborted){setError(e instanceof Error?e.message:'Could not update this portfolio.');setStatus('Refresh incomplete · showing available data');setTransactionStatus(current=>current?'Transaction refresh incomplete · cached data retained':'');}}
     finally{if(!signal.aborted){setClock(Date.now());setBusy(false);setInitialising(false);setCounting(null);}}
   }
 
@@ -287,7 +289,7 @@ export default function Home({memberStake}:{memberStake:string}){
     const cleaned=excludeInternalExchanges(savedCexAddresses,exchangeExcludedAddresses(next,snapshot?.groups,snapshot?.swapGroups));
     if(!saveCexAddresses(cleaned))return;
     next=memberWallets(memberStake,next);controller.current?.abort();
-    setBusy(true);setInitialising(false);setAnalysis(null);setCounting(null);setCounted(null);setStatus('Preparing wallet refresh…');
+    setBusy(true);setInitialising(false);setAnalysis(null);setCounting(null);setCounted(null);setTransactionStatus('');setStatus('Preparing wallet refresh…');
     const started=Date.now();setRefreshStarted(started);setClock(started);
     try{localStorage.setItem(SETTINGS,JSON.stringify(next));}catch{setCacheNotice('Wallet settings could not be saved to the selected cache.');}
     setWallets(next);
@@ -412,7 +414,7 @@ export default function Home({memberStake}:{memberStake:string}){
     <div className="tdsp-tile-grid">
       <MenuTile title="Cardano Wallets" value={refreshCounts?`${num(refreshCounts.active,0)} / ${num(refreshCounts.total,0)} active`:initialising?'Initialising':'— / — active'} loading={initialising} loadingLabel={status} onOpen={()=>setSection('wallets')}/>
       <MenuTile title="Unknown ownership" value={num(unknownTransactions.length,0)} onOpen={()=>setSection('unknown')}/>
-      <MenuTile title="Transactions" value="" analysis={snapshot?{done:progress.done,total:progress.total,counting:counting!==null,busy}:undefined} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('transactions');}}>
+      <MenuTile title="Transactions" value="" analysis={snapshot?{done:progress.done,total:progress.total,counting:counting!==null,busy,status:transactionStatus}:undefined} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('transactions');}}>
         {storageMode()==='remote'?<CacheUploadProgress onRetry={()=>void flushVault().catch(()=>{})}/>:cacheNotice&&<p role="status" className="tdsp-bar-legend">{cacheNotice}</p>}
       </MenuTile>
     </div>
