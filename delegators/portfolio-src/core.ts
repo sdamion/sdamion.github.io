@@ -31,6 +31,14 @@ export function combineHoldings(infos:AddressInfo[]):Holding[]{
   for(const info of infos){if(!Array.isArray(info.utxo_set))throw new Error('The indexer did not return complete unspent outputs.');for(const u of info.utxo_set){const key=u.tx_hash+':'+u.tx_index;if(seen.has(key))continue;seen.add(key);totals.set('lovelace',(totals.get('lovelace')||0n)+BigInt(u.value));for(const a of u.asset_list||[])totals.set(assetId(a),(totals.get(assetId(a))||0n)+BigInt(a.quantity));}}
   return [...totals].filter(([,n])=>n>0n).map(([id,raw])=>({id,raw:String(raw)}));
 }
+export function holdingWalletAddresses(infos:AddressInfo[]):Record<string,string[]> {
+  const addresses=new Map<string,Set<string>>();
+  for(const info of infos)for(const holding of combineHoldings([info])){
+    const values=addresses.get(holding.id)||new Set<string>();
+    values.add(info.address);addresses.set(holding.id,values);
+  }
+  return Object.fromEntries([...addresses].map(([id,values])=>[id,[...values]]));
+}
 export function holdingWalletNames(infos:AddressInfo[],wallets:Wallet[],groups:Record<string,string[]>={}):Record<string,string[]> {
   const names=new Map<string,Set<string>>();
   for(const info of infos){

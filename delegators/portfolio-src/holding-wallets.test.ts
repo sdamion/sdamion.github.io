@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {holdingWalletNames} from './core.ts';
+import {holdingWalletNames,holdingWalletAddresses} from './core.ts';
 
 test('holdings identify named wallets through linked addresses without duplicate labels',()=>{
   const info=(address:string,quantity:string)=>({address,balance:'1000000',utxo_set:[{tx_hash:address,tx_index:0,value:'1000000',asset_list:[{policy_id:'policy',asset_name:'token',quantity}]}]});
@@ -16,4 +16,10 @@ test('holdings identify named wallets through linked addresses without duplicate
 
 test('unmapped holdings use the address rather than an incorrect wallet name',()=>{
   assert.deepEqual(holdingWalletNames([{address:'unknown',balance:'1',utxo_set:[{tx_hash:'tx',tx_index:0,value:'1'}]}],[]),{lovelace:['unknown']});
+});
+test('asset addresses reflect current positive holdings and deduplicate payment addresses',()=>{
+  const info=(address:string,quantity:string)=>({address,balance:'1',utxo_set:[{tx_hash:address,tx_index:0,value:'1',asset_list:[{policy_id:'policy',asset_name:'token',quantity}]}]});
+  assert.deepEqual(holdingWalletAddresses([info('a','1'),info('a','1'),info('b','2'),info('empty','0')]),{
+    lovelace:['a','b','empty'],policytoken:['a','b'],
+  });
 });
