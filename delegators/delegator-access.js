@@ -2195,7 +2195,7 @@ async function init(options = {}) {
     document.getElementById('raffle-admin-users-open')?.addEventListener('click', () => setRaffleOverlay(true, 'admins'));
     document.getElementById('website-status-open')?.addEventListener('click', async () => {
         try {
-            const { createWebsiteStatusPanel } = await import('./website-status.js?v=20261002-monitoring-history');
+            const { createWebsiteStatusPanel } = await import('./website-status.js?v=20261002-stale-thresholds');
             let panel = document.getElementById('website-status-panel');
             if (!panel) {
                 panel = createWebsiteStatusPanel(() => authorizedRequest(IS_LOCAL

@@ -15,9 +15,11 @@ try {
             return { checked_at: new Date().toISOString(), backend: { uptime_seconds: 100, memory_rss_bytes: 1024, heap_used_bytes: 1024 },
                 history: { samples: [{ time: Date.now() - 60000, memory_mb: 120, check_ms: 10 },
                     { time: Date.now(), memory_mb: 125, check_ms: 20 }] },
-                monitoring: { healthy: 1, total: 2, attention: 1, sampled_at_ms: Date.now(),
+                monitoring: { healthy: 1, total: 3, attention: 2, sampled_at_ms: Date.now(),
                     pool: { status: 'healthy', live_stake_lovelace: '1000000', delegator_sum_lovelace: '1000000', difference_lovelace: '0', delegators: 1, issues: [] },
-                    checks: [{ name: 'Pool', status: 'healthy', age_ms: 1000, interval_ms: 300000 }, { name: 'Prices', status: 'stale', age_ms: 60000, interval_ms: 30000 }] },
+                    checks: [{ name: 'Pool', status: 'healthy', age_ms: 1000, interval_ms: 300000 },
+                        { name: 'Prices', status: 'waiting', missed_intervals: 2, age_ms: 60000, interval_ms: 30000 },
+                        { name: 'News', status: 'stale', missed_intervals: 5, age_ms: 4500000, interval_ms: 900000 }] },
                 providers: { koios: { queued: 2, succeeded: 12, failed: 1, blocked_until: Date.now() + 60000 } },
                 ai: { available: false }, cache: { enabled: true, cache_files: 42 }, refresh_intervals_ms: { active_votes: 300000 } };
         });
@@ -28,6 +30,8 @@ try {
     });
     assert.match(await page.locator('main').innerText(), /Succeeded: 12/);
     assert.match(await page.locator('main').innerText(), /Waiting to retry/);
+    assert.match(await page.locator('[data-amount-tone="warning"]').innerText(), /Waiting on data/);
+    assert.ok(await page.getByText('Data stale', { exact: true }).count());
     for (const width of [1280, 700, 390]) {
         await page.setViewportSize({ width, height: 900 });
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);

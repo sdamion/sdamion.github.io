@@ -30,14 +30,14 @@ export function createWebsiteStatusPanel(request) {
         grid.append(tile);
         return content;
     };
-    const bar = (parent, good, bad, label) => {
-        if (!Number.isFinite(good) || !Number.isFinite(bad) || good + bad <= 0) return;
+    const bar = (parent, good, bad, label, waiting = 0) => {
+        if (!Number.isFinite(good) || !Number.isFinite(bad) || good + bad + waiting <= 0) return;
         const track = node('div', '', 'governance-vote-bar-track');
         track.setAttribute('role', 'img');
         track.setAttribute('aria-label', label);
-        for (const [amount, type] of [[good, 'yes'], [bad, 'no']]) {
+        for (const [amount, type] of [[good, 'yes'], [waiting, 'waiting'], [bad, 'no']]) {
             const fill = node('span', '', `governance-vote-bar-fill governance-vote-bar-fill--${type}`);
-            fill.style.flexBasis = `${amount / (good + bad) * 100}%`;
+            fill.style.flexBasis = `${amount / (good + bad + waiting) * 100}%`;
             track.append(fill);
         }
         parent.append(track, node('span', label, 'tdsp-bar-legend'));
@@ -85,21 +85,24 @@ export function createWebsiteStatusPanel(request) {
             grid.replaceChildren();
             const monitoring = data.monitoring;
             if (monitoring) {
+                const waiting = monitoring.checks.filter(check => check.status === 'waiting').length;
+                const critical = monitoring.total - monitoring.healthy - waiting;
+                const pool = monitoring.pool;
+                const poolCritical = !['healthy', 'waiting'].includes(pool.status);
                 const overview = card('Data checks', `${monitoring.healthy} / ${monitoring.total}`, [
                     `${translate('Needs attention')}: ${monitoring.attention}`,
                     `${translate('Last checked')}: ${date(monitoring.sampled_at_ms)}`,
                     'Cached data checks; no additional Koios requests'
-                ], monitoring.attention ? 'negative' : 'positive');
-                bar(overview, monitoring.healthy, monitoring.total - monitoring.healthy, `${translate('Fresh caches')}: ${monitoring.healthy} / ${monitoring.total}`);
-                const pool = monitoring.pool;
-                card('Live stake verification', pool.status === 'healthy' ? 'Verified' : 'Needs attention', [
+                ], critical || poolCritical ? 'negative' : waiting || pool.status === 'waiting' ? 'warning' : 'positive');
+                bar(overview, monitoring.healthy, critical, `${translate('Fresh caches')}: ${monitoring.healthy} · ${translate('Waiting on data')}: ${waiting} · ${translate('Needs attention')}: ${critical}`, waiting);
+                card('Live stake verification', pool.status === 'healthy' ? 'Verified' : pool.status === 'waiting' ? 'Waiting on data' : pool.status === 'stale' ? 'Data stale' : 'Needs attention', [
                     `${translate('Live stake')}: ${ada(pool.live_stake_lovelace)}`,
                     `${translate('Delegator total')}: ${ada(pool.delegator_sum_lovelace)}`,
                     `${translate('Difference')}: ${ada(pool.difference_lovelace)}`,
                     `${translate('Delegators')}: ${number(pool.delegators)}`,
                     `${translate('Last checked')}: ${date(pool.checked_at)}`,
                     ...pool.issues.map(translate)
-                ], pool.status === 'healthy' ? 'positive' : 'negative');
+                ], pool.status === 'healthy' ? 'positive' : pool.status === 'waiting' ? 'warning' : 'negative');
             }
             card('Website', location.host, [
                 `${translate('Secure connection')}: ${window.isSecureContext ? translate('Yes') : translate('No')}`,
@@ -138,12 +141,13 @@ export function createWebsiteStatusPanel(request) {
                 `${translate('Last rebuild')}: ${date(cache.last_rebuild_at)}`
             ]);
             for (const check of monitoring?.checks || []) {
-                const label = { healthy: 'Fresh', stale: 'Stale', missing: 'Missing', unknown: 'Unknown', error: 'Refresh failed' }[check.status];
+                const label = { healthy: 'Fresh', waiting: 'Waiting on data', stale: 'Data stale', missing: 'Missing', unknown: 'Unknown', error: 'Refresh failed' }[check.status];
                 card(check.name, label, [
+                    `${translate('Missed intervals')}: ${number(check.missed_intervals)}`,
                     `${translate('Age')}: ${check.age_ms === null ? '-' : number(Math.max(0, Math.round(check.age_ms / 60000)))} min`,
                     `${translate('Refresh interval')}: ${number(check.interval_ms / 60000)} min`,
                     `${translate('Updated')}: ${date(check.updated_at)}`
-                ], check.status === 'healthy' ? 'positive' : 'negative');
+                ], check.status === 'healthy' ? 'positive' : check.status === 'waiting' ? 'warning' : 'negative');
             }
             status.textContent = `${translate('Updated')}: ${date(data.checked_at)}. ${translate('API counters since backend restart; queue status is not an upstream health check.')}`;
             if (data.history?.persistence_error) status.textContent += ` ${translate('Monitoring history could not be saved.')}`;
