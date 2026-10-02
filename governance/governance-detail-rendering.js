@@ -5,11 +5,7 @@
     }
 
     function setAutoTranslatedText(element, value) {
-        if (!(element instanceof HTMLElement)) return;
-        const text = String(value || '');
-        element.setAttribute('data-i18n-auto', '');
-        element.setAttribute('data-i18n-auto-original', text);
-        element.textContent = translateText(text);
+        return window.TDSPRuntime.setAutoTranslatedText(element, value);
     }
 
     function createDetailRenderingModule({

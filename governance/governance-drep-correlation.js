@@ -7,11 +7,7 @@
         onOpenDrep
     }) {
         function setAutoTranslatedText(element, text) {
-            if (!(element instanceof HTMLElement)) return;
-            const value = String(text || '').replace(/\s+/g, ' ').trim();
-            element.setAttribute('data-i18n-auto', '');
-            element.setAttribute('data-i18n-auto-original', value);
-            element.textContent = window.TDSPI18n?.translateText?.(value) || value;
+            return window.TDSPRuntime.setAutoTranslatedText(element, text);
         }
 
         function createChart(correlationPayload, drepDetails = []) {

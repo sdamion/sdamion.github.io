@@ -1,10 +1,11 @@
 import { createServer } from 'node:http';
 import { request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
-import { readFile } from 'node:fs/promises';
+import { realpath, stat } from 'node:fs/promises';
 import { createReadStream } from 'node:fs';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 import { gunzipSync } from 'node:zlib';
+import { fileURLToPath } from 'node:url';
 
 const PORT = Number(process.env.PORT || 8000);
 const HOST = process.env.HOST || '127.0.0.1';
@@ -330,6 +331,12 @@ const contentTypes = {
   '.js': 'text/javascript; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
   '.jsonld': 'application/ld+json; charset=utf-8',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.toml': 'text/plain; charset=utf-8',
+  '.woff2': 'font/woff2',
+  '.wasm': 'application/wasm',
   '.png': 'image/png',
   '.svg': 'image/svg+xml; charset=utf-8',
   '.webp': 'image/webp'
@@ -661,9 +668,15 @@ async function readRequestBody(req, maxBytes = 8192) {
   return Buffer.concat(chunks);
 }
 
-function getStaticPath(pathname) {
-  const decoded = decodeURIComponent(pathname);
+export function getStaticPath(pathname) {
+  let decoded;
+  try { decoded = decodeURIComponent(pathname); } catch { return null; }
+  const segments = decoded.replace(/\\/g, '/').split('/');
+  if (segments.some(part => part.startsWith('.') || ['node_modules', 'tests', 'test', 'portfolio-src'].includes(part))) return null;
+  if (decoded.includes('\0') || decoded.includes('\\')) return null;
   const requested = decoded === '/' ? '/index.html' : decoded;
+  if (!Object.hasOwn(contentTypes, extname(requested))) return null;
+  if (/\/(?:package(?:-lock)?|tsconfig[^/]*)\.json$/i.test(requested)) return null;
   const filePath = normalize(join(ROOT, requested));
   if (filePath !== ROOT && !filePath.startsWith(`${ROOT}${sep}`)) return null;
   return filePath;
@@ -678,7 +691,12 @@ async function serveStatic(pathname, res) {
   }
 
   try {
-    await readFile(filePath);
+    const canonical = await realpath(filePath);
+    if (getStaticPath(`/${canonical.slice(ROOT.length + 1)}`) !== canonical || !(await stat(canonical)).isFile()) {
+      res.writeHead(403);
+      res.end('Forbidden');
+      return;
+    }
   } catch {
     res.writeHead(404);
     res.end('Not found');
@@ -687,13 +705,22 @@ async function serveStatic(pathname, res) {
 
   res.writeHead(200, {
     'cache-control': 'no-store',
+    'x-content-type-options': 'nosniff',
     'content-type': contentTypes[extname(filePath)] || 'application/octet-stream'
   });
   createReadStream(filePath).pipe(res);
 }
 
-const server = createServer(async (req, res) => {
-  const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
+export const server = createServer(async (req, res) => {
+  let url;
+  try {
+    const origin = new URL(`http://${req.headers.host || 'localhost'}`);
+    url = new URL(req.url || '/', origin);
+    const hosts = new Set(['localhost', '127.0.0.1', '[::1]', HOST]);
+    if (!hosts.has(origin.hostname) || url.origin !== origin.origin || (req.headers.origin && req.headers.origin !== origin.origin)) throw new Error('Untrusted local origin');
+  } catch {
+    res.writeHead(403);res.end('Forbidden');return;
+  }
   const route = proxyRoutes[url.pathname];
 
   try {
@@ -848,7 +875,7 @@ const server = createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, HOST, () => {
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) server.listen(PORT, HOST, () => {
   console.log(`TDSP local dev server running at http://${HOST}:${PORT}/`);
   console.log(`TDSP API origin: ${TDSP_API_ORIGIN}`);
   if (TDSP_API_HOST) console.log(`TDSP API host header/SNI: ${TDSP_API_HOST}`);

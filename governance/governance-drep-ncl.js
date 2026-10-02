@@ -4,14 +4,6 @@
         return window.TDSPI18n?.translateText?.(text) || text;
     }
 
-    function setAutoTranslatedText(element, value) {
-        if (!(element instanceof HTMLElement)) return;
-        const text = String(value || '');
-        element.setAttribute('data-i18n-auto', '');
-        element.setAttribute('data-i18n-auto-original', text);
-        element.textContent = translateText(text);
-    }
-
     function createDrepNclModule({
         formatNclAdaAmount,
         formatVoteChoice,
@@ -22,67 +14,32 @@
         getProposalTotalAsk
     }) {
         function createSpendBar(drep) {
-            const bar = document.createElement('div');
-            bar.className = 'drep-ncl-bar';
-
-            const track = document.createElement('div');
-            track.className = 'drep-ncl-bar-track';
-            track.setAttribute('aria-hidden', 'true');
-
-            const spendFill = document.createElement('span');
-            spendFill.className = 'drep-ncl-bar-fill drep-ncl-bar-fill--spend';
-            const leftFill = document.createElement('span');
-            leftFill.className = 'drep-ncl-bar-fill drep-ncl-bar-fill--left';
-            const pipelineFill = document.createElement('span');
-            pipelineFill.className = 'drep-ncl-bar-fill drep-ncl-bar-fill--pipeline';
-            track.append(spendFill, leftFill, pipelineFill);
-
             const values = getSpendValues(drep);
-            const label = document.createElement('span');
-            label.className = 'tdsp-bar-legend drep-ncl-bar-label';
-            if (!Number.isFinite(values.limit) || values.limit <= 0) {
-                spendFill.style.flexBasis = '0%';
-                leftFill.style.flexBasis = '100%';
-                pipelineFill.style.flexBasis = '0%';
+            const available = Number.isFinite(values.limit) && values.limit > 0;
+            const bar = window.TDSPRuntime.createSegmentedBar({
+                className: 'drep-ncl-bar',
+                trackClassName: 'drep-ncl-bar-track',
+                fillClassName: 'drep-ncl-bar-fill',
+                legendClassName: 'drep-ncl-bar-label',
+                total: available ? Math.max(values.limit + values.pipeline, values.limit) : 1,
+                legendText: available ? undefined : 'Current NCL unavailable',
+                ariaLabel: available ? undefined : 'Current NCL unavailable',
+                segments: [
+                    { value: available ? values.spent : 0, label: `NCL Used ${formatNclAdaAmount(values.spent)}`, className: 'drep-ncl-bar-fill--spend', labelClassName: 'drep-ncl-label-item drep-ncl-label-item--used' },
+                    { value: available ? values.left : 1, label: `NCL Available ${formatNclAdaAmount(values.left)}`, className: 'drep-ncl-bar-fill--left', labelClassName: 'drep-ncl-label-item drep-ncl-label-item--available' },
+                    { value: available ? values.pipeline : 0, label: `Pipeline ${formatNclAdaAmount(values.pipeline)}`, className: 'drep-ncl-bar-fill--pipeline', labelClassName: 'drep-ncl-label-item drep-ncl-label-item--pipeline' }
+                ]
+            });
+            if (!available) {
                 bar.title = translateText('Current NCL unavailable');
-                setAutoTranslatedText(label, 'Current NCL unavailable');
-                bar.append(track, label);
                 return bar;
             }
-
-            const visualTotal = Math.max(values.limit + values.pipeline, values.limit);
-            const usedPercent = getBarPercent(values.spent, visualTotal);
-            const availablePercent = getBarPercent(values.left, visualTotal);
-            const pipelinePercent = getBarPercent(values.pipeline, visualTotal);
-            spendFill.style.flexBasis = `${usedPercent}%`;
-            leftFill.style.flexBasis = `${availablePercent}%`;
-            pipelineFill.style.flexBasis = `${pipelinePercent}%`;
-            label.append(
-                createLabelItem('NCL Used', formatNclAdaAmount(values.spent), 'used'),
-                document.createTextNode(' • '),
-                createLabelItem('NCL Available', formatNclAdaAmount(values.left), 'available'),
-                document.createTextNode(' • '),
-                createLabelItem('Pipeline', formatNclAdaAmount(values.pipeline), 'pipeline')
-            );
             bar.title = `${drep?.name || 'DRep'} voted Yes on ${formatNclAdaAmount(values.spent)} of treasury asks in the current NCL period. Current open/ratified NCL pipeline is ${formatNclAdaAmount(values.pipeline)}.`;
-            bar.append(track, label);
             return bar;
-        }
-
-        function getBarPercent(value, total) {
-            if (!Number.isFinite(value) || !Number.isFinite(total) || total <= 0) return 0;
-            return Math.min(Math.max((value / total) * 100, 0), 100);
         }
 
         function getSortValue(drep) {
             return getSpendValues(drep).spent || 0;
-        }
-
-        function createLabelItem(label, value, tone) {
-            const item = document.createElement('span');
-            item.className = `drep-ncl-label-item drep-ncl-label-item--${tone}`;
-            setAutoTranslatedText(item, `${label} ${value}`);
-            return item;
         }
 
         function getSpendValues(drep) {

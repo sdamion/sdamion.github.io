@@ -21,3 +21,9 @@ Existing environment overrides still work. Unset `TDSP_API_ORIGIN` and any
 endpoint-specific overrides to use the public backend everywhere. Restart the
 server after changing configuration. Use another port (for example `8012`) for
 automated tests so the development server stays available.
+
+The preview server only serves supported website asset types. Repository
+dotfiles, dependency directories, tests, Portfolio source files and symlinks
+outside the website are blocked. Requests must use localhost, a loopback IP,
+or the exact hostname/IP configured in `HOST`. Cross-origin browser requests
+are rejected; use the preview URL above instead of opening `index.html` directly.

@@ -12,21 +12,21 @@
     const GOVERNANCE_BOT_CONTEXTS_SCRIPT_SRC = 'governance/governance-bot-contexts.js?v=20260817-modular-bot-contexts';
     const GOVERNANCE_PROPOSAL_SUMMARY_SCRIPT_SRC = 'governance/governance-proposal-summary.js?v=20260827-summary-language';
     const GOVERNANCE_COPY_SCRIPT_SRC = 'governance/governance-copy.js?v=20260817-modular-copy';
-    const GOVERNANCE_DETAIL_RENDERING_SCRIPT_SRC = 'governance/governance-detail-rendering.js?v=20260819-drep-overlay-language';
-    const GOVERNANCE_CIPS_SCRIPT_SRC = 'governance/governance-cips.js?v=20260819-governance-overlay-language';
+    const GOVERNANCE_DETAIL_RENDERING_SCRIPT_SRC = 'governance/governance-detail-rendering.js?v=20261002-shared-bars-security';
+    const GOVERNANCE_CIPS_SCRIPT_SRC = 'governance/governance-cips.js?v=20261002-shared-bars-security';
     const GOVERNANCE_NCL_SCRIPT_SRC = 'governance/governance-ncl.js?v=20260902-governance-ncl-header-meta';
     const GOVERNANCE_NOTIFICATIONS_SCRIPT_SRC = 'governance/governance-notifications.js?v=20260817-modular-notifications';
     const GOVERNANCE_EPOCH_CLOCK_SCRIPT_SRC = 'governance/governance-epoch-clock.js?v=20260820-menu-alerts-epoch';
     const GOVERNANCE_VOTE_DATA_SCRIPT_SRC = 'governance/governance-vote-data.js?v=20260817-modular-vote-data';
     const GOVERNANCE_DREP_UTILS_SCRIPT_SRC = 'governance/governance-drep-utils.js?v=20260817-modular-drep-utils';
-    const GOVERNANCE_DREP_VOTES_SCRIPT_SRC = 'governance/governance-drep-votes.js?v=20260828-rationale-translation-poll';
-    const GOVERNANCE_DREP_NCL_SCRIPT_SRC = 'governance/governance-drep-ncl.js?v=20260819-drep-overlay-language';
+    const GOVERNANCE_DREP_VOTES_SCRIPT_SRC = 'governance/governance-drep-votes.js?v=20261002-shared-bars-security';
+    const GOVERNANCE_DREP_NCL_SCRIPT_SRC = 'governance/governance-drep-ncl.js?v=20261002-shared-bars-security';
     const GOVERNANCE_DREP_STATUS_SCRIPT_SRC = 'governance/governance-drep-status.js?v=20260817-modular-drep-status';
-    const GOVERNANCE_DREP_CORRELATION_SCRIPT_SRC = 'governance/governance-drep-correlation.js?v=20260819-drep-sync-language';
-    const GOVERNANCE_DREP_TOP10_SCRIPT_SRC = 'governance/governance-drep-top10.js?v=20260819-drep-overlay-language';
+    const GOVERNANCE_DREP_CORRELATION_SCRIPT_SRC = 'governance/governance-drep-correlation.js?v=20261002-shared-bars-security';
+    const GOVERNANCE_DREP_TOP10_SCRIPT_SRC = 'governance/governance-drep-top10.js?v=20261002-shared-bars-security';
     const GOVERNANCE_TDSP_DREP_SCRIPT_SRC = 'governance/governance-tdsp-drep.js?v=20260820-delegator-usd';
     const GOVERNANCE_PROPOSAL_DISPLAY_SCRIPT_SRC = 'governance/governance-proposal-display.js?v=20260817-modular-proposal-display';
-    const GOVERNANCE_SCRIPT_SRC = 'governance/governance.js?v=20261002-tile-refresh';
+    const GOVERNANCE_SCRIPT_SRC = 'governance/governance.js?v=20261002-shared-bars-security';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
         '#drep',

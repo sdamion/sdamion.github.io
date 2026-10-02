@@ -14,11 +14,7 @@ let tdspStarchCompanyEnabled = null;
 let tdspStarchMinerCount = null;
 
 function setStarchAutoTranslatedText(element, text) {
-    if (!(element instanceof HTMLElement)) return;
-    const value = String(text || '').replace(/\s+/g, ' ').trim();
-    element.setAttribute('data-i18n-auto', '');
-    element.setAttribute('data-i18n-auto-original', value);
-    element.textContent = window.TDSPI18n?.translateText?.(value) || value;
+    return window.TDSPRuntime.setAutoTranslatedText(element, text);
 }
 
 const formatBalance = balance =>
@@ -413,40 +409,16 @@ function createStarchMinerStatusBar(onlineCount, offlineCount, totalCount) {
 
     const online = Math.max(Number(onlineCount) || 0, 0);
     const offline = Math.max(Number(offlineCount) || 0, 0);
-    const onlinePercent = Math.max(0, Math.min((online / safeTotal) * 100, 100));
-    const offlinePercent = Math.max(0, Math.min((offline / safeTotal) * 100, 100));
-
-    const bar = document.createElement('div');
-    bar.className = 'governance-vote-bar starch-miner-status-bar';
-
-    const track = document.createElement('div');
-    track.className = 'governance-vote-bar-track';
-    track.setAttribute('aria-label', `Online ${online.toLocaleString('en-US')}, Offline ${offline.toLocaleString('en-US')}`);
-
-    const onlineFill = document.createElement('span');
-    onlineFill.className = 'governance-vote-bar-fill governance-vote-bar-fill--yes';
-    onlineFill.style.flexBasis = `${onlinePercent}%`;
-
-    const offlineFill = document.createElement('span');
-    offlineFill.className = 'governance-vote-bar-fill governance-vote-bar-fill--no';
-    offlineFill.style.flexBasis = `${offlinePercent}%`;
-    track.append(onlineFill, offlineFill);
-
-    const label = document.createElement('span');
-    label.className = 'tdsp-bar-legend governance-vote-bar-label';
-    const onlineLabel = window.TDSPI18n?.translateText?.('Online') || 'Online';
-    const offlineLabel = window.TDSPI18n?.translateText?.('Offline') || 'Offline';
-    label.innerHTML = `<span class="governance-vote-label-item--yes">${onlineLabel} ${online.toLocaleString('en-US')}</span> <span class="governance-vote-label-item--no">${offlineLabel} ${offline.toLocaleString('en-US')}</span>`;
     const unknown = Math.max(safeTotal - online - offline, 0);
-    if (unknown) {
-        const unknownLabel = document.createElement('span');
-        setStarchAutoTranslatedText(unknownLabel, 'Status unavailable');
-        unknownLabel.append(` ${unknown.toLocaleString('en-US')}`);
-        label.append(unknownLabel);
-    }
-
-    bar.append(track, label);
-    return bar;
+    return window.TDSPRuntime.createSegmentedBar({
+        className: 'governance-vote-bar starch-miner-status-bar',
+        total: safeTotal,
+        segments: [
+            { value: online, label: 'Online', detail: online.toLocaleString('en-US'), className: 'governance-vote-bar-fill--yes', labelClassName: 'governance-vote-label-item--yes' },
+            { value: offline, label: 'Offline', detail: offline.toLocaleString('en-US'), className: 'governance-vote-bar-fill--no', labelClassName: 'governance-vote-label-item--no' }
+        ],
+        extraLabels: unknown ? [{ label: 'Status unavailable', detail: unknown.toLocaleString('en-US') }] : []
+    });
 }
 
 function updateStarchDirectoryTiles(payload) {

@@ -3470,50 +3470,19 @@ function createTreasuryTileBar(items, ariaPrefix, totalOverride = null, trailing
         : normalizedItems.reduce((sum, item) => sum + item.value, 0);
     if (!normalizedItems.length || total <= 0) return null;
 
-    const bar = document.createElement('span');
-    bar.className = 'governance-vote-bar treasury-flow-bar-inner';
-
-    const track = document.createElement('span');
-    track.className = 'governance-vote-bar-track';
-
-    const label = document.createElement('span');
-    label.className = 'tdsp-bar-legend governance-vote-bar-label';
-    const ariaLabels = [];
-    normalizedItems.forEach((item, index) => {
-        const percentage = Math.max(0, Math.min(100, (item.value / total) * 100));
-        const fill = document.createElement('span');
-        fill.className = `governance-vote-bar-fill ${item.className}`;
-        fill.style.flexBasis = `${percentage}%`;
-        track.appendChild(fill);
-
-        const labelItem = document.createElement('span');
-        labelItem.className = `treasury-flow-label-item ${item.labelClassName}`;
-        const labelText = `${item.label} ${window.TDSPRuntime.formatTileAdaFromLovelace(item.value, { fixedFractionDigits: 2 })}`;
-        setGovernanceAutoTranslatedText(labelItem, labelText);
-        if (index > 0) label.appendChild(document.createTextNode(' • '));
-        label.appendChild(labelItem);
-        ariaLabels.push(`${item.label} ${formatPercentage(percentage)}`);
+    const labelFor = item => ({
+        ...item,
+        label: `${item.label} ${window.TDSPRuntime.formatTileAdaFromLovelace(item.value, { fixedFractionDigits: 2 })}`,
+        labelClassName: `treasury-flow-label-item ${item.labelClassName || ''}`.trim()
     });
-    trailingItems
-        .map(item => ({
-            ...item,
-            value: Math.max(0, Number(item.value) || 0)
-        }))
-        .filter(item => item.value > 0)
-        .forEach(item => {
-            const labelItem = document.createElement('span');
-            labelItem.className = `treasury-flow-label-item ${item.labelClassName || ''}`.trim();
-            setGovernanceAutoTranslatedText(
-                labelItem,
-                `${item.label} ${window.TDSPRuntime.formatTileAdaFromLovelace(item.value, { fixedFractionDigits: 2 })}`
-            );
-            label.appendChild(document.createTextNode(' • '));
-            label.appendChild(labelItem);
-        });
-    track.setAttribute('aria-label', `${ariaPrefix}: ${ariaLabels.join(', ')}`);
-
-    bar.append(track, label);
-    return bar;
+    return window.TDSPRuntime.createSegmentedBar({
+        tagName: 'span',
+        className: 'governance-vote-bar treasury-flow-bar-inner',
+        total,
+        segments: normalizedItems.map(labelFor),
+        extraLabels: trailingItems.filter(item => Number(item.value) > 0).map(labelFor),
+        ariaLabel: `${ariaPrefix}: ${normalizedItems.map(item => `${item.label} ${formatPercentage(Math.min(100, (item.value / total) * 100))}`).join(', ')}`
+    });
 }
 
 function getTreasuryHeaderAmount(payload) {
@@ -4515,36 +4484,14 @@ function createGovernanceVoteBarSegment(percentages, labelText = null) {
 
     const yesPct = (yes / total) * 100;
     const noPct = Math.max(0, 100 - yesPct);
-    const bar = document.createElement('div');
-    bar.className = 'governance-vote-bar';
-
-    const track = document.createElement('div');
-    track.className = 'governance-vote-bar-track';
-    track.setAttribute('aria-label', `Yes ${formatPercentage(yesPct)}, No ${formatPercentage(noPct)}`);
-
-    const yesFill = document.createElement('span');
-    yesFill.className = 'governance-vote-bar-fill governance-vote-bar-fill--yes';
-    yesFill.style.flexBasis = `${Math.max(0, Math.min(100, yesPct))}%`;
-
-    const noFill = document.createElement('span');
-    noFill.className = 'governance-vote-bar-fill governance-vote-bar-fill--no';
-    noFill.style.flexBasis = `${Math.max(0, Math.min(100, noPct))}%`;
-
-    track.append(yesFill, noFill);
-
-    const label = document.createElement('span');
-    label.className = 'tdsp-bar-legend governance-vote-bar-label';
-    const yesLabel = document.createElement('span');
-    yesLabel.className = 'governance-vote-label-item governance-vote-label-item--yes';
-    setGovernanceAutoTranslatedText(yesLabel, `${labelText ? `${labelText} ` : ''}Yes ${formatPercentage(yesPct)}`);
-    const separator = document.createTextNode(' • ');
-    const noLabel = document.createElement('span');
-    noLabel.className = 'governance-vote-label-item governance-vote-label-item--no';
-    setGovernanceAutoTranslatedText(noLabel, `No ${formatPercentage(noPct)}`);
-    label.append(yesLabel, separator, noLabel);
-
-    bar.append(track, label);
-    return bar;
+    return window.TDSPRuntime.createSegmentedBar({
+        total: 100,
+        segments: [
+            { value: yesPct, label: `${labelText ? `${labelText} ` : ''}Yes ${formatPercentage(yesPct)}`, className: 'governance-vote-bar-fill--yes', labelClassName: 'governance-vote-label-item governance-vote-label-item--yes' },
+            { value: noPct, label: `No ${formatPercentage(noPct)}`, className: 'governance-vote-bar-fill--no', labelClassName: 'governance-vote-label-item governance-vote-label-item--no' }
+        ],
+        ariaLabel: `Yes ${formatPercentage(yesPct)}, No ${formatPercentage(noPct)}`
+    });
 }
 
 function createGovernanceMenuOverlay(options) {
@@ -6440,19 +6387,11 @@ function createVoteLegendItem(item, drepVotes, proposal = null) {
 }
 
 function setGovernanceAutoTranslatedText(element, text) {
-    if (!(element instanceof HTMLElement)) return;
-    const value = String(text || '').replace(/\s+/g, ' ').trim();
-    element.setAttribute('data-i18n-auto', '');
-    element.setAttribute('data-i18n-auto-original', value);
-    element.textContent = window.TDSPI18n?.translateText?.(value) || value;
+    return window.TDSPRuntime.setAutoTranslatedText(element, text);
 }
 
 function setGovernanceAutoTranslatedAriaLabel(element, text) {
-    if (!(element instanceof HTMLElement)) return;
-    const value = String(text || '').replace(/\s+/g, ' ').trim();
-    element.setAttribute('data-i18n-aria-label-auto', '');
-    element.setAttribute('data-i18n-aria-label-original', value);
-    element.setAttribute('aria-label', window.TDSPI18n?.translateText?.(value) || value);
+    return window.TDSPRuntime.setAutoTranslatedAriaLabel(element, text);
 }
 
 function createGovernanceStatBox({ label, detail, color, statusClass = '', onClick = null }) {
@@ -10493,36 +10432,16 @@ function normalizeConstitutionalCommitteeTileStats(voteStats, proposalStats = {}
 }
 
 function createConstitutionalCommitteeMemberVoteBar(index) {
-    const bar = document.createElement('div');
-    bar.className = 'governance-vote-bar governance-cc-member-vote-bar is-empty';
+    const bar = window.TDSPRuntime.createSegmentedBar({
+        className: 'governance-vote-bar governance-cc-member-vote-bar is-empty',
+        total: 100,
+        ariaLabel: 'Voting stats loading',
+        segments: [
+            { value: 0, label: 'Voted 0%', className: 'governance-vote-bar-fill--yes', labelClassName: 'governance-vote-label-item governance-vote-label-item--yes' },
+            { value: 0, label: 'Not voted 0%', className: 'governance-vote-bar-fill--no', labelClassName: 'governance-vote-label-item governance-vote-label-item--no' }
+        ]
+    });
     bar.dataset.ccMemberIndex = String(index);
-
-    const track = document.createElement('div');
-    track.className = 'governance-vote-bar-track';
-    track.setAttribute('aria-label', 'Voting stats loading');
-
-    const votedFill = document.createElement('span');
-    votedFill.className = 'governance-vote-bar-fill governance-vote-bar-fill--yes';
-    votedFill.style.flexBasis = '0%';
-
-    const notVotedFill = document.createElement('span');
-    notVotedFill.className = 'governance-vote-bar-fill governance-vote-bar-fill--no';
-    notVotedFill.style.flexBasis = '0%';
-    track.append(votedFill, notVotedFill);
-
-    const label = document.createElement('span');
-    label.className = 'tdsp-bar-legend governance-vote-bar-label';
-
-    const votedLabel = document.createElement('span');
-    votedLabel.className = 'governance-vote-label-item governance-vote-label-item--yes';
-    setGovernanceAutoTranslatedText(votedLabel, 'Voted 0%');
-
-    const notVotedLabel = document.createElement('span');
-    notVotedLabel.className = 'governance-vote-label-item governance-vote-label-item--no';
-    setGovernanceAutoTranslatedText(notVotedLabel, 'Not voted 0%');
-
-    label.append(votedLabel, document.createTextNode(' • '), notVotedLabel);
-    bar.append(track, label);
     return bar;
 }
 
@@ -10545,7 +10464,7 @@ function updateConstitutionalCommitteeMemberVoteBar(container, index, votedPct, 
     if (votedLabel) setGovernanceAutoTranslatedText(votedLabel, votedLabelText);
     if (notVotedLabel) setGovernanceAutoTranslatedText(notVotedLabel, notVotedLabelText);
 
-    bar.querySelector('.governance-vote-bar-track')?.setAttribute('aria-label', `${votedLabelText}, ${notVotedLabelText}`);
+    setGovernanceAutoTranslatedAriaLabel(bar.querySelector('.governance-vote-bar-track'), `${votedLabelText}, ${notVotedLabelText}`);
     bar.classList.toggle('is-empty', !hasApplicableVotes);
 }
 

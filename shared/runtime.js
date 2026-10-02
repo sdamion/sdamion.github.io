@@ -3,6 +3,7 @@
     const detailCache = new Map();
     const requestHealth = new Map();
     let requestSequence = 0;
+    let segmentedBarSequence = 0;
 
     function recordRequestHealth(key, sequence, failed) {
         const previous = requestHealth.get(key);
@@ -625,6 +626,53 @@
         element.textContent = cleanTileText(window.TDSPI18n?.translateText?.(value) || value);
     }
 
+    function setAutoTranslatedAriaLabel(element, text) {
+        if (!(element instanceof HTMLElement)) return;
+        const value = cleanTileText(String(text || ''));
+        element.setAttribute('data-i18n-aria-label-auto', '');
+        element.setAttribute('data-i18n-aria-label-original', value);
+        element.setAttribute('aria-label', window.TDSPI18n?.translateText?.(value) || value);
+    }
+
+    function createSegmentedBar({ segments = [], total, tagName = 'div',
+        className = 'governance-vote-bar', trackClassName = 'governance-vote-bar-track',
+        fillClassName = 'governance-vote-bar-fill', legendClassName = 'governance-vote-bar-label',
+        extraLabels = [], legendText, ariaLabel } = {}) {
+        const safeValue = value => Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0;
+        const rows = segments.map(segment => ({ ...segment, value: safeValue(segment.value) }));
+        const denominator = total === undefined ? rows.reduce((sum, row) => sum + row.value, 0) : safeValue(total);
+        const bar = document.createElement(tagName);
+        bar.className = className;
+        const track = document.createElement(tagName);
+        track.className = trackClassName;
+        track.setAttribute('role', 'img');
+        if (ariaLabel) setAutoTranslatedAriaLabel(track, ariaLabel);
+        rows.forEach(row => {
+            const fill = document.createElement('span');
+            fill.className = `${fillClassName} ${row.className || ''}`.trim();
+            fill.style.flexBasis = `${denominator > 0 ? Math.min(100, (row.value / denominator) * 100) : 0}%`;
+            track.appendChild(fill);
+        });
+        const legend = document.createElement('span');
+        legend.className = `tdsp-bar-legend ${legendClassName}`;
+        legend.id = `tdsp-bar-legend-${++segmentedBarSequence}`;
+        if (!ariaLabel) track.setAttribute('aria-labelledby', legend.id);
+        if (legendText !== undefined) setAutoTranslatedText(legend, legendText);
+        else [...rows, ...extraLabels].filter(row => row.label).forEach((row, index) => {
+            if (index) legend.appendChild(document.createTextNode(' \u2022 '));
+            const item = document.createElement('span');
+            item.className = row.labelClassName || '';
+            if (row.detail !== undefined) {
+                const text = document.createElement('span');
+                setAutoTranslatedText(text, row.label);
+                item.append(text, document.createTextNode(` ${row.detail}`));
+            } else setAutoTranslatedText(item, row.label);
+            legend.appendChild(item);
+        });
+        bar.append(track, legend);
+        return bar;
+    }
+
     function appendUniversalTileContent(container, options = {}) {
         if (!(container instanceof HTMLElement)) return;
 
@@ -760,6 +808,9 @@
     }
 
     window.TDSPRuntime = Object.freeze({
+        setAutoTranslatedText,
+        setAutoTranslatedAriaLabel,
+        createSegmentedBar,
         filterMarkedRows,
         createWalletConnectBox,
         isLocalPreview: isLocalPreviewHostname(window.location.hostname),
