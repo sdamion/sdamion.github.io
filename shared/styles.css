@@ -1086,6 +1086,33 @@ p {
     margin: 18px 0;
 }
 
+.tdsp-tile-grid.tdsp-tile-grid--three,
+#raffle-protected .tdsp-tile-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.tdsp-monitor-chart {
+    display: block;
+    width: 100%;
+    height: 90px;
+    color: var(--accent, #14b8a6);
+}
+
+.governance-menu-card [data-amount-tone="negative"] {
+    color: var(--ai-unavailable-color, #c62828);
+}
+
+.governance-menu-card [data-amount-tone="positive"] {
+    color: var(--accent-strong);
+}
+
+@media (max-width: 700px) {
+    .tdsp-tile-grid.tdsp-tile-grid--three,
+    #raffle-protected .tdsp-tile-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
 .tdsp-tile-grid > div,
 .tdsp-tile-grid > a,
 .tdsp-tile-grid > button {

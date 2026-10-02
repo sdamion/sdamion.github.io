@@ -89,3 +89,43 @@ test('page does not load the automatic navigation module', () => {
     const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
     assert.ok(!html.includes('site-updates.js'));
 });
+
+test('dashboard refresh renews cached loaders and coalesces concurrent refreshes', async () => {
+    const source = readFileSync(new URL('../governance/governance.js', import.meta.url), 'utf8');
+    const code = source.slice(source.indexOf('function refreshDashboardTiles('), source.indexOf('function scheduleActiveRefresh('));
+    let resolve;
+    const pending = new Promise(done => { resolve = done; });
+    let calls = 0;
+    let rendered = 0;
+    const context = vm.createContext({
+        dashboardRefreshPromise: null, dashboardRefreshedAt: 0,
+        drepVoteStatsPayloadPromises: new Map([['old', {}]]),
+        refreshActiveGovernanceGroup: () => { calls++; return pending; },
+        loadCouncilMembers: async () => {}, loadSpoDirectory: async () => {},
+        loadTreasuryData: async () => {}, loadCatalystFundDirectory: async () => {},
+        loadCipDirectory: async () => {}, loadTdspDrepStats: async () => ({ count: 26 }),
+        governanceTdspDrep: { renderCards: stats => { rendered += stats.count; } },
+        console
+    });
+    vm.runInContext(code, context);
+    const first = context.refreshDashboardTiles();
+    assert.equal(context.refreshDashboardTiles(), first);
+    assert.equal(calls, 1);
+    assert.equal(context.spoDirectoryPromise, null);
+    assert.equal(context.drepVoteStatsPayloadPromises.size, 0);
+    resolve();
+    await first;
+    assert.equal(rendered, 26);
+    assert.equal(context.dashboardRefreshPromise, null);
+    assert.ok(context.dashboardRefreshedAt > 0);
+    await context.refreshDashboardTiles();
+    assert.equal(calls, 2);
+});
+
+test('refresh starts even if initial governance request fails and totals have no signature guard', () => {
+    const source = readFileSync(new URL('../governance/governance.js', import.meta.url), 'utf8');
+    assert.match(source, /loadGovernanceActions\(\);\s+scheduleActiveRefresh\(\);/);
+    const refresh = source.slice(source.indexOf('async function refreshActiveGovernanceGroup('), source.indexOf('function refreshDashboardTiles('));
+    assert.doesNotMatch(refresh, /if \(nextSignature === lastActiveRenderSignature\) return/);
+    assert.match(refresh, /updateGovernanceCounts/);
+});

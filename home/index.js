@@ -615,7 +615,7 @@ async function fetchLeaderSchedule() {
 
 function loadPoolStatusModule() {
     if (window.TDSPPoolStatus) return Promise.resolve(window.TDSPPoolStatus);
-    return window.TDSPRuntime.loadScript('pool/status.js?v=20260929-delegator-cache', {
+    return window.TDSPRuntime.loadScript('pool/status.js?v=20261002-live-balances', {
         datasetName: 'poolStatus',
         selector: 'script[data-pool-status]',
         ready: () => window.TDSPPoolStatus || null
@@ -738,7 +738,7 @@ function getDelegatorDashboardTemplates() {
 
 function loadDelegatorAccessModule() {
     if (window.TDSPDelegatorAccess?.initOverlay) return Promise.resolve(window.TDSPDelegatorAccess);
-    return window.TDSPRuntime.loadScript('delegators/delegator-access.js?v=20261001-transaction-check-short', {
+    return window.TDSPRuntime.loadScript('delegators/delegator-access.js?v=20261002-monitoring-history', {
         datasetName: 'delegatorAccess',
         selector: 'script[data-delegator-access]',
         ready: () => window.TDSPDelegatorAccess?.initOverlay ? window.TDSPDelegatorAccess : null

@@ -108,6 +108,9 @@
         }
     }
     const state = {
+        poolStatus: null,
+        icebreakerStatus: null,
+        leaderSchedule: null,
         poolDelegators: [],
         mithrilSigners: [],
         mithrilStatus: null,
@@ -280,8 +283,12 @@
         if (!summaryEl || !relaysEl) return;
 
         try {
-            renderPoolStatus(await window.TDSPRuntime.fetchJson(POOL_API_URL, options.force ? { cache: 'no-store' } : {}));
+            const payload = await window.TDSPRuntime.fetchJson(POOL_API_URL, { cache: 'no-store' });
+            renderPoolStatus(payload);
+            state.poolStatus = payload;
         } catch (error) {
+            console.warn('Pool refresh failed; retaining last available data', error);
+            if (state.poolStatus) return;
             setRelayCardStatus(null, null);
             if (document.getElementById('pool-lifetime-blocks')?.textContent === '...') {
                 window.TDSPRuntime.setText('pool-lifetime-blocks', 'N/A');
@@ -298,6 +305,7 @@
         try {
             renderMithrilStatus(await window.TDSPRuntime.fetchJson(MITHRIL_API_URL));
         } catch (error) {
+            if (state.mithrilStatus) return;
             state.mithrilStatus = null;
             state.mithrilSigners = [];
             setMithrilCardStatus('N/A', null);
@@ -309,7 +317,9 @@
             const payload = await window.TDSPRuntime.fetchJson(ICEBREAKER_API_URL);
             const active = payload?.active;
             setIcebreakerCardStatus(active === true ? 'Active' : active === false ? 'Inactive' : 'N/A', active);
+            state.icebreakerStatus = payload;
         } catch (error) {
+            if (state.icebreakerStatus) return;
             setIcebreakerCardStatus('N/A', null);
         }
     }
@@ -318,6 +328,7 @@
         try {
             renderStarchPoolStatus(await window.TDSPRuntime.fetchJson(STARCH_POOL_API_URL));
         } catch (error) {
+            if (state.starchPoolStatus) return;
             state.starchPoolStatus = null;
             state.starchPools = [];
             window.TDSPRuntime.setText('starch-pool-count', 'N/A');
@@ -329,8 +340,11 @@
         if (!scheduleEl) return;
 
         try {
-            renderLeaderSchedule(await window.TDSPRuntime.fetchJson(LEADER_SCHEDULE_API_URL));
+            const payload = await window.TDSPRuntime.fetchJson(LEADER_SCHEDULE_API_URL);
+            renderLeaderSchedule(payload);
+            state.leaderSchedule = payload;
         } catch (error) {
+            if (state.leaderSchedule) return;
             renderLeaderScheduleError();
         }
     }

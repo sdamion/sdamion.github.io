@@ -63,7 +63,7 @@ const LOCAL_CONSTITUTION_CHAT_PROXY_PATH = '/__constitution_chat_proxy__';
 const LOCAL_CONSTITUTION_CHAT_FEEDBACK_PROXY_PATH = '/__constitution_chat_feedback_proxy__';
 const LOCAL_CONSTITUTION_DOCUMENT_PROXY_PATH = '/__constitution_document_proxy__';
 const GOVERNANCE_MESH_CDN_URL = 'https://esm.sh/@meshsdk/core@1.9.1?bundle-deps';
-const ACTIVE_REFRESH_INTERVAL_MS = 15 * 60 * 1000;
+const ACTIVE_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const DREP_TOP10_BACKGROUND_REFRESH_MAX_AGE_MS = 60 * 60 * 1000;
 const EPOCH_CHANGE_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const EPOCH_CHANGE_REFRESH_WINDOW_MS = 60 * 60 * 1000;
@@ -87,6 +87,8 @@ const SPO_CLOUD_PROVIDER_KEYS = new Set([
 const TDSP_POOL_ID = 'pool1zfd0gl76h3f0ammgp4gu0qvt99qcqkn5a895wv0q779d6p9dz5u';
 const DAMION_DREP_ID = 'drep1yg5gkkyxwwr7d6qflf2qqp6drkp9432h6cvtmun0dqthusqlkz8hj';
 let governanceRefreshTimer = null;
+let dashboardRefreshPromise = null;
+let dashboardRefreshedAt = 0;
 let epochChangeRefreshTimer = null;
 let epochChangeRefreshStartedAtMs = 0;
 let governanceLanguageRefreshTimer = null;
@@ -322,6 +324,7 @@ function initGovernance() {
     ensureEpochCountdownCard();
     setupTdspDrepStatsCards();
     loadGovernanceActions();
+    scheduleActiveRefresh();
     loadDrepDirectory().catch(() => {});
     loadCouncilMembers().catch(() => window.TDSPRuntime.setText('drep-council-power', 'Unavailable'));
     loadSpoDirectory().catch(() => {});
@@ -3742,9 +3745,9 @@ async function refreshActiveGovernanceGroup() {
     governanceGroupsState = grouped;
     updateNclSummaryTile();
 
+    // Each renderer preserves unchanged cards. Non-proposal totals can change
+    // even when the active action list and its votes remain identical.
     const nextSignature = getGovernanceGroupSignature(activeProposals);
-    if (nextSignature === lastActiveRenderSignature) return;
-
     renderGovernanceGroupIfPresent(groups.active, grouped.active, 'No active actions found.');
     renderGovernanceGroupIfPresent(groups.approved, grouped.approved, 'No approved actions found.');
     renderGovernanceGroupIfPresent(groups.rejected, grouped.rejected, 'No rejected actions found.');
@@ -3752,14 +3755,56 @@ async function refreshActiveGovernanceGroup() {
     lastActiveRenderSignature = nextSignature;
 }
 
+function refreshDashboardTiles() {
+    if (dashboardRefreshPromise) return dashboardRefreshPromise;
+    drepDirectoryPromise = null;
+    drepInfoPromise = null;
+    drepStatsPromise = null;
+    tdspDrepStatsPromise = null;
+    spoDirectoryPromise = null;
+    committeeInfoPromise = null;
+    treasuryPromise = null;
+    treasuryAdministratorsPromise = null;
+    catalystBusinessPromise = null;
+    fundingRecipientsPromise = null;
+    fundingOverviewPromise = null;
+    catalystFundDirectoryPromise = null;
+    catalystProposalDirectoryPromise = null;
+    catalystPilot2026Promise = null;
+    cipDirectoryPromise = null;
+    drepCorrelationPayloadPromise = null;
+    drepVoteStatsPayloadPromises.clear();
+    dashboardRefreshPromise = Promise.allSettled([
+        refreshActiveGovernanceGroup(),
+        loadCouncilMembers(),
+        loadSpoDirectory(),
+        loadTreasuryData(),
+        loadCatalystFundDirectory(),
+        loadCipDirectory(),
+        loadTdspDrepStats().then(stats => governanceTdspDrep.renderCards(stats))
+    ]).then(results => {
+        results.forEach(result => {
+            if (result.status === 'rejected') console.warn('Dashboard tile refresh failed', result.reason);
+        });
+    }).finally(() => {
+        dashboardRefreshedAt = Date.now();
+        dashboardRefreshPromise = null;
+    });
+    return dashboardRefreshPromise;
+}
+
 function scheduleActiveRefresh() {
     if (governanceRefreshTimer !== null) return;
 
     governanceRefreshTimer = window.setInterval(() => {
         if (document.visibilityState !== 'visible') return;
-        refreshActiveGovernanceGroup().catch(() => {});
-        loadCouncilMembers().catch(() => {});
+        refreshDashboardTiles();
     }, ACTIVE_REFRESH_INTERVAL_MS);
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && Date.now() - dashboardRefreshedAt >= 60000) {
+            refreshDashboardTiles();
+        }
+    });
 }
 
 function schedulePostEpochGovernanceRefresh() {
@@ -8247,6 +8292,7 @@ async function loadSpoDirectory() {
             })
             .catch(error => {
                 spoDirectoryPromise = null;
+                if (spoDirectoryState) throw error;
                 window.TDSPRuntime.setText('gov-spo-count', '--');
                 window.TDSPRuntime.setText('gov-spo-total-delegated', 'Delegated ₳ --');
                 window.TDSPRuntime.setText('retired-spo-count', '--');
