@@ -3,11 +3,11 @@ import type {ReactNode} from 'react';
 import {MenuTile} from './ui';
 import {AssetOverlay} from './AssetOverlay';
 
-export function WalletMenu({wallets,exchanges,byron,swap,counts}:{wallets:ReactNode;exchanges:ReactNode;byron:ReactNode;swap:ReactNode;counts:{wallets:number;exchanges:number;byron:number;swap:number}}){
+export function WalletMenu({wallets,exchanges,byron,counts}:{wallets:ReactNode;exchanges:ReactNode;byron:ReactNode;counts:{wallets:number;exchanges:number;byron:number;swap:number}}){
   const [section,setSection]=useState<'wallets'|'exchanges'|'byron'|null>(null);
   const sections={
     wallets:{title:'My Wallets',content:wallets},
-    exchanges:{title:'DEX / CEX & Swap',content:<><h2>DEX / CEX</h2>{exchanges}<h2>Swap</h2>{swap}</>},
+    exchanges:{title:'DEX / CEX & Swap',content:exchanges},
     byron:{title:'Byron DEX / CEX',content:byron}
   };
   return <>

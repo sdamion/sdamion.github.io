@@ -17,7 +17,7 @@ const [entries,setEntries]=useState([]),[wallets,setWallets]=useState([]);
 useEffect(()=>{window.loadingStarted=true;window.complete=()=>setStatus('Loaded');return()=>{window.loadingStopped=true;};},[]);
 const exchange=<CexAddresses entries={entries} owned={[]} onChange={next=>{setEntries(next);return true;}}/>;
 const swap=<SwapWallets inline wallets={wallets} onChange={setWallets}/>;
-return <><PortfolioQuickstart stake="test-member" status={status} exchanges={exchange} swap={swap}/><WalletMenu counts={{wallets:0,exchanges:entries.length,byron:0,swap:wallets.length}} wallets={null} exchanges={exchange} byron={null} swap={swap}/></>;}
+return <><PortfolioQuickstart stake="test-member" status={status} exchanges={exchange} swap={swap}/><WalletMenu counts={{wallets:0,exchanges:entries.length,byron:0,swap:wallets.length}} wallets={null} exchanges={<CexAddresses entries={entries} owned={[]} onChange={next=>{setEntries(next);return true;}} swap={{wallets,onChange:setWallets}}/>} byron={null}/></>;}
 window.mount=()=>{window.root=createRoot(document.getElementById('app'));window.root.render(<Test/>);};window.mount();
 `,loader:'tsx',resolveDir:path.resolve('delegators/portfolio-src')},bundle:true,write:false,format:'esm',jsx:'automatic',alias:{'@/components/ui/table':path.resolve('delegators/portfolio-src/ui.tsx')}});
 const browser=await chromium.launch({channel:'chrome',headless:true});
@@ -52,12 +52,13 @@ try{
  await guide.getByLabel('Exchange name',{exact:true}).fill('Test exchange');
  const stake='stake1uxythldc4nmx45tvnwsqu4h5pyjd94udytm6f0tgnr44vecjd8vel';
  await guide.getByLabel('Payment, stake or Byron address',{exact:true}).fill(stake);
- await guide.getByRole('button',{name:'Add CEX address',exact:true}).click();
+ await guide.getByRole('button',{name:'Add',exact:true}).click();
  await guide.getByRole('cell',{name:'Test exchange',exact:true}).waitFor();
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
  await guide.getByRole('button',{name:'Next',exact:true}).click();
  await guide.getByRole('heading',{name:'Add Swap addresses'}).waitFor();
- await guide.getByLabel('Stake, payment or Byron address',{exact:true}).fill(stake);
+ await guide.getByLabel('Swap name',{exact:true}).fill('Internal swap');
+ await guide.getByLabel('Payment, stake or Byron address',{exact:true}).fill(stake);
  await guide.getByRole('button',{name:'Add',exact:true}).click();
  await guide.getByRole('link').waitFor();
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
@@ -66,9 +67,16 @@ try{
  assert.equal(await page.evaluate(()=>localStorage.getItem('tdsp-portfolio-setup-v1:test-member')),'done');
  await page.getByRole('button',{name:/DEX \/ CEX & Swap/}).click();
  const combined=page.locator('#portfolio-wallet-menu-exchanges');
- await combined.getByRole('heading',{name:'DEX / CEX',exact:true}).waitFor();
+ await combined.locator('form').waitFor();
+ assert.equal(await combined.locator('form').count(),1);
  await combined.getByRole('heading',{name:'Swap',exact:true}).waitFor();
  await combined.getByRole('cell',{name:'Test exchange',exact:true}).waitFor();
+ await combined.getByRole('combobox',{name:/Address type/}).selectOption('swap');
+ await combined.getByLabel('Swap name',{exact:true}).fill('Named swap');
+ await combined.getByLabel('Payment, stake or Byron address',{exact:true}).fill('stake1u9ex0jtl4nv84rlzwuft5rczy2hgkjygewla04mgy7v2nccx4p4yr');
+ await combined.getByRole('button',{name:'Add',exact:true}).click();
+ await combined.getByRole('cell',{name:'Named swap',exact:true}).waitFor();
+ assert.equal(await combined.locator('form').count(),1);
  await combined.getByRole('button',{name:'Close guide'}).click();
  await page.evaluate(()=>{window.root.unmount();window.mount();});
  await page.waitForTimeout(100);

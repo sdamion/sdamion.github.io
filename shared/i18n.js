@@ -3,9 +3,9 @@
     const DEFAULT_LANGUAGE = 'en';
     const LANGUAGE_CONFIG = Object.freeze({
         en: { label: 'English', flag: '🇺🇸' },
-        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20261003-local-encryption' },
-        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20261003-local-encryption' },
-        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20261003-local-encryption' }
+        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20261003-combined-service-addresses' },
+        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20261003-combined-service-addresses' },
+        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20261003-combined-service-addresses' }
     });
     const TRANSLATION_ATTR = 'data-i18n';
     const TRANSLATION_ORIGINAL_ATTR = 'data-i18n-original';
@@ -41,6 +41,8 @@
         'h2.governance-card-title'
     ].join(',');
     const AUTO_TRANSLATION_KEYS = new Map([
+        ['Swap name', 'portfolio_swap_name'],
+        ['Address type', 'portfolio_address_type'],
         ['Remote', 'portfolio_storage_remote_short'],
         ['Local', 'portfolio_storage_local_short'],
         ['Storage details and deletion', 'portfolio_storage_details'],

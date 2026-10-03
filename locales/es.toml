@@ -1,4 +1,6 @@
 [strings]
+portfolio_swap_name = "Nombre de Swap"
+portfolio_address_type = "Tipo de dirección"
 portfolio_storage_remote_short = "Remoto"
 portfolio_storage_local_short = "Local"
 portfolio_storage_details = "Detalles de almacenamiento y eliminación"

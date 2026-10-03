@@ -1,4 +1,6 @@
 [strings]
+portfolio_swap_name = "Swap名"
+portfolio_address_type = "アドレスの種類"
 portfolio_storage_remote_short = "リモート"
 portfolio_storage_local_short = "ローカル"
 portfolio_storage_details = "保存の詳細と削除"

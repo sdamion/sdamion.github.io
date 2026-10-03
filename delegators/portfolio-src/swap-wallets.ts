@@ -3,11 +3,11 @@ import type {Wallet,Fact} from './core.ts';
 import {normalizeExchangeAddress,validByronAddress} from './exchange-address.ts';
 import {validStakeAddress,resolveWalletGroups} from './member.ts';
 
-export function addSwapWallet(wallets:Wallet[],value:string):Wallet[]{
+export function addSwapWallet(wallets:Wallet[],value:string,name='Swap'):Wallet[]{
   const address=normalizeExchangeAddress(value);
   if(!validAddress(address)&&!validStakeAddress(address)&&!validByronAddress(address))throw new Error('Enter a valid mainnet stake, payment or Byron address.');
   if(wallets.some(wallet=>wallet.address===address))throw new Error('This address is already included in your wallets.');
-  return [...wallets,{address,label:'Swap',group:'swap'}];
+  return [...wallets,{address,label:name.trim().slice(0,60)||'Swap',group:'swap'}];
 }
 
 export function swapOwnershipScope(wallets:Wallet[]){

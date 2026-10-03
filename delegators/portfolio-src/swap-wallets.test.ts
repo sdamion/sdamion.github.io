@@ -18,6 +18,9 @@ assert.deepEqual(memberWallets(stake,JSON.parse(JSON.stringify(wallets))),wallet
 assert.equal(wallets[1].address,byron);
 assert.equal(wallets[2].address,normal);
 assert.equal(wallets[1].label,'Swap');
+const named=addSwapWallet(memberWallets(stake,[]),byron,'  My swap service  ');
+assert.equal(named[1].label,'My swap service');
+assert.deepEqual(memberWallets(stake,JSON.parse(JSON.stringify(named))),named);
 assert.throws(()=>addSwapWallet(wallets,byron),/already included/);
 assert.throws(()=>addSwapWallet(wallets,'invalid'),/valid mainnet/);
 assert.throws(()=>addSwapWallet(wallets,stake),/already included/);
