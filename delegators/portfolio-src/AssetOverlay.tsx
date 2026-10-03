@@ -18,7 +18,7 @@ export function AssetOverlay({name,onClose,children,id='portfolio-asset-overlay'
     const returnFocus=document.activeElement as HTMLElement|null;
     const elements=host.createUniversalOverlay({
       id,titleId:`${id}-title`,titleText:name,
-      dialogClass:['portfolio-holdings-overlay','portfolio-transactions-overlay','portfolio-unknown-overlay'].includes(id)?'governance-dialog-wide':'governance-drep-dialog',
+      dialogClass:`portfolio-dialog ${['portfolio-holdings-overlay','portfolio-transactions-overlay','portfolio-unknown-overlay'].includes(id)?'governance-dialog-wide':'governance-drep-dialog'}`,
       closeLabel:`Back from ${name}`,closeOverlay:()=>closeRef.current(),
       bodyNodes:[content],returnFocus,enableSearch:false,closeOnBackdrop:false,
       showClose:false,showBack:true

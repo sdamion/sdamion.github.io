@@ -638,7 +638,7 @@ async function openMemberPortfolio() {
     };
     const elements = window.createUniversalOverlay({
         id: 'member-portfolio-overlay', titleId: 'member-portfolio-title', titleText: 'Portfolio',
-        dialogClass: 'governance-dialog-wide',
+        dialogClass: 'governance-dialog-wide portfolio-dialog',
         closeLabel: 'Close portfolio', closeOverlay: close, returnFocus,
         closeOnBackdrop: false,
         bodyNodes: [container], enableSearch: false, extraActions: [refreshAction]
@@ -646,7 +646,7 @@ async function openMemberPortfolio() {
     closePortfolio = close;
     container.textContent = t('Loading member portfolio…');
     try {
-        const module = await import('./portfolio/app.js?v=20261003-portfolio-storage-slider');
+        const module = await import('./portfolio/app.js?v=20261003-portfolio-dialog-size');
         if (closed) return;
         container.replaceChildren();
         dispose = module.mountPortfolio(container, { role: ROLE, getWallet: (reconnect, stake) => reconnect && !portfolioUnlockWallet ? reconnectPortfolioWallet(stake) : portfolioUnlockWallet });

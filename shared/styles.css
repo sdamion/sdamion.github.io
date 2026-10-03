@@ -3888,6 +3888,19 @@ textarea[data-auto-size] {
     max-height: calc(100dvh - 48px);
 }
 
+@media (min-width: 721px) {
+    .governance-dialog.portfolio-dialog {
+        height: auto;
+        min-height: 0;
+        max-height: calc(100dvh - 48px);
+    }
+    .governance-dialog.portfolio-dialog:has(.portfolio-storage-choice):not(:has(main.member-portfolio)),
+    .governance-dialog.portfolio-dialog:has(.wallet-connect-box):not(:has(main.member-portfolio)) {
+        width: min(520px, 100%);
+        max-width: 520px;
+    }
+}
+
 .governance-drep-title {
     margin: 8px 0 16px;
     color: var(--text);
