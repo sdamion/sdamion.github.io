@@ -11,7 +11,7 @@ const bundle=await build({entryPoints:[path.resolve('delegators/portfolio-src/en
   build.onLoad({filter:/\/vault\.ts$/},()=>({loader:'ts',contents:`
     let mode=null;
     export const savedStorage=()=>localStorage.getItem('storage');
-    export const preferredStorage=()=>savedStorage()||'local';
+    export const preferredStorage=()=>savedStorage()||'remote';
     export const storageMode=()=>mode;
     export const isPortfolioMobile=()=>false;
     export const vaultUnlocked=()=>mode!==null;
@@ -30,13 +30,21 @@ try{
   await page.route('**/*',route=>route.fulfill({contentType:'text/html',body:'<div id="root"></div>'}));
   await page.goto('http://127.0.0.1:8998/');
   async function mount(){
+    await page.addStyleTag({content:await readFile('shared/styles.css','utf8')});
     await page.addScriptTag({content:await readFile('shared/runtime.js','utf8')});
     await page.evaluate(()=>{window.createUniversalOverlay=options=>{const overlay=document.createElement('div');overlay.id=options.id;const back=document.createElement('button');back.textContent='Back';back.onclick=options.closeOverlay;overlay.append(back,...options.bodyNodes);document.body.append(overlay);return {overlay};};});
     await page.addScriptTag({type:'module',content:bundle.outputFiles[0].text+'\nlet connected=!localStorage.getItem("storage");window.detach=mountPortfolio(document.getElementById("root"),{getWallet:async(reconnect)=>{if(reconnect){connected=true;window.reconnects=(window.reconnects||0)+1;}return connected?{signData:async()=>({signature:"",key:""})}:null;}});'});
   }
   await mount();
   await page.getByRole('heading',{name:'Portfolio storage',exact:true}).waitFor();
-  await page.getByRole('radio',{name:'Encrypted remote cache',exact:true}).check();
+  assert.equal(await page.getByRole('slider',{name:'Portfolio storage',exact:true}).inputValue(),'0');
+  assert.equal(await page.locator('.portfolio-storage-choice details').getAttribute('open'),null);
+  for(const width of [1200,390]){
+    await page.setViewportSize({width,height:850});
+    const box=await page.locator('.portfolio-storage-choice').boundingBox();
+    assert.ok(box.width<=440&&box.x>=0&&box.x+box.width<=width);
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+  }
   await page.getByRole('button',{name:'Open Portfolio',exact:true}).click();
   await page.waitForFunction(()=>typeof window.approve==='function');
   await page.evaluate(()=>window.approve(true));
@@ -56,7 +64,9 @@ try{
   await page.evaluate(()=>window.approve(true));
   await page.getByText('Portfolio contents',{exact:true}).waitFor();
   await page.getByRole('button',{name:'Portfolio storage: Encrypted remote. Change storage',exact:true}).click();
-  await page.getByRole('radio',{name:'Local browser · desktop only',exact:true}).check();
+  await page.getByRole('slider',{name:'Portfolio storage',exact:true}).focus();
+  await page.keyboard.press('ArrowRight');
+  assert.equal(await page.getByRole('slider',{name:'Portfolio storage',exact:true}).inputValue(),'1');
   await page.getByRole('button',{name:'Apply storage choice',exact:true}).click();
   await page.getByRole('button',{name:'Portfolio storage: Local browser. Change storage',exact:true}).waitFor();
   await page.reload();await mount();

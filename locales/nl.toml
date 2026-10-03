@@ -1,4 +1,9 @@
 [strings]
+portfolio_storage_remote_short = "Op afstand"
+portfolio_storage_local_short = "Lokaal"
+portfolio_storage_details = "Opslagdetails en verwijderen"
+portfolio_storage_remote_summary = "Versleuteld vóór upload. Ontgrendel met je wallet op desktop of mobiel. Verwijderd na 7 dagen inactiviteit."
+portfolio_storage_local_summary = "Alleen opgeslagen in deze browser, zonder walletversleuteling. Alleen desktop; browsergegevens wissen kan de cache verwijderen."
 portfolio_setup = "Portfolio instellen"
 portfolio_setup_skip = "Setup overslaan"
 portfolio_setup_exchange_swap = "DEX / CEX & Swap"

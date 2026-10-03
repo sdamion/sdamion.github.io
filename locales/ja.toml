@@ -1,4 +1,9 @@
 [strings]
+portfolio_storage_remote_short = "リモート"
+portfolio_storage_local_short = "ローカル"
+portfolio_storage_details = "保存の詳細と削除"
+portfolio_storage_remote_summary = "アップロード前に暗号化。PCやモバイルでウォレットを使って解除できます。7日間利用がないと削除されます。"
+portfolio_storage_local_summary = "このブラウザ内のみに保存し、ウォレットによる暗号化はありません。PC専用です。ブラウザデータを消去すると失われる場合があります。"
 portfolio_setup = "ポートフォリオの設定"
 portfolio_setup_skip = "設定をスキップ"
 portfolio_setup_exchange_swap = "DEX / CEX と Swap"

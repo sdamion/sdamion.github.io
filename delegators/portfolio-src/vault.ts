@@ -37,7 +37,7 @@ export function vaultUnlocked(stake?:string){return !!state&&!state.blocked&&sta
 export function storageMode(){return state?.mode??null;}
 export function rememberStorage(stake:string,mode:StorageMode){try{localStorage.setItem('tdsp-portfolio-storage:'+stake,mode);}catch{/* The chooser still works without a saved preference. */}}
 export function savedStorage(stake:string):StorageMode|null{try{const mode=localStorage.getItem('tdsp-portfolio-storage:'+stake);return mode==='remote'||mode==='local'?mode:null;}catch{return null;}}
-export function preferredStorage(stake:string):StorageMode{return savedStorage(stake)||'local';}
+export function preferredStorage(stake:string):StorageMode{return savedStorage(stake)||'remote';}
 async function importLegacy(stake:string):Promise<Data>{
   const data:Data={version:1,settings:{},snapshot:null};
   for(let i=0;i<localStorage.length;i++){const name=localStorage.key(i)!;if(ownSetting(stake,name))data.settings[name]=localStorage.getItem(name)!;}

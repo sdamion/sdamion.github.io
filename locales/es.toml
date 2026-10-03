@@ -1,4 +1,9 @@
 [strings]
+portfolio_storage_remote_short = "Remoto"
+portfolio_storage_local_short = "Local"
+portfolio_storage_details = "Detalles de almacenamiento y eliminación"
+portfolio_storage_remote_summary = "Cifrado antes de subir. Desbloquea con tu wallet en ordenador o móvil. Se elimina tras 7 días de inactividad."
+portfolio_storage_local_summary = "Guardado solo en este navegador, sin cifrado de wallet. Solo ordenador; borrar los datos del navegador puede eliminarlo."
 portfolio_setup = "Configurar Portfolio"
 portfolio_setup_skip = "Omitir configuración"
 portfolio_setup_exchange_swap = "DEX / CEX y Swap"

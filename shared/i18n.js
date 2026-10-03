@@ -3,9 +3,9 @@
     const DEFAULT_LANGUAGE = 'en';
     const LANGUAGE_CONFIG = Object.freeze({
         en: { label: 'English', flag: '🇺🇸' },
-        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20261003-portfolio-setup' },
-        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20261003-portfolio-setup' },
-        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20261003-portfolio-setup' }
+        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20261003-portfolio-storage-slider' },
+        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20261003-portfolio-storage-slider' },
+        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20261003-portfolio-storage-slider' }
     });
     const TRANSLATION_ATTR = 'data-i18n';
     const TRANSLATION_ORIGINAL_ATTR = 'data-i18n-original';
@@ -41,6 +41,11 @@
         'h2.governance-card-title'
     ].join(',');
     const AUTO_TRANSLATION_KEYS = new Map([
+        ['Remote', 'portfolio_storage_remote_short'],
+        ['Local', 'portfolio_storage_local_short'],
+        ['Storage details and deletion', 'portfolio_storage_details'],
+        ['Encrypted before upload. Unlock with your wallet on desktop or mobile. Deleted after 7 days of inactivity.', 'portfolio_storage_remote_summary'],
+        ['Saved in this browser only, without wallet encryption. Desktop only; clearing browser data can remove it.', 'portfolio_storage_local_summary'],
         ['Portfolio setup', 'portfolio_setup'],
         ['Skip setup', 'portfolio_setup_skip'],
         ['DEX / CEX & Swap', 'portfolio_setup_exchange_swap'],
