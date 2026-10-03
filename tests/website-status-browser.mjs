@@ -7,12 +7,14 @@ try {
     await page.setContent('<main></main>');
     await page.addStyleTag({ content: await readFile('shared/styles.css', 'utf8') });
     await page.addScriptTag({ content: await readFile('shared/runtime.js', 'utf8') });
+    await page.evaluate(()=>{window.createUniversalOverlay=options=>{const overlay=document.createElement('div');overlay.id=options.id;const back=document.createElement('button');back.textContent='Back';back.onclick=options.closeOverlay;overlay.append(back,...options.bodyNodes);document.body.append(overlay);return {overlay};};});
     await page.addScriptTag({ content: (await readFile('delegators/website-status.js', 'utf8')).replace('export function', 'function') });
     await page.evaluate(async () => {
         let calls = 0;
         const panel = createWebsiteStatusPanel(async () => {
             if (++calls > 2) throw new Error('HTTP 401');
             return { checked_at: new Date().toISOString(), backend: { uptime_seconds: 100, memory_rss_bytes: 1024, heap_used_bytes: 1024 },
+                portfolio_storage:{used_bytes:1e9,limit_bytes:1e10,usage_percent:10,status:'healthy',measured_at:new Date().toISOString(),wallets:[{wallet_id:'a'.repeat(64),size_bytes:1e9,updated_at_ms:Date.now()}]},
                 history: { samples: [{ time: Date.now() - 60000, memory_mb: 120, check_ms: 10 },
                     { time: Date.now(), memory_mb: 125, check_ms: 20 }] },
                 monitoring: { healthy: 1, total: 3, attention: 2, sampled_at_ms: Date.now(),
@@ -25,13 +27,22 @@ try {
         });
         document.querySelector('main').append(panel);
         await panel.refresh();
-        if (panel.querySelectorAll('.tdsp-monitor-chart').length !== 2) throw new Error('Saved graphs missing on first open');
+        if (panel.querySelectorAll('.tdsp-monitor-chart').length !== 2) throw new Error('Saved graphs missing on first open: '+panel.querySelector('[role=status]').textContent);
         await panel.refresh();
     });
     assert.match(await page.locator('main').innerText(), /Succeeded: 12/);
     assert.match(await page.locator('main').innerText(), /Waiting to retry/);
     assert.match(await page.locator('[data-amount-tone="warning"]').innerText(), /Waiting on data/);
     assert.ok(await page.getByText('Data stale', { exact: true }).count());
+    const storage=page.getByRole('button',{name:'Remote Portfolio storage',exact:true});
+    assert.equal(await storage.locator('[data-amount-tone]').getAttribute('data-amount-tone'),'positive');
+    assert.equal(await storage.locator('.governance-vote-bar-fill--yes').evaluate(node=>node.style.flexBasis),'10%');
+    await storage.press('Enter');
+    const detail=page.locator('#website-portfolio-storage-overlay');
+    await detail.getByText('Wallet aaaaaaaaaaaa',{exact:true}).waitFor();
+    assert.match(await detail.innerText(),/1 GB/);
+    await detail.getByRole('button',{name:'Back'}).click();
+    assert.equal(await detail.count(),0);
     for (const width of [1280, 700, 390]) {
         await page.setViewportSize({ width, height: 900 });
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);

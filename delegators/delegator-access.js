@@ -646,7 +646,7 @@ async function openMemberPortfolio() {
     closePortfolio = close;
     container.textContent = t('Loading member portfolio…');
     try {
-        const module = await import('./portfolio/app.js?v=20261003-combined-service-addresses');
+        const module = await import('./portfolio/app.js?v=20261003-remote-storage-status');
         if (closed) return;
         container.replaceChildren();
         dispose = module.mountPortfolio(container, { role: ROLE, getWallet: (reconnect, stake) => reconnect && !portfolioUnlockWallet ? reconnectPortfolioWallet(stake) : portfolioUnlockWallet });
@@ -2195,7 +2195,7 @@ async function init(options = {}) {
     document.getElementById('raffle-admin-users-open')?.addEventListener('click', () => setRaffleOverlay(true, 'admins'));
     document.getElementById('website-status-open')?.addEventListener('click', async () => {
         try {
-            const { createWebsiteStatusPanel } = await import('./website-status.js?v=20261002-stale-thresholds');
+            const { createWebsiteStatusPanel } = await import('./website-status.js?v=20261003-remote-storage-status');
             let panel = document.getElementById('website-status-panel');
             if (!panel) {
                 panel = createWebsiteStatusPanel(() => authorizedRequest(IS_LOCAL

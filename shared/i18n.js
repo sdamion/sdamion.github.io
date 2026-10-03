@@ -3,9 +3,9 @@
     const DEFAULT_LANGUAGE = 'en';
     const LANGUAGE_CONFIG = Object.freeze({
         en: { label: 'English', flag: '🇺🇸' },
-        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20261003-combined-service-addresses' },
-        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20261003-combined-service-addresses' },
-        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20261003-combined-service-addresses' }
+        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20261003-remote-storage-status' },
+        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20261003-remote-storage-status' },
+        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20261003-remote-storage-status' }
     });
     const TRANSLATION_ATTR = 'data-i18n';
     const TRANSLATION_ORIGINAL_ATTR = 'data-i18n-original';
@@ -41,6 +41,11 @@
         'h2.governance-card-title'
     ].join(',');
     const AUTO_TRANSLATION_KEYS = new Map([
+        ['Remote Portfolio storage', 'portfolio_remote_storage_status'],
+        ['One encrypted cache per member. Wallet IDs are anonymous; Portfolio contents remain private.', 'portfolio_remote_storage_privacy'],
+        ['No remote Portfolio caches.', 'portfolio_remote_storage_empty'],
+        ['Green <70% · Orange 70–90% · Red ≥90%', 'portfolio_remote_storage_thresholds'],
+        ['Remote Portfolio storage is full. Existing caches are preserved. Retry later or use encrypted local storage.', 'portfolio_remote_storage_full'],
         ['Swap name', 'portfolio_swap_name'],
         ['Address type', 'portfolio_address_type'],
         ['Remote', 'portfolio_storage_remote_short'],

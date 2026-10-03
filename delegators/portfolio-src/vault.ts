@@ -158,7 +158,7 @@ export async function flushVault():Promise<void>{
     const {index,saved,total,...upload}=checkpoint;
     setUploadProgress({phase:'uploading'});
     const response=await portfolioUpload(JSON.stringify({action:'checkpoint',revision:current.revision,...upload}),current.controller.signal,(loaded,total)=>{if(current===state)setUploadProgress({phase:loaded>=total?'confirming':'uploading',loaded,total});});
-    if(!response.ok){if(response.status===409||response.status===410)current.blocked=true;throw new Error(response.status===409?'Portfolio changed on another device. Sign in and unlock again before saving.':response.status===410?'Portfolio cache expired. Sign in and unlock again.':'Encrypted Portfolio cache could not be saved. Keep this page open and retry.');}
+    if(!response.ok){if(response.status===409||response.status===410)current.blocked=true;throw new Error(response.status===409?'Portfolio changed on another device. Sign in and unlock again before saving.':response.status===410?'Portfolio cache expired. Sign in and unlock again.':response.status===507?'Remote Portfolio storage is full. Existing caches are preserved. Retry later or use encrypted local storage.':'Encrypted Portfolio cache could not be saved. Keep this page open and retry.');}
     const result=await response.json();if(current!==state)return;
     current.revision=result.revision;current.expiresAt=Math.max(current.expiresAt,result.expires_at);current.dirty=current.generation!==capturedGeneration;
     current.index=index;current.saved=saved;current.pending=undefined;

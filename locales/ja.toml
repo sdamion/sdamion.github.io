@@ -1,4 +1,9 @@
 [strings]
+portfolio_remote_storage_status = "Portfolioのリモート保存容量"
+portfolio_remote_storage_privacy = "メンバーごとに1つの暗号化キャッシュです。ウォレットIDは匿名で、Portfolioの内容は非公開のままです。"
+portfolio_remote_storage_empty = "Portfolioのリモートキャッシュはありません。"
+portfolio_remote_storage_thresholds = "緑 <70% · オレンジ 70–90% · 赤 ≥90%"
+portfolio_remote_storage_full = "Portfolioのリモート保存容量がいっぱいです。既存のキャッシュは保持されます。後で再試行するか、暗号化されたローカル保存を使用してください。"
 portfolio_swap_name = "Swap名"
 portfolio_address_type = "アドレスの種類"
 portfolio_storage_remote_short = "リモート"

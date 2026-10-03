@@ -1,6 +1,8 @@
 export function createWebsiteStatusPanel(request) {
     const panel = document.createElement('section');
     let samples = [];
+    let storageOverlay = null;
+    let storageBody = null;
     const translate = text => window.TDSPI18n?.translateText?.(text) || text;
     const node = (tag, text, className = '') => {
         const element = document.createElement(tag);
@@ -30,14 +32,15 @@ export function createWebsiteStatusPanel(request) {
         grid.append(tile);
         return content;
     };
-    const bar = (parent, good, bad, label, waiting = 0) => {
-        if (!Number.isFinite(good) || !Number.isFinite(bad) || good + bad + waiting <= 0) return;
+    const bar = (parent, good, bad, label, waiting = 0, free = 0) => {
+        if (!Number.isFinite(good) || !Number.isFinite(bad) || good + bad + waiting + free <= 0) return;
         const track = node('div', '', 'governance-vote-bar-track');
         track.setAttribute('role', 'img');
         track.setAttribute('aria-label', label);
-        for (const [amount, type] of [[good, 'yes'], [waiting, 'waiting'], [bad, 'no']]) {
+        for (const [amount, type] of [[good, 'yes'], [waiting, 'waiting'], [bad, 'no'], [free, 'free']]) {
             const fill = node('span', '', `governance-vote-bar-fill governance-vote-bar-fill--${type}`);
-            fill.style.flexBasis = `${amount / (good + bad + waiting) * 100}%`;
+            fill.style.flexBasis = `${amount / (good + bad + waiting + free) * 100}%`;
+            if (type === 'free') fill.style.background = 'var(--line)';
             track.append(fill);
         }
         parent.append(track, node('span', label, 'tdsp-bar-legend'));
@@ -72,6 +75,28 @@ export function createWebsiteStatusPanel(request) {
     };
     const ada = value => value === null || value === undefined ? translate('Unavailable')
         : `₳ ${(Number(BigInt(value)) / 1000000).toLocaleString(undefined, { maximumFractionDigits: 6 })}`;
+    const bytes = value => {
+        if (!Number.isFinite(value)) return translate('Unavailable');
+        const unit = value >= 1e9 ? 'GB' : value >= 1e6 ? 'MB' : value >= 1e3 ? 'KB' : 'B';
+        const divisor = {GB:1e9, MB:1e6, KB:1e3, B:1}[unit];
+        return `${(value / divisor).toLocaleString(undefined, {maximumFractionDigits:2})} ${unit}`;
+    };
+    const renderStorage = storage => {
+        if (!storageBody) return;
+        storageBody.replaceChildren(node('p', 'One encrypted cache per member. Wallet IDs are anonymous; Portfolio contents remain private.', 'governance-card-detail'));
+        if (!Array.isArray(storage.wallets)) { storageBody.append(node('p', 'Unavailable')); return; }
+        for (const wallet of storage.wallets) {
+            const row = node('div', '', 'governance-menu-card');
+            window.TDSPRuntime.appendUniversalTileContent(row, {
+                title: `${translate('Wallet')} ${wallet.wallet_id.slice(0, 12)}`,
+                primaryText: bytes(wallet.size_bytes),
+                detailItems: [`${translate('Updated')}: ${date(wallet.updated_at_ms)}`]
+            });
+            row.title = wallet.wallet_id;
+            storageBody.append(row);
+        }
+        if (!storage.wallets.length) storageBody.append(node('p', 'No remote Portfolio caches.'));
+    };
     panel.refresh = async () => {
         if (refresh.disabled) return;
         refresh.disabled = true;
@@ -110,6 +135,31 @@ export function createWebsiteStatusPanel(request) {
                 `${translate('Response time')}: ${Math.round(performance.now() - started)} ms`
             ]);
             const backend = data.backend || {};
+            const storage = data.portfolio_storage || {status:'unavailable'};
+            const tone = {healthy:'positive', warning:'warning', critical:'negative'}[storage.status];
+            const storageCard = card('Remote Portfolio storage', `${bytes(storage.used_bytes)} / ${bytes(storage.limit_bytes ?? 1e10)}`, [
+                `${translate('Wallets')}: ${number(storage.wallets?.length)}`,
+                'Green <70% · Orange 70–90% · Red ≥90%',
+                `${translate('Last checked')}: ${date(storage.measured_at)}`
+            ], tone);
+            if (Number.isFinite(storage.used_bytes)) {
+                const used = Math.min(storage.used_bytes, storage.limit_bytes);
+                bar(storageCard, tone === 'positive' ? used : 0, tone === 'negative' ? used : 0,
+                    `${number(Math.round(storage.usage_percent * 10) / 10)}%`, tone === 'warning' ? used : 0, Math.max(0, storage.limit_bytes - used));
+                const tile = storageCard.parentElement;
+                tile.setAttribute('role', 'button'); tile.tabIndex = 0;
+                tile.setAttribute('aria-label', translate('Remote Portfolio storage'));
+                window.TDSPRuntime.bindActionTrigger(tile, () => {
+                    if (storageOverlay?.isConnected) return;
+                    storageBody = node('section', '', 'governance-list');
+                    renderStorage(storage);
+                    const close = () => { storageOverlay?.remove(); storageOverlay = storageBody = null; window.syncGovernanceMenuOverlayAccessibility?.(); if (tile.isConnected) tile.focus(); };
+                    storageOverlay = window.createUniversalOverlay({id:'website-portfolio-storage-overlay', titleId:'website-portfolio-storage-title',
+                        titleText:'Remote Portfolio storage', dialogClass:'governance-drep-dialog', bodyNodes:[storageBody],
+                        enableSearch:false, showBack:true, showClose:false, closeOnBackdrop:false, closeOverlay:close, returnFocus:tile}).overlay;
+                });
+            }
+            renderStorage(storage);
             card('Backend', 'Connected', [
                 `${translate('Uptime')}: ${number(Math.floor(backend.uptime_seconds / 60))} min`,
                 `Node: ${backend.node_version || '-'}`,

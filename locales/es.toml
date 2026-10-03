@@ -1,4 +1,9 @@
 [strings]
+portfolio_remote_storage_status = "Almacenamiento remoto de Portfolio"
+portfolio_remote_storage_privacy = "Una caché cifrada por miembro. Los identificadores de wallet son anónimos; el contenido de Portfolio sigue siendo privado."
+portfolio_remote_storage_empty = "No hay cachés remotas de Portfolio."
+portfolio_remote_storage_thresholds = "Verde <70% · Naranja 70–90% · Rojo ≥90%"
+portfolio_remote_storage_full = "El almacenamiento remoto de Portfolio está lleno. Las cachés existentes se conservan. Inténtalo más tarde o usa almacenamiento local cifrado."
 portfolio_swap_name = "Nombre de Swap"
 portfolio_address_type = "Tipo de dirección"
 portfolio_storage_remote_short = "Remoto"
