@@ -113,12 +113,35 @@ try{
     try{await unlock;return false;}catch{return !window.vault.vaultUnlocked();}
   }),true);
   const beforeLocal=uploads.length;
-  await page.evaluate(async({stake,setting})=>{await window.vault.openLocalPortfolio(stake);window.vault.portfolioSettings.setItem(setting,'local-only-label');await window.vault.flushVault();}, {stake,setting});
+  await page.evaluate(async({stake,setting})=>{
+    const db=await new Promise((resolve,reject)=>{const request=indexedDB.open('tdsp-portfolio-local',1);request.onupgradeneeded=()=>request.result.createObjectStore('members');request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});
+    await new Promise((resolve,reject)=>{const tx=db.transaction('members','readwrite');tx.objectStore('members').put({revision:'legacy',expires_at:Date.now()+604800000,data:{version:1,settings:{[setting]:'legacy-secret'},snapshot:null}},stake);tx.oncomplete=resolve;tx.onerror=reject;});db.close();
+    try{await window.vault.openLocalPortfolio(stake,{signData:async()=>{throw new Error('Declined');}});throw new Error('Unexpected unlock');}catch(error){if(error.message!=='Declined')throw error;}
+    if(window.vault.vaultUnlocked())throw new Error('Declined signature unlocked cache');
+    const put=IDBObjectStore.prototype.put;
+    IDBObjectStore.prototype.put=function(...args){if(this.name==='members')throw new Error('Disk full');return put.apply(this,args);};
+    let failed=false;
+    try{await window.vault.openLocalPortfolio(stake,{signData:window.approve});}catch{failed=true;}finally{IDBObjectStore.prototype.put=put;}
+    if(!failed)throw new Error('Unexpected save');
+    if(window.vault.vaultUnlocked())throw new Error('Failed migration exposed an unlocked cache');
+    await window.vault.openLocalPortfolio(stake,{signData:window.approve});
+    if(window.vault.portfolioSettings.getItem(setting)!=='legacy-secret')throw new Error('Migration lost plaintext data');
+  },{stake,setting});
+  await page.evaluate(async({stake,setting})=>{await window.vault.openLocalPortfolio(stake,{signData:window.approve});window.vault.portfolioSettings.setItem(setting,'local-only-label');await window.vault.flushVault();}, {stake,setting});
+  const encrypted=await page.evaluate(async stake=>{
+    const db=await new Promise(resolve=>{const request=indexedDB.open('tdsp-portfolio-local',1);request.onsuccess=()=>resolve(request.result);});
+    const row=await new Promise(resolve=>{const request=db.transaction('members').objectStore('members').get(stake);request.onsuccess=()=>resolve(request.result);});db.close();return row;
+  },stake);
+  assert.equal(encrypted.data.encrypted_version,1);
+  assert.ok(!JSON.stringify(encrypted).includes('local-only-label'));
+  await start();
+  assert.equal(await page.evaluate(()=>window.vault.vaultUnlocked()),false);
+  await page.evaluate(async({stake,setting})=>{await window.vault.openLocalPortfolio(stake,{signData:window.approve});if(window.vault.portfolioSettings.getItem(setting)!=='local-only-label')throw new Error('Encrypted local roundtrip failed');},{stake,setting});
   assert.equal(uploads.length,beforeLocal,'local saves must not upload a cache');
   await page.evaluate(async({stake,setting})=>{
     await window.vault.switchStorage('remote',stake,{signData:window.approve},'delegator',false);
     if(window.vault.portfolioSettings.getItem(setting)!=='private-updated-label')throw new Error('remote copy unexpectedly overwritten');
-    await window.vault.switchStorage('local',stake,null,'delegator',false);
+    await window.vault.switchStorage('local',stake,{signData:window.approve},'delegator',false);
     if(window.vault.portfolioSettings.getItem(setting)!=='local-only-label')throw new Error('local copy missing');
     await window.vault.switchStorage('remote',stake,{signData:window.approve},'delegator',true);
     if(window.vault.portfolioSettings.getItem(setting)!=='local-only-label')throw new Error('explicit copy failed');
@@ -126,17 +149,17 @@ try{
     if(!window.vault.vaultUnlocked(stake))throw new Error('deleting local locked remote');
     await window.vault.deleteStoredCache('remote',stake);
     if(window.vault.vaultUnlocked())throw new Error('deleted active cache still writable');
-    await window.vault.openLocalPortfolio(stake);
+    await window.vault.openLocalPortfolio(stake,{signData:window.approve});
     if(window.vault.portfolioSettings.getItem(setting)!==null)throw new Error('deleted local cache returned');
   },{stake,setting});
   assert.equal(stored.payload,null);
   await page.evaluate(async stake=>{
     window.TDSPRuntime={isMobileDevice:()=>true};
-    let rejected=false;try{await window.vault.openLocalPortfolio(stake);}catch{rejected=true;}
+    let rejected=false;try{await window.vault.openLocalPortfolio(stake,{signData:window.approve});}catch{rejected=true;}
     if(!rejected||window.vault.vaultUnlocked())throw new Error('mobile local mode allowed');
     await window.vault.unlockPortfolio({signData:window.approve});
     if(!window.vault.vaultUnlocked(stake)||window.vault.storageMode()!=='remote')throw new Error('mobile remote mode blocked');
-    rejected=false;try{await window.vault.switchStorage('local',stake,null,'delegator',true);}catch{rejected=true;}
+    rejected=false;try{await window.vault.switchStorage('local',stake,{signData:window.approve},'delegator',true);}catch{rejected=true;}
     if(!rejected||window.vault.storageMode()!=='remote')throw new Error('mobile switched to local mode');
   },stake);
   console.log('PASS: encryption, storage switching/deletion, mobile remote access and mobile local restriction.');

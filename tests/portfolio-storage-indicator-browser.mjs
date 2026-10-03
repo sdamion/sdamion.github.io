@@ -18,7 +18,7 @@ const bundle=await build({entryPoints:[path.resolve('delegators/portfolio-src/en
     export const flushVault=async()=>{};
     export const unlockPortfolio=async()=>{};
     export const deleteStoredCache=async()=>{mode=null;};
-    export async function switchStorage(next,stake,wallet){if(next==='remote'&&!wallet)throw new Error('Reconnect your wallet in the members area to enable encrypted remote storage.');window.approvals=(window.approvals||0)+1;if(next==='remote')await new Promise((resolve,reject)=>window.approve=ok=>ok?resolve():reject(new Error('Wallet approval declined')));mode=next;localStorage.setItem('storage',next);}
+    export async function switchStorage(next,stake,wallet){if(!wallet)throw new Error(next==='remote'?'Reconnect your wallet in the members area to enable encrypted remote storage.':'Reconnect your wallet to unlock encrypted local Portfolio storage.');window.approvals=(window.approvals||0)+1;await new Promise((resolve,reject)=>window.approve=ok=>ok?resolve():reject(new Error('Wallet approval declined')));mode=next;localStorage.setItem('storage',next);}
   `}));
   build.onLoad({filter:/\/transport\.ts$/},()=>({loader:'ts',contents:`export const setSessionRole=()=>{};export const portfolioFetch=async()=>({ok:true,json:async()=>({stake_address:'${stake}'})});`}));
   build.onLoad({filter:/\/App\.tsx$/},()=>({loader:'tsx',contents:'export default function Home(){return <div>Portfolio contents</div>;}'}));
@@ -68,8 +68,15 @@ try{
   await page.keyboard.press('ArrowRight');
   assert.equal(await page.getByRole('slider',{name:'Portfolio storage',exact:true}).inputValue(),'1');
   await page.getByRole('button',{name:'Apply storage choice',exact:true}).click();
+  await page.waitForFunction(()=>window.approvals===3);
+  await page.evaluate(()=>window.approve(true));
   await page.getByRole('button',{name:'Portfolio storage: Local browser. Change storage',exact:true}).waitFor();
   await page.reload();await mount();
+  await page.getByText('Reconnect your wallet to unlock encrypted local Portfolio storage.',{exact:true}).waitFor();
+  assert.equal(await page.getByText('Portfolio contents',{exact:true}).count(),0);
+  await page.getByRole('button',{name:'Unlock Portfolio',exact:true}).click();
+  await page.waitForFunction(()=>typeof window.approve==='function');
+  await page.evaluate(()=>window.approve(true));
   await page.getByText('Portfolio contents',{exact:true}).waitFor();
   assert.equal(await page.getByRole('heading',{name:'Portfolio storage'}).count(),0);
   console.log('PASS: first choice, remembered remote approval, declined/retry, mode indicator, switch and local resume.');

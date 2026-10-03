@@ -1,5 +1,5 @@
 import {portfolioFetch,portfolioUpload,setSessionRole} from './transport';
-import {deriveVaultKey,unlockMessage,openVault} from './vault-crypto';
+import {deriveVaultKey,unlockMessage,openVault,sealVault} from './vault-crypto';
 import {prepareCheckpoint,restoreCheckpoint,type Checkpoint,type CheckpointIndex} from './vault-checkpoint';
 import {setUploadProgress,resetUploadProgress} from './upload-progress';
 import type {Snapshot} from './cache';
@@ -43,13 +43,31 @@ async function importLegacy(stake:string):Promise<Data>{
   for(let i=0;i<localStorage.length;i++){const name=localStorage.key(i)!;if(ownSetting(stake,name))data.settings[name]=localStorage.getItem(name)!;}
   data.snapshot=await legacySnapshot(stake,data.settings);return data;
 }
-export async function openLocalPortfolio(stake:string){
+async function signingKey(stake:string,wallet:SigningWallet){
+  const payload=Array.from(new TextEncoder().encode(unlockMessage(stake)),b=>b.toString(16).padStart(2,'0')).join('');
+  return deriveVaultKey(stake,await wallet.signData(payload,stake));
+}
+export async function openLocalPortfolio(stake:string,wallet:SigningWallet){
   if(isPortfolioMobile())throw new Error('Local Portfolio storage is desktop-only. Choose encrypted remote cache on mobile.');
+  if(!wallet)throw new Error('Reconnect your wallet to unlock encrypted local Portfolio storage.');
   lockVault();const attempt=unlockGeneration;
-  const stored=await loadLocal(stake);const data=stored?.data as Data||await importLegacy(stake);
+  const key=await signingKey(stake,wallet);
   if(attempt!==unlockGeneration)throw new Error('Portfolio opening cancelled.');
-  state={stake,mode:'local',key:null,data,revision:stored?.revision??null,expiresAt:Date.now()+604800000,dirty:true,generation:0,blocked:false,controller:new AbortController()};
-  lastActivity=Date.now();await flushVault();rememberStorage(stake,'local');
+  const stored=await loadLocal(stake);
+  let data:Data;
+  if(stored?.data){
+    const saved=stored.data as {encrypted_version?:number;payload?:any;version?:number};
+    if(saved.encrypted_version!==undefined){
+      if(saved.encrypted_version!==1)throw new Error('Unsupported local Portfolio encryption version.');
+      try{data=await openVault(key,stake,saved.payload);}catch{throw new Error('This wallet approval could not unlock the saved local Portfolio. Use the same wallet app and stake account. The cache has not been changed.');}
+    }else data=stored.data as Data;
+  }else data=await importLegacy(stake);
+  if(data.version!==1||!data.settings||typeof data.settings!=='object')throw new Error('Unsupported Portfolio cache version.');
+  if(attempt!==unlockGeneration)throw new Error('Portfolio opening cancelled.');
+  const current:State={stake,mode:'local',key,data,revision:stored?.revision??null,expiresAt:Date.now()+604800000,dirty:true,generation:0,blocked:false,controller:new AbortController()};
+  state=current;
+  try{lastActivity=Date.now();await flushVault();rememberStorage(stake,'local');}
+  catch(error){if(state===current){clearTimeout(timer);timer=undefined;current.controller.abort();state=null;}throw error;}
 }
 export async function unlockPortfolio(wallet:{signData:(payload:string,address:string)=>Promise<{signature:string;key:string}>},{role='delegator'}:{role?:'delegator'|'admin'}={}){
   lockVault();setSessionRole(role);
@@ -58,10 +76,8 @@ export async function unlockPortfolio(wallet:{signData:(payload:string,address:s
   const session=await portfolioFetch('/session');if(!session.ok)throw new Error('Sign in to the members area first.');
   const {stake_address:stake}=await session.json();
   check();
-  const payload=Array.from(new TextEncoder().encode(unlockMessage(stake)),b=>b.toString(16).padStart(2,'0')).join('');
-  const signed=await wallet.signData(payload,stake);
+  const key=await signingKey(stake,wallet);
   check();
-  const key=await deriveVaultKey(stake,signed);
   const response=await portfolioFetch('/vault');
   if(!response.ok)throw new Error(response.status===404?'The backend needs the encrypted Portfolio cache update.':'Encrypted Portfolio cache could not be loaded.');
   const stored=await response.json();
@@ -87,7 +103,7 @@ export async function unlockPortfolio(wallet:{signData:(payload:string,address:s
 export async function switchStorage(mode:StorageMode,stake:string,wallet:SigningWallet|null,role:'delegator'|'admin',copyCurrent:boolean){
   await flushVault();const previous=state,attempt=unlockGeneration;const data=copyCurrent&&previous?structuredClone(previous.data):null;
   try{
-    if(mode==='local')await openLocalPortfolio(stake);
+    if(mode==='local')await openLocalPortfolio(stake,wallet!);
     else {if(!wallet)throw new Error('Reconnect your wallet in the members area to enable encrypted remote storage.');await unlockPortfolio(wallet,{role});}
     if(data){const current=active();if(current.stake!==stake)throw new Error('Wrong Portfolio member.');current.data=data;changed();await flushVault();}
   }catch(error){if(previous&&unlockGeneration<=attempt+1){state={...previous,controller:new AbortController()};rememberStorage(previous.stake,previous.mode);}throw error;}
@@ -127,10 +143,13 @@ export async function flushVault():Promise<void>{
   running=(async()=>{
     const generation=current.generation;
     if(current.mode==='local'){
-      const saved=await saveLocal(current.stake,current.data,current.revision,current.expiresAt);
+      const payload=await sealVault(current.key!,current.stake,current.data);
+      // Never replace a plaintext record until encryption has succeeded.
+      if(current!==state||current.controller.signal.aborted)return;
+      const saved=await saveLocal(current.stake,{encrypted_version:1,payload},current.revision,current.expiresAt);
       if(current!==state)return;
       current.revision=saved.revision;current.dirty=current.generation!==generation;
-      await clearLegacy(current.stake);notice('Portfolio cache saved in this browser.');return;
+      await clearLegacy(current.stake);notice('Encrypted Portfolio cache saved in this browser.');return;
     }
     setUploadProgress({phase:'preparing',loaded:0,total:0,message:''});
     if(!current.pending)current.pending={checkpoint:await prepareCheckpoint(current.data,current.key!,current.stake,current.index||null,current.controller.signal),generation};

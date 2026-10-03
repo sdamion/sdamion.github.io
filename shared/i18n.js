@@ -3,9 +3,9 @@
     const DEFAULT_LANGUAGE = 'en';
     const LANGUAGE_CONFIG = Object.freeze({
         en: { label: 'English', flag: '🇺🇸' },
-        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20261003-portfolio-storage-slider' },
-        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20261003-portfolio-storage-slider' },
-        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20261003-portfolio-storage-slider' }
+        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20261003-local-encryption' },
+        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20261003-local-encryption' },
+        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20261003-local-encryption' }
     });
     const TRANSLATION_ATTR = 'data-i18n';
     const TRANSLATION_ORIGINAL_ATTR = 'data-i18n-original';
@@ -45,7 +45,9 @@
         ['Local', 'portfolio_storage_local_short'],
         ['Storage details and deletion', 'portfolio_storage_details'],
         ['Encrypted before upload. Unlock with your wallet on desktop or mobile. Deleted after 7 days of inactivity.', 'portfolio_storage_remote_summary'],
-        ['Saved in this browser only, without wallet encryption. Desktop only; clearing browser data can remove it.', 'portfolio_storage_local_summary'],
+        ['Encrypted in this browser only. Unlock with your wallet. Desktop only; clearing browser data can remove it.', 'portfolio_storage_local_summary'],
+        ['Local data is encrypted with AES-256-GCM before saving in this browser. A separate wallet message approval unlocks it; no transaction, fee or cache upload. Use the same wallet app and stake account. There is no recovery without wallet access. Expired data is removed on the next visit after seven days of inactivity.', 'portfolio_local_encryption_details'],
+        ['Reconnect your wallet to unlock encrypted local Portfolio storage.', 'portfolio_local_reconnect'],
         ['Portfolio setup', 'portfolio_setup'],
         ['Skip setup', 'portfolio_setup_skip'],
         ['DEX / CEX & Swap', 'portfolio_setup_exchange_swap'],
