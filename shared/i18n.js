@@ -3,9 +3,9 @@
     const DEFAULT_LANGUAGE = 'en';
     const LANGUAGE_CONFIG = Object.freeze({
         en: { label: 'English', flag: '🇺🇸' },
-        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20260928-multiple-company-alerts' },
-        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20260928-multiple-company-alerts' },
-        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20260928-multiple-company-alerts' }
+        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20261003-portfolio-setup' },
+        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20261003-portfolio-setup' },
+        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20261003-portfolio-setup' }
     });
     const TRANSLATION_ATTR = 'data-i18n';
     const TRANSLATION_ORIGINAL_ATTR = 'data-i18n-original';
@@ -41,6 +41,27 @@
         'h2.governance-card-title'
     ].join(',');
     const AUTO_TRANSLATION_KEYS = new Map([
+        ['Portfolio setup', 'portfolio_setup'],
+        ['Skip setup', 'portfolio_setup_skip'],
+        ['DEX / CEX & Swap', 'portfolio_setup_exchange_swap'],
+        ['Add exchange addresses', 'portfolio_setup_exchange'],
+        ['Add Swap addresses', 'portfolio_setup_swap'],
+        ['Add a stake key or payment address you own to include its balances and transactions. A stake key includes its linked addresses. Your member stake key is already included.', 'portfolio_setup_wallet_help'],
+        ['Add known DEX / CEX payment addresses or stake keys to identify ADA transfers to and from exchanges. These use your buy/sell rule, not DEX trade decoding. Do not add your own wallets here.', 'portfolio_setup_exchange_help'],
+        ['Add your internal Swap payment addresses or stake keys so their transfers are excluded from DEX / CEX totals. Shared service balances are not counted as yours. All additional addresses are optional and can be changed later in Cardano Wallets.', 'portfolio_setup_swap_help'],
+        ["Portfolio quickstart", 'portfolio_quickstart'],
+        ["Next", 'portfolio_quickstart_next'],
+        ["Back", 'portfolio_quickstart_back'],
+        ["Your member wallet", 'portfolio_quickstart_wallet'],
+        ["Your delegated stake key is included automatically. Its linked addresses, balances and transactions load in the background while you read this guide.", 'portfolio_quickstart_wallet_help'],
+        ["Add your own wallets", 'portfolio_quickstart_add'],
+        ["Open Cardano Wallets, then My Wallets to add other wallets you own. Use Swap for your internal service addresses, not exchange addresses.", 'portfolio_quickstart_add_help'],
+        ["Check exchange addresses", 'portfolio_quickstart_cex'],
+        ["In DEX / CEX and Byron DEX / CEX, select only addresses you know belong to an exchange. Discovered Byron addresses are selected by default; review them before relying on the totals.", 'portfolio_quickstart_cex_help'],
+        ["Review your results", 'portfolio_quickstart_results'],
+        ["Open Assets Across Wallets, ADA Gain/ loss or Transactions for details. Values can change during analysis and may include estimates. The info button opens the full Portfolio guide.", 'portfolio_quickstart_results_help'],
+        ["Skip quickstart", 'portfolio_quickstart_skip'],
+        ["Open Portfolio", 'portfolio_quickstart_open'],
         ['Active Mithril Signers', 'active_mithril_signers'],
         ['Active', 'active'],
         ['Active first', 'active_first'],

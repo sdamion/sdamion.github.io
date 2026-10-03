@@ -3,19 +3,18 @@ import type {ReactNode} from 'react';
 import {MenuTile} from './ui';
 import {AssetOverlay} from './AssetOverlay';
 
-export function WalletMenu({wallets,exchanges,byron,swap,counts}:{wallets:ReactNode;exchanges:ReactNode;byron:ReactNode;swap:ReactNode;counts:{wallets:number;exchanges:number;byron:number}}){
+export function WalletMenu({wallets,exchanges,byron,swap,counts}:{wallets:ReactNode;exchanges:ReactNode;byron:ReactNode;swap:ReactNode;counts:{wallets:number;exchanges:number;byron:number;swap:number}}){
   const [section,setSection]=useState<'wallets'|'exchanges'|'byron'|null>(null);
   const sections={
     wallets:{title:'My Wallets',content:wallets},
-    exchanges:{title:'DEX / CEX',content:exchanges},
+    exchanges:{title:'DEX / CEX & Swap',content:<><h2>DEX / CEX</h2>{exchanges}<h2>Swap</h2>{swap}</>},
     byron:{title:'Byron DEX / CEX',content:byron}
   };
   return <>
     <div className="tdsp-tile-grid">
       <MenuTile title={sections.wallets.title} value={String(counts.wallets)} onOpen={()=>setSection('wallets')}/>
-      <MenuTile title={sections.exchanges.title} value={String(counts.exchanges)} onOpen={()=>setSection('exchanges')}/>
+      <MenuTile title={sections.exchanges.title} value={String(counts.exchanges+counts.swap)} onOpen={()=>setSection('exchanges')}/>
       <MenuTile title={sections.byron.title} value={String(counts.byron)} onOpen={()=>setSection('byron')}/>
-      {swap}
     </div>
     {section&&<AssetOverlay id={`portfolio-wallet-menu-${section}`} name={sections[section].title} onClose={()=>setSection(null)}>{sections[section].content}</AssetOverlay>}
   </>;

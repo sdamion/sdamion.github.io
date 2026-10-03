@@ -43,6 +43,7 @@ import {unrealisedStatus} from './metric-status';
 import {CexAddresses} from './CexAddresses';
 import {ByronExchanges} from './ByronExchanges';
 import {SwapWallets} from './SwapWallets';
+import {PortfolioQuickstart} from './PortfolioQuickstart';
 import {WalletMenu} from './WalletMenu';
 import {WalletCard} from './WalletAddresses';
 import {refreshExcludedAddresses,walletRefreshCounts} from './member';
@@ -398,7 +399,12 @@ export default function Home({memberStake}:{memberStake:string}){
   const currentPage=transactionPage(page,shown.length).page;
   useEffect(()=>{if(page!==currentPage)setPage(currentPage);},[page,currentPage]);
 
-  return <main className="member-portfolio"><div className="portfolio-body"><div className="section-heading" aria-label="Portfolio refresh">
+  const walletForm=<>
+    <form onSubmit={addWallet} className="wallet-form governance-drep-registration-form"><label>Wallet name<Input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Savings" maxLength={60}/></label><label className="address-field">Stake or payment address<Input value={address} onChange={e=>setAddress(e.target.value)} placeholder="stake1… or addr1…" aria-describedby="wallet-error" required/></label><button className="governance-vote-primary" type="submit"><Plus size={16}/>Add wallet</button></form><p id="wallet-error" role="status" className="negative">{walletError}</p>
+  </>;
+  const exchangeForm=<CexAddresses entries={cexAddresses} owned={ownedAddresses} onChange={saveCexAddresses}/>;
+  const swapForm=<SwapWallets inline wallets={wallets} groups={snapshot?.swapGroups} onChange={saveWallets}/>;
+  return <main className="member-portfolio"><PortfolioQuickstart stake={memberStake} status={status} wallets={walletForm} exchanges={exchangeForm} swap={swapForm}/><div className="portfolio-body"><div className="section-heading" aria-label="Portfolio refresh">
     <PortfolioRefresh onRefresh={()=>void refresh()} disabled={busy||!ready} busy={busy}/>
     <div className="portfolio-section">
       {!initialising&&!(busy&&analysis)&&<p role="status" className="status-line">{status}</p>}
@@ -420,15 +426,15 @@ export default function Home({memberStake}:{memberStake:string}){
     </div>
     {section==='unknown'&&<UnknownOwnership txs={unknownTransactions} addresses={[...trackedAddresses]} busy={busy} onAssign={assignUnknownOwnership} onClose={()=>setSection(null)}/>}
     {section==='wallets'&&<AssetOverlay id="portfolio-wallets-overlay" name="Cardano Wallets" onClose={()=>setSection(null)}>
-    <WalletMenu counts={{wallets:wallets.filter(wallet=>wallet.group!=='swap').length,exchanges:cexAddresses.filter(entry=>!validByronAddress(entry.address)).length,byron:cexAddresses.filter(entry=>validByronAddress(entry.address)).length}}
-    swap={<SwapWallets wallets={wallets} groups={snapshot?.swapGroups} onChange={saveWallets}/>}
+    <WalletMenu counts={{wallets:wallets.filter(wallet=>wallet.group!=='swap').length,exchanges:cexAddresses.filter(entry=>!validByronAddress(entry.address)).length,byron:cexAddresses.filter(entry=>validByronAddress(entry.address)).length,swap:wallets.filter(wallet=>wallet.group==='swap').length}}
+    swap={swapForm}
     wallets={<section className="portfolio-section"><p className="small muted">Your member stake address includes its linked payment addresses. Add only wallets you own.</p>
       <div className="history-table"><Table><TableHeader><TableRow><TableHead>Wallet</TableHead><TableHead>Address</TableHead><TableHead>ADA</TableHead><TableHead>Transactions</TableHead><TableHead>Linked addresses</TableHead><TableHead>Remove</TableHead></TableRow></TableHeader><TableBody>{wallets.filter(wallet=>wallet.group!=='swap').map((w,i)=><WalletCard key={w.address} wallet={w} primary={i===0} snapshot={snapshot} busy={busy} excluded={excludedRefresh} onExclude={setRefreshExcluded} remove={()=>saveWallets(wallets.filter(x=>x.address!==w.address))}/>)}</TableBody></Table></div>
-      <form onSubmit={addWallet} className="wallet-form governance-drep-registration-form"><label>Wallet name<Input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Savings" maxLength={60}/></label><label className="address-field">Stake or payment address<Input value={address} onChange={e=>setAddress(e.target.value)} placeholder="stake1… or addr1…" aria-describedby="wallet-error" required/></label><button className="governance-vote-primary" type="submit"><Plus size={16}/>Add wallet</button></form><p id="wallet-error" role="status" className="negative">{walletError}</p>
+      {walletForm}
       <p className="small muted">Wallets, prices you enter, and cached history are saved in this browser. Adding or removing a wallet recalculates the entire portfolio; average costs are saved separately for each wallet combination.</p>
     </section>}
     exchanges={<section className="portfolio-section">
-      <CexAddresses entries={cexAddresses} owned={ownedAddresses} onChange={saveCexAddresses}/>
+      {exchangeForm}
       {cexAddresses.length>0&&Object.values(snapshot?.facts||{}).some(fact=>!Array.isArray(fact.externalInputs))&&<p className="small muted">Refresh to load sender and recipient stake addresses for older cached transactions.</p>}
     </section>}
     byron={<ByronExchanges facts={classifiedFacts} entries={cexAddresses} owned={ownedAddresses} history={snapshot?.history||{}} markets={snapshot?.markets||{}} complete={snapshot?.complete===true} onChange={saveCexAddresses}/>}/>

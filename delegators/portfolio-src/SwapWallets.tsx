@@ -7,12 +7,10 @@ import type {Wallet} from './core';
 import {addSwapWallet} from './swap-wallets';
 import {validStakeAddress} from './member';
 
-export function SwapWallets({wallets,groups={},onChange}:{wallets:Wallet[];groups?:Record<string,string[]>;onChange:(wallets:Wallet[])=>void}){
+export function SwapWallets({wallets,groups={},onChange,inline=false}:{wallets:Wallet[];groups?:Record<string,string[]>;onChange:(wallets:Wallet[])=>void;inline?:boolean}){
   const [open,setOpen]=useState(false),[address,setAddress]=useState(''),[error,setError]=useState('');
   const members=wallets.filter(wallet=>wallet.group==='swap');
-  return <>
-    <MenuTile title="Swap" value={String(members.length)} onOpen={()=>setOpen(true)}/>
-    {open&&<AssetOverlay id="portfolio-swap-wallets-overlay" name="Swap" onClose={()=>setOpen(false)}>
+  const content=(
       <section className="portfolio-section">
         <p className="small muted">Swap addresses are excluded from CEX. Transaction amounts are matched to your tracked wallet addresses, including addresses linked to your member stake key. Other recipients and shared service balances are not counted as yours.</p>
         <form className="wallet-form portfolio-address-form" onSubmit={event=>{event.preventDefault();try{onChange(addSwapWallet(wallets,address));setAddress('');setError('');}catch(reason){setError(reason instanceof Error?reason.message:'Could not add wallet.');}}}>
@@ -26,6 +24,10 @@ export function SwapWallets({wallets,groups={},onChange}:{wallets:Wallet[];group
         </TableRow>)}</TableBody></Table></div>
         {!members.length&&<p className="empty">No Swap wallets added.</p>}
       </section>
-    </AssetOverlay>}
+  );
+  if(inline)return content;
+  return <>
+    <MenuTile title="Swap" value={String(members.length)} onOpen={()=>setOpen(true)}/>
+    {open&&<AssetOverlay id="portfolio-swap-wallets-overlay" name="Swap" onClose={()=>setOpen(false)}>{content}</AssetOverlay>}
   </>;
 }
