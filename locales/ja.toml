@@ -1,4 +1,12 @@
 [strings]
+backend_storage = "バックエンドの保存容量"
+backend_storage_scope = "バックエンドのデータファイルのみです。10 GBの上限はPortfolioだけに適用されます。"
+backend_storage_images = "画像"
+backend_storage_spo = "SPOデータ"
+backend_storage_drep = "DRepデータ"
+backend_storage_translations = "翻訳"
+backend_storage_market = "価格とニュース"
+backend_storage_other = "その他のデータ"
 portfolio_remote_storage_status = "Portfolioのリモート保存容量"
 portfolio_remote_storage_privacy = "メンバーごとに1つの暗号化キャッシュです。ウォレットIDは匿名で、Portfolioの内容は非公開のままです。"
 portfolio_remote_storage_empty = "Portfolioのリモートキャッシュはありません。"

@@ -3,6 +3,8 @@ export function createWebsiteStatusPanel(request) {
     let samples = [];
     let storageOverlay = null;
     let storageBody = null;
+    let sectionsOverlay = null;
+    let sectionsBody = null;
     const translate = text => window.TDSPI18n?.translateText?.(text) || text;
     const node = (tag, text, className = '') => {
         const element = document.createElement(tag);
@@ -18,7 +20,7 @@ export function createWebsiteStatusPanel(request) {
     panel.append(refresh, status, grid);
     const date = value => value ? new Date(value).toLocaleString() : translate('Unavailable');
     const number = value => Number.isFinite(value) ? value.toLocaleString() : translate('Unavailable');
-    const card = (title, value, details, tone = '') => {
+    const card = (title, value, details, tone = '', target = grid) => {
         const tile = node('div', '', 'governance-menu-card');
         const content = node('div', '');
         const primary = node('strong', value, 'governance-treasury-withdrawal-amount');
@@ -29,7 +31,7 @@ export function createWebsiteStatusPanel(request) {
             detailItems: details
         });
         tile.append(content);
-        grid.append(tile);
+        target.append(tile);
         return content;
     };
     const bar = (parent, good, bad, label, waiting = 0, free = 0) => {
@@ -97,6 +99,38 @@ export function createWebsiteStatusPanel(request) {
         }
         if (!storage.wallets.length) storageBody.append(node('p', 'No remote Portfolio caches.'));
     };
+    const activate = (tile, title, callback) => {
+        tile.setAttribute('role','button'); tile.tabIndex = 0;
+        tile.setAttribute('aria-label',translate(title));
+        window.TDSPRuntime.bindActionTrigger(tile,callback);
+    };
+    const renderSections = (total, storage) => {
+        if (!sectionsBody) return;
+        sectionsBody.replaceChildren(node('p','Backend data files only. The 10 GB limit applies only to Portfolio.', 'governance-card-detail'));
+        if (!Array.isArray(total.sections)) { sectionsBody.append(node('p','Unavailable')); return; }
+        for (const section of total.sections) {
+            const portfolio = section.id === 'portfolio';
+            const tone = portfolio ? {healthy:'positive',warning:'warning',critical:'negative'}[storage.status] : '';
+            const content = card(section.title, bytes(section.used_bytes), portfolio ? [
+                `${translate('Limit')}: ${bytes(storage.limit_bytes ?? 1e10)}`,
+                'Green <70% · Orange 70–90% · Red ≥90%'
+            ] : [], tone, sectionsBody);
+            if (portfolio) {
+                const used = Math.min(storage.used_bytes, storage.limit_bytes);
+                if (Number.isFinite(used)) bar(content,tone === 'positive' ? used : 0,tone === 'negative' ? used : 0,
+                    `${number(Math.round(storage.usage_percent * 10) / 10)}%`,tone === 'warning' ? used : 0,Math.max(0,storage.limit_bytes-used));
+                const tile = content.parentElement;
+                activate(tile,'Portfolio',()=>{
+                    if (storageOverlay?.isConnected) return;
+                    storageBody=node('section','','governance-list'); renderStorage(storage);
+                    const close=()=>{storageOverlay?.remove();storageOverlay=storageBody=null;window.syncGovernanceMenuOverlayAccessibility?.();if(tile.isConnected)tile.focus();};
+                    storageOverlay=window.createUniversalOverlay({id:'website-portfolio-storage-overlay',titleId:'website-portfolio-storage-title',
+                        titleText:'Remote Portfolio storage',dialogClass:'governance-drep-dialog',bodyNodes:[storageBody],enableSearch:false,
+                        showBack:true,showClose:false,closeOnBackdrop:false,closeOverlay:close,returnFocus:tile}).overlay;
+                });
+            }
+        }
+    };
     panel.refresh = async () => {
         if (refresh.disabled) return;
         refresh.disabled = true;
@@ -136,29 +170,24 @@ export function createWebsiteStatusPanel(request) {
             ]);
             const backend = data.backend || {};
             const storage = data.portfolio_storage || {status:'unavailable'};
-            const tone = {healthy:'positive', warning:'warning', critical:'negative'}[storage.status];
-            const storageCard = card('Remote Portfolio storage', `${bytes(storage.used_bytes)} / ${bytes(storage.limit_bytes ?? 1e10)}`, [
-                `${translate('Wallets')}: ${number(storage.wallets?.length)}`,
-                'Green <70% · Orange 70–90% · Red ≥90%',
-                `${translate('Last checked')}: ${date(storage.measured_at)}`
-            ], tone);
-            if (Number.isFinite(storage.used_bytes)) {
-                const used = Math.min(storage.used_bytes, storage.limit_bytes);
-                bar(storageCard, tone === 'positive' ? used : 0, tone === 'negative' ? used : 0,
-                    `${number(Math.round(storage.usage_percent * 10) / 10)}%`, tone === 'warning' ? used : 0, Math.max(0, storage.limit_bytes - used));
+            const totalStorage = data.backend_storage || {status:'unavailable'};
+            const storageCard = card('Backend storage', bytes(totalStorage.used_bytes), [
+                'Backend data files only. The 10 GB limit applies only to Portfolio.',
+                `${translate('Last checked')}: ${date(totalStorage.measured_at)}`
+            ]);
+            if (Number.isFinite(totalStorage.used_bytes)) {
                 const tile = storageCard.parentElement;
-                tile.setAttribute('role', 'button'); tile.tabIndex = 0;
-                tile.setAttribute('aria-label', translate('Remote Portfolio storage'));
-                window.TDSPRuntime.bindActionTrigger(tile, () => {
-                    if (storageOverlay?.isConnected) return;
-                    storageBody = node('section', '', 'governance-list');
-                    renderStorage(storage);
-                    const close = () => { storageOverlay?.remove(); storageOverlay = storageBody = null; window.syncGovernanceMenuOverlayAccessibility?.(); if (tile.isConnected) tile.focus(); };
-                    storageOverlay = window.createUniversalOverlay({id:'website-portfolio-storage-overlay', titleId:'website-portfolio-storage-title',
-                        titleText:'Remote Portfolio storage', dialogClass:'governance-drep-dialog', bodyNodes:[storageBody],
+                activate(tile, 'Backend storage', () => {
+                    if (sectionsOverlay?.isConnected) return;
+                    sectionsBody = node('section', '', 'governance-list');
+                    renderSections(totalStorage,storage);
+                    const close = () => { storageOverlay?.remove();storageOverlay=storageBody=null;sectionsOverlay?.remove(); sectionsOverlay = sectionsBody = null; window.syncGovernanceMenuOverlayAccessibility?.(); if (tile.isConnected) tile.focus(); };
+                    sectionsOverlay = window.createUniversalOverlay({id:'website-backend-storage-overlay', titleId:'website-backend-storage-title',
+                        titleText:'Backend storage', dialogClass:'governance-drep-dialog', bodyNodes:[sectionsBody],
                         enableSearch:false, showBack:true, showClose:false, closeOnBackdrop:false, closeOverlay:close, returnFocus:tile}).overlay;
                 });
             }
+            renderSections(totalStorage,storage);
             renderStorage(storage);
             card('Backend', 'Connected', [
                 `${translate('Uptime')}: ${number(Math.floor(backend.uptime_seconds / 60))} min`,

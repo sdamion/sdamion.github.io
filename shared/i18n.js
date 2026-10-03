@@ -3,9 +3,9 @@
     const DEFAULT_LANGUAGE = 'en';
     const LANGUAGE_CONFIG = Object.freeze({
         en: { label: 'English', flag: '🇺🇸' },
-        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20261003-remote-storage-status' },
-        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20261003-remote-storage-status' },
-        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20261003-remote-storage-status' }
+        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20261003-backend-storage' },
+        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20261003-backend-storage' },
+        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20261003-backend-storage' }
     });
     const TRANSLATION_ATTR = 'data-i18n';
     const TRANSLATION_ORIGINAL_ATTR = 'data-i18n-original';
@@ -41,6 +41,14 @@
         'h2.governance-card-title'
     ].join(',');
     const AUTO_TRANSLATION_KEYS = new Map([
+        ['Backend storage', 'backend_storage'],
+        ['Backend data files only. The 10 GB limit applies only to Portfolio.', 'backend_storage_scope'],
+        ['Images', 'backend_storage_images'],
+        ['SPO data', 'backend_storage_spo'],
+        ['DRep data', 'backend_storage_drep'],
+        ['Translations', 'backend_storage_translations'],
+        ['Prices and news', 'backend_storage_market'],
+        ['Other data', 'backend_storage_other'],
         ['Remote Portfolio storage', 'portfolio_remote_storage_status'],
         ['One encrypted cache per member. Wallet IDs are anonymous; Portfolio contents remain private.', 'portfolio_remote_storage_privacy'],
         ['No remote Portfolio caches.', 'portfolio_remote_storage_empty'],

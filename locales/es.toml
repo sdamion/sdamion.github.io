@@ -1,4 +1,12 @@
 [strings]
+backend_storage = "Almacenamiento del backend"
+backend_storage_scope = "Solo archivos de datos del backend. El límite de 10 GB se aplica solo a Portfolio."
+backend_storage_images = "Imágenes"
+backend_storage_spo = "Datos de SPO"
+backend_storage_drep = "Datos de DRep"
+backend_storage_translations = "Traducciones"
+backend_storage_market = "Precios y noticias"
+backend_storage_other = "Otros datos"
 portfolio_remote_storage_status = "Almacenamiento remoto de Portfolio"
 portfolio_remote_storage_privacy = "Una caché cifrada por miembro. Los identificadores de wallet son anónimos; el contenido de Portfolio sigue siendo privado."
 portfolio_remote_storage_empty = "No hay cachés remotas de Portfolio."

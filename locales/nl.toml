@@ -1,4 +1,12 @@
 [strings]
+backend_storage = "Backend-opslag"
+backend_storage_scope = "Alleen backend-databestanden. De limiet van 10 GB geldt alleen voor Portfolio."
+backend_storage_images = "Afbeeldingen"
+backend_storage_spo = "SPO-gegevens"
+backend_storage_drep = "DRep-gegevens"
+backend_storage_translations = "Vertalingen"
+backend_storage_market = "Prijzen en nieuws"
+backend_storage_other = "Overige gegevens"
 portfolio_remote_storage_status = "Remote Portfolio-opslag"
 portfolio_remote_storage_privacy = "Eén versleutelde cache per lid. Wallet-ID's zijn anoniem; de Portfolio-inhoud blijft privé."
 portfolio_remote_storage_empty = "Geen remote Portfolio-caches."

@@ -15,6 +15,7 @@ try {
             if (++calls > 2) throw new Error('HTTP 401');
             return { checked_at: new Date().toISOString(), backend: { uptime_seconds: 100, memory_rss_bytes: 1024, heap_used_bytes: 1024 },
                 portfolio_storage:{used_bytes:1e9,limit_bytes:1e10,usage_percent:10,status:'healthy',measured_at:new Date().toISOString(),wallets:[{wallet_id:'a'.repeat(64),size_bytes:1e9,updated_at_ms:Date.now()}]},
+                backend_storage:{used_bytes:3e9,measured_at:new Date().toISOString(),sections:[{id:'database',title:'Database',used_bytes:2e9},{id:'portfolio',title:'Portfolio',used_bytes:1e9}]},
                 history: { samples: [{ time: Date.now() - 60000, memory_mb: 120, check_ms: 10 },
                     { time: Date.now(), memory_mb: 125, check_ms: 20 }] },
                 monitoring: { healthy: 1, total: 3, attention: 2, sampled_at_ms: Date.now(),
@@ -34,7 +35,12 @@ try {
     assert.match(await page.locator('main').innerText(), /Waiting to retry/);
     assert.match(await page.locator('[data-amount-tone="warning"]').innerText(), /Waiting on data/);
     assert.ok(await page.getByText('Data stale', { exact: true }).count());
-    const storage=page.getByRole('button',{name:'Remote Portfolio storage',exact:true});
+    const total=page.getByRole('button',{name:'Backend storage',exact:true});
+    assert.match(await total.innerText(),/3 GB/);
+    await total.press('Enter');
+    const sections=page.locator('#website-backend-storage-overlay');
+    await sections.getByText('Database',{exact:true}).waitFor();
+    const storage=sections.getByRole('button',{name:'Portfolio',exact:true});
     assert.equal(await storage.locator('[data-amount-tone]').getAttribute('data-amount-tone'),'positive');
     assert.equal(await storage.locator('.governance-vote-bar-fill--yes').evaluate(node=>node.style.flexBasis),'10%');
     await storage.press('Enter');
@@ -43,6 +49,9 @@ try {
     assert.match(await detail.innerText(),/1 GB/);
     await detail.getByRole('button',{name:'Back'}).click();
     assert.equal(await detail.count(),0);
+    assert.equal(await sections.isVisible(),true);
+    await sections.getByRole('button',{name:'Back',exact:true}).click();
+    assert.equal(await sections.count(),0);
     for (const width of [1280, 700, 390]) {
         await page.setViewportSize({ width, height: 900 });
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
