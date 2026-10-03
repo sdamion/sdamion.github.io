@@ -103,6 +103,10 @@
 .member-portfolio .portfolio-address-row label { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .member-portfolio .portfolio-address-row label input { margin: 0; padding: 0; width: 18px; height: 18px; }
 .member-portfolio .portfolio-address-row > .small { grid-column: 1 / -1; }
+.governance-menu-overlay:has(> .portfolio-dialog-fullscreen) { padding: 0; }
+.governance-menu-overlay > .governance-dialog.portfolio-dialog-fullscreen {
+  width: 100%; max-width: none; height: 100dvh; max-height: 100dvh; border-radius: 0;
+}
 .member-portfolio .portfolio-transaction-rows :is(th, td) { vertical-align: middle; white-space: normal; overflow-wrap: anywhere; }
 .member-portfolio .portfolio-transaction-rows :is(th, td):nth-child(1) { width: 19%; }
 .member-portfolio .portfolio-transaction-rows :is(th, td):nth-child(2) { width: 30%; }

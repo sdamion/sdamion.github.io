@@ -4,7 +4,7 @@ const {chromium}=await import(process.argv[2]);
 const browser=await chromium.launch({channel:'chrome',headless:true});
 try{
  const page=await browser.newPage({viewport:{width:1400,height:950}});
- await page.setContent('<div class="governance-menu-overlay"><div class="governance-dialog governance-dialog-wide portfolio-dialog"><header>Portfolio</header><div id="content" class="member-portfolio"><section class="portfolio-storage-choice">Storage choice</section></div></div></div>');
+ await page.setContent('<div class="governance-overlay governance-menu-overlay"><div class="governance-dialog governance-dialog-wide portfolio-dialog"><header>Portfolio</header><div id="content" class="member-portfolio"><section class="portfolio-storage-choice">Storage choice</section></div></div></div>');
  await page.addStyleTag({content:await readFile('shared/styles.css','utf8')});
  const dialog=page.locator('.portfolio-dialog');
  let box=await dialog.boundingBox();
@@ -18,6 +18,11 @@ try{
  await page.locator('#content').evaluate(node=>node.innerHTML='<section class="portfolio-storage-choice">Storage choice</section>');
  box=await dialog.boundingBox();
  assert.ok(box.width<=520&&box.height<300,'Returning to storage shrinks the dialog');
+ await dialog.evaluate(node=>node.classList.add('portfolio-dialog-fullscreen'));
+ await page.locator('#content').evaluate(node=>node.innerHTML='<section>Cardano Wallets</section>');
+ box=await dialog.boundingBox();
+ assert.ok(Math.abs(box.width-1400)<2&&Math.abs(box.height-950)<2&&box.x===0&&box.y===0,'Wallet overlays fill the desktop viewport');
+ await dialog.evaluate(node=>node.classList.remove('portfolio-dialog-fullscreen'));
  await page.setViewportSize({width:390,height:844});
  box=await dialog.boundingBox();
  assert.ok(Math.abs(box.width-390)<2&&Math.abs(box.height-844)<2,'Mobile stays full screen');
