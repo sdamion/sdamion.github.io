@@ -3,9 +3,9 @@
     const DEFAULT_LANGUAGE = 'en';
     const LANGUAGE_CONFIG = Object.freeze({
         en: { label: 'English', flag: '🇺🇸' },
-        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20261003-backend-storage' },
-        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20261003-backend-storage' },
-        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20261003-backend-storage' }
+        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20261003-swap-rename' },
+        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20261003-swap-rename' },
+        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20261003-swap-rename' }
     });
     const TRANSLATION_ATTR = 'data-i18n';
     const TRANSLATION_ORIGINAL_ATTR = 'data-i18n-original';
@@ -41,6 +41,8 @@
         'h2.governance-card-title'
     ].join(',');
     const AUTO_TRANSLATION_KEYS = new Map([
+        ['Save Swap name', 'portfolio_swap_name_save'],
+        ['Could not save Swap name.', 'portfolio_swap_name_error'],
         ['Backend storage', 'backend_storage'],
         ['Backend data files only. The 10 GB limit applies only to Portfolio.', 'backend_storage_scope'],
         ['Images', 'backend_storage_images'],

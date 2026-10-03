@@ -287,6 +287,11 @@ export default function Home({memberStake}:{memberStake:string}){
     catch{setCacheNotice('Wallet settings could not be saved to the selected cache.');}
   }
   function saveWallets(next:Wallet[]){
+    const namesOnly=next.length===wallets.length&&next.every((wallet,index)=>JSON.stringify({...wallet,label:undefined})===JSON.stringify({...wallets[index],label:undefined}));
+    if(namesOnly){
+      try{localStorage.setItem(SETTINGS,JSON.stringify(next));setWallets(next);return true;}
+      catch{setCacheNotice('Wallet settings could not be saved to the selected cache.');return false;}
+    }
     const cleaned=excludeInternalExchanges(savedCexAddresses,exchangeExcludedAddresses(next,snapshot?.groups,snapshot?.swapGroups));
     if(!saveCexAddresses(cleaned))return false;
     next=memberWallets(memberStake,next);controller.current?.abort();

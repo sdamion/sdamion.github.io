@@ -1,4 +1,6 @@
 [strings]
+portfolio_swap_name_save = "Swap-naam opslaan"
+portfolio_swap_name_error = "Swap-naam kon niet worden opgeslagen."
 backend_storage = "Backend-opslag"
 backend_storage_scope = "Alleen backend-databestanden. De limiet van 10 GB geldt alleen voor Portfolio."
 backend_storage_images = "Afbeeldingen"

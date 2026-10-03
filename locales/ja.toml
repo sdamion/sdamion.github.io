@@ -1,4 +1,6 @@
 [strings]
+portfolio_swap_name_save = "Swap名を保存"
+portfolio_swap_name_error = "Swap名を保存できませんでした。"
 backend_storage = "バックエンドの保存容量"
 backend_storage_scope = "バックエンドのデータファイルのみです。10 GBの上限はPortfolioだけに適用されます。"
 backend_storage_images = "画像"
