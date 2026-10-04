@@ -21,7 +21,7 @@ export function TransactionRow({hash,time,amount,kind,price,feeRaw,wallets,detai
   return <TableRow className="portfolio-transfer-row">
     <TableCell>{amount}{kind&&<div className="small muted">{kind}</div>}<div className="small"><TransactionLink hash={hash}/></div>{details}</TableCell>
     <TableCell>{price!=null&&price>0?'≈ $'+price.toLocaleString('en-US',{maximumFractionDigits:6}):'Unavailable'}{priceDetails}</TableCell>
-    <TableCell>{feeRaw!=null?'₳ '+lovelaceToAda(feeRaw)!.toLocaleString('en-US',{maximumFractionDigits:6}):'Unavailable'}</TableCell>
+    <TableCell title="Total on-chain transaction fee; not necessarily paid by your wallet">{feeRaw!=null?'₳ '+lovelaceToAda(feeRaw)!.toLocaleString('en-US',{maximumFractionDigits:6}):'Unavailable'}</TableCell>
     <TableCell>{wallets}</TableCell>
     <TableCell><TransactionDate time={time}/></TableCell>
   </TableRow>;
