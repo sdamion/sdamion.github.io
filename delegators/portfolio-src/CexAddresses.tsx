@@ -2,6 +2,7 @@ import {useState} from 'react';
 import {Trash2,ExternalLink} from 'lucide-react';
 import {ServiceAddressForm} from './ServiceAddressForm';
 import {SwapWallets} from './SwapWallets';
+import {KnownDexAddresses} from './KnownDexAddresses';
 import {addSwapWallet} from './swap-wallets';
 import type {Wallet} from './core';
 import {Table,TableHeader,TableBody,TableRow,TableHead,TableCell} from '@/components/ui/table';
@@ -28,5 +29,6 @@ export function CexAddresses({entries,owned,onChange,swap}:{entries:CexAddress[]
       <TableCell><button className="governance-vote-secondary" title={`Remove ${entry.name} address`} aria-label={`Remove ${entry.name} address`} onClick={()=>onChange(entries.filter(item=>item.address!==entry.address))}><Trash2 size={16}/></button></TableCell>
     </TableRow>)}</TableBody></Table></div>
     {swap&&<><h2>Swap</h2><SwapWallets inline showForm={false} {...swap}/></>}
+    <KnownDexAddresses/>
   </section>;
 }
