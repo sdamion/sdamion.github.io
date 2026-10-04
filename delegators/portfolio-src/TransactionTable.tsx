@@ -2,7 +2,17 @@ import type {ReactNode} from 'react';
 import {ExternalLink} from 'lucide-react';
 import {short} from './core';
 import {lovelaceToAda} from './transaction-amounts';
-import {Table,TableHeader,TableBody,TableRow,TableHead,TableCell} from './ui';
+import {Table,TableHeader,TableBody,TableRow,TableHead,TableCell,AdaUsdAmount} from './ui';
+import {AssetWalletAddresses} from './AssetWalletAddresses';
+
+export function TransactionAmount({ada,usd,tone}:{ada:number|null;usd:number|null;tone?:'positive'|'negative'}){
+  return ada===null?<>—</>:<strong className={`portfolio-transfer-amount ${tone??(ada>=0?'positive':'negative')}`}><AdaUsdAmount ada={ada} usd={usd}/></strong>;
+}
+
+export function TransactionWallets({labels,exchanges}:{labels:string[];exchanges:{name:string;address:string}[]}){
+  const names=[...new Set(exchanges.map(exchange=>exchange.name))];
+  return <>{names.length>0&&<strong>{names.join(' · ')}</strong>}<div className="small muted"><TransactionWalletLabels labels={labels}/></div>{exchanges.length>0&&<AssetWalletAddresses compact addresses={[...new Set(exchanges.map(exchange=>exchange.address))]} names={names}/>}</>;
+}
 
 export function TransactionLink({hash}:{hash:string}){
   return <a href={`https://cardanoscan.io/transaction/${hash}`} target="_blank" rel="noreferrer" title={hash}>{short(hash)} <ExternalLink size={12}/></a>;

@@ -7,7 +7,7 @@ const {build}=require('esbuild');
 const {chromium}=await import(process.argv[2]);
 const bundle=await build({stdin:{contents:`
 import {createRoot} from 'react-dom/client';
-import {TransactionTable,TransactionRow,TransactionWalletLabels} from './TransactionTable';
+import {TransactionTable,TransactionRow,TransactionAmount,TransactionWallets} from './TransactionTable';
 import {GainLossTransaction} from './GainLossTransaction';
 import {AddressTransactions} from './ByronExchanges';
 const time=1700000000;
@@ -15,7 +15,7 @@ const base={hash:'in',time,adaRaw:'100000000',feeRaw:'0',internal:false,wallets:
 const incoming={...base,externalInputs:[{address:'exchange',lovelace:'100000000'}]};
 const outgoing={...base,hash:'out',adaRaw:'-100000000',externalOutputs:[{address:'exchange',lovelace:'100000000'}]};
 createRoot(document.getElementById('app')).render(<><TransactionTable>
- <TransactionRow hash="normal" time={time} amount={<strong className="negative">100 ADA</strong>} price={0.25} feeRaw="0" wallets={<TransactionWalletLabels labels={['Savings','DEX contract: CSwap','DEX contract: Minswap V1']}/>}/>
+ <TransactionRow hash="normal" time={time} amount={<TransactionAmount ada={-100} usd={-25}/>} price={0.25} feeRaw="0" wallets={<TransactionWallets labels={['Savings','DEX contract: CSwap','DEX contract: Minswap V1']} exchanges={[]}/>}/>
  <TransactionRow hash="unknown" time={time} amount="Unavailable" wallets="Unknown"/>
  {[incoming,outgoing].map(fact=><GainLossTransaction key={fact.hash} tx={{tx_hash:fact.hash,block_time:time,block_height:1}} fact={fact} entries={[{address:'exchange',name:'Bitvavo'}]} wallets={[{address:'owned',label:'Savings'}]} history={{[new Date(time*1000).toISOString().slice(0,10)]:0.25}}/>)}
 </TransactionTable><AddressTransactions facts={[incoming,outgoing]} address="exchange" entries={[{address:'exchange',name:'Bitvavo'}]} count={2} wallets={[{address:'owned',label:'Savings'}]} history={{[new Date(time*1000).toISOString().slice(0,10)]:0.25}}/></>);
@@ -54,14 +54,18 @@ try{
  assert.deepEqual(await byron.locator('th').allTextContents(),['ADA Amount','USD/ADA Price','Fee','Wallets','Date']);
  assert.equal(await byron.locator('tbody tr').count(),2);
  assert.match(await byron.locator('tbody tr').first().locator('td').nth(3).innerText(),/Bitvavo[\s\S]*Savings/);
- for(const width of [320,390,768]){
+ for(const width of [768,320,390]){
    await page.setViewportSize({width,height:844});
    const shell=page.locator('#app .table-shell').first();
    if(width<768){
-     assert.ok(await shell.evaluate(el=>el.scrollWidth>el.clientWidth),'table scrolls instead of crushing columns');
-     assert.ok(await shell.locator('td').first().evaluate(el=>el.getBoundingClientRect().width>=120));
-     await shell.evaluate(el=>el.scrollLeft=el.scrollWidth);
-     assert.ok(await shell.evaluate(el=>el.scrollLeft>0),'last columns are reachable');
+     assert.ok(await shell.evaluate(el=>el.scrollWidth<=el.clientWidth+1),'all fields fit without horizontal scrolling');
+     assert.ok(await shell.locator('td').first().evaluate(el=>el.getBoundingClientRect().width>=280));
+     assert.deepEqual(await shell.locator('tbody tr').first().locator('td').evaluateAll(cells=>cells.map(cell=>cell.dataset.label)),['ADA Amount','USD/ADA Price','Fee','Wallets','Date']);
+     assert.equal(await shell.locator('td').first().evaluate(el=>getComputedStyle(el).display),'block');
+     const amountStyle=async index=>rows.nth(index).locator('.portfolio-transfer-amount').evaluate(el=>{const s=getComputedStyle(el);return {font:s.fontSize,weight:s.fontWeight,display:s.display};});
+     assert.deepEqual(await amountStyle(0),await amountStyle(2),'Transactions and gain/loss share amount typography');
+     assert.equal(await rows.nth(0).locator('.pool-delegator-amount').count(),1);
+     assert.equal(await rows.nth(2).locator('.pool-delegator-amount').count(),1);
    }
    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'no page-wide overflow');
  }

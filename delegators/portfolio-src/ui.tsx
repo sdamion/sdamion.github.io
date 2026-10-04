@@ -48,10 +48,27 @@ export function MenuTile({title,value,onOpen,analysis,loading=false,loadingLabel
   return <div ref={ref} role="button" tabIndex={0} className="governance-card governance-menu-card" onClick={event=>{if(!interactive(event.target))onOpen();}} onKeyDown={event=>{if(!interactive(event.target)&&(event.key==='Enter'||event.key===' ')){event.preventDefault();onOpen();}}} aria-label={`Open ${title}`} aria-busy={loading}>{children&&createPortal(children,footer)}</div>;
 }
 export const Input=(props:React.ComponentProps<'input'>)=><input {...props}/>;
-export const Table=(props:React.ComponentProps<'table'>)=><div className="table-shell" data-slot="table-container"><table {...props}/></div>;
+const TableLabels=React.createContext<string[]>([]);
+function headerText(node:React.ReactNode):string{
+  return React.Children.toArray(node).map(child=>typeof child==='string'||typeof child==='number'?String(child):React.isValidElement<{children?:React.ReactNode}>(child)?headerText(child.props.children):'').join('');
+}
+function tableLabels(node:React.ReactNode):string[]{
+  return React.Children.toArray(node).flatMap(child=>{
+    if(!React.isValidElement<{children?:React.ReactNode}>(child))return [];
+    return child.type===TableHead?[headerText(child.props.children)]:tableLabels(child.props.children);
+  });
+}
+export const Table=({children,...props}:React.ComponentProps<'table'>)=><TableLabels.Provider value={tableLabels(children)}><div className="table-shell" data-slot="table-container"><table {...props}>{children}</table></div></TableLabels.Provider>;
 export const TableHeader=(props:React.ComponentProps<'thead'>)=><thead {...props}/>;
 export const TableBody=(props:React.ComponentProps<'tbody'>)=><tbody {...props}/>;
-export const TableRow=(props:React.ComponentProps<'tr'>)=><tr {...props}/>;
+export function TableRow({children,...props}:React.ComponentProps<'tr'>){
+  const labels=React.useContext(TableLabels);let column=0;
+  return <tr {...props}>{React.Children.map(children,child=>{
+    if(!React.isValidElement<React.ComponentProps<'td'>&{'data-label'?:string}>(child)||child.type!==TableCell)return child;
+    const label=labels[column]||'';column+=child.props.colSpan||1;
+    return React.cloneElement(child,{'data-label':label});
+  })}</tr>;
+}
 export const TableHead=(props:React.ComponentProps<'th'>)=><th {...props}/>;
 export const TableCell=(props:React.ComponentProps<'td'>)=><td {...props}/>;
 export const Pagination=(props:React.ComponentProps<'nav'>)=><nav aria-label="pagination" {...props}/>;
