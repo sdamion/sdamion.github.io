@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import {assetImageUrl,assetImageCandidates} from './asset-image.ts';
 const id='a'.repeat(56)+'abcd';
+const registryLogo='data:image/png;base64,iVBORw0KGgoAAA==';
+assert.equal(assetImageUrl(registryLogo),registryLogo);
+assert.equal(assetImageUrl('data:image/svg+xml;base64,PHN2Zz4='),null);
+assert.equal(assetImageUrl('data:image/png;base64,not-a-png'),null);
 assert.deepEqual(assetImageCandidates(id),[`https://asset-logos.minswap.org/${id}`]);
 assert.deepEqual(assetImageCandidates('lovelace'),['/cardano_logo_ico.webp']);
 assert.deepEqual(assetImageCandidates('invalid'),[]);

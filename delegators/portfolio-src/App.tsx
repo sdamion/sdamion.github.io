@@ -257,6 +257,9 @@ export default function Home({memberStake}:{memberStake:string}){
       Object.assign(next,pruneUnusedWalletAddresses(next,wallets));
       await persist();signal.throwIfAborted();setSnapshot({...next});
       // Optional metadata must not prevent transaction discovery or saving analysis.
+      for(const id of new Set(Object.values(next.facts).flatMap(fact=>Object.keys(fact.assets)))){
+        if(id!=='lovelace'&&!assetIds.includes(id))assetIds.push(id);
+      }
       for(let i=0;i<assetIds.length;i+=50){
         setStatus(`Transactions saved · loading token prices and images ${Math.floor(i/50)+1} / ${Math.ceil(assetIds.length/50)}`);
         try{
@@ -515,12 +518,12 @@ export default function Home({memberStake}:{memberStake:string}){
   </main>;
 }
 
-function AssetImage({id,name,market,onOpen}:{id:string;name:string;market?:Market;onOpen?:()=>void}){
+function AssetImage({id,name,market,onOpen,compact=false}:{id:string;name:string;market?:Market;onOpen?:()=>void;compact?:boolean}){
   const [failed,setFailed]=useState<string[]>([]);
-  const source=assetImageCandidates(id,[market?.cached_image,market?.wayup_image,market?.image,market?.image_url,market?.logo]).find(url=>!failed.includes(url));
+  const source=assetImageCandidates(id,[market?.registry_logo,market?.cached_image,market?.wayup_image,market?.image,market?.image_url,market?.logo]).find(url=>!failed.includes(url));
   const image=source?<img className="portfolio-asset-image" src={source} alt={name} title={name} width={48} height={48} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={()=>setFailed(previous=>[...previous,source])}/>:null;
   const content=<>{image}<span className="portfolio-asset-name" title={id}>{name}</span></>;
-  return onOpen?<button type="button" className="governance-vote-secondary portfolio-asset-button" onClick={onOpen} aria-label={`View ${name} details`}>{content}</button>:<div>{content}</div>;
+  return onOpen?<button type="button" className="governance-vote-secondary portfolio-asset-button" onClick={onOpen} aria-label={`View ${name} details`}>{content}</button>:<div className={compact?'portfolio-token-inline':undefined}>{content}</div>;
 }
 
 function Metric({label,value,amount,note,tone='',onOpen}:{label:string;value:string;amount?:{ada:number;usd:number|null};note?:string;tone?:string;onOpen?:()=>void}){
@@ -540,7 +543,7 @@ function Transaction({tx,fact,markets,wallets,history,cexAddresses,swapAddresses
   return <TableRow><TableCell>{isSwapTransaction(fact,swapAddresses)&&<div className="tx-kind" title="Matches a saved Swap address">Swap</div>}<a href={`https://cardanoscan.io/transaction/${tx.tx_hash}`} target="_blank" rel="noreferrer" className="address">{short(tx.tx_hash)} <ExternalLink size={12}/></a><div className={`tx-kind ${kind==='internal'?'internal':''} ${destinations.length&&fact?.feeRaw!==null?'positive':''}`}>{kind==='internal'&&<ArrowRightLeft size={14}/>} {cexTrade?(cexTrade.side==='buy'?'ADA buy from CEX · your rule':'ADA sell to CEX · your rule'):destinations.length?(fact?.feeRaw===null?'CEX output · mixed inputs':'Sent to CEX'):sources.length?(kind==='receive'?'Received · CEX input':'CEX input · mixed transaction'):trade?`${trade.side==='buy'?'Buy':'Sell'} ${markets[trade.id]?.ticker||assetName(trade.id)} · inferred`:kind==='send'?'ADA / assets spent or sent':kind==='internal'?'Transfer between own wallets':kind?labels[kind]:'Awaiting analysis'}</div>{displayedDestinations.map(destination=><div className="small muted" key={destination.address}>To: <a href={`https://cardanoscan.io/address/${destination.address}`} target="_blank" rel="noreferrer" title={destination.address}>{destination.name} · {short(destination.address)}</a> · ₳ {num(Number(destination.lovelace)/1e6)} · user label</div>)}{displayedSources.map(source=><div className="small muted" key={`source:${source.address}`}>CEX source: <a href={`https://cardanoscan.io/address/${source.address}`} target="_blank" rel="noreferrer" title={source.address}>{source.name} · {short(source.address)}</a> · user label</div>)}</TableCell>
     <TableCell>{new Date(tx.block_time*1000).toLocaleDateString()}<div className="small muted">{new Date(tx.block_time*1000).toLocaleTimeString()}</div></TableCell>
     <TableCell>{[...new Set(fact?.wallets.map(a=>wallets.find(w=>w.address===a)?.label||short(a)))].map(label=><div key={label}>{label}</div>)}{exchangeWallets.map(wallet=><div className="small muted" key={`${wallet.direction}:${wallet.address}`}>{wallet.direction} DEX/CEX: <a className="address" href={`https://cardanoscan.io/address/${wallet.address}`} title={wallet.address} target="_blank" rel="noreferrer">{wallet.name} · {short(wallet.address)} <ExternalLink size={12}/></a></div>)}</TableCell>
-    <TableCell>{fact?<><div className={BigInt(fact.adaRaw)>=0n?'positive':'negative'}>{BigInt(fact.adaRaw)>0n?'+':''}{num(Number(fact.adaRaw)/1e6)} ₳</div>{Object.entries(fact.assets).map(([id,raw])=>{const q=units(raw,markets[id]?.decimals??fact.decimals?.[id]);return <div className="small" key={id}>{BigInt(raw)>0n?'+':''}{q===null?raw+' raw':num(q)} {markets[id]?.ticker||assetName(id)}</div>;})}{fact.internal&&<div className="small muted">Internal transfer · fee only</div>}</>:'—'}</TableCell>
+    <TableCell>{fact?<><div className={BigInt(fact.adaRaw)>=0n?'positive':'negative'}>{BigInt(fact.adaRaw)>0n?'+':''}{num(Number(fact.adaRaw)/1e6)} ₳</div>{Object.entries(fact.assets).map(([id,raw])=>{const q=units(raw,markets[id]?.decimals??fact.decimals?.[id]);return <div className="small" key={id}>{BigInt(raw)>0n?'+':''}{q===null?raw+' raw':num(q)} <AssetImage id={id} name={markets[id]?.name||markets[id]?.ticker||assetName(id)} market={markets[id]} compact/></div>;})}{fact.internal&&<div className="small muted">Internal transfer · fee only</div>}</>:'—'}</TableCell>
     <TableCell>{fact?.internal?<div className="small muted">Original ADA average preserved</div>:<><div>{daily?'≈ $'+num(daily,6)+' / ADA':'Historical ADA price unavailable'}</div><div className="small muted">{fact&&BigInt(fact.adaRaw)+BigInt(fact.feeRaw||0)>0n?'Receipt-price basis · ':''}Daily UTC market estimate</div></>}{trade&&<><div>{quantity?num(trade.ada/quantity,10)+' ₳ / token':num(trade.ada)+' ₳ consideration'}</div>{daily&&quantity?<div className="small muted">≈ {usd(trade.ada/quantity*daily)} / token · daily USD estimate</div>:<div className="small muted">{!daily?'Historical USD price unavailable':'Token decimals unavailable'}</div>}</>}{fact&&<div className="small muted">{fact.feeRaw!==null?'Fee: '+num(Number(fact.feeRaw)/1e6)+' ₳':'Network fee attribution unknown'}</div>}</TableCell>
   </TableRow>;
 }

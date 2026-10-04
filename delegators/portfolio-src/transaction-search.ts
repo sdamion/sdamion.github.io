@@ -9,7 +9,7 @@ export function matchesTransaction(query:string,hash:string,fact:Fact|undefined,
   if(normalize(hash).includes(term))return true;
   if((fact?.wallets||[]).some(address=>wallets.some(w=>w.address===address&&normalize(w.label).includes(term))))return true;
   return Object.keys(fact?.assets||{}).some(id=>{
-    const names=[assetName(id),markets[id]?.ticker||''];
+    const names=[assetName(id),markets[id]?.name||'',markets[id]?.ticker||''];
     return normalize(id).includes(term)||names.some(name=>normalize(name).includes(term)||(compact(term)!==''&&compact(name).includes(compact(term))));
   });
 }

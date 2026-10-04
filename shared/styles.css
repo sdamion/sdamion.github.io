@@ -80,6 +80,8 @@
 .portfolio-asset-image { display: block; width: 48px; height: 48px; object-fit: contain; }
 .portfolio-asset-button { flex-direction: column; align-items: flex-start; }
 .portfolio-asset-name { display: block; overflow-wrap: anywhere; white-space: normal; }
+.member-portfolio .portfolio-token-inline { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; vertical-align: middle; }
+.member-portfolio .portfolio-token-inline .portfolio-asset-image { width: 24px; height: 24px; flex: 0 0 24px; }
 .member-portfolio .table-shell table { min-width: 0; }
 .member-portfolio .portfolio-address-table .table-shell { overflow-x: auto; }
 .member-portfolio .portfolio-address-table table { min-width: 0; }
