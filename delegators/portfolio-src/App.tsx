@@ -15,6 +15,7 @@ import {assetName,combineHoldings,holdingWalletNames,holdingWalletAddresses,kind
 import type {AddressInfo,Detail,Fact,Market,Tx,Wallet} from '@/lib/portfolio';
 import {readCache,readRefreshCache,saveCache} from '@/lib/portfolio-cache';
 import {planRefresh,analyseAndCache} from './refresh-plan';
+import {purchaseRefreshBatches} from './purchase-refresh';
 import type {Snapshot} from '@/lib/portfolio-cache';
 
 import {portfolioFetch} from './transport';
@@ -80,6 +81,7 @@ export default function Home({memberStake}:{memberStake:string}){
   const [wallets,setWallets]=useState<Wallet[]>(()=>memberWallets(memberStake,[])),[ready,setReady]=useState(false);
   const [snapshot,setSnapshot]=useState<Snapshot|null>(null),[busy,setBusy]=useState(false),[status,setStatus]=useState('Starting…');
   const [initialising,setInitialising]=useState(false);
+  const [purchaseProgress,setPurchaseProgress]=useState<{done:number;total:number}|null>(null);
   const [error,setError]=useState(''),[notice,setNotice]=useState(''),[cacheNotice,setCacheNotice]=useState('');
   const [address,setAddress]=useState(''),[name,setName]=useState(''),[walletError,setWalletError]=useState('');
   const [filter,setFilter]=useState('all'),[query,setQuery]=useState(''),[overrides,setOverrides]=useState<Overrides>({});
@@ -341,33 +343,44 @@ export default function Home({memberStake}:{memberStake:string}){
       await saveCache(key,next);control.signal.throwIfAborted();setSnapshot(next);
     }finally{if(controller.current===control)setBusy(false);}
   }
-  async function refreshAssetPurchases(id:string){
+  async function refreshAssetPurchases(id?:string){
     if(busy||!snapshot)return;
     controller.current?.abort();const control=new AbortController();controller.current=control;
     const {signal}=control;
-    setBusy(true);setError('');setStatus('Refreshing asset purchase data…');
+    setBusy(true);setError('');setPurchaseProgress(null);setStatus('Refreshing asset purchase data…');
     try{
-      const hashes=Object.values(snapshot.facts).filter(f=>BigInt(f.assets[id]||'0')>0n).map(f=>f.hash);
-      if(!hashes.length)throw new Error('No receipt is loaded for this asset. Refresh the wallet history first.');
+      const ids=id?[id]:combineHoldings(snapshot.infos).map(h=>h.id).filter(id=>id!=='lovelace');
+      const batches=purchaseRefreshBatches(Object.values(snapshot.facts),ids);
+      const total=batches.reduce((sum,batch)=>sum+batch.length,0);
+      if(!total)throw new Error('No asset receipts are loaded. Refresh the wallet history first.');
+      setPurchaseProgress({done:0,total});
       const owned=new Set(Object.values(snapshot.groups||{}).flat());
       if(!owned.size)throw new Error('Wallet addresses are unavailable. Refresh the wallet history first.');
-      const next={...snapshot,facts:{...snapshot.facts},history:{...snapshot.history}};
-      for(let i=0;i<hashes.length;i+=20){
-        const batch=hashes.slice(i,i+20);
+      let next={...snapshot,facts:{...snapshot.facts},history:{...snapshot.history}};
+      let done=0;
+      for(const batch of batches){
+        setStatus(`Checking purchase transactions ${done} / ${total} · ${ids.length} assets`);
         const details=await request<Detail[]>('tx_info',{_tx_hashes:batch,_inputs:true,_assets:true,_metadata:false,_scripts:false,_bytecode:false},signal);
         signal.throwIfAborted();
         if(batch.some(hash=>!details.some(d=>d.tx_hash===hash)))throw new Error('Some purchase transactions were not returned. Saved data is retained.');
+        const updated={...next.facts};
         for(const d of details)if(batch.includes(d.tx_hash)){
           if(d.marketplace_version!==3)throw new Error('Purchase decoding is unavailable or the backend needs an update. Saved data is retained; retry after updating koios-proxy.');
-          next.facts[d.tx_hash]=analyseAndCache(d,owned);
+          updated[d.tx_hash]=analyseAndCache(d,owned);
         }
+        next={...next,facts:updated};
+        await saveCache(key,next);signal.throwIfAborted();setSnapshot(next);
+        done+=batch.length;setPurchaseProgress({done,total});
       }
+      setStatus('Refreshing historical USD prices…');
       const hist=await historicalPrices(signal);signal.throwIfAborted();
+      next={...next,history:{...next.history}};
       for(const [time,price] of hist?.prices||[])if(Number.isFinite(time)&&Number.isFinite(price)&&price>0)next.history[new Date(time).toISOString().slice(0,10)]=price;
       await saveCache(key,next);signal.throwIfAborted();setSnapshot(next);
       const result=mintPayments(Object.values(next.facts).map(f=>cexAdjustedFact(f,cexAddresses)),paymentLinks);
-      const costs=Object.values(result.acquisitions).flatMap(a=>a[id]?[a[id]]:[]);
-      setStatus(!costs.length?'Purchase data refreshed; no verified purchase allocation found. Check saved payment links.':costs.some(a=>!next.history[new Date(a.time*1000).toISOString().slice(0,10)])?'Purchase cost loaded in ADA; historical USD price is still unavailable.':'Asset purchase costs and historical prices refreshed.');
+      const costs=Object.values(result.acquisitions).flatMap(a=>ids.flatMap(asset=>a[asset]?[a[asset]]:[]));
+      const matched=ids.filter(asset=>Object.values(result.acquisitions).some(a=>a[asset])).length;
+      setStatus(`${matched} / ${ids.length} assets have verified purchase allocations. ${costs.some(a=>!next.history[new Date(a.time*1000).toISOString().slice(0,10)])?'Some historical USD prices are unavailable. ':''}Manual prices preserved. Assets without a match need receipt history or a saved payment link.`);
     }catch(e){if(!signal.aborted)setError(e instanceof Error?e.message:'Could not refresh asset purchase data.');}
     finally{if(controller.current===control)setBusy(false);}
   }
@@ -464,6 +477,9 @@ export default function Home({memberStake}:{memberStake:string}){
     </AssetOverlay>}
     {section==='holdings'&&<AssetOverlay id="portfolio-holdings-overlay" name="Assets Across Wallets" onClose={()=>setSection(null)}>
     <section className="portfolio-section">
+      <button type="button" className="governance-vote-secondary" disabled={busy||!snapshot} onClick={()=>void refreshAssetPurchases()}>Refresh all purchase data</button>
+      {purchaseProgress&&<div aria-live="polite"><p className="small muted" role="status">{status}</p><div className="section-heading"><span className="governance-vote-bar-track" style={{flex:1}} role="progressbar" aria-label="Purchase transactions checked" aria-valuemin={0} aria-valuemax={purchaseProgress.total} aria-valuenow={purchaseProgress.done}><span className="governance-vote-bar-fill governance-vote-bar-fill--yes" style={{flexBasis:`${purchaseProgress.done/purchaseProgress.total*100}%`}}/></span><span className="tdsp-bar-legend">{purchaseProgress.done} / {purchaseProgress.total}</span></div></div>}
+      {error&&<p role="alert" className="negative">{error}</p>}
       <label className="small"><input type="checkbox" checked={missingCostsOnly} onChange={e=>setMissingCostsOnly(e.target.checked)}/> Show holdings with missing purchase cost ({coverage.missingCost})</label>
       {payments.errors.length>0&&<p role="status" className="negative">Some saved payment links cannot be applied to the loaded history. Open the asset image to review its purchase payments.</p>}
       <Table className="portfolio-holdings-table"><TableHeader><TableRow>{['Asset','Balance','Price · USD','Value · USD','Average buy · USD','Gain / loss'].map(t=><TableHead key={t}>{t}</TableHead>)}</TableRow></TableHeader><TableBody>{rows.filter(r=>!missingCostsOnly||(r.cost===null&&(r.id==='lovelace'||overrides[r.id]?.excluded!==true))).map(r=><TableRow key={r.id}>
