@@ -39,6 +39,7 @@ import {portfolioSettings as localStorage,flushVault,storageMode} from './vault'
 import {CacheUploadProgress} from './CacheUploadProgress';
 import {CexTimeline} from './CexTimeline';
 import {matchesGainLossTransfer} from './gain-loss-filter';
+import {GainLossTransaction} from './GainLossTransaction';
 import {matchesTransaction} from './transaction-search';
 import {unrealisedStatus} from './metric-status';
 import {CexAddresses} from './CexAddresses';
@@ -491,9 +492,9 @@ export default function Home({memberStake}:{memberStake:string}){
     {section==='gain-loss'&&<CexTimeline facts={Object.fromEntries(shown.map(tx=>[tx.tx_hash,classifiedFacts[tx.tx_hash]]))} entries={cexAddresses} history={snapshot?.history||{}} busy={busy} dateFrom={dateFrom} dateTo={dateTo}/>}
     <section className="portfolio-section">
       <TransactionPagination position="top" page={currentPage} count={shown.length} onPage={setPage}/>
-      <div className="history-table"><Table><TableHeader><TableRow>{['Transaction / type','Date','Wallets','Portfolio change','ADA / trade price / fee'].map(t=><TableHead key={t}>{t}</TableHead>)}</TableRow></TableHeader><TableBody>{shown.slice(currentPage*100,(currentPage+1)*100).map(t=><Transaction key={t.tx_hash} tx={t} fact={classifiedFacts[t.tx_hash]} wallets={displayWallets} markets={snapshot?.markets||{}} history={snapshot?.history||{}} cexAddresses={cexAddresses} swapAddresses={swapAddresses}/>)}</TableBody></Table></div>{!shown.length&&<p className="empty">{busy?'Loading transactions…':'No matching transactions.'}</p>}
+      <div className="history-table"><Table><TableHeader><TableRow>{(section==='gain-loss'?['Transaction','Date','DEX / CEX · Wallet','Amount','ADA price / fee']:['Transaction / type','Date','Wallets','Portfolio change','ADA / trade price / fee']).map(t=><TableHead key={t}>{t}</TableHead>)}</TableRow></TableHeader><TableBody>{shown.slice(currentPage*100,(currentPage+1)*100).map(t=>section==='gain-loss'?<GainLossTransaction key={t.tx_hash} tx={t} fact={classifiedFacts[t.tx_hash]} wallets={displayWallets} entries={cexAddresses} history={snapshot?.history||{}}/>:<Transaction key={t.tx_hash} tx={t} fact={classifiedFacts[t.tx_hash]} wallets={displayWallets} markets={snapshot?.markets||{}} history={snapshot?.history||{}} cexAddresses={cexAddresses} swapAddresses={swapAddresses}/>)}</TableBody></Table></div>{!shown.length&&<p className="empty">{busy?'Loading transactions…':'No matching transactions.'}</p>}
       <TransactionPagination position="bottom" page={currentPage} count={shown.length} onPage={setPage}/>
-      <p className="small muted table-note">Internal transfers require all inputs and outputs to belong to tracked addresses. Their net change is only the fee. Mixed transactions remain separate. Buy/sell labels are inferred from opposing ADA and token changes; multi-step DEX orders may need further reconciliation.</p>
+      {section==='gain-loss'?<p className="small muted table-note">USD amounts use daily UTC transfer-date prices. Fees are shown only when attributable to your wallet.</p>:<p className="small muted table-note">Internal transfers require all inputs and outputs to belong to tracked addresses. Their net change is only the fee. Mixed transactions remain separate. Buy/sell labels are inferred from opposing ADA and token changes; multi-step DEX orders may need further reconciliation.</p>}
     </section></AssetOverlay>}
     {busy&&<p className="small muted" role="timer">{refreshTiming}</p>}
     </div>
