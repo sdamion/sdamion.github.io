@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
-import {prepareCheckpoint,restoreCheckpoint,type VaultData} from './vault-checkpoint.ts';
+import {prepareCheckpoint,restoreCheckpoint,checkCheckpointSize,CHECKPOINT_DECODED_LIMIT,type VaultData} from './vault-checkpoint.ts';
 import {openVault} from './vault-crypto.ts';
 const stake='stake1uxythldc4nmx45tvnwsqu4h5pyjd94udytm6f0tgnr44vecjd8vel';
 const key=await crypto.subtle.generateKey({name:'AES-GCM',length:256},false,['encrypt','decrypt']);
+assert.doesNotThrow(()=>checkCheckpointSize(101*1024*1024));
+assert.doesNotThrow(()=>checkCheckpointSize(CHECKPOINT_DECODED_LIMIT));
+assert.throws(()=>checkCheckpointSize(CHECKPOINT_DECODED_LIMIT+1),/512 MB/);
 const a='a'.repeat(64),b='b'.repeat(64);
 const data:VaultData={version:1,settings:{private:'secret'},snapshot:{key:stake+'::test',data:{infos:[],txs:[{tx_hash:a,block_time:1700000000},{tx_hash:b,block_time:1600000000}] as any,facts:{[a]:{fee:'123'}} as any,markets:{},adaUsd:1,history:{},updated:'now',complete:false,priceAt:null}}};
 const first=await prepareCheckpoint(data,key,stake,null);
@@ -22,4 +25,17 @@ await assert.rejects(restoreCheckpoint(changed.index,key,stake,async()=>[]),/inc
 const tampered=structuredClone(changed.index);Object.values(tampered.buckets)[0].digest='0'.repeat(64);
 await assert.rejects(restoreCheckpoint(tampered,key,stake,async ids=>rows.filter(row=>ids.includes(row.id))),/integrity/);
 await assert.rejects(prepareCheckpoint(data,key,stake,null,AbortSignal.abort()),{name:'AbortError'});
+if(process.env.TEST_LARGE_CHECKPOINT==='1'){
+  const large=structuredClone(data);
+  large.snapshot!.data.facts[a]={padding:'x'.repeat(51*1024*1024)} as any;
+  large.snapshot!.data.facts[b]={padding:'y'.repeat(51*1024*1024)} as any;
+  const checkpoint=await prepareCheckpoint(large,key,stake,null);
+  const result=await restoreCheckpoint(checkpoint.index,key,stake,async ids=>{
+    assert.ok(ids.length<=4);
+    return checkpoint.chunks.filter(row=>ids.includes(row.id));
+  });
+  assert.equal((result.snapshot!.data.facts[a] as any).padding.length,51*1024*1024);
+  assert.equal((result.snapshot!.data.facts[b] as any).padding.length,51*1024*1024);
+  console.log('PASS: encrypted 102 MB checkpoint restores without dropping data.');
+}
 console.log('PASS: incremental buckets, settings-only checkpoints, roundtrip, integrity and cancellation.');
