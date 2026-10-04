@@ -81,6 +81,11 @@
 .portfolio-asset-image { display: block; width: 48px; height: 48px; object-fit: contain; }
 .portfolio-asset-button { flex-direction: column; align-items: flex-start; }
 .portfolio-asset-name { display: block; overflow-wrap: anywhere; white-space: normal; }
+.member-portfolio .portfolio-asset-address-row { display: flex; align-items: center; gap: 8px; margin-block: 8px; }
+.member-portfolio .portfolio-asset-address-row a { min-width: 0; overflow-wrap: anywhere; }
+.member-portfolio .portfolio-holdings-table :is(th, td) { vertical-align: top; text-align: left; font-variant-numeric: tabular-nums; }
+.member-portfolio .portfolio-holdings-table .portfolio-asset-button { flex-direction: row; align-items: center; gap: 8px; margin-bottom: 8px; width: 100%; }
+.member-portfolio .portfolio-holdings-table .portfolio-asset-image { width: 36px; height: 36px; flex-shrink: 0; }
 .member-portfolio .portfolio-token-inline { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; vertical-align: middle; }
 .member-portfolio .portfolio-token-inline .portfolio-asset-image { width: 24px; height: 24px; flex: 0 0 24px; }
 .member-portfolio .table-shell table { min-width: 0; }
