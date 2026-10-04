@@ -39,6 +39,8 @@
 .member-portfolio .positive { color: var(--accent-strong); }
 .member-portfolio .negative { color: var(--ai-unavailable-color, #c62828); }
 .member-portfolio .portfolio-transfer-amount :is(.pool-delegator-amount, [data-amount-tone]) { color: inherit; }
+.member-portfolio .portfolio-transfer-row td { vertical-align: top; font-variant-numeric: tabular-nums; }
+.member-portfolio .portfolio-transfer-row .pool-delegator-amount { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
 .member-portfolio :is(.address, .message) { overflow-wrap: anywhere; }
 .member-portfolio .address { color: var(--accent-strong); }
 .member-portfolio .wallet-form label { display: grid; gap: 8px; min-width: 0; flex: 1 1 220px; }
