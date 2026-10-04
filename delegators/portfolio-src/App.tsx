@@ -1,7 +1,7 @@
 "use client";
 
 import {useEffect,useMemo,useRef,useState} from 'react';
-import {ExternalLink,Plus,Trash2,ArrowRightLeft} from 'lucide-react';
+import {ExternalLink,Plus,Trash2} from 'lucide-react';
 import {PortfolioRefresh} from './PortfolioRefresh';
 import {AssetWalletAddresses} from './AssetWalletAddresses';
 import {createCardanoRequest} from './cardano-request';
@@ -42,6 +42,8 @@ import {CacheUploadProgress} from './CacheUploadProgress';
 import {CexTimeline} from './CexTimeline';
 import {matchesGainLossTransfer} from './gain-loss-filter';
 import {GainLossTransaction} from './GainLossTransaction';
+import {TransactionTable,TransactionRow} from './TransactionTable';
+import {transactionAmounts} from './transaction-amounts';
 import {loadPriceSettings} from './price-settings';
 import {matchesTransaction} from './transaction-search';
 import {unrealisedStatus} from './metric-status';
@@ -54,7 +56,7 @@ import {WalletCard} from './WalletAddresses';
 import {refreshExcludedAddresses,walletRefreshCounts} from './member';
 import {validByronAddress} from './byron-address';
 import {exchangeExcludedAddresses,resolveSwapGroups,excludeInternalExchanges,swapOwnershipScope,swapAddressSet,isSwapTransaction} from './swap-wallets';
-import {normalizeCexAddresses,cexDestinations,cexSources,cexAdjustedFact,isCexTransaction,cexAdaTransfer,cexAdaNetPosition,cexUsdNetPosition,displayedCexAddresses,transactionExchangeWallets} from './cex';
+import {normalizeCexAddresses,cexAdjustedFact,isCexTransaction,cexAdaTransfer,cexAdaNetPosition,cexUsdNetPosition,transactionExchangeWallets} from './cex';
 import type {CexAddress} from './cex';
 import {durationLabel,remainingSeconds,analysisProgress} from './progress';
 import {memberWallets,resolveWalletGroups,validWalletAddress,validStakeAddress,walletTransactionCount} from './member';
@@ -510,7 +512,7 @@ export default function Home({memberStake}:{memberStake:string}){
     {section==='gain-loss'&&<CexTimeline facts={Object.fromEntries(shown.map(tx=>[tx.tx_hash,classifiedFacts[tx.tx_hash]]))} entries={cexAddresses} history={snapshot?.history||{}} busy={busy} dateFrom={dateFrom} dateTo={dateTo}/>}
     <section className="portfolio-section">
       <TransactionPagination position="top" page={currentPage} count={shown.length} onPage={setPage}/>
-      <div className="history-table"><Table><TableHeader><TableRow>{(section==='gain-loss'?['Transaction','Date','DEX / CEX · Wallet','Amount','ADA price / fee']:['Transaction / type','Date','Wallets','Portfolio change','ADA / trade price / fee']).map(t=><TableHead key={t}>{t}</TableHead>)}</TableRow></TableHeader><TableBody>{shown.slice(currentPage*100,(currentPage+1)*100).map(t=>section==='gain-loss'?<GainLossTransaction key={t.tx_hash} tx={t} fact={classifiedFacts[t.tx_hash]} wallets={displayWallets} entries={cexAddresses} history={snapshot?.history||{}}/>:<Transaction key={t.tx_hash} tx={t} fact={classifiedFacts[t.tx_hash]} wallets={displayWallets} markets={snapshot?.markets||{}} history={snapshot?.history||{}} cexAddresses={cexAddresses} swapAddresses={swapAddresses}/>)}</TableBody></Table></div>{!shown.length&&<p className="empty">{busy?'Loading transactions…':'No matching transactions.'}</p>}
+      <TransactionTable>{shown.slice(currentPage*100,(currentPage+1)*100).map(t=>section==='gain-loss'?<GainLossTransaction key={t.tx_hash} tx={t} fact={classifiedFacts[t.tx_hash]} wallets={displayWallets} entries={cexAddresses} history={snapshot?.history||{}}/>:<Transaction key={t.tx_hash} tx={t} fact={classifiedFacts[t.tx_hash]} wallets={displayWallets} markets={snapshot?.markets||{}} history={snapshot?.history||{}} cexAddresses={cexAddresses} swapAddresses={swapAddresses}/>)}</TransactionTable>{!shown.length&&<p className="empty">{busy?'Loading transactions…':'No matching transactions.'}</p>}
       <TransactionPagination position="bottom" page={currentPage} count={shown.length} onPage={setPage}/>
       {section==='gain-loss'?<p className="small muted table-note">USD amounts use daily UTC transfer-date prices. Fees are shown only when attributable to your wallet.</p>:<p className="small muted table-note">Internal transfers require all inputs and outputs to belong to tracked addresses. Their net change is only the fee. Mixed transactions remain separate. Buy/sell labels are inferred from opposing ADA and token changes; multi-step DEX orders may need further reconciliation.</p>}
     </section></AssetOverlay>}
@@ -551,18 +553,15 @@ function Metric({label,value,amount,note,tone='',onOpen}:{label:string;value:str
 }
 function Transaction({tx,fact,markets,wallets,history,cexAddresses,swapAddresses}:{tx:Tx;fact?:Fact;markets:Record<string,Market>;wallets:Wallet[];history:Record<string,number>;cexAddresses:CexAddress[];swapAddresses:Set<string>}){
   const kind=fact?kindOf(fact):null,trade=fact?tradeOf(fact):null;
-  const destinations=fact?cexDestinations(fact,cexAddresses):[];
-  const sources=fact?cexSources(fact,cexAddresses):[];
-  const displayedDestinations=displayedCexAddresses(destinations,cexAddresses);
-  const displayedSources=displayedCexAddresses(sources,cexAddresses);
   const exchangeWallets=transactionExchangeWallets(fact,cexAddresses);
   const cexTrade=fact?cexAdaTransfer(fact,cexAddresses):null;
   const quantity=trade?units(trade.raw,markets[trade.id]?.decimals??fact?.decimals?.[trade.id]):null;
-  const daily=history[new Date(tx.block_time*1000).toISOString().slice(0,10)];
-  return <TableRow><TableCell>{isSwapTransaction(fact,swapAddresses)&&<div className="tx-kind" title="Matches a saved Swap address">Swap</div>}<a href={`https://cardanoscan.io/transaction/${tx.tx_hash}`} target="_blank" rel="noreferrer" className="address">{short(tx.tx_hash)} <ExternalLink size={12}/></a><div className={`tx-kind ${kind==='internal'?'internal':''} ${destinations.length&&fact?.feeRaw!==null?'positive':''}`}>{kind==='internal'&&<ArrowRightLeft size={14}/>} {cexTrade?(cexTrade.side==='buy'?'ADA buy from CEX · your rule':'ADA sell to CEX · your rule'):destinations.length?(fact?.feeRaw===null?'CEX output · mixed inputs':'Sent to CEX'):sources.length?(kind==='receive'?'Received · CEX input':'CEX input · mixed transaction'):trade?`${trade.side==='buy'?'Buy':'Sell'} ${markets[trade.id]?.ticker||assetName(trade.id)} · inferred`:kind==='send'?'ADA / assets spent or sent':kind==='internal'?'Transfer between own wallets':kind?labels[kind]:'Awaiting analysis'}</div>{displayedDestinations.map(destination=><div className="small muted" key={destination.address}>To: <a href={`https://cardanoscan.io/address/${destination.address}`} target="_blank" rel="noreferrer" title={destination.address}>{destination.name} · {short(destination.address)}</a> · ₳ {num(Number(destination.lovelace)/1e6)} · user label</div>)}{displayedSources.map(source=><div className="small muted" key={`source:${source.address}`}>CEX source: <a href={`https://cardanoscan.io/address/${source.address}`} target="_blank" rel="noreferrer" title={source.address}>{source.name} · {short(source.address)}</a> · user label</div>)}</TableCell>
-    <TableCell>{new Date(tx.block_time*1000).toLocaleDateString()}<div className="small muted">{new Date(tx.block_time*1000).toLocaleTimeString()}</div></TableCell>
-    <TableCell>{transactionWalletNames(fact,wallets).map(label=><div key={label}>{label}</div>)}{exchangeWallets.map(wallet=><div className="small muted" key={`${wallet.direction}:${wallet.address}`}>{wallet.direction} DEX/CEX: <a className="address" href={`https://cardanoscan.io/address/${wallet.address}`} title={wallet.address} target="_blank" rel="noreferrer">{wallet.name} · {short(wallet.address)} <ExternalLink size={12}/></a></div>)}</TableCell>
-    <TableCell>{fact?<><div className={BigInt(fact.adaRaw)>=0n?'positive':'negative'}>{BigInt(fact.adaRaw)>0n?'+':''}{num(Number(fact.adaRaw)/1e6)} ₳</div>{Object.entries(fact.assets).map(([id,raw])=>{const q=units(raw,markets[id]?.decimals??fact.decimals?.[id]);return <div className="small" key={id}>{BigInt(raw)>0n?'+':''}{q===null?raw+' raw':num(q)} <AssetImage id={id} name={markets[id]?.name||markets[id]?.ticker||assetName(id)} market={markets[id]} compact/></div>;})}{fact.internal&&<div className="small muted">Internal transfer · fee only</div>}</>:'—'}</TableCell>
-    <TableCell>{fact?.internal?<div className="small muted">Original ADA average preserved</div>:<div>{daily?'≈ $'+num(daily,6)+' / ADA':'Historical ADA price unavailable'}</div>}{trade&&<><div>{quantity?num(trade.ada/quantity,10)+' ₳ / token':num(trade.ada)+' ₳ consideration'}</div>{daily&&quantity?<div className="small muted">≈ {usd(trade.ada/quantity*daily)} / token · daily USD estimate</div>:<div className="small muted">{!daily?'Historical USD price unavailable':'Token decimals unavailable'}</div>}</>}{fact&&<div className="small muted">{fact.feeRaw!==null?'Fee: '+num(Number(fact.feeRaw)/1e6)+' ₳':'Network fee attribution unknown'}</div>}</TableCell>
-  </TableRow>;
+  const amount=transactionAmounts(fact?.adaRaw,fact?.time??tx.block_time,history,fact?.feeRaw);
+  return <TransactionRow hash={tx.tx_hash} time={tx.block_time} price={amount.price} feeRaw={fact?.feeRaw}
+    amount={amount.ada!==null?<strong className={amount.ada>=0?'positive':'negative'}>₳ {num(amount.ada)}</strong>:'—'}
+    kind={isSwapTransaction(fact,swapAddresses)?'Swap':cexTrade?(cexTrade.side==='buy'?'ADA IN':'ADA OUT'):kind==='internal'?'Internal transfer · fee only':kind?labels[kind]:'Awaiting analysis'}
+    details={fact&&Object.entries(fact.assets).map(([id,raw])=>{const q=units(raw,markets[id]?.decimals??fact.decimals?.[id]);return <div className="small" key={id}>{BigInt(raw)>0n?'+':''}{q===null?raw+' raw':num(q)} <AssetImage id={id} name={markets[id]?.name||markets[id]?.ticker||assetName(id)} market={markets[id]} compact/></div>;})}
+    priceDetails={trade&&<div className="small muted">{quantity?num(trade.ada/quantity,10)+' ₳ / token':num(trade.ada)+' ₳ consideration'}</div>}
+    wallets={<>{transactionWalletNames(fact,wallets).map(label=><div key={label}>{label}</div>)}{exchangeWallets.map(wallet=><div className="small muted" key={`${wallet.direction}:${wallet.address}`}>{wallet.direction} DEX/CEX: <a className="address" href={`https://cardanoscan.io/address/${wallet.address}`} title={wallet.address} target="_blank" rel="noreferrer">{wallet.name} · {short(wallet.address)} <ExternalLink size={12}/></a></div>)}</>}
+  />;
 }

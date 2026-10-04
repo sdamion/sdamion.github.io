@@ -3,6 +3,7 @@ import type {Tx} from './core';
 import {short} from './core';
 import {AssetOverlay} from './AssetOverlay';
 import {TransactionPagination} from './TransactionPagination';
+import {TransactionLink,TransactionDate} from './TransactionTable';
 import {transactionPage} from './transaction-date';
 import {Table,TableHeader,TableBody,TableRow,TableHead,TableCell} from './ui';
 
@@ -22,8 +23,8 @@ export function UnknownOwnership({txs,addresses,busy,onAssign,onClose}:{txs:Tx[]
       <TransactionPagination page={current.page} count={txs.length} onPage={setPage} position="top"/>
       <div className="history-table"><Table><TableHeader><TableRow><TableHead>Transaction</TableHead><TableHead>Date</TableHead><TableHead>Wallet address</TableHead><TableHead>Assign</TableHead></TableRow></TableHeader><TableBody>
         {txs.slice(current.page*100,(current.page+1)*100).map(tx=><TableRow key={tx.tx_hash}>
-          <TableCell><a href={`https://cardanoscan.io/transaction/${tx.tx_hash}`} target="_blank" rel="noopener noreferrer">{short(tx.tx_hash)}</a></TableCell>
-          <TableCell>{new Date(tx.block_time*1000).toLocaleDateString()}</TableCell>
+          <TableCell><TransactionLink hash={tx.tx_hash}/></TableCell>
+          <TableCell><TransactionDate time={tx.block_time}/></TableCell>
           <TableCell><select aria-label={`Wallet for ${tx.tx_hash}`} value={selected[tx.tx_hash]||''} disabled={busy||!!pending} onChange={e=>setSelected({...selected,[tx.tx_hash]:e.target.value})}><option value="">Select wallet address</option>{addresses.map(a=><option key={a} value={a}>{short(a)}</option>)}</select></TableCell>
           <TableCell><button type="button" className="governance-vote-secondary" disabled={busy||!!pending||!selected[tx.tx_hash]} onClick={()=>void assign(tx.tx_hash)}>{pending===tx.tx_hash?'Verifying…':'Assign'}</button></TableCell>
         </TableRow>)}

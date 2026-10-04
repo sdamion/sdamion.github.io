@@ -13,21 +13,34 @@ import {TransactionFilters} from './TransactionFilters';
 import {withinTransactionDates} from './transaction-date';
 import {matchesTransaction} from './transaction-search';
 import {AssetOverlay} from './AssetOverlay';
+import {TransactionTable,TransactionRow,TransactionLink} from './TransactionTable';
+import {transactionWalletNames} from './transaction-wallet-names';
+import {transactionAmounts,lovelaceToAda} from './transaction-amounts';
 
-export function AddressTransactions({facts,address,addresses,entries,count,addressEditor}:{facts:Fact[];address:string;addresses?:string[];entries:CexAddress[];count:number;addressEditor?:ReactNode}){
+export function AddressTransactions({facts,address,addresses,entries,count,addressEditor,history={},wallets=[]}:{facts:Fact[];address:string;addresses?:string[];entries:CexAddress[];count:number;addressEditor?:ReactNode;history?:Record<string,number>;wallets?:{address:string;label:string}[]}){
   const [open,setOpen]=useState(false);
   const rows=useMemo(()=>open||count===1?byronGroupTransactions(facts,addresses||[address],entries):[],[facts,address,addresses,entries,open,count]);
   if(count===0)return <span className="small muted">No loaded transactions</span>;
   if(count===1&&rows.length===1&&(!addresses||addresses.length===1)){
     const row=rows[0];
-    return row.amountRaw===null?<span className="small muted">Mixed or unassigned sources</span>:<span title={row.sharedInputs?'Shared-input transaction total; counted once in Byron totals':undefined}>{row.side==='buy'?'IN':'OUT'} <AdaUsdAmount ada={Number(row.amountRaw)/1e6}/>{row.sharedInputs&&<span className="small muted"> · Shared transaction</span>}</span>;
+    const amount=transactionAmounts(row.amountRaw,row.time,history);
+    return row.amountRaw===null?<span className="small muted">Mixed or unassigned sources</span>:<span title={row.sharedInputs?'Shared-input transaction total; counted once in Byron totals':undefined}>{row.side==='buy'?'IN':'OUT'} <AdaUsdAmount ada={amount.ada} usd={amount.usd}/>{row.sharedInputs&&<span className="small muted"> · Shared transaction</span>}</span>;
   }
-  return <><button type="button" className="governance-vote-secondary" onClick={()=>setOpen(true)}>View</button>{open&&<AssetOverlay id="portfolio-byron-amounts-overlay" name="Byron ADA amounts" onClose={()=>setOpen(false)}><section className="portfolio-section">{addressEditor??(addresses||[address]).map(item=><div key={item}><a className="address" href={`https://cardanoscan.io/address/${item}`} target="_blank" rel="noreferrer">{short(item)} <ExternalLink size={12}/></a></div>)}<div className="history-table"><Table><TableHeader><TableRow><TableHead>Transaction</TableHead><TableHead>Date</TableHead><TableHead>ADA IN / OUT</TableHead><TableHead>Wallet change (after fees)</TableHead></TableRow></TableHeader><TableBody>{rows.map(row=><TableRow key={row.hash}>
-    <TableCell><a href={`https://cardanoscan.io/transaction/${row.hash}`} target="_blank" rel="noreferrer" title={row.hash}>{short(row.hash)}</a></TableCell>
-    <TableCell>{new Date(row.time*1000).toLocaleString()}</TableCell>
-    <TableCell>{row.amountRaw===null?'Mixed or unassigned sources':<>{row.side==='buy'?'IN':'OUT'} <AdaUsdAmount ada={Number(row.amountRaw)/1e6}/>{row.sharedInputs&&<div className="small muted">Shared-input transaction total · counted once in Byron totals</div>}</>}</TableCell>
-    <TableCell>{BigInt(row.walletChangeRaw)<0n?'OUT':'IN'} <AdaUsdAmount ada={Math.abs(Number(row.walletChangeRaw))/1e6}/></TableCell>
-  </TableRow>)}</TableBody></Table>{!rows.length&&<p className="empty">No loaded transactions.</p>}</div></section></AssetOverlay>}</>;
+  return <><button type="button" className="governance-vote-secondary" onClick={()=>setOpen(true)}>View</button>{open&&<AssetOverlay id="portfolio-byron-amounts-overlay" name="Byron ADA amounts" onClose={()=>setOpen(false)}><section className="portfolio-section">
+    {addressEditor??(addresses||[address]).map(item=><div key={item}><a className="address" href={`https://cardanoscan.io/address/${item}`} target="_blank" rel="noreferrer">{short(item)} <ExternalLink size={12}/></a></div>)}
+    <TransactionTable>{rows.map(row=>{
+      const fact=facts.find(fact=>fact.hash===row.hash);
+      const amount=transactionAmounts(row.amountRaw,row.time,history,fact?.feeRaw);
+      const touched=new Set([...fact?.externalInputs||[],...fact?.externalOutputs||[]].map(item=>item.address));
+      const names=[...new Set(entries.filter(entry=>(addresses||[address]).includes(entry.address)&&touched.has(entry.address)).map(entry=>entry.name))];
+      return <TransactionRow key={row.hash} hash={row.hash} time={row.time} price={amount.price} feeRaw={fact?.feeRaw}
+        amount={row.amountRaw===null?'Mixed or unassigned sources':<strong className={row.side==='buy'?'negative':'positive'}><AdaUsdAmount ada={amount.ada} usd={amount.usd}/></strong>}
+        kind={row.amountRaw!==null?(row.side==='buy'?'ADA IN':'ADA OUT'):undefined}
+        details={<>{row.sharedInputs&&<div className="small muted">Shared-input transaction total · counted once in Byron totals</div>}<div className="small muted">Wallet change (after fees): {BigInt(row.walletChangeRaw)<0n?'OUT':'IN'} <AdaUsdAmount ada={Math.abs(lovelaceToAda(row.walletChangeRaw)!)} usd={null}/></div></>}
+        wallets={<>{names.map(name=><strong key={name}>{name} </strong>)}<div className="small muted">{transactionWalletNames(fact,wallets).join(' · ')}</div></>}
+      />;
+    })}</TransactionTable>{!rows.length&&<p className="empty">No loaded transactions.</p>}
+  </section></AssetOverlay>}</>;
 }
 
 export function ByronExchanges({facts,entries,owned,history,markets={},wallets=[],complete,onChange}:{facts:Record<string,Fact>;entries:CexAddress[];owned:string[];history:Record<string,number>;markets?:Record<string,Market>;wallets?:{address:string;label:string}[];complete:boolean;onChange:(entries:CexAddress[])=>boolean}){
@@ -71,8 +84,8 @@ export function ByronExchanges({facts,entries,owned,history,markets={},wallets=[
       <div className="history-table portfolio-address-table portfolio-transaction-rows"><Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Address / CEX</TableHead><TableHead>Transaction</TableHead><TableHead>Last seen</TableHead><TableHead>ADA amount</TableHead></TableRow></TableHeader><TableBody>{filtered.slice(current*25,(current+1)*25).map(row=><TableRow key={row.id}>
         <TableCell>{row.addresses.length>1?[...new Set(row.addresses.map(address=>names[address]??savedNames[address]??'Byron CEX'))].join(' / '):renderNames(row.addresses)}{[...new Set(row.facts.flatMap(fact=>fact.wallets).map(address=>wallets.find(wallet=>wallet.address===address)?.label||short(address)))].map(name=><div className="small muted" key={name}>{name}</div>)}</TableCell>
         <TableCell>{row.addresses.length>1?<span className="small muted">{row.addresses.length} mixed addresses</span>:renderAddresses(row.addresses)}</TableCell>
-        <TableCell>{row.transactions?<a href={`https://cardanoscan.io/transaction/${row.id}`} title={row.id} target="_blank" rel="noreferrer">{short(row.id)}</a>:'No loaded transactions'}</TableCell><TableCell>{row.lastSeen===null?'Not in loaded history':new Date(row.lastSeen*1000).toLocaleDateString()}</TableCell>
-        <TableCell><AddressTransactions facts={row.facts} address={row.addresses[0]} addresses={row.addresses} entries={group} count={row.transactions} addressEditor={row.addresses.length>1?<><div className="portfolio-section">{row.addresses.map(address=><div key={address}>{renderNames([address])}{renderAddresses([address])}</div>)}</div><button type="button" className="governance-vote-primary" onClick={saveSelection}>Save selection</button><p role="status">{status}</p></>:undefined}/></TableCell>
+        <TableCell>{row.transactions?<TransactionLink hash={row.id}/>:'No loaded transactions'}</TableCell><TableCell>{row.lastSeen===null?'Not in loaded history':new Date(row.lastSeen*1000).toLocaleDateString()}</TableCell>
+        <TableCell><AddressTransactions history={history} wallets={wallets} facts={row.facts} address={row.addresses[0]} addresses={row.addresses} entries={group} count={row.transactions} addressEditor={row.addresses.length>1?<><div className="portfolio-section">{row.addresses.map(address=><div key={address}>{renderNames([address])}{renderAddresses([address])}</div>)}</div><button type="button" className="governance-vote-primary" onClick={saveSelection}>Save selection</button><p role="status">{status}</p></>:undefined}/></TableCell>
       </TableRow>)}</TableBody></Table></div>
       {!filtered.length&&<p className="empty">{query||dateFrom||dateTo||filter!=='all'?'No matching Byron transactions.':'No external Byron addresses found in loaded history yet.'}</p>}
       {pages>1&&<Pagination><PaginationContent><PaginationItem><button type="button" className="governance-vote-secondary" disabled={current===0} onClick={()=>setPage(current-1)}>Previous</button></PaginationItem><PaginationItem><span className="small px-3">Page {current+1} / {pages}</span></PaginationItem><PaginationItem><button type="button" className="governance-vote-secondary" disabled={current===pages-1} onClick={()=>setPage(current+1)}>Next</button></PaginationItem></PaginationContent></Pagination>}
