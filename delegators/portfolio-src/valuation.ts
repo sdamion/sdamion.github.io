@@ -1,7 +1,11 @@
-import type {AddressInfo,Fact} from './core.ts';
+import type {AddressInfo,Fact,Market} from './core.ts';
 
 export function tokenDecimals(value:unknown):number|null {
   return typeof value==='number'&&Number.isInteger(value)&&value>=0&&value<=30?value:null;
+}
+
+export function holdingDecimals(market:Market|undefined,observed:unknown):number|null {
+  return tokenDecimals(market?.decimals)??tokenDecimals(observed)??(market?.is_nft===true?0:null);
 }
 
 export function knownDecimals(infos:AddressInfo[],facts:Fact[]) {

@@ -44,6 +44,13 @@ export function historicalAdaPrice(time:number,history:Record<string,number>):nu
   return Number.isFinite(price)&&price>0?price:null;
 }
 
+export function historicalPurchaseCost(ada:number|null,time:number,history:Record<string,number>):number|null{
+  if(ada===null||!Number.isFinite(ada)||ada<0)return null;
+  if(ada===0)return 0;
+  if(!Number.isFinite(time))return null;
+  return adaUsdValue(ada,historicalAdaPrice(time,history));
+}
+
 export function transactionAmounts(raw:string|bigint|null|undefined,time:number,history:Record<string,number>,feeRaw?:string|null){
   const ada=lovelaceToAda(raw),price=historicalAdaPrice(time,history),feeAda=lovelaceToAda(feeRaw);
   return {ada,price,usd:adaUsdValue(ada,price),feeAda,feeUsd:adaUsdValue(feeAda,price)};

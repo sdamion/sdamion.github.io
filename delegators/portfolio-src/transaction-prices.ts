@@ -1,5 +1,7 @@
 import {tradeOf,units} from './core.ts';
 import type {Fact,Market,Acquisitions} from './core.ts';
+import {holdingDecimals} from './valuation.ts';
+import {historicalAdaPrice} from './transaction-amounts.ts';
 
 export function transactionPrices(facts:Fact[],markets:Record<string,Market>,history:Record<string,number>,acquisitions:Acquisitions={}){
   const prices:Record<string,{usd:number;ada:number;time:number;hash:string;decimals:number}>={};
@@ -9,11 +11,11 @@ export function transactionPrices(facts:Fact[],markets:Record<string,Market>,his
     const candidates=trade&&!acquisitions[fact.hash]?.[trade.id]?[{...trade,time:fact.time,hash:fact.hash}]:[];
     for(const candidate of candidates){
     if(prices[candidate.id]||!Number.isFinite(candidate.time)||candidate.time<=0)continue;
-    const decimals=markets[candidate.id]?.decimals??fact.decimals?.[candidate.id];
+    const decimals=holdingDecimals(markets[candidate.id],fact.decimals?.[candidate.id]);
     if(decimals==null||!Number.isInteger(decimals)||decimals<0||decimals>30)continue;
     const quantity=units(candidate.raw,decimals);
-    const daily=history[new Date(candidate.time*1000).toISOString().slice(0,10)];
-    if(!quantity||!Number.isFinite(quantity)||!Number.isFinite(daily)||daily<=0)continue;
+    const daily=historicalAdaPrice(candidate.time,history);
+    if(!quantity||!Number.isFinite(quantity)||daily===null)continue;
     const ada=candidate.ada/quantity,usd=ada*daily;
     if(Number.isFinite(usd)&&usd>0)prices[candidate.id]={usd,ada,time:candidate.time,hash:candidate.hash,decimals};
     }

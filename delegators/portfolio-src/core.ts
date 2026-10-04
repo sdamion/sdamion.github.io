@@ -1,3 +1,5 @@
+import {historicalPurchaseCost} from './transaction-amounts.ts';
+
 export type Wallet = { address:string; label:string; group?:'swap'; excludedRefreshAddresses?:string[] };
 export type Asset = { policy_id:string; asset_name:string; quantity:string; decimals?:number };
 export type Utxo = { tx_hash:string; tx_index:number; value:string; asset_list?:Asset[] };
@@ -132,6 +134,6 @@ export function remainingBasis(facts:Fact[], history:Record<string,number>,acqui
   const lots=new Map<string,{raw:bigint;usd:number|null}[]>();
   const incomplete=new Set<string>();
   const unique=[...new Map(facts.map(f=>[f.hash,f])).values()];
-  for(const f of unique.sort((a,b)=>a.time-b.time||a.hash.localeCompare(b.hash))){if(f.internal)continue;const trade=tradeOf(f);for(const [id,v] of Object.entries(f.assets)){const amount=BigInt(v);const rows=lots.get(id)||[];if(amount>0n){const acquisition=acquisitions[f.hash]?.[id];const price=history[new Date((acquisition?.time??f.time)*1000).toISOString().slice(0,10)];const costAda=acquisition?.ada??(trade?.side==='buy'?trade.costAda:null);rows.push({raw:amount,usd:costAda!==null&&price>0?costAda*price:null});}else{let consume=-amount;while(consume>0n&&rows.length){const first=rows[0],take=consume<first.raw?consume:first.raw;if(first.usd!==null)first.usd*=Number(first.raw-take)/Number(first.raw);first.raw-=take;consume-=take;if(first.raw===0n)rows.shift();}if(consume>0n)incomplete.add(id);}lots.set(id,rows);}}
+  for(const f of unique.sort((a,b)=>a.time-b.time||a.hash.localeCompare(b.hash))){if(f.internal)continue;const trade=tradeOf(f);for(const [id,v] of Object.entries(f.assets)){const amount=BigInt(v);const rows=lots.get(id)||[];if(amount>0n){const acquisition=acquisitions[f.hash]?.[id];const costAda=acquisition?.ada??(trade?.id===id&&trade.side==='buy'?trade.costAda:null);rows.push({raw:amount,usd:historicalPurchaseCost(costAda,acquisition?.time??f.time,history)});}else{let consume=-amount;while(consume>0n&&rows.length){const first=rows[0],take=consume<first.raw?consume:first.raw;if(first.usd!==null)first.usd*=Number(first.raw-take)/Number(first.raw);first.raw-=take;consume-=take;if(first.raw===0n)rows.shift();}if(consume>0n)incomplete.add(id);}lots.set(id,rows);}}
   return {...Object.fromEntries([...lots].map(([id,rows])=>[id,{raw:String(rows.reduce((s,r)=>s+r.raw,0n)),usd:incomplete.has(id)||rows.some(r=>r.usd===null)?null:rows.reduce((s,r)=>s+(r.usd||0),0)}])),lovelace:adaReceiptBasis(facts,history)};
 }

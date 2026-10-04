@@ -29,7 +29,7 @@ import {valuationCoverage} from './valuation-coverage';
 import {includedAssets} from './asset-exclusions';
 import {averageBuy} from './average-buy';
 import {assetImageCandidates} from './asset-image';
-import {knownDecimals,tokenDecimals,holdingValue} from './valuation';
+import {knownDecimals,tokenDecimals,holdingValue,holdingDecimals} from './valuation';
 import {mintPayments,paymentBudget} from './mint-payments';
 import type {PaymentLink} from './mint-payments';
 import {PaymentLinks} from './PaymentLinks';
@@ -398,7 +398,7 @@ export default function Home({memberStake}:{memberStake:string}){
   const basis=useMemo(()=>snapshot?remainingBasis(Object.values(classifiedFacts),snapshot.history,payments.acquisitions):{},[snapshot,classifiedFacts,payments]);
   const adaLive=useMemo(()=>snapshot?liveAdaBasis(Object.values(classifiedFacts),snapshot.history,holdings.find(h=>h.id==='lovelace')?.raw||'0',snapshot.complete):null,[snapshot,holdings,classifiedFacts]);
   const rows=holdings.map(h=>{
-    const m=snapshot?.markets[h.id],automaticDecimals=tokenDecimals(m?.decimals)??assetDecimals[h.id];
+    const m=snapshot?.markets[h.id],automaticDecimals=holdingDecimals(m,assetDecimals[h.id]);
     const decimals=h.id==='lovelace'?6:tokenDecimals(parseAmount(overrides[h.id]?.decimals))??automaticDecimals;
     const manualPrice=parseAmount(overrides[h.id]?.price);
     const quote=currentValuation(h.id,units(h.raw,decimals),manualPrice,m,liveQuote?.usd??snapshot?.adaUsd??null);
@@ -534,7 +534,7 @@ export default function Home({memberStake}:{memberStake:string}){
           <Metric label="Unrealised gain / loss" value={r.pnl===null?'Purchase cost required':signed(r.pnl)} note="" tone={r.pnl!==null&&r.pnl<0?'negative':''}/>
         </div>
       </section>
-      {r.id!=='lovelace'&&<PaymentLinks id={r.id} facts={Object.values(classifiedFacts)} links={paymentLinks} acquisitions={payments.acquisitions} onSave={savePaymentLinks} loading={busy}/>}
+      {r.id!=='lovelace'&&<PaymentLinks id={r.id} facts={Object.values(classifiedFacts)} links={paymentLinks} acquisitions={payments.acquisitions} history={snapshot?.history} onSave={savePaymentLinks} loading={busy}/>}
     </AssetOverlay>)}
   </main>;
 }

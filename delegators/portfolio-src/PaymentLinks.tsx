@@ -6,13 +6,13 @@ import {adaToLovelace,mintPayments,paymentBudget} from './mint-payments';
 import type {PaymentLink} from './mint-payments';
 import {assetTransactions} from './asset-transactions';
 
-export function PaymentLinks({id,facts,links,acquisitions,onSave,loading=false}:{id:string;facts:Fact[];links:PaymentLink[];acquisitions:Acquisitions;onSave:(links:PaymentLink[])=>void;loading?:boolean}){
+export function PaymentLinks({id,facts,links,acquisitions,history={},onSave,loading=false}:{id:string;facts:Fact[];links:PaymentLink[];acquisitions:Acquisitions;history?:Record<string,number>;onSave:(links:PaymentLink[])=>void;loading?:boolean}){
   const [receipt,setReceipt]=useState(''),[payment,setPayment]=useState(''),[amount,setAmount]=useState(''),[error,setError]=useState('');
   const [editing,setEditing]=useState(false);
   const receipts=facts.filter(f=>!f.internal&&BigInt(f.assets[id]||0)>0n).sort((a,b)=>b.time-a.time);
   const label=(f:Fact)=>new Date(f.time*1000).toLocaleDateString()+' · '+short(f.hash);
   const existing=Object.entries(acquisitions).filter(([,assets])=>!!assets[id]);
-  const transactions=assetTransactions(id,facts,acquisitions);
+  const transactions=assetTransactions(id,facts,acquisitions,history);
   const unmatched=transactions.filter(f=>BigInt(f.raw)>0n&&!f.costKnown);
   const known=transactions.filter(f=>f.costKnown);
   const selectedReceipt=receipt||(receipts.length===1?receipts[0].hash:'');
@@ -25,6 +25,7 @@ export function PaymentLinks({id,facts,links,acquisitions,onSave,loading=false}:
       <a href={`https://cardanoscan.io/transaction/${tx.hash}`} target="_blank" rel="noreferrer">{new Date(tx.time*1000).toLocaleDateString()} · {tx.kind} · {short(tx.hash)}</a>
       <span className="small">{tx.raw} raw asset units</span>
       {tx.costAda!==null?<span className="small">Purchase cost: ₳ {tx.costAda.toLocaleString(undefined,{maximumFractionDigits:6})}</span>:BigInt(tx.raw)>0n&&<span className="small muted">Purchase cost not linked</span>}
+      {tx.costAda!==null&&<span className="small muted">{tx.costUsd!==null?`Historical purchase cost: ${tx.costUsd.toLocaleString(undefined,{style:'currency',currency:'USD'})}`:`Historical ADA/USD price missing for ${new Date(tx.costTime*1000).toISOString().slice(0,10)}. Refresh purchase data to retry.`}</span>}
       {tx.paymentHash&&tx.paymentHash!==tx.hash&&<a className="small" href={`https://cardanoscan.io/transaction/${tx.paymentHash}`} target="_blank" rel="noreferrer">Payment: {short(tx.paymentHash)}</a>}
     </div>)}
     {existing.map(([hash,assets])=><p className="small" key={hash}><a href={`https://cardanoscan.io/transaction/${assets[id].paymentHash}`} target="_blank" rel="noreferrer">{assets[id].source==='allocated-bundle'?'Allocated bundle cost · equal share':assets[id].source==='marketplace'?'Decoded marketplace purchase':assets[id].source==='linked-mint'?'Automatically linked mint payment':assets[id].source==='linked-purchase'?'Inferred linked purchase payment':assets[id].source==='mint'?'Inferred mint payment':'Confirmed payment'}: {assets[id].ada.toLocaleString()} ADA</a> · network fees excluded{assets[id].source==='confirmed'&&<button type="button" className="governance-vote-secondary" onClick={()=>onSave(links.filter(l=>l.receiptHash!==hash||l.assetId!==id))}>Remove link</button>}</p>)}

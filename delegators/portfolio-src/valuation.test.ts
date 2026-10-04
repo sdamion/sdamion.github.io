@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import {knownDecimals,holdingValue,tokenDecimals} from './valuation.ts';
+import {knownDecimals,holdingValue,tokenDecimals,holdingDecimals} from './valuation.ts';
+import {averageBuy} from './average-buy.ts';
 import type {AddressInfo,Fact} from './core.ts';
 
 const id='a'.repeat(56)+'01';
@@ -24,4 +25,13 @@ assert.equal(holdingValue('1',0,0,3).pnl,-3);
 assert.equal(holdingValue('2',0,5,null,{raw:'2',usd:6}).pnl,4);
 assert.equal(holdingValue('2',0,5,null,{raw:'3',usd:6}).pnl,null);
 for(const value of [null,undefined,-1,1.5,31,NaN])assert.equal(tokenDecimals(value),null);
+const nftId='47ac9e633b5385f92ab6c6a2b4f405d45248a728b44bd480f0486fe64d666572334430303038';
+const nftDecimals=holdingDecimals({token_id:nftId,is_nft:true},undefined);
+assert.equal(nftDecimals,0);
+const nft=holdingValue('1',nftDecimals,null,null,{raw:'1',usd:42});
+assert.equal(averageBuy(nft.cost,nft.qty),42,'known NFT purchase cost displays without a current quote or explicit decimals');
+assert.equal(holdingDecimals({token_id:nftId},undefined),null,'unknown tokens retain unknown decimals');
+assert.equal(holdingDecimals({token_id:nftId,is_nft:true,decimals:6},0),6);
+assert.equal(holdingDecimals({token_id:nftId,is_nft:true},2),2);
+assert.equal(holdingValue('1',nftDecimals,null,null,{raw:'1',usd:null}).cost,null,'missing historical prices remain unknown');
 console.log('Portfolio manual valuation tests passed');
