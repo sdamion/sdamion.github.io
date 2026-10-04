@@ -33,7 +33,7 @@ export function AddressTransactions({facts,address,addresses,entries,count,addre
       const amount=transactionAmounts(row.amountRaw,row.time,history,fact?.feeRaw);
       const touched=new Set([...fact?.externalInputs||[],...fact?.externalOutputs||[]].map(item=>item.address));
       const names=[...new Set(entries.filter(entry=>(addresses||[address]).includes(entry.address)&&touched.has(entry.address)).map(entry=>entry.name))];
-      return <TransactionRow key={row.hash} hash={row.hash} time={row.time} price={amount.price} feeRaw={transactionNetworkFee(fact)}
+      return <TransactionRow fact={fact} key={row.hash} hash={row.hash} time={row.time} price={amount.price} feeRaw={transactionNetworkFee(fact)}
         amount={row.amountRaw===null?'Mixed or unassigned sources':<strong className={row.side==='buy'?'negative':'positive'}><AdaUsdAmount ada={amount.ada} usd={amount.usd}/></strong>}
         kind={row.amountRaw!==null?(row.side==='buy'?'ADA IN':'ADA OUT'):undefined}
         details={<>{row.sharedInputs&&<div className="small muted">Shared-input transaction total · counted once in Byron totals</div>}<div className="small muted">Wallet change (after fees): {BigInt(row.walletChangeRaw)<0n?'OUT':'IN'} <AdaUsdAmount ada={Math.abs(lovelaceToAda(row.walletChangeRaw)!)} usd={null}/></div></>}

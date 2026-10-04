@@ -1,6 +1,8 @@
 import type {ReactNode} from 'react';
 import {ExternalLink} from 'lucide-react';
 import {short} from './core';
+import type {Fact} from './core';
+import {knownTransactionDexNames} from './known-dex-transactions';
 import {lovelaceToAda} from './transaction-amounts';
 import {Table,TableHeader,TableBody,TableRow,TableHead,TableCell} from './ui';
 
@@ -17,8 +19,8 @@ export function TransactionTable({children}:{children:ReactNode}){
   return <div className="history-table"><Table><TableHeader><TableRow>{['ADA Amount','USD/ADA Price','Fee','Wallets','Date'].map(label=><TableHead key={label}>{label}</TableHead>)}</TableRow></TableHeader><TableBody>{children}</TableBody></Table></div>;
 }
 
-export function TransactionRow({hash,time,amount,kind,price,feeRaw,wallets,details,priceDetails}:{hash:string;time:number;amount:ReactNode;kind?:ReactNode;price?:number|null;feeRaw?:string|null;wallets:ReactNode;details?:ReactNode;priceDetails?:ReactNode}){
-  return <TableRow className="portfolio-transfer-row">
+export function TransactionRow({hash,time,amount,kind,price,feeRaw,wallets,details,priceDetails,fact}:{hash:string;time:number;amount:ReactNode;kind?:ReactNode;price?:number|null;feeRaw?:string|null;wallets:ReactNode;details?:ReactNode;priceDetails?:ReactNode;fact?:Fact}){
+  return <TableRow className={`portfolio-transfer-row${knownTransactionDexNames(fact).length?' portfolio-transfer-row--dex':''}`}>
     <TableCell>{amount}{kind&&<div className="small muted">{kind}</div>}<div className="small"><TransactionLink hash={hash}/></div>{details}</TableCell>
     <TableCell>{price!=null&&price>0?'≈ $'+price.toLocaleString('en-US',{maximumFractionDigits:6}):'Unavailable'}{priceDetails}</TableCell>
     <TableCell title="Total on-chain transaction fee; not necessarily paid by your wallet">{feeRaw!=null?'₳ '+lovelaceToAda(feeRaw)!.toLocaleString('en-US',{maximumFractionDigits:6}):'Unavailable'}</TableCell>

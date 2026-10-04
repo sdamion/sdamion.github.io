@@ -10,12 +10,13 @@ import {createRoot} from 'react-dom/client';
 import {TransactionTable,TransactionRow} from './TransactionTable';
 import {GainLossTransaction} from './GainLossTransaction';
 import {AddressTransactions} from './ByronExchanges';
+import {knownDexAddresses} from './known-dex-addresses';
 const time=1700000000;
 const base={hash:'in',time,adaRaw:'100000000',feeRaw:'0',internal:false,wallets:['owned'],assets:{},decimals:{},swapCandidate:false};
 const incoming={...base,externalInputs:[{address:'exchange',lovelace:'100000000'}]};
 const outgoing={...base,hash:'out',adaRaw:'-100000000',externalOutputs:[{address:'exchange',lovelace:'100000000'}]};
 createRoot(document.getElementById('app')).render(<><TransactionTable>
- <TransactionRow hash="normal" time={time} amount="100 ADA" price={0.25} feeRaw="0" wallets="Savings"/>
+ <TransactionRow fact={{...base,externalOutputs:[{address:knownDexAddresses[0].address,lovelace:'100'}]}} hash="normal" time={time} amount={<strong className="negative">100 ADA</strong>} price={0.25} feeRaw="0" wallets="Savings"/>
  <TransactionRow hash="unknown" time={time} amount="Unavailable" wallets="Unknown"/>
  {[incoming,outgoing].map(fact=><GainLossTransaction key={fact.hash} tx={{tx_hash:fact.hash,block_time:time,block_height:1}} fact={fact} entries={[{address:'exchange',name:'Bitvavo'}]} wallets={[{address:'owned',label:'Savings'}]} history={{[new Date(time*1000).toISOString().slice(0,10)]:0.25}}/>)}
 </TransactionTable><AddressTransactions facts={[incoming,outgoing]} address="exchange" entries={[{address:'exchange',name:'Bitvavo'}]} count={2} wallets={[{address:'owned',label:'Savings'}]} history={{[new Date(time*1000).toISOString().slice(0,10)]:0.25}}/></>);
@@ -39,6 +40,12 @@ try{
  assert.equal(await rows.nth(2).locator('td').first().locator('strong.negative').count(),1);
  assert.equal(await rows.nth(3).locator('td').first().locator('strong.positive').count(),1);
  assert.equal(await page.locator('a[href="https://cardanoscan.io/transaction/normal"]').count(),1);
+ assert.equal(await page.locator('.portfolio-transfer-row--dex').count(),1);
+ for(const [theme,color] of [['light','rgb(166, 66, 0)'],['dark','rgb(251, 146, 60)']]){
+   await page.evaluate(theme=>document.documentElement.dataset.theme=theme,theme);
+   assert.equal(await rows.nth(0).locator('strong').evaluate(el=>getComputedStyle(el).color),color);
+   assert.equal(await rows.nth(0).locator('a').evaluate(el=>getComputedStyle(el).color),color);
+ }
  await page.getByRole('button',{name:'View',exact:true}).click();
  const byron=page.locator('#portfolio-byron-amounts-overlay');
  await byron.locator('tbody tr').first().waitFor();
