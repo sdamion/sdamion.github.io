@@ -5,10 +5,10 @@ import type {Snapshot} from './cache';
 import {short} from './core';
 import {validStakeAddress,walletTransactionCount} from './member';
 import {AssetOverlay} from './AssetOverlay';
-import {Table,TableHeader,TableBody,TableRow,TableHead,TableCell} from './ui';
+import {Input,Table,TableHeader,TableBody,TableRow,TableHead,TableCell} from './ui';
 
 const num=(value:number)=>value.toLocaleString('en-US',{maximumFractionDigits:6});
-export function WalletCard({wallet:w,primary,snapshot,remove,busy,excluded,onExclude}:{wallet:Wallet;primary:boolean;snapshot:Snapshot|null;remove:()=>void;busy:boolean;excluded:Set<string>;onExclude:(address:string|string[],value:boolean)=>void}){
+export function WalletCard({wallet:w,primary,snapshot,remove,busy,excluded,onExclude,onRename}:{wallet:Wallet;primary:boolean;snapshot:Snapshot|null;remove:()=>void;busy:boolean;excluded:Set<string>;onExclude:(address:string|string[],value:boolean)=>void;onRename?:(name:string)=>void}){
   const [open,setOpen]=useState(false);
   const [hideExcluded,setHideExcluded]=useState(false);
   const [hideLowActivity,setHideLowActivity]=useState(true);
@@ -28,6 +28,7 @@ export function WalletCard({wallet:w,primary,snapshot,remove,busy,excluded,onExc
     <TableCell><button type="button" className="governance-vote-secondary" disabled={primary||busy} onClick={remove} aria-label={`Remove ${w.label} from portfolio`}><Trash2 size={16}/></button></TableCell>
   </TableRow>
   {open&&<AssetOverlay id="portfolio-wallet-addresses" name={w.label} onClose={()=>setOpen(false)}>
+    {onRename&&<label className="small">Wallet name<Input defaultValue={w.label} maxLength={60} onBlur={event=>{const name=event.target.value.trim();if(name&&name!==w.label)onRename(name);else event.target.value=w.label;}}/></label>}
     <p className="small muted">Excluded addresses retain their cached balances and transactions. Changes apply to the next refresh. Shared transactions may still update through another wallet address.</p>
     <div className="governance-action-buttons" role="group" aria-label="Exclude from refresh selection">
       <button type="button" className="governance-vote-secondary" title="Exclude all addresses with a cached balance, including hidden addresses" disabled={!excludable.some(address=>!excluded.has(address))} onClick={()=>onExclude(excludable,true)}>Select all</button>
