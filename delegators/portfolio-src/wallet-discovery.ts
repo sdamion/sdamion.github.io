@@ -2,6 +2,20 @@ import type {Wallet} from './core';
 import type {Snapshot} from './cache';
 import {validStakeAddress} from './member.ts';
 
+export function activeAnalysedWalletGroups(snapshot:Snapshot|null,excluded:Set<string>):Record<string,string[]>|undefined{
+  if(!snapshot?.groups)return undefined;
+  const complete=new Set(snapshot.historyCompleteAddresses||(snapshot.complete?Object.values(snapshot.groups).flat():[]));
+  const pending=new Set(snapshot.pendingOwnershipAddresses||[]);
+  const counts=new Map<string,Set<string>>();
+  for(const fact of Object.values(snapshot.facts))for(const address of fact.wallets){
+    if(!counts.has(address))counts.set(address,new Set());
+    counts.get(address)!.add(fact.hash);
+  }
+  return Object.fromEntries(Object.entries(snapshot.groups).map(([wallet,addresses])=>[wallet,addresses.filter(address=>
+    !excluded.has(address)&&complete.has(address)&&!pending.has(address)&&(counts.get(address)?.size||0)>=10
+  )]));
+}
+
 export function lowActivityWalletAddresses(snapshot:Snapshot|null):string[]{
   if(!snapshot?.groups||snapshot.txs.some(tx=>!snapshot.facts[tx.tx_hash]))return [];
   const complete=new Set(snapshot.historyCompleteAddresses||(snapshot.complete?Object.values(snapshot.groups).flat():[]));

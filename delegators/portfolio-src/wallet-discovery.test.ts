@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {planWalletDiscovery,pruneUnusedWalletAddresses,lowActivityWalletAddresses} from './wallet-discovery.ts';
+import {planWalletDiscovery,pruneUnusedWalletAddresses,lowActivityWalletAddresses,activeAnalysedWalletGroups} from './wallet-discovery.ts';
 import {planRefresh} from './refresh-plan.ts';
 import type {Snapshot} from './cache';
 const stake='stake1uxythldc4nmx45tvnwsqu4h5pyjd94udytm6f0tgnr44vecjd8vel';
@@ -51,6 +51,12 @@ test('low activity is skipped repeatedly without dropping ownership or history; 
   const cache={complete:true,groups:{[stake]:['low','active']},infos:[{address:'low',balance:'100'},{address:'active',balance:'200'}],
     txs:Object.keys(facts).map(tx_hash=>({tx_hash})),facts,historyCompleteAddresses:['low','active']} as unknown as Snapshot;
   assert.deepEqual(lowActivityWalletAddresses(cache),['low']);
+  assert.deepEqual(activeAnalysedWalletGroups(cache,new Set()),{[stake]:['active']});
+  assert.deepEqual(activeAnalysedWalletGroups(cache,new Set(['active'])),{[stake]:[]});
+  assert.deepEqual(activeAnalysedWalletGroups({...cache,pendingOwnershipAddresses:['active']},new Set()),{[stake]:[]});
+  assert.deepEqual(activeAnalysedWalletGroups({...cache,complete:false,historyCompleteAddresses:[]},new Set()),{[stake]:[]});
+  assert.equal(activeAnalysedWalletGroups(null,new Set()),undefined);
+  assert.equal(cache.infos.length,2,'tile counts leave financial balances untouched');
   const excluded=new Set(lowActivityWalletAddresses(cache));
   const plan=planRefresh(cache,cache.groups!,excluded);
   assert.deepEqual(plan.batches.flatMap(batch=>batch.addresses),['active']);

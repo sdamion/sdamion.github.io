@@ -5,7 +5,7 @@ import {ExternalLink,Plus,Trash2,ArrowRightLeft} from 'lucide-react';
 import {PortfolioRefresh} from './PortfolioRefresh';
 import {AssetWalletAddresses} from './AssetWalletAddresses';
 import {createCardanoRequest} from './cardano-request';
-import {planWalletDiscovery,pruneUnusedWalletAddresses,lowActivityWalletAddresses} from './wallet-discovery';
+import {planWalletDiscovery,pruneUnusedWalletAddresses,lowActivityWalletAddresses,activeAnalysedWalletGroups} from './wallet-discovery';
 import {Input} from '@/components/ui/input';
 import {TransactionFilters,transactionFilters as labels} from './TransactionFilters';
 import {TransactionPagination} from './TransactionPagination';
@@ -96,7 +96,8 @@ export default function Home({memberStake}:{memberStake:string}){
   const walletKey=memberStake+'::'+wallets.map(w=>w.address).sort().join('|');
   const key=walletKey+swapOwnershipScope(wallets);
   const excludedRefresh=useMemo(()=>refreshExcludedAddresses(wallets),[wallets]);
-  const refreshCounts=walletRefreshCounts(snapshot?.groups,excludedRefresh);
+  const activeWalletGroups=useMemo(()=>activeAnalysedWalletGroups(snapshot,excludedRefresh),[snapshot,excludedRefresh]);
+  const refreshCounts=walletRefreshCounts(activeWalletGroups,new Set());
   const trackedAddresses=useMemo(()=>new Set(Object.values(snapshot?.groups||{}).flat()),[snapshot?.groups]);
   const unknownTransactions=useMemo(()=>unknownOwnership(snapshot?.txs||[],snapshot?.facts||{},trackedAddresses),[snapshot,trackedAddresses]);
   const ownedAddresses=useMemo(()=>exchangeExcludedAddresses(wallets,snapshot?.groups,snapshot?.swapGroups),[wallets,snapshot?.groups,snapshot?.swapGroups]);
@@ -443,7 +444,7 @@ export default function Home({memberStake}:{memberStake:string}){
       {busy&&<p className="small muted" role="status">{transactionStatus||status}</p>}
       {error&&<p role="alert" className="negative">{error}</p>}
     </div>
-    <WalletMenu counts={{wallets:wallets.filter(wallet=>wallet.group!=='swap').length,exchanges:cexAddresses.filter(entry=>!validByronAddress(entry.address)).length,byron:cexAddresses.filter(entry=>validByronAddress(entry.address)).length,swap:wallets.filter(wallet=>wallet.group==='swap').length}}
+    <WalletMenu counts={{wallets:wallets.filter(wallet=>wallet.group!=='swap'&&(activeWalletGroups?.[wallet.address]?.length||0)>0).length,exchanges:cexAddresses.filter(entry=>!validByronAddress(entry.address)).length,byron:cexAddresses.filter(entry=>validByronAddress(entry.address)).length,swap:wallets.filter(wallet=>wallet.group==='swap').length}}
     wallets={<section className="portfolio-section"><p className="small muted">Your member stake address includes its linked payment addresses. Add only wallets you own.</p>
       <div className="history-table"><Table><TableHeader><TableRow><TableHead>Wallet</TableHead><TableHead>Address</TableHead><TableHead>ADA</TableHead><TableHead>Transactions</TableHead><TableHead>Linked addresses</TableHead><TableHead>Remove</TableHead></TableRow></TableHeader><TableBody>{wallets.filter(wallet=>wallet.group!=='swap').map((w,i)=><WalletCard key={w.address} wallet={w} primary={i===0} snapshot={snapshot} busy={busy} excluded={excludedRefresh} onExclude={setRefreshExcluded} remove={()=>saveWallets(wallets.filter(x=>x.address!==w.address))}/>)}</TableBody></Table></div>
       {walletForm}
