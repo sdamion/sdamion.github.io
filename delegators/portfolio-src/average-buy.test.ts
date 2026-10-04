@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {averageBuy,purchaseAverages} from './average-buy.ts';
 import {remainingBasis} from './core.ts';
+import {estimatedPurchaseBasis,holdingValue} from './valuation.ts';
 import type {Fact,Acquisitions} from './core.ts';
 assert.equal(averageBuy(20*1.05,1),21);
 assert.equal(averageBuy(42,2),21);
@@ -19,6 +20,13 @@ assert.equal(remainingBasis(facts,history,acquisitions).nft.usd,null,'unverified
 const purchased=purchaseAverages(facts,history,acquisitions).nft;
 assert.equal(purchased.count,1,'duplicate facts and unpriced returns do not add purchases');
 assert.ok(Math.abs(averageBuy(purchased.usd,Number(purchased.raw))!-630.33)<1e-9);
+const estimated=estimatedPurchaseBasis('1',purchased);
+assert.ok(Math.abs(holdingValue('1',0,800,null,estimated).pnl!-169.67)<1e-9,'known purchase cost supplies estimated gain/loss after return');
+assert.equal(estimatedPurchaseBasis('2',purchased),null,'unknown extra units are not assigned a guessed cost');
+assert.equal(estimatedPurchaseBasis('0',purchased),null);
+assert.equal(estimatedPurchaseBasis('1',{...purchased,usd:null}),null);
+assert.equal(estimatedPurchaseBasis('1',{raw:2n,usd:600})?.usd,300);
+assert.equal(holdingValue('1',0,800,100,estimated).cost,100,'manual override stays authoritative');
 const second={...buy,hash:'second',time:time+86400,assets:{nft:'2'}};
 const all={...acquisitions,second:{nft:{raw:'2',ada:300,time:second.time,paymentHash:'second',source:'confirmed' as const}}};
 const combined=purchaseAverages([...facts,second],history,all).nft;

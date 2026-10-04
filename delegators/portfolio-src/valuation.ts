@@ -16,6 +16,12 @@ export function knownDecimals(infos:AddressInfo[],facts:Fact[]) {
   return result;
 }
 
+export function estimatedPurchaseBasis(raw:string,purchase?:{raw:bigint;usd:number|null}) {
+  const held=BigInt(raw);
+  if(!purchase||purchase.usd===null||!Number.isFinite(purchase.usd)||purchase.usd<0||held<=0n||purchase.raw<held)return null;
+  return {raw,usd:purchase.usd*Number(held)/Number(purchase.raw)};
+}
+
 export function holdingValue(raw:string,decimals:number|null|undefined,price:number|null,average:number|null,automatic?:{raw:string;usd:number|null}|null) {
   const qty=tokenDecimals(decimals)===null?null:Number(raw)/10**decimals!;
   const value=qty!==null&&price!==null?qty*price:null;

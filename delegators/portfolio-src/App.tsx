@@ -29,7 +29,7 @@ import {valuationCoverage} from './valuation-coverage';
 import {includedAssets} from './asset-exclusions';
 import {averageBuy,purchaseAverages} from './average-buy';
 import {assetImageCandidates} from './asset-image';
-import {knownDecimals,tokenDecimals,holdingValue,holdingDecimals} from './valuation';
+import {knownDecimals,tokenDecimals,holdingValue,holdingDecimals,estimatedPurchaseBasis} from './valuation';
 import {mintPayments,paymentBudget} from './mint-payments';
 import type {PaymentLink} from './mint-payments';
 import {PaymentLinks} from './PaymentLinks';
@@ -405,11 +405,12 @@ export default function Home({memberStake}:{memberStake:string}){
     const quote=currentValuation(h.id,units(h.raw,decimals),manualPrice,m,liveQuote?.usd??snapshot?.adaUsd??null);
     const price=quote.price;
     const avg=h.id==='lovelace'?null:parseAmount(overrides[h.id]?.average);const automatic=h.id==='lovelace'?adaLive:basis[h.id];
-    const {qty,cost}=holdingValue(h.raw,decimals,price,avg,automatic);
-    const value=quote.value,pnl=value!==null&&cost!==null?value-cost:null;
     const purchase=purchases[h.id];
+    const estimated=h.id!=='lovelace'&&avg===null&&!(automatic?.raw===h.raw&&automatic.usd!==null)?estimatedPurchaseBasis(h.raw,purchase):null;
+    const {qty,cost}=holdingValue(h.raw,decimals,price,avg,estimated??automatic);
+    const value=quote.value,pnl=value!==null&&cost!==null?value-cost:null;
     const buyAverage=avg??(purchase?averageBuy(purchase.usd,units(String(purchase.raw),decimals)):null);
-    return {...h,name:m?.name||m?.ticker||assetName(h.id),qty,price,value,cost,pnl,buyAverage,manualPrice,quote,automaticDecimals,automatic:avg===null&&cost!==null};
+    return {...h,name:m?.name||m?.ticker||assetName(h.id),qty,price,value,cost,pnl,buyAverage,estimatedPurchaseCost:!!estimated,manualPrice,quote,automaticDecimals,automatic:avg===null&&cost!==null};
   }).sort((a,b)=>a.id==='lovelace'?-1:b.id==='lovelace'?1:(b.value??-1)-(a.value??-1));
   const included=includedAssets(rows,overrides),excludedCount=rows.length-included.length;
   const valued=included.filter(r=>r.value!==null),covered=included.filter(r=>r.pnl!==null);
@@ -494,7 +495,7 @@ export default function Home({memberStake}:{memberStake:string}){
         <TableCell>{r.quote.source==='fallback'?'2 ADA per asset row':r.price!==null?(r.quote.source==='wayup'?'≈ ':'')+usd(r.price):'Unavailable'}<div className="small muted">{r.quote.source==='manual'?'Your price':r.quote.source==='wayup'?<a href={`https://www.wayup.io/collection/${r.id.slice(0,56)}`} target="_blank" rel="noreferrer">Wayup collection floor · {num(r.quote.ada!)} ADA · estimate, not a sale guarantee</a>:r.quote.source==='fallback'?'User-defined fallback, not a market quote':r.price!==null?'Market estimate':''}</div><details><summary className="small">Set current price</summary><Input aria-label={`Current USD price for ${r.name}`} type="number" min="0" step="any" value={overrides[r.id]?.price||''} onChange={e=>updateOverride(r.id,'price',e.target.value)} placeholder="Use market quote"/></details></TableCell>
         <TableCell>{r.value===null?'—':usd(r.value)}</TableCell>
         <TableCell>{r.id==='lovelace'?<><strong>{adaLive?.averageReceiptUsd!=null?(adaLive.provisional?'≈ $':'$')+num(adaLive.averageReceiptUsd,6):'—'}</strong><div className="small muted">All incoming ADA · weighted receipt-date prices{adaLive?.provisional?' · Partial history':''}</div>{!!adaLive?.missingReceiptAda&&<div className="small muted">Historical prices missing for {num(adaLive.missingReceiptAda)} ADA</div>}{r.cost!==null?<div className="small muted">Remaining cost for gain/loss: {usd(r.cost)}</div>:<div className="small muted">{adaBasisStatus}</div>}</>:<><strong>{r.buyAverage!==null?usd(r.buyAverage):'Unavailable'}</strong><div className="small muted">{parseAmount(overrides[r.id]?.average)!==null?'Your average cost':r.buyAverage!==null?'Known purchases · weighted historical USD cost':r.qty===null?'Token decimals required for per-unit price':'Purchase cost or historical USD price missing'}</div><details><summary className="small">Set average buy price</summary><Input className="cost-input" aria-label={`Average buy price in USD for ${r.name}`} type="number" min="0" step="any" value={overrides[r.id]?.average||''} onChange={e=>updateOverride(r.id,'average',e.target.value)} placeholder="Use calculated purchase cost"/></details></>}</TableCell>
-        <TableCell className={r.pnl===null?'muted':r.pnl>=0?'positive':'negative'}>{r.pnl===null?'—':(r.id==='lovelace'&&provisional?'≈ ':'')+signed(r.pnl)}{r.pnl===null&&r.value!==null&&<div className="small muted">Purchase cost required for gain / loss</div>}{r.pnl!==null&&r.cost!==null&&r.cost>0&&<div className="small">{num(r.pnl/r.cost*100,2)}%{r.id==='lovelace'&&provisional?' · provisional':''}</div>}</TableCell>
+        <TableCell className={r.pnl===null?'muted':r.pnl>=0?'positive':'negative'}>{r.pnl===null?'—':((r.id==='lovelace'&&provisional)||r.estimatedPurchaseCost?'≈ ':'')+signed(r.pnl)}{r.estimatedPurchaseCost&&<div className="small muted">Known purchase average · estimated cost</div>}{r.pnl===null&&r.value!==null&&<div className="small muted">Purchase cost required for gain / loss</div>}{r.pnl!==null&&r.cost!==null&&r.cost>0&&<div className="small">{num(r.pnl/r.cost*100,2)}%{r.id==='lovelace'&&provisional?' · provisional':''}</div>}</TableCell>
       </TableRow>)}</TableBody></Table>{!rows.length&&<p className="empty">{busy?'Fetching balances…':'No unspent holdings at the tracked addresses.'}</p>}
       <p className="small muted table-note">Remaining cost uses the same calculation during and after refresh. ADA history must reconcile with the wallet balance; token lots must match the current holding. Missing history or receipt prices are not treated as zero. Values update as new facts and prices arrive, not because refresh finishes. Sends, spends and fees remove proportional ADA cost; internal transfers never reset the average. Daily prices approximate receipt-time prices. This is your receipt-price benchmark, not an exchange execution price or tax calculation. Token costs use FIFO trades, linked mint payments or your entry. Performance excludes realised gains; current holdings already reflect fees.</p>
     </section>
@@ -533,7 +534,7 @@ export default function Home({memberStake}:{memberStake:string}){
         <div className="tdsp-tile-grid">
           <Metric label="Balance" value={r.qty===null?`${r.raw} raw units`:num(r.qty)} note=""/>
           <Metric label="Current value" value={r.value===null?'Unavailable':usd(r.value)} note={r.quote.source==='fallback'?'2 ADA fallback estimate':r.quote.source==='wayup'?'Wayup collection floor estimate':r.quote.source==='manual'?'Your price':'Market estimate'}/>
-          <Metric label="Remaining purchase cost" value={r.cost===null?'Unknown':usd(r.cost)} note=""/>
+          <Metric label="Remaining purchase cost" value={r.cost===null?'Unknown':usd(r.cost)} note={r.estimatedPurchaseCost?'Estimate from known purchase average; return transfer cost unverified':''}/>
           <Metric label="Unrealised gain / loss" value={r.pnl===null?'Purchase cost required':signed(r.pnl)} note="" tone={r.pnl!==null&&r.pnl<0?'negative':''}/>
         </div>
       </section>
