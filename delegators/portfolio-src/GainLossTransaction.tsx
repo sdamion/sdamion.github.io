@@ -12,10 +12,10 @@ export function GainLossTransaction({tx,fact,wallets,entries,history}:{tx:Tx;fac
   const ada=Number(transfer.raw)/1e6;
   const exchanges=transactionExchangeWallets(fact,entries).filter(wallet=>wallet.direction===(incoming?'From':'To'));
   return <TableRow>
-    <TableCell><strong className={incoming?'positive':'negative'}>{incoming?'ADA IN':'ADA OUT'}</strong><div className="small"><a href={`https://cardanoscan.io/transaction/${tx.tx_hash}`} target="_blank" rel="noreferrer" title={tx.tx_hash}>{short(tx.tx_hash)} <ExternalLink size={12}/></a></div></TableCell>
+    <TableCell><strong className={incoming?'negative':'positive'}>{incoming?'ADA IN':'ADA OUT'}</strong><div className="small"><a href={`https://cardanoscan.io/transaction/${tx.tx_hash}`} target="_blank" rel="noreferrer" title={tx.tx_hash}>{short(tx.tx_hash)} <ExternalLink size={12}/></a></div></TableCell>
     <TableCell>{date.toLocaleDateString()}<div className="small muted">{date.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</div></TableCell>
     <TableCell>{exchanges.map(exchange=><div key={exchange.address}><strong>{exchange.name}</strong><div className="small"><a href={`https://cardanoscan.io/address/${exchange.address}`} target="_blank" rel="noreferrer" title={exchange.address}>{exchange.address.slice(0,9)}…{exchange.address.slice(-5)} <ExternalLink size={12}/></a></div></div>)}<div className="small muted">{[...new Set(fact.wallets.map(address=>wallets.find(wallet=>wallet.address===address)?.label||short(address)))].join(' · ')}</div></TableCell>
-    <TableCell><strong className={incoming?'positive':'negative'}><AdaUsdAmount ada={ada} usd={price>0?ada*price:null}/></strong></TableCell>
+    <TableCell><strong className={`portfolio-transfer-amount ${incoming?'negative':'positive'}`}><AdaUsdAmount ada={ada} usd={price>0?ada*price:null}/></strong></TableCell>
     <TableCell><span>{price>0?`$${price.toLocaleString('en-US',{maximumFractionDigits:6})} / ADA`:'Price unavailable'}</span><div className="small muted">{fact.feeRaw===null?'Fee unavailable':`Fee: ₳ ${(Number(fact.feeRaw)/1e6).toLocaleString('en-US',{maximumFractionDigits:6})}`}</div></TableCell>
   </TableRow>;
 }
