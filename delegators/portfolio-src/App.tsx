@@ -5,7 +5,7 @@ import {ExternalLink,Plus,Trash2,ArrowRightLeft} from 'lucide-react';
 import {PortfolioRefresh} from './PortfolioRefresh';
 import {AssetWalletAddresses} from './AssetWalletAddresses';
 import {createCardanoRequest} from './cardano-request';
-import {planWalletDiscovery} from './wallet-discovery';
+import {planWalletDiscovery,pruneUnusedWalletAddresses} from './wallet-discovery';
 import {Input} from '@/components/ui/input';
 import {TransactionFilters,transactionFilters as labels} from './TransactionFilters';
 import {TransactionPagination} from './TransactionPagination';
@@ -135,7 +135,8 @@ export default function Home({memberStake}:{memberStake:string}){
     return()=>{clearInterval(timer);control.abort();};
   },[ready]);
 
-  async function refresh(){
+  async function refresh(fullScan=false){
+    const exclusions=fullScan?new Set<string>():excludedRefresh;
     controller.current?.abort();const control=new AbortController();controller.current=control;const signal=control.signal;
     const started=Date.now();setRefreshStarted(started);setClock(started);setAnalysis(null);setCounting(null);setCounted(null);setTransactionStatus('');
     setBusy(true);setInitialising(false);setError('');setNotice('');setStatus('Loading saved portfolio data…');
@@ -147,7 +148,8 @@ export default function Home({memberStake}:{memberStake:string}){
     }
     try{
       let cached:Snapshot|null=null;try{const exact=await readCache(key);cached=exact||await readRefreshCache(key);signal.throwIfAborted();if(exact)setSnapshot(exact);}catch{setCacheNotice('Portfolio cache is locked. Sign in and approve unlock again.');throw new Error('Portfolio cache is locked.');}
-      const {accounts,pending:stakes}=planWalletDiscovery(wallets,cached);
+      if(cached&&!fullScan)cached=pruneUnusedWalletAddresses(cached,wallets);
+      const {accounts,pending:stakes}=planWalletDiscovery(wallets,fullScan?null:cached);
       setStatus(stakes.length?'Initialising wallets · finding linked addresses…':'Using saved wallet addresses · checking balances and transactions…');
       for(let i=0;i<stakes.length;i+=40){
         setStatus(`Finding linked addresses · batch ${Math.floor(i/40)+1} of ${Math.ceil(stakes.length/40)}`);
@@ -155,11 +157,11 @@ export default function Home({memberStake}:{memberStake:string}){
       }
       const groups=resolveWalletGroups(wallets,accounts);
       const swapGroups=resolveSwapGroups(wallets,accounts);
-      const plan=planRefresh(cached,groups,excludedRefresh);
+      const plan=planRefresh(cached,groups,exclusions,fullScan);
       const addresses=[...new Set(Object.values(groups).flat())];
-      const refreshAddresses=addresses.filter(address=>!excludedRefresh.has(address));
+      const refreshAddresses=addresses.filter(address=>!exclusions.has(address));
       const addressBatches=Array.from({length:Math.ceil(refreshAddresses.length/40)},(_,i)=>refreshAddresses.slice(i*40,(i+1)*40));
-      const loadInfos=async()=>{const all:AddressInfo[]=(cached?.infos||[]).filter(info=>addresses.includes(info.address)&&excludedRefresh.has(info.address));for(const [index,batch] of addressBatches.entries()){
+      const loadInfos=async()=>{const all:AddressInfo[]=(cached?.infos||[]).filter(info=>addresses.includes(info.address)&&exclusions.has(info.address));for(const [index,batch] of addressBatches.entries()){
         setStatus(`Checking balances · batch ${index+1} of ${addressBatches.length}`);
         all.push(...await walletRequest<AddressInfo[]>('address_info',{_addresses:batch}));
       }return all;};
@@ -167,7 +169,7 @@ export default function Home({memberStake}:{memberStake:string}){
       if(addresses.some(a=>!infos.some(i=>i.address===a)))throw new Error('Some wallet balances were not returned. The combined balance has not been replaced.');
       const holdings=combineHoldings(infos);
       const next:Snapshot={groups,swapGroups,infos,txs:plan.txs,facts:plan.facts,markets:{...cached?.markets},adaUsd:cached?.adaUsd??null,history:cached?.history||{},updated:new Date().toISOString(),priceAt:cached?.priceAt??null,complete:false,pendingOwnershipAddresses:plan.pendingOwnershipAddresses};
-      next.excludedRefreshAddresses=[...excludedRefresh];
+      next.excludedRefreshAddresses=[...exclusions];
       next.historyCompleteAddresses=plan.historyCompleteAddresses;
       for(const info of infos)for(const u of info.utxo_set||[])for(const a of u.asset_list||[]){const id=a.policy_id+a.asset_name;next.markets[id]={...next.markets[id],token_id:id,decimals:a.decimals??next.markets[id]?.decimals};}
       setSnapshot({...next});
@@ -248,7 +250,9 @@ export default function Home({memberStake}:{memberStake:string}){
       next.txs=next.txs.filter(tx=>!next.facts[tx.tx_hash]||next.facts[tx.tx_hash].wallets.some(address=>owned.has(address)));
       const historyHashes=new Set(next.txs.map(tx=>tx.tx_hash));
       next.facts=Object.fromEntries(Object.entries(next.facts).filter(([hash])=>historyHashes.has(hash)));
-      next.complete=next.txs.every(t=>hasCounterpartyData(next.facts[t.tx_hash]))&&[...scheduled].every(hash=>refreshedHashes.has(hash));await persist();signal.throwIfAborted();setSnapshot({...next});
+      next.complete=next.txs.every(t=>hasCounterpartyData(next.facts[t.tx_hash]))&&[...scheduled].every(hash=>refreshedHashes.has(hash));
+      Object.assign(next,pruneUnusedWalletAddresses(next,wallets));
+      await persist();signal.throwIfAborted();setSnapshot({...next});
       // Optional metadata must not prevent transaction discovery or saving analysis.
       for(let i=0;i<assetIds.length;i+=50){
         setStatus(`Transactions saved · loading token prices and images ${Math.floor(i/50)+1} / ${Math.ceil(assetIds.length/50)}`);
@@ -432,6 +436,12 @@ export default function Home({memberStake}:{memberStake:string}){
     </div>
     {section==='unknown'&&<UnknownOwnership txs={unknownTransactions} addresses={[...trackedAddresses]} busy={busy} onAssign={assignUnknownOwnership} onClose={()=>setSection(null)}/>}
     {section==='wallets'&&<AssetOverlay id="portfolio-wallets-overlay" name="Cardano Wallets" onClose={()=>setSection(null)}>
+    <div className="portfolio-section">
+      <button type="button" className="governance-vote-secondary" disabled={busy||!ready} onClick={()=>void refresh(true)}>Rescan all wallets</button>
+      <p className="small muted">Rediscover linked addresses and check full transaction history, including excluded addresses for this scan only. Saved transaction details are reused.</p>
+      {busy&&<p className="small muted" role="status">{transactionStatus||status}</p>}
+      {error&&<p role="alert" className="negative">{error}</p>}
+    </div>
     <WalletMenu counts={{wallets:wallets.filter(wallet=>wallet.group!=='swap').length,exchanges:cexAddresses.filter(entry=>!validByronAddress(entry.address)).length,byron:cexAddresses.filter(entry=>validByronAddress(entry.address)).length,swap:wallets.filter(wallet=>wallet.group==='swap').length}}
     wallets={<section className="portfolio-section"><p className="small muted">Your member stake address includes its linked payment addresses. Add only wallets you own.</p>
       <div className="history-table"><Table><TableHeader><TableRow><TableHead>Wallet</TableHead><TableHead>Address</TableHead><TableHead>ADA</TableHead><TableHead>Transactions</TableHead><TableHead>Linked addresses</TableHead><TableHead>Remove</TableHead></TableRow></TableHeader><TableBody>{wallets.filter(wallet=>wallet.group!=='swap').map((w,i)=><WalletCard key={w.address} wallet={w} primary={i===0} snapshot={snapshot} busy={busy} excluded={excludedRefresh} onExclude={setRefreshExcluded} remove={()=>saveWallets(wallets.filter(x=>x.address!==w.address))}/>)}</TableBody></Table></div>

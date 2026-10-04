@@ -8,6 +8,11 @@ const detail:Detail={tx_hash:'transfer',tx_timestamp:100,fee:'2',inputs:[{value:
 const independent={...detail,tx_hash:'independent',outputs:[{value:'98',payment_addr:{bech32:'external'}}]};
 const cached:Snapshot={groups:{wallet:['a']},infos:[],txs:[detail,independent].map(d=>({tx_hash:d.tx_hash,block_time:d.tx_timestamp,block_height:1})),facts:{transfer:analyseAndCache(detail,new Set(['a'])),independent:analyseAndCache(independent,new Set(['a']))},markets:{},adaUsd:1,history:{},updated:'now',complete:true,priceAt:null};
 const unchanged=planRefresh(cached,{wallet:['a']});
+const rescan=planRefresh(cached,{wallet:['a','b']},new Set(),true);
+assert.ok(rescan.batches.every(batch=>!batch.incremental),'full rescan never stops at cached history');
+assert.deepEqual(rescan.batches.flatMap(batch=>batch.addresses).sort(),['a','b']);
+assert.deepEqual(rescan.historyCompleteAddresses,[],'full scan completion must be earned again');
+assert.equal(rescan.facts.independent,cached.facts.independent,'rescan retains reusable transaction details');
 const partial=planRefresh({...cached,complete:false,historyCompleteAddresses:['a']},{wallet:['a','b']},new Set(['b']));
 assert.equal(partial.batches.length,1);
 assert.deepEqual(partial.batches[0].addresses,['a']);
