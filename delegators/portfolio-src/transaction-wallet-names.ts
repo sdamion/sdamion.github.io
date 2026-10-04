@@ -1,5 +1,6 @@
 import {short,type Fact,type Wallet} from './core.ts';
 import {isSwapTransaction} from './swap-wallets.ts';
+import {knownTransactionDexNames} from './known-dex-transactions.ts';
 
 export function transactionWalletNames(fact:Fact|undefined,wallets:Wallet[]):string[]{
   if(!fact)return [];
@@ -10,5 +11,5 @@ export function transactionWalletNames(fact:Fact|undefined,wallets:Wallet[]):str
   for(const wallet of wallets.filter(wallet=>wallet.group==='swap')){
     if(isSwapTransaction(fact,new Set([wallet.address])))names.push(wallet.label);
   }
-  return [...new Set(names)];
+  return [...new Set([...names,...knownTransactionDexNames(fact).map(name=>`DEX contract: ${name}`)])];
 }

@@ -1,5 +1,6 @@
 import {assetName} from './core.ts';
 import type {Fact,Market,Wallet} from './core.ts';
+import {knownTransactionDexNames} from './known-dex-transactions.ts';
 
 const normalize=(text:string)=>text.normalize('NFKC').toLowerCase().trim();
 const compact=(text:string)=>normalize(text).replace(/[\s#_-]+/g,'');
@@ -7,6 +8,7 @@ export function matchesTransaction(query:string,hash:string,fact:Fact|undefined,
   const term=normalize(query);
   if(!term)return true;
   if(normalize(hash).includes(term))return true;
+  if(knownTransactionDexNames(fact).some(name=>normalize(name).includes(term)))return true;
   if((fact?.wallets||[]).some(address=>wallets.some(w=>w.address===address&&normalize(w.label).includes(term))))return true;
   return Object.keys(fact?.assets||{}).some(id=>{
     const names=[assetName(id),markets[id]?.name||'',markets[id]?.ticker||''];
