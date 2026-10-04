@@ -11,11 +11,13 @@ const num=(value:number)=>value.toLocaleString('en-US',{maximumFractionDigits:6}
 export function WalletCard({wallet:w,primary,snapshot,remove,busy,excluded,onExclude}:{wallet:Wallet;primary:boolean;snapshot:Snapshot|null;remove:()=>void;busy:boolean;excluded:Set<string>;onExclude:(address:string|string[],value:boolean)=>void}){
   const [open,setOpen]=useState(false);
   const [hideExcluded,setHideExcluded]=useState(false);
+  const [hideLowActivity,setHideLowActivity]=useState(true);
   const addresses=snapshot?.groups?.[w.address];
   const excludable=(addresses||[]).filter(address=>snapshot?.infos.some(info=>info.address===address));
   const runtime=(window as unknown as {TDSPRuntime:{filterMarkedRows:<T>(rows:T[],hide:boolean,marked:(row:T)=>boolean)=>T[]}}).TDSPRuntime;
-  const visibleAddresses=runtime.filterMarkedRows(addresses||[],hideExcluded,address=>excluded.has(address));
   const facts=Object.values(snapshot?.facts||{});
+  const visibleAddresses=runtime.filterMarkedRows(addresses||[],hideExcluded,address=>excluded.has(address))
+    .filter(address=>!hideLowActivity||walletTransactionCount(facts,[address])>=10);
   const count=(linked:string[])=>walletTransactionCount(facts,linked).toLocaleString('en-US');
   const link=(address:string)=><a className="address" href={`https://cardanoscan.io/${validStakeAddress(address)?'stakekey':'address'}/${address}`} target="_blank" rel="noreferrer" title={address}>{short(address)} <ExternalLink size={12}/></a>;
   return <><TableRow><TableCell><button type="button" className="governance-vote-secondary" disabled={!addresses} onClick={()=>setOpen(true)}>{w.label}</button></TableCell>
@@ -32,6 +34,8 @@ export function WalletCard({wallet:w,primary,snapshot,remove,busy,excluded,onExc
       <button type="button" className="governance-vote-secondary" title="Enable refresh for all addresses in this wallet, including hidden addresses" disabled={!addresses?.some(address=>excluded.has(address))} onClick={()=>onExclude(addresses||[],false)}>Unselect all</button>
     </div>
     <label className="raffle-lost-stake-toggle"><input type="checkbox" checked={hideExcluded} onChange={event=>setHideExcluded(event.target.checked)}/><span>Hide excluded addresses</span></label>
+    <label className="raffle-lost-stake-toggle"><input type="checkbox" checked={hideLowActivity} onChange={event=>setHideLowActivity(event.target.checked)}/><span>Hide addresses with fewer than 10 transactions</span></label>
+    <p className="small muted">After complete analysis, addresses with fewer than 10 transactions are skipped during regular refreshes. Their saved balances and transactions remain yours. Use Rescan all wallets to check them again.</p>
     <p className="small muted" role="status">{visibleAddresses.length} shown · {(addresses?.length||0)-visibleAddresses.length} hidden</p>
     <div className="history-table"><Table><TableHeader><TableRow>{['Wallet','Address','ADA','Transactions','Exclude from refresh'].map(title=><TableHead key={title}>{title}</TableHead>)}</TableRow></TableHeader><TableBody>
       {visibleAddresses.map(address=>{const info=snapshot?.infos.find(row=>row.address===address);return <TableRow key={address}>

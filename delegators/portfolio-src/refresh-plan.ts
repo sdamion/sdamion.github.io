@@ -9,7 +9,7 @@ export function analyseAndCache(detail:Detail,owned:Set<string>):Fact{
 }
 export function planRefresh(cached:Snapshot|null,groups:Record<string,string[]>,excluded=new Set<string>(),fullScan=false){
   const owned=new Set(Object.values(groups).flat()),previous=new Set(Object.values(cached?.groups||{}).flat());
-  const added=new Set([...owned].filter(address=>!previous.has(address)||cached?.pendingOwnershipAddresses?.includes(address)||cached?.excludedRefreshAddresses?.includes(address)));
+  const added=new Set([...owned].filter(address=>!previous.has(address)||cached?.pendingOwnershipAddresses?.includes(address)||(cached?.excludedRefreshAddresses?.includes(address)&&!excluded.has(address))));
   const removed=new Set([...previous].filter(address=>!owned.has(address)));
   const changed=new Set([...added,...removed]);
   const facts:Record<string,Fact>={};

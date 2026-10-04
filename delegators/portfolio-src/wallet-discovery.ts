@@ -2,6 +2,18 @@ import type {Wallet} from './core';
 import type {Snapshot} from './cache';
 import {validStakeAddress} from './member.ts';
 
+export function lowActivityWalletAddresses(snapshot:Snapshot|null):string[]{
+  if(!snapshot?.groups||snapshot.txs.some(tx=>!snapshot.facts[tx.tx_hash]))return [];
+  const complete=new Set(snapshot.historyCompleteAddresses||(snapshot.complete?Object.values(snapshot.groups).flat():[]));
+  const pending=new Set(snapshot.pendingOwnershipAddresses||[]);
+  const counts=new Map<string,Set<string>>();
+  for(const fact of Object.values(snapshot.facts))for(const address of fact.wallets){
+    if(!counts.has(address))counts.set(address,new Set());
+    counts.get(address)!.add(fact.hash);
+  }
+  return snapshot.infos.filter(info=>complete.has(info.address)&&!pending.has(info.address)&&(counts.get(info.address)?.size||0)<10).map(info=>info.address);
+}
+
 // Only prune after complete analysis; an empty balance alone is not empty history.
 export function pruneUnusedWalletAddresses(snapshot:Snapshot,wallets:Wallet[]):Snapshot{
   if(!snapshot.complete||!snapshot.groups||snapshot.txs.some(tx=>!snapshot.facts[tx.tx_hash]))return snapshot;

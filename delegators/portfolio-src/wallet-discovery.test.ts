@@ -1,6 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {planWalletDiscovery,pruneUnusedWalletAddresses} from './wallet-discovery.ts';
+import {planWalletDiscovery,pruneUnusedWalletAddresses,lowActivityWalletAddresses} from './wallet-discovery.ts';
+import {planRefresh} from './refresh-plan.ts';
 import type {Snapshot} from './cache';
 const stake='stake1uxythldc4nmx45tvnwsqu4h5pyjd94udytm6f0tgnr44vecjd8vel';
 const other='stake1u9ex0jtl4nv84rlzwuft5rczy2hgkjygewla04mgy7v2nccx4p4yr';
@@ -43,4 +44,25 @@ test('empty stake groups remain cached and are not rediscovered',()=>{
   assert.deepEqual(result.groups?.[stake],[]);
   assert.deepEqual(planWalletDiscovery(wallets,result).pending,[]);
   assert.deepEqual(cache.groups?.[stake],['unused']);
+});
+
+test('low activity is skipped repeatedly without dropping ownership or history; rescan restores requests',()=>{
+  const facts=Object.fromEntries(Array.from({length:10},(_,i)=>['tx'+i,{hash:'tx'+i,wallets:i<9?['low','active']:['active']} ]));
+  const cache={complete:true,groups:{[stake]:['low','active']},infos:[{address:'low',balance:'100'},{address:'active',balance:'200'}],
+    txs:Object.keys(facts).map(tx_hash=>({tx_hash})),facts,historyCompleteAddresses:['low','active']} as unknown as Snapshot;
+  assert.deepEqual(lowActivityWalletAddresses(cache),['low']);
+  const excluded=new Set(lowActivityWalletAddresses(cache));
+  const plan=planRefresh(cache,cache.groups!,excluded);
+  assert.deepEqual(plan.batches.flatMap(batch=>batch.addresses),['active']);
+  assert.equal(plan.owned.has('low'),true);
+  assert.deepEqual(plan.txs,cache.txs);
+  assert.deepEqual(plan.facts,cache.facts);
+  const saved={...cache,excludedRefreshAddresses:[...excluded],historyCompleteAddresses:plan.historyCompleteAddresses};
+  const repeated=planRefresh(saved,saved.groups!,excluded);
+  assert.ok(repeated.historyCompleteAddresses.includes('low'));
+  assert.deepEqual(lowActivityWalletAddresses({...saved,historyCompleteAddresses:repeated.historyCompleteAddresses}),['low']);
+  const rescan=planRefresh(saved,saved.groups!,new Set(),true);
+  assert.ok(rescan.batches.some(batch=>batch.addresses.includes('low')&&!batch.incremental));
+  assert.deepEqual(lowActivityWalletAddresses({...cache,complete:false,historyCompleteAddresses:[]}),[]);
+  assert.deepEqual(lowActivityWalletAddresses({...cache,facts:{}}),[]);
 });

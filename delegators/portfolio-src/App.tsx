@@ -5,7 +5,7 @@ import {ExternalLink,Plus,Trash2,ArrowRightLeft} from 'lucide-react';
 import {PortfolioRefresh} from './PortfolioRefresh';
 import {AssetWalletAddresses} from './AssetWalletAddresses';
 import {createCardanoRequest} from './cardano-request';
-import {planWalletDiscovery,pruneUnusedWalletAddresses} from './wallet-discovery';
+import {planWalletDiscovery,pruneUnusedWalletAddresses,lowActivityWalletAddresses} from './wallet-discovery';
 import {Input} from '@/components/ui/input';
 import {TransactionFilters,transactionFilters as labels} from './TransactionFilters';
 import {TransactionPagination} from './TransactionPagination';
@@ -136,7 +136,7 @@ export default function Home({memberStake}:{memberStake:string}){
   },[ready]);
 
   async function refresh(fullScan=false){
-    const exclusions=fullScan?new Set<string>():excludedRefresh;
+    const exclusions=fullScan?new Set<string>():new Set(excludedRefresh);
     controller.current?.abort();const control=new AbortController();controller.current=control;const signal=control.signal;
     const started=Date.now();setRefreshStarted(started);setClock(started);setAnalysis(null);setCounting(null);setCounted(null);setTransactionStatus('');
     setBusy(true);setInitialising(false);setError('');setNotice('');setStatus('Loading saved portfolio data…');
@@ -149,6 +149,7 @@ export default function Home({memberStake}:{memberStake:string}){
     try{
       let cached:Snapshot|null=null;try{const exact=await readCache(key);cached=exact||await readRefreshCache(key);signal.throwIfAborted();if(exact)setSnapshot(exact);}catch{setCacheNotice('Portfolio cache is locked. Sign in and approve unlock again.');throw new Error('Portfolio cache is locked.');}
       if(cached&&!fullScan)cached=pruneUnusedWalletAddresses(cached,wallets);
+      if(!fullScan)for(const address of lowActivityWalletAddresses(cached))exclusions.add(address);
       const {accounts,pending:stakes}=planWalletDiscovery(wallets,fullScan?null:cached);
       setStatus(stakes.length?'Initialising wallets · finding linked addresses…':'Using saved wallet addresses · checking balances and transactions…');
       for(let i=0;i<stakes.length;i+=40){

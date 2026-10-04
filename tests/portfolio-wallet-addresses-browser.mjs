@@ -24,6 +24,10 @@ try{
   await overlay.waitFor();
   await overlay.locator('th').first().waitFor();
   assert.deepEqual(await overlay.locator('th').allTextContents(),['Wallet','Address','ADA','Transactions','Exclude from refresh']);
+  assert.equal(await overlay.locator('tbody tr').count(),0,'low activity addresses are hidden by default');
+  assert.match(await page.locator('#app').innerText(),/₳ 5/,'hidden balances remain in the wallet total');
+  assert.equal(await page.evaluate(()=>window.excluded),undefined,'hiding never changes refresh exclusions');
+  await overlay.getByRole('checkbox',{name:'Hide addresses with fewer than 10 transactions',exact:true}).uncheck();
   assert.equal(await overlay.locator('tbody tr').count(),2);
   const exclude=overlay.getByRole('checkbox',{name:'Exclude addr-one from refresh',exact:true});
   await exclude.check();
