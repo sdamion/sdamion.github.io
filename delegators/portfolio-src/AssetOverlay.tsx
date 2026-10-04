@@ -18,7 +18,7 @@ export function AssetOverlay({name,onClose,children,id='portfolio-asset-overlay'
     const returnFocus=document.activeElement as HTMLElement|null;
     const elements=host.createUniversalOverlay({
       id,titleId:`${id}-title`,titleText:name,
-      dialogClass:`portfolio-dialog ${id==='portfolio-wallets-overlay'||id.startsWith('portfolio-wallet-menu-')||['portfolio-wallet-addresses','portfolio-byron-amounts-overlay','portfolio-swap-wallets-overlay'].includes(id)?'portfolio-dialog-fullscreen':(['portfolio-holdings-overlay','portfolio-transactions-overlay','portfolio-unknown-overlay'].includes(id)?'governance-dialog-wide':'governance-drep-dialog')}`,
+      dialogClass:`portfolio-dialog ${id==='portfolio-wallets-overlay'||id.startsWith('portfolio-wallet-menu-')||['portfolio-wallet-addresses','portfolio-byron-amounts-overlay','portfolio-swap-wallets-overlay'].includes(id)?'portfolio-dialog-fullscreen':(['portfolio-holdings-overlay','portfolio-gain-loss-overlay','portfolio-transactions-overlay','portfolio-unknown-overlay'].includes(id)?'governance-dialog-wide':'governance-drep-dialog')}`,
       closeLabel:`Back from ${name}`,closeOverlay:()=>closeRef.current(),
       bodyNodes:[content],returnFocus,enableSearch:false,closeOnBackdrop:false,
       showClose:false,showBack:true
