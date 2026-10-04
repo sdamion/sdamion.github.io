@@ -129,8 +129,9 @@ function active(){if(!vaultUnlocked())throw new Error('Approve Portfolio unlock 
 function schedule(delay=30000){if(!timer)timer=setTimeout(()=>{timer=undefined;void flushVault().catch(()=>{});},delay);}
 function changed(){const current=active();current.dirty=true;current.generation++;schedule();}
 export const portfolioSettings={
+  keys(){const current=active();return Object.keys(current.data.settings).filter(name=>ownSetting(current.stake,name));},
   getItem(name:string){const current=active();return ownSetting(current.stake,name)?current.data.settings[name]??null:null;},
-  setItem(name:string,value:string){const current=active();if(!ownSetting(current.stake,name))throw new Error('Wrong Portfolio member.');current.data.settings[name]=value;changed();}
+  setItem(name:string,value:string){const current=active();if(!ownSetting(current.stake,name))throw new Error('Wrong Portfolio member.');current.data.settings[name]=value;changed();clearTimeout(timer);timer=undefined;schedule(1000);}
 };
 export function cachedSnapshot(name:string){const current=active();return current.data.snapshot?.key===name?current.data.snapshot.data:null;}
 export function latestMemberSnapshot(name:string){const current=active();if(!name.startsWith(current.stake+'::'))throw new Error('Wrong Portfolio member.');return current.data.snapshot?.data??null;}

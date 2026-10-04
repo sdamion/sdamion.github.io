@@ -40,6 +40,7 @@ import {CacheUploadProgress} from './CacheUploadProgress';
 import {CexTimeline} from './CexTimeline';
 import {matchesGainLossTransfer} from './gain-loss-filter';
 import {GainLossTransaction} from './GainLossTransaction';
+import {loadPriceSettings} from './price-settings';
 import {matchesTransaction} from './transaction-search';
 import {unrealisedStatus} from './metric-status';
 import {CexAddresses} from './CexAddresses';
@@ -105,12 +106,12 @@ export default function Home({memberStake}:{memberStake:string}){
   const ownedAddresses=useMemo(()=>exchangeExcludedAddresses(wallets,snapshot?.groups,snapshot?.swapGroups),[wallets,snapshot?.groups,snapshot?.swapGroups]);
   const swapAddresses=useMemo(()=>swapAddressSet(wallets,snapshot?.swapGroups),[wallets,snapshot?.swapGroups]);
   const cexAddresses=useMemo(()=>excludeInternalExchanges(savedCexAddresses,ownedAddresses),[savedCexAddresses,ownedAddresses]);
-  const overrideKey='tdsp-member-basis:'+walletKey;
+  const overrideKey='tdsp-member-basis:'+memberStake;
   const paymentKey='tdsp-member-payments:'+walletKey;
   useEffect(()=>{const changed=(event:Event)=>setCacheNotice((event as CustomEvent<string>).detail);window.addEventListener('tdsp:portfolio-cache-notice',changed);return()=>window.removeEventListener('tdsp:portfolio-cache-notice',changed);},[]);
 
   useEffect(()=>{try{const saved=JSON.parse(localStorage.getItem(SETTINGS)||'null');setWallets(memberWallets(memberStake,saved));}catch{setCacheNotice('Browser storage is unavailable; wallet settings may not persist.');}setReady(true);return()=>controller.current?.abort();},[]);
-  useEffect(()=>{if(!ready)return;setSnapshot(null);setError('');try{setOverrides(JSON.parse(localStorage.getItem(overrideKey)||'{}'));}catch{setOverrides({});}try{const links=JSON.parse(localStorage.getItem(paymentKey)||'[]');setPaymentLinks(Array.isArray(links)?links.filter(l=>l&&['assetId','receiptHash','paymentHash','lovelace'].every(k=>typeof l[k]==='string')):[]);}catch{setPaymentLinks([]);}void refresh();return()=>controller.current?.abort();/* wallet scope determines the cached portfolio */
+  useEffect(()=>{if(!ready)return;setSnapshot(null);setError('');try{setOverrides(loadPriceSettings(localStorage,memberStake,walletKey));}catch{setOverrides({});}try{const links=JSON.parse(localStorage.getItem(paymentKey)||'[]');setPaymentLinks(Array.isArray(links)?links.filter(l=>l&&['assetId','receiptHash','paymentHash','lovelace'].every(k=>typeof l[k]==='string')):[]);}catch{setPaymentLinks([]);}void refresh();return()=>controller.current?.abort();/* wallet scope determines the cached portfolio */
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[ready,key]);
   useEffect(()=>setPage(0),[filter,query,key,dateFrom,dateTo]);
@@ -453,7 +454,7 @@ export default function Home({memberStake}:{memberStake:string}){
     wallets={<section className="portfolio-section"><p className="small muted">Your member stake address includes its linked payment addresses. Add only wallets you own.</p>
       <div className="history-table"><Table><TableHeader><TableRow><TableHead>Wallet</TableHead><TableHead>Address</TableHead><TableHead>ADA</TableHead><TableHead>Transactions</TableHead><TableHead>Linked addresses</TableHead><TableHead>Remove</TableHead></TableRow></TableHeader><TableBody>{wallets.filter(wallet=>wallet.group!=='swap').map((w,i)=><WalletCard key={w.address} wallet={w} primary={i===0} snapshot={snapshot} busy={busy} excluded={excludedRefresh} onExclude={setRefreshExcluded} remove={()=>saveWallets(wallets.filter(x=>x.address!==w.address))}/>)}</TableBody></Table></div>
       {walletForm}
-      <p className="small muted">Wallets, prices you enter, and cached history are saved in this browser. Adding or removing a wallet recalculates the entire portfolio; average costs are saved separately for each wallet combination.</p>
+      <p className="small muted">Wallets, entered prices and history use your selected encrypted storage. Manual prices and average costs are saved per asset for your member account and retained when wallets change.</p>
     </section>}
     exchanges={<section className="portfolio-section">
       <CexAddresses entries={cexAddresses} owned={ownedAddresses} onChange={saveCexAddresses} swap={{wallets,groups:snapshot?.swapGroups,onChange:saveWallets}}/>
