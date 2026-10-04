@@ -41,12 +41,12 @@
 .member-portfolio .portfolio-transfer-amount :is(.pool-delegator-amount, [data-amount-tone]) { color: inherit; }
 .member-portfolio .portfolio-transfer-row td { vertical-align: top; font-variant-numeric: tabular-nums; }
 .member-portfolio .portfolio-transfer-row .pool-delegator-amount { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
-.portfolio-transfer-row--dex { --portfolio-dex-color: #a64200; }
-html[data-theme="dark"] .portfolio-transfer-row--dex { --portfolio-dex-color: #fb923c; }
+.portfolio-dex-label { --portfolio-dex-color: #a64200; }
+html[data-theme="dark"] .portfolio-dex-label { --portfolio-dex-color: #fb923c; }
 @media (prefers-color-scheme: dark) {
-    html:not([data-theme="light"]) .portfolio-transfer-row--dex { --portfolio-dex-color: #fb923c; }
+    html:not([data-theme="light"]) .portfolio-dex-label { --portfolio-dex-color: #fb923c; }
 }
-.member-portfolio .portfolio-transfer-row--dex :is(td, a, strong, .small, .muted, .positive, .negative, .pool-delegator-amount, [data-amount-tone]) { color: var(--portfolio-dex-color); }
+.member-portfolio .portfolio-dex-label { color: var(--portfolio-dex-color); }
 .member-portfolio :is(.address, .message) { overflow-wrap: anywhere; }
 .member-portfolio .address { color: var(--accent-strong); }
 .member-portfolio .wallet-form label { display: grid; gap: 8px; min-width: 0; flex: 1 1 220px; }
@@ -104,6 +104,26 @@ html[data-theme="dark"] .portfolio-transfer-row--dex { --portfolio-dex-color: #f
 .member-portfolio .portfolio-address-table :is(th, td):nth-child(2) { width: 12%; }
 .member-portfolio .portfolio-address-table :is(th, td):nth-child(3) { width: 13%; }
 .member-portfolio .portfolio-address-table :is(th, td):nth-child(4) { width: 20%; }
+@media (max-width: 767px) {
+    .member-portfolio .table-shell {
+        max-width: 100%;
+        box-sizing: border-box;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+    }
+    .member-portfolio .table-shell table,
+    .member-portfolio .portfolio-address-table table {
+        min-width: 760px;
+        table-layout: auto;
+    }
+    .member-portfolio .table-shell :is(th, td) {
+        min-width: 120px;
+        white-space: normal;
+        overflow-wrap: break-word;
+        word-break: normal;
+        vertical-align: top;
+    }
+}
 .member-portfolio .portfolio-address-row {
     display: grid;
     grid-template-columns: minmax(90px, 0.8fr) minmax(120px, 1.2fr) auto;

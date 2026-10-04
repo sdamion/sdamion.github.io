@@ -42,7 +42,7 @@ import {CacheUploadProgress} from './CacheUploadProgress';
 import {CexTimeline} from './CexTimeline';
 import {matchesGainLossTransfer} from './gain-loss-filter';
 import {GainLossTransaction} from './GainLossTransaction';
-import {TransactionTable,TransactionRow} from './TransactionTable';
+import {TransactionTable,TransactionRow,TransactionWalletLabels} from './TransactionTable';
 import {transactionAmounts,transactionNetworkFee,portfolioFeeTotal} from './transaction-amounts';
 import {loadPriceSettings} from './price-settings';
 import {matchesTransaction} from './transaction-search';
@@ -562,11 +562,11 @@ function Transaction({tx,fact,markets,wallets,history,cexAddresses,swapAddresses
   const cexTrade=fact?cexAdaTransfer(fact,cexAddresses):null;
   const quantity=trade?units(trade.raw,markets[trade.id]?.decimals??fact?.decimals?.[trade.id]):null;
   const amount=transactionAmounts(fact?.adaRaw,fact?.time??tx.block_time,history,fact?.feeRaw);
-  return <TransactionRow fact={fact} hash={tx.tx_hash} time={tx.block_time} price={amount.price} feeRaw={transactionNetworkFee(fact)}
+  return <TransactionRow hash={tx.tx_hash} time={tx.block_time} price={amount.price} feeRaw={transactionNetworkFee(fact)}
     amount={amount.ada!==null?<strong className={amount.ada>=0?'positive':'negative'}>₳ {num(amount.ada)}</strong>:'—'}
     kind={isSwapTransaction(fact,swapAddresses)?'Swap':cexTrade?(cexTrade.side==='buy'?'ADA IN':'ADA OUT'):kind==='internal'?'Internal transfer · fee only':kind?labels[kind]:'Awaiting analysis'}
     details={fact&&Object.entries(fact.assets).map(([id,raw])=>{const q=units(raw,markets[id]?.decimals??fact.decimals?.[id]);return <div className="small" key={id}>{BigInt(raw)>0n?'+':''}{q===null?raw+' raw':num(q)} <AssetImage id={id} name={markets[id]?.name||markets[id]?.ticker||assetName(id)} market={markets[id]} compact/></div>;})}
     priceDetails={trade&&<div className="small muted">{quantity?num(trade.ada/quantity,10)+' ₳ / token':num(trade.ada)+' ₳ consideration'}</div>}
-    wallets={<>{transactionWalletNames(fact,wallets).map(label=><div key={label}>{label}</div>)}{exchangeWallets.map(wallet=><div className="small muted" key={`${wallet.direction}:${wallet.address}`}>{wallet.direction} DEX/CEX: <a className="address" href={`https://cardanoscan.io/address/${wallet.address}`} title={wallet.address} target="_blank" rel="noreferrer">{wallet.name} · {short(wallet.address)} <ExternalLink size={12}/></a></div>)}</>}
+    wallets={<><TransactionWalletLabels labels={transactionWalletNames(fact,wallets)}/>{exchangeWallets.map(wallet=><div className="small muted" key={`${wallet.direction}:${wallet.address}`}>{wallet.direction} DEX/CEX: <a className="address" href={`https://cardanoscan.io/address/${wallet.address}`} title={wallet.address} target="_blank" rel="noreferrer">{wallet.name} · {short(wallet.address)} <ExternalLink size={12}/></a></div>)}</>}
   />;
 }
