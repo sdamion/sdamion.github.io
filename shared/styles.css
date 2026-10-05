@@ -38,6 +38,26 @@
 }
 .member-portfolio .positive { color: var(--accent-strong); }
 .member-portfolio .negative { color: var(--ai-unavailable-color, #c62828); }
+.member-portfolio .portfolio-gain-overview {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
+    align-items: start;
+    gap: 28px;
+    min-width: 0;
+}
+.member-portfolio .portfolio-gain-summary { padding-left: 24px; border-left: 1px solid var(--line); }
+.member-portfolio .portfolio-gain-summary p { margin: 0; }
+.member-portfolio .portfolio-gain-total { display: grid; gap: 6px; font-variant-numeric: tabular-nums; }
+.member-portfolio .portfolio-gain-total > span { font-size: var(--tdsp-tile-detail-size); font-weight: 500; }
+.member-portfolio .portfolio-gain-total .pool-delegator-amount { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; color: inherit; }
+.member-portfolio .portfolio-gain-total [data-amount-tone] { color: inherit; }
+.member-portfolio .portfolio-timeline .price-history-chart-frame { height: 320px; }
+.member-portfolio .portfolio-timeline p { margin: 0; }
+@media (max-width: 900px) {
+    .member-portfolio .portfolio-gain-overview { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+    .member-portfolio .portfolio-gain-summary { padding: 20px 0 0; border-left: 0; border-top: 1px solid var(--line); }
+    .member-portfolio .portfolio-timeline .price-history-chart-frame { height: 260px; }
+}
 .member-portfolio .portfolio-transfer-amount :is(.pool-delegator-amount, [data-amount-tone]) { color: inherit; }
 .member-portfolio .portfolio-transfer-row td { vertical-align: top; font-variant-numeric: tabular-nums; }
 .member-portfolio .portfolio-transfer-row .pool-delegator-amount { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }

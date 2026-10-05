@@ -17,22 +17,24 @@ export function CexTimeline({facts,entries,history,busy,dateFrom='',dateTo=''}:{
         const Chart=await host.TDSPCharts.load();
         if(stopped||!canvas.current)return;
         const style=getComputedStyle(canvas.current),color=style.getPropertyValue('--text').trim(),grid=style.getPropertyValue('--line').trim();
+        const green=style.getPropertyValue('--accent-strong').trim(),red=style.getPropertyValue('--ai-unavailable-color').trim()||'#c62828';
         const fmt=(n:number)=>n.toLocaleString(undefined,{maximumFractionDigits:6});
+        const compact=new Intl.NumberFormat(undefined,{notation:'compact',maximumFractionDigits:1});
         const last=points[points.length-1];
         const floor=-Math.max(1,Math.max(last.boughtAda,last.soldAda)*0.05);
         chart?.destroy();
         chart=new Chart(canvas.current,{
           type:'line',
           data:{datasets:[
-            {label:'ADA IN',data:points.map(p=>({x:p.time*1000,y:p.boughtAda,usd:p.boughtUsd})),borderColor:style.getPropertyValue('--accent-strong').trim(),backgroundColor:style.getPropertyValue('--accent-strong').trim()},
-            {label:'ADA OUT',data:points.map(p=>({x:p.time*1000,y:p.soldAda,usd:p.soldUsd})),borderColor:style.getPropertyValue('--ai-unavailable-color').trim()||'#c62828',backgroundColor:style.getPropertyValue('--ai-unavailable-color').trim()||'#c62828'}
-          ].map(dataset=>({...dataset,stepped:'after',borderWidth:2,pointRadius:points.length===1?3:0,pointHitRadius:10,fill:false}))},
-          options:{responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:'index',intersect:false},
-            plugins:{legend:{labels:{color}},tooltip:{callbacks:{
+            {label:'ADA IN',data:points.map(p=>({x:p.time*1000,y:p.boughtAda,usd:p.boughtUsd})),borderColor:red,backgroundColor:red},
+            {label:'ADA OUT',data:points.map(p=>({x:p.time*1000,y:p.soldAda,usd:p.soldUsd})),borderColor:green,backgroundColor:green}
+          ].map(dataset=>({...dataset,stepped:'after',borderWidth:2.5,borderCapStyle:'round',borderJoinStyle:'round',pointRadius:points.length===1?4:0,pointHoverRadius:5,pointHitRadius:14,fill:false}))},
+          options:{responsive:true,maintainAspectRatio:false,animation:false,layout:{padding:{top:8,right:12}},interaction:{mode:'index',intersect:false},
+            plugins:{legend:{position:'top',align:'start',labels:{color,usePointStyle:true,pointStyle:'line',padding:20,boxWidth:20,font:{size:12}}},tooltip:{backgroundColor:style.getPropertyValue('--surface').trim(),titleColor:color,bodyColor:color,borderColor:grid,borderWidth:1,cornerRadius:8,padding:12,displayColors:true,callbacks:{
               title:(items:{parsed:{x:number}}[])=>items.length?new Date(items[0].parsed.x).toLocaleString():'',
               label:(item:{dataset:{label:string};raw:{y:number;usd:number|null}})=>`${item.dataset.label}: ₳ ${fmt(item.raw.y)}${item.raw.usd===null?' · Historical USD unavailable':` ≈ $${item.raw.usd.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`}`
             }}},
-            scales:{x:{type:'linear',ticks:{color,maxTicksLimit:5,maxRotation:0,callback:(value:number)=>new Date(value).toLocaleDateString()},grid:{color:grid}},y:{min:floor,title:{display:true,text:'Cumulative ADA',color},ticks:{color,callback:(value:number)=>value<0?null:fmt(value)},grid:{color:grid}}}
+            scales:{x:{type:'linear',border:{display:false},ticks:{color,maxTicksLimit:5,maxRotation:0,padding:10,font:{size:11},callback:(value:number)=>new Date(value).toLocaleDateString(undefined,{month:'short',year:'2-digit'})},grid:{display:false}},y:{min:floor,border:{display:false},title:{display:true,text:'Cumulative ADA',color,font:{size:12}},ticks:{color,maxTicksLimit:5,padding:10,font:{size:11},callback:(value:number)=>value<0?null:compact.format(value)},grid:{color:grid,drawTicks:false}}}
           }
         });
         setError('');
@@ -43,7 +45,7 @@ export function CexTimeline({facts,entries,history,busy,dateFrom='',dateTo=''}:{
     observer.observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
     return ()=>{stopped=true;observer.disconnect();chart?.destroy();};
   },[points]);
-  return <section className="portfolio-section" aria-label="ADA IN and ADA OUT timeline graph">
+  return <section className="portfolio-section portfolio-timeline" aria-label="ADA IN and ADA OUT timeline graph">
     {points.length>0?<div className="price-history-chart-frame"><canvas ref={canvas} role="img" aria-label="Cumulative ADA IN and ADA OUT over time">Cumulative incoming and outgoing amounts; detailed transfers are listed below.</canvas></div>:<p className="empty">{busy?'Loading CEX transfers…':'No classified CEX transfers.'}</p>}
     {error&&<p className="negative" role="status">{error}</p>}
     {points.length>0&&points[points.length-1].soldAda===0&&<p className="small muted" role="status">No outgoing CEX transfers matched in the analysed history. ADA OUT is shown at 0 ADA. Check the saved destination addresses if transfers are missing.</p>}

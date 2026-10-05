@@ -47,6 +47,48 @@ try{
  await page.evaluate(()=>{window.root.unmount();window.mount();});
  await page.waitForFunction(()=>document.querySelector('main')?.textContent.includes('$4,564.64'));
  assert.match(await metric.innerText(),/4,564\.64/,'disabled asset remains excluded after reload');
+ await page.addStyleTag({content:await readFile('shared/styles.css','utf8')});
+ await page.addScriptTag({content:await readFile('vendor/chart.js','utf8')});
+ await page.evaluate(()=>{
+   window.TDSPCharts={load:async()=>window.Chart};
+   const exchange='stake1u9ex0jtl4nv84rlzwuft5rczy2hgkjygewla04mgy7v2nccx4p4yr';
+   window.fixtureStorage.setItem('tdsp-member-cex-v1:stake1uxythldc4nmx45tvnwsqu4h5pyjd94udytm6f0tgnr44vecjd8vel',JSON.stringify([{address:exchange,name:'Exchange'}]));
+   const base={feeRaw:'0',internal:false,wallets:['wallet'],assets:{},decimals:{},swapCandidate:false};
+   window.fixture.facts={
+     incoming:{...base,hash:'incoming',time:1700000000,adaRaw:'100000000',externalInputs:[{address:exchange,lovelace:'100000000'}],externalOutputs:[]},
+     outgoing:{...base,hash:'outgoing',time:1710000000,adaRaw:'-40000000',externalInputs:[],externalOutputs:[{address:exchange,lovelace:'40000000'}]}
+   };
+   window.fixture.txs=Object.values(window.fixture.facts).map(f=>({tx_hash:f.hash,block_time:f.time,block_height:1}));
+   window.fixture.history={'2023-11-14':0.25,'2024-03-09':0.30};
+   window.root.unmount();window.mount();
+ });
+ await page.getByRole('button',{name:'Open ADA Gain/ loss',exact:true}).click();
+ const gain=page.locator('#portfolio-gain-loss-overlay');
+ const chart=gain.locator('canvas');
+ await page.waitForFunction(()=>{const canvas=document.querySelector('#portfolio-gain-loss-overlay canvas');return canvas&&window.Chart.getChart(canvas)?.data.datasets.length===2;});
+ const values=await chart.evaluate(canvas=>window.Chart.getChart(canvas).data.datasets.map(d=>({name:d.label,values:d.data.map(p=>p.y)})));
+ assert.deepEqual(values,[{name:'ADA IN',values:[100,100]},{name:'ADA OUT',values:[0,40]}]);
+ await page.setViewportSize({width:1440,height:1000});
+ const overview=gain.locator('.portfolio-gain-overview');
+ const summary=gain.getByRole('region',{name:'ADA Gain/ loss breakdown'});
+ const filters=gain.getByRole('region',{name:'Transaction search options'});
+ const graph=gain.getByRole('region',{name:'ADA IN and ADA OUT timeline graph'});
+ assert.ok((await summary.boundingBox()).x>(await graph.boundingBox()).x,'summary is beside graph');
+ assert.ok((await filters.boundingBox()).y>=(await overview.boundingBox()).y+(await overview.boundingBox()).height,'filters below complete overview');
+ assert.ok((await gain.locator('table').boundingBox()).y>(await filters.boundingBox()).y,'table follows filters');
+ await page.screenshot({path:'/tmp/portfolio-gain-chart-desktop.png',fullPage:true});
+ for(const width of [390,320]){
+   await page.setViewportSize({width,height:844});
+   await page.waitForFunction(()=>{const el=document.querySelector('.portfolio-gain-overview');return el&&el.scrollWidth<=el.clientWidth+1;});
+   assert.ok((await summary.boundingBox()).y>(await graph.boundingBox()).y,'summary stacks below graph');
+   assert.ok(await overview.evaluate(el=>el.scrollWidth<=el.clientWidth+1),'chart and summary fit mobile');
+ }
+ await page.screenshot({path:'/tmp/portfolio-gain-chart-mobile.png',fullPage:true});
+ await gain.locator('input[name="gain-loss-from"]').fill('2024-01-01');
+ await page.waitForFunction(()=>window.Chart.getChart(document.querySelector('#portfolio-gain-loss-overlay canvas'))?.data.datasets[0].data.length===1);
+ assert.equal(await gain.locator('tbody tr').count(),1,'dates filter graph and table');
+ await page.evaluate(()=>document.documentElement.dataset.theme='dark');
+ await page.waitForFunction(()=>window.Chart.getChart(document.querySelector('#portfolio-gain-loss-overlay canvas'))?.data.datasets[1].borderColor==='#5eead4');
  assert.deepEqual(errors,[]);
- console.log('PASS: exact asset exclusion reduces live gain/loss, preserves balances, re-enables and survives reload (synthetic prices).');
+ console.log('PASS: asset exclusion persistence; real chart totals, theme, responsive summary layout and date-filtered graph/table.');
 }finally{await browser.close();}

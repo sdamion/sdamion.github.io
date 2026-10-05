@@ -53,8 +53,11 @@ test('CEX metric opens the shared transaction list without stale search or pagin
 });
 test('gain loss shares date filters and both transaction pagers, and filters its graph',()=>{
   const app=source('App.tsx'),chart=source('CexTimeline.tsx');
-  assert.ok(app.indexOf('name="transactions-from"')<app.indexOf('aria-label="ADA Gain/ loss breakdown"'));
-  assert.match(app,/<CexTimeline[^>]*dateFrom=\{dateFrom\} dateTo=\{dateTo\}/);
+  const start=app.indexOf("{(section==='transactions'");
+  const section=app.slice(start,app.indexOf('{busy&&<p',start));
+  assert.ok(section.indexOf('<CexTimeline')<section.indexOf('<TransactionFilters'));
+  assert.ok(section.indexOf('<TransactionFilters')<section.indexOf('<TransactionTable'));
+  assert.match(app,/<CexTimeline[^\n]*dateFrom=\{dateFrom\} dateTo=\{dateTo\}/);
   for(const position of ['top','bottom'])assert.ok(app.includes(`<TransactionPagination position="${position}"`));
   assert.match(chart,/withinTransactionDates\(fact.time,dateFrom,dateTo\)/);
 });
@@ -78,15 +81,17 @@ test('CEX timeline reuses the shared chart loader and frame inside the overlay',
   assert.doesNotMatch(timeline,/<Table|<Pagination|<h3/);
   assert.doesNotMatch(timeline,/\.css/);
 });
-test('gain loss overlay puts the breakdown above its graph, not in address settings',()=>{
+test('gain loss overlay places its breakdown beside the graph, not in address settings',()=>{
   const app=source('App.tsx');
   const exchange=app.slice(app.indexOf("{section==='wallets'"),app.indexOf("{section==='holdings'"));
   assert.doesNotMatch(exchange,/ADA Gain\/ loss breakdown/);
-  const section=app.slice(app.indexOf("{section==='transactions'"),app.indexOf('{busy&&<p'));
-  assert.ok(section.indexOf('ADA Gain/ loss breakdown')<section.indexOf('<CexTimeline'));
-  assert.match(section,/ADA OUT <AdaUsdAmount[^\n]*ada=\{Number\(cexPosition.sentRaw\)\/1e6\} usd=\{cexDollars.soldUsd\}/);
+  const start=app.indexOf("{(section==='transactions'");
+  const section=app.slice(start,app.indexOf('{busy&&<p',start));
+  assert.match(section,/className="portfolio-gain-overview"/);
+  assert.ok(section.indexOf('<CexTimeline')<section.indexOf('ADA Gain/ loss breakdown'));
+  assert.match(section,/ADA OUT<\/span><AdaUsdAmount[^\n]*ada=\{Number\(cexPosition.sentRaw\)\/1e6\} usd=\{cexDollars.soldUsd\}/);
   assert.doesNotMatch(section,/In wallets <AdaUsdAmount/);
-  assert.match(section,/ADA IN <AdaUsdAmount[^\n]*ada=\{Number\(cexPosition.receivedRaw\)\/1e6\} usd=\{cexDollars.boughtUsd\}/);
+  assert.match(section,/ADA IN<\/span><AdaUsdAmount[^\n]*ada=\{Number\(cexPosition.receivedRaw\)\/1e6\} usd=\{cexDollars.boughtUsd\}/);
   assert.match(source('CexTimeline.tsx'),/label:'ADA IN',data:points.map\(p=>\(\{x:p.time\*1000,y:p.boughtAda,usd:p.boughtUsd/);
   assert.match(source('CexTimeline.tsx'),/label:'ADA OUT',data:points.map\(p=>\(\{x:p.time\*1000,y:p.soldAda,usd:p.soldUsd/);
   assert.doesNotMatch(section,/<details>/);
