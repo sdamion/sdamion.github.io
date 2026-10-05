@@ -10,16 +10,24 @@ const bundle=await build({stdin:{contents:`
 import {useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import {usePortfolioText} from './use-portfolio-text';
+import {PaymentLinks} from './PaymentLinks';
+import {AssetOverlay} from './AssetOverlay';
+window.createUniversalOverlay=({id,titleId,titleText,bodyNodes})=>{
+ const overlay=document.createElement('div');overlay.id=id;
+ const title=document.createElement('h3');title.id=titleId;title.setAttribute('data-i18n-auto','');title.setAttribute('data-i18n-auto-original',titleText);title.textContent=titleText;
+ overlay.append(title,...bodyNodes);document.body.append(overlay);return {overlay};
+};
 function Fixture(){
  const [count,setCount]=useState(1),[price,setPrice]=useState('123.45');
  const t=usePortfolioText();
- return <><h2>Assets Across Wallets</h2><p id="progress">{count+' of 5 analysing'}</p>
+ return <><AssetOverlay name="Wallet" literalTitle onClose={()=>{}}><span translate="no">Wallet</span></AssetOverlay><h2>Assets Across Wallets</h2><p id="progress">{count+' of 5 analysing'}</p>
  <strong id="waiting" translate="no">{t('Waiting for transaction details')}</strong>
  <p id="error">Token data unavailable</p><label>Wallet name<input id="price" value={price} onChange={event=>setPrice(event.target.value)} placeholder="e.g. Savings"/></label>
  <button id="change" onClick={()=>setCount(count+1)} aria-label={'Copy wallet address addr1test'+count}>Next</button>
  <strong id="money" translate="no">₳ {count*100} ≈ $123.45</strong>
  <span translate="no" id="wallet">Wallet</span><span className="portfolio-asset-name">Transactions</span>
- <input id="toggle" type="checkbox"/><table><thead><tr><th>Average buy · USD</th></tr></thead><tbody><tr><td data-label="Average buy · USD">123.45</td></tr></tbody></table></>;
+ <input id="toggle" type="checkbox"/><table><thead><tr><th>Average buy · USD</th></tr></thead><tbody><tr><td data-label="Average buy · USD">123.45</td></tr></tbody></table>
+ <div id="purchase"><PaymentLinks id="asset" facts={[{hash:'a'.repeat(64),time:1653955200,adaRaw:'0',assets:{asset:'1'},decimals:{},feeRaw:'0',internal:false,wallets:[],swapCandidate:false}]} links={[]} acquisitions={{['a'.repeat(64)]:{asset:{ada:1000,raw:'1',time:1653955200,paymentHash:'b'.repeat(64),source:'linked-purchase'}}}} history={{'2022-05-31':0.63033}} onSave={()=>{}}/></div></>;
 }
 createRoot(document.getElementById('app')).render(<Fixture/>);
 `,loader:'tsx',resolveDir:source},bundle:true,write:false,format:'esm',jsx:'automatic'});
@@ -47,7 +55,16 @@ try{
   assert.equal(await page.locator('#waiting').innerText(),await page.evaluate(()=>window.TDSPI18n.translateText('Waiting for transaction details')));
   assert.equal(await page.locator('#toggle').isChecked(),true);
   assert.equal(await page.locator('#wallet').innerText(),'Wallet');
+  assert.equal(await page.locator('#portfolio-asset-overlay-title').innerText(),'Wallet','custom overlay title remains literal');
   assert.equal(await page.locator('.portfolio-asset-name').innerText(),'Transactions');
+  const purchase=page.locator('#purchase');
+  const kind=await page.evaluate(()=>window.TDSPI18n.translateText('Linked purchase'));
+  await page.waitForFunction(kind=>document.querySelector('#purchase').textContent.includes(kind),kind);
+  assert.ok((await purchase.innerText()).includes(kind),'asset transaction kind translated');
+  assert.match(await purchase.innerText(),/630[.,]33/,'historical amount preserved');
+  if(lang!=='en'){
+    assert.doesNotMatch(await purchase.innerText(),/Historical purchase cost|loaded asset transactions|receipts with purchase costs/,'complete asset detail templates translated');
+  }
   assert.equal(await page.locator('td').getAttribute('data-label'),await page.locator('th').innerText());
   assert.ok(await page.evaluate(()=>window.originalText===document.querySelector('#progress').firstChild),'React text node retained');
   await page.locator('#change').click();count++;

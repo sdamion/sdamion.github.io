@@ -24,7 +24,7 @@ export function CexAddresses({entries,owned,onChange,swap}:{entries:CexAddress[]
       return onChange([...entries,{address:value,name}]);
     }}/><p className="negative" role="status">{error}</p>
     <div className="history-table"><Table><TableHeader><TableRow><TableHead>Exchange</TableHead><TableHead>Address</TableHead><TableHead>Remove</TableHead></TableRow></TableHeader><TableBody>{entries.filter(entry=>!validByronAddress(entry.address)).map(entry=><TableRow key={entry.address}>
-      <TableCell>{entry.name}</TableCell>
+      <TableCell translate="no">{entry.name}</TableCell>
       <TableCell><a className="address" title={entry.address} href={`https://cardanoscan.io/${validStakeAddress(entry.address)?'stakekey':'address'}/${entry.address}`} target="_blank" rel="noreferrer">{short(entry.address)} <ExternalLink size={12}/></a></TableCell>
       <TableCell><button className="governance-vote-secondary" title={`Remove ${entry.name} address`} aria-label={`Remove ${entry.name} address`} onClick={()=>onChange(entries.filter(item=>item.address!==entry.address))}><Trash2 size={16}/></button></TableCell>
     </TableRow>)}</TableBody></Table></div>

@@ -40,7 +40,9 @@ try{
  assert.match(await metric.innerText(),/4,564\.64/);
  assert.equal(await toggle.isChecked(),false);
  assert.match(await toggle.locator('xpath=ancestor::td').innerText(),/Excluded from total/);
- assert.match(await metric.innerText(),/Excluded net gain\/loss: \$6,127\.25/);
+ assert.equal(await metric.locator('.small.muted').count(),0,'gain/loss tile has only its amount and title');
+ const feesTile=page.locator('.governance-menu-card').filter({has:page.locator('.governance-card-detail',{hasText:'Network fees paid'})});
+ assert.equal(await feesTile.locator('.small.muted').count(),0,'network fees tile has no explanatory footer');
  assert.match(await page.getByRole('button',{name:'Open Assets Across Wallets',exact:true}).innerText(),/10,691\.89/,'asset valuation unchanged');
  await toggle.check();assert.match(await metric.innerText(),/10,691\.89/);
  await toggle.uncheck();

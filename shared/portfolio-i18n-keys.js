@@ -1715,5 +1715,17 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
   [
     "Search transaction hash, wallet name or address",
     "portfolio_text_5ec6ea5bdfd9"
-  ]
+  ],
+  ["{transactions} loaded asset transactions · {known} receipts with purchase costs · {unmatched} receipts without matched costs", "portfolio_text_asset_receipt_counts"],
+  ["Purchase cost: ₳ {amount}", "portfolio_text_purchase_cost_amount"],
+  ["Historical purchase cost: {amount}", "portfolio_text_historical_cost_amount"],
+  ["Historical ADA/USD price missing for {date}. Refresh purchase data to retry.", "portfolio_text_historical_cost_missing_date"],
+  ["Payment: {hash}", "portfolio_text_purchase_payment_hash"],
+  ["Linked purchase", "portfolio_text_kind_linked_purchase"],
+  ["Received", "portfolio_text_kind_received"],
+  ["Sent", "portfolio_text_kind_sent"],
+  ["Mint received", "portfolio_text_kind_mint_received"],
+  ["Buy", "portfolio_text_kind_buy"],
+  ["Sell", "portfolio_text_kind_sell"],
+  ["{shown} shown · {hidden} hidden", "portfolio_text_wallet_visibility_counts"]
 ]);

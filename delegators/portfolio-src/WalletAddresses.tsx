@@ -6,9 +6,11 @@ import {short} from './core';
 import {validStakeAddress,walletTransactionCount} from './member';
 import {AssetOverlay} from './AssetOverlay';
 import {Input,Table,TableHeader,TableBody,TableRow,TableHead,TableCell} from './ui';
+import {usePortfolioText} from './use-portfolio-text';
 
 const num=(value:number)=>value.toLocaleString('en-US',{maximumFractionDigits:6});
 export function WalletCard({wallet:w,primary,snapshot,remove,busy,excluded,onExclude,onRename}:{wallet:Wallet;primary:boolean;snapshot:Snapshot|null;remove:()=>void;busy:boolean;excluded:Set<string>;onExclude:(address:string|string[],value:boolean)=>void;onRename?:(name:string)=>void}){
+  const t=usePortfolioText();
   const [open,setOpen]=useState(false);
   const [hideExcluded,setHideExcluded]=useState(false);
   const [hideLowActivity,setHideLowActivity]=useState(true);
@@ -27,7 +29,7 @@ export function WalletCard({wallet:w,primary,snapshot,remove,busy,excluded,onExc
     <TableCell><button type="button" className="governance-vote-secondary" disabled={!addresses} onClick={()=>setOpen(true)}>{addresses?.length??'—'} linked addresses</button></TableCell>
     <TableCell><button type="button" className="governance-vote-secondary" disabled={primary||busy} onClick={remove} aria-label={`Remove ${w.label} from portfolio`}><Trash2 size={16}/></button></TableCell>
   </TableRow>
-  {open&&<AssetOverlay id="portfolio-wallet-addresses" name={w.label} onClose={()=>setOpen(false)}>
+  {open&&<AssetOverlay id="portfolio-wallet-addresses" name={w.label} literalTitle onClose={()=>setOpen(false)}>
     {onRename&&<label className="small">Wallet name<Input defaultValue={w.label} maxLength={60} onBlur={event=>{const name=event.target.value.trim();if(name&&name!==w.label)onRename(name);else event.target.value=w.label;}}/></label>}
     <p className="small muted">Excluded addresses retain their cached balances and transactions. Changes apply to the next refresh. Shared transactions may still update through another wallet address.</p>
     <div className="governance-action-buttons" role="group" aria-label="Exclude from refresh selection">
@@ -37,7 +39,7 @@ export function WalletCard({wallet:w,primary,snapshot,remove,busy,excluded,onExc
     <label className="raffle-lost-stake-toggle"><input type="checkbox" checked={hideExcluded} onChange={event=>setHideExcluded(event.target.checked)}/><span>Hide excluded addresses</span></label>
     <label className="raffle-lost-stake-toggle"><input type="checkbox" checked={hideLowActivity} onChange={event=>setHideLowActivity(event.target.checked)}/><span>Hide addresses with fewer than 10 transactions</span></label>
     <p className="small muted">After complete analysis, addresses with fewer than 10 transactions are skipped during regular refreshes. Their saved balances and transactions remain yours. Use Rescan all wallets to check them again.</p>
-    <p className="small muted" role="status">{visibleAddresses.length} shown · {(addresses?.length||0)-visibleAddresses.length} hidden</p>
+    <p translate="no" className="small muted" role="status">{t('{shown} shown · {hidden} hidden',{shown:visibleAddresses.length,hidden:(addresses?.length||0)-visibleAddresses.length})}</p>
     <div className="history-table"><Table><TableHeader><TableRow>{['Wallet','Address','ADA','Transactions','Exclude from refresh'].map(title=><TableHead key={title}>{title}</TableHead>)}</TableRow></TableHeader><TableBody>
       {visibleAddresses.map(address=>{const info=snapshot?.infos.find(row=>row.address===address);return <TableRow key={address}>
         <TableCell translate="no">{w.label}</TableCell><TableCell>{link(address)}</TableCell><TableCell>{info?'₳ '+num(Number(info.balance)/1e6):'Unavailable'}</TableCell><TableCell>{count([address])}</TableCell>

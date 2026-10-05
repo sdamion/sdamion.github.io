@@ -7,7 +7,7 @@ type OverlayHost = Window & {
   syncGovernanceMenuOverlayAccessibility?: ()=>void;
 };
 
-export function AssetOverlay({name,onClose,children,id='portfolio-asset-overlay'}:{name:string;onClose:()=>void;children:ReactNode;id?:string}){
+export function AssetOverlay({name,onClose,children,id='portfolio-asset-overlay',literalTitle=false}:{name:string;onClose:()=>void;children:ReactNode;id?:string;literalTitle?:boolean}){
   const [body,setBody]=useState<HTMLElement|null>(null);
   const closeRef=useRef(onClose);
   closeRef.current=onClose;
@@ -23,12 +23,16 @@ export function AssetOverlay({name,onClose,children,id='portfolio-asset-overlay'
       bodyNodes:[content],returnFocus,enableSearch:false,closeOnBackdrop:false,
       showClose:false,showBack:true
     });
+    if(literalTitle){
+      const title=elements.overlay.querySelector(`[id="${id}-title"]`);
+      if(title){title.setAttribute('translate','no');title.textContent=name;}
+    }
     setBody(content);
     return ()=>{
       elements.overlay.remove();
       host.syncGovernanceMenuOverlayAccessibility?.();
       if(returnFocus?.isConnected)returnFocus.focus();
     };
-  },[name,id]);
+  },[name,id,literalTitle]);
   return body?createPortal(children,body):null;
 }

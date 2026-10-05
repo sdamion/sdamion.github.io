@@ -420,16 +420,13 @@ export default function Home({memberStake}:{memberStake:string}){
   }).sort((a,b)=>a.id==='lovelace'?-1:b.id==='lovelace'?1:(b.value??-1)-(a.value??-1));
   const included=includedAssets(rows,overrides),excludedCount=rows.length-included.length;
   const gainRows=gainLossAssets(included,overrides);
-  const gainDisabledCount=included.length-gainRows.length;
-  const excludedGain=included.filter(row=>overrides[row.id]?.gainLossDisabled===true&&row.pnl!==null).reduce((sum,row)=>sum+row.pnl!,0);
   const valued=included.filter(r=>r.value!==null),covered=gainRows.filter(r=>r.pnl!==null);
   const coverage=valuationCoverage(gainRows);
-  const subtotal=valued.reduce((s,r)=>s+(r.value||0),0),gain=covered.reduce((s,r)=>s+(r.pnl||0),0),costTotal=covered.reduce((s,r)=>s+(r.cost||0),0);
+  const subtotal=valued.reduce((s,r)=>s+(r.value||0),0),gain=covered.reduce((s,r)=>s+(r.pnl||0),0);
   const ada=Number(holdings.find(h=>h.id==='lovelace')?.raw||0)/1e6;
   const adaRow=rows.find(r=>r.id==='lovelace');
   const provisional=!snapshot?.complete&&covered.length>0;
   const estimatedGains=covered.some(r=>r.quote.source==='wayup'||r.quote.source==='fallback');
-  const stalePrices=covered.some(r=>r.quote.stale);
   const adaBasisStatus=!adaLive?.reconciled?snapshot?.complete?'History / balance mismatch — refresh to reconcile':'Waiting for transaction history to reconcile with the wallet balance':adaLive.usd===null?'Missing receipt prices':snapshot?.complete?'Remaining cost · receipt-date prices':'Remaining cost · refresh in progress';
   const displayWallets=wallets.flatMap(w=>(w.group==='swap'?[w.address,...(snapshot?.swapGroups?.[w.address]||[])]:snapshot?.groups?.[w.address]||[w.address]).map(address=>({...w,address})));
   const fees=useMemo(()=>portfolioFeeTotal(Object.values(snapshot?.facts||{}),trackedAddresses,swapAddresses),[snapshot,trackedAddresses,swapAddresses]);
@@ -461,8 +458,8 @@ export default function Home({memberStake}:{memberStake:string}){
   </div>
     <section className="portfolio-section"><div className="tdsp-tile-grid">
       <Metric label="Assets Across Wallets" value="—" onOpen={()=>setSection('holdings')} amount={snapshot?{ada,usd:valued.length?subtotal:null}:undefined} note={`${valued.length} / ${included.length} assets valued${excludedCount?` · ${excludedCount} excluded`:''}`}/>
-      <Metric label="Assets Gains/Loss" value={covered.length?(provisional||estimatedGains||coverage.partial?'≈ ':'')+signed(gain):gainRows.length?gainStatus:'No assets enabled'} note={`${coverage.covered} / ${coverage.total} costs matched${gainDisabledCount?' · '+gainDisabledCount+' disabled · Excluded net gain/loss: '+usd(excludedGain):''}${costTotal>0?' · '+num(gain/costTotal*100,2)+'%':''}${estimatedGains?' · Estimated values':''}${stalePrices?' · Cached prices stale':''}${busy?' · Refresh in progress':''}`} tone={covered.length?gain>=0?'positive':'negative':''}/>
-      <Metric label="Network fees paid" value={loadedFacts||snapshot?.complete?num(fees)+' ₳':'Waiting for transaction details'} note={`${snapshot?.complete?'':'Loaded history only · '}Includes own Swap transfers · unverified shared fees excluded`}/>
+      <Metric label="Assets Gains/Loss" value={covered.length?(provisional||estimatedGains||coverage.partial?'≈ ':'')+signed(gain):gainRows.length?gainStatus:'No assets enabled'} tone={covered.length?gain>=0?'positive':'negative':''}/>
+      <Metric label="Network fees paid" value={loadedFacts||snapshot?.complete?num(fees)+' ₳':'Waiting for transaction details'}/>
       {cexAddresses.length>0&&<Metric label="ADA Gains/Loss" value="Waiting for wallet balances" onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('gain-loss');}} amount={snapshot?{ada:Number(cexPosition.netRaw)/1e6,usd:cexDollars.usd}:undefined}/>}
     </div></section>
     <div className="tdsp-tile-grid">
@@ -532,7 +529,7 @@ export default function Home({memberStake}:{memberStake:string}){
     </section></AssetOverlay>}
     {busy&&<p className="small muted" role="timer">{refreshTiming}</p>}
     </div>
-    {selectedAsset&&rows.filter(r=>r.id===selectedAsset).map(r=><AssetOverlay key={r.id} name={r.name} onClose={()=>setSelectedAsset(null)}>
+    {selectedAsset&&rows.filter(r=>r.id===selectedAsset).map(r=><AssetOverlay key={r.id} name={r.name} literalTitle onClose={()=>setSelectedAsset(null)}>
       <section className="portfolio-section">
         <AssetImage id={r.id} name={r.name} market={snapshot?.markets[r.id]}/>
         <p className="small muted">{assetWallets[r.id]?.join(' · ')}</p>
