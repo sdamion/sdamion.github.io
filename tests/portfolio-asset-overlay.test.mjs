@@ -42,7 +42,7 @@ test('cache upload status belongs to the Transactions tile rather than the refre
 test('CEX metric opens the shared transaction list without stale search or pagination',()=>{
   const app=source('App.tsx');
   assert.match(app,/<Metric label="ADA Gain\/ loss"[^\n]*onOpen=\{\(\)=>\{setQuery\(''\);setFilter\('cex'\);setPage\(0\);setSection\('transactions'\);\}\}/);
-  const tile=app.split('\n').find(line=>line.includes('<Metric label="ADA Gain/ loss"'));
+  const tile=app.split('\n').find(line=>line.includes('<Metric label="ADA Gains/Loss"'));
   assert.doesNotMatch(tile,/note=|breakdown=|Bought|Sold/);
   const transactions=app.slice(app.indexOf("{section==='transactions'"),app.indexOf('{busy&&<p'));
   assert.match(transactions,/ADA OUT <AdaUsdAmount/);
@@ -88,7 +88,7 @@ test('gain loss overlay places its breakdown beside the graph, not in address se
   const start=app.indexOf("{(section==='transactions'");
   const section=app.slice(start,app.indexOf('{busy&&<p',start));
   assert.match(section,/className="portfolio-gain-overview"/);
-  assert.ok(section.indexOf('<CexTimeline')<section.indexOf('ADA Gain/ loss breakdown'));
+  assert.ok(section.indexOf('<CexTimeline')<section.indexOf('ADA Gains/Loss breakdown'));
   assert.match(section,/ADA OUT<\/span><TransactionAmount[^\n]*ada=\{Number\(cexPosition.sentRaw\)\/1e6\} usd=\{cexDollars.soldUsd\}/);
   assert.doesNotMatch(section,/In wallets <AdaUsdAmount/);
   assert.match(section,/ADA IN<\/span><TransactionAmount[^\n]*ada=\{Number\(cexPosition.receivedRaw\)\/1e6\} usd=\{cexDollars.boughtUsd\}/);

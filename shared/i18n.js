@@ -3,9 +3,9 @@
     const DEFAULT_LANGUAGE = 'en';
     const LANGUAGE_CONFIG = Object.freeze({
         en: { label: 'English', flag: '🇺🇸' },
-        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20261005-pagination-translations' },
-        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20261005-pagination-translations' },
-        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20261005-pagination-translations' }
+        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20261005-portfolio-language-coverage' },
+        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20261005-portfolio-language-coverage' },
+        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20261005-portfolio-language-coverage' }
     });
     const TRANSLATION_ATTR = 'data-i18n';
     const TRANSLATION_ORIGINAL_ATTR = 'data-i18n-original';
@@ -41,6 +41,8 @@
         'h2.governance-card-title'
     ].join(',');
     const AUTO_TRANSLATION_KEYS = new Map([
+        ['Assets Gains/Loss', 'portfolio_assets_gains_loss'],
+        ['ADA Gains/Loss', 'portfolio_ada_gains_loss'],
         ['First page', 'portfolio_first_page'],
         ['Previous page', 'portfolio_previous_page'],
         ['Next page', 'portfolio_next_page'],
@@ -89,7 +91,7 @@
         ["Check exchange addresses", 'portfolio_quickstart_cex'],
         ["In DEX / CEX and Byron DEX / CEX, select only addresses you know belong to an exchange. Discovered Byron addresses are selected by default; review them before relying on the totals.", 'portfolio_quickstart_cex_help'],
         ["Review your results", 'portfolio_quickstart_results'],
-        ["Open Assets Across Wallets, ADA Gain/ loss or Transactions for details. Values can change during analysis and may include estimates. The info button opens the full Portfolio guide.", 'portfolio_quickstart_results_help'],
+        ["Open Assets Across Wallets, ADA Gains/Loss or Transactions for details. Values can change during analysis and may include estimates. The info button opens the full Portfolio guide.", 'portfolio_quickstart_results_help'],
         ["Skip quickstart", 'portfolio_quickstart_skip'],
         ["Open Portfolio", 'portfolio_quickstart_open'],
         ['Active Mithril Signers', 'active_mithril_signers'],
@@ -865,10 +867,11 @@
         if (!key) return;
         rememberOriginal(element);
         if (activeLanguage !== DEFAULT_LANGUAGE && translations[key]) {
-            element.textContent = translations[key];
+            if (element.textContent !== translations[key]) element.textContent = translations[key];
             return;
         }
-        element.textContent = element.getAttribute(TRANSLATION_ORIGINAL_ATTR) || '';
+        const original = element.getAttribute(TRANSLATION_ORIGINAL_ATTR) || '';
+        if (element.textContent !== original) element.textContent = original;
     }
 
     function getAutoTranslationKey(text) {
@@ -1042,6 +1045,8 @@
     }
 
     function getAutoTranslationValue(text) {
+        const portfolioTranslation = window.TDSPPortfolioI18n?.translate(String(text || ''), translations);
+        if (portfolioTranslation) return portfolioTranslation;
         const normalized = String(text || '').replace(/\s+/g, ' ').trim();
         const key = AUTO_TRANSLATION_KEYS.get(normalized);
         if (key && translations[key]) return translations[key];
@@ -2144,6 +2149,7 @@
     }
 
     function translateAutoElement(element) {
+        if (element.closest?.('.member-portfolio')) return;
         if (!(element instanceof HTMLElement)) return;
         if (element.closest?.('[translate="no"]')) return;
         if (element.hasAttribute(TRANSLATION_ATTR)) return;
@@ -2188,6 +2194,7 @@
         if (isTranslating) return;
         isTranslating = true;
         try {
+            window.TDSPPortfolioI18n?.apply(root, text => activeLanguage !== DEFAULT_LANGUAGE ? getAutoTranslationValue(text) : '');
             root.querySelectorAll?.(`[${TRANSLATION_ATTR}]`).forEach(translateElement);
             root.querySelectorAll?.(AUTO_TRANSLATION_SELECTOR).forEach(translateAutoElement);
             root.querySelectorAll?.('[data-i18n-placeholder-original]').forEach(translatePlaceholderElement);
@@ -2260,8 +2267,18 @@
         const observer = new MutationObserver(entries => {
             if (isTranslating) return;
             entries.forEach(entry => {
+                if (entry.type === 'attributes') {
+                    if (entry.target?.closest?.('.member-portfolio')) {
+                        window.TDSPPortfolioI18n?.apply(entry.target, text => activeLanguage !== DEFAULT_LANGUAGE ? getAutoTranslationValue(text) : '');
+                    }
+                    return;
+                }
                 if (entry.type === 'characterData') {
                     const parent = entry.target?.parentElement;
+                    if (parent?.closest?.('.member-portfolio')) {
+                        window.TDSPPortfolioI18n?.apply(parent, text => activeLanguage !== DEFAULT_LANGUAGE ? getAutoTranslationValue(text) : '');
+                        return;
+                    }
                     if (parent?.closest?.('[translate="no"]')) return;
                     if (parent?.matches?.(AUTO_TRANSLATION_SELECTOR) && !parent.hasAttribute(TRANSLATION_ATTR)) {
                         parent.removeAttribute(AUTO_TRANSLATION_ORIGINAL_ATTR);
@@ -2270,13 +2287,17 @@
                     return;
                 }
                 entry.addedNodes.forEach(node => {
+                    if (node.nodeType === Node.TEXT_NODE && node.parentElement?.closest('.member-portfolio')) {
+                        applyTranslations(node.parentElement);
+                        return;
+                    }
                     if (!(node instanceof HTMLElement)) return;
                     if (node.hasAttribute(TRANSLATION_ATTR)) translateElement(node);
                     applyTranslations(node);
                 });
             });
         });
-        observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+        observer.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['placeholder', 'title', 'aria-label', 'aria-valuetext', 'data-label'] });
     }
 
     function init() {
@@ -2287,6 +2308,7 @@
             .then(() => {
                 applyTranslations();
                 observeDynamicTranslations();
+                window.dispatchEvent(new CustomEvent('tdsp-language-change', { detail: { language: activeLanguage } }));
             })
             .catch(error => {
                 console.error('Language file could not be loaded.', error);

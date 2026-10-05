@@ -29,7 +29,7 @@ try{
    window.createUniversalOverlay=options=>{const overlay=document.createElement('section');overlay.id=options.id;const back=document.createElement('button');back.textContent='Back';back.onclick=options.closeOverlay;overlay.append(back,...options.bodyNodes);document.body.append(overlay);return {overlay};};
  },{id,other});
  await page.addScriptTag({type:'module',content:bundle.outputFiles[0].text});
- const metric=page.locator('.governance-menu-card').filter({has:page.locator('.governance-card-detail',{hasText:'Unrealised gain / loss'})});
+ const metric=page.locator('.governance-menu-card').filter({has:page.locator('.governance-card-detail',{hasText:'Assets Gains/Loss'})});
  await page.getByRole('button',{name:'Open Assets Across Wallets',exact:true}).waitFor();
  await page.waitForFunction(()=>document.querySelector('main')?.textContent.includes('$10,691.89'));
  assert.match(await metric.innerText(),/10,691\.89/);
@@ -62,7 +62,7 @@ try{
    window.fixture.history={'2023-11-14':0.25,'2024-03-09':0.30};
    window.root.unmount();window.mount();
  });
- await page.getByRole('button',{name:'Open ADA Gain/ loss',exact:true}).click();
+ await page.getByRole('button',{name:'Open ADA Gains/Loss',exact:true}).click();
  const gain=page.locator('#portfolio-gain-loss-overlay');
  const chart=gain.locator('canvas');
  await page.waitForFunction(()=>{const canvas=document.querySelector('#portfolio-gain-loss-overlay canvas');return canvas&&window.Chart.getChart(canvas)?.data.datasets.length===2;});
@@ -70,7 +70,7 @@ try{
  assert.deepEqual(values,[{name:'ADA IN',values:[100,100]},{name:'ADA OUT',values:[0,40]}]);
  await page.setViewportSize({width:1440,height:1000});
  const overview=gain.locator('.portfolio-gain-overview');
- const summary=gain.getByRole('region',{name:'ADA Gain/ loss breakdown'});
+ const summary=gain.getByRole('region',{name:'ADA Gains/Loss breakdown'});
  const filters=gain.getByRole('region',{name:'Transaction search options'});
  const graph=gain.getByRole('region',{name:'ADA IN and ADA OUT timeline graph'});
  for(const total of await summary.locator('.portfolio-gain-total').all()){

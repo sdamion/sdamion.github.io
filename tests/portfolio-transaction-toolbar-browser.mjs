@@ -34,7 +34,7 @@ try{
  await page.goto('http://127.0.0.1:8998/');
  await page.addStyleTag({content:await readFile('shared/styles.css','utf8')});
  await page.addScriptTag({type:'module',content:bundle.outputFiles[0].text});
- const toolbar=page.getByRole('region',{name:'Transaction search options'});
+ const toolbar=page.locator('.portfolio-transaction-toolbar');
  const top=toolbar.getByRole('navigation');
  await top.getByText('Page 1/3',{exact:true}).waitFor();
  const positions=await toolbar.locator(':scope > *').evaluateAll(elements=>elements.map(el=>el.getBoundingClientRect().top));
@@ -66,7 +66,10 @@ try{
    assert.ok(await top.locator('ul').evaluate(el=>el.scrollWidth<=el.clientWidth+1),'pager fits on one line');
  }
  await page.screenshot({path:'/tmp/portfolio-toolbar-mobile.png',fullPage:true});
+ await page.addScriptTag({content:await readFile('shared/portfolio-i18n-keys.js','utf8')});
+ await page.addScriptTag({content:await readFile('shared/portfolio-i18n.js','utf8')});
  await page.addScriptTag({content:await readFile('shared/i18n.js','utf8')});
+ await page.evaluate(()=>document.dispatchEvent(new Event('DOMContentLoaded')));
  for(const [language,label,nextLabel] of [['nl','Pagina','Volgende pagina'],['ja','ページ','次のページ'],['es','Página','Página siguiente'],['en','Page','Next page']]){
    await page.evaluate(language=>window.TDSPI18n.setLanguage(language),language);
    assert.match(await top.innerText(),new RegExp(`${label} 1/3`));

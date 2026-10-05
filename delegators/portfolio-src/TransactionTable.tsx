@@ -11,7 +11,7 @@ export function TransactionAmount({ada,usd,tone}:{ada:number|null;usd:number|nul
 
 export function TransactionWallets({labels,exchanges}:{labels:string[];exchanges:{name:string;address:string}[]}){
   const names=[...new Set(exchanges.map(exchange=>exchange.name))];
-  return <>{names.length>0&&<strong>{names.join(' · ')}</strong>}<div className="small muted"><TransactionWalletLabels labels={labels}/></div>{exchanges.length>0&&<AssetWalletAddresses compact addresses={[...new Set(exchanges.map(exchange=>exchange.address))]} names={names}/>}</>;
+  return <>{names.length>0&&<strong translate="no">{names.join(' · ')}</strong>}<div className="small muted"><TransactionWalletLabels labels={labels}/></div>{exchanges.length>0&&<AssetWalletAddresses compact addresses={[...new Set(exchanges.map(exchange=>exchange.address))]} names={names}/>}</>;
 }
 
 export function TransactionLink({hash}:{hash:string}){
@@ -28,7 +28,7 @@ export function TransactionTable({children}:{children:ReactNode}){
 }
 
 export function TransactionWalletLabels({labels,inline=false}:{labels:string[];inline?:boolean}){
-  return <>{labels.map((label,index)=><span key={label} style={inline?undefined:{display:'block'}}>{inline&&index>0?' · ':''}<span className={label.startsWith('DEX contract: ')?'portfolio-dex-label':undefined}>{label}</span></span>)}</>;
+  return <>{labels.map((label,index)=><span key={label} style={inline?undefined:{display:'block'}}>{inline&&index>0?' · ':''}<span translate={label.startsWith('DEX contract: ')?undefined:'no'} className={label.startsWith('DEX contract: ')?'portfolio-dex-label':undefined}>{label}</span></span>)}</>;
 }
 
 export function TransactionRow({hash,time,amount,kind,price,feeRaw,wallets,details,priceDetails}:{hash:string;time:number;amount:ReactNode;kind?:ReactNode;price?:number|null;feeRaw?:string|null;wallets:ReactNode;details?:ReactNode;priceDetails?:ReactNode}){

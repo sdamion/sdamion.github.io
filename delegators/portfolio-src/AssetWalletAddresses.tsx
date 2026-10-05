@@ -18,6 +18,6 @@ function Address({address}:{address:string}){
 
 export function AssetWalletAddresses({addresses,compact=false,names=[]}:{addresses:string[];compact?:boolean;names?:string[]}){
   const [open,setOpen]=useState(false);
-  if(compact)return <>{addresses.length>0&&<button type="button" className="governance-vote-secondary" onClick={()=>setOpen(true)}>{addresses.length} {addresses.length===1?'wallet address':'wallet addresses'}</button>}{open&&<AssetOverlay id="portfolio-asset-wallets-overlay" name="Wallet addresses" onClose={()=>setOpen(false)}><p className="small muted">{names.join(' · ')}</p>{addresses.map(address=><Address key={address} address={address}/>)}</AssetOverlay>}</>;
+  if(compact)return <>{addresses.length>0&&<button type="button" className="governance-vote-secondary" onClick={()=>setOpen(true)}>{addresses.length} {addresses.length===1?'wallet address':'wallet addresses'}</button>}{open&&<AssetOverlay id="portfolio-asset-wallets-overlay" name="Wallet addresses" onClose={()=>setOpen(false)}><p translate="no" className="small muted">{names.join(' · ')}</p>{addresses.map(address=><Address key={address} address={address}/>)}</AssetOverlay>}</>;
   return <>{addresses.map(address=><Address key={address} address={address}/>)}</>;
 }

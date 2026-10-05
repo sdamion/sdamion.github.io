@@ -3,6 +3,7 @@
 import {useEffect,useMemo,useRef,useState} from 'react';
 import {ExternalLink,Plus,Trash2} from 'lucide-react';
 import {PortfolioRefresh} from './PortfolioRefresh';
+import {usePortfolioText} from './use-portfolio-text';
 import {AssetWalletAddresses} from './AssetWalletAddresses';
 import {createCardanoRequest} from './cardano-request';
 import {planWalletDiscovery,pruneUnusedWalletAddresses,lowActivityWalletAddresses,activeAnalysedWalletGroups} from './wallet-discovery';
@@ -460,9 +461,9 @@ export default function Home({memberStake}:{memberStake:string}){
   </div>
     <section className="portfolio-section"><div className="tdsp-tile-grid">
       <Metric label="Assets Across Wallets" value="—" onOpen={()=>setSection('holdings')} amount={snapshot?{ada,usd:valued.length?subtotal:null}:undefined} note={`${valued.length} / ${included.length} assets valued${excludedCount?` · ${excludedCount} excluded`:''}`}/>
-      <Metric label={coverage.partial?'Unrealised gain / loss · partial estimate':provisional||estimatedGains?'Unrealised gain / loss · estimate':'Unrealised gain / loss'} value={covered.length?(provisional||estimatedGains||coverage.partial?'≈ ':'')+signed(gain):gainRows.length?gainStatus:'No assets enabled'} note={`${coverage.covered} / ${coverage.total} costs matched${gainDisabledCount?' · '+gainDisabledCount+' disabled · Excluded net gain/loss: '+usd(excludedGain):''}${costTotal>0?' · '+num(gain/costTotal*100,2)+'%':''}${estimatedGains?' · Estimated values':''}${stalePrices?' · Cached prices stale':''}${busy?' · Refresh in progress':''}`} tone={covered.length?gain>=0?'positive':'negative':''}/>
+      <Metric label="Assets Gains/Loss" value={covered.length?(provisional||estimatedGains||coverage.partial?'≈ ':'')+signed(gain):gainRows.length?gainStatus:'No assets enabled'} note={`${coverage.covered} / ${coverage.total} costs matched${gainDisabledCount?' · '+gainDisabledCount+' disabled · Excluded net gain/loss: '+usd(excludedGain):''}${costTotal>0?' · '+num(gain/costTotal*100,2)+'%':''}${estimatedGains?' · Estimated values':''}${stalePrices?' · Cached prices stale':''}${busy?' · Refresh in progress':''}`} tone={covered.length?gain>=0?'positive':'negative':''}/>
       <Metric label="Network fees paid" value={loadedFacts||snapshot?.complete?num(fees)+' ₳':'Waiting for transaction details'} note={`${snapshot?.complete?'':'Loaded history only · '}Includes own Swap transfers · unverified shared fees excluded`}/>
-      {cexAddresses.length>0&&<Metric label="ADA Gain/ loss" value="Waiting for wallet balances" onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('gain-loss');}} amount={snapshot?{ada:Number(cexPosition.netRaw)/1e6,usd:cexDollars.usd}:undefined}/>}
+      {cexAddresses.length>0&&<Metric label="ADA Gains/Loss" value="Waiting for wallet balances" onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('gain-loss');}} amount={snapshot?{ada:Number(cexPosition.netRaw)/1e6,usd:cexDollars.usd}:undefined}/>}
     </div></section>
     <div className="tdsp-tile-grid">
       <MenuTile title="Cardano Wallets" value={refreshCounts?`${num(refreshCounts.active,0)} / ${num(refreshCounts.total,0)} active`:initialising?'Initialising':'— / — active'} loading={initialising} loadingLabel={status} onOpen={()=>setSection('wallets')}/>
@@ -510,13 +511,13 @@ export default function Home({memberStake}:{memberStake:string}){
     </section>
 
     </AssetOverlay>}
-    {(section==='transactions'||section==='gain-loss')&&<AssetOverlay id={section==='gain-loss'?'portfolio-gain-loss-overlay':'portfolio-transactions-overlay'} name={section==='gain-loss'?'ADA Gain/ loss':'Transactions'} onClose={()=>setSection(null)}>
+    {(section==='transactions'||section==='gain-loss')&&<AssetOverlay id={section==='gain-loss'?'portfolio-gain-loss-overlay':'portfolio-transactions-overlay'} name={section==='gain-loss'?'ADA Gains/Loss':'Transactions'} onClose={()=>setSection(null)}>
     {section==='gain-loss'&&<div className="portfolio-gain-overview">
     <CexTimeline facts={Object.fromEntries(shown.map(tx=>[tx.tx_hash,classifiedFacts[tx.tx_hash]]))} entries={cexAddresses} history={snapshot?.history||{}} busy={busy} dateFrom={dateFrom} dateTo={dateTo}/>
-    <section className="portfolio-section portfolio-gain-summary" aria-label="ADA Gain/ loss breakdown">
+    <section className="portfolio-section portfolio-gain-summary" aria-label="ADA Gains/Loss breakdown">
       {(dateFrom||dateTo||query||filter!=='all')&&<p className="small muted">Gain/loss totals cover all loaded history and current wallet balances. Filters apply to the transfer graph and transaction list below.</p>}
       <strong className="governance-card-title">{snapshot?<AdaUsdAmount ada={Number(cexPosition.netRaw)/1e6} usd={cexDollars.usd}/>: 'Waiting for wallet balances'}</strong>
-      <span className="governance-card-detail">ADA Gain/ loss</span>
+      <span className="governance-card-detail">ADA Gains/Loss</span>
       {snapshot&&<>
         <p className="portfolio-gain-total"><span>ADA OUT</span><TransactionAmount ada={Number(cexPosition.sentRaw)/1e6} usd={cexDollars.soldUsd} tone="positive"/></p>
         <p className="portfolio-gain-total"><span>ADA IN</span><TransactionAmount ada={Number(cexPosition.receivedRaw)/1e6} usd={cexDollars.boughtUsd} tone="negative"/></p>
@@ -546,7 +547,7 @@ export default function Home({memberStake}:{memberStake:string}){
           <Metric label="Balance" value={r.qty===null?`${r.raw} raw units`:num(r.qty)} note=""/>
           <Metric label="Current value" value={r.value===null?'Unavailable':usd(r.value)} note={r.quote.source==='fallback'?'2 ADA fallback estimate':r.quote.source==='wayup'?(r.quote.stale?'Last known Wayup floor · stale estimate':'Wayup collection floor estimate'):r.quote.source==='manual'?'Your price':'Market estimate'}/>
           <Metric label="Remaining purchase cost" value={r.cost===null?'Unknown':usd(r.cost)} note={r.estimatedPurchaseCost?'Estimate from known purchase average; return transfer cost unverified':''}/>
-          <Metric label="Unrealised gain / loss" value={r.pnl===null?'Purchase cost required':signed(r.pnl)} note={overrides[r.id]?.gainLossDisabled===true?'Excluded from portfolio gain/loss total':''} tone={overrides[r.id]?.gainLossDisabled===true?'muted':r.pnl!==null&&r.pnl<0?'negative':''}/>
+          <Metric label="Assets Gains/Loss" value={r.pnl===null?'Purchase cost required':signed(r.pnl)} note={overrides[r.id]?.gainLossDisabled===true?'Excluded from portfolio gain/loss total':''} tone={overrides[r.id]?.gainLossDisabled===true?'muted':r.pnl!==null&&r.pnl<0?'negative':''}/>
         </div>
       </section>
       {r.id!=='lovelace'&&<PaymentLinks id={r.id} facts={Object.values(classifiedFacts)} links={paymentLinks} acquisitions={payments.acquisitions} history={snapshot?.history} onSave={savePaymentLinks} loading={busy}/>}
@@ -567,8 +568,9 @@ function AssetImage({id,name,market,onOpen,compact=false}:{id:string;name:string
 }
 
 function Metric({label,value,amount,note,tone='',onOpen}:{label:string;value:string;amount?:{ada:number;usd:number|null};note?:string;tone?:string;onOpen?:()=>void}){
+  const t=usePortfolioText();
   const Tag=onOpen?'button':'div';
-  return <Tag type={onOpen?'button':undefined} onClick={onOpen} aria-label={onOpen?`Open ${label}`:undefined} className="governance-menu-card"><strong translate="no" className={`governance-card-title ${tone}`}>{amount?<AdaUsdAmount {...amount}/>:value}</strong><span className="governance-card-detail" data-i18n-auto-original={label}>{label}</span>{note&&<span className="small muted">{note}</span>}</Tag>;
+  return <Tag type={onOpen?'button':undefined} onClick={onOpen} aria-label={onOpen?`Open ${label}`:undefined} className="governance-menu-card"><strong translate="no" className={`governance-card-title ${tone}`}>{amount?<AdaUsdAmount {...amount}/>:t(value)}</strong><span className="governance-card-detail" data-i18n-auto-original={label}>{label}</span>{note&&<span className="small muted">{t(note)}</span>}</Tag>;
 }
 function Transaction({tx,fact,markets,wallets,history,cexAddresses,swapAddresses}:{tx:Tx;fact?:Fact;markets:Record<string,Market>;wallets:Wallet[];history:Record<string,number>;cexAddresses:CexAddress[];swapAddresses:Set<string>}){
   const kind=fact?kindOf(fact):null,trade=fact?tradeOf(fact):null;

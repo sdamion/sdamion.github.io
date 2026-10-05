@@ -20,7 +20,7 @@ export function WalletCard({wallet:w,primary,snapshot,remove,busy,excluded,onExc
     .filter(address=>!hideLowActivity||walletTransactionCount(facts,[address])>=10);
   const count=(linked:string[])=>walletTransactionCount(facts,linked).toLocaleString('en-US');
   const link=(address:string)=><a className="address" href={`https://cardanoscan.io/${validStakeAddress(address)?'stakekey':'address'}/${address}`} target="_blank" rel="noreferrer" title={address}>{short(address)} <ExternalLink size={12}/></a>;
-  return <><TableRow><TableCell><button type="button" className="governance-vote-secondary" disabled={!addresses} onClick={()=>setOpen(true)}>{w.label}</button></TableCell>
+  return <><TableRow><TableCell><button translate="no" type="button" className="governance-vote-secondary" disabled={!addresses} onClick={()=>setOpen(true)}>{w.label}</button></TableCell>
     <TableCell>{link(w.address)}</TableCell>
     <TableCell>{addresses?'₳ '+num(snapshot!.infos.filter(i=>addresses.includes(i.address)).reduce((total,i)=>total+Number(i.balance)/1e6,0)):'Loading balance…'}</TableCell>
     <TableCell>{addresses?count(addresses):'Loading…'}</TableCell>
@@ -40,7 +40,7 @@ export function WalletCard({wallet:w,primary,snapshot,remove,busy,excluded,onExc
     <p className="small muted" role="status">{visibleAddresses.length} shown · {(addresses?.length||0)-visibleAddresses.length} hidden</p>
     <div className="history-table"><Table><TableHeader><TableRow>{['Wallet','Address','ADA','Transactions','Exclude from refresh'].map(title=><TableHead key={title}>{title}</TableHead>)}</TableRow></TableHeader><TableBody>
       {visibleAddresses.map(address=>{const info=snapshot?.infos.find(row=>row.address===address);return <TableRow key={address}>
-        <TableCell>{w.label}</TableCell><TableCell>{link(address)}</TableCell><TableCell>{info?'₳ '+num(Number(info.balance)/1e6):'Unavailable'}</TableCell><TableCell>{count([address])}</TableCell>
+        <TableCell translate="no">{w.label}</TableCell><TableCell>{link(address)}</TableCell><TableCell>{info?'₳ '+num(Number(info.balance)/1e6):'Unavailable'}</TableCell><TableCell>{count([address])}</TableCell>
         <TableCell><label title={!info&&!excluded.has(address)?'Waiting for the first cached balance':'Applies to the next refresh'}><input type="checkbox" aria-label={`Exclude ${address} from refresh`} checked={excluded.has(address)} disabled={!info&&!excluded.has(address)} onChange={event=>onExclude(address,event.target.checked)}/> Exclude</label></TableCell>
       </TableRow>;})}
     </TableBody></Table></div>
