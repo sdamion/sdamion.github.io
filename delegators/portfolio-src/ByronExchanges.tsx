@@ -13,7 +13,7 @@ import {TransactionFilters} from './TransactionFilters';
 import {withinTransactionDates,transactionPage} from './transaction-date';
 import {matchesTransaction} from './transaction-search';
 import {AssetOverlay} from './AssetOverlay';
-import {TransactionTable,TransactionRow,TransactionLink,TransactionWalletLabels} from './TransactionTable';
+import {TransactionTable,TransactionRow,TransactionAmount,TransactionLink,TransactionWalletLabels} from './TransactionTable';
 import {transactionWalletNames} from './transaction-wallet-names';
 import {transactionAmounts,lovelaceToAda,transactionNetworkFee} from './transaction-amounts';
 
@@ -24,7 +24,7 @@ export function AddressTransactions({facts,address,addresses,entries,count,addre
   if(count===1&&rows.length===1&&(!addresses||addresses.length===1)){
     const row=rows[0];
     const amount=transactionAmounts(row.amountRaw,row.time,history);
-    return row.amountRaw===null?<span className="small muted">Mixed or unassigned sources</span>:<span title={row.sharedInputs?'Shared-input transaction total; counted once in Byron totals':undefined}>{row.side==='buy'?'IN':'OUT'} <AdaUsdAmount ada={amount.ada} usd={amount.usd}/>{row.sharedInputs&&<span className="small muted"> · Shared transaction</span>}</span>;
+    return row.amountRaw===null?<span className="small muted">Mixed or unassigned sources</span>:<span title={row.sharedInputs?'Shared-input transaction total; counted once in Byron totals':undefined}>{row.side==='buy'?'IN':'OUT'} <TransactionAmount ada={amount.ada} usd={amount.usd} tone={row.side==='buy'?'negative':'positive'}/>{row.sharedInputs&&<span className="small muted"> · Shared transaction</span>}</span>;
   }
   return <><button type="button" className="governance-vote-secondary" onClick={()=>setOpen(true)}>View</button>{open&&<AssetOverlay id="portfolio-byron-amounts-overlay" name="Byron ADA amounts" onClose={()=>setOpen(false)}><section className="portfolio-section">
     {addressEditor??(addresses||[address]).map(item=><div key={item}><a className="address" href={`https://cardanoscan.io/address/${item}`} target="_blank" rel="noreferrer">{short(item)} <ExternalLink size={12}/></a></div>)}
@@ -34,7 +34,7 @@ export function AddressTransactions({facts,address,addresses,entries,count,addre
       const touched=new Set([...fact?.externalInputs||[],...fact?.externalOutputs||[]].map(item=>item.address));
       const names=[...new Set(entries.filter(entry=>(addresses||[address]).includes(entry.address)&&touched.has(entry.address)).map(entry=>entry.name))];
       return <TransactionRow key={row.hash} hash={row.hash} time={row.time} price={amount.price} feeRaw={transactionNetworkFee(fact)}
-        amount={row.amountRaw===null?'Mixed or unassigned sources':<strong className={row.side==='buy'?'negative':'positive'}><AdaUsdAmount ada={amount.ada} usd={amount.usd}/></strong>}
+        amount={row.amountRaw===null?'Mixed or unassigned sources':<TransactionAmount ada={amount.ada} usd={amount.usd} tone={row.side==='buy'?'negative':'positive'}/>}
         kind={row.amountRaw!==null?(row.side==='buy'?'ADA IN':'ADA OUT'):undefined}
         details={<>{row.sharedInputs&&<div className="small muted">Shared-input transaction total · counted once in Byron totals</div>}<div className="small muted">Wallet change (after fees): {BigInt(row.walletChangeRaw)<0n?'OUT':'IN'} <AdaUsdAmount ada={Math.abs(lovelaceToAda(row.walletChangeRaw)!)} usd={null}/></div></>}
         wallets={<>{names.map(name=><strong key={name}>{name} </strong>)}<div className="small muted"><TransactionWalletLabels inline labels={transactionWalletNames(fact,wallets)}/></div></>}

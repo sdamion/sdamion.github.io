@@ -73,6 +73,11 @@ try{
  const summary=gain.getByRole('region',{name:'ADA Gain/ loss breakdown'});
  const filters=gain.getByRole('region',{name:'Transaction search options'});
  const graph=gain.getByRole('region',{name:'ADA IN and ADA OUT timeline graph'});
+ for(const total of await summary.locator('.portfolio-gain-total').all()){
+   const neutral=await total.locator(':scope > span').evaluate(el=>getComputedStyle(el).color);
+   assert.equal(await total.locator('.pool-delegator-usd').evaluate(el=>getComputedStyle(el).color),neutral,'summary USD and labels stay neutral');
+   assert.notEqual(await total.locator('.pool-delegator-amount > span').evaluate(el=>getComputedStyle(el).color),neutral,'summary ADA carries direction color');
+ }
  assert.ok((await summary.boundingBox()).x>(await graph.boundingBox()).x,'summary is beside graph');
  assert.ok((await filters.boundingBox()).y>=(await overview.boundingBox()).y+(await overview.boundingBox()).height,'filters below complete overview');
  assert.ok((await gain.locator('table').boundingBox()).y>(await filters.boundingBox()).y,'table follows filters');

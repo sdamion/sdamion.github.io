@@ -89,9 +89,9 @@ test('gain loss overlay places its breakdown beside the graph, not in address se
   const section=app.slice(start,app.indexOf('{busy&&<p',start));
   assert.match(section,/className="portfolio-gain-overview"/);
   assert.ok(section.indexOf('<CexTimeline')<section.indexOf('ADA Gain/ loss breakdown'));
-  assert.match(section,/ADA OUT<\/span><AdaUsdAmount[^\n]*ada=\{Number\(cexPosition.sentRaw\)\/1e6\} usd=\{cexDollars.soldUsd\}/);
+  assert.match(section,/ADA OUT<\/span><TransactionAmount[^\n]*ada=\{Number\(cexPosition.sentRaw\)\/1e6\} usd=\{cexDollars.soldUsd\}/);
   assert.doesNotMatch(section,/In wallets <AdaUsdAmount/);
-  assert.match(section,/ADA IN<\/span><AdaUsdAmount[^\n]*ada=\{Number\(cexPosition.receivedRaw\)\/1e6\} usd=\{cexDollars.boughtUsd\}/);
+  assert.match(section,/ADA IN<\/span><TransactionAmount[^\n]*ada=\{Number\(cexPosition.receivedRaw\)\/1e6\} usd=\{cexDollars.boughtUsd\}/);
   assert.match(source('CexTimeline.tsx'),/label:'ADA IN',data:points.map\(p=>\(\{x:p.time\*1000,y:p.boughtAda,usd:p.boughtUsd/);
   assert.match(source('CexTimeline.tsx'),/label:'ADA OUT',data:points.map\(p=>\(\{x:p.time\*1000,y:p.soldAda,usd:p.soldUsd/);
   assert.doesNotMatch(section,/<details>/);

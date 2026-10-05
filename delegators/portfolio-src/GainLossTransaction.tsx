@@ -11,7 +11,7 @@ export function GainLossTransaction({tx,fact,wallets,entries,history}:{tx:Tx;fac
   const amount=transactionAmounts(transfer.raw,fact.time,history,fact.feeRaw);
   const exchanges=transactionExchangeWallets(fact,entries).filter(wallet=>wallet.direction===(incoming?'From':'To'));
   return <TransactionRow hash={tx.tx_hash} time={tx.block_time} price={amount.price} feeRaw={transactionNetworkFee(fact)}
-    kind={<span className={incoming?'negative':'positive'}>{incoming?'ADA IN':'ADA OUT'}</span>}
+    kind={incoming?'ADA IN':'ADA OUT'}
     amount={<TransactionAmount ada={amount.ada} usd={amount.usd} tone={incoming?'negative':'positive'}/>}
     wallets={<TransactionWallets labels={transactionWalletNames(fact,wallets)} exchanges={exchanges}/>}
   />;

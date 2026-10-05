@@ -518,8 +518,8 @@ export default function Home({memberStake}:{memberStake:string}){
       <strong className="governance-card-title">{snapshot?<AdaUsdAmount ada={Number(cexPosition.netRaw)/1e6} usd={cexDollars.usd}/>: 'Waiting for wallet balances'}</strong>
       <span className="governance-card-detail">ADA Gain/ loss</span>
       {snapshot&&<>
-        <p className="portfolio-gain-total positive"><span>ADA OUT</span><AdaUsdAmount ada={Number(cexPosition.sentRaw)/1e6} usd={cexDollars.soldUsd}/></p>
-        <p className="portfolio-gain-total negative"><span>ADA IN</span><AdaUsdAmount ada={Number(cexPosition.receivedRaw)/1e6} usd={cexDollars.boughtUsd}/></p>
+        <p className="portfolio-gain-total"><span>ADA OUT</span><TransactionAmount ada={Number(cexPosition.sentRaw)/1e6} usd={cexDollars.soldUsd} tone="positive"/></p>
+        <p className="portfolio-gain-total"><span>ADA IN</span><TransactionAmount ada={Number(cexPosition.receivedRaw)/1e6} usd={cexDollars.boughtUsd} tone="negative"/></p>
       </>}
       <p className="small muted">{snapshot?.complete&&!cexPending&&!cexUnresolved?'':'Partial · '}USD uses transfer-day prices plus current wallet value, not exchange execution prices.{cexPending?` ${num(cexPending,0)} transactions need CEX address checks.`:''}{cexUnresolved?` ${num(cexUnresolved,0)} mixed CEX transactions excluded.`:''}{cexDollars.missingPrices?` ${cexDollars.missingPrices} transfers have no historical USD price.`:''}</p>
     </section></div>}

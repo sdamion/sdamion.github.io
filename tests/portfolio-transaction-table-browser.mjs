@@ -44,6 +44,17 @@ try{
  for(const [theme,color] of [['light','rgb(166, 66, 0)'],['dark','rgb(251, 146, 60)']]){
    await page.evaluate(theme=>document.documentElement.dataset.theme=theme,theme);
    for(const label of await page.locator('.portfolio-dex-label').all())assert.equal(await label.evaluate(el=>getComputedStyle(el).color),color);
+   for(const index of [0,2,3]){
+     const row=rows.nth(index);
+     const ada=row.locator('.pool-delegator-amount > span').first();
+     const usd=row.locator('.pool-delegator-usd');
+     assert.notEqual(await ada.evaluate(el=>getComputedStyle(el).color),await usd.evaluate(el=>getComputedStyle(el).color),'only ADA amount has the transfer tone');
+     assert.equal(await usd.evaluate(el=>getComputedStyle(el).color),await row.locator('td').nth(4).evaluate(el=>getComputedStyle(el).color),'USD uses default detail color');
+   }
+   for(const index of [2,3]){
+     const label=rows.nth(index).getByText(index===2?'ADA IN':'ADA OUT',{exact:true});
+     assert.equal(await label.evaluate(el=>getComputedStyle(el).color),await rows.nth(index).locator('td').nth(4).evaluate(el=>getComputedStyle(el).color),'IN/OUT labels use default color');
+   }
    assert.notEqual(await rows.nth(0).locator('strong').evaluate(el=>getComputedStyle(el).color),color);
    assert.notEqual(await rows.nth(0).locator('a').evaluate(el=>getComputedStyle(el).color),color);
    assert.notEqual(await rows.nth(0).getByText('Savings',{exact:true}).evaluate(el=>getComputedStyle(el).color),color);
