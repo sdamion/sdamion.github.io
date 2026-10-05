@@ -1,5 +1,5 @@
 type Settings={getItem:(key:string)=>string|null;setItem:(key:string,value:string)=>void;keys:()=>string[]};
-type Overrides=Record<string,{average?:string;price?:string;decimals?:string;excluded?:boolean}>;
+type Overrides=Record<string,{average?:string;price?:string;decimals?:string;excluded?:boolean;gainLossDisabled?:boolean}>;
 export function loadPriceSettings(storage:Settings,stake:string,walletKey:string):Overrides{
   const key='tdsp-member-basis:'+stake;
   const saved=storage.getItem(key);
