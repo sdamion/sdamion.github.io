@@ -26,7 +26,12 @@ const browser=await chromium.launch({channel:'chrome',headless:true});
 try{
  const page=await browser.newPage({viewport:{width:1440,height:900}});
  const errors=[];page.on('pageerror',error=>errors.push(error.message));
- await page.setContent('<div id="app" class="member-portfolio"></div>');
+ await page.route('**/*',async route=>{
+   const pathname=new URL(route.request().url()).pathname;
+   const locale=pathname.match(/^\/locales\/(nl|ja|es)\.toml$/);
+   await route.fulfill({contentType:locale?'text/plain':'text/html',body:locale?await readFile(`locales/${locale[1]}.toml`,'utf8'):'<div id="app" class="member-portfolio"></div>'});
+ });
+ await page.goto('http://127.0.0.1:8998/');
  await page.addStyleTag({content:await readFile('shared/styles.css','utf8')});
  await page.addScriptTag({type:'module',content:bundle.outputFiles[0].text});
  const toolbar=page.getByRole('region',{name:'Transaction search options'});
@@ -61,6 +66,19 @@ try{
    assert.ok(await top.locator('ul').evaluate(el=>el.scrollWidth<=el.clientWidth+1),'pager fits on one line');
  }
  await page.screenshot({path:'/tmp/portfolio-toolbar-mobile.png',fullPage:true});
+ await page.addScriptTag({content:await readFile('shared/i18n.js','utf8')});
+ for(const [language,label,nextLabel] of [['nl','Pagina','Volgende pagina'],['ja','ページ','次のページ'],['es','Página','Página siguiente'],['en','Page','Next page']]){
+   await page.evaluate(language=>window.TDSPI18n.setLanguage(language),language);
+   assert.match(await top.innerText(),new RegExp(`${label} 1/3`));
+   const next=top.getByRole('button',{name:nextLabel,exact:true});
+   assert.equal(await next.getAttribute('title'),nextLabel,'tooltips switch with accessible labels');
+   await next.click();
+   await top.getByText(`${label} 2/3`,{exact:true}).waitFor();
+   assert.equal(await top.locator('[data-i18n="portfolio_page"]').innerText(),label,'React page updates retain translated label');
+   await top.locator('button').first().click();
+   await top.getByText(`${label} 1/3`,{exact:true}).waitFor();
+   assert.ok(await top.evaluate(el=>el.scrollWidth<=el.clientWidth+1),'translated compact pager fits mobile');
+ }
  assert.deepEqual(errors,[]);
- console.log('PASS: shared compact pager, boundaries, Byron page size, functional controls and responsive toolbar.');
+ console.log('PASS: compact pager, boundaries, Byron size, responsive controls and live NL/JA/ES/EN labels/tooltips.');
 }finally{await browser.close();}

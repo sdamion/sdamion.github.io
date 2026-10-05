@@ -3,9 +3,9 @@
     const DEFAULT_LANGUAGE = 'en';
     const LANGUAGE_CONFIG = Object.freeze({
         en: { label: 'English', flag: '🇺🇸' },
-        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20261003-swap-rename' },
-        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20261003-swap-rename' },
-        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20261003-swap-rename' }
+        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20261005-pagination-translations' },
+        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20261005-pagination-translations' },
+        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20261005-pagination-translations' }
     });
     const TRANSLATION_ATTR = 'data-i18n';
     const TRANSLATION_ORIGINAL_ATTR = 'data-i18n-original';
@@ -41,6 +41,12 @@
         'h2.governance-card-title'
     ].join(',');
     const AUTO_TRANSLATION_KEYS = new Map([
+        ['First page', 'portfolio_first_page'],
+        ['Previous page', 'portfolio_previous_page'],
+        ['Next page', 'portfolio_next_page'],
+        ['Last page', 'portfolio_last_page'],
+        ['Transaction pages top', 'portfolio_pages_top'],
+        ['Transaction pages bottom', 'portfolio_pages_bottom'],
         ['Save Swap name', 'portfolio_swap_name_save'],
         ['Could not save Swap name.', 'portfolio_swap_name_error'],
         ['Backend storage', 'backend_storage'],
@@ -2165,14 +2171,18 @@
         element.setAttribute('placeholder', translated || original);
     }
 
-    function translateAriaLabelElement(element) {
+    function translateAttributeElement(element, attribute) {
         if (!(element instanceof HTMLElement)) return;
-        const original = element.getAttribute('data-i18n-aria-label-original') || element.getAttribute('aria-label') || '';
+        const originalAttribute = `data-i18n-${attribute}-original`;
+        const original = element.getAttribute(originalAttribute) || element.getAttribute(attribute) || '';
         if (!original) return;
-        element.setAttribute('data-i18n-aria-label-original', original);
+        element.setAttribute(originalAttribute, original);
         const translated = activeLanguage !== DEFAULT_LANGUAGE ? getAutoTranslationValue(original) : '';
-        element.setAttribute('aria-label', translated || original);
+        element.setAttribute(attribute, translated || original);
     }
+
+    const translateAriaLabelElement = element => translateAttributeElement(element, 'aria-label');
+    const translateTitleElement = element => translateAttributeElement(element, 'title');
 
     function applyTranslations(root = document) {
         if (isTranslating) return;
@@ -2182,11 +2192,13 @@
             root.querySelectorAll?.(AUTO_TRANSLATION_SELECTOR).forEach(translateAutoElement);
             root.querySelectorAll?.('[data-i18n-placeholder-original]').forEach(translatePlaceholderElement);
             root.querySelectorAll?.('[data-i18n-aria-label-original]').forEach(translateAriaLabelElement);
+            root.querySelectorAll?.('[data-i18n-title-original]').forEach(translateTitleElement);
             if (root instanceof HTMLElement) {
                 if (root.hasAttribute(TRANSLATION_ATTR)) translateElement(root);
                 if (root.matches?.(AUTO_TRANSLATION_SELECTOR)) translateAutoElement(root);
                 if (root.hasAttribute('data-i18n-placeholder-original')) translatePlaceholderElement(root);
                 if (root.hasAttribute('data-i18n-aria-label-original')) translateAriaLabelElement(root);
+                if (root.hasAttribute('data-i18n-title-original')) translateTitleElement(root);
             }
             document.documentElement.lang = activeLanguage;
             syncLanguageToggle();
