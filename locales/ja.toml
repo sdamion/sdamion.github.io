@@ -820,6 +820,8 @@ portfolio_pages_bottom = "表の下の取引ページ切り替え"
 
 # Shared Portfolio interface and dynamic message templates.
 portfolio_text_691a8929632a = "全ウォレットの資産"
+portfolio_text_assets_title = "資産"
+portfolio_text_cex_transactions_title = "CEX取引"
 portfolio_text_843c1604c49e = "支払ったネットワーク手数料"
 portfolio_text_5d942c09724d = "Cardanoウォレット"
 portfolio_text_6169dccaa935 = "マイウォレット"

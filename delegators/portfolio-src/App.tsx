@@ -446,7 +446,7 @@ export default function Home({memberStake}:{memberStake:string}){
   const holdingsDisplay=formatPortfolioUsd(portfolioUsd,currencyDisplay);
   const adaResult=comparisonNet(adaComparison,ada,currentAdaUsd,{},fx.history,'ADA',holdingsCurrency,Date.now()/1000,portfolioUsd);
   const tileGain=holdingsCurrency==='ADA'?adaResult.amount:adaResult.fiat;
-  const tileGainDisplay=formatPortfolioAmount(tileGain===null?null:Math.abs(tileGain),currencyDisplay);
+  const tileGainDisplay=(tileGain!==null&&tileGain<0?'− ':'')+formatPortfolioAmount(tileGain===null?null:Math.abs(tileGain),currencyDisplay);
   const comparisonResult=comparisonNet(comparison,ada,currentAdaUsd,btc.history,fx.history,comparisonCrypto,comparisonFiat,Date.now()/1000,portfolioUsd);
   const provisional=!snapshot?.complete&&covered.length>0;
   const adaBasisStatus=!adaLive?.reconciled?snapshot?.complete?'History / balance mismatch — refresh to reconcile':'Waiting for transaction history to reconcile with the wallet balance':adaLive.usd===null?'Missing receipt prices':snapshot?.complete?'Remaining cost · receipt-date prices':'Remaining cost · refresh in progress';
@@ -477,20 +477,18 @@ export default function Home({memberStake}:{memberStake:string}){
     </div>
   </div>
     <section className="portfolio-section"><div className="tdsp-tile-grid">
-      <MenuTile title="Assets Across Wallets" value={holdingsDisplay} onOpen={()=>{resetPolicies();setHoldingsGroup(null);setSection('holdings');}}>
+      <MenuTile title="Cardano Wallets" value={refreshCounts?`${num(refreshCounts.active,0)} / ${num(refreshCounts.total,0)} active`:initialising?'Initialising':'— / — active'} loading={initialising} loadingLabel={status} onOpen={()=>setSection('wallets')}/>
+      <MenuTile title="Transactions" value="" analysis={snapshot?{done:progress.done,total:progress.total,counting:counting!==null,busy,status:transactionStatus}:undefined} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('transactions');}}>
+        {storageMode()==='remote'?<CacheUploadProgress onRetry={()=>void flushVault().catch(()=>{})}/>:cacheNotice&&<p role="status" className="tdsp-bar-legend">{cacheNotice}</p>}
+      </MenuTile>
+      <MenuTile title="Assets" value={holdingsDisplay} onOpen={()=>{resetPolicies();setHoldingsGroup(null);setSection('holdings');}}>
         <p className="small muted">{t('{done} / {total} assets valued',{done:valued.length,total:included.length})}{excludedCount?' · '+t('{count} excluded',{count:excludedCount}):''}</p>
         {(holdingsCurrency==='EUR'||holdingsCurrency==='JPY')&&holdingsValue===null&&<p className="small muted" role="status">{t(fx.status||'Historical exchange rates unavailable')}</p>}
       </MenuTile>
       <Metric label="Network fees paid" value={loadedFacts||snapshot?.complete?formatPortfolioAda(fees,currencyDisplay):'Waiting for transaction details'}/>
-      {cexAddresses.length>0&&<Metric label={tileGain===null?'Gain / loss':tileGain<0?'Loss':'Gain'} openLabel="ADA Gains/Loss" value={snapshot?tileGainDisplay:'Waiting for wallet balances'} tone={tileGain===null?'':tileGain<0?'negative':'positive'} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('gain-loss');}}/>}
-    </div></section>
-    <div className="tdsp-tile-grid">
-      <MenuTile title="Cardano Wallets" value={refreshCounts?`${num(refreshCounts.active,0)} / ${num(refreshCounts.total,0)} active`:initialising?'Initialising':'— / — active'} loading={initialising} loadingLabel={status} onOpen={()=>setSection('wallets')}/>
+      {cexAddresses.length>0&&<Metric label="CEX Transactions" openLabel="CEX Transactions" value={snapshot?tileGainDisplay:'Waiting for wallet balances'} tone={tileGain===null?'':tileGain<0?'negative':'positive'} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('gain-loss');}}/>}
       <MenuTile title="Unknown ownership" value={num(unknownTransactions.length,0)} onOpen={()=>setSection('unknown')}/>
-      <MenuTile title="Transactions" value="" analysis={snapshot?{done:progress.done,total:progress.total,counting:counting!==null,busy,status:transactionStatus}:undefined} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('transactions');}}>
-        {storageMode()==='remote'?<CacheUploadProgress onRetry={()=>void flushVault().catch(()=>{})}/>:cacheNotice&&<p role="status" className="tdsp-bar-legend">{cacheNotice}</p>}
-      </MenuTile>
-    </div>
+    </div></section>
     {section==='unknown'&&<UnknownOwnership txs={unknownTransactions} addresses={[...trackedAddresses]} busy={busy} onAssign={assignUnknownOwnership} onClose={()=>setSection(null)}/>}
     {section==='wallets'&&<AssetOverlay id="portfolio-wallets-overlay" name="Cardano Wallets" onClose={()=>setSection(null)}>
     <div className="portfolio-section">
@@ -511,7 +509,7 @@ export default function Home({memberStake}:{memberStake:string}){
     </section>}
     byron={<ByronExchanges facts={classifiedFacts} entries={cexAddresses} owned={ownedAddresses} wallets={displayWallets} history={snapshot?.history||{}} markets={snapshot?.markets||{}} complete={snapshot?.complete===true} onChange={saveCexAddresses}/>}/>
     </AssetOverlay>}
-    {section==='holdings'&&<AssetOverlay id="portfolio-holdings-overlay" name={holdingsGroup||'Assets Across Wallets'} onClose={()=>holdingsGroup?setHoldingsGroup(null):setSection(null)}>
+    {section==='holdings'&&<AssetOverlay id="portfolio-holdings-overlay" name={holdingsGroup||'Assets'} onClose={()=>holdingsGroup?setHoldingsGroup(null):setSection(null)}>
     <section className="portfolio-section">
       {!holdingsGroup&&<div className="tdsp-tile-grid">{(['FTs','NFTs'] as const).map(group=>{
         const assets=rows.filter(row=>assetGroup(row.id)===group),active=includedAssets(assets,overrides),priced=active.filter(row=>row.value!==null);

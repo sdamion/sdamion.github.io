@@ -37,11 +37,11 @@ try{
    window.createUniversalOverlay=options=>{const overlay=document.createElement('section');overlay.id=options.id;const back=document.createElement('button');back.textContent='Back';back.onclick=options.closeOverlay;overlay.append(back,...options.bodyNodes);document.body.append(overlay);return {overlay};};
  },{id,other});
  await page.addScriptTag({type:'module',content:bundle.outputFiles[0].text});
- const metric=page.getByRole('button',{name:'Open Assets Across Wallets',exact:true});
+ const metric=page.getByRole('button',{name:'Open Assets',exact:true});
  const openNFTs=async()=>{await metric.click();await page.getByRole('button',{name:'Open NFTs',exact:true}).click();};
  const closeHoldings=async()=>{await page.locator('#portfolio-holdings-overlay').getByRole('button',{name:'Back',exact:true}).click();await page.getByRole('button',{name:'Open NFTs',exact:true}).waitFor();await page.locator('#portfolio-holdings-overlay').getByRole('button',{name:'Back',exact:true}).click();};
  assert.equal(await page.locator('main .governance-card-detail').filter({hasText:'Assets Gains/Loss'}).count(),0,'redundant asset gain/loss tile removed');
- await page.getByRole('button',{name:'Open Assets Across Wallets',exact:true}).waitFor();
+ await page.getByRole('button',{name:'Open Assets',exact:true}).waitFor();
  await page.waitForFunction(()=>document.querySelector('main')?.textContent.includes('$10,691.89'));
  assert.match(await metric.innerText(),/10,691\.89/);
  const holdingsCurrency=page.locator('#portfolio-refresh-action').getByRole('combobox',{name:'Comparison currency'});
@@ -56,7 +56,7 @@ try{
  assert.match(await metric.innerText(),/₳ 42,768/,'current ADA value above one is displayed without decimals');
  assert.equal(await page.locator('#portfolio-asset-overlay').count(),0,'currency selection does not open the holdings overlay');
  await holdingsCurrency.selectOption('USD');
- await page.getByRole('button',{name:'Open Assets Across Wallets',exact:true}).click();
+ await page.getByRole('button',{name:'Open Assets',exact:true}).click();
  const nftTile=page.getByRole('button',{name:'Open NFTs',exact:true});
  await nftTile.waitFor();
  assert.match(await nftTile.innerText(),/10,691\.89/,'NFT tile totals match included NFTs');
@@ -107,7 +107,7 @@ try{
    window.fixture.history={'2023-11-14':0.25,'2024-03-09':0.30};
    window.root.unmount();window.mount();
  });
- const selectionGain=page.getByRole('button',{name:'Open ADA Gains/Loss',exact:true});
+ const selectionGain=page.getByRole('button',{name:'Open CEX Transactions',exact:true});
  await selectionGain.waitFor();
  assert.match(await selectionGain.innerText(),/\$4,551\.64/,'disabled asset value is excluded from ADA gain/loss after reload');
  await selectionGain.click();
@@ -123,7 +123,8 @@ try{
  await toggle.check();
  await page.getByRole('checkbox',{name:'Exclude Other asset from Assets Across Wallets',exact:true}).check();
  assert.match(await selectionGain.innerText(),/\$13\.00/,'disabling every asset retains CEX OUT minus IN');
- assert.equal(await selectionGain.locator('.governance-card-detail').innerText(),'Loss');
+ assert.equal(await selectionGain.locator('.governance-card-detail').innerText(),'CEX Transactions');
+ assert.match(await selectionGain.locator('.governance-card-title').innerText(),/^− /,'loss is shown with a minus sign');
  assert.match(await metric.innerText(),/\$0\.00/,'the same exclusion controls holdings and gain/loss');
  await toggle.uncheck();
  await page.getByRole('checkbox',{name:'Exclude Other asset from Assets Across Wallets',exact:true}).uncheck();
@@ -137,8 +138,9 @@ try{
  await holdingsCurrency.selectOption('EUR');
  await page.waitForFunction(()=>document.querySelector('.portfolio-gain-result')?.textContent.includes('€8,540.61'));
  assert.match(await gain.locator('.portfolio-gain-result').innerText(),/€8,540\.61/,'gain/loss follows header currency with transfer-day FX');
- const gainTile=page.getByRole('button',{name:'Open ADA Gains/Loss',exact:true});
- assert.equal(await gainTile.locator('.governance-card-detail').innerText(),'Gain','tile title is only Gain');
+ const gainTile=page.getByRole('button',{name:'Open CEX Transactions',exact:true});
+ assert.equal(await gainTile.locator('.governance-card-detail').innerText(),'CEX Transactions','tile title stays stable');
+ assert.deepEqual(await page.locator('main .portfolio-body > .portfolio-section .tdsp-tile-grid > *').evaluateAll(elements=>elements.map(element=>element.getAttribute('aria-label')||element.querySelector('.governance-card-detail')?.textContent)),['Open Cardano Wallets','Open Transactions','Open Assets','Network fees paid','Open CEX Transactions','Open Unknown ownership']);
  assert.match(await gainTile.innerText(),/€8,540\.61/,'gain tile and overlay use the same transfer-day FX totals');
  assert.match(await gain.locator('a[href="https://cardanoscan.io/transaction/incoming"]').locator('xpath=ancestor::tr').innerText(),/€22\.50/,'incoming transaction matches its historical summary value, not current FX');
  assert.doesNotMatch(await gainTile.innerText(),/₳|\$/,'gain tile shows only selected currency');
@@ -215,7 +217,7 @@ try{
  assert.ok(await gain.locator('.portfolio-comparison-controls').evaluate(el=>el.scrollWidth<=el.clientWidth+1),'currency dropdowns fit mobile without horizontal scrolling');
  await page.screenshot({path:'/tmp/portfolio-comparison-selectors-mobile.png',fullPage:true});
  await page.evaluate(()=>{window.fixture.infos[0].balance='1000000000';window.fixture.infos[0].utxo_set[0].value='1000000000';window.root.unmount();window.mount();});
- await page.getByRole('button',{name:'Open ADA Gains/Loss',exact:true}).click();
+ await page.getByRole('button',{name:'Open CEX Transactions',exact:true}).click();
  await gain.getByRole('combobox',{name:'Comparison cryptocurrency'}).selectOption('BTC');
  await page.waitForFunction(()=>document.querySelector('.portfolio-gain-result .governance-card-detail')?.textContent==='BTC comparison gain');
  assert.equal(await gain.locator('.portfolio-gain-result .governance-card-detail').innerText(),'BTC comparison gain','current wallet and asset value are added to OUT minus IN');
@@ -235,15 +237,15 @@ try{
  assert.match(await transactions.locator('thead').innerText(),/EUR Amount/,'transaction amount header follows global currency');
  assert.match(await transactions.locator('tbody').innerText(),/€22\.50/,'Transactions and gain/loss use the same transfer-day FX');
  await page.evaluate(({id,other})=>{window.fixture.infos[0].balance='0';window.fixture.infos[0].utxo_set[0].value='0';window.fixture.markets[id].price_by_usd=1;window.fixture.markets[other].price_by_usd=1;window.root.unmount();window.mount();},{id,other});
- const lossTile=page.getByRole('button',{name:'Open ADA Gains/Loss',exact:true});
+ const lossTile=page.getByRole('button',{name:'Open CEX Transactions',exact:true});
  await lossTile.waitFor();
- assert.equal(await lossTile.locator('.governance-card-detail').innerText(),'Loss','negative result uses only Loss');
+ assert.equal(await lossTile.locator('.governance-card-detail').innerText(),'CEX Transactions','negative result keeps the same tile title');
  assert.match(await lossTile.innerText(),/\$11\.00/);
  assert.equal(await lossTile.locator('.governance-card-title.negative').count(),1,'negative selected-currency result is red');
  await page.evaluate(()=>{window.fixture.infos[0].balance='0';window.fixture.infos[0].utxo_set=[];window.root.unmount();window.mount();});
  await lossTile.waitFor();
  assert.match(await lossTile.innerText(),/\$13\.00/,'complete empty portfolio still calculates OUT minus IN');
- assert.equal(await lossTile.locator('.governance-card-detail').innerText(),'Loss');
+ assert.equal(await lossTile.locator('.governance-card-detail').innerText(),'CEX Transactions');
  assert.match(await metric.innerText(),/\$0\.00/,'known empty holdings are valued at zero');
  await page.evaluate(()=>{window.fixture.complete=false;window.root.unmount();window.mount();});
  await lossTile.waitFor();
@@ -260,7 +262,7 @@ try{
  const signedAda=async()=>{
    const title=await lossTile.locator('.governance-card-title').innerText();
    const value=Number(title.replace(/[^0-9.]/g,''));
-   return await lossTile.locator('.governance-card-detail').innerText()==='Loss'?-value:value;
+   return title.startsWith('−')?-value:value;
  };
  const beforeFloor=await signedAda();
  await openNFTs();

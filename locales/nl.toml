@@ -820,6 +820,8 @@ portfolio_pages_bottom = "Transactiepagina's onder de tabel"
 
 # Shared Portfolio interface and dynamic message templates.
 portfolio_text_691a8929632a = "Assets in alle wallets"
+portfolio_text_assets_title = "Assets"
+portfolio_text_cex_transactions_title = "CEX-transacties"
 portfolio_text_843c1604c49e = "Betaalde netwerkfees"
 portfolio_text_5d942c09724d = "Cardano-wallets"
 portfolio_text_6169dccaa935 = "Mijn wallets"

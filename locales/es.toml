@@ -820,6 +820,8 @@ portfolio_pages_bottom = "Páginas de transacciones debajo de la tabla"
 
 # Shared Portfolio interface and dynamic message templates.
 portfolio_text_691a8929632a = "Activos en todas las wallets"
+portfolio_text_assets_title = "Activos"
+portfolio_text_cex_transactions_title = "Transacciones CEX"
 portfolio_text_843c1604c49e = "Comisiones de red pagadas"
 portfolio_text_5d942c09724d = "Wallets de Cardano"
 portfolio_text_6169dccaa935 = "Mis wallets"

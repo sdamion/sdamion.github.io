@@ -1,5 +1,7 @@
 // Generated from the shared Portfolio translation catalog.
 window.TDSPPortfolioTranslationKeys = Object.freeze([
+  ["Assets", "portfolio_text_assets_title"],
+  ["CEX Transactions", "portfolio_text_cex_transactions_title"],
   [
     "Assets Across Wallets",
     "portfolio_text_691a8929632a"
