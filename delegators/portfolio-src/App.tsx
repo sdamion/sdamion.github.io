@@ -41,6 +41,8 @@ import {MenuTile,AdaUsdAmount} from './ui';
 import {portfolioSettings as localStorage,flushVault,storageMode} from './vault';
 import {CacheUploadProgress} from './CacheUploadProgress';
 import {CexTimeline} from './CexTimeline';
+import {cexBtcSeries} from './cex-btc';
+import {useBtcHistory} from './use-btc-history';
 import {matchesGainLossTransfer} from './gain-loss-filter';
 import {GainLossTransaction} from './GainLossTransaction';
 import {TransactionTable,TransactionRow,TransactionAmount,TransactionWallets} from './TransactionTable';
@@ -79,6 +81,7 @@ async function historicalPrices(signal:AbortSignal):Promise<{prices?:[number,num
 const request=createCardanoRequest(portfolioFetch);
 
 export default function Home({memberStake}:{memberStake:string}){
+  const t=usePortfolioText();
   const SETTINGS='tdsp-member-wallets-v1:'+memberStake;
   const CEX_SETTINGS='tdsp-member-cex-v1:'+memberStake;
   const [savedCexAddresses,setCexAddresses]=useState<CexAddress[]>(()=>{try{return normalizeCexAddresses(JSON.parse(localStorage.getItem(CEX_SETTINGS)||'[]'));}catch{return [];}});
@@ -93,6 +96,7 @@ export default function Home({memberStake}:{memberStake:string}){
   const [missingCostsOnly,setMissingCostsOnly]=useState(false);
   const [selectedAsset,setSelectedAsset]=useState<string|null>(null);
   const [section,setSection]=useState<'wallets'|'holdings'|'transactions'|'gain-loss'|'unknown'|null>(null);
+  const btc=useBtcHistory(section==='gain-loss');
   const [page,setPage]=useState(0);
   const [dateFrom,setDateFrom]=useState(''),[dateTo,setDateTo]=useState('');
   const [liveQuote,setLiveQuote]=useState<{usd:number;at:string}|null>(null);
@@ -401,6 +405,7 @@ export default function Home({memberStake}:{memberStake:string}){
   const payments=useMemo(()=>mintPayments(Object.values(classifiedFacts),paymentLinks),[classifiedFacts,paymentLinks]);
   const cexPosition=useMemo(()=>cexAdaNetPosition(Object.values(classifiedFacts),cexAddresses,holdings.find(h=>h.id==='lovelace')?.raw||'0'),[classifiedFacts,cexAddresses,holdings]);
   const cexDollars=useMemo(()=>cexUsdNetPosition(Object.values(classifiedFacts),cexAddresses,holdings.find(h=>h.id==='lovelace')?.raw||'0',snapshot?.history||{},liveQuote?.usd??snapshot?.adaUsd??null),[classifiedFacts,cexAddresses,holdings,snapshot,liveQuote]);
+  const btcTotals=useMemo(()=>cexBtcSeries(Object.values(classifiedFacts),cexAddresses,snapshot?.history||{},btc.history).at(-1),[classifiedFacts,cexAddresses,snapshot,btc.history]);
   const basis=useMemo(()=>snapshot?remainingBasis(Object.values(classifiedFacts),snapshot.history,payments.acquisitions):{},[snapshot,classifiedFacts,payments]);
   const purchases=useMemo(()=>purchaseAverages(Object.values(classifiedFacts),snapshot?.history||{},payments.acquisitions),[classifiedFacts,snapshot,payments]);
   const adaLive=useMemo(()=>snapshot?liveAdaBasis(Object.values(classifiedFacts),snapshot.history,holdings.find(h=>h.id==='lovelace')?.raw||'0',snapshot.complete):null,[snapshot,holdings,classifiedFacts]);
@@ -510,15 +515,21 @@ export default function Home({memberStake}:{memberStake:string}){
     </AssetOverlay>}
     {(section==='transactions'||section==='gain-loss')&&<AssetOverlay id={section==='gain-loss'?'portfolio-gain-loss-overlay':'portfolio-transactions-overlay'} name={section==='gain-loss'?'ADA Gains/Loss':'Transactions'} onClose={()=>setSection(null)}>
     {section==='gain-loss'&&<div className="portfolio-gain-overview">
-    <CexTimeline facts={Object.fromEntries(shown.map(tx=>[tx.tx_hash,classifiedFacts[tx.tx_hash]]))} entries={cexAddresses} history={snapshot?.history||{}} busy={busy} dateFrom={dateFrom} dateTo={dateTo}/>
+    <CexTimeline facts={Object.fromEntries(shown.map(tx=>[tx.tx_hash,classifiedFacts[tx.tx_hash]]))} entries={cexAddresses} history={snapshot?.history||{}} btcHistory={btc.history} busy={busy} dateFrom={dateFrom} dateTo={dateTo}/>
     <section className="portfolio-section portfolio-gain-summary" aria-label="ADA Gains/Loss breakdown">
       {(dateFrom||dateTo||query||filter!=='all')&&<p className="small muted">Gain/loss totals cover all loaded history and current wallet balances. Filters apply to the transfer graph and transaction list below.</p>}
-      <strong className="governance-card-title">{snapshot?<AdaUsdAmount ada={Number(cexPosition.netRaw)/1e6} usd={cexDollars.usd}/>: 'Waiting for wallet balances'}</strong>
-      <span className="governance-card-detail">ADA Gains/Loss</span>
-      {snapshot&&<>
-        <p className="portfolio-gain-total"><span>ADA OUT</span><TransactionAmount ada={Number(cexPosition.sentRaw)/1e6} usd={cexDollars.soldUsd} tone="positive"/></p>
-        <p className="portfolio-gain-total"><span>ADA IN</span><TransactionAmount ada={Number(cexPosition.receivedRaw)/1e6} usd={cexDollars.boughtUsd} tone="negative"/></p>
-      </>}
+      {snapshot&&<Table className="portfolio-gain-comparison">
+        <TableHeader><TableRow><TableHead>ADA OUT</TableHead><TableHead>ADA IN</TableHead></TableRow></TableHeader>
+        <TableBody><TableRow>
+          <TableCell><TransactionAmount ada={Number(cexPosition.sentRaw)/1e6} usd={cexDollars.soldUsd} tone="positive"/><div translate="no" className="small muted">{btcTotals?.outgoing==null?'—':num(btcTotals.outgoing,8)} BTC</div></TableCell>
+          <TableCell><TransactionAmount ada={Number(cexPosition.receivedRaw)/1e6} usd={cexDollars.boughtUsd} tone="negative"/><div translate="no" className="small muted">{btcTotals?.incoming==null?'—':num(btcTotals.incoming,8)} BTC</div></TableCell>
+        </TableRow></TableBody>
+      </Table>}
+      <div className="portfolio-gain-result">
+        <span className="governance-card-detail">ADA Gains/Loss</span>
+        <strong className="governance-card-title">{snapshot?<AdaUsdAmount ada={Number(cexPosition.netRaw)/1e6} usd={cexDollars.usd}/>: 'Waiting for wallet balances'}</strong>
+      </div>
+      {snapshot&&<p className="small muted" role="status">{btc.status||'BTC equivalents use transfer-day ADA/USD and BTC/USD prices, not actual Bitcoin purchases.'}</p>}
       <p className="small muted">{snapshot?.complete&&!cexPending&&!cexUnresolved?'':'Partial · '}USD uses transfer-day prices plus current wallet value, not exchange execution prices.{cexPending?` ${num(cexPending,0)} transactions need CEX address checks.`:''}{cexUnresolved?` ${num(cexUnresolved,0)} mixed CEX transactions excluded.`:''}{cexDollars.missingPrices?` ${cexDollars.missingPrices} transfers have no historical USD price.`:''}</p>
     </section></div>}
     <TransactionFilters id={section} options={section==='gain-loss'?{all:'All',in:'ADA IN',out:'ADA OUT'}:undefined} query={query} onQuery={value=>{setQuery(value);setFilter('all');}} filter={filter} onFilter={setFilter} dateFrom={dateFrom} dateTo={dateTo} onDates={(from,to)=>{setDateFrom(from);setDateTo(to);}} pagination={<TransactionPagination position="top" page={currentPage} count={shown.length} onPage={setPage}/>}/>

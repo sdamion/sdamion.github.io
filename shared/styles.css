@@ -72,9 +72,10 @@
 }
 .member-portfolio .portfolio-gain-summary { padding-left: 24px; border-left: 1px solid var(--line); }
 .member-portfolio .portfolio-gain-summary p { margin: 0; }
-.member-portfolio .portfolio-gain-total { display: grid; gap: 6px; font-variant-numeric: tabular-nums; }
-.member-portfolio .portfolio-gain-total > span { font-size: var(--tdsp-tile-detail-size); font-weight: 500; }
-.member-portfolio .portfolio-gain-total .pool-delegator-amount { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; }
+.member-portfolio .portfolio-gain-comparison :is(th, td) { width: 50%; padding: 10px 8px; text-align: left; vertical-align: top; font-variant-numeric: tabular-nums; }
+.member-portfolio .portfolio-gain-comparison .pool-delegator-amount { display: grid; gap: 4px; }
+.member-portfolio .portfolio-gain-comparison .small { margin-top: 6px; }
+.member-portfolio .portfolio-gain-result { display: grid; gap: 6px; }
 .member-portfolio .portfolio-timeline .price-history-chart-frame { height: 320px; }
 .member-portfolio .portfolio-timeline p { margin: 0; }
 @media (max-width: 900px) {
@@ -190,6 +191,12 @@ html[data-theme="dark"] .portfolio-dex-label { --portfolio-dex-color: #fb923c; }
     }
     .member-portfolio .table-shell td :is(input, select, button) { max-width: 100%; box-sizing: border-box; }
 }
+.member-portfolio .table-shell table.portfolio-gain-comparison { display: table; width: 100%; }
+.member-portfolio .table-shell .portfolio-gain-comparison thead { display: table-header-group; position: static; width: auto; height: auto; overflow: visible; clip-path: none; }
+.member-portfolio .table-shell .portfolio-gain-comparison tbody { display: table-row-group; }
+.member-portfolio .table-shell .portfolio-gain-comparison tr { display: table-row; }
+.member-portfolio .table-shell .portfolio-gain-comparison :is(th, td) { display: table-cell; width: 50%; font-size: 12px; }
+.member-portfolio .table-shell .portfolio-gain-comparison td::before { display: none; }
 .member-portfolio .portfolio-address-row {
     display: grid;
     grid-template-columns: minmax(90px, 0.8fr) minmax(120px, 1.2fr) auto;

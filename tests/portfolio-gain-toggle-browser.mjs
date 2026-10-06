@@ -19,7 +19,7 @@ const bundle=await build({stdin:{contents:`import {createRoot} from 'react-dom/c
 const browser=await chromium.launch({channel:'chrome',headless:true});
 try{
  const page=await browser.newPage();const errors=[];page.on('pageerror',e=>{errors.push(e.message);console.error(e.message);});
- await page.route('**/*',route=>route.fulfill({contentType:'text/html',body:'<div id="app"></div>'}));
+ await page.route('**/*',route=>new URL(route.request().url()).pathname.endsWith('/historical-btc-prices')?route.fulfill({contentType:'application/json',body:JSON.stringify({prices:[[Date.parse('2023-11-14'),25000],[Date.parse('2024-03-09'),60000]]})}):route.fulfill({contentType:'text/html',body:'<div id="app"></div>'}));
  await page.goto('http://127.0.0.1:8998/');
  await page.addScriptTag({content:await readFile('shared/runtime.js','utf8')});
  await page.evaluate(({id,other})=>{
@@ -67,33 +67,43 @@ try{
  await page.getByRole('button',{name:'Open ADA Gains/Loss',exact:true}).click();
  const gain=page.locator('#portfolio-gain-loss-overlay');
  const chart=gain.locator('canvas');
- await page.waitForFunction(()=>{const canvas=document.querySelector('#portfolio-gain-loss-overlay canvas');return canvas&&window.Chart.getChart(canvas)?.data.datasets.length===2;});
+ await page.waitForFunction(()=>{const canvas=document.querySelector('#portfolio-gain-loss-overlay canvas');return canvas&&window.Chart.getChart(canvas)?.data.datasets.length===4;});
  const values=await chart.evaluate(canvas=>window.Chart.getChart(canvas).data.datasets.map(d=>({name:d.label,values:d.data.map(p=>p.y)})));
- assert.deepEqual(values,[{name:'ADA IN',values:[100,100]},{name:'ADA OUT',values:[0,40]}]);
+ assert.deepEqual(values,[{name:'ADA IN',values:[100,100]},{name:'ADA OUT',values:[0,40]},{name:'BTC IN equivalent',values:[0.001,0.001]},{name:'BTC OUT equivalent',values:[0,0.0002]}]);
+ const btcChart=await chart.evaluate(canvas=>{const chart=window.Chart.getChart(canvas);return {axis:chart.options.scales.btc.position,colors:chart.data.datasets.slice(2).map(row=>row.borderColor)};});
+ assert.deepEqual(btcChart,{axis:'right',colors:['#f7931a','#f7931a']});
+ assert.match(await gain.locator('.portfolio-gain-summary').innerText(),/0\.0002 BTC/);
+ assert.match(await gain.locator('.portfolio-gain-summary').innerText(),/0\.001 BTC/);
  await page.setViewportSize({width:1440,height:1000});
  const overview=gain.locator('.portfolio-gain-overview');
  const summary=gain.getByRole('region',{name:'ADA Gains/Loss breakdown'});
  const filters=gain.getByRole('region',{name:'Transaction search options'});
  const graph=gain.getByRole('region',{name:'ADA IN and ADA OUT timeline graph'});
- for(const total of await summary.locator('.portfolio-gain-total').all()){
-   const neutral=await total.locator(':scope > span').evaluate(el=>getComputedStyle(el).color);
+ const comparison=summary.locator('.portfolio-gain-comparison');
+ assert.equal(await comparison.locator('th').first().innerText(),'ADA OUT');
+ assert.equal(await comparison.locator('th').last().innerText(),'ADA IN');
+ assert.ok((await summary.locator('.portfolio-gain-result').boundingBox()).y>=(await comparison.boundingBox()).y+(await comparison.boundingBox()).height,'gain/loss below comparison table');
+ for(const total of await comparison.locator('td').all()){
+   const neutral=await total.evaluate(el=>getComputedStyle(el).color);
    assert.equal(await total.locator('.pool-delegator-usd').evaluate(el=>getComputedStyle(el).color),neutral,'summary USD and labels stay neutral');
    assert.notEqual(await total.locator('.pool-delegator-amount > span').evaluate(el=>getComputedStyle(el).color),neutral,'summary ADA carries direction color');
  }
  assert.ok((await summary.boundingBox()).x>(await graph.boundingBox()).x,'summary is beside graph');
  assert.ok((await filters.boundingBox()).y>=(await overview.boundingBox()).y+(await overview.boundingBox()).height,'filters below complete overview');
- assert.ok((await gain.locator('table').boundingBox()).y>(await filters.boundingBox()).y,'table follows filters');
+ assert.ok((await gain.locator('table').last().boundingBox()).y>(await filters.boundingBox()).y,'transaction table follows filters');
  await page.screenshot({path:'/tmp/portfolio-gain-chart-desktop.png',fullPage:true});
  for(const width of [390,320]){
    await page.setViewportSize({width,height:844});
    await page.waitForFunction(()=>{const el=document.querySelector('.portfolio-gain-overview');return el&&el.scrollWidth<=el.clientWidth+1;});
    assert.ok((await summary.boundingBox()).y>(await graph.boundingBox()).y,'summary stacks below graph');
    assert.ok(await overview.evaluate(el=>el.scrollWidth<=el.clientWidth+1),'chart and summary fit mobile');
+   const cells=await comparison.locator('td').all();
+   assert.ok((await cells[1].boundingBox()).x>(await cells[0].boundingBox()).x,'IN and OUT remain side by side on mobile');
  }
  await page.screenshot({path:'/tmp/portfolio-gain-chart-mobile.png',fullPage:true});
  await gain.locator('input[name="gain-loss-from"]').fill('2024-01-01');
  await page.waitForFunction(()=>window.Chart.getChart(document.querySelector('#portfolio-gain-loss-overlay canvas'))?.data.datasets[0].data.length===1);
- assert.equal(await gain.locator('tbody tr').count(),1,'dates filter graph and table');
+ assert.equal(await gain.locator('table').last().locator('tbody tr').count(),1,'dates filter graph and table');
  await page.evaluate(()=>document.documentElement.dataset.theme='dark');
  await page.waitForFunction(()=>window.Chart.getChart(document.querySelector('#portfolio-gain-loss-overlay canvas'))?.data.datasets[1].borderColor==='#5eead4');
  assert.deepEqual(errors,[]);

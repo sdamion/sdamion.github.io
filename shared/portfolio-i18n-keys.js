@@ -1727,5 +1727,11 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
   ["Mint received", "portfolio_text_kind_mint_received"],
   ["Buy", "portfolio_text_kind_buy"],
   ["Sell", "portfolio_text_kind_sell"],
-  ["{shown} shown · {hidden} hidden", "portfolio_text_wallet_visibility_counts"]
+  ["{shown} shown · {hidden} hidden", "portfolio_text_wallet_visibility_counts"],
+  ["BTC equivalent", "portfolio_text_btc_equivalent"],
+  ["BTC IN equivalent", "portfolio_text_btc_in_equivalent"],
+  ["BTC OUT equivalent", "portfolio_text_btc_out_equivalent"],
+  ["Loading historical BTC prices…", "portfolio_text_btc_loading"],
+  ["Historical BTC prices unavailable", "portfolio_text_btc_unavailable"],
+  ["BTC equivalents use transfer-day ADA/USD and BTC/USD prices, not actual Bitcoin purchases.", "portfolio_text_btc_estimate"]
 ]);
