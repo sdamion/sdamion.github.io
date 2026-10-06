@@ -55,6 +55,12 @@ try{
  await holdingsCurrency.selectOption('USD');
  await page.getByRole('button',{name:'Open Assets Across Wallets',exact:true}).click();
  const toggle=page.getByRole('checkbox',{name:'Exclude Intersect badge from Assets Across Wallets',exact:true});
+ await toggle.waitFor();
+ const assetTable=page.locator('#portfolio-holdings-overlay .portfolio-holdings-table');
+ assert.equal(await assetTable.getByRole('columnheader',{name:'Exclude',exact:true}).count(),1);
+ assert.equal(await toggle.locator('xpath=ancestor::td').evaluate(cell=>cell.cellIndex),6,'exclusion is in its own column');
+ assert.equal(await assetTable.locator('td:first-child').getByRole('button',{name:/wallet addresses?/}).count(),0,'wallet address count is removed below asset images');
+ assert.doesNotMatch(await assetTable.innerText(),/Exclude from Assets Across Wallets/,'column uses compact checkboxes');
  await toggle.check();
  assert.match(await metric.innerText(),/4,564\.64/,'single exclusion updates the wallet valuation');
  assert.equal(await toggle.isChecked(),true);
