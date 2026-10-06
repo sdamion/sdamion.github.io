@@ -138,7 +138,9 @@ try{
  await closeHoldings();
  await selectionGain.click();
  const gain=page.locator('#portfolio-gain-loss-overlay');
- assert.equal(await gain.locator('.portfolio-gain-result .governance-card-detail').innerText(),'ADA comparison gain','ADA uses the same dynamic result label as BTC');
+ assert.equal(await gain.locator('.portfolio-gain-result .governance-card-detail').innerText(),'ADA Gain','ADA uses a concise result label');
+ assert.equal(await gain.locator('.portfolio-gain-comparison td').first().locator('.negative,.positive').count(),0,'ADA IN uses default color');
+ assert.equal(await gain.locator('.portfolio-gain-comparison td').last().locator('.portfolio-transfer-amount.positive').count(),1,'ADA OUT remains green');
  assert.match(await gain.locator('.portfolio-gain-result').innerText(),/42,708/,'ADA result rounded only for display');
  assert.match(await gain.locator('.portfolio-gain-result').innerText(),/10,678\.89/,'historical USD OUT plus current asset value minus historical USD IN');
  assert.equal(await gain.locator('.portfolio-gain-result .portfolio-transfer-amount.positive').count(),1,'positive result is styled as a gain');
@@ -201,7 +203,9 @@ try{
  for(const total of await comparison.locator('td').all()){
    const neutral=await total.evaluate(el=>getComputedStyle(el).color);
    assert.equal(await total.locator('.pool-delegator-usd').evaluate(el=>getComputedStyle(el).color),neutral,'summary USD and labels stay neutral');
-   assert.notEqual(await total.locator('.pool-delegator-amount > span').first().evaluate(el=>getComputedStyle(el).color),neutral,'summary ADA carries direction color');
+   const adaColor=await total.locator('.pool-delegator-amount > span').first().evaluate(el=>getComputedStyle(el).color);
+   if(await total.locator('.positive').count())assert.notEqual(adaColor,neutral,'summary ADA OUT is green');
+   else assert.equal(adaColor,neutral,'summary ADA IN uses default color');
  }
  assert.ok((await summary.boundingBox()).x>(await graph.boundingBox()).x,'summary is beside graph');
  assert.ok((await filters.boundingBox()).y>=(await overview.boundingBox()).y+(await overview.boundingBox()).height,'filters below complete overview');
@@ -257,6 +261,10 @@ try{
  assert.equal(await lossTile.locator('.governance-card-detail').innerText(),'CEX Transactions','negative result keeps the same tile title');
  assert.match(await lossTile.innerText(),/\$11\.00/);
  assert.equal(await lossTile.locator('.governance-card-title.negative').count(),1,'negative selected-currency result is red');
+ await lossTile.click();
+ assert.equal(await gain.locator('.portfolio-gain-result .governance-card-detail').innerText(),'ADA Loss');
+ assert.match(await gain.locator('.portfolio-gain-result .portfolio-comparison-crypto').innerText(),/^-/,'loss includes a minus sign');
+ await gain.getByRole('button',{name:'Back',exact:true}).click();
  await page.evaluate(()=>{window.fixture.infos[0].balance='0';window.fixture.infos[0].utxo_set=[];window.root.unmount();window.mount();});
  await lossTile.waitFor();
  assert.match(await lossTile.innerText(),/\$13\.00/,'complete empty portfolio still calculates OUT minus IN');

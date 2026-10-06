@@ -6,8 +6,9 @@ import {historicalAdaPrice} from './transaction-amounts.ts';
 export type ComparisonCrypto='ADA'|'BTC';
 export type ComparisonFiat='USD'|'EUR'|'JPY';
 export type ComparisonCurrency=ComparisonFiat|'ADA';
-export function comparisonResultLabel(amount:number|null):string{
-  return amount===null?'{crypto} comparison gain/loss':amount<0?'{crypto} comparison loss':'{crypto} comparison gain';
+export function comparisonResultLabel(amount:number|null,crypto:ComparisonCrypto='ADA'):string{
+  if(crypto==='BTC')return amount===null?'{crypto} comparison gain/loss':amount<0?'{crypto} comparison loss':'{crypto} comparison gain';
+  return amount===null?'{crypto} Gain/Loss':amount<0?'{crypto} Loss':'{crypto} Gain';
 }
 export type FxHistory=Record<string,Partial<Record<'EUR'|'JPY',number>>>;
 // ECB does not publish weekend/holiday rates. Use only a recent prior rate.

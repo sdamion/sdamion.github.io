@@ -12,7 +12,7 @@ export function GainLossTransaction({tx,fact,wallets,entries,history}:{tx:Tx;fac
   const exchanges=transactionExchangeWallets(fact,entries).filter(wallet=>wallet.direction===(incoming?'From':'To'));
   return <TransactionRow hash={tx.tx_hash} time={tx.block_time} price={amount.price} feeRaw={transactionNetworkFee(fact)}
     kind={incoming?'ADA IN':'ADA OUT'}
-    amount={<TransactionAmount ada={amount.ada} usd={amount.usd} tone={incoming?'negative':'positive'}/>}
+    amount={<TransactionAmount ada={amount.ada} usd={amount.usd} tone={incoming?'':'positive'}/>}
     wallets={<TransactionWallets labels={transactionWalletNames(fact,wallets)} exchanges={exchanges}/>}
   />;
 }

@@ -43,7 +43,7 @@ try{
  assert.match(await rows.nth(0).locator('td').nth(2).innerText(),/0/,'zero fees are not unavailable');
  assert.equal(await rows.nth(1).locator('td').nth(2).innerText(),'Unavailable');
  assert.match(await rows.nth(2).locator('td').nth(3).innerText(),/Bitvavo[\s\S]*Savings/);
- assert.equal(await rows.nth(2).locator('td').first().locator('strong.negative').count(),1);
+ assert.equal(await rows.nth(2).locator('td').first().locator('strong.negative,strong.positive').count(),0);
  assert.equal(await rows.nth(3).locator('td').first().locator('strong.positive').count(),1);
  assert.equal(await page.locator('a[href="https://cardanoscan.io/transaction/normal"]').count(),1);
  assert.equal(await page.locator('.portfolio-transfer-row--dex').count(),0);
@@ -55,7 +55,8 @@ try{
      const row=rows.nth(index);
      const ada=row.locator('.pool-delegator-amount > span').first();
      const usd=row.locator('.pool-delegator-usd');
-     assert.notEqual(await ada.evaluate(el=>getComputedStyle(el).color),await usd.evaluate(el=>getComputedStyle(el).color),'only ADA amount has the transfer tone');
+     if(index===2)assert.equal(await ada.evaluate(el=>getComputedStyle(el).color),await usd.evaluate(el=>getComputedStyle(el).color),'CEX ADA IN uses default color');
+     else assert.notEqual(await ada.evaluate(el=>getComputedStyle(el).color),await usd.evaluate(el=>getComputedStyle(el).color),'only ADA amount has the transfer tone');
      assert.equal(await usd.evaluate(el=>getComputedStyle(el).color),await row.locator('td').nth(4).evaluate(el=>getComputedStyle(el).color),'USD uses default detail color');
    }
    for(const index of [2,3]){

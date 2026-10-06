@@ -534,7 +534,7 @@ export default function Home({memberStake}:{memberStake:string}){
     </section>
 
     </AssetOverlay>}
-    {(section==='transactions'||section==='gain-loss')&&<PortfolioCurrencyContext.Provider value={currencyDisplay}><AssetOverlay id={section==='gain-loss'?'portfolio-gain-loss-overlay':'portfolio-transactions-overlay'} name={section==='gain-loss'?'ADA Gains/Loss':'Transactions'} onClose={()=>setSection(null)}>
+    {(section==='transactions'||section==='gain-loss')&&<PortfolioCurrencyContext.Provider value={currencyDisplay}><AssetOverlay id={section==='gain-loss'?'portfolio-gain-loss-overlay':'portfolio-transactions-overlay'} name={section==='gain-loss'?'CEX Transactions':'Transactions'} onClose={()=>setSection(null)}>
     {section==='gain-loss'&&<>
     <div className="portfolio-comparison-controls">
       <label className="small">{t('Crypto')}<select aria-label={t('Comparison cryptocurrency')} value={comparisonCrypto} onChange={event=>setComparisonCrypto(event.target.value as ComparisonCrypto)}><option value="ADA">ADA</option><option value="BTC">BTC</option></select></label>
@@ -546,12 +546,12 @@ export default function Home({memberStake}:{memberStake:string}){
       {snapshot&&<Table variant="comparison" className="portfolio-gain-comparison">
         <TableHeader><TableRow><TableHead translate="no">{comparisonCrypto} IN</TableHead><TableHead translate="no">{comparisonCrypto} OUT</TableHead></TableRow></TableHeader>
         <TableBody><TableRow>
-          <TableCell><ComparisonAmount amount={comparison?.incoming??null} value={comparison?.inFiat??null} crypto={comparisonCrypto} currency={comparisonFiat} tone="negative"/></TableCell>
+          <TableCell><ComparisonAmount amount={comparison?.incoming??null} value={comparison?.inFiat??null} crypto={comparisonCrypto} currency={comparisonFiat} tone=""/></TableCell>
           <TableCell><ComparisonAmount amount={comparison?.outgoing??null} value={comparison?.outFiat??null} crypto={comparisonCrypto} currency={comparisonFiat} tone="positive"/></TableCell>
         </TableRow></TableBody>
       </Table>}
       <div className="portfolio-gain-result">
-        <span translate="no" className="governance-card-detail">{t(comparisonResultLabel(comparisonResult.amount),{crypto:comparisonCrypto})}</span>
+        <span translate="no" className="governance-card-detail">{t(comparisonResultLabel(comparisonResult.amount,comparisonCrypto),{crypto:comparisonCrypto})}</span>
         <strong className="governance-card-title">{snapshot?<ComparisonAmount amount={comparisonResult.amount} value={comparisonResult.fiat} crypto={comparisonCrypto} currency={comparisonFiat}/>: 'Waiting for wallet balances'}</strong>
       </div>
       {snapshot&&comparisonCrypto==='BTC'&&<p className="small muted" role="status">{btc.status||'BTC equivalents use transfer-day ADA/USD and BTC/USD prices, not actual Bitcoin purchases.'}</p>}

@@ -43,6 +43,7 @@ test('cache upload status belongs to the Transactions tile rather than the refre
 test('CEX metric opens its shared transaction overlay without stale search or pagination',()=>{
   const app=source('App.tsx');
   assert.match(app,/<Metric label="CEX Transactions"[^\n]*onOpen=\{\(\)=>\{setQuery\(''\);setFilter\('all'\);setPage\(0\);setSection\('gain-loss'\);\}\}/);
+  assert.match(app,/name=\{section==='gain-loss'\?'CEX Transactions':'Transactions'\}/);
   const tile=app.split('\n').find(line=>line.includes('<Metric label="CEX Transactions"'));
   assert.doesNotMatch(tile,/note=|breakdown=|Bought|Sold/);
   assert.match(app,/<ComparisonAmount amount=\{comparison\?\.incoming\?\?null\}/);

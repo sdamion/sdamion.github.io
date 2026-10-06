@@ -23,7 +23,7 @@ export function CexTimeline({facts,entries,history,btcHistory=emptyRates,fxHisto
         const Chart=await host.TDSPCharts.load();
         if(stopped||!canvas.current)return;
         const defaults=siteChartDefaults(canvas.current),{grid}=defaults;
-        const green=defaults.positive,red=defaults.negative;
+        const green=defaults.positive,incomingColor=defaults.color;
         const i18n=(window as unknown as {TDSPI18n?:{translateText:(text:string)=>string;getLanguage:()=>string}}).TDSPI18n;
         const locale=i18n?.getLanguage()||'en';
         const fmt=(n:number)=>n.toLocaleString(locale,{maximumFractionDigits:crypto==='BTC'?8:6});
@@ -34,7 +34,7 @@ export function CexTimeline({facts,entries,history,btcHistory=emptyRates,fxHisto
         chart=new Chart(canvas.current,{
           type:'line',
           data:{datasets:[
-            {label:crypto+' IN',data:points.map(p=>({x:p.time*1000,y:p.incoming,fiat:p.inFiat})),borderColor:crypto==='BTC'?'#f7931a':red,backgroundColor:crypto==='BTC'?'#f7931a':red},
+            {label:crypto+' IN',data:points.map(p=>({x:p.time*1000,y:p.incoming,fiat:p.inFiat})),borderColor:crypto==='BTC'?'#f7931a':incomingColor,backgroundColor:crypto==='BTC'?'#f7931a':incomingColor},
             {label:crypto+' OUT',borderDash:crypto==='BTC'?[6,4]:[],data:points.map(p=>({x:p.time*1000,y:p.outgoing,fiat:p.outFiat})),borderColor:crypto==='BTC'?'#f7931a':green,backgroundColor:crypto==='BTC'?'#f7931a':green}
           ].map(dataset=>({...defaults.line,...dataset,stepped:'after',pointRadius:points.length===1?4:0}))},
           options:{responsive:true,maintainAspectRatio:false,animation:false,layout:{padding:{top:8,right:12}},interaction:{mode:'index',intersect:false},

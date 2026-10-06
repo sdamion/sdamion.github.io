@@ -7,7 +7,7 @@ import {AssetWalletAddresses} from './AssetWalletAddresses';
 import {PortfolioCurrencyContext,usePortfolioCurrency,transactionCurrency,formatPortfolioUsd,formatPortfolioAda,formatAdaNumber} from './portfolio-currency';
 import {usePortfolioText} from './use-portfolio-text';
 
-export function TransactionAmount({ada,usd,tone,time}:{ada:number|null;usd:number|null;tone?:'positive'|'negative';time?:number}){
+export function TransactionAmount({ada,usd,tone,time}:{ada:number|null;usd:number|null;tone?:'positive'|'negative'|'';time?:number}){
   const context=usePortfolioCurrency();
   const display=time===undefined?context:transactionCurrency(context,time);
   return ada===null?<>—</>:<strong translate="no" className={`portfolio-transfer-amount ${tone??(ada>=0?'positive':'negative')}`}>{display?display.currency==='ADA'?formatPortfolioAda(Math.abs(ada),display):formatPortfolioUsd(usd===null?null:Math.abs(usd),display):<AdaUsdAmount ada={ada} usd={usd}/>}</strong>;
