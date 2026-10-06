@@ -332,6 +332,17 @@ try{
  assert.equal(await page.locator('#portfolio-holdings-overlay .tdsp-tile-grid').count(),0,'collection tiles are removed');
  assert.equal(await page.locator('#portfolio-holdings-overlay tbody tr').count(),1,'grouped assets start collapsed');
  assert.equal(await collection.getAttribute('aria-expanded'),'false');
+ for(const width of [1280,390]){
+   await page.setViewportSize({width,height:900});
+   const bounds=await page.locator('#portfolio-holdings-overlay').evaluate(overlay=>{
+     const table=overlay.querySelector('.table-shell').getBoundingClientRect();
+     const note=overlay.querySelector('.table-note').getBoundingClientRect();
+     return {left:Math.abs(table.left-note.left),width:Math.abs(table.width-note.width),fits:note.right<=innerWidth};
+   });
+   assert.ok(bounds.left<1&&bounds.width<1,'table note spans and aligns with the full table width');
+   assert.ok(bounds.fits,'table note fits the mobile viewport');
+ }
+ await page.setViewportSize({width:1280,height:900});
  await collection.click();await toggle.waitFor();
  assert.equal(await page.locator('#portfolio-holdings-overlay tbody tr').count(),3,'dropdown contains both assets in the same table');
  assert.equal(await collection.getAttribute('aria-expanded'),'true');
