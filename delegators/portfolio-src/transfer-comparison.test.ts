@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {transferComparison,comparisonNet,fiatRate} from './transfer-comparison.ts';
+import {transferComparison,comparisonNet,fiatRate,transferFiatValue} from './transfer-comparison.ts';
 import type {Fact} from './core.ts';
 const time=Date.parse('2023-01-06')/1000;
 const entries=[{address:'exchange',name:'Exchange'}];
@@ -21,6 +21,16 @@ assert.equal(yen.incoming,100);assert.equal(yen.outgoing,100);
 assert.equal(yen.inFiat,6500);assert.equal(yen.outFiat,13000);
 const missing=transferComparison([input,output],entries,ada,{'2023-01-06':10000},fx,'BTC','USD').at(-1)!;
 assert.equal(missing.outgoing,null,'missing price is not zero');assert.equal(missing.incoming,0.005);
+assert.equal(missing.outFiat,null,'no currency amount when the selected crypto amount cannot be priced');
+assert.equal(transferFiatValue(0.005,10000,0.9),45,'selected crypto quantity times same-day crypto and FX price');
+const sameDay=fact('c','in',60),nextDay=fact('d','in',86400);
+const variedFx={'2023-01-06':{EUR:0.9,JPY:130},'2023-01-07':{EUR:0.8,JPY:140}};
+for(const crypto of ['ADA','BTC'] as const){
+  for(const [currency,expected] of [['USD',200],['EUR',170],['JPY',27000]] as const){
+    const total=transferComparison([input,sameDay,nextDay],entries,ada,btc,variedFx,crypto,currency).at(-1)!;
+    assert.equal(total.inFiat,expected,`${crypto}/${currency}: aggregate each transfer at its own day's price`);
+  }
+}
 assert.equal(transferComparison([input],entries,ada,btc,{},'ADA','EUR')[0].inFiat,null);
 assert.equal(transferComparison([input],entries,{},btc,fx,'BTC','USD')[0].incoming,null);
 console.log('PASS: crypto/fiat selection, dated prices, weekend FX, deduplication, net balances and missing rates.');
