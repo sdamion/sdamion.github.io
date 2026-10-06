@@ -32,11 +32,13 @@ try{
  await page.evaluate(({id,other})=>{
    const settings=new Map([['tdsp-member-basis:stake1uxythldc4nmx45tvnwsqu4h5pyjd94udytm6f0tgnr44vecjd8vel',JSON.stringify({[id]:{average:'0'},[other]:{average:'0'}})]]);
    window.fixtureStorage={getItem:key=>settings.get(key)??null,setItem:(key,value)=>settings.set(key,value),keys:()=>[...settings.keys()]};
-   window.fixture={groups:{},infos:[{address:'wallet',balance:'0',utxo_set:[{tx_hash:'fixture',tx_index:0,value:'0',asset_list:[id,other].map(id=>({policy_id:id.slice(0,56),asset_name:id.slice(56),quantity:'1',decimals:0}))}]}],facts:{},txs:[],markets:{[id]:{token_id:id,name:'Intersect badge',decimals:0,price_by_usd:6127.25},[other]:{token_id:other,name:'Other asset',decimals:0,price_by_usd:4564.64}},adaUsd:0.25,history:{},complete:true};
+   window.fixture={groups:{},infos:[{address:'wallet',balance:'0',utxo_set:[{tx_hash:'fixture',tx_index:0,value:'0',asset_list:[id,other].map(id=>({policy_id:id.slice(0,56),asset_name:id.slice(56),quantity:'1',decimals:0}))}]}],facts:{},txs:[],markets:{[id]:{token_id:id,name:'Intersect badge',decimals:0,is_nft:true,price_by_usd:6127.25},[other]:{token_id:other,name:'Other asset',decimals:0,is_nft:true,price_by_usd:4564.64}},adaUsd:0.25,history:{},complete:true};
    window.createUniversalOverlay=options=>{const overlay=document.createElement('section');overlay.id=options.id;const back=document.createElement('button');back.textContent='Back';back.onclick=options.closeOverlay;overlay.append(back,...options.bodyNodes);document.body.append(overlay);return {overlay};};
  },{id,other});
  await page.addScriptTag({type:'module',content:bundle.outputFiles[0].text});
  const metric=page.getByRole('button',{name:'Open Assets Across Wallets',exact:true});
+ const openNFTs=async()=>{await metric.click();await page.getByRole('button',{name:'Open NFTs',exact:true}).click();};
+ const closeHoldings=async()=>{await page.locator('#portfolio-holdings-overlay').getByRole('button',{name:'Back',exact:true}).click();await page.getByRole('button',{name:'Open NFTs',exact:true}).waitFor();await page.locator('#portfolio-holdings-overlay').getByRole('button',{name:'Back',exact:true}).click();};
  assert.equal(await page.locator('main .governance-card-detail').filter({hasText:'Assets Gains/Loss'}).count(),0,'redundant asset gain/loss tile removed');
  await page.getByRole('button',{name:'Open Assets Across Wallets',exact:true}).waitFor();
  await page.waitForFunction(()=>document.querySelector('main')?.textContent.includes('$10,691.89'));
@@ -54,6 +56,11 @@ try{
  assert.equal(await page.locator('#portfolio-asset-overlay').count(),0,'currency selection does not open the holdings overlay');
  await holdingsCurrency.selectOption('USD');
  await page.getByRole('button',{name:'Open Assets Across Wallets',exact:true}).click();
+ const nftTile=page.getByRole('button',{name:'Open NFTs',exact:true});
+ await nftTile.waitFor();
+ assert.match(await nftTile.innerText(),/10,691\.89/,'NFT tile totals match included NFTs');
+ assert.match(await page.getByRole('button',{name:'Open FTs',exact:true}).innerText(),/\$0\.00/,'empty FT group shows zero after a complete scan');
+ await nftTile.click();
  const toggle=page.getByRole('checkbox',{name:'Exclude Intersect badge from Assets Across Wallets',exact:true});
  await toggle.waitFor();
  const assetTable=page.locator('#portfolio-holdings-overlay .portfolio-holdings-table');
@@ -98,7 +105,7 @@ try{
  assert.match(await page.locator('.portfolio-gain-result').innerText(),/\$4,551\.64/,'BTC comparison also excludes disabled asset value');
  await page.locator('#portfolio-gain-loss-overlay').getByRole('combobox',{name:'Comparison cryptocurrency'}).selectOption('ADA');
  await page.locator('#portfolio-gain-loss-overlay').getByRole('button',{name:'Back',exact:true}).click();
- await metric.click();
+ await openNFTs();
  await toggle.uncheck();
  assert.match(await selectionGain.innerText(),/\$10,678\.89/,'enabling an asset immediately restores its current value');
  await toggle.check();
@@ -108,7 +115,7 @@ try{
  assert.match(await metric.innerText(),/\$0\.00/,'the same exclusion controls holdings and gain/loss');
  await toggle.uncheck();
  await page.getByRole('checkbox',{name:'Exclude Other asset from Assets Across Wallets',exact:true}).uncheck();
- await page.locator('#portfolio-holdings-overlay').getByRole('button',{name:'Back',exact:true}).click();
+ await closeHoldings();
  await selectionGain.click();
  const gain=page.locator('#portfolio-gain-loss-overlay');
  assert.equal(await gain.locator('.portfolio-gain-result .governance-card-detail').innerText(),'ADA comparison gain','ADA uses the same dynamic result label as BTC');
@@ -202,7 +209,7 @@ try{
  assert.equal(await gain.locator('.portfolio-gain-result .governance-card-detail').innerText(),'BTC comparison gain','current wallet and asset value are added to OUT minus IN');
  await gain.getByRole('button',{name:'Back',exact:true}).click();
  await holdingsCurrency.selectOption('EUR');
- await page.getByRole('button',{name:'Open Assets Across Wallets',exact:true}).click();
+ await openNFTs();
  const holdings=page.locator('#portfolio-holdings-overlay');
  assert.match(await holdings.locator('thead').innerText(),/Value · EUR/,'holdings columns use global currency');
  assert.match(await holdings.locator('tbody').innerText(),/€4,901\.80/,'asset value uses global currency');
@@ -210,7 +217,7 @@ try{
  assert.match(await holdings.locator('thead').innerText(),/Value · JPY/);
  assert.match(await holdings.locator('tbody').innerText(),/¥888,451/,'open holdings update immediately with header currency');
  await holdingsCurrency.selectOption('EUR');
- await holdings.getByRole('button',{name:'Back',exact:true}).click();
+ await closeHoldings();
  await page.getByRole('button',{name:'Open Transactions',exact:true}).click();
  const transactions=page.locator('#portfolio-transactions-overlay');
  assert.match(await transactions.locator('thead').innerText(),/EUR Amount/,'transaction amount header follows global currency');
@@ -244,7 +251,7 @@ try{
    return await lossTile.locator('.governance-card-detail').innerText()==='Loss'?-value:value;
  };
  const beforeFloor=await signedAda();
- await metric.click();
+ await openNFTs();
  assert.equal(await toggle.isChecked(),true,'an excluded asset displays its actual disabled state');
  await toggle.uncheck();
  assert.equal((await signedAda())-beforeFloor,25000,'including the exact Intersect NFT adds 25,000 ADA to signed gain/loss');
@@ -255,6 +262,27 @@ try{
  await lossTile.waitFor();
  await holdingsCurrency.selectOption('ADA');
  assert.equal((await signedAda())-beforeFloor,25000,'re-inclusion survives reload and clears the old global exclusion');
+ await page.evaluate(({id,other})=>{
+   window.fixtureStorage.setItem('tdsp-member-basis:stake1uxythldc4nmx45tvnwsqu4h5pyjd94udytm6f0tgnr44vecjd8vel','{}');
+   window.fixture.infos[0].balance='100000000';window.fixture.infos[0].utxo_set[0].value='100000000';
+   window.fixture.markets[other].is_nft=false;
+   window.root.unmount();window.mount();
+ },{id,other});
+ await metric.waitFor();
+ await metric.click();
+ await page.getByRole('button',{name:'Open FTs',exact:true}).waitFor();
+ assert.match(await page.getByRole('button',{name:'Open FTs',exact:true}).innerText(),/\$26\.00/,'FT total includes ADA and fungible token value');
+ assert.match(await page.getByRole('button',{name:'Open NFTs',exact:true}).innerText(),/\$6,250\.00/,'NFT total only includes NFT value');
+ await page.getByRole('button',{name:'Open FTs',exact:true}).click();
+ await page.getByRole('checkbox',{name:'Exclude Other asset from Assets Across Wallets',exact:true}).waitFor();
+ assert.doesNotMatch(await page.locator('#portfolio-holdings-overlay tbody').innerText(),/Intersect badge/,'FT list excludes NFTs');
+ await page.locator('#portfolio-holdings-overlay').getByRole('button',{name:'Back',exact:true}).click();
+ await page.getByRole('button',{name:'Open NFTs',exact:true}).click();
+ await toggle.check();
+ await page.locator('#portfolio-holdings-overlay').getByRole('button',{name:'Back',exact:true}).click();
+ await page.getByRole('button',{name:'Open NFTs',exact:true}).waitFor();
+ assert.match(await page.getByRole('button',{name:'Open NFTs',exact:true}).innerText(),/\$0\.00/,'NFT total immediately excludes disabled NFT');
+ assert.match(await page.getByRole('button',{name:'Open FTs',exact:true}).innerText(),/\$26\.00/,'NFT exclusion does not alter FT total');
  assert.deepEqual(errors,[]);
  console.log('PASS: asset exclusion persistence; real chart totals, theme, responsive summary layout and date-filtered graph/table.');
 }finally{await browser.close();}

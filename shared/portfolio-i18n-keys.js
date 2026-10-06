@@ -1757,5 +1757,7 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
   ["Cumulative {crypto} IN / OUT · Transfer-day {currency} estimates · Classified transfers only", "portfolio_text_comparison_graph_note"],
   ["No outgoing CEX transfers matched in the analysed history. Check the saved destination addresses if transfers are missing.", "portfolio_text_comparison_no_out"],
   ["Exclude from Assets Across Wallets", "portfolio_text_exclude_assets"],
-  ["Exclude {name} from Assets Across Wallets", "portfolio_text_exclude_asset_name"]
+  ["Exclude {name} from Assets Across Wallets", "portfolio_text_exclude_asset_name"],
+  ["FTs", "portfolio_text_fts"],
+  ["NFTs", "portfolio_text_nfts"]
 ]);

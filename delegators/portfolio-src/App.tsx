@@ -97,6 +97,7 @@ export default function Home({memberStake}:{memberStake:string}){
   const [missingCostsOnly,setMissingCostsOnly]=useState(false);
   const [selectedAsset,setSelectedAsset]=useState<string|null>(null);
   const [section,setSection]=useState<'wallets'|'holdings'|'transactions'|'gain-loss'|'unknown'|null>(null);
+  const [holdingsGroup,setHoldingsGroup]=useState<'FTs'|'NFTs'|null>(null);
   const btc=useBtcHistory(section==='gain-loss');
   const [comparisonCrypto,setComparisonCrypto]=useState<ComparisonCrypto>('ADA');
   const [holdingsCurrency,setHoldingsCurrency]=useState<'ADA'|ComparisonFiat>('USD');
@@ -424,6 +425,9 @@ export default function Home({memberStake}:{memberStake:string}){
     return {...h,name:m?.name||m?.ticker||assetName(h.id),qty,price,value,cost,pnl,buyAverage,estimatedPurchaseCost:!!estimated,manualPrice,quote,automaticDecimals,automatic:avg===null&&cost!==null};
   }).sort((a,b)=>a.id==='lovelace'?-1:b.id==='lovelace'?1:(b.value??-1)-(a.value??-1));
   const included=includedAssets(rows,overrides),excludedCount=rows.length-included.length;
+  const assetGroup=(id:string)=>id!=='lovelace'&&snapshot?.markets[id]?.is_nft===true?'NFTs':'FTs';
+  const groupRows=holdingsGroup?rows.filter(row=>assetGroup(row.id)===holdingsGroup):rows;
+  const groupIncluded=holdingsGroup?included.filter(row=>assetGroup(row.id)===holdingsGroup):included;
   const valued=included.filter(r=>r.value!==null),covered=included.filter(r=>r.pnl!==null);
   const subtotal=valued.reduce((s,r)=>s+(r.value||0),0);
   const ada=Number(holdings.find(h=>h.id==='lovelace')?.raw||0)/1e6;
@@ -470,7 +474,7 @@ export default function Home({memberStake}:{memberStake:string}){
     </div>
   </div>
     <section className="portfolio-section"><div className="tdsp-tile-grid">
-      <MenuTile title="Assets Across Wallets" value={holdingsDisplay} onOpen={()=>setSection('holdings')}>
+      <MenuTile title="Assets Across Wallets" value={holdingsDisplay} onOpen={()=>{setHoldingsGroup(null);setSection('holdings');}}>
         <p className="small muted">{t('{done} / {total} assets valued',{done:valued.length,total:included.length})}{excludedCount?' · '+t('{count} excluded',{count:excludedCount}):''}</p>
         {(holdingsCurrency==='EUR'||holdingsCurrency==='JPY')&&holdingsValue===null&&<p className="small muted" role="status">{t(fx.status||'Historical exchange rates unavailable')}</p>}
       </MenuTile>
@@ -504,14 +508,20 @@ export default function Home({memberStake}:{memberStake:string}){
     </section>}
     byron={<ByronExchanges facts={classifiedFacts} entries={cexAddresses} owned={ownedAddresses} wallets={displayWallets} history={snapshot?.history||{}} markets={snapshot?.markets||{}} complete={snapshot?.complete===true} onChange={saveCexAddresses}/>}/>
     </AssetOverlay>}
-    {section==='holdings'&&<AssetOverlay id="portfolio-holdings-overlay" name="Assets Across Wallets" onClose={()=>setSection(null)}>
+    {section==='holdings'&&<AssetOverlay id="portfolio-holdings-overlay" name={holdingsGroup||'Assets Across Wallets'} onClose={()=>holdingsGroup?setHoldingsGroup(null):setSection(null)}>
     <section className="portfolio-section">
+      {!holdingsGroup&&<div className="tdsp-tile-grid">{(['FTs','NFTs'] as const).map(group=>{
+        const assets=rows.filter(row=>assetGroup(row.id)===group),active=includedAssets(assets,overrides),priced=active.filter(row=>row.value!==null);
+        const total=priced.length?priced.reduce((sum,row)=>sum+(row.value??0),0):snapshot?.complete&&active.length===0?0:null;
+        return <MenuTile key={group} title={group} value={formatPortfolioUsd(total,currencyDisplay)} onOpen={()=>setHoldingsGroup(group)}><p className="small muted">{t('{done} / {total} assets valued',{done:priced.length,total:active.length})}{assets.length>active.length?' · '+t('{count} excluded',{count:assets.length-active.length}):''}</p></MenuTile>;
+      })}</div>}
+      {holdingsGroup&&<>
       <button type="button" className="governance-vote-secondary" disabled={busy||!snapshot} onClick={()=>void refreshAssetPurchases()}>Refresh all purchase data</button>
       {purchaseProgress&&<div aria-live="polite"><p className="small muted" role="status">{status}</p><div className="section-heading"><span className="governance-vote-bar-track" style={{flex:1}} role="progressbar" aria-label="Purchase transactions checked" aria-valuemin={0} aria-valuemax={purchaseProgress.total} aria-valuenow={purchaseProgress.done}><span className="governance-vote-bar-fill governance-vote-bar-fill--yes" style={{flexBasis:`${purchaseProgress.done/purchaseProgress.total*100}%`}}/></span><span className="tdsp-bar-legend">{purchaseProgress.done} / {purchaseProgress.total}</span></div></div>}
       {error&&<p role="alert" className="negative">{error}</p>}
-      <label className="small"><input type="checkbox" checked={missingCostsOnly} onChange={e=>setMissingCostsOnly(e.target.checked)}/> Show holdings with missing purchase cost ({valuationCoverage(included).missingCost})</label>
+      <label className="small"><input type="checkbox" checked={missingCostsOnly} onChange={e=>setMissingCostsOnly(e.target.checked)}/> Show holdings with missing purchase cost ({valuationCoverage(groupIncluded).missingCost})</label>
       {payments.errors.length>0&&<p role="status" className="negative">Some saved payment links cannot be applied to the loaded history. Open the asset image to review its purchase payments.</p>}
-      <Table className="portfolio-holdings-table"><TableHeader><TableRow>{['Asset','Balance','Price · USD','Value · USD','Average buy · USD','Gain / loss','Exclude'].map(label=><TableHead translate="no" key={label}>{t(label).replace('USD',holdingsCurrency)}</TableHead>)}</TableRow></TableHeader><TableBody>{rows.filter(r=>!missingCostsOnly||(r.cost===null&&(r.id==='lovelace'||overrides[r.id]?.excluded!==true))).map(r=><TableRow key={r.id}>
+      <Table className="portfolio-holdings-table"><TableHeader><TableRow>{['Asset','Balance','Price · USD','Value · USD','Average buy · USD','Gain / loss','Exclude'].map(label=><TableHead translate="no" key={label}>{t(label).replace('USD',holdingsCurrency)}</TableHead>)}</TableRow></TableHeader><TableBody>{groupRows.filter(r=>!missingCostsOnly||(r.cost===null&&(r.id==='lovelace'||overrides[r.id]?.excluded!==true))).map(r=><TableRow key={r.id}>
         <TableCell><AssetImage id={r.id} name={r.name} market={snapshot?.markets[r.id]} onOpen={()=>setSelectedAsset(r.id)}/></TableCell>
         <TableCell>{r.qty===null?`${r.raw} raw units`:num(r.qty)}{r.id!=='lovelace'&&r.automaticDecimals==null&&<label className="small muted">Token decimals<Input aria-label={`Token decimals for ${r.name}`} type="number" min="0" max="30" step="1" value={overrides[r.id]?.decimals??''} onChange={e=>updateOverride(r.id,'decimals',e.target.value)} placeholder="Required to calculate value"/></label>}</TableCell>
         <TableCell>{r.price!==null?(r.quote.source==='wayup'||r.quote.source==='fallback'?'≈ ':'')+usd(r.price):'Unavailable'}<div className="small muted">{r.quote.source==='manual'?'Your price':r.quote.source==='wayup'?<a href={`https://www.wayup.io/collection/${r.id.slice(0,56)}`} target="_blank" rel="noreferrer">Wayup collection floor · {num(r.quote.ada!)} ADA{r.quote.stale?' · Last known quote (stale)':''} · estimate, not a sale guarantee</a>:r.quote.source==='fallback'?'User-defined fallback, not a market quote':r.price!==null?'Market estimate':''}</div><details><summary translate="no" className="small">{t('Set current price')} (USD)</summary><Input aria-label={`Current USD price for ${r.name}`} type="number" min="0" step="any" value={overrides[r.id]?.price||''} onChange={e=>updateOverride(r.id,'price',e.target.value)} placeholder="Use market quote"/></details></TableCell>
@@ -519,8 +529,9 @@ export default function Home({memberStake}:{memberStake:string}){
         <TableCell>{r.id==='lovelace'?<><strong>{adaLive?.averageReceiptUsd!=null?(adaLive.provisional?'≈ ':'')+formatPortfolioUsd(adaLive.averageReceiptUsd,currencyDisplay,6):'—'}</strong><div className="small muted">All incoming ADA · weighted receipt-date prices{adaLive?.provisional?' · Partial history':''}</div>{!!adaLive?.missingReceiptAda&&<div className="small muted">Historical prices missing for {num(adaLive.missingReceiptAda)} ADA</div>}{r.cost!==null?<div className="small muted">Remaining cost for gain/loss: {usd(r.cost)}</div>:<div className="small muted">{adaBasisStatus}</div>}</>:<><strong>{r.buyAverage!==null?usd(r.buyAverage):'Unavailable'}</strong><div className="small muted">{parseAmount(overrides[r.id]?.average)!==null?'Your average cost':r.buyAverage!==null?'Known purchases · weighted historical USD cost':r.qty===null?'Token decimals required for per-unit price':'Purchase cost or historical USD price missing'}</div><details><summary translate="no" className="small">{t('Set average buy price')} (USD)</summary><Input className="cost-input" aria-label={`Average buy price in USD for ${r.name}`} type="number" min="0" step="any" value={overrides[r.id]?.average||''} onChange={e=>updateOverride(r.id,'average',e.target.value)} placeholder="Use calculated purchase cost"/></details></>}</TableCell>
         <TableCell className={overrides[r.id]?.excluded||r.pnl===null?'muted':r.pnl>=0?'positive':'negative'}>{r.pnl===null?'—':((r.id==='lovelace'&&provisional)||r.estimatedPurchaseCost?'≈ ':'')+signed(r.pnl)}{r.estimatedPurchaseCost&&<div className="small muted">Known purchase average · estimated cost</div>}{r.pnl===null&&r.value!==null&&<div className="small muted">Purchase cost required for gain / loss</div>}{r.pnl!==null&&r.cost!==null&&r.cost>0&&<div className="small">{num(r.pnl/r.cost*100,2)}%{r.id==='lovelace'&&provisional?' · provisional':''}</div>}</TableCell>
         <TableCell>{r.id!=='lovelace'&&<AssetExclusionToggle compact name={r.name} excluded={overrides[r.id]?.excluded===true} onChange={excluded=>excludeAsset(r.id,excluded)}/>}</TableCell>
-      </TableRow>)}</TableBody></Table>{!rows.length&&<p className="empty">{busy?'Fetching balances…':'No unspent holdings at the tracked addresses.'}</p>}
+      </TableRow>)}</TableBody></Table>{!groupRows.length&&<p className="empty">{busy?'Fetching balances…':'No unspent holdings at the tracked addresses.'}</p>}
       <p className="small muted table-note">Remaining cost uses the same calculation during and after refresh. ADA history must reconcile with the wallet balance; token lots must match the current holding. Missing history or receipt prices are not treated as zero. Values update as new facts and prices arrive, not because refresh finishes. Sends, spends and fees remove proportional ADA cost; internal transfers never reset the average. Daily prices approximate receipt-time prices. This is your receipt-price benchmark, not an exchange execution price or tax calculation. Token costs use FIFO trades, linked mint payments or your entry. Performance excludes realised gains; current holdings already reflect fees.</p>
+      </>}
     </section>
 
     </AssetOverlay>}
