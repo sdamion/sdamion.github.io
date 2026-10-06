@@ -6,7 +6,7 @@ import {adaToLovelace,mintPayments,paymentBudget} from './mint-payments';
 import type {PaymentLink} from './mint-payments';
 import {assetTransactions} from './asset-transactions';
 import {usePortfolioText} from './use-portfolio-text';
-import {usePortfolioCurrency,formatPortfolioUsd} from './portfolio-currency';
+import {usePortfolioCurrency,formatPortfolioUsd,formatAdaNumber} from './portfolio-currency';
 
 export function PaymentLinks({id,facts,links,acquisitions,history={},onSave,loading=false}:{id:string;facts:Fact[];links:PaymentLink[];acquisitions:Acquisitions;history?:Record<string,number>;onSave:(links:PaymentLink[])=>void;loading?:boolean}){
   const t=usePortfolioText();
@@ -28,7 +28,7 @@ export function PaymentLinks({id,facts,links,acquisitions,history={},onSave,load
     {transactions.map(tx=><div className="governance-detail-row" key={tx.hash}>
       <a translate="no" href={`https://cardanoscan.io/transaction/${tx.hash}`} target="_blank" rel="noreferrer">{new Date(tx.time*1000).toLocaleDateString()} · {t(tx.kind)} · {short(tx.hash)}</a>
       <span translate="no" className="small">{t('{count} raw asset units',{count:tx.raw})}</span>
-      {tx.costAda!==null?<span translate="no" className="small">{t('Purchase cost: ₳ {amount}',{amount:tx.costAda.toLocaleString(undefined,{maximumFractionDigits:6})})}</span>:BigInt(tx.raw)>0n&&<span className="small muted">Purchase cost not linked</span>}
+      {tx.costAda!==null?<span translate="no" className="small">{t('Purchase cost: ₳ {amount}',{amount:formatAdaNumber(tx.costAda)})}</span>:BigInt(tx.raw)>0n&&<span className="small muted">Purchase cost not linked</span>}
       {tx.costAda!==null&&<span translate="no" className="small muted">{tx.costUsd!==null?t('Historical purchase cost: {amount}',{amount:display?formatPortfolioUsd(tx.costUsd,display):tx.costUsd.toLocaleString(undefined,{style:'currency',currency:'USD'})}):t('Historical ADA/USD price missing for {date}. Refresh purchase data to retry.',{date:new Date(tx.costTime*1000).toISOString().slice(0,10)})}</span>}
       {tx.paymentHash&&tx.paymentHash!==tx.hash&&<a translate="no" className="small" href={`https://cardanoscan.io/transaction/${tx.paymentHash}`} target="_blank" rel="noreferrer">{t('Payment: {hash}',{hash:short(tx.paymentHash)})}</a>}
     </div>)}

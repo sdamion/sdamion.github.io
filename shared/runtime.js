@@ -331,7 +331,7 @@
     function formatAdaFromLovelace(value, options = {}) {
         const number = Number(value);
         if (!Number.isFinite(number)) return options.fallback || 'N/A';
-        const maximumFractionDigits = Number.isInteger(options.maximumFractionDigits) ? options.maximumFractionDigits : 0;
+        const maximumFractionDigits = Math.abs(number / 1_000_000) >= 1 ? 0 : 2;
         return `₳ ${new Intl.NumberFormat('en-US', { maximumFractionDigits }).format(number / 1_000_000)}`;
     }
 
@@ -394,11 +394,15 @@
             || (/MacIntel|Macintosh/i.test(`${device.platform || ''} ${ua}`) && device.maxTouchPoints > 1);
     }
 
+    function formatAdaNumber(ada, locale = 'en-US') {
+        return new Intl.NumberFormat(locale, { maximumFractionDigits: Math.abs(ada) >= 1 ? 0 : 2 }).format(ada);
+    }
+
     function formatAdaUsdAmount(ada, usd = null) {
         const valid = value => typeof value === 'number' && Number.isFinite(value);
         const tone = value => !valid(value) || value === 0 ? '' : value < 0 ? 'negative' : 'positive';
         return {
-            ada: valid(ada) ? `₳ ${new Intl.NumberFormat('en-US', { maximumFractionDigits: 6 }).format(Math.abs(ada))}` : '—',
+            ada: valid(ada) ? `₳ ${formatAdaNumber(Math.abs(ada))}` : '—',
             usd: valid(usd) ? `≈ $${new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(usd))}` : '',
             adaTone: tone(ada), usdTone: tone(usd)
         };
@@ -842,6 +846,7 @@
         formatDelegatorUsd,
         isMobileDevice,
         formatAdaUsdAmount,
+        formatAdaNumber,
         createAdaUsdAmount,
         createDelegatorAmount,
         formatPercentageValue,

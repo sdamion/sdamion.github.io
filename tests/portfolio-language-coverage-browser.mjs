@@ -39,6 +39,7 @@ try{
   await route.fulfill({contentType:locale?'text/plain':'text/html',body:locale?await readFile('locales/'+locale[1]+'.toml','utf8'):'<div class="member-portfolio" id="app"></div>'});
  });
  await page.goto('http://127.0.0.1:8997/');
+ await page.addScriptTag({content:await readFile('shared/runtime.js','utf8')});
  await page.addScriptTag({type:'module',content:bundle.outputFiles[0].text});
  await page.locator('#progress').waitFor();
  for(const file of ['shared/portfolio-i18n-keys.js','shared/portfolio-i18n.js','shared/i18n.js'])await page.addScriptTag({content:await readFile(file,'utf8')});

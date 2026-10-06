@@ -50,7 +50,7 @@ try{
  await holdingsCurrency.selectOption('JPY');
  assert.match(await metric.innerText(),/¥1,550,324/);
  await holdingsCurrency.selectOption('ADA');
- assert.match(await metric.innerText(),/₳ 42,767\.56/,'current value converted into ADA');
+ assert.match(await metric.innerText(),/₳ 42,768/,'current ADA value above one is displayed without decimals');
  assert.equal(await page.locator('#portfolio-asset-overlay').count(),0,'currency selection does not open the holdings overlay');
  await holdingsCurrency.selectOption('USD');
  await page.getByRole('button',{name:'Open Assets Across Wallets',exact:true}).click();
@@ -85,7 +85,7 @@ try{
  await page.getByRole('button',{name:'Open ADA Gains/Loss',exact:true}).click();
  const gain=page.locator('#portfolio-gain-loss-overlay');
  assert.equal(await gain.locator('.portfolio-gain-result .governance-card-detail').innerText(),'ADA comparison gain','ADA uses the same dynamic result label as BTC');
- assert.match(await gain.locator('.portfolio-gain-result').innerText(),/42,707\.56/,'ADA OUT plus current asset value converted to ADA minus ADA IN');
+ assert.match(await gain.locator('.portfolio-gain-result').innerText(),/42,708/,'ADA result rounded only for display');
  assert.match(await gain.locator('.portfolio-gain-result').innerText(),/10,678\.89/,'historical USD OUT plus current asset value minus historical USD IN');
  assert.equal(await gain.locator('.portfolio-gain-result .portfolio-transfer-amount.positive').count(),1,'positive result is styled as a gain');
  await holdingsCurrency.selectOption('EUR');
