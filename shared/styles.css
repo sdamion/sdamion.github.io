@@ -214,7 +214,7 @@ html[data-theme="dark"] .portfolio-dex-label { --portfolio-dex-color: #fb923c; }
 .member-portfolio .table-shell .portfolio-gain-comparison thead { display: table-header-group; position: static; width: auto; height: auto; overflow: visible; clip-path: none; }
 .member-portfolio .table-shell .portfolio-gain-comparison tbody { display: table-row-group; }
 .member-portfolio .table-shell .portfolio-gain-comparison tr { display: table-row; }
-.member-portfolio .table-shell .portfolio-gain-comparison :is(th, td) { display: table-cell; width: 50%; font-size: 12px; }
+.member-portfolio .table-shell .portfolio-gain-comparison :is(th, td) { display: table-cell; width: 50%; }
 .member-portfolio .table-shell .portfolio-gain-comparison td::before { display: none; }
 .member-portfolio .portfolio-address-row {
     display: grid;
@@ -1918,7 +1918,15 @@ html[data-theme="dark"] .pool-provider-icon--monochrome {
     width: 100%;
     min-width: 0;
     table-layout: fixed;
-    font-size: 0.9rem;
+    font-family: inherit;
+    font-size: var(--tdsp-tile-detail-size, 0.9rem);
+    line-height: 1.5;
+    font-weight: 400;
+}
+
+.table-shell :is(th, td) :is(.small, .muted, .address) {
+    font-size: inherit;
+    line-height: inherit;
 }
 
 .table-shell th,
@@ -5386,7 +5394,7 @@ html[data-theme="dark"] input {
     .table-shell table {
         table-layout: fixed;
         min-width: 0;
-        font-size: 0.82rem;
+        font-size: var(--tdsp-tile-detail-size, 0.9rem);
     }
 
     .table-shell th,
@@ -5604,7 +5612,7 @@ html[data-theme="dark"] input {
     .table-shell table {
         display: table;
         width: 100%;
-        font-size: 0.68rem;
+        font-size: var(--tdsp-tile-detail-size, 0.9rem);
     }
 
     .table-shell th,
