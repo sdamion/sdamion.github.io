@@ -1759,5 +1759,7 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
   ["Exclude from Assets Across Wallets", "portfolio_text_exclude_assets"],
   ["Exclude {name} from Assets Across Wallets", "portfolio_text_exclude_asset_name"],
   ["FTs", "portfolio_text_fts"],
-  ["NFTs", "portfolio_text_nfts"]
+  ["NFTs", "portfolio_text_nfts"],
+  ["Policy {id}", "portfolio_text_policy_group"],
+  ["{count} assets", "portfolio_text_collection_assets"]
 ]);

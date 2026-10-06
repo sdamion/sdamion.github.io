@@ -307,6 +307,34 @@ try{
  await page.getByRole('button',{name:'Open NFTs',exact:true}).waitFor();
  assert.match(await page.getByRole('button',{name:'Open NFTs',exact:true}).innerText(),/\$0\.00/,'NFT total immediately excludes disabled NFT');
  assert.match(await page.getByRole('button',{name:'Open FTs',exact:true}).innerText(),/\$26\.00/,'NFT exclusion does not alter FT total');
+ await page.evaluate(({id})=>{
+   const sibling=id.slice(0,56)+'04';
+   window.fixtureStorage.setItem('tdsp-member-basis:stake1uxythldc4nmx45tvnwsqu4h5pyjd94udytm6f0tgnr44vecjd8vel','{}');
+   window.fixture.infos[0].utxo_set[0].asset_list.push({policy_id:sibling.slice(0,56),asset_name:sibling.slice(56),quantity:'1',decimals:0});
+   window.fixture.markets[sibling]={token_id:sibling,name:'Sibling NFT',is_nft:true,decimals:0,price_by_usd:20};
+   window.root.unmount();window.mount();
+ },{id});
+ await metric.waitFor();
+ await metric.click();await page.getByRole('button',{name:'Open NFTs',exact:true}).click();
+ const collection=page.getByRole('button',{name:/^Open Policy /});
+ await collection.waitFor();
+ assert.equal(await collection.count(),1,'shared policy creates one collection tile');
+ assert.match(await collection.innerText(),/\$6,270\.00/,'collection total sums its included assets');
+ assert.equal(await page.locator('#portfolio-holdings-overlay .portfolio-holdings-table').count(),0,'grouped assets do not also appear in the parent table');
+ await collection.click();await toggle.waitFor();
+ assert.equal(await page.locator('#portfolio-holdings-overlay tbody tr').count(),2,'collection overlay contains both distinct assets');
+ assert.match(await page.locator('#portfolio-holdings-overlay').innerText(),/Sibling NFT/);
+ await toggle.check();
+ assert.match(await metric.innerText(),/\$46\.00/,'exclusion inside collection updates the overall value once');
+ await page.locator('#portfolio-holdings-overlay').getByRole('button',{name:'Back',exact:true}).click();
+ await collection.waitFor();assert.match(await collection.innerText(),/\$20\.00/,'back restores updated collection total');
+ await holdingsCurrency.selectOption('EUR');
+ await page.waitForFunction(()=>document.querySelector('#portfolio-holdings-overlay')?.textContent.includes('€16.00'));
+ assert.match(await collection.innerText(),/€16\.00/,'collection total follows the Portfolio currency');
+ await collection.click();await toggle.waitFor();
+ assert.equal(await toggle.isChecked(),true,'collection exclusion remains saved');
+ await page.locator('#portfolio-holdings-overlay').getByRole('button',{name:'Back',exact:true}).click();
+ await closeHoldings();
  assert.deepEqual(errors,[]);
  console.log('PASS: asset exclusion persistence; real chart totals, theme, responsive summary layout and date-filtered graph/table.');
 }finally{await browser.close();}

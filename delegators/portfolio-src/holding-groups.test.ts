@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {policyCollections,holdingTotal} from './holding-groups.ts';
+const policy='a'.repeat(56),other='b'.repeat(56);
+const rows=[{id:'lovelace',value:25},{id:policy+'01',value:10},{id:policy+'02',value:20},{id:other+'01',value:null}];
+const groups=policyCollections(rows);
+assert.equal(groups.length,1);
+assert.equal(groups[0].policy,policy);
+assert.deepEqual(groups[0].assets,rows.slice(1,3));
+assert.equal(holdingTotal(groups[0].assets,true),30);
+assert.equal(holdingTotal(rows,true),55);
+assert.equal(holdingTotal([],true),0);
+assert.equal(holdingTotal([],false),null);
+assert.equal(holdingTotal([{value:null}],true),null);
+assert.equal(policyCollections([{id:'lovelace'},{id:'not-an-asset'}]).length,0);
+console.log('PASS: policy grouping, singleton assets, ADA and incomplete valuation totals.');
