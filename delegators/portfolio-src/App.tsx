@@ -445,6 +445,8 @@ export default function Home({memberStake}:{memberStake:string}){
   const holdingsDisplay=formatPortfolioUsd(portfolioUsd,currencyDisplay);
   const adaResult=comparisonNet({time:0,incoming:Number(cexPosition.receivedRaw)/1e6,outgoing:Number(cexPosition.sentRaw)/1e6,inFiat:cexDollars.boughtUsd,outFiat:cexDollars.soldUsd},ada,currentAdaUsd,{}, {},'ADA','USD',Date.now()/1000,portfolioUsd);
   const adaGain={ada:adaResult.amount,usd:adaResult.fiat};
+  const tileGain=holdingsCurrency==='ADA'?adaGain.ada:adaGain.usd!==null&&holdingsRate!==null?adaGain.usd*holdingsRate:null;
+  const tileGainDisplay=holdingsCurrency==='ADA'?formatPortfolioAda(adaGain.ada===null?null:Math.abs(adaGain.ada),currencyDisplay):formatPortfolioUsd(adaGain.usd===null?null:Math.abs(adaGain.usd),currencyDisplay);
   const comparisonResult=comparisonNet(comparison,ada,currentAdaUsd,btc.history,fx.history,comparisonCrypto,comparisonFiat,Date.now()/1000,portfolioUsd);
   const provisional=!snapshot?.complete&&covered.length>0;
   const adaBasisStatus=!adaLive?.reconciled?snapshot?.complete?'History / balance mismatch — refresh to reconcile':'Waiting for transaction history to reconcile with the wallet balance':adaLive.usd===null?'Missing receipt prices':snapshot?.complete?'Remaining cost · receipt-date prices':'Remaining cost · refresh in progress';
@@ -480,7 +482,7 @@ export default function Home({memberStake}:{memberStake:string}){
         {(holdingsCurrency==='EUR'||holdingsCurrency==='JPY')&&holdingsValue===null&&<p className="small muted" role="status">{t(fx.status||'Historical exchange rates unavailable')}</p>}
       </MenuTile>
       <Metric label="Network fees paid" value={loadedFacts||snapshot?.complete?formatPortfolioAda(fees,currencyDisplay):'Waiting for transaction details'}/>
-      {cexAddresses.length>0&&<Metric label="ADA Gains/Loss" value="Waiting for wallet balances" onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('gain-loss');}} amount={snapshot?adaGain:undefined}/>}
+      {cexAddresses.length>0&&<Metric label={tileGain===null?'Gain / loss':tileGain<0?'Loss':'Gain'} openLabel="ADA Gains/Loss" value={snapshot?tileGainDisplay:'Waiting for wallet balances'} tone={tileGain===null?'':tileGain<0?'negative':'positive'} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('gain-loss');}}/>}
     </div></section>
     <div className="tdsp-tile-grid">
       <MenuTile title="Cardano Wallets" value={refreshCounts?`${num(refreshCounts.active,0)} / ${num(refreshCounts.total,0)} active`:initialising?'Initialising':'— / — active'} loading={initialising} loadingLabel={status} onOpen={()=>setSection('wallets')}/>
@@ -596,10 +598,10 @@ function AssetImage({id,name,market,onOpen,compact=false}:{id:string;name:string
   return onOpen?<button type="button" className="governance-vote-secondary portfolio-asset-button" onClick={onOpen} aria-label={`View ${name} details`}>{content}</button>:<div className={compact?'portfolio-token-inline':undefined}>{content}</div>;
 }
 
-function Metric({label,value,amount,note,tone='',onOpen}:{label:string;value:string;amount?:{ada:number|null;usd:number|null};note?:string;tone?:string;onOpen?:()=>void}){
+function Metric({label,value,amount,note,tone='',onOpen,openLabel=label}:{label:string;value:string;amount?:{ada:number|null;usd:number|null};note?:string;tone?:string;onOpen?:()=>void;openLabel?:string}){
   const t=usePortfolioText();
   const Tag=onOpen?'button':'div';
-  return <Tag type={onOpen?'button':undefined} onClick={onOpen} aria-label={onOpen?`Open ${label}`:undefined} className="governance-menu-card"><strong translate="no" className={`governance-card-title ${tone}`}>{amount?<PortfolioCurrencyContext.Provider value={null}><AdaUsdAmount {...amount}/></PortfolioCurrencyContext.Provider>:t(value)}</strong><span className="governance-card-detail" data-i18n-auto-original={label}>{label}</span>{note&&<span className="small muted">{t(note)}</span>}</Tag>;
+  return <Tag type={onOpen?'button':undefined} onClick={onOpen} aria-label={onOpen?`Open ${openLabel}`:undefined} className="governance-menu-card"><strong translate="no" className={`governance-card-title ${tone}`}>{amount?<PortfolioCurrencyContext.Provider value={null}><AdaUsdAmount {...amount}/></PortfolioCurrencyContext.Provider>:t(value)}</strong><span className="governance-card-detail" data-i18n-auto-original={label}>{label}</span>{note&&<span className="small muted">{t(note)}</span>}</Tag>;
 }
 function Transaction({tx,fact,markets,wallets,history,cexAddresses,swapAddresses}:{tx:Tx;fact?:Fact;markets:Record<string,Market>;wallets:Wallet[];history:Record<string,number>;cexAddresses:CexAddress[];swapAddresses:Set<string>}){
   const kind=fact?kindOf(fact):null,trade=fact?tradeOf(fact):null;

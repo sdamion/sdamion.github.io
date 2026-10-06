@@ -90,6 +90,10 @@ try{
  assert.equal(await gain.locator('.portfolio-gain-result .portfolio-transfer-amount.positive').count(),1,'positive result is styled as a gain');
  await holdingsCurrency.selectOption('EUR');
  assert.match(await gain.locator('.portfolio-gain-result').innerText(),/\$10,678\.89/,'global currency leaves ADA Gains/Loss unchanged');
+ const gainTile=page.getByRole('button',{name:'Open ADA Gains/Loss',exact:true});
+ assert.equal(await gainTile.locator('.governance-card-detail').innerText(),'Gain','tile title is only Gain');
+ assert.match(await gainTile.innerText(),/€8,543\.11/,'gain tile follows global currency');
+ assert.doesNotMatch(await gainTile.innerText(),/₳|\$/,'gain tile shows only selected currency');
  assert.match(await gain.locator('table').last().innerText(),/USD\/ADA Price/,'gain/loss table retains its own display');
  await holdingsCurrency.selectOption('USD');
  const chart=gain.locator('canvas');
@@ -174,6 +178,12 @@ try{
  const transactions=page.locator('#portfolio-transactions-overlay');
  assert.match(await transactions.locator('thead').innerText(),/EUR Amount/,'transaction amount header follows global currency');
  assert.match(await transactions.locator('tbody').innerText(),/€20\.00/,'historical USD amount converted for display');
+ await page.evaluate(({id,other})=>{window.fixture.infos[0].balance='0';window.fixture.infos[0].utxo_set[0].value='0';window.fixture.markets[id].price_by_usd=1;window.fixture.markets[other].price_by_usd=1;window.root.unmount();window.mount();},{id,other});
+ const lossTile=page.getByRole('button',{name:'Open ADA Gains/Loss',exact:true});
+ await lossTile.waitFor();
+ assert.equal(await lossTile.locator('.governance-card-detail').innerText(),'Loss','negative result uses only Loss');
+ assert.match(await lossTile.innerText(),/\$11\.00/);
+ assert.equal(await lossTile.locator('.governance-card-title.negative').count(),1,'negative selected-currency result is red');
  assert.deepEqual(errors,[]);
  console.log('PASS: asset exclusion persistence; real chart totals, theme, responsive summary layout and date-filtered graph/table.');
 }finally{await browser.close();}

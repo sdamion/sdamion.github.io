@@ -1,4 +1,6 @@
 [strings]
+portfolio_text_result_gain = "Winst"
+portfolio_text_result_loss = "Verlies"
 portfolio_text_comparison_result_unknown = "{crypto}-vergelijking Winst/Verlies"
 portfolio_text_comparison_result_gain = "{crypto}-vergelijking Winst"
 portfolio_text_comparison_result_loss = "{crypto}-vergelijking Verlies"

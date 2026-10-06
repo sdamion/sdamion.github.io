@@ -1,4 +1,6 @@
 [strings]
+portfolio_text_result_gain = "利益"
+portfolio_text_result_loss = "損失"
 portfolio_text_comparison_result_unknown = "{crypto}比較損益"
 portfolio_text_comparison_result_gain = "{crypto}比較利益"
 portfolio_text_comparison_result_loss = "{crypto}比較損失"

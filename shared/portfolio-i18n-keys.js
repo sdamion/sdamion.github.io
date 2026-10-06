@@ -1744,6 +1744,8 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
   ["{crypto} comparison gain/loss", "portfolio_text_comparison_result_unknown"],
   ["{crypto} comparison gain", "portfolio_text_comparison_result_gain"],
   ["{crypto} comparison loss", "portfolio_text_comparison_result_loss"],
+  ["Gain", "portfolio_text_result_gain"],
+  ["Loss", "portfolio_text_result_loss"],
   ["Loading historical exchange rates…", "portfolio_text_fx_loading"],
   ["Historical exchange rates unavailable", "portfolio_text_fx_unavailable"],
   ["Historical FX rates use the latest available business day; wallet value uses the current rate.", "portfolio_text_fx_method"],

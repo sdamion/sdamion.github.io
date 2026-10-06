@@ -3,9 +3,9 @@
     const DEFAULT_LANGUAGE = 'en';
     const LANGUAGE_CONFIG = Object.freeze({
         en: { label: 'English', flag: '🇺🇸' },
-        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20261006-portfolio-net-gain' },
-        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20261006-portfolio-net-gain' },
-        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20261006-portfolio-net-gain' }
+        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20261006-gain-tile-currency' },
+        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20261006-gain-tile-currency' },
+        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20261006-gain-tile-currency' }
     });
     const TRANSLATION_ATTR = 'data-i18n';
     const TRANSLATION_ORIGINAL_ATTR = 'data-i18n-original';
