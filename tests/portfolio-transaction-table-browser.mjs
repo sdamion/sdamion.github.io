@@ -18,7 +18,8 @@ const incoming={...base,externalInputs:[{address:'exchange',lovelace:'100000000'
 const outgoing={...base,hash:'out',adaRaw:'-100000000',externalOutputs:[{address:'exchange',lovelace:'100000000'}]};
 function ByronFixture(){
  const [currency,setCurrency]=useState('USD');window.setByronCurrency=setCurrency;
- return <PortfolioCurrencyContext.Provider value={{currency,rate:currency==='EUR'?0.8:currency==='JPY'?145:1,adaUsd:0.5,locale:'en'}}><AddressTransactions facts={[incoming,outgoing]} address="exchange" entries={[{address:'exchange',name:'Bitvavo'}]} count={2} wallets={[{address:'owned',label:'Savings'}]} history={{[new Date(time*1000).toISOString().slice(0,10)]:0.25}}/></PortfolioCurrencyContext.Provider>;
+ const [rates,setRates]=useState({'2023-11-14':{EUR:0.9,JPY:150}});window.setByronRates=setRates;
+ return <PortfolioCurrencyContext.Provider value={{currency,rate:currency==='EUR'?0.8:currency==='JPY'?145:1,adaUsd:0.5,locale:'en',fxHistory:rates}}><AddressTransactions facts={[incoming,outgoing].map(fact=>({...fact,feeRaw:'400000'}))} address="exchange" entries={[{address:'exchange',name:'Bitvavo'}]} count={2} wallets={[{address:'owned',label:'Savings'}]} history={{[new Date(time*1000).toISOString().slice(0,10)]:0.25}}/></PortfolioCurrencyContext.Provider>;
 }
 createRoot(document.getElementById('app')).render(<><TransactionTable>
  <TransactionRow hash="normal" time={time} amount={<TransactionAmount ada={-100} usd={-25}/>} price={0.25} feeRaw="0" wallets={<TransactionWallets labels={['Savings','DEX contract: CSwap','DEX contract: Minswap V1']} exchanges={[]}/>}/>
@@ -74,11 +75,15 @@ try{
  const walletChange=byron.getByText(/Wallet change \(after fees\):/).first();
  assert.match(await walletChange.innerText(),/\$25\.00/,'wallet change uses the transaction-day ADA price, not the current quote');
  await page.evaluate(()=>window.setByronCurrency('EUR'));
- await page.waitForFunction(()=>document.querySelector('#portfolio-byron-amounts-overlay')?.textContent.includes('€20.00'));
- assert.match(await walletChange.innerText(),/€20\.00/);
+ await page.waitForFunction(()=>document.querySelector('#portfolio-byron-amounts-overlay')?.textContent.includes('€22.50'));
+ assert.match(await walletChange.innerText(),/€22\.50/,'historical FX overrides the current quote');
+ assert.equal(await byron.locator('tbody tr').first().locator('td').nth(2).innerText(),'€0.09','fees use the same transfer-day ADA and FX rates');
  await page.evaluate(()=>window.setByronCurrency('JPY'));
- await page.waitForFunction(()=>document.querySelector('#portfolio-byron-amounts-overlay')?.textContent.includes('¥3,625'));
- assert.match(await walletChange.innerText(),/¥3,625/);
+ await page.waitForFunction(()=>document.querySelector('#portfolio-byron-amounts-overlay')?.textContent.includes('¥3,750'));
+ assert.match(await walletChange.innerText(),/¥3,750/);
+ await page.evaluate(()=>{window.setByronRates({});window.setByronCurrency('EUR');});
+ await page.waitForFunction(()=>document.querySelector('#portfolio-byron-amounts-overlay tbody tr td strong')?.textContent==='—');
+ assert.equal(await byron.locator('tbody tr').first().locator('td').nth(2).innerText(),'—','missing historical FX never falls back to a current rate');
  await page.evaluate(()=>window.setByronCurrency('ADA'));
  await page.waitForFunction(()=>document.querySelector('#portfolio-byron-amounts-overlay')?.textContent.includes('₳ 100'));
  assert.match(await walletChange.innerText(),/₳ 100/);

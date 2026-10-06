@@ -4,11 +4,12 @@ import {short} from './core';
 import {lovelaceToAda} from './transaction-amounts';
 import {Table,TableHeader,TableBody,TableRow,TableHead,TableCell,AdaUsdAmount} from './ui';
 import {AssetWalletAddresses} from './AssetWalletAddresses';
-import {usePortfolioCurrency,formatPortfolioUsd,formatPortfolioAda,formatAdaNumber} from './portfolio-currency';
+import {PortfolioCurrencyContext,usePortfolioCurrency,transactionCurrency,formatPortfolioUsd,formatPortfolioAda,formatAdaNumber} from './portfolio-currency';
 import {usePortfolioText} from './use-portfolio-text';
 
-export function TransactionAmount({ada,usd,tone}:{ada:number|null;usd:number|null;tone?:'positive'|'negative'}){
-  const display=usePortfolioCurrency();
+export function TransactionAmount({ada,usd,tone,time}:{ada:number|null;usd:number|null;tone?:'positive'|'negative';time?:number}){
+  const context=usePortfolioCurrency();
+  const display=time===undefined?context:transactionCurrency(context,time);
   return ada===null?<>—</>:<strong translate="no" className={`portfolio-transfer-amount ${tone??(ada>=0?'positive':'negative')}`}>{display?display.currency==='ADA'?formatPortfolioAda(Math.abs(ada),display):formatPortfolioUsd(usd===null?null:Math.abs(usd),display):<AdaUsdAmount ada={ada} usd={usd}/>}</strong>;
 }
 
@@ -36,12 +37,12 @@ export function TransactionWalletLabels({labels,inline=false}:{labels:string[];i
 }
 
 export function TransactionRow({hash,time,amount,kind,price,feeRaw,wallets,details,priceDetails}:{hash:string;time:number;amount:ReactNode;kind?:ReactNode;price?:number|null;feeRaw?:string|null;wallets:ReactNode;details?:ReactNode;priceDetails?:ReactNode}){
-  const display=usePortfolioCurrency();
-  return <TableRow className="portfolio-transfer-row">
+  const display=transactionCurrency(usePortfolioCurrency(),time,price??null);
+  return <PortfolioCurrencyContext.Provider value={display}><TableRow className="portfolio-transfer-row">
     <TableCell>{amount}{kind&&<div className="small muted">{kind}</div>}<div className="small"><TransactionLink hash={hash}/></div>{details}</TableCell>
     <TableCell>{price!=null&&price>0?display?'≈ '+formatPortfolioUsd(price,display,6):'≈ $'+price.toLocaleString('en-US',{maximumFractionDigits:6}):'Unavailable'}{priceDetails}</TableCell>
     <TableCell title="Total on-chain transaction fee; not necessarily paid by your wallet">{feeRaw!=null?display?formatPortfolioAda(lovelaceToAda(feeRaw),display,price??null):'₳ '+formatAdaNumber(lovelaceToAda(feeRaw)!):'Unavailable'}</TableCell>
     <TableCell>{wallets}</TableCell>
     <TableCell><TransactionDate time={time}/></TableCell>
-  </TableRow>;
+  </TableRow></PortfolioCurrencyContext.Provider>;
 }

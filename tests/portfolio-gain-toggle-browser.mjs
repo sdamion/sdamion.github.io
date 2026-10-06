@@ -114,7 +114,8 @@ try{
  assert.match(await gain.locator('.portfolio-gain-result').innerText(),/€8,540\.61/,'gain/loss follows header currency with transfer-day FX');
  const gainTile=page.getByRole('button',{name:'Open ADA Gains/Loss',exact:true});
  assert.equal(await gainTile.locator('.governance-card-detail').innerText(),'Gain','tile title is only Gain');
- assert.match(await gainTile.innerText(),/€8,543\.11/,'gain tile follows global currency');
+ assert.match(await gainTile.innerText(),/€8,540\.61/,'gain tile and overlay use the same transfer-day FX totals');
+ assert.match(await gain.locator('a[href="https://cardanoscan.io/transaction/incoming"]').locator('xpath=ancestor::tr').innerText(),/€22\.50/,'incoming transaction matches its historical summary value, not current FX');
  assert.doesNotMatch(await gainTile.innerText(),/₳|\$/,'gain tile shows only selected currency');
  assert.match(await gain.locator('table').last().innerText(),/EUR\/ADA Price/,'gain/loss table follows the Portfolio display');
  await holdingsCurrency.selectOption('ADA');
@@ -207,7 +208,7 @@ try{
  await page.getByRole('button',{name:'Open Transactions',exact:true}).click();
  const transactions=page.locator('#portfolio-transactions-overlay');
  assert.match(await transactions.locator('thead').innerText(),/EUR Amount/,'transaction amount header follows global currency');
- assert.match(await transactions.locator('tbody').innerText(),/€20\.00/,'historical USD amount converted for display');
+ assert.match(await transactions.locator('tbody').innerText(),/€22\.50/,'Transactions and gain/loss use the same transfer-day FX');
  await page.evaluate(({id,other})=>{window.fixture.infos[0].balance='0';window.fixture.infos[0].utxo_set[0].value='0';window.fixture.markets[id].price_by_usd=1;window.fixture.markets[other].price_by_usd=1;window.root.unmount();window.mount();},{id,other});
  const lossTile=page.getByRole('button',{name:'Open ADA Gains/Loss',exact:true});
  await lossTile.waitFor();

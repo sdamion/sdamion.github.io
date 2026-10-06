@@ -16,6 +16,8 @@ import {AssetOverlay} from './AssetOverlay';
 import {TransactionTable,TransactionRow,TransactionAmount,TransactionLink,TransactionWalletLabels} from './TransactionTable';
 import {transactionWalletNames} from './transaction-wallet-names';
 import {transactionAmounts,transactionNetworkFee} from './transaction-amounts';
+import {usePortfolioCurrency,formatPortfolioAmount} from './portfolio-currency';
+import {transferComparison} from './transfer-comparison';
 
 export function AddressTransactions({facts,address,addresses,entries,count,addressEditor,history={},wallets=[]}:{facts:Fact[];address:string;addresses?:string[];entries:CexAddress[];count:number;addressEditor?:ReactNode;history?:Record<string,number>;wallets?:{address:string;label:string}[]}){
   const [open,setOpen]=useState(false);
@@ -24,7 +26,7 @@ export function AddressTransactions({facts,address,addresses,entries,count,addre
   if(count===1&&rows.length===1&&(!addresses||addresses.length===1)){
     const row=rows[0];
     const amount=transactionAmounts(row.amountRaw,row.time,history);
-    return row.amountRaw===null?<span className="small muted">Mixed or unassigned sources</span>:<span title={row.sharedInputs?'Shared-input transaction total; counted once in Byron totals':undefined}>{row.side==='buy'?'IN':'OUT'} <TransactionAmount ada={amount.ada} usd={amount.usd} tone={row.side==='buy'?'negative':'positive'}/>{row.sharedInputs&&<span className="small muted"> · Shared transaction</span>}</span>;
+    return row.amountRaw===null?<span className="small muted">Mixed or unassigned sources</span>:<span title={row.sharedInputs?'Shared-input transaction total; counted once in Byron totals':undefined}>{row.side==='buy'?'IN':'OUT'} <TransactionAmount ada={amount.ada} usd={amount.usd} time={row.time} tone={row.side==='buy'?'negative':'positive'}/>{row.sharedInputs&&<span className="small muted"> · Shared transaction</span>}</span>;
   }
   return <><button type="button" className="governance-vote-secondary" onClick={()=>setOpen(true)}>View</button>{open&&<AssetOverlay id="portfolio-byron-amounts-overlay" name="Byron ADA amounts" onClose={()=>setOpen(false)}><section className="portfolio-section">
     {addressEditor??(addresses||[address]).map(item=><div key={item}><a className="address" href={`https://cardanoscan.io/address/${item}`} target="_blank" rel="noreferrer">{short(item)} <ExternalLink size={12}/></a></div>)}
@@ -45,6 +47,7 @@ export function AddressTransactions({facts,address,addresses,entries,count,addre
 }
 
 export function ByronExchanges({facts,entries,owned,history,markets={},wallets=[],complete,onChange}:{facts:Record<string,Fact>;entries:CexAddress[];owned:string[];history:Record<string,number>;markets?:Record<string,Market>;wallets?:{address:string;label:string}[];complete:boolean;onChange:(entries:CexAddress[])=>boolean}){
+  const display=usePortfolioCurrency();
   const [choices,setChoices]=useState<Record<string,boolean>>({}),[query,setQuery]=useState(''),[page,setPage]=useState(0),[status,setStatus]=useState('');
   const [filter,setFilter]=useState('all'),[dateFrom,setDateFrom]=useState(''),[dateTo,setDateTo]=useState('');
   const all=useMemo(()=>Object.values(facts),[facts]);
@@ -56,6 +59,8 @@ export function ByronExchanges({facts,entries,owned,history,markets={},wallets=[
   const pending=candidates.filter(row=>selected.has(row.address)&&!group.some(entry=>entry.address===row.address)).length;
   const totals=useMemo(()=>cexAdaNetPosition(all,group,'0'),[all,group]);
   const dollars=useMemo(()=>cexUsdNetPosition(all,group,'0',history,null),[all,group,history]);
+  const currencyTotals=useMemo(()=>display?transferComparison(all,group,history,{},display.fxHistory||{},'ADA',display.currency).at(-1):undefined,[all,group,history,display]);
+  const totalValue=(incoming:boolean)=>display?formatPortfolioAmount(display.currency==='ADA'?Number(incoming?totals.receivedRaw:totals.sentRaw)/1e6:currencyTotals?(incoming?currencyTotals.inFiat:currencyTotals.outFiat):0,display):<AdaUsdAmount ada={Number(incoming?totals.receivedRaw:totals.sentRaw)/1e6} usd={incoming?dollars.boughtUsd:dollars.soldUsd}/>;
   const unresolved=useMemo(()=>all.filter(fact=>isCexTransaction(fact,group)&&!cexAdaTransfer(fact,group)).length,[all,group]);
   const combined=useMemo(()=>byronTransactionRows(all,candidates),[all,candidates]);
   const filtered=combined.filter(row=>{
@@ -76,8 +81,8 @@ export function ByronExchanges({facts,entries,owned,history,markets={},wallets=[
   return <section className="portfolio-section" aria-label="Byron DEX / CEX">
     <p className="small muted">Byron addresses are selected by default. Deselect any that are not exchange addresses, then save. Exchange ownership is unverified. Your wallets and Swap are excluded. Selections use your Portfolio storage and do not add to wallet balances.</p>
     <div className="tdsp-tile-grid">
-      <div className="governance-menu-card"><strong className="governance-card-title"><AdaUsdAmount ada={Number(totals.receivedRaw)/1e6} usd={dollars.boughtUsd}/></strong><span className="governance-card-detail">Byron ADA IN</span></div>
-      <div className="governance-menu-card"><strong className="governance-card-title"><AdaUsdAmount ada={Number(totals.sentRaw)/1e6} usd={dollars.soldUsd}/></strong><span className="governance-card-detail">Byron ADA OUT</span></div>
+      <div className="governance-menu-card"><strong translate="no" className="governance-card-title">{totalValue(true)}</strong><span className="governance-card-detail">Byron ADA IN</span></div>
+      <div className="governance-menu-card"><strong translate="no" className="governance-card-title">{totalValue(false)}</strong><span className="governance-card-detail">Byron ADA OUT</span></div>
     </div>
     <p className="small muted">{group.length} saved addresses · {complete?'Loaded history':'Partial history'} · Transfer-day USD{unresolved?` · ${unresolved} mixed transfers excluded`:''}{dollars.missingPrices?` · ${dollars.missingPrices} transfers missing USD prices`:''}</p>
     <form className="portfolio-section" onSubmit={event=>{event.preventDefault();saveSelection();}}>

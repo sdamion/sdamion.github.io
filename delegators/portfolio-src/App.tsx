@@ -46,7 +46,7 @@ import {useFxHistory} from './use-fx-history';
 import {transferComparison,comparisonNet,fiatRate,comparisonResultLabel} from './transfer-comparison';
 import type {ComparisonCrypto,ComparisonFiat} from './transfer-comparison';
 import {ComparisonAmount} from './ComparisonAmount';
-import {PortfolioCurrencyContext,formatPortfolioUsd,formatPortfolioAda} from './portfolio-currency';
+import {PortfolioCurrencyContext,formatPortfolioUsd,formatPortfolioAda,formatPortfolioAmount} from './portfolio-currency';
 import {matchesGainLossTransfer} from './gain-loss-filter';
 import {GainLossTransaction} from './GainLossTransaction';
 import {TransactionTable,TransactionRow,TransactionAmount,TransactionWallets} from './TransactionTable';
@@ -62,7 +62,7 @@ import {WalletCard} from './WalletAddresses';
 import {refreshExcludedAddresses,walletRefreshCounts} from './member';
 import {validByronAddress} from './byron-address';
 import {exchangeExcludedAddresses,resolveSwapGroups,excludeInternalExchanges,swapOwnershipScope,swapAddressSet,isSwapTransaction} from './swap-wallets';
-import {normalizeCexAddresses,cexAdjustedFact,isCexTransaction,cexAdaTransfer,cexAdaNetPosition,cexUsdNetPosition,transactionExchangeWallets} from './cex';
+import {normalizeCexAddresses,cexAdjustedFact,isCexTransaction,cexAdaTransfer,cexUsdNetPosition,transactionExchangeWallets} from './cex';
 import type {CexAddress} from './cex';
 import {durationLabel,remainingSeconds,analysisProgress} from './progress';
 import {memberWallets,resolveWalletGroups,validWalletAddress,validStakeAddress,walletTransactionCount} from './member';
@@ -403,9 +403,9 @@ export default function Home({memberStake}:{memberStake:string}){
   const classifiedFacts=useMemo(()=>Object.fromEntries(Object.entries(snapshot?.facts||{}).map(([hash,fact])=>[hash,cexAdjustedFact(fact,cexAddresses)])),[snapshot,cexAddresses]);
   const assetDecimals=useMemo(()=>knownDecimals(snapshot?.infos||[],Object.values(classifiedFacts)),[snapshot,classifiedFacts]);
   const payments=useMemo(()=>mintPayments(Object.values(classifiedFacts),paymentLinks),[classifiedFacts,paymentLinks]);
-  const cexPosition=useMemo(()=>cexAdaNetPosition(Object.values(classifiedFacts),cexAddresses,holdings.find(h=>h.id==='lovelace')?.raw||'0'),[classifiedFacts,cexAddresses,holdings]);
   const cexDollars=useMemo(()=>cexUsdNetPosition(Object.values(classifiedFacts),cexAddresses,holdings.find(h=>h.id==='lovelace')?.raw||'0',snapshot?.history||{},liveQuote?.usd??snapshot?.adaUsd??null),[classifiedFacts,cexAddresses,holdings,snapshot,liveQuote]);
   const comparison=useMemo(()=>transferComparison(Object.values(classifiedFacts),cexAddresses,snapshot?.history||{},btc.history,fx.history,comparisonCrypto,comparisonFiat).at(-1),[classifiedFacts,cexAddresses,snapshot,btc.history,fx.history,comparisonCrypto,comparisonFiat]);
+  const adaComparison=useMemo(()=>comparisonCrypto==='ADA'?comparison:transferComparison(Object.values(classifiedFacts),cexAddresses,snapshot?.history||{}, {},fx.history,'ADA',holdingsCurrency).at(-1),[comparisonCrypto,comparison,classifiedFacts,cexAddresses,snapshot,fx.history,holdingsCurrency]);
   const basis=useMemo(()=>snapshot?remainingBasis(Object.values(classifiedFacts),snapshot.history,payments.acquisitions):{},[snapshot,classifiedFacts,payments]);
   const purchases=useMemo(()=>purchaseAverages(Object.values(classifiedFacts),snapshot?.history||{},payments.acquisitions),[classifiedFacts,snapshot,payments]);
   const adaLive=useMemo(()=>snapshot?liveAdaBasis(Object.values(classifiedFacts),snapshot.history,holdings.find(h=>h.id==='lovelace')?.raw||'0',snapshot.complete):null,[snapshot,holdings,classifiedFacts]);
@@ -433,14 +433,13 @@ export default function Home({memberStake}:{memberStake:string}){
   const holdingsRate=holdingsCurrency==='ADA'?null:fiatRate(Date.now()/1000,holdingsCurrency,fx.history);
   const holdingsValue=holdingsCurrency==='ADA'?portfolioAda:portfolioUsd!==null&&holdingsRate!==null?portfolioUsd*holdingsRate:null;
   const holdingsLocale=(window as unknown as {TDSPI18n?:{getLanguage:()=>string}}).TDSPI18n?.getLanguage()||'en';
-  const currencyDisplay={currency:holdingsCurrency,rate:holdingsRate,adaUsd:currentAdaUsd,locale:holdingsLocale};
+  const currencyDisplay={currency:holdingsCurrency,rate:holdingsRate,adaUsd:currentAdaUsd,locale:holdingsLocale,fxHistory:fx.history};
   const usd=(value:number)=>formatPortfolioUsd(value,currencyDisplay);
   const signed=(value:number)=>usd(Math.abs(value));
   const holdingsDisplay=formatPortfolioUsd(portfolioUsd,currencyDisplay);
-  const adaResult=comparisonNet({time:0,incoming:Number(cexPosition.receivedRaw)/1e6,outgoing:Number(cexPosition.sentRaw)/1e6,inFiat:cexDollars.boughtUsd,outFiat:cexDollars.soldUsd},ada,currentAdaUsd,{}, {},'ADA','USD',Date.now()/1000,portfolioUsd);
-  const adaGain={ada:adaResult.amount,usd:adaResult.fiat};
-  const tileGain=holdingsCurrency==='ADA'?adaGain.ada:adaGain.usd!==null&&holdingsRate!==null?adaGain.usd*holdingsRate:null;
-  const tileGainDisplay=holdingsCurrency==='ADA'?formatPortfolioAda(adaGain.ada===null?null:Math.abs(adaGain.ada),currencyDisplay):formatPortfolioUsd(adaGain.usd===null?null:Math.abs(adaGain.usd),currencyDisplay);
+  const adaResult=comparisonNet(adaComparison,ada,currentAdaUsd,{},fx.history,'ADA',holdingsCurrency,Date.now()/1000,portfolioUsd);
+  const tileGain=holdingsCurrency==='ADA'?adaResult.amount:adaResult.fiat;
+  const tileGainDisplay=formatPortfolioAmount(tileGain===null?null:Math.abs(tileGain),currencyDisplay);
   const comparisonResult=comparisonNet(comparison,ada,currentAdaUsd,btc.history,fx.history,comparisonCrypto,comparisonFiat,Date.now()/1000,portfolioUsd);
   const provisional=!snapshot?.complete&&covered.length>0;
   const adaBasisStatus=!adaLive?.reconciled?snapshot?.complete?'History / balance mismatch — refresh to reconcile':'Waiting for transaction history to reconcile with the wallet balance':adaLive.usd===null?'Missing receipt prices':snapshot?.complete?'Remaining cost · receipt-date prices':'Remaining cost · refresh in progress';
@@ -541,8 +540,8 @@ export default function Home({memberStake}:{memberStake:string}){
         </TableRow></TableBody>
       </Table>}
       <div className="portfolio-gain-result">
-        <span translate="no" className="governance-card-detail">{t(comparisonResultLabel(comparisonCrypto==='ADA'?adaGain.ada:comparisonResult.amount),{crypto:comparisonCrypto})}</span>
-        <strong className="governance-card-title">{snapshot?<ComparisonAmount amount={comparisonCrypto==='ADA'?adaGain.ada:comparisonResult.amount} value={comparisonCrypto==='ADA'&&comparisonFiat==='USD'?adaGain.usd:comparisonResult.fiat} crypto={comparisonCrypto} currency={comparisonFiat}/>: 'Waiting for wallet balances'}</strong>
+        <span translate="no" className="governance-card-detail">{t(comparisonResultLabel(comparisonResult.amount),{crypto:comparisonCrypto})}</span>
+        <strong className="governance-card-title">{snapshot?<ComparisonAmount amount={comparisonResult.amount} value={comparisonResult.fiat} crypto={comparisonCrypto} currency={comparisonFiat}/>: 'Waiting for wallet balances'}</strong>
       </div>
       {snapshot&&comparisonCrypto==='BTC'&&<p className="small muted" role="status">{btc.status||'BTC equivalents use transfer-day ADA/USD and BTC/USD prices, not actual Bitcoin purchases.'}</p>}
       {(comparisonFiat==='EUR'||comparisonFiat==='JPY')&&<p className="small muted" role="status">{fx.status||'Historical FX rates use the latest available business day; wallet value uses the current rate.'}</p>}
