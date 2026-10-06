@@ -80,6 +80,9 @@
 .member-portfolio .portfolio-comparison-controls label { display: flex; align-items: center; gap: 8px; }
 .member-portfolio .portfolio-comparison-controls select { width: auto; min-width: 100px; }
 #portfolio-refresh-action select { width: auto; max-width: 110px; min-width: 0; }
+#portfolio-refresh-action .portfolio-currency-select { position: relative; display: inline-flex; flex: 0 0 auto; }
+#portfolio-refresh-action .portfolio-currency-select select { appearance: none; -webkit-appearance: none; padding-inline: 12px 34px; }
+#portfolio-refresh-action .portfolio-currency-select svg { position: absolute; inset-inline-end: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--text); }
 .member-portfolio .portfolio-comparison-crypto { display: inline-flex; align-items: center; gap: 5px; }
 .member-portfolio .portfolio-comparison-crypto img { width: 16px; height: 16px; flex: 0 0 16px; object-fit: contain; }
 .member-portfolio .portfolio-timeline .price-history-chart-frame { height: 320px; }

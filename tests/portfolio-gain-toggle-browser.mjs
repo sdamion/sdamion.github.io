@@ -45,7 +45,7 @@ try{
  assert.match(await metric.innerText(),/10,691\.89/);
  const holdingsCurrency=page.locator('#portfolio-refresh-action').getByRole('combobox',{name:'Comparison currency'});
  assert.equal(await metric.getByRole('combobox').count(),0,'currency selector removed from tile');
- assert.equal(await holdingsCurrency.evaluate(node=>node.nextElementSibling?.getAttribute('aria-label')),'Portfolio guide','currency selector sits next to info button');
+ assert.equal(await holdingsCurrency.evaluate(node=>node.parentElement.nextElementSibling?.getAttribute('aria-label')),'Portfolio guide','currency selector sits next to info button');
  assert.equal(await holdingsCurrency.inputValue(),'USD');
  await holdingsCurrency.selectOption('EUR');
  await page.waitForFunction(()=>document.querySelector('main')?.textContent.includes('€8,553.51'));
@@ -81,6 +81,17 @@ try{
  await page.waitForFunction(()=>document.querySelector('main')?.textContent.includes('$4,564.64'));
  assert.match(await metric.innerText(),/4,564\.64/,'single asset exclusion survives reload');
  await page.addStyleTag({content:await readFile('shared/styles.css','utf8')});
+ for(const width of [1280,390]){
+   await page.setViewportSize({width,height:900});
+   const arrow=await holdingsCurrency.evaluate(select=>{
+     const icon=select.parentElement.querySelector('svg'),box=select.getBoundingClientRect(),arrow=icon.getBoundingClientRect();
+     return {inset:box.right-arrow.right,center:Math.abs((box.top+box.bottom-arrow.top-arrow.bottom)/2),appearance:getComputedStyle(select).appearance};
+   });
+   assert.equal(arrow.appearance,'none');
+   assert.ok(arrow.inset>=10&&arrow.inset<=14,'currency arrow is inset from the control edge');
+   assert.ok(arrow.center<1,'currency arrow is vertically centered');
+ }
+ await page.setViewportSize({width:1280,height:900});
  await page.addScriptTag({content:await readFile('vendor/chart.js','utf8')});
  await page.evaluate(()=>{
    window.TDSPCharts={load:async()=>window.Chart};
