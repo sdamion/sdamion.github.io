@@ -27,7 +27,7 @@ import {hasCounterpartyData,needsFactRefresh,needsActiveFactRefresh} from './fac
 import {keepRefreshSessionAlive} from './refresh-session';
 import {currentValuation,mergeMarketQuote} from './current-valuation';
 import {includedAssets} from './asset-exclusions';
-import {policyTableRows,holdingTotal} from './holding-groups';
+import {policyTableRows,holdingTotal,collectionName} from './holding-groups';
 import {valuationCoverage} from './valuation-coverage';
 import {averageBuy,purchaseAverages} from './average-buy';
 import {assetImageCandidates} from './asset-image';
@@ -526,14 +526,15 @@ export default function Home({memberStake}:{memberStake:string}){
       {groupRows.length>0&&<Table className="portfolio-holdings-table"><TableHeader><TableRow>{['Asset','Balance','Price · USD','Value · USD','Average buy · USD','Gain / loss','Exclude'].map(label=><TableHead translate="no" key={label}>{t(label).replace('USD',holdingsCurrency)}</TableHead>)}</TableRow></TableHeader><TableBody>{holdingEntries.map(entry=>{
         if('policy' in entry){
           const active=includedAssets(entry.assets,overrides),priced=active.filter(row=>row.value!==null),expanded=expandedPolicies.has(entry.policy),Icon=expanded?ChevronDown:ChevronRight;
-          return <TableRow key={entry.policy} className="portfolio-policy-row">
-            <TableCell><button type="button" className="governance-vote-secondary" aria-expanded={expanded} title={entry.policy} onClick={()=>setExpandedPolicies(previous=>{const next=new Set(previous);if(next.has(entry.policy))next.delete(entry.policy);else next.add(entry.policy);return next;})}><span translate="no" className="portfolio-token-inline"><Icon size={16} aria-hidden="true"/>{t('Policy {id}',{id:short(entry.policy)})}</span></button></TableCell>
+          const representative=entry.assets.reduce((first,asset)=>asset.id<first.id?asset:first),name=collectionName(representative.name);
+          return <TableRow key={`policy:${entry.policy}`} className="portfolio-policy-row">
+            <TableCell><button type="button" className="governance-vote-secondary portfolio-asset-button" aria-expanded={expanded} title={name} onClick={()=>setExpandedPolicies(previous=>{const next=new Set(previous);if(next.has(entry.policy))next.delete(entry.policy);else next.add(entry.policy);return next;})}><Icon size={16} aria-hidden="true"/><AssetImage compact hideIdentifier id={representative.id} name={name} market={snapshot?.markets[representative.id]}/></button></TableCell>
             <TableCell><span translate="no">{t('{count} assets',{count:entry.assets.length})}</span><div translate="no" className="small muted">{t('{done} / {total} assets valued',{done:priced.length,total:active.length})}{entry.assets.length>active.length?' · '+t('{count} excluded',{count:entry.assets.length-active.length}):''}</div></TableCell>
             <TableCell>—</TableCell><TableCell translate="no">{formatPortfolioUsd(holdingTotal(active,snapshot?.complete===true),currencyDisplay)}</TableCell><TableCell>—</TableCell><TableCell>—</TableCell><TableCell/>
           </TableRow>;
         }
         const r=entry.asset;
-        return <TableRow key={r.id}>
+        return <TableRow key={`asset:${r.id}`}>
         <TableCell><AssetImage id={r.id} name={r.name} market={snapshot?.markets[r.id]} onOpen={()=>setSelectedAsset(r.id)}/></TableCell>
         <TableCell>{r.qty===null?`${r.raw} raw units`:num(r.qty)}{r.id!=='lovelace'&&r.automaticDecimals==null&&<label className="small muted">Token decimals<Input aria-label={`Token decimals for ${r.name}`} type="number" min="0" max="30" step="1" value={overrides[r.id]?.decimals??''} onChange={e=>updateOverride(r.id,'decimals',e.target.value)} placeholder="Required to calculate value"/></label>}</TableCell>
         <TableCell>{r.price!==null?(r.quote.source==='wayup'||r.quote.source==='fallback'?'≈ ':'')+usd(r.price):'Unavailable'}{r.quote.source!=='wayup'&&<div className="small muted">{r.quote.source==='manual'?'Your price':r.quote.source==='fallback'?'User-defined fallback, not a market quote':r.price!==null?'Market estimate':''}</div>}<details><summary translate="no" className="small">{t('Set current price')} (USD)</summary><Input aria-label={`Current USD price for ${r.name}`} type="number" min="0" step="any" value={overrides[r.id]?.price||''} onChange={e=>updateOverride(r.id,'price',e.target.value)} placeholder="Use market quote"/></details></TableCell>
@@ -605,11 +606,11 @@ function AssetExclusionToggle({name,excluded,onChange,compact=false}:{name:strin
   return <label className="small muted"><input type="checkbox" checked={excluded} aria-label={t('Exclude {name} from Assets Across Wallets',{name})} onChange={event=>onChange(event.target.checked)}/>{!compact&&t('Exclude from Assets Across Wallets')}</label>;
 }
 
-function AssetImage({id,name,market,onOpen,compact=false}:{id:string;name:string;market?:Market;onOpen?:()=>void;compact?:boolean}){
+function AssetImage({id,name,market,onOpen,compact=false,hideIdentifier=false}:{id:string;name:string;market?:Market;onOpen?:()=>void;compact?:boolean;hideIdentifier?:boolean}){
   const [failed,setFailed]=useState<string[]>([]);
   const source=assetImageCandidates(id,[market?.registry_logo,market?.cached_image,market?.wayup_image,market?.image,market?.image_url,market?.logo]).find(url=>!failed.includes(url));
   const image=source?<img className="portfolio-asset-image" src={source} alt={name} title={name} width={48} height={48} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={()=>setFailed(previous=>[...previous,source])}/>:null;
-  const content=<>{image}<span className="portfolio-asset-name" title={id}>{name}</span></>;
+  const content=<>{image}<span className="portfolio-asset-name" title={hideIdentifier?name:id}>{name}</span></>;
   return onOpen?<button type="button" className="governance-vote-secondary portfolio-asset-button" onClick={onOpen} aria-label={`View ${name} details`}>{content}</button>:<div className={compact?'portfolio-token-inline':undefined}>{content}</div>;
 }
 

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {policyCollections,holdingTotal,policyTableRows} from './holding-groups.ts';
+import {policyCollections,holdingTotal,policyTableRows,collectionName} from './holding-groups.ts';
 const policy='a'.repeat(56),other='b'.repeat(56);
 const rows=[{id:'lovelace',value:25},{id:policy+'01',value:10},{id:policy+'02',value:20},{id:other+'01',value:null}];
 const groups=policyCollections(rows);
@@ -20,4 +20,9 @@ assert.equal(expanded.length,5);
 assert.deepEqual(expanded.slice(2,4),rows.slice(1,3).map(asset=>({asset})));
 assert.equal(policyTableRows(rows,new Set(),row=>row.id==='lovelace').length,1);
 assert.equal(policyTableRows(rows,new Set([policy]),row=>row.id===policy+'02').length,2);
+assert.equal(collectionName('MallardOrder5160'),'MallardOrder');
+assert.equal(collectionName('Starch Miner #01576'),'Starch Miner');
+assert.equal(collectionName('Mfer3D0008'),'Mfer3D');
+assert.equal(collectionName('Collection'),'Collection');
+assert.equal(collectionName('123'),'123');
 console.log('PASS: policy grouping, singleton assets, ADA and incomplete valuation totals.');

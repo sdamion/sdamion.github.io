@@ -15,6 +15,10 @@ export function holdingTotal(rows:{value:number|null}[],complete:boolean):number
   return priced.length?priced.reduce((sum,row)=>sum+(row.value??0),0):complete&&rows.length===0?0:null;
 }
 
+export function collectionName(name:string):string{
+  return name.replace(/[\s#_-]*\d+\s*$/,'').trim()||name;
+}
+
 export function policyTableRows<T extends {id:string}>(rows:T[],expanded:ReadonlySet<string>,include:(row:T)=>boolean=()=>true):({asset:T}|{policy:string;assets:T[]})[]{
   const groups=new Map(policyCollections(rows).map(group=>[group.policy,group]));
   const seen=new Set<string>();

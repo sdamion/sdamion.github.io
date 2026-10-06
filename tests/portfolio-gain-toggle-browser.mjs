@@ -28,6 +28,7 @@ try{
    return route.fulfill({contentType:'text/html',body:'<header><span id="portfolio-refresh-action"></span></header><div id="app"></div>'});
  });
  await page.goto('http://127.0.0.1:8998/');
+ page.on('console',message=>{if(/same key/.test(message.text()))errors.push(message.text());});
  await page.addScriptTag({content:await readFile('shared/runtime.js','utf8')});
  await page.evaluate(({id,other})=>{
    const settings=new Map([['tdsp-member-basis:stake1uxythldc4nmx45tvnwsqu4h5pyjd94udytm6f0tgnr44vecjd8vel',JSON.stringify({[id]:{average:'0'},[other]:{average:'0'}})]]);
@@ -308,17 +309,21 @@ try{
  assert.match(await page.getByRole('button',{name:'Open NFTs',exact:true}).innerText(),/\$0\.00/,'NFT total immediately excludes disabled NFT');
  assert.match(await page.getByRole('button',{name:'Open FTs',exact:true}).innerText(),/\$26\.00/,'NFT exclusion does not alter FT total');
  await page.evaluate(({id})=>{
-   const sibling=id.slice(0,56)+'04';
+   const sibling=id.slice(0,56);
    window.fixtureStorage.setItem('tdsp-member-basis:stake1uxythldc4nmx45tvnwsqu4h5pyjd94udytm6f0tgnr44vecjd8vel','{}');
    window.fixture.infos[0].utxo_set[0].asset_list.push({policy_id:sibling.slice(0,56),asset_name:sibling.slice(56),quantity:'1',decimals:0});
-   window.fixture.markets[sibling]={token_id:sibling,name:'Sibling NFT',is_nft:true,decimals:0,price_by_usd:20};
+   window.fixture.markets[sibling]={token_id:sibling,name:'Sibling NFT #002',is_nft:true,decimals:0,price_by_usd:20,logo:'https://example.test/cardano_logo_ico.webp'};
    window.root.unmount();window.mount();
  },{id});
  await metric.waitFor();
  await metric.click();await page.getByRole('button',{name:'Open NFTs',exact:true}).click();
- const collection=page.getByRole('button',{name:/^Policy /});
  const collectionRow=page.locator('#portfolio-holdings-overlay .portfolio-policy-row');
+ const collection=collectionRow.getByRole('button');
  await collection.waitFor();
+ assert.equal(await collection.locator('.portfolio-asset-name').innerText(),'Sibling NFT','collection name omits the item number');
+ await collection.locator('img').waitFor();
+ assert.doesNotMatch(await collection.innerText(),/Policy|#002|01fbdb51/,'policy ID is replaced by the asset image and collection name');
+ assert.equal(await collection.getAttribute('title'),'Sibling NFT','tooltip does not expose the policy ID');
  assert.equal(await collection.count(),1,'shared policy creates one dropdown row');
  assert.match(await collectionRow.innerText(),/\$6,270\.00/,'collection total sums its included assets');
  assert.equal(await page.locator('#portfolio-holdings-overlay .tdsp-tile-grid').count(),0,'collection tiles are removed');
