@@ -538,7 +538,7 @@ export default function Home({memberStake}:{memberStake:string}){
         </TableRow></TableBody>
       </Table>}
       <div className="portfolio-gain-result">
-        <span translate="no" className="governance-card-detail">{comparisonCrypto==='ADA'?t('ADA Gains/Loss'):t('BTC comparison gain/loss')}</span>
+        <span translate="no" className="governance-card-detail">{comparisonCrypto==='ADA'?t('ADA Gains/Loss'):t(comparisonResult.amount===null?'BTC comparison gain/loss':comparisonResult.amount<0?'BTC comparison loss':'BTC comparison gain')}</span>
         <strong className="governance-card-title">{snapshot?<ComparisonAmount amount={comparisonCrypto==='ADA'?Number(cexPosition.netRaw)/1e6:comparisonResult.amount} value={comparisonCrypto==='ADA'&&comparisonFiat==='USD'?cexDollars.usd:comparisonResult.fiat} crypto={comparisonCrypto} currency={comparisonFiat}/>: 'Waiting for wallet balances'}</strong>
       </div>
       {snapshot&&comparisonCrypto==='BTC'&&<p className="small muted" role="status">{btc.status||'BTC equivalents use transfer-day ADA/USD and BTC/USD prices, not actual Bitcoin purchases.'}</p>}

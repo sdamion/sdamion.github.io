@@ -5,7 +5,7 @@ export function ComparisonAmount({amount,value,crypto,currency,tone}:{amount:num
   const number=amount===null?'—':Math.abs(amount).toLocaleString(locale,{maximumFractionDigits:crypto==='BTC'?8:6});
   const fiat=value===null?'—':new Intl.NumberFormat(locale,{style:'currency',currency,maximumFractionDigits:currency==='JPY'?0:2}).format(Math.abs(value));
   return <strong translate="no" className={`portfolio-transfer-amount ${tone??(amount!==null&&amount<0?'negative':'positive')}`}><span className="pool-delegator-amount">
-    <span className="portfolio-comparison-crypto">{crypto==='ADA'?'₳ '+number:<><img src="/bitcoin-logo.png" alt="Bitcoin" width="16" height="16"/>{number}</>}</span>
+    <span className="portfolio-comparison-crypto"><img src={crypto==='ADA'?'/cardano_logo_ico.webp':'/bitcoin-logo.png'} alt={crypto==='ADA'?'Cardano':'Bitcoin'} width="16" height="16"/>{number}</span>
     <span className={`pool-delegator-usd ${!tone&&value!==null&&value<0?'negative':''}`}>≈ {fiat}</span>
   </span></strong>;
 }

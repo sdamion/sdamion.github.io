@@ -24,6 +24,7 @@ try{
    if(url.pathname.endsWith('/historical-btc-prices'))return route.fulfill({contentType:'application/json',body:JSON.stringify({prices:[[Date.parse('2023-11-14'),25000],[Date.parse('2024-03-09'),60000],[Date.parse(new Date().toISOString().slice(0,10)),100000]]})});
    if(url.pathname.endsWith('/historical-fx-prices'))return route.fulfill({contentType:'application/json',body:JSON.stringify({rates:{'2023-11-14':{EUR:0.9,JPY:150},'2024-03-08':{EUR:0.8,JPY:140},[new Date().toISOString().slice(0,10)]:{EUR:0.8,JPY:145}}})});
    if(url.pathname==='/bitcoin-logo.png')return readFile('bitcoin-logo.png').then(body=>route.fulfill({contentType:'image/png',body}));
+   if(url.pathname==='/cardano_logo_ico.webp')return readFile('cardano_logo_ico.webp').then(body=>route.fulfill({contentType:'image/webp',body}));
    return route.fulfill({contentType:'text/html',body:'<div id="app"></div>'});
  });
  await page.goto('http://127.0.0.1:8998/');
@@ -76,11 +77,15 @@ try{
  await page.waitForFunction(()=>{const canvas=document.querySelector('#portfolio-gain-loss-overlay canvas');return canvas&&window.Chart.getChart(canvas)?.data.datasets.length===2;});
  const values=await chart.evaluate(canvas=>window.Chart.getChart(canvas).data.datasets.map(d=>({name:d.label,values:d.data.map(p=>p.y)})));
  assert.deepEqual(values,[{name:'ADA IN',values:[100,100]},{name:'ADA OUT',values:[0,40]}]);
+ assert.equal(await gain.locator('.portfolio-gain-summary').getByRole('img',{name:'Cardano'}).count(),3,'Cardano logo prefixes IN, OUT and gain/loss');
+ await page.waitForFunction(()=>[...document.querySelectorAll('.portfolio-gain-summary img')].every(image=>image.complete&&image.naturalWidth>0));
+ assert.doesNotMatch(await gain.locator('.portfolio-comparison-crypto').first().innerText(),/₳|ADA/,'logo replaces the ADA symbol');
  await gain.getByRole('combobox',{name:'Comparison cryptocurrency'}).selectOption('BTC');
  await page.waitForFunction(()=>window.Chart.getChart(document.querySelector('#portfolio-gain-loss-overlay canvas'))?.data.datasets[0].data.at(-1).y===0.001);
  const btcChart=await chart.evaluate(canvas=>window.Chart.getChart(canvas).data.datasets.map(row=>({name:row.label,color:row.borderColor,values:row.data.map(p=>p.y)})));
  assert.deepEqual(btcChart,[{name:'BTC IN',color:'#f7931a',values:[0.001,0.001]},{name:'BTC OUT',color:'#f7931a',values:[0,0.0002]}]);
  assert.match(await gain.locator('.portfolio-gain-summary').innerText(),/0\.0002/);
+ assert.equal(await gain.locator('.portfolio-gain-result .governance-card-detail').innerText(),'BTC comparison loss','negative BTC result uses loss label');
  assert.equal(await gain.locator('.portfolio-gain-summary').getByRole('img',{name:'Bitcoin'}).count(),3,'Bitcoin logo prefixes IN, OUT and gain/loss');
  await page.waitForFunction(()=>[...document.querySelectorAll('.portfolio-gain-summary img')].every(image=>image.complete&&image.naturalWidth>0));
  assert.doesNotMatch(await gain.locator('.portfolio-comparison-crypto').first().innerText(),/BTC/,'no BTC suffix after the amount');
@@ -134,6 +139,11 @@ try{
  await page.setViewportSize({width:320,height:844});
  assert.ok(await gain.locator('.portfolio-comparison-controls').evaluate(el=>el.scrollWidth<=el.clientWidth+1),'currency dropdowns fit mobile without horizontal scrolling');
  await page.screenshot({path:'/tmp/portfolio-comparison-selectors-mobile.png',fullPage:true});
+ await page.evaluate(()=>{window.fixture.infos[0].balance='1000000000';window.fixture.infos[0].utxo_set[0].value='1000000000';window.root.unmount();window.mount();});
+ await page.getByRole('button',{name:'Open ADA Gains/Loss',exact:true}).click();
+ await gain.getByRole('combobox',{name:'Comparison cryptocurrency'}).selectOption('BTC');
+ await page.waitForFunction(()=>document.querySelector('.portfolio-gain-result .governance-card-detail')?.textContent==='BTC comparison gain');
+ assert.equal(await gain.locator('.portfolio-gain-result .governance-card-detail').innerText(),'BTC comparison gain','positive BTC result uses gain label');
  assert.deepEqual(errors,[]);
  console.log('PASS: asset exclusion persistence; real chart totals, theme, responsive summary layout and date-filtered graph/table.');
 }finally{await browser.close();}
