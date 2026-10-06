@@ -435,6 +435,8 @@ export default function Home({memberStake}:{memberStake:string}){
   const ada=Number(holdings.find(h=>h.id==='lovelace')?.raw||0)/1e6;
   const currentAdaUsd=liveQuote?.usd??snapshot?.adaUsd??null;
   const portfolioUsd=valued.length?subtotal:snapshot?.complete&&included.length===0?0:null;
+  const gainValued=gainRows.filter(r=>r.value!==null);
+  const gainPortfolioUsd=gainValued.length?gainValued.reduce((sum,row)=>sum+row.value!,0):snapshot?.complete&&gainRows.length===0?0:null;
   const portfolioAda=portfolioUsd!==null&&currentAdaUsd!==null&&currentAdaUsd>0?portfolioUsd/currentAdaUsd:null;
   const holdingsRate=holdingsCurrency==='ADA'?null:fiatRate(Date.now()/1000,holdingsCurrency,fx.history);
   const holdingsValue=holdingsCurrency==='ADA'?portfolioAda:portfolioUsd!==null&&holdingsRate!==null?portfolioUsd*holdingsRate:null;
@@ -443,11 +445,11 @@ export default function Home({memberStake}:{memberStake:string}){
   const usd=(value:number)=>formatPortfolioUsd(value,currencyDisplay);
   const signed=(value:number)=>usd(Math.abs(value));
   const holdingsDisplay=formatPortfolioUsd(portfolioUsd,currencyDisplay);
-  const adaResult=comparisonNet({time:0,incoming:Number(cexPosition.receivedRaw)/1e6,outgoing:Number(cexPosition.sentRaw)/1e6,inFiat:cexDollars.boughtUsd,outFiat:cexDollars.soldUsd},ada,currentAdaUsd,{}, {},'ADA','USD',Date.now()/1000,portfolioUsd);
+  const adaResult=comparisonNet({time:0,incoming:Number(cexPosition.receivedRaw)/1e6,outgoing:Number(cexPosition.sentRaw)/1e6,inFiat:cexDollars.boughtUsd,outFiat:cexDollars.soldUsd},ada,currentAdaUsd,{}, {},'ADA','USD',Date.now()/1000,gainPortfolioUsd);
   const adaGain={ada:adaResult.amount,usd:adaResult.fiat};
   const tileGain=holdingsCurrency==='ADA'?adaGain.ada:adaGain.usd!==null&&holdingsRate!==null?adaGain.usd*holdingsRate:null;
   const tileGainDisplay=holdingsCurrency==='ADA'?formatPortfolioAda(adaGain.ada===null?null:Math.abs(adaGain.ada),currencyDisplay):formatPortfolioUsd(adaGain.usd===null?null:Math.abs(adaGain.usd),currencyDisplay);
-  const comparisonResult=comparisonNet(comparison,ada,currentAdaUsd,btc.history,fx.history,comparisonCrypto,comparisonFiat,Date.now()/1000,portfolioUsd);
+  const comparisonResult=comparisonNet(comparison,ada,currentAdaUsd,btc.history,fx.history,comparisonCrypto,comparisonFiat,Date.now()/1000,gainPortfolioUsd);
   const provisional=!snapshot?.complete&&covered.length>0;
   const adaBasisStatus=!adaLive?.reconciled?snapshot?.complete?'History / balance mismatch — refresh to reconcile':'Waiting for transaction history to reconcile with the wallet balance':adaLive.usd===null?'Missing receipt prices':snapshot?.complete?'Remaining cost · receipt-date prices':'Remaining cost · refresh in progress';
   const displayWallets=wallets.flatMap(w=>(w.group==='swap'?[w.address,...(snapshot?.swapGroups?.[w.address]||[])]:snapshot?.groups?.[w.address]||[w.address]).map(address=>({...w,address})));
