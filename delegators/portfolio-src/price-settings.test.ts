@@ -13,5 +13,5 @@ data.set('tdsp-member-basis:member',JSON.stringify({token:{average:'',price:'0'}
 assert.deepEqual(loadPriceSettings(storage,'member','member::old'),{token:{average:'',price:'0'}},'cleared values and zero are not overwritten by legacy prices');
 assert.ok(data.has('tdsp-member-basis:member::old'),'legacy values remain recoverable');
 data.set('tdsp-member-basis:member',JSON.stringify({token:{average:'15',gainLossDisabled:true},other:{gainLossDisabled:false}}));
-assert.deepEqual(loadPriceSettings(storage,'member','member::new-wallet'),{token:{average:'15',gainLossDisabled:true},other:{gainLossDisabled:false}},'gain/loss choices survive reload and wallet changes');
+assert.deepEqual(loadPriceSettings(storage,'member','member::new-wallet'),{token:{average:'15',excluded:true},other:{}},'legacy gain/loss choices migrate to the single asset exclusion');
 console.log('PASS: price settings survive wallet changes; migration, member isolation and explicit clearing');

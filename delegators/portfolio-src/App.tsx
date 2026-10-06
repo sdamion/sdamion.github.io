@@ -26,7 +26,7 @@ import {createHistoryIndex} from './history-index';
 import {hasCounterpartyData,needsFactRefresh,needsActiveFactRefresh} from './fact-refresh';
 import {keepRefreshSessionAlive} from './refresh-session';
 import {currentValuation,mergeMarketQuote} from './current-valuation';
-import {includedAssets,gainLossAssets} from './asset-exclusions';
+import {includedAssets} from './asset-exclusions';
 import {valuationCoverage} from './valuation-coverage';
 import {averageBuy,purchaseAverages} from './average-buy';
 import {assetImageCandidates} from './asset-image';
@@ -67,7 +67,7 @@ import type {CexAddress} from './cex';
 import {durationLabel,remainingSeconds,analysisProgress} from './progress';
 import {memberWallets,resolveWalletGroups,validWalletAddress,validStakeAddress,walletTransactionCount} from './member';
 const num=(n:number,max=6)=>n.toLocaleString('en-US',{maximumFractionDigits:max});
-type Overrides=Record<string,{average?:string;price?:string;decimals?:string;excluded?:boolean;gainLossDisabled?:boolean}>;
+type Overrides=Record<string,{average?:string;price?:string;decimals?:string;excluded?:boolean}>;
 function parseAmount(s?:string):number|null {if(!s?.trim())return null;const n=Number(s);return Number.isFinite(n)&&n>=0?n:null;}
 
 async function historicalPrices(signal:AbortSignal):Promise<{prices?:[number,number][]}|null>{
@@ -343,11 +343,6 @@ export default function Home({memberStake}:{memberStake:string}){
     setOverrides(next);
     try{localStorage.setItem(overrideKey,JSON.stringify(next));}catch{setCacheNotice('Your asset exclusions could not be saved locally.');}
   }
-  function setGainLossEnabled(id:string,enabled:boolean){
-    const next={...overrides,[id]:{...overrides[id],gainLossDisabled:!enabled}};
-    setOverrides(next);
-    try{localStorage.setItem(overrideKey,JSON.stringify(next));}catch{setCacheNotice('Your gain/loss settings could not be saved.');}
-  }
   async function assignUnknownOwnership(hash:string,address:string){
     if(busy||!snapshot)throw new Error('Wait for the current refresh to finish.');
     const control=new AbortController();controller.current=control;setBusy(true);
@@ -429,14 +424,11 @@ export default function Home({memberStake}:{memberStake:string}){
     return {...h,name:m?.name||m?.ticker||assetName(h.id),qty,price,value,cost,pnl,buyAverage,estimatedPurchaseCost:!!estimated,manualPrice,quote,automaticDecimals,automatic:avg===null&&cost!==null};
   }).sort((a,b)=>a.id==='lovelace'?-1:b.id==='lovelace'?1:(b.value??-1)-(a.value??-1));
   const included=includedAssets(rows,overrides),excludedCount=rows.length-included.length;
-  const gainRows=gainLossAssets(included,overrides);
-  const valued=included.filter(r=>r.value!==null),covered=gainRows.filter(r=>r.pnl!==null);
+  const valued=included.filter(r=>r.value!==null),covered=included.filter(r=>r.pnl!==null);
   const subtotal=valued.reduce((s,r)=>s+(r.value||0),0);
   const ada=Number(holdings.find(h=>h.id==='lovelace')?.raw||0)/1e6;
   const currentAdaUsd=liveQuote?.usd??snapshot?.adaUsd??null;
   const portfolioUsd=valued.length?subtotal:snapshot?.complete&&included.length===0?0:null;
-  const gainValued=gainRows.filter(r=>r.value!==null);
-  const gainPortfolioUsd=gainValued.length?gainValued.reduce((sum,row)=>sum+row.value!,0):snapshot?.complete&&gainRows.length===0?0:null;
   const portfolioAda=portfolioUsd!==null&&currentAdaUsd!==null&&currentAdaUsd>0?portfolioUsd/currentAdaUsd:null;
   const holdingsRate=holdingsCurrency==='ADA'?null:fiatRate(Date.now()/1000,holdingsCurrency,fx.history);
   const holdingsValue=holdingsCurrency==='ADA'?portfolioAda:portfolioUsd!==null&&holdingsRate!==null?portfolioUsd*holdingsRate:null;
@@ -445,11 +437,11 @@ export default function Home({memberStake}:{memberStake:string}){
   const usd=(value:number)=>formatPortfolioUsd(value,currencyDisplay);
   const signed=(value:number)=>usd(Math.abs(value));
   const holdingsDisplay=formatPortfolioUsd(portfolioUsd,currencyDisplay);
-  const adaResult=comparisonNet({time:0,incoming:Number(cexPosition.receivedRaw)/1e6,outgoing:Number(cexPosition.sentRaw)/1e6,inFiat:cexDollars.boughtUsd,outFiat:cexDollars.soldUsd},ada,currentAdaUsd,{}, {},'ADA','USD',Date.now()/1000,gainPortfolioUsd);
+  const adaResult=comparisonNet({time:0,incoming:Number(cexPosition.receivedRaw)/1e6,outgoing:Number(cexPosition.sentRaw)/1e6,inFiat:cexDollars.boughtUsd,outFiat:cexDollars.soldUsd},ada,currentAdaUsd,{}, {},'ADA','USD',Date.now()/1000,portfolioUsd);
   const adaGain={ada:adaResult.amount,usd:adaResult.fiat};
   const tileGain=holdingsCurrency==='ADA'?adaGain.ada:adaGain.usd!==null&&holdingsRate!==null?adaGain.usd*holdingsRate:null;
   const tileGainDisplay=holdingsCurrency==='ADA'?formatPortfolioAda(adaGain.ada===null?null:Math.abs(adaGain.ada),currencyDisplay):formatPortfolioUsd(adaGain.usd===null?null:Math.abs(adaGain.usd),currencyDisplay);
-  const comparisonResult=comparisonNet(comparison,ada,currentAdaUsd,btc.history,fx.history,comparisonCrypto,comparisonFiat,Date.now()/1000,gainPortfolioUsd);
+  const comparisonResult=comparisonNet(comparison,ada,currentAdaUsd,btc.history,fx.history,comparisonCrypto,comparisonFiat,Date.now()/1000,portfolioUsd);
   const provisional=!snapshot?.complete&&covered.length>0;
   const adaBasisStatus=!adaLive?.reconciled?snapshot?.complete?'History / balance mismatch — refresh to reconcile':'Waiting for transaction history to reconcile with the wallet balance':adaLive.usd===null?'Missing receipt prices':snapshot?.complete?'Remaining cost · receipt-date prices':'Remaining cost · refresh in progress';
   const displayWallets=wallets.flatMap(w=>(w.group==='swap'?[w.address,...(snapshot?.swapGroups?.[w.address]||[])]:snapshot?.groups?.[w.address]||[w.address]).map(address=>({...w,address})));
@@ -521,12 +513,12 @@ export default function Home({memberStake}:{memberStake:string}){
       <label className="small"><input type="checkbox" checked={missingCostsOnly} onChange={e=>setMissingCostsOnly(e.target.checked)}/> Show holdings with missing purchase cost ({valuationCoverage(included).missingCost})</label>
       {payments.errors.length>0&&<p role="status" className="negative">Some saved payment links cannot be applied to the loaded history. Open the asset image to review its purchase payments.</p>}
       <Table className="portfolio-holdings-table"><TableHeader><TableRow>{['Asset','Balance','Price · USD','Value · USD','Average buy · USD','Gain / loss'].map(label=><TableHead translate="no" key={label}>{t(label).replace('USD',holdingsCurrency)}</TableHead>)}</TableRow></TableHeader><TableBody>{rows.filter(r=>!missingCostsOnly||(r.cost===null&&(r.id==='lovelace'||overrides[r.id]?.excluded!==true))).map(r=><TableRow key={r.id}>
-        <TableCell><AssetImage id={r.id} name={r.name} market={snapshot?.markets[r.id]} onOpen={()=>setSelectedAsset(r.id)}/><AssetWalletAddresses compact addresses={assetAddresses[r.id]||[]} names={assetWallets[r.id]||[]}/>{overrides[r.id]?.excluded&&r.id!=='lovelace'&&<div className="small muted">Excluded from calculations</div>}</TableCell>
+        <TableCell><AssetImage id={r.id} name={r.name} market={snapshot?.markets[r.id]} onOpen={()=>setSelectedAsset(r.id)}/><AssetWalletAddresses compact addresses={assetAddresses[r.id]||[]} names={assetWallets[r.id]||[]}/>{r.id!=='lovelace'&&<AssetExclusionToggle name={r.name} excluded={overrides[r.id]?.excluded===true} onChange={excluded=>excludeAsset(r.id,excluded)}/>}</TableCell>
         <TableCell>{r.qty===null?`${r.raw} raw units`:num(r.qty)}{r.id!=='lovelace'&&r.automaticDecimals==null&&<label className="small muted">Token decimals<Input aria-label={`Token decimals for ${r.name}`} type="number" min="0" max="30" step="1" value={overrides[r.id]?.decimals??''} onChange={e=>updateOverride(r.id,'decimals',e.target.value)} placeholder="Required to calculate value"/></label>}</TableCell>
         <TableCell>{r.price!==null?(r.quote.source==='wayup'||r.quote.source==='fallback'?'≈ ':'')+usd(r.price):'Unavailable'}<div className="small muted">{r.quote.source==='manual'?'Your price':r.quote.source==='wayup'?<a href={`https://www.wayup.io/collection/${r.id.slice(0,56)}`} target="_blank" rel="noreferrer">Wayup collection floor · {num(r.quote.ada!)} ADA{r.quote.stale?' · Last known quote (stale)':''} · estimate, not a sale guarantee</a>:r.quote.source==='fallback'?'User-defined fallback, not a market quote':r.price!==null?'Market estimate':''}</div><details><summary translate="no" className="small">{t('Set current price')} (USD)</summary><Input aria-label={`Current USD price for ${r.name}`} type="number" min="0" step="any" value={overrides[r.id]?.price||''} onChange={e=>updateOverride(r.id,'price',e.target.value)} placeholder="Use market quote"/></details></TableCell>
         <TableCell>{r.value===null?'—':usd(r.value)}</TableCell>
         <TableCell>{r.id==='lovelace'?<><strong>{adaLive?.averageReceiptUsd!=null?(adaLive.provisional?'≈ ':'')+formatPortfolioUsd(adaLive.averageReceiptUsd,currencyDisplay,6):'—'}</strong><div className="small muted">All incoming ADA · weighted receipt-date prices{adaLive?.provisional?' · Partial history':''}</div>{!!adaLive?.missingReceiptAda&&<div className="small muted">Historical prices missing for {num(adaLive.missingReceiptAda)} ADA</div>}{r.cost!==null?<div className="small muted">Remaining cost for gain/loss: {usd(r.cost)}</div>:<div className="small muted">{adaBasisStatus}</div>}</>:<><strong>{r.buyAverage!==null?usd(r.buyAverage):'Unavailable'}</strong><div className="small muted">{parseAmount(overrides[r.id]?.average)!==null?'Your average cost':r.buyAverage!==null?'Known purchases · weighted historical USD cost':r.qty===null?'Token decimals required for per-unit price':'Purchase cost or historical USD price missing'}</div><details><summary translate="no" className="small">{t('Set average buy price')} (USD)</summary><Input className="cost-input" aria-label={`Average buy price in USD for ${r.name}`} type="number" min="0" step="any" value={overrides[r.id]?.average||''} onChange={e=>updateOverride(r.id,'average',e.target.value)} placeholder="Use calculated purchase cost"/></details></>}</TableCell>
-        <TableCell className={overrides[r.id]?.gainLossDisabled===true||r.pnl===null?'muted':r.pnl>=0?'positive':'negative'}>{overrides[r.id]?.gainLossDisabled===true?'Excluded from total':r.pnl===null?'—':((r.id==='lovelace'&&provisional)||r.estimatedPurchaseCost?'≈ ':'')+signed(r.pnl)}{overrides[r.id]?.gainLossDisabled===true&&r.pnl!==null&&<div className="small muted">{usd(r.pnl)} not included</div>}{r.estimatedPurchaseCost&&<div className="small muted">Known purchase average · estimated cost</div>}{r.pnl===null&&r.value!==null&&<div className="small muted">Purchase cost required for gain / loss</div>}{r.pnl!==null&&r.cost!==null&&r.cost>0&&<div className="small">{num(r.pnl/r.cost*100,2)}%{r.id==='lovelace'&&provisional?' · provisional':''}</div>}<AssetGainLossToggle name={r.name} enabled={overrides[r.id]?.gainLossDisabled!==true} onChange={enabled=>setGainLossEnabled(r.id,enabled)}/></TableCell>
+        <TableCell className={overrides[r.id]?.excluded||r.pnl===null?'muted':r.pnl>=0?'positive':'negative'}>{r.pnl===null?'—':((r.id==='lovelace'&&provisional)||r.estimatedPurchaseCost?'≈ ':'')+signed(r.pnl)}{r.estimatedPurchaseCost&&<div className="small muted">Known purchase average · estimated cost</div>}{r.pnl===null&&r.value!==null&&<div className="small muted">Purchase cost required for gain / loss</div>}{r.pnl!==null&&r.cost!==null&&r.cost>0&&<div className="small">{num(r.pnl/r.cost*100,2)}%{r.id==='lovelace'&&provisional?' · provisional':''}</div>}</TableCell>
       </TableRow>)}</TableBody></Table>{!rows.length&&<p className="empty">{busy?'Fetching balances…':'No unspent holdings at the tracked addresses.'}</p>}
       <p className="small muted table-note">Remaining cost uses the same calculation during and after refresh. ADA history must reconcile with the wallet balance; token lots must match the current holding. Missing history or receipt prices are not treated as zero. Values update as new facts and prices arrive, not because refresh finishes. Sends, spends and fees remove proportional ADA cost; internal transfers never reset the average. Daily prices approximate receipt-time prices. This is your receipt-price benchmark, not an exchange execution price or tax calculation. Token costs use FIFO trades, linked mint payments or your entry. Performance excludes realised gains; current holdings already reflect fees.</p>
     </section>
@@ -570,16 +562,14 @@ export default function Home({memberStake}:{memberStake:string}){
         <p className="small muted">{assetWallets[r.id]?.join(' · ')}</p>
         <AssetWalletAddresses addresses={assetAddresses[r.id]||[]}/>
         <p className="address">{r.id}</p>
-        <AssetGainLossToggle name={r.name} enabled={overrides[r.id]?.gainLossDisabled!==true} onChange={enabled=>setGainLossEnabled(r.id,enabled)}/>
-        <p className="small muted">Controls inclusion in the unrealised gain/loss total. Balances, asset values, fees and ADA IN/OUT remain unchanged.</p>
         {r.id!=='lovelace'&&<><button type="button" className="governance-vote-secondary" disabled={busy} onClick={()=>void refreshAssetPurchases(r.id)}>Refresh purchase data</button><p className="small muted" role="status">{status}</p>{error&&<p role="alert" className="negative">{error}</p>}</>}
-        {r.id!=='lovelace'&&<><label><input type="checkbox" checked={overrides[r.id]?.excluded===true} onChange={e=>excludeAsset(r.id,e.target.checked)}/> Exclude from calculations</label><p className="small muted">Excludes this asset's value, purchase cost and gain/loss from portfolio totals and coverage. Individual details stay visible. Actual ADA movements and network fees remain unchanged. Saved for this portfolio in this browser.</p></>}
+        {r.id!=='lovelace'&&<><AssetExclusionToggle name={r.name} excluded={overrides[r.id]?.excluded===true} onChange={excluded=>excludeAsset(r.id,excluded)}/><p className="small muted">Excludes this asset's value, purchase cost and gain/loss from portfolio totals and coverage. Individual details stay visible. Actual ADA movements and network fees remain unchanged. Saved for this portfolio in this browser.</p></>}
         {r.id!=='lovelace'&&<a href={`https://cardanoscan.io/token/${r.id}`} target="_blank" rel="noreferrer">View asset on Cardanoscan <ExternalLink size={14}/></a>}
         <div className="tdsp-tile-grid">
           <Metric label="Balance" value={r.qty===null?`${r.raw} raw units`:num(r.qty)} note=""/>
           <Metric label="Current value" value={r.value===null?'Unavailable':usd(r.value)} note={r.quote.source==='fallback'?'2 ADA fallback estimate':r.quote.source==='wayup'?(r.quote.stale?'Last known Wayup floor · stale estimate':'Wayup collection floor estimate'):r.quote.source==='manual'?'Your price':'Market estimate'}/>
           <Metric label="Remaining purchase cost" value={r.cost===null?'Unknown':usd(r.cost)} note={r.estimatedPurchaseCost?'Estimate from known purchase average; return transfer cost unverified':''}/>
-          <Metric label="Assets Gains/Loss" value={r.pnl===null?'Purchase cost required':signed(r.pnl)} note={overrides[r.id]?.gainLossDisabled===true?'Excluded from portfolio gain/loss total':''} tone={overrides[r.id]?.gainLossDisabled===true?'muted':r.pnl!==null&&r.pnl<0?'negative':''}/>
+          <Metric label="Assets Gains/Loss" value={r.pnl===null?'Purchase cost required':signed(r.pnl)} tone={overrides[r.id]?.excluded?'muted':r.pnl!==null&&r.pnl<0?'negative':''}/>
         </div>
       </section>
       {r.id!=='lovelace'&&<PaymentLinks id={r.id} facts={Object.values(classifiedFacts)} links={paymentLinks} acquisitions={payments.acquisitions} history={snapshot?.history} onSave={savePaymentLinks} loading={busy}/>}
@@ -587,8 +577,9 @@ export default function Home({memberStake}:{memberStake:string}){
   </main></PortfolioCurrencyContext.Provider>;
 }
 
-function AssetGainLossToggle({name,enabled,onChange}:{name:string;enabled:boolean;onChange:(enabled:boolean)=>void}){
-  return <label className="small muted"><input type="checkbox" role="switch" checked={enabled} aria-label={`Include ${name} in gain/loss`} onChange={event=>onChange(event.target.checked)}/> Include in gain/loss</label>;
+function AssetExclusionToggle({name,excluded,onChange}:{name:string;excluded:boolean;onChange:(excluded:boolean)=>void}){
+  const t=usePortfolioText();
+  return <label className="small muted"><input type="checkbox" checked={excluded} aria-label={t('Exclude {name} from Assets Across Wallets',{name})} onChange={event=>onChange(event.target.checked)}/>{t('Exclude from Assets Across Wallets')}</label>;
 }
 
 function AssetImage({id,name,market,onOpen,compact=false}:{id:string;name:string;market?:Market;onOpen?:()=>void;compact?:boolean}){

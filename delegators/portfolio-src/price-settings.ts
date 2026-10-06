@@ -1,9 +1,15 @@
 type Settings={getItem:(key:string)=>string|null;setItem:(key:string,value:string)=>void;keys:()=>string[]};
 type Overrides=Record<string,{average?:string;price?:string;decimals?:string;excluded?:boolean;gainLossDisabled?:boolean}>;
+function unifiedExclusions(values:Overrides):Overrides{
+  return Object.fromEntries(Object.entries(values).map(([id,value])=>{
+    const {gainLossDisabled,...settings}=value;
+    return [id,gainLossDisabled===true&&id!=='lovelace'?{...settings,excluded:true}:settings];
+  }));
+}
 export function loadPriceSettings(storage:Settings,stake:string,walletKey:string):Overrides{
   const key='tdsp-member-basis:'+stake;
   const saved=storage.getItem(key);
-  if(saved!==null)return JSON.parse(saved);
+  if(saved!==null)return unifiedExclusions(JSON.parse(saved));
   const current='tdsp-member-basis:'+walletKey;
   const legacy=storage.keys().filter(name=>name.startsWith(key+'::')&&name!==current).sort();
   const result:Overrides={};
@@ -16,6 +22,7 @@ export function loadPriceSettings(storage:Settings,stake:string,walletKey:string
       if(value&&typeof value==='object'&&!Array.isArray(value))result[id]={...result[id],...value};
     }
   }
-  if(Object.keys(result).length)storage.setItem(key,JSON.stringify(result));
-  return result;
+  const unified=unifiedExclusions(result);
+  if(Object.keys(unified).length)storage.setItem(key,JSON.stringify(unified));
+  return unified;
 }
