@@ -1,13 +1,15 @@
 import {useEffect,useMemo,useRef,useState} from 'react';
-import {cexTimelineSeries} from './cex';
 import type {CexAddress} from './cex';
 import type {Fact} from './core';
 import {withinTransactionDates} from './transaction-date';
-import {cexBtcSeries} from './cex-btc';
+import {transferComparison} from './transfer-comparison';
+import type {ComparisonCrypto,ComparisonFiat,FxHistory} from './transfer-comparison';
+import {usePortfolioText} from './use-portfolio-text';
+const emptyRates={};
 
-export function CexTimeline({facts,entries,history,btcHistory={},busy,dateFrom='',dateTo=''}:{facts:Record<string,Fact>;entries:CexAddress[];history:Record<string,number>;btcHistory?:Record<string,number>;busy:boolean;dateFrom?:string;dateTo?:string}){
-  const points=useMemo(()=>cexTimelineSeries(Object.values(facts).filter(fact=>withinTransactionDates(fact.time,dateFrom,dateTo)),entries,history),[facts,entries,history,dateFrom,dateTo]);
-  const btcPoints=useMemo(()=>cexBtcSeries(Object.values(facts).filter(fact=>withinTransactionDates(fact.time,dateFrom,dateTo)),entries,history,btcHistory),[facts,entries,history,btcHistory,dateFrom,dateTo]);
+export function CexTimeline({facts,entries,history,btcHistory=emptyRates,fxHistory=emptyRates,crypto='ADA',currency='USD',busy,dateFrom='',dateTo=''}:{facts:Record<string,Fact>;entries:CexAddress[];history:Record<string,number>;btcHistory?:Record<string,number>;fxHistory?:FxHistory;crypto?:ComparisonCrypto;currency?:ComparisonFiat;busy:boolean;dateFrom?:string;dateTo?:string}){
+  const t=usePortfolioText();
+  const points=useMemo(()=>transferComparison(Object.values(facts).filter(fact=>withinTransactionDates(fact.time,dateFrom,dateTo)),entries,history,btcHistory,fxHistory,crypto,currency),[facts,entries,history,btcHistory,fxHistory,crypto,currency,dateFrom,dateTo]);
   const canvas=useRef<HTMLCanvasElement>(null);
   const [error,setError]=useState('');
   useEffect(()=>{
@@ -21,29 +23,24 @@ export function CexTimeline({facts,entries,history,btcHistory={},busy,dateFrom='
         const style=getComputedStyle(canvas.current),color=style.getPropertyValue('--text').trim(),grid=style.getPropertyValue('--line').trim();
         const green=style.getPropertyValue('--accent-strong').trim(),red=style.getPropertyValue('--ai-unavailable-color').trim()||'#c62828';
         const i18n=(window as unknown as {TDSPI18n?:{translateText:(text:string)=>string;getLanguage:()=>string}}).TDSPI18n;
-        const t=(text:string)=>i18n?.translateText(text)||text;
-        const locale=i18n?.getLanguage();
-        const fmt=(n:number)=>n.toLocaleString(locale,{maximumFractionDigits:6});
+        const locale=i18n?.getLanguage()||'en';
+        const fmt=(n:number)=>n.toLocaleString(locale,{maximumFractionDigits:crypto==='BTC'?8:6});
         const compact=new Intl.NumberFormat(undefined,{notation:'compact',maximumFractionDigits:1});
         const last=points[points.length-1];
-        const floor=-Math.max(1,Math.max(last.boughtAda,last.soldAda)*0.05);
+        const floor=-Math.max(crypto==='BTC'?0.00000001:1,Math.max(last.incoming??0,last.outgoing??0)*0.05);
         chart?.destroy();
         chart=new Chart(canvas.current,{
           type:'line',
           data:{datasets:[
-            {label:'ADA IN',data:points.map(p=>({x:p.time*1000,y:p.boughtAda,usd:p.boughtUsd})),borderColor:red,backgroundColor:red},
-            {label:'ADA OUT',data:points.map(p=>({x:p.time*1000,y:p.soldAda,usd:p.soldUsd})),borderColor:green,backgroundColor:green},
-            ...(Object.keys(btcHistory).length?[
-              {label:t('BTC IN equivalent'),yAxisID:'btc',data:btcPoints.map(p=>({x:p.time*1000,y:p.incoming})),borderColor:'#f7931a',backgroundColor:'#f7931a'},
-              {label:t('BTC OUT equivalent'),yAxisID:'btc',borderDash:[6,4],data:btcPoints.map(p=>({x:p.time*1000,y:p.outgoing})),borderColor:'#f7931a',backgroundColor:'#f7931a'}
-            ]:[])
+            {label:crypto+' IN',data:points.map(p=>({x:p.time*1000,y:p.incoming,fiat:p.inFiat})),borderColor:crypto==='BTC'?'#f7931a':red,backgroundColor:crypto==='BTC'?'#f7931a':red},
+            {label:crypto+' OUT',borderDash:crypto==='BTC'?[6,4]:[],data:points.map(p=>({x:p.time*1000,y:p.outgoing,fiat:p.outFiat})),borderColor:crypto==='BTC'?'#f7931a':green,backgroundColor:crypto==='BTC'?'#f7931a':green}
           ].map(dataset=>({...dataset,stepped:'after',borderWidth:2.5,borderCapStyle:'round',borderJoinStyle:'round',pointRadius:points.length===1?4:0,pointHoverRadius:5,pointHitRadius:14,fill:false}))},
           options:{responsive:true,maintainAspectRatio:false,animation:false,layout:{padding:{top:8,right:12}},interaction:{mode:'index',intersect:false},
             plugins:{legend:{position:'top',align:'start',labels:{color,usePointStyle:true,pointStyle:'line',padding:20,boxWidth:20,font:{size:12}}},tooltip:{backgroundColor:style.getPropertyValue('--surface').trim(),titleColor:color,bodyColor:color,borderColor:grid,borderWidth:1,cornerRadius:8,padding:12,displayColors:true,callbacks:{
               title:(items:{parsed:{x:number}}[])=>items.length?new Date(items[0].parsed.x).toLocaleString():'',
-              label:(item:{dataset:{label:string;yAxisID?:string};raw:{y:number;usd?:number|null}})=>item.dataset.yAxisID==='btc'?`${item.dataset.label}: ${item.raw.y.toLocaleString(locale,{maximumFractionDigits:8})} BTC`:`${item.dataset.label}: ₳ ${fmt(item.raw.y)}${item.raw.usd==null?' · '+t('Historical USD unavailable'):` ≈ $${item.raw.usd.toLocaleString(locale,{minimumFractionDigits:2,maximumFractionDigits:2})}`}`
+              label:(item:{dataset:{label:string};raw:{y:number;fiat:number|null}})=>`${item.dataset.label}: ${crypto==='ADA'?'₳ '+fmt(item.raw.y):fmt(item.raw.y)+' BTC'}${item.raw.fiat===null?' · '+t('Historical currency price unavailable'):' ≈ '+new Intl.NumberFormat(locale,{style:'currency',currency,maximumFractionDigits:currency==='JPY'?0:2}).format(item.raw.fiat)}`
             }}},
-            scales:{x:{type:'linear',border:{display:false},ticks:{color,maxTicksLimit:5,maxRotation:0,padding:10,font:{size:11},callback:(value:number)=>new Date(value).toLocaleDateString(locale,{month:'short',year:'2-digit'})},grid:{display:false}},y:{min:floor,border:{display:false},title:{display:true,text:t('Cumulative ADA'),color,font:{size:12}},ticks:{color,maxTicksLimit:5,padding:10,font:{size:11},callback:(value:number)=>value<0?null:compact.format(value)},grid:{color:grid,drawTicks:false}},btc:{display:Object.keys(btcHistory).length>0,position:'right',beginAtZero:true,border:{display:false},title:{display:true,text:t('BTC equivalent'),color,font:{size:12}},ticks:{color,maxTicksLimit:5,callback:(value:number)=>value.toLocaleString(locale,{maximumFractionDigits:4})},grid:{drawOnChartArea:false}}}
+            scales:{x:{type:'linear',border:{display:false},ticks:{color,maxTicksLimit:5,maxRotation:0,padding:10,font:{size:11},callback:(value:number)=>new Date(value).toLocaleDateString(locale,{month:'short',year:'2-digit'})},grid:{display:false}},y:{min:floor,border:{display:false},title:{display:true,text:t('Cumulative {crypto}',{crypto}),color,font:{size:12}},ticks:{color,maxTicksLimit:5,padding:10,font:{size:11},callback:(value:number)=>value<0?null:crypto==='BTC'?fmt(value):compact.format(value)},grid:{color:grid,drawTicks:false}}}
           }
         });
         setError('');
@@ -55,11 +52,11 @@ export function CexTimeline({facts,entries,history,btcHistory={},busy,dateFrom='
     const language=()=>void render();
     window.addEventListener('tdsp-language-change',language);
     return ()=>{stopped=true;observer.disconnect();window.removeEventListener('tdsp-language-change',language);chart?.destroy();};
-  },[points,btcPoints,btcHistory]);
-  return <section className="portfolio-section portfolio-timeline" aria-label="ADA IN and ADA OUT timeline graph">
-    {points.length>0?<div className="price-history-chart-frame"><canvas ref={canvas} role="img" aria-label="Cumulative ADA IN and ADA OUT over time">Cumulative incoming and outgoing amounts; detailed transfers are listed below.</canvas></div>:<p className="empty">{busy?'Loading CEX transfers…':'No classified CEX transfers.'}</p>}
+  },[points,crypto,currency]);
+  return <section className="portfolio-section portfolio-timeline" aria-label={t('{crypto} IN and OUT timeline graph',{crypto})}>
+    {points.length>0?<div className="price-history-chart-frame"><canvas ref={canvas} role="img" aria-label={t('Cumulative {crypto} IN and OUT over time',{crypto})}>Cumulative incoming and outgoing amounts; detailed transfers are listed below.</canvas></div>:<p className="empty">{busy?'Loading CEX transfers…':'No classified CEX transfers.'}</p>}
     {error&&<p className="negative" role="status">{error}</p>}
-    {points.length>0&&points[points.length-1].soldAda===0&&<p className="small muted" role="status">No outgoing CEX transfers matched in the analysed history. ADA OUT is shown at 0 ADA. Check the saved destination addresses if transfers are missing.</p>}
-    <p className="small muted">Cumulative ADA IN / ADA OUT{dateFrom||dateTo?' within selected dates':''} · Transfer-day USD estimates · Classified transfers only</p>
+    {points.length>0&&points[points.length-1].outgoing===0&&<p className="small muted" role="status">No outgoing CEX transfers matched in the analysed history. Check the saved destination addresses if transfers are missing.</p>}
+    <p translate="no" className="small muted">{t('Cumulative {crypto} IN / OUT · Transfer-day {currency} estimates · Classified transfers only',{crypto,currency})}</p>
   </section>;
 }

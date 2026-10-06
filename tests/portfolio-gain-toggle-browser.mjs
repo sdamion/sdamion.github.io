@@ -19,7 +19,13 @@ const bundle=await build({stdin:{contents:`import {createRoot} from 'react-dom/c
 const browser=await chromium.launch({channel:'chrome',headless:true});
 try{
  const page=await browser.newPage();const errors=[];page.on('pageerror',e=>{errors.push(e.message);console.error(e.message);});
- await page.route('**/*',route=>new URL(route.request().url()).pathname.endsWith('/historical-btc-prices')?route.fulfill({contentType:'application/json',body:JSON.stringify({prices:[[Date.parse('2023-11-14'),25000],[Date.parse('2024-03-09'),60000]]})}):route.fulfill({contentType:'text/html',body:'<div id="app"></div>'}));
+ await page.route('**/*',route=>{
+   const url=new URL(route.request().url());
+   if(url.pathname.endsWith('/historical-btc-prices'))return route.fulfill({contentType:'application/json',body:JSON.stringify({prices:[[Date.parse('2023-11-14'),25000],[Date.parse('2024-03-09'),60000],[Date.parse(new Date().toISOString().slice(0,10)),100000]]})});
+   if(url.pathname.endsWith('/historical-fx-prices'))return route.fulfill({contentType:'application/json',body:JSON.stringify({rates:{'2023-11-14':{EUR:0.9,JPY:150},'2024-03-08':{EUR:0.8,JPY:140},[new Date().toISOString().slice(0,10)]:{EUR:0.8,JPY:145}}})});
+   if(url.pathname==='/bitcoin-logo.png')return readFile('bitcoin-logo.png').then(body=>route.fulfill({contentType:'image/png',body}));
+   return route.fulfill({contentType:'text/html',body:'<div id="app"></div>'});
+ });
  await page.goto('http://127.0.0.1:8998/');
  await page.addScriptTag({content:await readFile('shared/runtime.js','utf8')});
  await page.evaluate(({id,other})=>{
@@ -67,26 +73,39 @@ try{
  await page.getByRole('button',{name:'Open ADA Gains/Loss',exact:true}).click();
  const gain=page.locator('#portfolio-gain-loss-overlay');
  const chart=gain.locator('canvas');
- await page.waitForFunction(()=>{const canvas=document.querySelector('#portfolio-gain-loss-overlay canvas');return canvas&&window.Chart.getChart(canvas)?.data.datasets.length===4;});
+ await page.waitForFunction(()=>{const canvas=document.querySelector('#portfolio-gain-loss-overlay canvas');return canvas&&window.Chart.getChart(canvas)?.data.datasets.length===2;});
  const values=await chart.evaluate(canvas=>window.Chart.getChart(canvas).data.datasets.map(d=>({name:d.label,values:d.data.map(p=>p.y)})));
- assert.deepEqual(values,[{name:'ADA IN',values:[100,100]},{name:'ADA OUT',values:[0,40]},{name:'BTC IN equivalent',values:[0.001,0.001]},{name:'BTC OUT equivalent',values:[0,0.0002]}]);
- const btcChart=await chart.evaluate(canvas=>{const chart=window.Chart.getChart(canvas);return {axis:chart.options.scales.btc.position,colors:chart.data.datasets.slice(2).map(row=>row.borderColor)};});
- assert.deepEqual(btcChart,{axis:'right',colors:['#f7931a','#f7931a']});
- assert.match(await gain.locator('.portfolio-gain-summary').innerText(),/0\.0002 BTC/);
- assert.match(await gain.locator('.portfolio-gain-summary').innerText(),/0\.001 BTC/);
+ assert.deepEqual(values,[{name:'ADA IN',values:[100,100]},{name:'ADA OUT',values:[0,40]}]);
+ await gain.getByRole('combobox',{name:'Comparison cryptocurrency'}).selectOption('BTC');
+ await page.waitForFunction(()=>window.Chart.getChart(document.querySelector('#portfolio-gain-loss-overlay canvas'))?.data.datasets[0].data.at(-1).y===0.001);
+ const btcChart=await chart.evaluate(canvas=>window.Chart.getChart(canvas).data.datasets.map(row=>({name:row.label,color:row.borderColor,values:row.data.map(p=>p.y)})));
+ assert.deepEqual(btcChart,[{name:'BTC IN',color:'#f7931a',values:[0.001,0.001]},{name:'BTC OUT',color:'#f7931a',values:[0,0.0002]}]);
+ assert.match(await gain.locator('.portfolio-gain-summary').innerText(),/0\.0002/);
+ assert.equal(await gain.locator('.portfolio-gain-summary').getByRole('img',{name:'Bitcoin'}).count(),3,'Bitcoin logo prefixes IN, OUT and gain/loss');
+ await page.waitForFunction(()=>[...document.querySelectorAll('.portfolio-gain-summary img')].every(image=>image.complete&&image.naturalWidth>0));
+ assert.doesNotMatch(await gain.locator('.portfolio-comparison-crypto').first().innerText(),/BTC/,'no BTC suffix after the amount');
+ await gain.getByRole('combobox',{name:'Comparison currency'}).selectOption('EUR');
+ await page.waitForFunction(()=>window.Chart.getChart(document.querySelector('#portfolio-gain-loss-overlay canvas'))?.data.datasets[0].data.at(-1).fiat===22.5);
+ assert.match(await gain.locator('.portfolio-gain-summary').innerText(),/€22\.50/);
+ await gain.getByRole('combobox',{name:'Comparison currency'}).selectOption('JPY');
+ await page.waitForFunction(()=>window.Chart.getChart(document.querySelector('#portfolio-gain-loss-overlay canvas'))?.data.datasets[1].data.at(-1).fiat===1680);
+ assert.match(await gain.locator('.portfolio-gain-summary').innerText(),/¥1,680/);
+ await gain.getByRole('combobox',{name:'Comparison cryptocurrency'}).selectOption('ADA');
+ await gain.getByRole('combobox',{name:'Comparison currency'}).selectOption('USD');
+ await page.waitForFunction(()=>window.Chart.getChart(document.querySelector('#portfolio-gain-loss-overlay canvas'))?.data.datasets[1].data.at(-1).fiat===12);
  await page.setViewportSize({width:1440,height:1000});
  const overview=gain.locator('.portfolio-gain-overview');
  const summary=gain.getByRole('region',{name:'ADA Gains/Loss breakdown'});
  const filters=gain.getByRole('region',{name:'Transaction search options'});
- const graph=gain.getByRole('region',{name:'ADA IN and ADA OUT timeline graph'});
+ const graph=gain.getByRole('region',{name:'ADA IN and OUT timeline graph'});
  const comparison=summary.locator('.portfolio-gain-comparison');
- assert.equal(await comparison.locator('th').first().innerText(),'ADA OUT');
- assert.equal(await comparison.locator('th').last().innerText(),'ADA IN');
+ assert.equal(await comparison.locator('th').first().innerText(),'ADA IN');
+ assert.equal(await comparison.locator('th').last().innerText(),'ADA OUT');
  assert.ok((await summary.locator('.portfolio-gain-result').boundingBox()).y>=(await comparison.boundingBox()).y+(await comparison.boundingBox()).height,'gain/loss below comparison table');
  for(const total of await comparison.locator('td').all()){
    const neutral=await total.evaluate(el=>getComputedStyle(el).color);
    assert.equal(await total.locator('.pool-delegator-usd').evaluate(el=>getComputedStyle(el).color),neutral,'summary USD and labels stay neutral');
-   assert.notEqual(await total.locator('.pool-delegator-amount > span').evaluate(el=>getComputedStyle(el).color),neutral,'summary ADA carries direction color');
+   assert.notEqual(await total.locator('.pool-delegator-amount > span').first().evaluate(el=>getComputedStyle(el).color),neutral,'summary ADA carries direction color');
  }
  assert.ok((await summary.boundingBox()).x>(await graph.boundingBox()).x,'summary is beside graph');
  assert.ok((await filters.boundingBox()).y>=(await overview.boundingBox()).y+(await overview.boundingBox()).height,'filters below complete overview');
@@ -98,7 +117,7 @@ try{
    assert.ok((await summary.boundingBox()).y>(await graph.boundingBox()).y,'summary stacks below graph');
    assert.ok(await overview.evaluate(el=>el.scrollWidth<=el.clientWidth+1),'chart and summary fit mobile');
    const cells=await comparison.locator('td').all();
-   assert.ok((await cells[1].boundingBox()).x>(await cells[0].boundingBox()).x,'IN and OUT remain side by side on mobile');
+   assert.ok((await cells[1].boundingBox()).x>(await cells[0].boundingBox()).x,'IN precedes OUT side by side on mobile');
  }
  await page.screenshot({path:'/tmp/portfolio-gain-chart-mobile.png',fullPage:true});
  await gain.locator('input[name="gain-loss-from"]').fill('2024-01-01');
@@ -106,6 +125,15 @@ try{
  assert.equal(await gain.locator('table').last().locator('tbody tr').count(),1,'dates filter graph and table');
  await page.evaluate(()=>document.documentElement.dataset.theme='dark');
  await page.waitForFunction(()=>window.Chart.getChart(document.querySelector('#portfolio-gain-loss-overlay canvas'))?.data.datasets[1].borderColor==='#5eead4');
+ await gain.locator('input[name="gain-loss-from"]').fill('');
+ await gain.getByRole('combobox',{name:'Comparison cryptocurrency'}).selectOption('BTC');
+ await gain.getByRole('combobox',{name:'Comparison currency'}).selectOption('JPY');
+ await page.waitForFunction(()=>window.Chart.getChart(document.querySelector('#portfolio-gain-loss-overlay canvas'))?.data.datasets[0].data.length===2);
+ await page.setViewportSize({width:1440,height:1000});
+ await page.screenshot({path:'/tmp/portfolio-comparison-selectors-desktop.png',fullPage:true});
+ await page.setViewportSize({width:320,height:844});
+ assert.ok(await gain.locator('.portfolio-comparison-controls').evaluate(el=>el.scrollWidth<=el.clientWidth+1),'currency dropdowns fit mobile without horizontal scrolling');
+ await page.screenshot({path:'/tmp/portfolio-comparison-selectors-mobile.png',fullPage:true});
  assert.deepEqual(errors,[]);
  console.log('PASS: asset exclusion persistence; real chart totals, theme, responsive summary layout and date-filtered graph/table.');
 }finally{await browser.close();}

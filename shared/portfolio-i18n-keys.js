@@ -1733,5 +1733,20 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
   ["BTC OUT equivalent", "portfolio_text_btc_out_equivalent"],
   ["Loading historical BTC prices…", "portfolio_text_btc_loading"],
   ["Historical BTC prices unavailable", "portfolio_text_btc_unavailable"],
-  ["BTC equivalents use transfer-day ADA/USD and BTC/USD prices, not actual Bitcoin purchases.", "portfolio_text_btc_estimate"]
+  ["BTC equivalents use transfer-day ADA/USD and BTC/USD prices, not actual Bitcoin purchases.", "portfolio_text_btc_estimate"],
+  ["Crypto", "portfolio_text_comparison_crypto"],
+  ["Currency", "portfolio_text_comparison_currency"],
+  ["Comparison cryptocurrency", "portfolio_text_comparison_crypto_label"],
+  ["Comparison currency", "portfolio_text_comparison_currency_label"],
+  ["BTC comparison gain/loss", "portfolio_text_comparison_btc_gain"],
+  ["Loading historical exchange rates…", "portfolio_text_fx_loading"],
+  ["Historical exchange rates unavailable", "portfolio_text_fx_unavailable"],
+  ["Historical FX rates use the latest available business day; wallet value uses the current rate.", "portfolio_text_fx_method"],
+  ["Transfer-day prices plus current wallet value; not exchange execution prices.", "portfolio_text_comparison_method"],
+  ["Historical currency price unavailable", "portfolio_text_comparison_missing_fiat"],
+  ["Cumulative {crypto}", "portfolio_text_comparison_axis"],
+  ["{crypto} IN and OUT timeline graph", "portfolio_text_comparison_graph_label"],
+  ["Cumulative {crypto} IN and OUT over time", "portfolio_text_comparison_canvas_label"],
+  ["Cumulative {crypto} IN / OUT · Transfer-day {currency} estimates · Classified transfers only", "portfolio_text_comparison_graph_note"],
+  ["No outgoing CEX transfers matched in the analysed history. Check the saved destination addresses if transfers are missing.", "portfolio_text_comparison_no_out"]
 ]);
