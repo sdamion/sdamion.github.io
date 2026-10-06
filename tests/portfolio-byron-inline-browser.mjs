@@ -15,11 +15,11 @@ const bundle=await build({stdin:{contents:`
   const root=createRoot(document.getElementById('app'));
   window.renderCase=(count,ambiguous=false)=>root.render(<AddressTransactions count={count} facts={count===2?[fact,{...fact,hash:'two'}]:[fact]} address="exchange" entries={ambiguous?[]:[{address:'exchange',name:'Exchange'}]}/>);
   window.renderGroup=()=>root.render(<AddressTransactions count={1} facts={[fact,fact]} address="exchange" addresses={['exchange','other']} entries={[{address:'exchange',name:'Exchange'}]}/>);
-  window.renderDirectory=()=>{
+  window.renderDirectory=(sameName=false)=>{
     const a='DdzFFzCqrhsk5m4Q8j6ou7gXoe6gotfoSpgT4P51ChoUP6R2ZQKBzF1JU5dXkiJg1u3JHfJSykHPyTp6ZZnEMXRpqcF4asQr7uDTqffo';
     const b='DdzFFzCqrhsur6w6gW7ocpi3NbxdS1HBtwfx7jcAcmv83k5zjd6nVg7WXMrhzDPhyWqrrdu24W8GLEdeCPwSRCRFvvGd2FWJz7pEPrRm';
     const shared={...fact,externalInputs:[{address:a,lovelace:'5000000'},{address:b,lovelace:'5200000'}]};
-    root.render(<div className="member-portfolio"><ByronExchanges facts={{one:shared}} entries={[{address:a,name:'Wallet one'},{address:b,name:'Wallet two'}]} owned={[]} history={{}} complete={true} onChange={()=>true}/></div>);
+    root.render(<div className="member-portfolio"><ByronExchanges facts={sameName?{one:shared,two:{...shared,hash:'two',time:2}}:{one:shared}} entries={[{address:a,name:sameName?'Bitvavo':'Wallet one'},{address:b,name:sameName?'Bitvavo':'Wallet two'}]} owned={[]} history={{}} complete={true} onChange={()=>true}/></div>);
   };
   window.renderCase(1);
 `,loader:'tsx',resolveDir:path.resolve('delegators/portfolio-src')},bundle:true,write:false,format:'esm',jsx:'automatic',alias:{'@/components/ui/table':ui,'@/components/ui/pagination':ui}});
@@ -45,21 +45,21 @@ try{
   assert.equal(await page.locator('#portfolio-byron-amounts-overlay tbody tr').count(),1);
   await page.addStyleTag({content:await readFile('shared/styles.css','utf8')});
   await page.evaluate(()=>window.renderDirectory());
-  await page.getByText('2 mixed addresses').waitFor();
+  await page.getByRole('button',{name:'Wallet one / Wallet two'}).waitFor();
   const search=page.locator('input[name="byron-transactions-search"]');
   await search.fill('no-matching-transaction');
   await page.getByText('No matching Byron transactions.').waitFor();
   await search.fill('');
-  await page.getByText('2 mixed addresses').waitFor();
+  await page.getByRole('button',{name:'Wallet one / Wallet two'}).waitFor();
   await page.locator('input[name="byron-transactions-from"]').fill('2030-01-01');
   await page.getByText('No matching Byron transactions.').waitFor();
   await page.getByRole('button',{name:'Clear dates',exact:true}).click();
-  await page.getByText('2 mixed addresses').waitFor();
+  await page.getByRole('button',{name:'Wallet one / Wallet two'}).waitFor();
   for(const name of ['CEX','Trades','Internal','Mixed','Other'])assert.equal(await page.getByRole('button',{name,exact:true}).count(),0);
   await page.getByRole('button',{name:'Sends',exact:true}).click();
   await page.getByText('No matching Byron transactions.').waitFor();
   await page.getByRole('button',{name:'All',exact:true}).click();
-  await page.getByText('2 mixed addresses').waitFor();
+  await page.getByRole('button',{name:'Wallet one / Wallet two'}).waitFor();
   assert.equal(await page.locator('.portfolio-address-table input[type="checkbox"]').count(),0);
   assert.equal(await page.locator('.portfolio-address-table a[href*="/address/"]').count(),0);
   assert.equal(await page.locator('#portfolio-byron-name').count(),0);
@@ -73,6 +73,14 @@ try{
     assert.equal(metrics.tableFits,true);
     assert.equal(metrics.aligned,true);assert.equal(metrics.pageFits,true);assert.equal(metrics.rows,1);
   }
+  const groupToggle=page.getByRole('button',{name:'Wallet one / Wallet two'});
+  await groupToggle.click();
+  assert.equal(await groupToggle.getAttribute('aria-expanded'),'true');
+  await page.getByText('2 mixed addresses').waitFor();
+  assert.equal(await page.locator('.portfolio-address-table tbody tr').count(),2);
+  await groupToggle.click();
+  assert.equal(await groupToggle.getAttribute('aria-expanded'),'false');
+  assert.equal(await page.locator('.portfolio-address-table tbody tr').count(),1);
   await page.getByRole('button',{name:'View',exact:true}).click();
   const selectors=page.locator('#portfolio-byron-amounts-overlay input[type="checkbox"]');
   await selectors.first().waitFor();
@@ -80,5 +88,15 @@ try{
   await selectors.first().uncheck();
   assert.equal(await selectors.first().isChecked(),false);
   assert.equal(await page.locator('#portfolio-byron-amounts-overlay a[href*="/address/"]').count(),2);
+  await page.evaluate(()=>window.renderDirectory(true));
+  const bitvavo=page.getByRole('button',{name:'Bitvavo',exact:true});
+  await bitvavo.waitFor();
+  assert.equal(await page.locator('.portfolio-address-table tbody tr').count(),1);
+  await bitvavo.click();
+  assert.equal(await page.locator('.portfolio-address-table tbody tr').count(),3);
+  await bitvavo.click();
+  await page.locator('.portfolio-address-table').getByRole('button',{name:'View',exact:true}).click();
+  await page.locator('#portfolio-byron-amounts-overlay tbody tr').first().waitFor();
+  assert.equal(await page.locator('#portfolio-byron-amounts-overlay tbody tr').count(),2);
   console.log('PASS: single transaction inline ADA; multiple transactions retain shared overlay; empty history.');
 }finally{await browser.close();}

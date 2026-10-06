@@ -1,13 +1,8 @@
+import {tableGroups} from './table-groups.ts';
+
 export function policyCollections<T extends {id:string}>(rows:T[]):{policy:string;assets:T[]}[]{
-  const groups=new Map<string,T[]>();
-  for(const row of rows){
-    if(!/^[a-f0-9]{56}(?:[a-f0-9]{2}){0,32}$/.test(row.id))continue;
-    const policy=row.id.slice(0,56);
-    const assets=groups.get(policy)||[];
-    assets.push(row);
-    groups.set(policy,assets);
-  }
-  return [...groups].filter(([,assets])=>assets.length>1).map(([policy,assets])=>({policy,assets}));
+  return tableGroups(rows,row=>/^[a-f0-9]{56}(?:[a-f0-9]{2}){0,32}$/.test(row.id)?row.id.slice(0,56):null,2)
+    .map(({key,rows})=>({policy:key,assets:rows}));
 }
 
 export function holdingTotal(rows:{value:number|null}[],complete:boolean):number|null{
@@ -17,6 +12,27 @@ export function holdingTotal(rows:{value:number|null}[],complete:boolean):number
 
 export function collectionName(name:string):string{
   return name.replace(/[\s#_-]*\d+\s*$/,'').trim()||name;
+}
+
+function readableName(name:string):boolean{
+  return !!name.trim()&&!/[\u0000-\u001f\u007f]/.test(name)&&!/^asset1[0-9a-z]+$/i.test(name)&&!/^[a-f0-9]{12,}(?:[.\u2026]+[a-f0-9]+)?$/i.test(name.trim());
+}
+
+export function collectionRepresentative<T extends {id:string;name:string}>(assets:T[]):{asset:T;name:string|null}|null{
+  let chosen:{asset:T;name:string|null}|null=null;
+  for(const asset of assets){
+    let name=readableName(asset.name)?collectionName(asset.name):null;
+    if(!name){
+      let hex=asset.id.slice(56);
+      if(/^(000643b0|000de140|0014df10|001bc280)/.test(hex))hex=hex.slice(8);
+      try{
+        const decoded=new TextDecoder('utf-8',{fatal:true}).decode(Uint8Array.from(hex.match(/../g)||[],byte=>parseInt(byte,16)));
+        if(readableName(decoded))name=collectionName(decoded);
+      }catch{}
+    }
+    if(!chosen||(name!==null&&chosen.name===null)||((name!==null)===(chosen.name!==null)&&asset.id<chosen.asset.id))chosen={asset,name};
+  }
+  return chosen;
 }
 
 export function policyTableRows<T extends {id:string}>(rows:T[],expanded:ReadonlySet<string>,include:(row:T)=>boolean=()=>true):({asset:T}|{policy:string;assets:T[]})[]{

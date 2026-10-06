@@ -4,7 +4,8 @@ import {Input, AdaUsdAmount} from './ui';
 import {Table,TableHeader,TableBody,TableRow,TableHead,TableCell} from '@/components/ui/table';
 import {TransactionPagination} from './TransactionPagination';
 import {validByronAddress} from './exchange-address';
-import {discoveredByronAddresses,saveByronSelection,byronGroupTransactions,byronTransactionRows} from './byron-exchanges';
+import {discoveredByronAddresses,saveByronSelection,byronGroupTransactions,byronTransactionRows,byronExchangeGroups} from './byron-exchanges';
+import {TableGroupToggle,useTableGroups} from './TableGroupToggle';
 import {cexAdaNetPosition,cexUsdNetPosition,isCexTransaction,cexAdaTransfer} from './cex';
 import type {CexAddress} from './cex';
 import type {Fact,Market} from './core';
@@ -48,6 +49,7 @@ export function AddressTransactions({facts,address,addresses,entries,count,addre
 
 export function ByronExchanges({facts,entries,owned,history,markets={},wallets=[],complete,onChange}:{facts:Record<string,Fact>;entries:CexAddress[];owned:string[];history:Record<string,number>;markets?:Record<string,Market>;wallets?:{address:string;label:string}[];complete:boolean;onChange:(entries:CexAddress[])=>boolean}){
   const display=usePortfolioCurrency();
+  const {expanded,toggle}=useTableGroups();
   const [choices,setChoices]=useState<Record<string,boolean>>({}),[query,setQuery]=useState(''),[page,setPage]=useState(0),[status,setStatus]=useState('');
   const [filter,setFilter]=useState('all'),[dateFrom,setDateFrom]=useState(''),[dateTo,setDateTo]=useState('');
   const all=useMemo(()=>Object.values(facts),[facts]);
@@ -69,7 +71,8 @@ export function ByronExchanges({facts,entries,owned,history,markets={},wallets=[
     if(filter!=='all'&&(!fact||(filter==='cex'?!isCexTransaction(fact,group):kindOf(fact)!==filter)))return false;
     return row.addresses.some(address=>`${address} ${names[address]??savedNames[address]??''}`.toLowerCase().includes(query.trim().toLowerCase()))||matchesTransaction(query,row.id,fact,markets,wallets);
   });
-  const {pages,page:current}=transactionPage(page,filtered.length,25);
+  const exchangeGroups=byronExchangeGroups(filtered,savedNames);
+  const {pages,page:current}=transactionPage(page,exchangeGroups.length,25);
   function saveSelection(){const next=saveByronSelection(entries,candidates.map(row=>row.address),selected,'Byron CEX',owned,names);if(onChange(next)){setNames({});setStatus('Byron names and selection saved.');}else setStatus('Could not save the selection.');}
   const renderNames=(addresses:string[])=><div className="portfolio-inline-addresses">{addresses.map(address=><div key={address}>
           <Input name={`byron_name_${address}`} aria-label={`Wallet name for ${address}`} maxLength={60} placeholder="Wallet name" value={names[address]??savedNames[address]??''} onChange={event=>{const value=event.target.value;setNames(previous=>({...previous,[address]:value}));setStatus('');}}/>
@@ -78,6 +81,13 @@ export function ByronExchanges({facts,entries,owned,history,markets={},wallets=[
           <a className="address" title={address} href={`https://cardanoscan.io/address/${address}`} target="_blank" rel="noreferrer"><span>{address.slice(0,6)}…{address.slice(-4)}</span><ExternalLink size={12}/></a>
           <label><input type="checkbox" name="byron_cex_selection" aria-label={`Include ${address} in Byron CEX`} checked={selected.has(address)} onChange={event=>{const checked=event.target.checked;setChoices(previous=>({...previous,[address]:checked}));setStatus('');}}/> CEX</label>{selected.has(address)&&!group.some(entry=>entry.address===address)&&<span className="small muted">Not saved</span>}
         </div>)}</div>;
+  const addressEditor=(addresses:string[])=><><div className="portfolio-section">{addresses.map(address=><div key={address}>{renderNames([address])}{renderAddresses([address])}</div>)}</div><button type="button" className="governance-vote-primary" onClick={saveSelection}>Save selection</button><p role="status">{status}</p></>;
+  const renderTransaction=(row:typeof combined[number])=><TableRow key={`transaction:${row.id}`}>
+    <TableCell>{row.addresses.length>1?<span translate="no">{[...new Set(row.addresses.map(address=>names[address]??savedNames[address]??'Byron CEX'))].join(' / ')}</span>:renderNames(row.addresses)}{[...new Set(row.facts.flatMap(fact=>fact.wallets).map(address=>wallets.find(wallet=>wallet.address===address)?.label||short(address)))].map(name=><div translate="no" className="small muted" key={name}>{name}</div>)}</TableCell>
+    <TableCell>{row.addresses.length>1?<span className="small muted">{row.addresses.length} mixed addresses</span>:renderAddresses(row.addresses)}</TableCell>
+    <TableCell>{row.transactions?<TransactionLink hash={row.id}/>:'No loaded transactions'}</TableCell><TableCell>{row.lastSeen===null?'Not in loaded history':new Date(row.lastSeen*1000).toLocaleDateString()}</TableCell>
+    <TableCell><AddressTransactions history={history} wallets={wallets} facts={row.facts} address={row.addresses[0]} addresses={row.addresses} entries={group} count={row.transactions} addressEditor={row.addresses.length>1?addressEditor(row.addresses):undefined}/></TableCell>
+  </TableRow>;
   return <section className="portfolio-section" aria-label="Byron DEX / CEX">
     <p className="small muted">Byron addresses are selected by default. Deselect any that are not exchange addresses, then save. Exchange ownership is unverified. Your wallets and Swap are excluded. Selections use your Portfolio storage and do not add to wallet balances.</p>
     <div className="tdsp-tile-grid">
@@ -86,15 +96,18 @@ export function ByronExchanges({facts,entries,owned,history,markets={},wallets=[
     </div>
     <p className="small muted">{group.length} saved addresses · {complete?'Loaded history':'Partial history'} · Transfer-day USD{unresolved?` · ${unresolved} mixed transfers excluded`:''}{dollars.missingPrices?` · ${dollars.missingPrices} transfers missing USD prices`:''}</p>
     <form className="portfolio-section" onSubmit={event=>{event.preventDefault();saveSelection();}}>
-      <TransactionFilters options={{all:'All',send:'Sends',receive:'Receives'}} id="byron-transactions" query={query} onQuery={value=>{setQuery(value);setFilter('all');setPage(0);}} filter={filter} onFilter={value=>{setFilter(value);setPage(0);}} dateFrom={dateFrom} dateTo={dateTo} onDates={(from,to)=>{setDateFrom(from);setDateTo(to);setPage(0);}} placeholder="Asset name, transaction hash, wallet name or address" pagination={<TransactionPagination position="top" page={current} count={filtered.length} pageSize={25} onPage={setPage}/>}/>
-      <div className="history-table portfolio-address-table portfolio-transaction-rows"><Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Address / CEX</TableHead><TableHead>Transaction</TableHead><TableHead>Last seen</TableHead><TableHead>ADA amount</TableHead></TableRow></TableHeader><TableBody>{filtered.slice(current*25,(current+1)*25).map(row=><TableRow key={row.id}>
-        <TableCell>{row.addresses.length>1?<span translate="no">{[...new Set(row.addresses.map(address=>names[address]??savedNames[address]??'Byron CEX'))].join(' / ')}</span>:renderNames(row.addresses)}{[...new Set(row.facts.flatMap(fact=>fact.wallets).map(address=>wallets.find(wallet=>wallet.address===address)?.label||short(address)))].map(name=><div translate="no" className="small muted" key={name}>{name}</div>)}</TableCell>
-        <TableCell>{row.addresses.length>1?<span className="small muted">{row.addresses.length} mixed addresses</span>:renderAddresses(row.addresses)}</TableCell>
-        <TableCell>{row.transactions?<TransactionLink hash={row.id}/>:'No loaded transactions'}</TableCell><TableCell>{row.lastSeen===null?'Not in loaded history':new Date(row.lastSeen*1000).toLocaleDateString()}</TableCell>
-        <TableCell><AddressTransactions history={history} wallets={wallets} facts={row.facts} address={row.addresses[0]} addresses={row.addresses} entries={group} count={row.transactions} addressEditor={row.addresses.length>1?<><div className="portfolio-section">{row.addresses.map(address=><div key={address}>{renderNames([address])}{renderAddresses([address])}</div>)}</div><button type="button" className="governance-vote-primary" onClick={saveSelection}>Save selection</button><p role="status">{status}</p></>:undefined}/></TableCell>
-      </TableRow>)}</TableBody></Table></div>
+      <TransactionFilters options={{all:'All',send:'Sends',receive:'Receives'}} id="byron-transactions" query={query} onQuery={value=>{setQuery(value);setFilter('all');setPage(0);}} filter={filter} onFilter={value=>{setFilter(value);setPage(0);}} dateFrom={dateFrom} dateTo={dateTo} onDates={(from,to)=>{setDateFrom(from);setDateTo(to);setPage(0);}} placeholder="Asset name, transaction hash, wallet name or address" pagination={<TransactionPagination position="top" page={current} count={exchangeGroups.length} pageSize={25} onPage={setPage}/>}/>
+      <div className="history-table portfolio-address-table portfolio-transaction-rows"><Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Address / CEX</TableHead><TableHead>Transaction</TableHead><TableHead>Last seen</TableHead><TableHead>ADA amount</TableHead></TableRow></TableHeader><TableBody>{exchangeGroups.slice(current*25,(current+1)*25).flatMap(exchange=>[
+        <TableRow key={`exchange:${exchange.key}`}>
+          <TableCell><TableGroupToggle expanded={expanded.has(exchange.key)} onToggle={()=>toggle(exchange.key)} title={exchange.name}><span translate="no">{exchange.name}</span></TableGroupToggle></TableCell>
+          <TableCell>{exchange.addresses.length}</TableCell><TableCell>{exchange.facts.length}</TableCell>
+          <TableCell>{exchange.lastSeen===null?'Not in loaded history':new Date(exchange.lastSeen*1000).toLocaleDateString()}</TableCell>
+          <TableCell><AddressTransactions history={history} wallets={wallets} facts={exchange.facts} address={exchange.addresses[0]} addresses={exchange.addresses} entries={group} count={exchange.facts.length} addressEditor={addressEditor(exchange.addresses)}/></TableCell>
+        </TableRow>,
+        ...(expanded.has(exchange.key)?exchange.rows.map(renderTransaction):[])
+      ])}</TableBody></Table></div>
       {!filtered.length&&<p className="empty">{query||dateFrom||dateTo||filter!=='all'?'No matching Byron transactions.':'No external Byron addresses found in loaded history yet.'}</p>}
-      {pages>1&&<TransactionPagination position="bottom" page={current} count={filtered.length} pageSize={25} onPage={setPage}/>}
+      {pages>1&&<TransactionPagination position="bottom" page={current} count={exchangeGroups.length} pageSize={25} onPage={setPage}/>}
       <div className="section-heading"><button type="submit" className="governance-vote-primary">Save selection</button><span className="small muted">{selected.size} selected{pending?` · ${pending} not saved`:''}</span></div>
     </form>
     <p className="small muted" role="status">{status}</p>

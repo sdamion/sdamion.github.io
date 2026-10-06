@@ -1761,5 +1761,6 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
   ["FTs", "portfolio_text_fts"],
   ["NFTs", "portfolio_text_nfts"],
   ["Policy {id}", "portfolio_text_policy_group"],
-  ["{count} assets", "portfolio_text_collection_assets"]
+  ["{count} assets", "portfolio_text_collection_assets"],
+  ["Collection", "portfolio_text_collection"]
 ]);

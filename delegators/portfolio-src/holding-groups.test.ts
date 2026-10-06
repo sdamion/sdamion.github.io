@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {policyCollections,holdingTotal,policyTableRows,collectionName} from './holding-groups.ts';
+import {policyCollections,holdingTotal,policyTableRows,collectionName,collectionRepresentative} from './holding-groups.ts';
 const policy='a'.repeat(56),other='b'.repeat(56);
 const rows=[{id:'lovelace',value:25},{id:policy+'01',value:10},{id:policy+'02',value:20},{id:other+'01',value:null}];
 const groups=policyCollections(rows);
@@ -25,4 +25,8 @@ assert.equal(collectionName('Starch Miner #01576'),'Starch Miner');
 assert.equal(collectionName('Mfer3D0008'),'Mfer3D');
 assert.equal(collectionName('Collection'),'Collection');
 assert.equal(collectionName('123'),'123');
+assert.equal(collectionRepresentative([{id:policy,name:policy},{id:policy+'ff',name:'Starch Miner #01576'}])?.name,'Starch Miner');
+assert.equal(collectionRepresentative([{id:policy+'000de1404d616c6c6172644f7264657235313630',name:policy.slice(0,12)+'…'+policy.slice(-8)}])?.name,'MallardOrder');
+assert.equal(collectionRepresentative([{id:policy+'ff',name:policy}])?.name,null);
+assert.equal(collectionRepresentative([{id:policy,name:'asset1example'}])?.name,null);
 console.log('PASS: policy grouping, singleton assets, ADA and incomplete valuation totals.');

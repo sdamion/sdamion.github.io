@@ -326,6 +326,7 @@ try{
  assert.equal(await collection.getAttribute('title'),'Sibling NFT','tooltip does not expose the policy ID');
  assert.equal(await collection.count(),1,'shared policy creates one dropdown row');
  assert.match(await collectionRow.innerText(),/\$6,270\.00/,'collection total sums its included assets');
+ assert.match(await collectionRow.innerText(),/₳ 25,080/,'collection also shows the summed current ADA value');
  assert.equal(await page.locator('#portfolio-holdings-overlay .tdsp-tile-grid').count(),0,'collection tiles are removed');
  assert.equal(await page.locator('#portfolio-holdings-overlay tbody tr').count(),1,'grouped assets start collapsed');
  assert.equal(await collection.getAttribute('aria-expanded'),'false');
@@ -338,12 +339,35 @@ try{
  await collection.click();
  assert.equal(await page.locator('#portfolio-holdings-overlay tbody tr').count(),1,'dropdown collapses without opening another overlay');
  assert.match(await collectionRow.innerText(),/\$20\.00/,'collapsed row retains updated collection total');
+ assert.match(await collectionRow.innerText(),/₳ 80/,'ADA group value immediately excludes disabled assets');
  await holdingsCurrency.selectOption('EUR');
  await page.waitForFunction(()=>document.querySelector('#portfolio-holdings-overlay')?.textContent.includes('€16.00'));
  assert.match(await collectionRow.innerText(),/€16\.00/,'collection total follows the Portfolio currency');
+ assert.match(await collectionRow.innerText(),/₳ 80/,'ADA group value remains visible with a fiat currency selected');
  await collection.click();await toggle.waitFor();
  assert.equal(await toggle.isChecked(),true,'collection exclusion remains saved');
  await closeHoldings();
+ assert.deepEqual(errors,[]);
+ await page.evaluate(({id})=>{
+   window.fixture.markets[id].name='Starch Miner #01624';
+   window.fixture.markets[id.slice(0,56)].name=id.slice(0,56);
+   window.root.unmount();window.mount();
+ },{id});
+ await metric.waitFor();await metric.click();await page.getByRole('button',{name:'Open NFTs',exact:true}).click();
+ await collection.waitFor();
+ assert.equal(await collection.locator('.portfolio-asset-name').innerText(),'Starch Miner','known sibling name is preferred over a hash fallback');
+ await collection.locator('img').waitFor();
+ await closeHoldings();
+ await page.evaluate(({id})=>{
+   const policy=id.slice(0,56);
+   window.fixture.infos[0].utxo_set[0].asset_list=['fe','ff'].map(asset_name=>({policy_id:policy,asset_name,quantity:'1',decimals:0}));
+   window.fixture.markets=Object.fromEntries(['fe','ff'].map(suffix=>[policy+suffix,{token_id:policy+suffix,name:policy,is_nft:true,decimals:0,price_by_usd:2}]));
+   window.root.unmount();window.mount();
+ },{id});
+ await metric.waitFor();await metric.click();await page.getByRole('button',{name:'Open NFTs',exact:true}).click();
+ await collection.waitFor();
+ assert.equal(await collection.locator('.portfolio-asset-name').innerText(),'Collection','missing names never display a policy ID');
+ assert.equal(await collection.getAttribute('title'),'Collection');
  assert.deepEqual(errors,[]);
  console.log('PASS: asset exclusion persistence; real chart totals, theme, responsive summary layout and date-filtered graph/table.');
 }finally{await browser.close();}

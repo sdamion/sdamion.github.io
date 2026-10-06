@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {byronTransactionRows} from './byron-exchanges.ts';
+import {byronTransactionRows,byronExchangeGroups} from './byron-exchanges.ts';
 import {base58} from '@scure/base';
 import {encode,Tagged} from 'cborg';
 import CRC32 from 'crc-32';
@@ -99,3 +99,16 @@ assert.deepEqual(cexAdaNetPosition([buy,sell],renamed,'0'),cexAdaNetPosition([bu
 assert.equal(saveByronSelection(group,[a],new Set([a]),'Default',[],{[a]:'   '})[0].name,'Exchange');
 assert.equal(saveByronSelection([],[a],new Set([a]),'Default',[],{[a]:'New wallet'})[0].name,'New wallet');
 assert.equal(saveByronSelection([],[a],new Set([a]),'Default',[],{[a]:'x'.repeat(100)})[0].name.length,60);
+const namedRows=byronTransactionRows([actual,actual,{...actual,hash:'second',time:actual.time+1}],discoveredByronAddresses([actual],[],assigned));
+const namedGroups=byronExchangeGroups(namedRows,{[sourceA]:' Bitvavo ',[sourceB]:'bitvavo'});
+assert.equal(namedGroups.length,1,'trimmed, case-insensitive exchange names share one group');
+assert.equal(namedGroups[0].addresses.length,2);
+assert.equal(namedGroups[0].facts.length,2,'shared addresses and repeated facts never duplicate a transaction');
+assert.equal(namedGroups[0].rows.length,2);
+assert.equal(namedGroups[0].lastSeen,actual.time+1);
+const mixedGroups=byronExchangeGroups(namedRows,{[sourceA]:'Exchange A',[sourceB]:'Exchange B'});
+assert.equal(mixedGroups.length,1,'mixed exchange names keep the shared transaction intact');
+assert.equal(mixedGroups[0].name,'Exchange A / Exchange B');
+assert.equal(mixedGroups[0].facts.length,2);
+assert.equal(byronExchangeGroups(namedRows,{}).length,1,'unnamed addresses share the existing Byron CEX fallback');
+console.log('PASS: exchange-name table grouping, unique transactions and last-seen date.');

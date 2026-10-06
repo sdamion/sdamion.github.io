@@ -1,7 +1,7 @@
 "use client";
 
 import {useEffect,useMemo,useRef,useState} from 'react';
-import {ExternalLink,Plus,Trash2,ChevronDown,ChevronRight} from 'lucide-react';
+import {ExternalLink,Plus,Trash2} from 'lucide-react';
 import {PortfolioRefresh} from './PortfolioRefresh';
 import {usePortfolioText} from './use-portfolio-text';
 import {AssetWalletAddresses} from './AssetWalletAddresses';
@@ -27,7 +27,8 @@ import {hasCounterpartyData,needsFactRefresh,needsActiveFactRefresh} from './fac
 import {keepRefreshSessionAlive} from './refresh-session';
 import {currentValuation,mergeMarketQuote} from './current-valuation';
 import {includedAssets} from './asset-exclusions';
-import {policyTableRows,holdingTotal,collectionName} from './holding-groups';
+import {policyTableRows,holdingTotal,collectionRepresentative} from './holding-groups';
+import {TableGroupToggle,useTableGroups} from './TableGroupToggle';
 import {valuationCoverage} from './valuation-coverage';
 import {averageBuy,purchaseAverages} from './average-buy';
 import {assetImageCandidates} from './asset-image';
@@ -99,7 +100,7 @@ export default function Home({memberStake}:{memberStake:string}){
   const [selectedAsset,setSelectedAsset]=useState<string|null>(null);
   const [section,setSection]=useState<'wallets'|'holdings'|'transactions'|'gain-loss'|'unknown'|null>(null);
   const [holdingsGroup,setHoldingsGroup]=useState<'FTs'|'NFTs'|null>(null);
-  const [expandedPolicies,setExpandedPolicies]=useState<Set<string>>(()=>new Set());
+  const {expanded:expandedPolicies,toggle:togglePolicy,reset:resetPolicies}=useTableGroups();
   const btc=useBtcHistory(section==='gain-loss');
   const [comparisonCrypto,setComparisonCrypto]=useState<ComparisonCrypto>('ADA');
   const [holdingsCurrency,setHoldingsCurrency]=useState<'ADA'|ComparisonFiat>('USD');
@@ -476,7 +477,7 @@ export default function Home({memberStake}:{memberStake:string}){
     </div>
   </div>
     <section className="portfolio-section"><div className="tdsp-tile-grid">
-      <MenuTile title="Assets Across Wallets" value={holdingsDisplay} onOpen={()=>{setExpandedPolicies(new Set());setHoldingsGroup(null);setSection('holdings');}}>
+      <MenuTile title="Assets Across Wallets" value={holdingsDisplay} onOpen={()=>{resetPolicies();setHoldingsGroup(null);setSection('holdings');}}>
         <p className="small muted">{t('{done} / {total} assets valued',{done:valued.length,total:included.length})}{excludedCount?' · '+t('{count} excluded',{count:excludedCount}):''}</p>
         {(holdingsCurrency==='EUR'||holdingsCurrency==='JPY')&&holdingsValue===null&&<p className="small muted" role="status">{t(fx.status||'Historical exchange rates unavailable')}</p>}
       </MenuTile>
@@ -525,12 +526,13 @@ export default function Home({memberStake}:{memberStake:string}){
       {payments.errors.length>0&&<p role="status" className="negative">Some saved payment links cannot be applied to the loaded history. Open the asset image to review its purchase payments.</p>}
       {groupRows.length>0&&<Table className="portfolio-holdings-table"><TableHeader><TableRow>{['Asset','Balance','Price · USD','Value · USD','Average buy · USD','Gain / loss','Exclude'].map(label=><TableHead translate="no" key={label}>{t(label).replace('USD',holdingsCurrency)}</TableHead>)}</TableRow></TableHeader><TableBody>{holdingEntries.map(entry=>{
         if('policy' in entry){
-          const active=includedAssets(entry.assets,overrides),priced=active.filter(row=>row.value!==null),expanded=expandedPolicies.has(entry.policy),Icon=expanded?ChevronDown:ChevronRight;
-          const representative=entry.assets.reduce((first,asset)=>asset.id<first.id?asset:first),name=collectionName(representative.name);
+          const active=includedAssets(entry.assets,overrides),priced=active.filter(row=>row.value!==null),expanded=expandedPolicies.has(entry.policy);
+          const total=holdingTotal(active,snapshot?.complete===true);
+          const representative=collectionRepresentative(entry.assets)!,name=representative.name??t('Collection');
           return <TableRow key={`policy:${entry.policy}`} className="portfolio-policy-row">
-            <TableCell><button type="button" className="governance-vote-secondary portfolio-asset-button" aria-expanded={expanded} title={name} onClick={()=>setExpandedPolicies(previous=>{const next=new Set(previous);if(next.has(entry.policy))next.delete(entry.policy);else next.add(entry.policy);return next;})}><Icon size={16} aria-hidden="true"/><AssetImage compact hideIdentifier id={representative.id} name={name} market={snapshot?.markets[representative.id]}/></button></TableCell>
+            <TableCell><TableGroupToggle expanded={expanded} title={name} onToggle={()=>togglePolicy(entry.policy)}><AssetImage compact hideIdentifier id={representative.asset.id} name={name} market={snapshot?.markets[representative.asset.id]}/></TableGroupToggle></TableCell>
             <TableCell><span translate="no">{t('{count} assets',{count:entry.assets.length})}</span><div translate="no" className="small muted">{t('{done} / {total} assets valued',{done:priced.length,total:active.length})}{entry.assets.length>active.length?' · '+t('{count} excluded',{count:entry.assets.length-active.length}):''}</div></TableCell>
-            <TableCell>—</TableCell><TableCell translate="no">{formatPortfolioUsd(holdingTotal(active,snapshot?.complete===true),currencyDisplay)}</TableCell><TableCell>—</TableCell><TableCell>—</TableCell><TableCell/>
+            <TableCell>—</TableCell><TableCell translate="no">{formatPortfolioUsd(total,currencyDisplay)}{holdingsCurrency!=='ADA'&&<div className="small muted">{formatPortfolioUsd(total,{...currencyDisplay,currency:'ADA'})}</div>}</TableCell><TableCell>—</TableCell><TableCell>—</TableCell><TableCell/>
           </TableRow>;
         }
         const r=entry.asset;

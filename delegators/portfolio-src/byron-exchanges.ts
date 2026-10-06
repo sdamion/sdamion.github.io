@@ -2,6 +2,20 @@ import {validByronAddress} from './exchange-address.ts';
 import type {Fact} from './core.ts';
 import type {CexAddress} from './cex.ts';
 import {cexAdaTransfer} from './cex.ts';
+import {tableGroups} from './table-groups.ts';
+
+export function byronExchangeGroups(rows:ReturnType<typeof byronTransactionRows>,names:Record<string,string>){
+  const nameOf=(address:string)=>names[address]?.trim()||'Byron CEX';
+  // A shared transaction stays in one group even when its addresses have different names.
+  return tableGroups(rows,row=>JSON.stringify([...new Set(row.addresses.map(address=>nameOf(address).toLowerCase()))].sort()))
+    .map(({key,rows})=>{
+      const addresses=[...new Set(rows.flatMap(row=>row.addresses))];
+      const labels=new Map(addresses.map(address=>[nameOf(address).toLowerCase(),nameOf(address)]));
+      const facts=[...new Map(rows.flatMap(row=>row.facts).map(fact=>[fact.hash,fact])).values()];
+      const lastSeen=rows.reduce<number|null>((latest,row)=>row.lastSeen===null?latest:Math.max(latest??row.lastSeen,row.lastSeen),null);
+      return {key,rows,addresses,facts,name:[...labels.values()].sort().join(' / '),lastSeen};
+    });
+}
 
 export function byronAddressTransactions(facts:Fact[],address:string,entries:CexAddress[]=[]){
   return [...new Map(facts.map(fact=>[fact.hash,fact])).values()]
