@@ -277,6 +277,7 @@ try{
    window.fixtureStorage.setItem('tdsp-member-basis:stake1uxythldc4nmx45tvnwsqu4h5pyjd94udytm6f0tgnr44vecjd8vel','{}');
    window.fixture.infos[0].balance='100000000';window.fixture.infos[0].utxo_set[0].value='100000000';
    window.fixture.markets[other].is_nft=false;
+   window.fixture.markets[id].logo='https://example.test/cardano_logo_ico.webp';
    window.root.unmount();window.mount();
  },{id,other});
  await metric.waitFor();
@@ -289,6 +290,18 @@ try{
  assert.doesNotMatch(await page.locator('#portfolio-holdings-overlay tbody').innerText(),/Intersect badge/,'FT list excludes NFTs');
  await page.locator('#portfolio-holdings-overlay').getByRole('button',{name:'Back',exact:true}).click();
  await page.getByRole('button',{name:'Open NFTs',exact:true}).click();
+ const assetButton=page.getByRole('button',{name:'View Intersect badge details',exact:true});
+ await assetButton.locator('img').waitFor();
+ for(const width of [1280,390]){
+   await page.setViewportSize({width,height:900});
+   const aligned=await assetButton.evaluate(button=>{
+     const image=button.querySelector('img').getBoundingClientRect(),name=button.querySelector('.portfolio-asset-name').getBoundingClientRect();
+     return {beside:name.left>=image.right,overlap:name.bottom>image.top&&image.bottom>name.top};
+   });
+   assert.ok(aligned.beside&&aligned.overlap,'asset image and name are side by side');
+ }
+ assert.doesNotMatch(await page.locator('#portfolio-holdings-overlay').innerText(),/Wayup collection floor ·|estimate, not a sale guarantee/,'Wayup floor description is removed from the table');
+ await page.setViewportSize({width:1280,height:900});
  await toggle.check();
  await page.locator('#portfolio-holdings-overlay').getByRole('button',{name:'Back',exact:true}).click();
  await page.getByRole('button',{name:'Open NFTs',exact:true}).waitFor();
