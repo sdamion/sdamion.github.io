@@ -25,7 +25,7 @@ try{
    if(url.pathname.endsWith('/historical-fx-prices'))return route.fulfill({contentType:'application/json',body:JSON.stringify({rates:{'2023-11-14':{EUR:0.9,JPY:150},'2024-03-08':{EUR:0.8,JPY:140},[new Date().toISOString().slice(0,10)]:{EUR:0.8,JPY:145}}})});
    if(url.pathname==='/bitcoin-logo.png')return readFile('bitcoin-logo.png').then(body=>route.fulfill({contentType:'image/png',body}));
    if(url.pathname==='/cardano_logo_ico.webp')return readFile('cardano_logo_ico.webp').then(body=>route.fulfill({contentType:'image/webp',body}));
-   return route.fulfill({contentType:'text/html',body:'<div id="app"></div>'});
+   return route.fulfill({contentType:'text/html',body:'<header><span id="portfolio-refresh-action"></span></header><div id="app"></div>'});
  });
  await page.goto('http://127.0.0.1:8998/');
  await page.addScriptTag({content:await readFile('shared/runtime.js','utf8')});
@@ -41,7 +41,9 @@ try{
  await page.getByRole('button',{name:'Open Assets Across Wallets',exact:true}).waitFor();
  await page.waitForFunction(()=>document.querySelector('main')?.textContent.includes('$10,691.89'));
  assert.match(await metric.innerText(),/10,691\.89/);
- const holdingsCurrency=metric.getByRole('combobox',{name:'Comparison currency'});
+ const holdingsCurrency=page.locator('#portfolio-refresh-action').getByRole('combobox',{name:'Comparison currency'});
+ assert.equal(await metric.getByRole('combobox').count(),0,'currency selector removed from tile');
+ assert.equal(await holdingsCurrency.evaluate(node=>node.nextElementSibling?.getAttribute('aria-label')),'Portfolio guide','currency selector sits next to info button');
  assert.equal(await holdingsCurrency.inputValue(),'USD');
  await holdingsCurrency.selectOption('EUR');
  await page.waitForFunction(()=>document.querySelector('main')?.textContent.includes('€8,553.51'));
@@ -82,8 +84,14 @@ try{
  });
  await page.getByRole('button',{name:'Open ADA Gains/Loss',exact:true}).click();
  const gain=page.locator('#portfolio-gain-loss-overlay');
- assert.match(await gain.locator('.portfolio-gain-result').innerText(),/42,707\.56/,'ADA IN minus ADA OUT minus current asset value converted to ADA');
- assert.match(await gain.locator('.portfolio-gain-result').innerText(),/10,678\.89/,'historical USD IN minus historical USD OUT minus current asset value');
+ assert.equal(await gain.locator('.portfolio-gain-result .governance-card-detail').innerText(),'ADA comparison gain','ADA uses the same dynamic result label as BTC');
+ assert.match(await gain.locator('.portfolio-gain-result').innerText(),/42,707\.56/,'ADA OUT plus current asset value converted to ADA minus ADA IN');
+ assert.match(await gain.locator('.portfolio-gain-result').innerText(),/10,678\.89/,'historical USD OUT plus current asset value minus historical USD IN');
+ assert.equal(await gain.locator('.portfolio-gain-result .portfolio-transfer-amount.positive').count(),1,'positive result is styled as a gain');
+ await holdingsCurrency.selectOption('EUR');
+ assert.match(await gain.locator('.portfolio-gain-result').innerText(),/\$10,678\.89/,'global currency leaves ADA Gains/Loss unchanged');
+ assert.match(await gain.locator('table').last().innerText(),/USD\/ADA Price/,'gain/loss table retains its own display');
+ await holdingsCurrency.selectOption('USD');
  const chart=gain.locator('canvas');
  await page.waitForFunction(()=>{const canvas=document.querySelector('#portfolio-gain-loss-overlay canvas');return canvas&&window.Chart.getChart(canvas)?.data.datasets.length===2;});
  const values=await chart.evaluate(canvas=>window.Chart.getChart(canvas).data.datasets.map(d=>({name:d.label,values:d.data.map(p=>p.y)})));
@@ -96,7 +104,7 @@ try{
  const btcChart=await chart.evaluate(canvas=>window.Chart.getChart(canvas).data.datasets.map(row=>({name:row.label,color:row.borderColor,values:row.data.map(p=>p.y)})));
  assert.deepEqual(btcChart,[{name:'BTC IN',color:'#f7931a',values:[0.001,0.001]},{name:'BTC OUT',color:'#f7931a',values:[0,0.0002]}]);
  assert.match(await gain.locator('.portfolio-gain-summary').innerText(),/0\.0002/);
- assert.equal(await gain.locator('.portfolio-gain-result .governance-card-detail').innerText(),'BTC comparison loss','IN minus OUT and current assets is negative');
+ assert.equal(await gain.locator('.portfolio-gain-result .governance-card-detail').innerText(),'BTC comparison gain','OUT plus current assets minus IN is positive');
  assert.equal(await gain.locator('.portfolio-gain-summary').getByRole('img',{name:'Bitcoin'}).count(),3,'Bitcoin logo prefixes IN, OUT and gain/loss');
  await page.waitForFunction(()=>[...document.querySelectorAll('.portfolio-gain-summary img')].every(image=>image.complete&&image.naturalWidth>0));
  assert.doesNotMatch(await gain.locator('.portfolio-comparison-crypto').first().innerText(),/BTC/,'no BTC suffix after the amount');
@@ -153,8 +161,19 @@ try{
  await page.evaluate(()=>{window.fixture.infos[0].balance='1000000000';window.fixture.infos[0].utxo_set[0].value='1000000000';window.root.unmount();window.mount();});
  await page.getByRole('button',{name:'Open ADA Gains/Loss',exact:true}).click();
  await gain.getByRole('combobox',{name:'Comparison cryptocurrency'}).selectOption('BTC');
- await page.waitForFunction(()=>document.querySelector('.portfolio-gain-result .governance-card-detail')?.textContent==='BTC comparison loss');
- assert.equal(await gain.locator('.portfolio-gain-result .governance-card-detail').innerText(),'BTC comparison loss','current wallet and asset value are subtracted from IN minus OUT');
+ await page.waitForFunction(()=>document.querySelector('.portfolio-gain-result .governance-card-detail')?.textContent==='BTC comparison gain');
+ assert.equal(await gain.locator('.portfolio-gain-result .governance-card-detail').innerText(),'BTC comparison gain','current wallet and asset value are added to OUT minus IN');
+ await gain.getByRole('button',{name:'Back',exact:true}).click();
+ await holdingsCurrency.selectOption('EUR');
+ await page.getByRole('button',{name:'Open Assets Across Wallets',exact:true}).click();
+ const holdings=page.locator('#portfolio-holdings-overlay');
+ assert.match(await holdings.locator('thead').innerText(),/Value · EUR/,'holdings columns use global currency');
+ assert.match(await holdings.locator('tbody').innerText(),/€4,901\.80/,'asset value uses global currency');
+ await holdings.getByRole('button',{name:'Back',exact:true}).click();
+ await page.getByRole('button',{name:'Open Transactions',exact:true}).click();
+ const transactions=page.locator('#portfolio-transactions-overlay');
+ assert.match(await transactions.locator('thead').innerText(),/EUR Amount/,'transaction amount header follows global currency');
+ assert.match(await transactions.locator('tbody').innerText(),/€20\.00/,'historical USD amount converted for display');
  assert.deepEqual(errors,[]);
  console.log('PASS: asset exclusion persistence; real chart totals, theme, responsive summary layout and date-filtered graph/table.');
 }finally{await browser.close();}

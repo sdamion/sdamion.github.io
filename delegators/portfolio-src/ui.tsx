@@ -1,12 +1,14 @@
 import React from 'react';
 import {createPortal} from 'react-dom';
+import {usePortfolioCurrency,formatPortfolioUsd,formatPortfolioAda} from './portfolio-currency';
 export function AdaUsdAmount({ada,usd}:{ada:number|null;usd:number|null}){
+  const display=usePortfolioCurrency();
   const ref=React.useRef<HTMLSpanElement>(null);
   React.useLayoutEffect(()=>{
     const host=ref.current;if(!host)return;
     host.replaceChildren((window as unknown as {TDSPRuntime:{createAdaUsdAmount:(ada:number|null,usd:number|null)=>HTMLElement}}).TDSPRuntime.createAdaUsdAmount(ada,usd));
-  },[ada,usd]);
-  return <span ref={ref}/>;
+  },[ada,usd,display]);
+  return display?<span translate="no">{display.currency==='ADA'?formatPortfolioAda(ada,display):formatPortfolioUsd(usd,display)}</span>:<span ref={ref}/>;
 }
 export function MenuTile({title,value,onOpen,analysis,loading=false,loadingLabel='Initialising',children}:{title:string;value:string;onOpen:()=>void;loading?:boolean;loadingLabel?:string;analysis?:{done:number;total:number;counting:boolean;busy:boolean;status?:string};children?:React.ReactNode}){
   const ref=React.useRef<HTMLDivElement>(null);

@@ -1,4 +1,7 @@
 [strings]
+portfolio_text_comparison_result_unknown = "{crypto}-vergelijking Winst/Verlies"
+portfolio_text_comparison_result_gain = "{crypto}-vergelijking Winst"
+portfolio_text_comparison_result_loss = "{crypto}-vergelijking Verlies"
 portfolio_swap_name_save = "Swap-naam opslaan"
 portfolio_swap_name_error = "Swap-naam kon niet worden opgeslagen."
 backend_storage = "Backend-opslag"
@@ -1068,7 +1071,7 @@ portfolio_text_6a4d08c5014d = "Transacties en analyse worden opgeslagen voordat 
 portfolio_text_001a76011c42 = "Assets in alle wallets toont de actuele waarde van ADA en gewaardeerde assets, in USD en omgerekend naar ADA tegen de huidige koers. Open de tegel voor holdings, walletnamen en assetdetails. Assets zonder prijs tellen niet mee in het subtotaal."
 portfolio_text_8f0e993752c8 = "Assetdetails vergelijken de actuele waarde met de aankoopkosten. Mint- en aankoopkosten zijn geen actuele prijzen. NFT-floorprijzen en de 2 ADA-terugvalwaarde zijn schattingen, geen gegarandeerde verkoopprijzen. Beheer handmatige prijzen en uitsluitingen bij de assetdetails."
 portfolio_text_e5113f14d525 = "Betaalde netwerkfees bevat toewijsbare fees uit geladen transacties. Fees van gedeelde inputs die niet betrouwbaar kunnen worden toegewezen, zijn uitgesloten."
-portfolio_text_f4fa3c5eb23b = "ADA-Winst/Verlies is ADA IN min (ADA UIT plus Assets in alle wallets). ADA en assets in wallets gebruiken de actuele waarde, niet de aankoopkosten. USD-transfers gebruiken de koers op de transferdatum; assets worden omgerekend naar ADA tegen de huidige koers. Assets zonder prijs tellen niet mee, waardoor de uitkomst gedeeltelijk kan zijn. Dit is geen belastingberekening."
+portfolio_text_f4fa3c5eb23b = "ADA-Winst/Verlies is ADA UIT plus de actuele Assets in alle wallets min ADA IN. ADA en assets in wallets gebruiken de actuele waarde, niet de aankoopkosten. USD-transfers gebruiken de koers op de transferdatum; assets worden omgerekend naar ADA tegen de huidige koers. Assets zonder prijs tellen niet mee, waardoor de uitkomst gedeeltelijk kan zijn. Dit is geen belastingberekening."
 portfolio_text_bfcc16d4d5c7 = "DEX / CEX-labels herkennen exchange-tegenpartijen in beide richtingen. Het zijn jouw labels, geen geverifieerd exchange-eigendom. Hun saldi worden niet aan je portfolio toegevoegd."
 portfolio_text_656711e3e164 = "Controleer ontdekte adressen in Byron DEX / CEX. Deselecteer adressen die geen exchange zijn. Gedeelde transacties tellen eenmaal; Bekijken toont transacties en adressen."
 portfolio_text_11b9eecc6c6a = "Swap herkent interne/serviceadressen die niet als CEX mogen tellen. Een Swap-label bewijst geen eigendom van de hele servicewallet. Bedragen worden aan je gevolgde walletadressen gekoppeld zodat andere ontvangers niet als jouw geld tellen."

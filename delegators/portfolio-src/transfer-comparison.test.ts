@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
-import {transferComparison,comparisonNet,fiatRate,transferFiatValue} from './transfer-comparison.ts';
+import {transferComparison,comparisonNet,fiatRate,transferFiatValue,comparisonResultLabel} from './transfer-comparison.ts';
 import type {Fact} from './core.ts';
 const time=Date.parse('2023-01-06')/1000;
+assert.equal(comparisonResultLabel(10),'{crypto} comparison gain');
+assert.equal(comparisonResultLabel(-10),'{crypto} comparison loss');
+assert.equal(comparisonResultLabel(0),'{crypto} comparison gain');
+assert.equal(comparisonResultLabel(null),'{crypto} comparison gain/loss');
 const entries=[{address:'exchange',name:'Exchange'}];
 const fact=(hash:string,side:'in'|'out',offset=0):Fact=>({hash,time:time+offset,adaRaw:side==='in'?'100000000':'-100000000',feeRaw:'0',internal:false,assets:{},decimals:{},wallets:[],swapCandidate:false,externalInputs:side==='in'?[{address:'exchange',lovelace:'100000000'}]:[],externalOutputs:side==='out'?[{address:'exchange',lovelace:'100000000'}]:[]});
 const input=fact('a','in'),output=fact('b','out',86400);
@@ -15,10 +19,11 @@ assert.equal(fiatRate(time+86400,'EUR',fx),0.9,'weekend uses prior business day'
 assert.equal(fiatRate(time+7*86400,'EUR',fx),null,'stale FX not reused');
 assert.equal(fiatRate(time,'USD',{}),1);
 const net=comparisonNet(points.at(-1),50,1,btc,fx,'BTC','EUR',time+86400);
-assert.ok(Math.abs(net.amount!+0.0025)<1e-12);assert.equal(net.fiat,-90);
+assert.ok(Math.abs(net.amount!-0.0025)<1e-12);assert.equal(net.fiat,90);
 const assets=comparisonNet({time,incoming:100,outgoing:20,inFiat:50,outFiat:10},30,0.5,btc,fx,'ADA','USD',time,25);
-assert.deepEqual(assets,{amount:30,fiat:15},'IN minus OUT and current ADA plus non-ADA asset value, without purchase costs');
-assert.deepEqual(comparisonNet(undefined,100,1,btc,fx,'ADA','EUR',time,100),{amount:-100,fiat:-90},'empty transfer history still includes the current portfolio value');
+assert.deepEqual(assets,{amount:-30,fiat:-15},'OUT plus current ADA and non-ADA asset value minus IN, without purchase costs');
+assert.deepEqual(comparisonNet(undefined,100,1,btc,fx,'ADA','EUR',time,100),{amount:100,fiat:90},'empty transfer history still includes the current portfolio value');
+assert.deepEqual(comparisonNet({time,incoming:100,outgoing:0,inFiat:100,outFiat:0},99,1,{}, {},'ADA','USD',time,99),{amount:-1,fiat:-1},'a fee already deducted from the wallet balance is counted once');
 const yen=transferComparison([input,output],entries,ada,btc,fx,'ADA','JPY').at(-1)!;
 assert.equal(yen.incoming,100);assert.equal(yen.outgoing,100);
 assert.equal(yen.inFiat,6500);assert.equal(yen.outFiat,13000);

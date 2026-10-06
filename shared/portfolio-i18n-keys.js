@@ -1017,7 +1017,7 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
     "portfolio_text_e5113f14d525"
   ],
   [
-    "ADA Gains/Loss is ADA IN minus (ADA OUT plus Assets Across Wallets). Wallet ADA and assets use current values, not purchase costs. USD transfers use transfer-day prices; the ADA equivalent of assets uses the current ADA price. Unpriced assets are excluded, so the result can be partial. This is not a tax calculation.",
+    "ADA Gains/Loss is ADA OUT plus current Assets Across Wallets minus ADA IN. Wallet ADA and assets use current values, not purchase costs. USD transfers use transfer-day prices; the ADA equivalent of assets uses the current ADA price. Unpriced assets are excluded, so the result can be partial. This is not a tax calculation.",
     "portfolio_text_f4fa3c5eb23b"
   ],
   [
@@ -1741,6 +1741,9 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
   ["BTC comparison gain/loss", "portfolio_text_comparison_btc_gain"],
   ["BTC comparison gain", "portfolio_text_comparison_btc_positive"],
   ["BTC comparison loss", "portfolio_text_comparison_btc_negative"],
+  ["{crypto} comparison gain/loss", "portfolio_text_comparison_result_unknown"],
+  ["{crypto} comparison gain", "portfolio_text_comparison_result_gain"],
+  ["{crypto} comparison loss", "portfolio_text_comparison_result_loss"],
   ["Loading historical exchange rates…", "portfolio_text_fx_loading"],
   ["Historical exchange rates unavailable", "portfolio_text_fx_unavailable"],
   ["Historical FX rates use the latest available business day; wallet value uses the current rate.", "portfolio_text_fx_method"],

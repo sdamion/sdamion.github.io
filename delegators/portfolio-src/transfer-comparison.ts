@@ -5,6 +5,9 @@ import {historicalAdaPrice} from './transaction-amounts.ts';
 
 export type ComparisonCrypto='ADA'|'BTC';
 export type ComparisonFiat='USD'|'EUR'|'JPY';
+export function comparisonResultLabel(amount:number|null):string{
+  return amount===null?'{crypto} comparison gain/loss':amount<0?'{crypto} comparison loss':'{crypto} comparison gain';
+}
 export type FxHistory=Record<string,Partial<Record<'EUR'|'JPY',number>>>;
 // ECB does not publish weekend/holiday rates. Use only a recent prior rate.
 export function datedRate(time:number,rates:Record<string,number>):number|null{
@@ -47,7 +50,7 @@ export function comparisonNet(last:ReturnType<typeof transferComparison>[number]
   const walletFiat=portfolioUsd!==null&&rate!==null?portfolioUsd*rate:null;
   const totals=last??{incoming:0,outgoing:0,inFiat:0,outFiat:0};
   return {
-    amount:walletCrypto!==null&&totals.incoming!==null&&totals.outgoing!==null?totals.incoming-(totals.outgoing+walletCrypto):null,
-    fiat:walletFiat!==null&&totals.inFiat!==null&&totals.outFiat!==null?totals.inFiat-(totals.outFiat+walletFiat):null
+    amount:walletCrypto!==null&&totals.incoming!==null&&totals.outgoing!==null?totals.outgoing+walletCrypto-totals.incoming:null,
+    fiat:walletFiat!==null&&totals.inFiat!==null&&totals.outFiat!==null?totals.outFiat+walletFiat-totals.inFiat:null
   };
 }

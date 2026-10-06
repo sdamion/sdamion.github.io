@@ -1,4 +1,7 @@
 [strings]
+portfolio_text_comparison_result_unknown = "{crypto}比較損益"
+portfolio_text_comparison_result_gain = "{crypto}比較利益"
+portfolio_text_comparison_result_loss = "{crypto}比較損失"
 portfolio_swap_name_save = "Swap名を保存"
 portfolio_swap_name_error = "Swap名を保存できませんでした。"
 backend_storage = "バックエンドの保存容量"
@@ -1068,7 +1071,7 @@ portfolio_text_6a4d08c5014d = "取引と分析はトークン価格・画像の�
 portfolio_text_001a76011c42 = "全ウォレットの資産はADAと評価済み資産の現在価値をUSDと現在価格でのADA換算額で表示します。開くと保有資産、ウォレット名、資産詳細が見られます。価格不明の資産は小計に含まれません。"
 portfolio_text_8f0e993752c8 = "資産詳細では現在価値と取得原価を比較します。ミント・購入費用は現在価格ではありません。NFT最低価格や2 ADAの代替評価は推定であり売却保証ではありません。手動価格と除外は資産詳細で管理します。"
 portfolio_text_e5113f14d525 = "ネットワーク手数料は読み込み済み取引から割り当て可能な手数料を集計します。共有入力で確実に割り当てられない手数料は除外します。"
-portfolio_text_f4fa3c5eb23b = "ADA損益はADA INから（ADA OUTと全ウォレットの資産価値）を引きます。ウォレットのADAと資産は取得原価ではなく現在価値を使います。USD送金額は送金日の価格、資産のADA換算額は現在のADA価格を使います。価格不明の資産は除外されるため部分推定になる場合があります。税金の計算ではありません。"
+portfolio_text_f4fa3c5eb23b = "ADA損益はADA OUTと全ウォレットの現在資産価値の合計からADA INを引きます。ウォレットのADAと資産は取得原価ではなく現在価値を使います。USD送金額は送金日の価格、資産のADA換算額は現在のADA価格を使います。価格不明の資産は除外されるため部分推定になる場合があります。税金の計算ではありません。"
 portfolio_text_bfcc16d4d5c7 = "DEX / CEXラベルは両方向の取引所相手を識別します。ユーザー設定であり、取引所所有の確認ではありません。そのアドレスの残高はポートフォリオに追加しません。"
 portfolio_text_656711e3e164 = "Byron DEX / CEXで検出アドレスを確認し、取引所でないものを解除してください。共有取引は一度だけ数えます。表示ボタンで取引とアドレスを確認できます。"
 portfolio_text_11b9eecc6c6a = "SwapはCEX分類から除外する内部・サービスアドレスを識別します。ラベルはサービスウォレット全体の所有権を証明しません。追跡ウォレットのアドレスに金額を対応させ、他の受取人の資金を含めません。"
