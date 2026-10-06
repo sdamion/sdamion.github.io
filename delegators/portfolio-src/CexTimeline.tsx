@@ -3,11 +3,12 @@ import type {CexAddress} from './cex';
 import type {Fact} from './core';
 import {withinTransactionDates} from './transaction-date';
 import {transferComparison} from './transfer-comparison';
-import type {ComparisonCrypto,ComparisonFiat,FxHistory} from './transfer-comparison';
+import type {ComparisonCrypto,ComparisonCurrency,FxHistory} from './transfer-comparison';
+import {formatAdaNumber} from './portfolio-currency';
 import {usePortfolioText} from './use-portfolio-text';
 const emptyRates={};
 
-export function CexTimeline({facts,entries,history,btcHistory=emptyRates,fxHistory=emptyRates,crypto='ADA',currency='USD',busy,dateFrom='',dateTo=''}:{facts:Record<string,Fact>;entries:CexAddress[];history:Record<string,number>;btcHistory?:Record<string,number>;fxHistory?:FxHistory;crypto?:ComparisonCrypto;currency?:ComparisonFiat;busy:boolean;dateFrom?:string;dateTo?:string}){
+export function CexTimeline({facts,entries,history,btcHistory=emptyRates,fxHistory=emptyRates,crypto='ADA',currency='USD',busy,dateFrom='',dateTo=''}:{facts:Record<string,Fact>;entries:CexAddress[];history:Record<string,number>;btcHistory?:Record<string,number>;fxHistory?:FxHistory;crypto?:ComparisonCrypto;currency?:ComparisonCurrency;busy:boolean;dateFrom?:string;dateTo?:string}){
   const t=usePortfolioText();
   const points=useMemo(()=>transferComparison(Object.values(facts).filter(fact=>withinTransactionDates(fact.time,dateFrom,dateTo)),entries,history,btcHistory,fxHistory,crypto,currency),[facts,entries,history,btcHistory,fxHistory,crypto,currency,dateFrom,dateTo]);
   const canvas=useRef<HTMLCanvasElement>(null);
@@ -38,7 +39,7 @@ export function CexTimeline({facts,entries,history,btcHistory=emptyRates,fxHisto
           options:{responsive:true,maintainAspectRatio:false,animation:false,layout:{padding:{top:8,right:12}},interaction:{mode:'index',intersect:false},
             plugins:{legend:{position:'top',align:'start',labels:{color,usePointStyle:true,pointStyle:'line',padding:20,boxWidth:20,font:{size:12}}},tooltip:{backgroundColor:style.getPropertyValue('--surface').trim(),titleColor:color,bodyColor:color,borderColor:grid,borderWidth:1,cornerRadius:8,padding:12,displayColors:true,callbacks:{
               title:(items:{parsed:{x:number}}[])=>items.length?new Date(items[0].parsed.x).toLocaleString():'',
-              label:(item:{dataset:{label:string};raw:{y:number;fiat:number|null}})=>`${item.dataset.label}: ${crypto==='ADA'?'₳ '+fmt(item.raw.y):fmt(item.raw.y)+' BTC'}${item.raw.fiat===null?' · '+t('Historical currency price unavailable'):' ≈ '+new Intl.NumberFormat(locale,{style:'currency',currency,maximumFractionDigits:currency==='JPY'?0:2}).format(item.raw.fiat)}`
+              label:(item:{dataset:{label:string};raw:{y:number;fiat:number|null}})=>`${item.dataset.label}: ${crypto==='ADA'?'₳ '+fmt(item.raw.y):fmt(item.raw.y)+' BTC'}${crypto==='ADA'&&currency==='ADA'?'':item.raw.fiat===null?' · '+t('Historical currency price unavailable'):' ≈ '+(currency==='ADA'?'₳ '+formatAdaNumber(item.raw.fiat,locale):new Intl.NumberFormat(locale,{style:'currency',currency,maximumFractionDigits:currency==='JPY'?0:2}).format(item.raw.fiat))}`
             }}},
             scales:{x:{type:'linear',border:{display:false},ticks:{color,maxTicksLimit:5,maxRotation:0,padding:10,font:{size:11},callback:(value:number)=>new Date(value).toLocaleDateString(locale,{month:'short',year:'2-digit'})},grid:{display:false}},y:{min:floor,border:{display:false},title:{display:true,text:t('Cumulative {crypto}',{crypto}),color,font:{size:12}},ticks:{color,maxTicksLimit:5,padding:10,font:{size:11},callback:(value:number)=>value<0?null:crypto==='BTC'?fmt(value):compact.format(value)},grid:{color:grid,drawTicks:false}}}
           }

@@ -15,7 +15,7 @@ import {matchesTransaction} from './transaction-search';
 import {AssetOverlay} from './AssetOverlay';
 import {TransactionTable,TransactionRow,TransactionAmount,TransactionLink,TransactionWalletLabels} from './TransactionTable';
 import {transactionWalletNames} from './transaction-wallet-names';
-import {transactionAmounts,lovelaceToAda,transactionNetworkFee} from './transaction-amounts';
+import {transactionAmounts,transactionNetworkFee} from './transaction-amounts';
 
 export function AddressTransactions({facts,address,addresses,entries,count,addressEditor,history={},wallets=[]}:{facts:Fact[];address:string;addresses?:string[];entries:CexAddress[];count:number;addressEditor?:ReactNode;history?:Record<string,number>;wallets?:{address:string;label:string}[]}){
   const [open,setOpen]=useState(false);
@@ -31,12 +31,13 @@ export function AddressTransactions({facts,address,addresses,entries,count,addre
     <TransactionTable>{rows.map(row=>{
       const fact=facts.find(fact=>fact.hash===row.hash);
       const amount=transactionAmounts(row.amountRaw,row.time,history,fact?.feeRaw);
+      const walletChange=transactionAmounts(row.walletChangeRaw,row.time,history);
       const touched=new Set([...fact?.externalInputs||[],...fact?.externalOutputs||[]].map(item=>item.address));
       const names=[...new Set(entries.filter(entry=>(addresses||[address]).includes(entry.address)&&touched.has(entry.address)).map(entry=>entry.name))];
       return <TransactionRow key={row.hash} hash={row.hash} time={row.time} price={amount.price} feeRaw={transactionNetworkFee(fact)}
         amount={row.amountRaw===null?'Mixed or unassigned sources':<TransactionAmount ada={amount.ada} usd={amount.usd} tone={row.side==='buy'?'negative':'positive'}/>}
         kind={row.amountRaw!==null?(row.side==='buy'?'ADA IN':'ADA OUT'):undefined}
-        details={<>{row.sharedInputs&&<div className="small muted">Shared-input transaction total · counted once in Byron totals</div>}<div className="small muted">Wallet change (after fees): {BigInt(row.walletChangeRaw)<0n?'OUT':'IN'} <AdaUsdAmount ada={Math.abs(lovelaceToAda(row.walletChangeRaw)!)} usd={null}/></div></>}
+        details={<>{row.sharedInputs&&<div className="small muted">Shared-input transaction total · counted once in Byron totals</div>}<div className="small muted">Wallet change (after fees): {BigInt(row.walletChangeRaw)<0n?'OUT':'IN'} <AdaUsdAmount ada={Math.abs(walletChange.ada!)} usd={walletChange.usd===null?null:Math.abs(walletChange.usd)}/></div></>}
         wallets={<>{names.map(name=><strong translate="no" key={name}>{name} </strong>)}<div className="small muted"><TransactionWalletLabels inline labels={transactionWalletNames(fact,wallets)}/></div></>}
       />;
     })}</TransactionTable>{!rows.length&&<p className="empty">No loaded transactions.</p>}

@@ -41,4 +41,8 @@ for(const crypto of ['ADA','BTC'] as const){
 }
 assert.equal(transferComparison([input],entries,ada,btc,{},'ADA','EUR')[0].inFiat,null);
 assert.equal(transferComparison([input],entries,{},btc,fx,'BTC','USD')[0].incoming,null);
+const adaDisplay=transferComparison([input,output],entries,ada,btc,fx,'BTC','ADA').at(-1)!;
+assert.equal(adaDisplay.inFiat,100,'BTC comparison follows an ADA display selection using transfer-day prices');
+assert.equal(adaDisplay.outFiat,100);
+assert.equal(comparisonNet(adaDisplay,50,1,btc,fx,'BTC','ADA',time+86400,50).fiat,50);
 console.log('PASS: crypto/fiat selection, dated prices, weekend FX, deduplication, net balances and missing rates.');

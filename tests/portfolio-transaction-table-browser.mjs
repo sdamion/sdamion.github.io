@@ -7,6 +7,8 @@ const {build}=require('esbuild');
 const {chromium}=await import(process.argv[2]);
 const bundle=await build({stdin:{contents:`
 import {createRoot} from 'react-dom/client';
+import {useState} from 'react';
+import {PortfolioCurrencyContext} from './portfolio-currency';
 import {TransactionTable,TransactionRow,TransactionAmount,TransactionWallets} from './TransactionTable';
 import {GainLossTransaction} from './GainLossTransaction';
 import {AddressTransactions} from './ByronExchanges';
@@ -14,11 +16,15 @@ const time=1700000000;
 const base={hash:'in',time,adaRaw:'100000000',feeRaw:'0',internal:false,wallets:['owned'],assets:{},decimals:{},swapCandidate:false};
 const incoming={...base,externalInputs:[{address:'exchange',lovelace:'100000000'}]};
 const outgoing={...base,hash:'out',adaRaw:'-100000000',externalOutputs:[{address:'exchange',lovelace:'100000000'}]};
+function ByronFixture(){
+ const [currency,setCurrency]=useState('USD');window.setByronCurrency=setCurrency;
+ return <PortfolioCurrencyContext.Provider value={{currency,rate:currency==='EUR'?0.8:currency==='JPY'?145:1,adaUsd:0.5,locale:'en'}}><AddressTransactions facts={[incoming,outgoing]} address="exchange" entries={[{address:'exchange',name:'Bitvavo'}]} count={2} wallets={[{address:'owned',label:'Savings'}]} history={{[new Date(time*1000).toISOString().slice(0,10)]:0.25}}/></PortfolioCurrencyContext.Provider>;
+}
 createRoot(document.getElementById('app')).render(<><TransactionTable>
  <TransactionRow hash="normal" time={time} amount={<TransactionAmount ada={-100} usd={-25}/>} price={0.25} feeRaw="0" wallets={<TransactionWallets labels={['Savings','DEX contract: CSwap','DEX contract: Minswap V1']} exchanges={[]}/>}/>
  <TransactionRow hash="unknown" time={time} amount="Unavailable" wallets="Unknown"/>
  {[incoming,outgoing].map(fact=><GainLossTransaction key={fact.hash} tx={{tx_hash:fact.hash,block_time:time,block_height:1}} fact={fact} entries={[{address:'exchange',name:'Bitvavo'}]} wallets={[{address:'owned',label:'Savings'}]} history={{[new Date(time*1000).toISOString().slice(0,10)]:0.25}}/>)}
-</TransactionTable><AddressTransactions facts={[incoming,outgoing]} address="exchange" entries={[{address:'exchange',name:'Bitvavo'}]} count={2} wallets={[{address:'owned',label:'Savings'}]} history={{[new Date(time*1000).toISOString().slice(0,10)]:0.25}}/></>);
+</TransactionTable><ByronFixture/></>);
 `,loader:'tsx',resolveDir:path.resolve('delegators/portfolio-src')},bundle:true,write:false,format:'esm',jsx:'automatic',alias:{'@/components/ui/table':path.resolve('delegators/portfolio-src/ui.tsx'),'@/components/ui/input':path.resolve('delegators/portfolio-src/ui.tsx'),'@/components/ui/pagination':path.resolve('delegators/portfolio-src/ui.tsx')}});
 const browser=await chromium.launch({channel:'chrome',headless:true});
 try{
@@ -62,9 +68,20 @@ try{
  await page.getByRole('button',{name:'View',exact:true}).click();
  const byron=page.locator('#portfolio-byron-amounts-overlay');
  await byron.locator('tbody tr').first().waitFor();
- assert.deepEqual(await byron.locator('th').allTextContents(),['ADA Amount','USD/ADA Price','Fee','Wallets','Date']);
+ assert.deepEqual(await byron.locator('th').allTextContents(),['USD Amount','USD/ADA Price','Fee','Wallets','Date']);
  assert.equal(await byron.locator('tbody tr').count(),2);
  assert.match(await byron.locator('tbody tr').first().locator('td').nth(3).innerText(),/Bitvavo[\s\S]*Savings/);
+ const walletChange=byron.getByText(/Wallet change \(after fees\):/).first();
+ assert.match(await walletChange.innerText(),/\$25\.00/,'wallet change uses the transaction-day ADA price, not the current quote');
+ await page.evaluate(()=>window.setByronCurrency('EUR'));
+ await page.waitForFunction(()=>document.querySelector('#portfolio-byron-amounts-overlay')?.textContent.includes('€20.00'));
+ assert.match(await walletChange.innerText(),/€20\.00/);
+ await page.evaluate(()=>window.setByronCurrency('JPY'));
+ await page.waitForFunction(()=>document.querySelector('#portfolio-byron-amounts-overlay')?.textContent.includes('¥3,625'));
+ assert.match(await walletChange.innerText(),/¥3,625/);
+ await page.evaluate(()=>window.setByronCurrency('ADA'));
+ await page.waitForFunction(()=>document.querySelector('#portfolio-byron-amounts-overlay')?.textContent.includes('₳ 100'));
+ assert.match(await walletChange.innerText(),/₳ 100/);
  for(const width of [768,320,390]){
    await page.setViewportSize({width,height:844});
    const shell=page.locator('#app .table-shell').first();

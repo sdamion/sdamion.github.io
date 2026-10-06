@@ -99,9 +99,9 @@ export default function Home({memberStake}:{memberStake:string}){
   const [section,setSection]=useState<'wallets'|'holdings'|'transactions'|'gain-loss'|'unknown'|null>(null);
   const btc=useBtcHistory(section==='gain-loss');
   const [comparisonCrypto,setComparisonCrypto]=useState<ComparisonCrypto>('ADA');
-  const [comparisonFiat,setComparisonFiat]=useState<ComparisonFiat>('USD');
   const [holdingsCurrency,setHoldingsCurrency]=useState<'ADA'|ComparisonFiat>('USD');
-  const fx=useFxHistory((section==='gain-loss'&&comparisonFiat!=='USD')||holdingsCurrency==='EUR'||holdingsCurrency==='JPY');
+  const comparisonFiat=holdingsCurrency;
+  const fx=useFxHistory(holdingsCurrency==='EUR'||holdingsCurrency==='JPY');
   const [page,setPage]=useState(0);
   const [dateFrom,setDateFrom]=useState(''),[dateTo,setDateTo]=useState('');
   const [liveQuote,setLiveQuote]=useState<{usd:number;at:string}|null>(null);
@@ -434,7 +434,7 @@ export default function Home({memberStake}:{memberStake:string}){
   const subtotal=valued.reduce((s,r)=>s+(r.value||0),0);
   const ada=Number(holdings.find(h=>h.id==='lovelace')?.raw||0)/1e6;
   const currentAdaUsd=liveQuote?.usd??snapshot?.adaUsd??null;
-  const portfolioUsd=valued.length?subtotal:null;
+  const portfolioUsd=valued.length?subtotal:snapshot?.complete&&included.length===0?0:null;
   const portfolioAda=portfolioUsd!==null&&currentAdaUsd!==null&&currentAdaUsd>0?portfolioUsd/currentAdaUsd:null;
   const holdingsRate=holdingsCurrency==='ADA'?null:fiatRate(Date.now()/1000,holdingsCurrency,fx.history);
   const holdingsValue=holdingsCurrency==='ADA'?portfolioAda:portfolioUsd!==null&&holdingsRate!==null?portfolioUsd*holdingsRate:null;
@@ -530,11 +530,10 @@ export default function Home({memberStake}:{memberStake:string}){
     </section>
 
     </AssetOverlay>}
-    {(section==='transactions'||section==='gain-loss')&&<PortfolioCurrencyContext.Provider value={section==='gain-loss'?null:currencyDisplay}><AssetOverlay id={section==='gain-loss'?'portfolio-gain-loss-overlay':'portfolio-transactions-overlay'} name={section==='gain-loss'?'ADA Gains/Loss':'Transactions'} onClose={()=>setSection(null)}>
+    {(section==='transactions'||section==='gain-loss')&&<PortfolioCurrencyContext.Provider value={currencyDisplay}><AssetOverlay id={section==='gain-loss'?'portfolio-gain-loss-overlay':'portfolio-transactions-overlay'} name={section==='gain-loss'?'ADA Gains/Loss':'Transactions'} onClose={()=>setSection(null)}>
     {section==='gain-loss'&&<>
     <div className="portfolio-comparison-controls">
       <label className="small">{t('Crypto')}<select aria-label={t('Comparison cryptocurrency')} value={comparisonCrypto} onChange={event=>setComparisonCrypto(event.target.value as ComparisonCrypto)}><option value="ADA">ADA</option><option value="BTC">BTC</option></select></label>
-      <label className="small">{t('Currency')}<select aria-label={t('Comparison currency')} value={comparisonFiat} onChange={event=>setComparisonFiat(event.target.value as ComparisonFiat)}><option value="USD">USD ($)</option><option value="EUR">EUR (€)</option><option value="JPY">JPY (¥)</option></select></label>
     </div>
     <div className="portfolio-gain-overview">
     <CexTimeline facts={Object.fromEntries(shown.map(tx=>[tx.tx_hash,classifiedFacts[tx.tx_hash]]))} entries={cexAddresses} history={snapshot?.history||{}} btcHistory={btc.history} fxHistory={fx.history} crypto={comparisonCrypto} currency={comparisonFiat} busy={busy} dateFrom={dateFrom} dateTo={dateTo}/>
@@ -552,7 +551,7 @@ export default function Home({memberStake}:{memberStake:string}){
         <strong className="governance-card-title">{snapshot?<ComparisonAmount amount={comparisonCrypto==='ADA'?adaGain.ada:comparisonResult.amount} value={comparisonCrypto==='ADA'&&comparisonFiat==='USD'?adaGain.usd:comparisonResult.fiat} crypto={comparisonCrypto} currency={comparisonFiat}/>: 'Waiting for wallet balances'}</strong>
       </div>
       {snapshot&&comparisonCrypto==='BTC'&&<p className="small muted" role="status">{btc.status||'BTC equivalents use transfer-day ADA/USD and BTC/USD prices, not actual Bitcoin purchases.'}</p>}
-      {comparisonFiat!=='USD'&&<p className="small muted" role="status">{fx.status||'Historical FX rates use the latest available business day; wallet value uses the current rate.'}</p>}
+      {(comparisonFiat==='EUR'||comparisonFiat==='JPY')&&<p className="small muted" role="status">{fx.status||'Historical FX rates use the latest available business day; wallet value uses the current rate.'}</p>}
       <p className="small muted">{snapshot?.complete&&!cexPending&&!cexUnresolved?'':'Partial · '}Transfer-day prices plus current wallet value; not exchange execution prices.{cexPending?` ${num(cexPending,0)} transactions need CEX address checks.`:''}{cexUnresolved?` ${num(cexUnresolved,0)} mixed CEX transactions excluded.`:''}{cexDollars.missingPrices?` ${cexDollars.missingPrices} transfers have no historical USD price.`:''}</p>
     </section></div></>}
     <TransactionFilters id={section} options={section==='gain-loss'?{all:'All',in:'ADA IN',out:'ADA OUT'}:undefined} query={query} onQuery={value=>{setQuery(value);setFilter('all');}} filter={filter} onFilter={setFilter} dateFrom={dateFrom} dateTo={dateTo} onDates={(from,to)=>{setDateFrom(from);setDateTo(to);}} pagination={<TransactionPagination position="top" page={currentPage} count={shown.length} onPage={setPage}/>}/>

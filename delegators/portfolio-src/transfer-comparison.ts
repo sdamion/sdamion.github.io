@@ -5,6 +5,7 @@ import {historicalAdaPrice} from './transaction-amounts.ts';
 
 export type ComparisonCrypto='ADA'|'BTC';
 export type ComparisonFiat='USD'|'EUR'|'JPY';
+export type ComparisonCurrency=ComparisonFiat|'ADA';
 export function comparisonResultLabel(amount:number|null):string{
   return amount===null?'{crypto} comparison gain/loss':amount<0?'{crypto} comparison loss':'{crypto} comparison gain';
 }
@@ -30,21 +31,22 @@ export function transferFiatValue(amount:number|null,unitUsd:number|null,rate:nu
   const value=amount*unitUsd*rate;
   return Number.isFinite(value)?value:null;
 }
-export function transferComparison(facts:Fact[],entries:CexAddress[],adaHistory:Record<string,number>,btcHistory:Record<string,number>,fx:FxHistory,crypto:ComparisonCrypto,currency:ComparisonFiat){
+export function transferComparison(facts:Fact[],entries:CexAddress[],adaHistory:Record<string,number>,btcHistory:Record<string,number>,fx:FxHistory,crypto:ComparisonCrypto,currency:ComparisonCurrency){
   let incoming:number|null=0,outgoing:number|null=0,inFiat:number|null=0,outFiat:number|null=0;
   const add=(total:number|null,value:number|null)=>total===null||value===null?null:total+value;
   return cexTimeline(facts,entries,adaHistory).reverse().map(row=>{
     const btc=btcHistory[new Date(row.time*1000).toISOString().slice(0,10)];
     const unitUsd=crypto==='ADA'?historicalAdaPrice(row.time,adaHistory):Number.isFinite(btc)&&btc>0?btc:null;
     const amount=crypto==='ADA'?row.ada:row.usd!==null&&Number.isFinite(btc)&&btc>0?row.usd/btc:null;
-    const rate=fiatRate(row.time,currency,fx),value=transferFiatValue(amount,unitUsd,rate);
+    const adaPrice=historicalAdaPrice(row.time,adaHistory);
+    const rate=currency==='ADA'?adaPrice!==null?1/adaPrice:null:fiatRate(row.time,currency,fx),value=transferFiatValue(amount,unitUsd,rate);
     if(row.side==='buy'){incoming=add(incoming,amount);inFiat=add(inFiat,value);}
     else{outgoing=add(outgoing,amount);outFiat=add(outFiat,value);}
     return {time:row.time,incoming,outgoing,inFiat,outFiat};
   });
 }
-export function comparisonNet(last:ReturnType<typeof transferComparison>[number]|undefined,walletAda:number,currentAdaUsd:number|null,btcHistory:Record<string,number>,fx:FxHistory,crypto:ComparisonCrypto,currency:ComparisonFiat,time:number,portfolioUsd:number|null=currentAdaUsd!==null?walletAda*currentAdaUsd:null){
-  const rate=fiatRate(time,currency,fx),btc=datedRate(time,btcHistory);
+export function comparisonNet(last:ReturnType<typeof transferComparison>[number]|undefined,walletAda:number,currentAdaUsd:number|null,btcHistory:Record<string,number>,fx:FxHistory,crypto:ComparisonCrypto,currency:ComparisonCurrency,time:number,portfolioUsd:number|null=currentAdaUsd!==null?walletAda*currentAdaUsd:null){
+  const rate=currency==='ADA'?currentAdaUsd!==null&&currentAdaUsd>0?1/currentAdaUsd:null:fiatRate(time,currency,fx),btc=datedRate(time,btcHistory);
   const unitUsd=crypto==='ADA'?currentAdaUsd:btc;
   const walletCrypto=portfolioUsd!==null&&unitUsd!==null&&unitUsd>0?portfolioUsd/unitUsd:null;
   const walletFiat=portfolioUsd!==null&&rate!==null?portfolioUsd*rate:null;
