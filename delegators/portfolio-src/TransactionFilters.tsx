@@ -14,7 +14,7 @@ export function TransactionFilters({id,query,onQuery,filter,onFilter,dateFrom,da
       {(dateFrom||dateTo)&&<button type="button" className="governance-vote-secondary" onClick={()=>onDates('','')}>Clear dates</button>}
     </div>
     <Input name={`${id}-search`} aria-label={`Search ${placeholder.toLowerCase()}`} placeholder={placeholder} value={query} onChange={event=>onQuery(event.target.value)} className="search-input"/>
-    <div className="filter-row portfolio-transaction-types">{Object.entries(options).map(([value,label])=><button type="button" key={value} aria-pressed={filter===value} onClick={()=>onFilter(value)} className={filter===value?'active':''}>{label}</button>)}</div>
+    <div className="filter-row portfolio-transaction-types">{Object.entries(options).map(([value,label])=><button type="button" key={value} aria-pressed={filter===value} onClick={()=>onFilter(value)} className={`governance-vote-secondary${filter===value?' active':''}`}>{label}</button>)}</div>
     {pagination}
   </section>;
 }

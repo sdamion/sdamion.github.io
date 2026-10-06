@@ -42,6 +42,13 @@ try{
  const closeHoldings=async()=>{await page.locator('#portfolio-holdings-overlay').getByRole('button',{name:'Back',exact:true}).click();await page.getByRole('button',{name:'Open NFTs',exact:true}).waitFor();await page.locator('#portfolio-holdings-overlay').getByRole('button',{name:'Back',exact:true}).click();};
  assert.equal(await page.locator('main .governance-card-detail').filter({hasText:'Assets Gains/Loss'}).count(),0,'redundant asset gain/loss tile removed');
  await page.getByRole('button',{name:'Open Assets',exact:true}).waitFor();
+ for(const name of ['Cardano Wallets','Transactions','Assets']){
+   const tile=page.getByRole('button',{name:`Open ${name}`,exact:true});
+   assert.equal(await tile.locator(':scope > strong').getAttribute('class'),'governance-card-title');
+   assert.equal(await tile.locator(':scope > span.governance-card-detail').innerText(),name);
+   assert.equal(await tile.evaluate(node=>node.firstElementChild.tagName),'STRONG','amount or count is the first tile element');
+ }
+ assert.equal(await page.getByRole('button',{name:'Open Transactions',exact:true}).locator(':scope > strong').innerText(),'0');
  await page.waitForFunction(()=>document.querySelector('main')?.textContent.includes('$10,691.89'));
  assert.match(await metric.innerText(),/10,691\.89/);
  const holdingsCurrency=page.locator('#portfolio-refresh-action').getByRole('combobox',{name:'Comparison currency'});
@@ -176,6 +183,12 @@ try{
  await gain.getByRole('combobox',{name:'Comparison cryptocurrency'}).selectOption('ADA');
  await holdingsCurrency.selectOption('USD');
  await page.waitForFunction(()=>window.Chart.getChart(document.querySelector('#portfolio-gain-loss-overlay canvas'))?.data.datasets[1].data.at(-1).fiat===12);
+ const chartDefaults=await page.locator('#portfolio-gain-loss-overlay canvas').evaluate(canvas=>{
+   const chart=window.Chart.getChart(canvas),style=getComputedStyle(canvas);
+   return {legend:chart.options.plugins.legend.labels.font.size,ticks:chart.options.scales.y.ticks.font.size,site:parseFloat(style.fontSize)};
+ });
+ assert.equal(chartDefaults.legend,chartDefaults.site,'chart legend uses the standard site text size');
+ assert.equal(chartDefaults.ticks,chartDefaults.site,'chart ticks share the site default');
  await page.setViewportSize({width:1440,height:1000});
  const overview=gain.locator('.portfolio-gain-overview');
  const summary=gain.getByRole('region',{name:'ADA Gains/Loss breakdown'});
@@ -201,6 +214,7 @@ try{
    assert.ok(await overview.evaluate(el=>el.scrollWidth<=el.clientWidth+1),'chart and summary fit mobile');
    const cells=await comparison.locator('td').all();
    assert.ok((await cells[1].boundingBox()).x>(await cells[0].boundingBox()).x,'IN precedes OUT side by side on mobile');
+   assert.ok(Math.abs((await cells[0].boundingBox()).width-(await cells[1].boundingBox()).width)<2,'comparison columns have equal mobile widths');
  }
  await page.screenshot({path:'/tmp/portfolio-gain-chart-mobile.png',fullPage:true});
  await gain.locator('input[name="gain-loss-from"]').fill('2024-01-01');

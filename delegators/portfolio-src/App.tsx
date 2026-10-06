@@ -462,7 +462,7 @@ export default function Home({memberStake}:{memberStake:string}){
   </div>
     <section className="portfolio-section"><div className="tdsp-tile-grid">
       <MenuTile title="Cardano Wallets" value={refreshCounts?`${num(refreshCounts.active,0)} / ${num(refreshCounts.total,0)} active`:initialising?'Initialising':'— / — active'} loading={initialising} loadingLabel={status} onOpen={()=>setSection('wallets')}/>
-      <MenuTile title="Transactions" value="" analysis={snapshot?{done:progress.done,total:progress.total,counting:counting!==null,busy,status:transactionStatus}:undefined} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('transactions');}}>
+      <MenuTile title="Transactions" value={snapshot?num(transactionTotal,0):'—'} analysis={snapshot?{done:progress.done,total:progress.total,counting:counting!==null,busy,status:transactionStatus}:undefined} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('transactions');}}>
         {storageMode()==='remote'?<CacheUploadProgress onRetry={()=>void flushVault().catch(()=>{})}/>:cacheNotice&&<p role="status" className="tdsp-bar-legend">{cacheNotice}</p>}
       </MenuTile>
       <MenuTile title="Assets" value={holdingsDisplay} onOpen={()=>{resetPolicies();setHoldingsGroup(null);setSection('holdings');}}>
@@ -539,11 +539,11 @@ export default function Home({memberStake}:{memberStake:string}){
     <div className="portfolio-comparison-controls">
       <label className="small">{t('Crypto')}<select aria-label={t('Comparison cryptocurrency')} value={comparisonCrypto} onChange={event=>setComparisonCrypto(event.target.value as ComparisonCrypto)}><option value="ADA">ADA</option><option value="BTC">BTC</option></select></label>
     </div>
-    <div className="portfolio-gain-overview">
+    <div className="tdsp-chart-overview portfolio-gain-overview">
     <CexTimeline facts={Object.fromEntries(shown.map(tx=>[tx.tx_hash,classifiedFacts[tx.tx_hash]]))} entries={cexAddresses} history={snapshot?.history||{}} btcHistory={btc.history} fxHistory={fx.history} crypto={comparisonCrypto} currency={comparisonFiat} busy={busy} dateFrom={dateFrom} dateTo={dateTo}/>
-    <section className="portfolio-section portfolio-gain-summary" aria-label="ADA Gains/Loss breakdown">
+    <section className="portfolio-section tdsp-chart-summary portfolio-gain-summary" aria-label="ADA Gains/Loss breakdown">
       {(dateFrom||dateTo||query||filter!=='all')&&<p className="small muted">Gain/loss totals cover all loaded history and current wallet balances. Filters apply to the transfer graph and transaction list below.</p>}
-      {snapshot&&<Table className="portfolio-gain-comparison">
+      {snapshot&&<Table variant="comparison" className="portfolio-gain-comparison">
         <TableHeader><TableRow><TableHead translate="no">{comparisonCrypto} IN</TableHead><TableHead translate="no">{comparisonCrypto} OUT</TableHead></TableRow></TableHeader>
         <TableBody><TableRow>
           <TableCell><ComparisonAmount amount={comparison?.incoming??null} value={comparison?.inFiat??null} crypto={comparisonCrypto} currency={comparisonFiat} tone="negative"/></TableCell>

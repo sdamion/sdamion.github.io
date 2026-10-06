@@ -12,7 +12,7 @@ test('asset details use the universal overlay and retain the mounted portfolio',
   assert.match(overlay,/syncGovernanceMenuOverlayAccessibility/);
   assert.doesNotMatch(overlay,/abort\(|unmount\(|refresh\(/);
 });
-test('holdings show names below images and move payment details into the overlay',()=>{
+test('holdings show names with images and move payment details into the overlay',()=>{
   const app=source('App.tsx');
   assert.match(app,/\{image\}<span className="portfolio-asset-name"/);
   assert.match(app,/onOpen=\{\(\)=>setSelectedAsset\(r.id\)\}/);
@@ -21,10 +21,11 @@ test('holdings show names below images and move payment details into the overlay
 });
 test('portfolio sections use separate shared overlays and the universal tile renderer',()=>{
   const app=source('App.tsx'),overlay=source('AssetOverlay.tsx');
-  for(const section of ['wallets','holdings','transactions']){
+  for(const section of ['wallets','holdings']){
     assert.ok(app.includes(`section==='${section}'&&<AssetOverlay id="portfolio-${section}-overlay"`));
     assert.ok(app.includes(`setSection('${section}')`));
   }
+  assert.match(app,/id=\{section==='gain-loss'\?'portfolio-gain-loss-overlay':'portfolio-transactions-overlay'\}/);
   assert.match(source('ui.tsx'),/TDSPRuntime.appendUniversalTileContent\(button/);
   assert.match(source('ui.tsx'),/role="button" tabIndex=\{0\}/);
   assert.match(source('ui.tsx'),/onKeyDown=/);
@@ -39,15 +40,14 @@ test('cache upload status belongs to the Transactions tile rather than the refre
   assert.match(app,/<MenuTile title="Transactions"[\s\S]*?<CacheUploadProgress[\s\S]*?<\/MenuTile>/);
   assert.match(source('ui.tsx'),/createPortal\(children,footer\)/);
 });
-test('CEX metric opens the shared transaction list without stale search or pagination',()=>{
+test('CEX metric opens its shared transaction overlay without stale search or pagination',()=>{
   const app=source('App.tsx');
-  assert.match(app,/<Metric label="ADA Gain\/ loss"[^\n]*onOpen=\{\(\)=>\{setQuery\(''\);setFilter\('cex'\);setPage\(0\);setSection\('transactions'\);\}\}/);
-  const tile=app.split('\n').find(line=>line.includes('<Metric label="ADA Gains/Loss"'));
+  assert.match(app,/<Metric label="CEX Transactions"[^\n]*onOpen=\{\(\)=>\{setQuery\(''\);setFilter\('all'\);setPage\(0\);setSection\('gain-loss'\);\}\}/);
+  const tile=app.split('\n').find(line=>line.includes('<Metric label="CEX Transactions"'));
   assert.doesNotMatch(tile,/note=|breakdown=|Bought|Sold/);
-  const transactions=app.slice(app.indexOf("{section==='transactions'"),app.indexOf('{busy&&<p'));
-  assert.match(transactions,/ADA OUT <AdaUsdAmount/);
-  assert.match(transactions,/ADA IN <AdaUsdAmount/);
-  assert.match(transactions,/transfer-day prices/);
+  assert.match(app,/<ComparisonAmount amount=\{comparison\?\.incoming\?\?null\}/);
+  assert.match(app,/<ComparisonAmount amount=\{comparison\?\.outgoing\?\?null\}/);
+  assert.match(app,/Transfer-day prices plus current wallet value/);
   assert.match(app,/<MenuTile title="Transactions"[^\n]*setFilter\('all'\)/);
   assert.match(app,/const Tag=onOpen\?'button':'div'/);
 });
@@ -72,11 +72,13 @@ test('closing Portfolio detaches its view without unmounting the active refresh'
   assert.match(source('App.tsx'),/tdsp:portfolio-hidden/);
 });
 test('CEX timeline reuses the shared chart loader and frame inside the overlay',()=>{
-  assert.match(source('App.tsx'),/filter==='cex'[^\n]*<CexTimeline/);
+  assert.match(source('App.tsx'),/section==='gain-loss'&&<>/);
   const timeline=source('CexTimeline.tsx');
   assert.match(timeline,/TDSPCharts.load\(\)/);
   assert.match(timeline,/price-history-chart-frame/);
-  assert.match(timeline,/maxTicksLimit:5/);
+  assert.match(timeline,/siteChartDefaults\(canvas.current\)/);
+  assert.match(timeline,/legend:defaults.legend/);
+  assert.match(timeline,/\.\.\.defaults.tooltip/);
   assert.match(timeline,/chart\?\.destroy\(\)/);
   assert.doesNotMatch(timeline,/<Table|<Pagination|<h3/);
   assert.doesNotMatch(timeline,/\.css/);
@@ -87,13 +89,14 @@ test('gain loss overlay places its breakdown beside the graph, not in address se
   assert.doesNotMatch(exchange,/ADA Gain\/ loss breakdown/);
   const start=app.indexOf("{(section==='transactions'");
   const section=app.slice(start,app.indexOf('{busy&&<p',start));
-  assert.match(section,/className="portfolio-gain-overview"/);
+  assert.match(section,/className="tdsp-chart-overview portfolio-gain-overview"/);
   assert.ok(section.indexOf('<CexTimeline')<section.indexOf('ADA Gains/Loss breakdown'));
-  assert.match(section,/ADA OUT<\/span><TransactionAmount[^\n]*ada=\{Number\(cexPosition.sentRaw\)\/1e6\} usd=\{cexDollars.soldUsd\}/);
+  assert.match(section,/variant="comparison"/);
+  assert.match(section,/<ComparisonAmount amount=\{comparison\?\.outgoing\?\?null\} value=\{comparison\?\.outFiat\?\?null\}/);
   assert.doesNotMatch(section,/In wallets <AdaUsdAmount/);
-  assert.match(section,/ADA IN<\/span><TransactionAmount[^\n]*ada=\{Number\(cexPosition.receivedRaw\)\/1e6\} usd=\{cexDollars.boughtUsd\}/);
-  assert.match(source('CexTimeline.tsx'),/label:'ADA IN',data:points.map\(p=>\(\{x:p.time\*1000,y:p.boughtAda,usd:p.boughtUsd/);
-  assert.match(source('CexTimeline.tsx'),/label:'ADA OUT',data:points.map\(p=>\(\{x:p.time\*1000,y:p.soldAda,usd:p.soldUsd/);
+  assert.match(section,/<ComparisonAmount amount=\{comparison\?\.incoming\?\?null\} value=\{comparison\?\.inFiat\?\?null\}/);
+  assert.match(source('CexTimeline.tsx'),/label:crypto\+' IN',data:points.map\(p=>\(\{x:p.time\*1000,y:p.incoming,fiat:p.inFiat/);
+  assert.match(source('CexTimeline.tsx'),/label:crypto\+' OUT',[^\n]*data:points.map\(p=>\(\{x:p.time\*1000,y:p.outgoing,fiat:p.outFiat/);
   assert.doesNotMatch(section,/<details>/);
 });
 test('Cardano Wallets uses shared section tiles and nested address overlays',()=>{
@@ -108,13 +111,12 @@ test('Cardano Wallets uses shared section tiles and nested address overlays',()=
   assert.match(menu,/<MenuTile/);
   assert.match(menu,/<AssetOverlay/);
   assert.match(menu,/onClose=\{\(\)=>setSection\(null\)\}/);
-  assert.match(wallets,/<SwapWallets/);
-  assert.match(wallets,/<CexAddresses/);
+  assert.match(wallets,/<CexAddresses[^\n]*swap=\{\{wallets/);
 });
-test('ADA across wallets opens holdings without a duplicate navigation tile',()=>{
+test('Assets opens holdings without a duplicate navigation tile',()=>{
   const app=source('App.tsx');
-  assert.match(app,/<Metric label="ADA across wallets"[^\n]*onOpen=\{\(\)=>setSection\('holdings'\)\}/);
+  assert.match(app,/<MenuTile title="Assets"[^\n]*setSection\('holdings'\)/);
   assert.doesNotMatch(app,/<MenuTile title="Current holdings & performance"/);
-  assert.match(app,/id="portfolio-holdings-overlay" name="ADA across wallets"/);
+  assert.match(app,/id="portfolio-holdings-overlay" name=\{holdingsGroup\|\|'Assets'\}/);
   assert.match(app,/onOpen=\{\(\)=>setSelectedAsset\(r.id\)\}/);
 });

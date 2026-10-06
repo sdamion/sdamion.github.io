@@ -16,7 +16,7 @@ export function MenuTile({title,value,onOpen,analysis,loading=false,loadingLabel
   React.useLayoutEffect(()=>{
     const button=ref.current;if(!button)return;
     button.replaceChildren();
-    (window as unknown as {TDSPRuntime:{appendUniversalTileContent:(node:HTMLElement,options:Record<string,unknown>)=>void}}).TDSPRuntime.appendUniversalTileContent(button,{title,primaryText:value});
+    (window as unknown as {TDSPRuntime:{appendUniversalTileContent:(node:HTMLElement,options:Record<string,unknown>)=>void}}).TDSPRuntime.appendUniversalTileContent(button,{title:value||'—',titleClassName:'governance-card-title',primaryText:title,primaryClassName:'governance-card-detail'});
     if(loading){
       const label=document.createElement('span');label.className='tdsp-bar-legend';
       label.textContent=loadingLabel;label.setAttribute('role','status');
@@ -60,7 +60,7 @@ function tableLabels(node:React.ReactNode):string[]{
     return child.type===TableHead?[headerText(child.props.children)]:tableLabels(child.props.children);
   });
 }
-export const Table=({children,...props}:React.ComponentProps<'table'>)=><TableLabels.Provider value={tableLabels(children)}><div className="table-shell" data-slot="table-container"><table {...props}>{children}</table></div></TableLabels.Provider>;
+export const Table=({children,variant='numeric',responsive=variant!=='comparison',className='',...props}:React.ComponentProps<'table'>&{responsive?:boolean;variant?:'standard'|'numeric'|'comparison'})=><TableLabels.Provider value={tableLabels(children)}><div className={`table-shell${responsive?' table-shell--responsive':''}`} data-slot="table-container"><table {...props} className={`tdsp-table--${variant} ${className}`}>{children}</table></div></TableLabels.Provider>;
 export const TableHeader=(props:React.ComponentProps<'thead'>)=><thead {...props}/>;
 export const TableBody=(props:React.ComponentProps<'tbody'>)=><tbody {...props}/>;
 export function TableRow({children,...props}:React.ComponentProps<'tr'>){

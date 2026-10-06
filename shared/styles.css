@@ -55,15 +55,12 @@
 }
 .member-portfolio .portfolio-transaction-dates { gap: 8px; }
 .member-portfolio .portfolio-transaction-dates label { display: flex; align-items: center; gap: 6px; }
-.member-portfolio .portfolio-transaction-toolbar input { font-size: 0.875rem; min-height: 40px; box-sizing: border-box; }
-.member-portfolio .portfolio-transaction-dates input { width: 140px; padding: 6px 8px; }
+.member-portfolio .portfolio-transaction-dates input { width: 140px; }
 .member-portfolio .portfolio-transaction-toolbar .search-input { flex: 1 1 180px; width: 180px; }
 .member-portfolio .portfolio-transaction-types { gap: 6px; }
-.member-portfolio .portfolio-transaction-toolbar button { font-size: 0.875rem; min-height: 40px; padding: 8px 10px; }
 .member-portfolio .portfolio-pagination { flex: 0 0 auto; max-width: 100%; }
 .member-portfolio .portfolio-pagination .governance-action-buttons { display: flex; align-items: center; flex-wrap: nowrap; gap: 4px; margin: 0; }
-.member-portfolio .portfolio-pagination .small { white-space: nowrap; font-size: 0.875rem; padding: 0 6px; font-variant-numeric: tabular-nums; }
-.member-portfolio .portfolio-pagination button { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; min-height: 40px; padding: 0; }
+.member-portfolio .portfolio-pagination .small { white-space: nowrap; padding: 0 6px; font-variant-numeric: tabular-nums; }
 @media (max-width: 620px) {
     .member-portfolio .portfolio-transaction-dates { width: 100%; }
     .member-portfolio .portfolio-transaction-dates label { flex: 1 1 130px; min-width: 0; }
@@ -71,16 +68,16 @@
     .member-portfolio .portfolio-transaction-toolbar .search-input { flex-basis: 100%; width: 100%; }
     .member-portfolio .portfolio-transaction-types { width: 100%; }
 }
-.member-portfolio .portfolio-gain-overview {
+.tdsp-chart-overview {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
     align-items: start;
     gap: 28px;
     min-width: 0;
 }
-.member-portfolio .portfolio-gain-summary { padding-left: 24px; border-left: 1px solid var(--line); }
-.member-portfolio .portfolio-gain-summary p { margin: 0; }
-.member-portfolio .portfolio-gain-comparison :is(th, td) { width: 50%; padding: 10px 8px; text-align: left; vertical-align: top; font-variant-numeric: tabular-nums; }
+.tdsp-chart-summary { padding-left: 24px; border-left: 1px solid var(--line); }
+.tdsp-chart-summary p { margin: 0; }
+.tdsp-table--comparison :is(th, td) { width: 50%; text-align: left; vertical-align: top; font-variant-numeric: tabular-nums; }
 .member-portfolio .portfolio-gain-comparison .pool-delegator-amount { display: grid; gap: 4px; }
 .member-portfolio .portfolio-gain-comparison .small { margin-top: 6px; }
 .member-portfolio .portfolio-gain-result { display: grid; gap: 6px; }
@@ -93,18 +90,16 @@
 #portfolio-refresh-action .portfolio-currency-select svg { position: absolute; inset-inline-end: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--text); }
 .member-portfolio .portfolio-comparison-crypto { display: inline-flex; align-items: center; gap: 5px; }
 .member-portfolio .portfolio-comparison-crypto img { width: 16px; height: 16px; flex: 0 0 16px; object-fit: contain; }
-.member-portfolio .portfolio-timeline .price-history-chart-frame { height: 320px; }
 .member-portfolio .portfolio-timeline p { margin: 0; }
 @media (max-width: 900px) {
-    .member-portfolio .portfolio-gain-overview { grid-template-columns: minmax(0, 1fr); gap: 20px; }
-    .member-portfolio .portfolio-gain-summary { padding: 20px 0 0; border-left: 0; border-top: 1px solid var(--line); }
-    .member-portfolio .portfolio-timeline .price-history-chart-frame { height: 260px; }
+    .tdsp-chart-overview { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+    .tdsp-chart-summary { padding: 20px 0 0; border-left: 0; border-top: 1px solid var(--line); }
 }
 .member-portfolio .portfolio-transfer-amount :is(.pool-delegator-amount, .pool-delegator-amount > span) { color: inherit; }
 .member-portfolio .pool-delegator-amount > .pool-delegator-usd { color: var(--tdsp-tile-detail-color); }
 .member-portfolio .portfolio-transfer-amount .pool-delegator-amount > .pool-delegator-usd { color: var(--tdsp-tile-detail-color); }
 .member-portfolio .portfolio-gain-result .portfolio-transfer-amount .pool-delegator-amount > .pool-delegator-usd.negative { color: var(--ai-unavailable-color); }
-.member-portfolio .portfolio-transfer-row td { vertical-align: top; font-variant-numeric: tabular-nums; }
+.tdsp-table--numeric :is(th, td) { vertical-align: top; text-align: left; font-variant-numeric: tabular-nums; }
 .member-portfolio .portfolio-transfer-row .pool-delegator-amount { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
 .portfolio-dex-label { --portfolio-dex-color: #a64200; }
 html[data-theme="dark"] .portfolio-dex-label { --portfolio-dex-color: #fb923c; }
@@ -120,12 +115,6 @@ html[data-theme="dark"] .portfolio-dex-label { --portfolio-dex-color: #fb923c; }
 .member-portfolio input {
     min-width: 0;
     max-width: 100%;
-    padding: 10px 12px;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    color: var(--text);
-    background: var(--surface);
-    font: inherit;
 }
 .governance-menu-overlay > .governance-dialog:has(.wallet-connect-box:not([hidden])) {
     width: min(480px, calc(100% - 24px));
@@ -156,7 +145,6 @@ html[data-theme="dark"] .portfolio-dex-label { --portfolio-dex-color: #fb923c; }
 .portfolio-asset-name { display: block; overflow-wrap: anywhere; white-space: normal; }
 .member-portfolio .portfolio-asset-address-row { display: flex; align-items: center; gap: 8px; margin-block: 8px; }
 .member-portfolio .portfolio-asset-address-row a { min-width: 0; overflow-wrap: anywhere; }
-.member-portfolio .portfolio-holdings-table :is(th, td) { vertical-align: top; text-align: left; font-variant-numeric: tabular-nums; }
 .member-portfolio .portfolio-holdings-table .portfolio-asset-button { display: flex; flex-direction: row; align-items: center; gap: 8px; margin-bottom: 8px; width: 100%; max-width: 100%; box-sizing: border-box; text-align: left; }
 .member-portfolio .portfolio-holdings-table .portfolio-asset-image { width: 36px; height: 36px; flex-shrink: 0; }
 .member-portfolio .portfolio-token-inline { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; vertical-align: middle; }
@@ -170,27 +158,26 @@ html[data-theme="dark"] .portfolio-dex-label { --portfolio-dex-color: #fb923c; }
 .member-portfolio .portfolio-address-table :is(th, td):nth-child(3) { width: 13%; }
 .member-portfolio .portfolio-address-table :is(th, td):nth-child(4) { width: 20%; }
 @media (max-width: 767px) {
-    .member-portfolio .table-shell {
+    .table-shell--responsive {
         max-width: 100%;
         box-sizing: border-box;
         overflow-x: visible;
     }
-    .member-portfolio .table-shell table,
-    .member-portfolio .portfolio-address-table table {
+    .table-shell--responsive table {
         min-width: 0;
         display: block;
         width: 100%;
     }
-    .member-portfolio .table-shell thead {
+    .table-shell--responsive thead {
         position: absolute;
         width: 1px;
         height: 1px;
         overflow: hidden;
         clip-path: inset(50%);
     }
-    .member-portfolio .table-shell :is(tbody, tr) { display: block; width: 100%; }
-    .member-portfolio .table-shell tbody tr + tr { border-top: 2px solid var(--line); }
-    .member-portfolio .table-shell tbody tr td {
+    .table-shell--responsive :is(tbody, tr) { display: block; width: 100%; }
+    .table-shell--responsive tbody tr + tr { border-top: 2px solid var(--line); }
+    .table-shell.table-shell--responsive[data-slot="table-container"] tbody tr td[data-label] {
         display: block;
         box-sizing: border-box;
         width: 100%;
@@ -201,21 +188,21 @@ html[data-theme="dark"] .portfolio-dex-label { --portfolio-dex-color: #fb923c; }
         overflow-wrap: anywhere;
         word-break: normal;
     }
-    .member-portfolio .table-shell td::before {
+    .table-shell--responsive td::before {
         content: attr(data-label);
         display: block;
         margin-bottom: 4px;
         font-weight: 700;
         color: var(--text);
     }
-    .member-portfolio .table-shell td :is(input, select, button) { max-width: 100%; box-sizing: border-box; }
+    .table-shell--responsive td :is(input, select, button) { max-width: 100%; box-sizing: border-box; }
 }
-.member-portfolio .table-shell table.portfolio-gain-comparison { display: table; width: 100%; }
-.member-portfolio .table-shell .portfolio-gain-comparison thead { display: table-header-group; position: static; width: auto; height: auto; overflow: visible; clip-path: none; }
-.member-portfolio .table-shell .portfolio-gain-comparison tbody { display: table-row-group; }
-.member-portfolio .table-shell .portfolio-gain-comparison tr { display: table-row; }
-.member-portfolio .table-shell .portfolio-gain-comparison :is(th, td) { display: table-cell; width: 50%; }
-.member-portfolio .table-shell .portfolio-gain-comparison td::before { display: none; }
+.table-shell table.tdsp-table--comparison { display: table; width: 100%; }
+.table-shell .tdsp-table--comparison thead { display: table-header-group; position: static; width: auto; height: auto; overflow: visible; clip-path: none; }
+.table-shell .tdsp-table--comparison tbody { display: table-row-group; }
+.table-shell .tdsp-table--comparison tr { display: table-row; }
+.table-shell table.tdsp-table--comparison :is(th, td):nth-child(n) { display: table-cell; width: 50%; }
+.table-shell .tdsp-table--comparison td::before { display: none; }
 .member-portfolio .portfolio-address-row {
     display: grid;
     grid-template-columns: minmax(90px, 0.8fr) minmax(120px, 1.2fr) auto;
@@ -231,8 +218,8 @@ html[data-theme="dark"] .portfolio-dex-label { --portfolio-dex-color: #fb923c; }
 .member-portfolio .portfolio-address-row label { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .member-portfolio .portfolio-address-row label input { margin: 0; padding: 0; width: 18px; height: 18px; }
 .member-portfolio .portfolio-address-row > .small { grid-column: 1 / -1; }
-.governance-menu-overlay:has(> .portfolio-dialog-fullscreen) { padding: 0; }
-.governance-menu-overlay > .governance-dialog.portfolio-dialog-fullscreen {
+.governance-menu-overlay:has(> .governance-dialog-fullscreen) { padding: 0; }
+.governance-menu-overlay > .governance-dialog.governance-dialog-fullscreen {
   width: 100%; max-width: none; height: 100dvh; max-height: 100dvh; border-radius: 0;
 }
 .member-portfolio .portfolio-transaction-rows :is(th, td) { vertical-align: middle; white-space: normal; overflow-wrap: anywhere; }
@@ -4029,7 +4016,7 @@ textarea[data-auto-size] {
 }
 
 @media (min-width: 721px) {
-    .governance-dialog.portfolio-dialog {
+    .governance-dialog.governance-dialog-fit-content {
         height: auto;
         min-height: 0;
         max-height: calc(100dvh - 48px);
