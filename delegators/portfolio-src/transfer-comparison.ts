@@ -40,13 +40,14 @@ export function transferComparison(facts:Fact[],entries:CexAddress[],adaHistory:
     return {time:row.time,incoming,outgoing,inFiat,outFiat};
   });
 }
-export function comparisonNet(last:ReturnType<typeof transferComparison>[number]|undefined,walletAda:number,currentAdaUsd:number|null,btcHistory:Record<string,number>,fx:FxHistory,crypto:ComparisonCrypto,currency:ComparisonFiat,time:number){
+export function comparisonNet(last:ReturnType<typeof transferComparison>[number]|undefined,walletAda:number,currentAdaUsd:number|null,btcHistory:Record<string,number>,fx:FxHistory,crypto:ComparisonCrypto,currency:ComparisonFiat,time:number,portfolioUsd:number|null=currentAdaUsd!==null?walletAda*currentAdaUsd:null){
   const rate=fiatRate(time,currency,fx),btc=datedRate(time,btcHistory);
-  const walletUsd=currentAdaUsd!==null?walletAda*currentAdaUsd:null;
-  const walletCrypto=crypto==='ADA'?walletAda:walletUsd!==null&&btc!==null?walletUsd/btc:null;
-  const walletFiat=walletUsd!==null&&rate!==null?walletUsd*rate:null;
+  const unitUsd=crypto==='ADA'?currentAdaUsd:btc;
+  const walletCrypto=portfolioUsd!==null&&unitUsd!==null&&unitUsd>0?portfolioUsd/unitUsd:null;
+  const walletFiat=portfolioUsd!==null&&rate!==null?portfolioUsd*rate:null;
+  const totals=last??{incoming:0,outgoing:0,inFiat:0,outFiat:0};
   return {
-    amount:walletCrypto!==null&&last?.incoming!=null&&last?.outgoing!=null?last.outgoing+walletCrypto-last.incoming:null,
-    fiat:walletFiat!==null&&last?.inFiat!=null&&last?.outFiat!=null?last.outFiat+walletFiat-last.inFiat:null
+    amount:walletCrypto!==null&&totals.incoming!==null&&totals.outgoing!==null?totals.incoming-(totals.outgoing+walletCrypto):null,
+    fiat:walletFiat!==null&&totals.inFiat!==null&&totals.outFiat!==null?totals.inFiat-(totals.outFiat+walletFiat):null
   };
 }

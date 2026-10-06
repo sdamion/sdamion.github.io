@@ -1005,11 +1005,11 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
     "portfolio_text_6a4d08c5014d"
   ],
   [
-    "Assets Across Wallets shows the wallet ADA balance with the USD subtotal of priced holdings. Open it for current holdings, their wallet names and asset details. The coverage text indicates how many assets have a valuation.",
+    "Assets Across Wallets shows the current value of ADA and priced assets, in USD and its current ADA equivalent. Open it for holdings, wallet names and asset details. Unpriced assets are not included in the subtotal.",
     "portfolio_text_001a76011c42"
   ],
   [
-    "Assets Gains/Loss compares valued holdings with their matched remaining purchase cost. Missing history or purchase prices can make this a partial estimate. Mint and purchase costs are cost basis, not current prices. NFT floor prices and a 2 ADA fallback can be estimates, not achievable sale prices. Manual prices and exclusions can be managed in asset details.",
+    "Asset details compare current value with purchase cost. Mint and purchase costs are not current prices. NFT floor prices and the 2 ADA fallback are estimates, not guaranteed sale prices. Manual prices and exclusions can be managed in asset details.",
     "portfolio_text_8f0e993752c8"
   ],
   [
@@ -1017,7 +1017,7 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
     "portfolio_text_e5113f14d525"
   ],
   [
-    "ADA Gains/Loss uses ADA OUT to your labelled exchanges plus ADA still in tracked wallets minus ADA IN from those exchanges. Its USD estimate combines transfer-day prices with current wallet value, so ADA and USD can have different signs. It is not an exchange execution-price or tax calculation. Open the tile to inspect transfers and the timeline.",
+    "ADA Gains/Loss is ADA IN minus (ADA OUT plus Assets Across Wallets). Wallet ADA and assets use current values, not purchase costs. USD transfers use transfer-day prices; the ADA equivalent of assets uses the current ADA price. Unpriced assets are excluded, so the result can be partial. This is not a tax calculation.",
     "portfolio_text_f4fa3c5eb23b"
   ],
   [

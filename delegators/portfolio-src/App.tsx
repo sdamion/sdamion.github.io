@@ -26,8 +26,8 @@ import {createHistoryIndex} from './history-index';
 import {hasCounterpartyData,needsFactRefresh,needsActiveFactRefresh} from './fact-refresh';
 import {keepRefreshSessionAlive} from './refresh-session';
 import {currentValuation,mergeMarketQuote} from './current-valuation';
-import {valuationCoverage} from './valuation-coverage';
 import {includedAssets,gainLossAssets} from './asset-exclusions';
+import {valuationCoverage} from './valuation-coverage';
 import {averageBuy,purchaseAverages} from './average-buy';
 import {assetImageCandidates} from './asset-image';
 import {knownDecimals,tokenDecimals,holdingValue,holdingDecimals,estimatedPurchaseBasis} from './valuation';
@@ -43,7 +43,7 @@ import {CacheUploadProgress} from './CacheUploadProgress';
 import {CexTimeline} from './CexTimeline';
 import {useBtcHistory} from './use-btc-history';
 import {useFxHistory} from './use-fx-history';
-import {transferComparison,comparisonNet} from './transfer-comparison';
+import {transferComparison,comparisonNet,fiatRate} from './transfer-comparison';
 import type {ComparisonCrypto,ComparisonFiat} from './transfer-comparison';
 import {ComparisonAmount} from './ComparisonAmount';
 import {matchesGainLossTransfer} from './gain-loss-filter';
@@ -52,7 +52,6 @@ import {TransactionTable,TransactionRow,TransactionAmount,TransactionWallets} fr
 import {transactionAmounts,transactionNetworkFee,portfolioFeeTotal} from './transaction-amounts';
 import {loadPriceSettings} from './price-settings';
 import {matchesTransaction} from './transaction-search';
-import {unrealisedStatus} from './metric-status';
 import {CexAddresses} from './CexAddresses';
 import {ByronExchanges} from './ByronExchanges';
 import {SwapWallets} from './SwapWallets';
@@ -102,7 +101,8 @@ export default function Home({memberStake}:{memberStake:string}){
   const btc=useBtcHistory(section==='gain-loss');
   const [comparisonCrypto,setComparisonCrypto]=useState<ComparisonCrypto>('ADA');
   const [comparisonFiat,setComparisonFiat]=useState<ComparisonFiat>('USD');
-  const fx=useFxHistory(section==='gain-loss'&&comparisonFiat!=='USD');
+  const [holdingsCurrency,setHoldingsCurrency]=useState<'ADA'|ComparisonFiat>('USD');
+  const fx=useFxHistory((section==='gain-loss'&&comparisonFiat!=='USD')||holdingsCurrency==='EUR'||holdingsCurrency==='JPY');
   const [page,setPage]=useState(0);
   const [dateFrom,setDateFrom]=useState(''),[dateTo,setDateTo]=useState('');
   const [liveQuote,setLiveQuote]=useState<{usd:number;at:string}|null>(null);
@@ -412,7 +412,6 @@ export default function Home({memberStake}:{memberStake:string}){
   const cexPosition=useMemo(()=>cexAdaNetPosition(Object.values(classifiedFacts),cexAddresses,holdings.find(h=>h.id==='lovelace')?.raw||'0'),[classifiedFacts,cexAddresses,holdings]);
   const cexDollars=useMemo(()=>cexUsdNetPosition(Object.values(classifiedFacts),cexAddresses,holdings.find(h=>h.id==='lovelace')?.raw||'0',snapshot?.history||{},liveQuote?.usd??snapshot?.adaUsd??null),[classifiedFacts,cexAddresses,holdings,snapshot,liveQuote]);
   const comparison=useMemo(()=>transferComparison(Object.values(classifiedFacts),cexAddresses,snapshot?.history||{},btc.history,fx.history,comparisonCrypto,comparisonFiat).at(-1),[classifiedFacts,cexAddresses,snapshot,btc.history,fx.history,comparisonCrypto,comparisonFiat]);
-  const comparisonResult=comparisonNet(comparison,Number(holdings.find(h=>h.id==='lovelace')?.raw||'0')/1e6,liveQuote?.usd??snapshot?.adaUsd??null,btc.history,fx.history,comparisonCrypto,comparisonFiat,Date.now()/1000);
   const basis=useMemo(()=>snapshot?remainingBasis(Object.values(classifiedFacts),snapshot.history,payments.acquisitions):{},[snapshot,classifiedFacts,payments]);
   const purchases=useMemo(()=>purchaseAverages(Object.values(classifiedFacts),snapshot?.history||{},payments.acquisitions),[classifiedFacts,snapshot,payments]);
   const adaLive=useMemo(()=>snapshot?liveAdaBasis(Object.values(classifiedFacts),snapshot.history,holdings.find(h=>h.id==='lovelace')?.raw||'0',snapshot.complete):null,[snapshot,holdings,classifiedFacts]);
@@ -433,18 +432,23 @@ export default function Home({memberStake}:{memberStake:string}){
   const included=includedAssets(rows,overrides),excludedCount=rows.length-included.length;
   const gainRows=gainLossAssets(included,overrides);
   const valued=included.filter(r=>r.value!==null),covered=gainRows.filter(r=>r.pnl!==null);
-  const coverage=valuationCoverage(gainRows);
-  const subtotal=valued.reduce((s,r)=>s+(r.value||0),0),gain=covered.reduce((s,r)=>s+(r.pnl||0),0);
+  const subtotal=valued.reduce((s,r)=>s+(r.value||0),0);
   const ada=Number(holdings.find(h=>h.id==='lovelace')?.raw||0)/1e6;
-  const adaRow=rows.find(r=>r.id==='lovelace');
+  const currentAdaUsd=liveQuote?.usd??snapshot?.adaUsd??null;
+  const portfolioUsd=valued.length?subtotal:null;
+  const portfolioAda=portfolioUsd!==null&&currentAdaUsd!==null&&currentAdaUsd>0?portfolioUsd/currentAdaUsd:null;
+  const holdingsRate=holdingsCurrency==='ADA'?null:fiatRate(Date.now()/1000,holdingsCurrency,fx.history);
+  const holdingsValue=holdingsCurrency==='ADA'?portfolioAda:portfolioUsd!==null&&holdingsRate!==null?portfolioUsd*holdingsRate:null;
+  const holdingsLocale=(window as unknown as {TDSPI18n?:{getLanguage:()=>string}}).TDSPI18n?.getLanguage()||'en';
+  const holdingsDisplay=holdingsValue===null?'—':holdingsCurrency==='ADA'?'₳ '+holdingsValue.toLocaleString(holdingsLocale,{maximumFractionDigits:6}):new Intl.NumberFormat(holdingsLocale,{style:'currency',currency:holdingsCurrency,maximumFractionDigits:holdingsCurrency==='JPY'?0:2}).format(holdingsValue);
+  const adaResult=comparisonNet({time:0,incoming:Number(cexPosition.receivedRaw)/1e6,outgoing:Number(cexPosition.sentRaw)/1e6,inFiat:cexDollars.boughtUsd,outFiat:cexDollars.soldUsd},ada,currentAdaUsd,{}, {},'ADA','USD',Date.now()/1000,portfolioUsd);
+  const adaGain={ada:adaResult.amount,usd:adaResult.fiat};
+  const comparisonResult=comparisonNet(comparison,ada,currentAdaUsd,btc.history,fx.history,comparisonCrypto,comparisonFiat,Date.now()/1000,portfolioUsd);
   const provisional=!snapshot?.complete&&covered.length>0;
-  const estimatedGains=covered.some(r=>r.quote.source==='wayup'||r.quote.source==='fallback');
   const adaBasisStatus=!adaLive?.reconciled?snapshot?.complete?'History / balance mismatch — refresh to reconcile':'Waiting for transaction history to reconcile with the wallet balance':adaLive.usd===null?'Missing receipt prices':snapshot?.complete?'Remaining cost · receipt-date prices':'Remaining cost · refresh in progress';
   const displayWallets=wallets.flatMap(w=>(w.group==='swap'?[w.address,...(snapshot?.swapGroups?.[w.address]||[])]:snapshot?.groups?.[w.address]||[w.address]).map(address=>({...w,address})));
   const fees=useMemo(()=>portfolioFeeTotal(Object.values(snapshot?.facts||{}),trackedAddresses,swapAddresses),[snapshot,trackedAddresses,swapAddresses]);
   const loadedFacts=Object.keys(classifiedFacts).length;
-  const hasHistoricalPrices=Object.values(snapshot?.history||{}).some(price=>Number.isFinite(price)&&price>0);
-  const gainStatus=unrealisedStatus(loadedFacts,adaLive?.receiptCount||0,hasHistoricalPrices,adaRow?.price!=null,snapshot?.complete===true,adaLive?.reconciled===true);
   const transactionTotal=snapshot?.txs.length||0;
   const cexPending=snapshot?.txs.filter(tx=>!hasCounterpartyData(snapshot.facts[tx.tx_hash])).length||0;
   const cexUnresolved=Object.values(classifiedFacts).filter(f=>isCexTransaction(f,cexAddresses)&&!cexAdaTransfer(f,cexAddresses)).length;
@@ -469,10 +473,13 @@ export default function Home({memberStake}:{memberStake:string}){
     </div>
   </div>
     <section className="portfolio-section"><div className="tdsp-tile-grid">
-      <Metric label="Assets Across Wallets" value="—" onOpen={()=>setSection('holdings')} amount={snapshot?{ada,usd:valued.length?subtotal:null}:undefined} note={`${valued.length} / ${included.length} assets valued${excludedCount?` · ${excludedCount} excluded`:''}`}/>
-      <Metric label="Assets Gains/Loss" value={covered.length?(provisional||estimatedGains||coverage.partial?'≈ ':'')+signed(gain):gainRows.length?gainStatus:'No assets enabled'} tone={covered.length?gain>=0?'positive':'negative':''}/>
+      <MenuTile title="Assets Across Wallets" value={holdingsDisplay} onOpen={()=>setSection('holdings')}>
+        <label className="small">{t('Currency')} <select aria-label={t('Comparison currency')} value={holdingsCurrency} onChange={event=>setHoldingsCurrency(event.target.value as 'ADA'|ComparisonFiat)}><option value="ADA">ADA</option><option value="USD">USD ($)</option><option value="EUR">EUR (€)</option><option value="JPY">JPY (¥)</option></select></label>
+        <p className="small muted">{t('{done} / {total} assets valued',{done:valued.length,total:included.length})}{excludedCount?' · '+t('{count} excluded',{count:excludedCount}):''}</p>
+        {(holdingsCurrency==='EUR'||holdingsCurrency==='JPY')&&holdingsValue===null&&<p className="small muted" role="status">{t(fx.status||'Historical exchange rates unavailable')}</p>}
+      </MenuTile>
       <Metric label="Network fees paid" value={loadedFacts||snapshot?.complete?num(fees)+' ₳':'Waiting for transaction details'}/>
-      {cexAddresses.length>0&&<Metric label="ADA Gains/Loss" value="Waiting for wallet balances" onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('gain-loss');}} amount={snapshot?{ada:Number(cexPosition.netRaw)/1e6,usd:cexDollars.usd}:undefined}/>}
+      {cexAddresses.length>0&&<Metric label="ADA Gains/Loss" value="Waiting for wallet balances" onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('gain-loss');}} amount={snapshot?adaGain:undefined}/>}
     </div></section>
     <div className="tdsp-tile-grid">
       <MenuTile title="Cardano Wallets" value={refreshCounts?`${num(refreshCounts.active,0)} / ${num(refreshCounts.total,0)} active`:initialising?'Initialising':'— / — active'} loading={initialising} loadingLabel={status} onOpen={()=>setSection('wallets')}/>
@@ -539,7 +546,7 @@ export default function Home({memberStake}:{memberStake:string}){
       </Table>}
       <div className="portfolio-gain-result">
         <span translate="no" className="governance-card-detail">{comparisonCrypto==='ADA'?t('ADA Gains/Loss'):t(comparisonResult.amount===null?'BTC comparison gain/loss':comparisonResult.amount<0?'BTC comparison loss':'BTC comparison gain')}</span>
-        <strong className="governance-card-title">{snapshot?<ComparisonAmount amount={comparisonCrypto==='ADA'?Number(cexPosition.netRaw)/1e6:comparisonResult.amount} value={comparisonCrypto==='ADA'&&comparisonFiat==='USD'?cexDollars.usd:comparisonResult.fiat} crypto={comparisonCrypto} currency={comparisonFiat}/>: 'Waiting for wallet balances'}</strong>
+        <strong className="governance-card-title">{snapshot?<ComparisonAmount amount={comparisonCrypto==='ADA'?adaGain.ada:comparisonResult.amount} value={comparisonCrypto==='ADA'&&comparisonFiat==='USD'?adaGain.usd:comparisonResult.fiat} crypto={comparisonCrypto} currency={comparisonFiat}/>: 'Waiting for wallet balances'}</strong>
       </div>
       {snapshot&&comparisonCrypto==='BTC'&&<p className="small muted" role="status">{btc.status||'BTC equivalents use transfer-day ADA/USD and BTC/USD prices, not actual Bitcoin purchases.'}</p>}
       {comparisonFiat!=='USD'&&<p className="small muted" role="status">{fx.status||'Historical FX rates use the latest available business day; wallet value uses the current rate.'}</p>}
@@ -588,7 +595,7 @@ function AssetImage({id,name,market,onOpen,compact=false}:{id:string;name:string
   return onOpen?<button type="button" className="governance-vote-secondary portfolio-asset-button" onClick={onOpen} aria-label={`View ${name} details`}>{content}</button>:<div className={compact?'portfolio-token-inline':undefined}>{content}</div>;
 }
 
-function Metric({label,value,amount,note,tone='',onOpen}:{label:string;value:string;amount?:{ada:number;usd:number|null};note?:string;tone?:string;onOpen?:()=>void}){
+function Metric({label,value,amount,note,tone='',onOpen}:{label:string;value:string;amount?:{ada:number|null;usd:number|null};note?:string;tone?:string;onOpen?:()=>void}){
   const t=usePortfolioText();
   const Tag=onOpen?'button':'div';
   return <Tag type={onOpen?'button':undefined} onClick={onOpen} aria-label={onOpen?`Open ${label}`:undefined} className="governance-menu-card"><strong translate="no" className={`governance-card-title ${tone}`}>{amount?<AdaUsdAmount {...amount}/>:t(value)}</strong><span className="governance-card-detail" data-i18n-auto-original={label}>{label}</span>{note&&<span className="small muted">{t(note)}</span>}</Tag>;
