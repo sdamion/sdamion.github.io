@@ -27,7 +27,7 @@ import {hasCounterpartyData,needsFactRefresh,needsActiveFactRefresh} from './fac
 import {keepRefreshSessionAlive} from './refresh-session';
 import {currentValuation,mergeMarketQuote} from './current-valuation';
 import {includedAssets} from './asset-exclusions';
-import {policyTableRows,holdingTotal,collectionRepresentative} from './holding-groups';
+import {policyTableRows,holdingTotal,holdingGroupTotals,collectionRepresentative} from './holding-groups';
 import {TableGroupToggle,useTableGroups} from './TableGroupToggle';
 import {valuationCoverage} from './valuation-coverage';
 import {averageBuy,purchaseAverages} from './average-buy';
@@ -528,11 +528,15 @@ export default function Home({memberStake}:{memberStake:string}){
         if('policy' in entry){
           const active=includedAssets(entry.assets,overrides),priced=active.filter(row=>row.value!==null),expanded=expandedPolicies.has(entry.policy);
           const total=holdingTotal(active,snapshot?.complete===true);
+          const totals=holdingGroupTotals(active);
           const representative=collectionRepresentative(entry.assets)!,name=representative.name??t('Collection');
           return <TableRow key={`policy:${entry.policy}`} className="portfolio-policy-row">
             <TableCell><TableGroupToggle expanded={expanded} title={name} onToggle={()=>togglePolicy(entry.policy)}><AssetImage compact hideIdentifier id={representative.asset.id} name={name} market={snapshot?.markets[representative.asset.id]}/></TableGroupToggle></TableCell>
-            <TableCell><span translate="no">{t('{count} assets',{count:entry.assets.length})}</span><div translate="no" className="small muted">{t('{done} / {total} assets valued',{done:priced.length,total:active.length})}{entry.assets.length>active.length?' · '+t('{count} excluded',{count:entry.assets.length-active.length}):''}</div></TableCell>
-            <TableCell>—</TableCell><TableCell translate="no">{formatPortfolioUsd(total,currencyDisplay)}{holdingsCurrency!=='ADA'&&<div className="small muted">{formatPortfolioUsd(total,{...currencyDisplay,currency:'ADA'})}</div>}</TableCell><TableCell>—</TableCell><TableCell>—</TableCell><TableCell/>
+            <TableCell><span translate="no">{totals.quantity===null?'—':num(totals.quantity)}</span><div translate="no" className="small muted">{t('{count} assets',{count:entry.assets.length})} · {t('{done} / {total} assets valued',{done:priced.length,total:active.length})}</div></TableCell>
+            <TableCell translate="no">{formatPortfolioUsd(totals.price,currencyDisplay)}</TableCell><TableCell translate="no">{formatPortfolioUsd(total,currencyDisplay)}{holdingsCurrency!=='ADA'&&<div className="small muted">{formatPortfolioUsd(total,{...currencyDisplay,currency:'ADA'})}</div>}</TableCell>
+            <TableCell translate="no">{formatPortfolioUsd(totals.buyAverage,currencyDisplay)}</TableCell>
+            <TableCell translate="no" className={totals.pnl===null?'muted':totals.pnl>=0?'positive':'negative'}>{formatPortfolioUsd(totals.pnl===null?null:Math.abs(totals.pnl),currencyDisplay)}</TableCell>
+            <TableCell translate="no">{t('{count} excluded',{count:entry.assets.length-active.length})}</TableCell>
           </TableRow>;
         }
         const r=entry.asset;

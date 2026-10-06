@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {policyCollections,holdingTotal,policyTableRows,collectionName,collectionRepresentative} from './holding-groups.ts';
+import {policyCollections,holdingTotal,holdingGroupTotals,policyTableRows,collectionName,collectionRepresentative} from './holding-groups.ts';
 const policy='a'.repeat(56),other='b'.repeat(56);
 const rows=[{id:'lovelace',value:25},{id:policy+'01',value:10},{id:policy+'02',value:20},{id:other+'01',value:null}];
 const groups=policyCollections(rows);
@@ -30,3 +30,7 @@ assert.equal(collectionRepresentative([{id:policy+'000de1404d616c6c6172644f72646
 assert.equal(collectionRepresentative([{id:policy+'ff',name:policy}])?.name,null);
 assert.equal(collectionRepresentative([{id:policy,name:'asset1example'}])?.name,null);
 console.log('PASS: policy grouping, singleton assets, ADA and incomplete valuation totals.');
+assert.deepEqual(holdingGroupTotals([{qty:2,value:20,buyAverage:4,pnl:12},{qty:1,value:40,buyAverage:10,pnl:30}]),{quantity:3,price:20,buyAverage:6,pnl:42});
+assert.deepEqual(holdingGroupTotals([]),{quantity:0,price:null,buyAverage:null,pnl:0});
+const missing=holdingGroupTotals([{qty:null,value:null,buyAverage:null,pnl:null},{qty:1,value:40,buyAverage:10,pnl:30}]);
+assert.deepEqual(missing,{quantity:null,price:null,buyAverage:null,pnl:null});

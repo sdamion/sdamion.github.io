@@ -4,7 +4,7 @@ import {Input, AdaUsdAmount} from './ui';
 import {Table,TableHeader,TableBody,TableRow,TableHead,TableCell} from '@/components/ui/table';
 import {TransactionPagination} from './TransactionPagination';
 import {validByronAddress} from './exchange-address';
-import {discoveredByronAddresses,saveByronSelection,byronGroupTransactions,byronTransactionRows,byronExchangeGroups} from './byron-exchanges';
+import {discoveredByronAddresses,saveByronSelection,byronGroupTransactions,byronTransactionRows,byronExchangeGroups,byronGroupNet} from './byron-exchanges';
 import {TableGroupToggle,useTableGroups} from './TableGroupToggle';
 import {cexAdaNetPosition,cexUsdNetPosition,isCexTransaction,cexAdaTransfer} from './cex';
 import type {CexAddress} from './cex';
@@ -17,14 +17,29 @@ import {AssetOverlay} from './AssetOverlay';
 import {TransactionTable,TransactionRow,TransactionAmount,TransactionLink,TransactionWalletLabels} from './TransactionTable';
 import {transactionWalletNames} from './transaction-wallet-names';
 import {transactionAmounts,transactionNetworkFee} from './transaction-amounts';
-import {usePortfolioCurrency,formatPortfolioAmount} from './portfolio-currency';
+import {usePortfolioCurrency,formatPortfolioAmount,formatAdaNumber,transactionCurrency} from './portfolio-currency';
 import {transferComparison} from './transfer-comparison';
 
-export function AddressTransactions({facts,address,addresses,entries,count,addressEditor,history={},wallets=[]}:{facts:Fact[];address:string;addresses?:string[];entries:CexAddress[];count:number;addressEditor?:ReactNode;history?:Record<string,number>;wallets?:{address:string;label:string}[]}){
+export function AddressTransactions({facts,address,addresses,entries,count,addressEditor,history={},wallets=[],summary=false}:{facts:Fact[];address:string;addresses?:string[];entries:CexAddress[];count:number;addressEditor?:ReactNode;history?:Record<string,number>;wallets?:{address:string;label:string}[];summary?:boolean}){
   const [open,setOpen]=useState(false);
-  const rows=useMemo(()=>open||count===1?byronGroupTransactions(facts,addresses||[address],entries):[],[facts,address,addresses,entries,open,count]);
+  const rows=useMemo(()=>summary||open||count===1?byronGroupTransactions(facts,addresses||[address],entries):[],[facts,address,addresses,entries,open,count,summary]);
+  const display=usePortfolioCurrency();
+  const net=summary?byronGroupNet(rows):null;
+  const fiatNet=useMemo(()=>{
+    if(!summary||!display||display.currency==='ADA')return null;
+    let total=0,known=false;
+    for(const row of rows){
+      if(row.amountRaw===null||row.side===null)continue;
+      const amount=transactionAmounts(row.amountRaw,row.time,history);
+      const rate=transactionCurrency(display,row.time)?.rate;
+      if(amount.usd===null||rate==null)return null;
+      known=true;total+=(row.side==='buy'?1:-1)*amount.usd*rate;
+    }
+    return known?total:null;
+  },[summary,display,rows,history]);
   if(count===0)return <span className="small muted">No loaded transactions</span>;
-  if(count===1&&rows.length===1&&(!addresses||addresses.length===1)){
+  if(summary)return <><div translate="no" className={net===null?'muted':net<0n?'negative':net>0n?'positive':undefined}>{net===null?'—':`${net>0n?'+ ':net<0n?'− ':''}₳ ${formatAdaNumber(Number(net<0n?-net:net)/1e6,display?.locale)}`}</div>{display&&display.currency!=='ADA'&&<div translate="no" className="small muted">{fiatNet===null?'—':`${fiatNet>0?'+ ':fiatNet<0?'− ':''}${formatPortfolioAmount(Math.abs(fiatNet),display)}`}</div>}</>;
+  if(!summary&&count===1&&rows.length===1&&(!addresses||addresses.length===1)){
     const row=rows[0];
     const amount=transactionAmounts(row.amountRaw,row.time,history);
     return row.amountRaw===null?<span className="small muted">Mixed or unassigned sources</span>:<span title={row.sharedInputs?'Shared-input transaction total; counted once in Byron totals':undefined}>{row.side==='buy'?'IN':'OUT'} <TransactionAmount ada={amount.ada} usd={amount.usd} time={row.time} tone={row.side==='buy'?'negative':'positive'}/>{row.sharedInputs&&<span className="small muted"> · Shared transaction</span>}</span>;
@@ -102,7 +117,7 @@ export function ByronExchanges({facts,entries,owned,history,markets={},wallets=[
           <TableCell><TableGroupToggle expanded={expanded.has(exchange.key)} onToggle={()=>toggle(exchange.key)} title={exchange.name}><span translate="no">{exchange.name}</span></TableGroupToggle></TableCell>
           <TableCell>{exchange.addresses.length}</TableCell><TableCell>{exchange.facts.length}</TableCell>
           <TableCell>{exchange.lastSeen===null?'Not in loaded history':new Date(exchange.lastSeen*1000).toLocaleDateString()}</TableCell>
-          <TableCell><AddressTransactions history={history} wallets={wallets} facts={exchange.facts} address={exchange.addresses[0]} addresses={exchange.addresses} entries={group} count={exchange.facts.length} addressEditor={addressEditor(exchange.addresses)}/></TableCell>
+          <TableCell><AddressTransactions summary history={history} wallets={wallets} facts={exchange.facts} address={exchange.addresses[0]} addresses={exchange.addresses} entries={group} count={exchange.facts.length} addressEditor={addressEditor(exchange.addresses)}/></TableCell>
         </TableRow>,
         ...(expanded.has(exchange.key)?exchange.rows.map(renderTransaction):[])
       ])}</TableBody></Table></div>

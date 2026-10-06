@@ -10,6 +10,19 @@ export function holdingTotal(rows:{value:number|null}[],complete:boolean):number
   return priced.length?priced.reduce((sum,row)=>sum+(row.value??0),0):complete&&rows.length===0?0:null;
 }
 
+export function holdingGroupTotals(rows:{qty:number|null;value:number|null;buyAverage:number|null;pnl:number|null}[]){
+  const sum=(values:(number|null)[])=>values.every(value=>value!==null)?values.reduce<number>((total,value)=>total+value!,0):null;
+  const quantity=sum(rows.map(row=>row.qty));
+  const priced=rows.filter(row=>row.value!==null&&row.qty!==null&&row.qty>0);
+  const purchases=rows.filter(row=>row.buyAverage!==null&&row.qty!==null&&row.qty>0);
+  const average=(items:typeof rows,value:(row:typeof rows[number])=>number)=>{
+    if(rows.some(row=>row.qty===null)||items.length!==rows.filter(row=>row.qty!>0).length)return null;
+    const units=items.reduce((total,row)=>total+row.qty!,0);
+    return units>0?items.reduce((total,row)=>total+value(row),0)/units:null;
+  };
+  return {quantity,price:average(priced,row=>row.value!),buyAverage:average(purchases,row=>row.buyAverage!*row.qty!),pnl:sum(rows.map(row=>row.pnl))};
+}
+
 export function collectionName(name:string):string{
   return name.replace(/[\s#_-]*\d+\s*$/,'').trim()||name;
 }

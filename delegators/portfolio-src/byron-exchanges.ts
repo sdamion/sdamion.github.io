@@ -83,6 +83,16 @@ export function byronGroupTransactions(facts:Fact[],addresses:string[],entries:C
     .sort((a,b)=>b.time-a.time||a.hash.localeCompare(b.hash));
 }
 
+export function byronGroupNet(rows:ReturnType<typeof byronGroupTransactions>):bigint|null{
+  let net=0n,known=false;
+  for(const row of new Map(rows.map(row=>[row.hash,row])).values()){
+    if(row.amountRaw===null||row.side===null)continue;
+    known=true;
+    net+=(row.side==='buy'?1n:-1n)*BigInt(row.amountRaw);
+  }
+  return known?net:null;
+}
+
 export function saveByronSelection(entries:CexAddress[],candidates:string[],selected:Set<string>,name:string,owned:string[],names:Record<string,string>={}){
   const allowed=new Set(candidates.filter(address=>!owned.includes(address)&&validByronAddress(address)));
   const next=entries.filter(entry=>!allowed.has(entry.address)||selected.has(entry.address)).map(entry=>allowed.has(entry.address)&&names[entry.address]?.trim()?{...entry,name:names[entry.address].trim().slice(0,60)}:entry);

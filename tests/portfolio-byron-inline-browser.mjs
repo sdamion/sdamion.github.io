@@ -28,7 +28,7 @@ try{
   const page=await browser.newPage();
   await page.route('**/*',route=>route.fulfill({contentType:'text/html',body:'<div id="app"></div>'}));
   await page.goto('http://127.0.0.1:8998/');
-  await page.evaluate(()=>{window.TDSPRuntime={createAdaUsdAmount(ada){const span=document.createElement('span');span.textContent=String(ada)+' ADA';return span;}};window.createUniversalOverlay=options=>{const overlay=document.createElement('div');overlay.id=options.id;overlay.append(...options.bodyNodes);document.body.append(overlay);return {overlay};};});
+  await page.evaluate(()=>{window.TDSPRuntime={formatAdaNumber(value){return new Intl.NumberFormat('en-US',{maximumFractionDigits:Math.abs(value)>=1?0:2}).format(value);},createAdaUsdAmount(ada){const span=document.createElement('span');span.textContent=String(ada)+' ADA';return span;}};window.createUniversalOverlay=options=>{const overlay=document.createElement('div');overlay.id=options.id;overlay.append(...options.bodyNodes);document.body.append(overlay);return {overlay};};});
   await page.addScriptTag({type:'module',content:bundle.outputFiles[0].text});
   await page.getByText('10 ADA',{exact:true}).waitFor();
   assert.equal(await page.getByRole('button',{name:'View'}).count(),0);
@@ -46,6 +46,7 @@ try{
   await page.addStyleTag({content:await readFile('shared/styles.css','utf8')});
   await page.evaluate(()=>window.renderDirectory());
   await page.getByRole('button',{name:'Wallet one / Wallet two'}).waitFor();
+  assert.match(await page.locator('.portfolio-address-table tbody tr').innerText(),/\+ ₳ 10/,'group shows its net ADA total');
   const search=page.locator('input[name="byron-transactions-search"]');
   await search.fill('no-matching-transaction');
   await page.getByText('No matching Byron transactions.').waitFor();
@@ -81,6 +82,8 @@ try{
   await groupToggle.click();
   assert.equal(await groupToggle.getAttribute('aria-expanded'),'false');
   assert.equal(await page.locator('.portfolio-address-table tbody tr').count(),1);
+  assert.equal(await page.locator('.portfolio-address-table').getByRole('button',{name:'View',exact:true}).count(),0,'collapsed group contains only its total');
+  await groupToggle.click();
   await page.getByRole('button',{name:'View',exact:true}).click();
   const selectors=page.locator('#portfolio-byron-amounts-overlay input[type="checkbox"]');
   await selectors.first().waitFor();
@@ -92,11 +95,14 @@ try{
   const bitvavo=page.getByRole('button',{name:'Bitvavo',exact:true});
   await bitvavo.waitFor();
   assert.equal(await page.locator('.portfolio-address-table tbody tr').count(),1);
+  assert.match(await page.locator('.portfolio-address-table tbody tr').innerText(),/\+ ₳ 20/,'shared-input transactions contribute once each to the group total');
   await bitvavo.click();
   assert.equal(await page.locator('.portfolio-address-table tbody tr').count(),3);
   await bitvavo.click();
-  await page.locator('.portfolio-address-table').getByRole('button',{name:'View',exact:true}).click();
+  assert.equal(await page.locator('.portfolio-address-table').getByRole('button',{name:'View',exact:true}).count(),0);
+  await bitvavo.click();
+  await page.locator('.portfolio-address-table').getByRole('button',{name:'View',exact:true}).first().click();
   await page.locator('#portfolio-byron-amounts-overlay tbody tr').first().waitFor();
-  assert.equal(await page.locator('#portfolio-byron-amounts-overlay tbody tr').count(),2);
+  assert.equal(await page.locator('#portfolio-byron-amounts-overlay tbody tr').count(),1);
   console.log('PASS: single transaction inline ADA; multiple transactions retain shared overlay; empty history.');
 }finally{await browser.close();}

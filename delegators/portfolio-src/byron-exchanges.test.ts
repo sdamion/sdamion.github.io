@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {byronTransactionRows,byronExchangeGroups} from './byron-exchanges.ts';
+import {byronTransactionRows,byronExchangeGroups,byronGroupNet} from './byron-exchanges.ts';
 import {base58} from '@scure/base';
 import {encode,Tagged} from 'cborg';
 import CRC32 from 'crc-32';
@@ -112,3 +112,8 @@ assert.equal(mixedGroups[0].name,'Exchange A / Exchange B');
 assert.equal(mixedGroups[0].facts.length,2);
 assert.equal(byronExchangeGroups(namedRows,{}).length,1,'unnamed addresses share the existing Byron CEX fallback');
 console.log('PASS: exchange-name table grouping, unique transactions and last-seen date.');
+const groupHistory=byronGroupTransactions([buy,sell,buy,sell],[a,b],group);
+assert.equal(byronGroupNet(groupHistory),200000n,'10 ADA IN minus 9.8 ADA OUT, not gross input values');
+assert.equal(byronGroupNet([...groupHistory,...groupHistory]),200000n,'net total counts every transaction only once');
+assert.equal(byronGroupNet(groupHistory.filter(row=>row.side==='sell')),-9800000n,'outgoing ADA is negative');
+assert.equal(byronGroupNet([]),null,'unavailable history is not a zero balance');

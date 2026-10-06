@@ -327,6 +327,8 @@ try{
  assert.equal(await collection.count(),1,'shared policy creates one dropdown row');
  assert.match(await collectionRow.innerText(),/\$6,270\.00/,'collection total sums its included assets');
  assert.match(await collectionRow.innerText(),/₳ 25,080/,'collection also shows the summed current ADA value');
+ assert.match(await collectionRow.locator('td').nth(2).innerText(),/\$3,135\.00/,'group current price is quantity-weighted, not the sum of unit prices');
+ assert.match(await collectionRow.locator('td').nth(6).innerText(),/0 excluded/,'group shows its exclusion count');
  assert.equal(await page.locator('#portfolio-holdings-overlay .tdsp-tile-grid').count(),0,'collection tiles are removed');
  assert.equal(await page.locator('#portfolio-holdings-overlay tbody tr').count(),1,'grouped assets start collapsed');
  assert.equal(await collection.getAttribute('aria-expanded'),'false');
@@ -340,6 +342,8 @@ try{
  assert.equal(await page.locator('#portfolio-holdings-overlay tbody tr').count(),1,'dropdown collapses without opening another overlay');
  assert.match(await collectionRow.innerText(),/\$20\.00/,'collapsed row retains updated collection total');
  assert.match(await collectionRow.innerText(),/₳ 80/,'ADA group value immediately excludes disabled assets');
+ assert.match(await collectionRow.locator('td').nth(2).innerText(),/\$20\.00/,'group price uses only included assets');
+ assert.match(await collectionRow.locator('td').nth(6).innerText(),/1 excluded/,'group exclusion count updates immediately');
  await holdingsCurrency.selectOption('EUR');
  await page.waitForFunction(()=>document.querySelector('#portfolio-holdings-overlay')?.textContent.includes('€16.00'));
  assert.match(await collectionRow.innerText(),/€16\.00/,'collection total follows the Portfolio currency');
