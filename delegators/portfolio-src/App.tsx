@@ -37,8 +37,6 @@ import {mintPayments,paymentBudget} from './mint-payments';
 import type {PaymentLink} from './mint-payments';
 import {PaymentLinks} from './PaymentLinks';
 import {AssetOverlay} from './AssetOverlay';
-import {UnknownOwnership} from './UnknownOwnership';
-import {unknownOwnership,verifyOwnership} from './unknown-ownership';
 import {MenuTile,AdaUsdAmount} from './ui';
 import {portfolioSettings as localStorage,flushVault,storageMode} from './vault';
 import {CacheUploadProgress} from './CacheUploadProgress';
@@ -98,7 +96,7 @@ export default function Home({memberStake}:{memberStake:string}){
   const [paymentLinks,setPaymentLinks]=useState<PaymentLink[]>([]);
   const [missingCostsOnly,setMissingCostsOnly]=useState(false);
   const [selectedAsset,setSelectedAsset]=useState<string|null>(null);
-  const [section,setSection]=useState<'wallets'|'holdings'|'transactions'|'gain-loss'|'unknown'|null>(null);
+  const [section,setSection]=useState<'wallets'|'holdings'|'transactions'|'gain-loss'|null>(null);
   const [holdingsGroup,setHoldingsGroup]=useState<'FTs'|'NFTs'|null>(null);
   const {expanded:expandedPolicies,toggle:togglePolicy,reset:resetPolicies}=useTableGroups();
   const btc=useBtcHistory(section==='gain-loss');
@@ -121,7 +119,6 @@ export default function Home({memberStake}:{memberStake:string}){
   const activeWalletGroups=useMemo(()=>activeAnalysedWalletGroups(snapshot,excludedRefresh),[snapshot,excludedRefresh]);
   const refreshCounts=walletRefreshCounts(activeWalletGroups,new Set());
   const trackedAddresses=useMemo(()=>new Set(Object.values(snapshot?.groups||{}).flat()),[snapshot?.groups]);
-  const unknownTransactions=useMemo(()=>unknownOwnership(snapshot?.txs||[],snapshot?.facts||{},trackedAddresses),[snapshot,trackedAddresses]);
   const ownedAddresses=useMemo(()=>exchangeExcludedAddresses(wallets,snapshot?.groups,snapshot?.swapGroups),[wallets,snapshot?.groups,snapshot?.swapGroups]);
   const swapAddresses=useMemo(()=>swapAddressSet(wallets,snapshot?.swapGroups),[wallets,snapshot?.swapGroups]);
   const cexAddresses=useMemo(()=>excludeInternalExchanges(savedCexAddresses,ownedAddresses),[savedCexAddresses,ownedAddresses]);
@@ -347,19 +344,6 @@ export default function Home({memberStake}:{memberStake:string}){
     setOverrides(next);
     try{localStorage.setItem(overrideKey,JSON.stringify(next));}catch{setCacheNotice('Your asset exclusions could not be saved locally.');}
   }
-  async function assignUnknownOwnership(hash:string,address:string){
-    if(busy||!snapshot)throw new Error('Wait for the current refresh to finish.');
-    const control=new AbortController();controller.current=control;setBusy(true);
-    try{
-      const details=await request<Detail[]>('tx_info',{_tx_hashes:[hash],_inputs:true,_assets:true,_metadata:false,_scripts:false,_bytecode:false},control.signal);
-      control.signal.throwIfAborted();
-      const detail=details.find(d=>d.tx_hash===hash);
-      if(!detail)throw new Error('Transaction details are unavailable. Try again later.');
-      verifyOwnership(detail,hash,address,trackedAddresses);
-      const next={...snapshot,facts:{...snapshot.facts,[hash]:analyseAndCache(detail,trackedAddresses)}};
-      await saveCache(key,next);control.signal.throwIfAborted();setSnapshot(next);
-    }finally{if(controller.current===control)setBusy(false);}
-  }
   async function refreshAssetPurchases(id?:string){
     if(busy||!snapshot)return;
     controller.current?.abort();const control=new AbortController();controller.current=control;
@@ -487,9 +471,7 @@ export default function Home({memberStake}:{memberStake:string}){
       </MenuTile>
       <Metric label="Network fees paid" value={loadedFacts||snapshot?.complete?formatPortfolioAda(fees,currencyDisplay):'Waiting for transaction details'}/>
       {cexAddresses.length>0&&<Metric label="CEX Transactions" openLabel="CEX Transactions" value={snapshot?tileGainDisplay:'Waiting for wallet balances'} tone={tileGain===null?'':tileGain<0?'negative':'positive'} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('gain-loss');}}/>}
-      <MenuTile title="Unknown ownership" value={num(unknownTransactions.length,0)} onOpen={()=>setSection('unknown')}/>
     </div></section>
-    {section==='unknown'&&<UnknownOwnership txs={unknownTransactions} addresses={[...trackedAddresses]} busy={busy} onAssign={assignUnknownOwnership} onClose={()=>setSection(null)}/>}
     {section==='wallets'&&<AssetOverlay id="portfolio-wallets-overlay" name="Cardano Wallets" onClose={()=>setSection(null)}>
     <div className="portfolio-section">
       <button type="button" className="governance-vote-secondary" disabled={busy||!ready} onClick={()=>void refresh(true)}>Rescan all wallets</button>
