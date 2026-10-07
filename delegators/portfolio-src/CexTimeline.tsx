@@ -11,9 +11,9 @@ import type {FiatTransfer} from './ethereum';
 const emptyRates={};
 const emptyTransfers:FiatTransfer[]=[];
 
-export function CexTimeline({facts,entries,history,btcHistory=emptyRates,fxHistory=emptyRates,crypto='ADA',currency='USD',busy,dateFrom='',dateTo='',additional=emptyTransfers}:{facts:Record<string,Fact>;entries:CexAddress[];history:Record<string,number>;btcHistory?:Record<string,number>;fxHistory?:FxHistory;crypto?:ComparisonCrypto;currency?:ComparisonCurrency;busy:boolean;dateFrom?:string;dateTo?:string;additional?:FiatTransfer[]}){
+export function CexTimeline({facts,entries,history,btcHistory=emptyRates,ethHistory=emptyRates,fxHistory=emptyRates,crypto='ADA',currency='USD',busy,dateFrom='',dateTo='',additional=emptyTransfers}:{facts:Record<string,Fact>;entries:CexAddress[];history:Record<string,number>;btcHistory?:Record<string,number>;ethHistory?:Record<string,number>;fxHistory?:FxHistory;crypto?:ComparisonCrypto;currency?:ComparisonCurrency;busy:boolean;dateFrom?:string;dateTo?:string;additional?:FiatTransfer[]}){
   const t=usePortfolioText();
-  const points=useMemo(()=>transferComparison(Object.values(facts).filter(fact=>withinTransactionDates(fact.time,dateFrom,dateTo)),entries,history,btcHistory,fxHistory,crypto,currency,additional.filter(row=>withinTransactionDates(row.time,dateFrom,dateTo))),[facts,entries,history,btcHistory,fxHistory,crypto,currency,dateFrom,dateTo,additional]);
+  const points=useMemo(()=>transferComparison(Object.values(facts).filter(fact=>withinTransactionDates(fact.time,dateFrom,dateTo)),entries,history,btcHistory,fxHistory,crypto,currency,additional.filter(row=>withinTransactionDates(row.time,dateFrom,dateTo)),ethHistory),[facts,entries,history,btcHistory,ethHistory,fxHistory,crypto,currency,dateFrom,dateTo,additional]);
   const canvas=useRef<HTMLCanvasElement>(null);
   const [error,setError]=useState('');
   useEffect(()=>{
@@ -28,10 +28,10 @@ export function CexTimeline({facts,entries,history,btcHistory=emptyRates,fxHisto
         const green=defaults.positive,incomingColor=defaults.color;
         const i18n=(window as unknown as {TDSPI18n?:{translateText:(text:string)=>string;getLanguage:()=>string}}).TDSPI18n;
         const locale=i18n?.getLanguage()||'en';
-        const fmt=(n:number)=>n.toLocaleString(locale,{maximumFractionDigits:crypto==='BTC'?8:6});
+        const fmt=(n:number)=>n.toLocaleString(locale,{maximumFractionDigits:crypto==='ADA'?6:8});
         const compact=new Intl.NumberFormat(undefined,{notation:'compact',maximumFractionDigits:1});
         const last=points[points.length-1];
-        const floor=-Math.max(crypto==='BTC'?0.00000001:1,Math.max(last.incoming??0,last.outgoing??0)*0.05);
+        const floor=-Math.max(crypto==='ADA'?1:0.00000001,Math.max(last.incoming??0,last.outgoing??0)*0.05);
         chart?.destroy();
         chart=new Chart(canvas.current,{
           type:'line',
@@ -42,9 +42,9 @@ export function CexTimeline({facts,entries,history,btcHistory=emptyRates,fxHisto
           options:{responsive:true,maintainAspectRatio:false,animation:false,layout:{padding:{top:8,right:12}},interaction:{mode:'index',intersect:false},
             plugins:{legend:defaults.legend,tooltip:{...defaults.tooltip,callbacks:{
               title:(items:{parsed:{x:number}}[])=>items.length?new Date(items[0].parsed.x).toLocaleString():'',
-              label:(item:{dataset:{label:string};raw:{y:number;fiat:number|null}})=>`${item.dataset.label}: ${crypto==='ADA'?'₳ '+fmt(item.raw.y):fmt(item.raw.y)+' BTC'}${crypto==='ADA'&&currency==='ADA'?'':item.raw.fiat===null?' · '+t('Historical currency price unavailable'):' ≈ '+(currency==='ADA'?'₳ '+formatAdaNumber(item.raw.fiat,locale):new Intl.NumberFormat(locale,{style:'currency',currency,maximumFractionDigits:currency==='JPY'?0:2}).format(item.raw.fiat))}`
+              label:(item:{dataset:{label:string};raw:{y:number;fiat:number|null}})=>`${item.dataset.label}: ${crypto==='ADA'?'₳ '+fmt(item.raw.y):fmt(item.raw.y)+' '+crypto}${crypto==='ADA'&&currency==='ADA'?'':item.raw.fiat===null?' · '+t('Historical currency price unavailable'):' ≈ '+(currency==='ADA'?'₳ '+formatAdaNumber(item.raw.fiat,locale):new Intl.NumberFormat(locale,{style:'currency',currency,maximumFractionDigits:currency==='JPY'?0:2}).format(item.raw.fiat))}`
             }}},
-            scales:{x:{type:'linear',border:{display:false},ticks:{...defaults.ticks,maxRotation:0,callback:(value:number)=>new Date(value).toLocaleDateString(locale,{month:'short',year:'2-digit'})},grid:{display:false}},y:{min:floor,border:{display:false},title:{...defaults.title,display:true,text:t('Cumulative {crypto}',{crypto})},ticks:{...defaults.ticks,callback:(value:number)=>value<0?null:crypto==='BTC'?fmt(value):compact.format(value)},grid:{color:grid,drawTicks:false}}}
+            scales:{x:{type:'linear',border:{display:false},ticks:{...defaults.ticks,maxRotation:0,callback:(value:number)=>new Date(value).toLocaleDateString(locale,{month:'short',year:'2-digit'})},grid:{display:false}},y:{min:floor,border:{display:false},title:{...defaults.title,display:true,text:t('Cumulative {crypto}',{crypto})},ticks:{...defaults.ticks,callback:(value:number)=>value<0?null:crypto!=='ADA'?fmt(value):compact.format(value)},grid:{color:grid,drawTicks:false}}}
           }
         });
         setError('');

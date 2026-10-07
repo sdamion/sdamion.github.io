@@ -53,6 +53,11 @@ for(const crypto of ['ADA','BTC'] as const){
   }
 }
 const missing=ethereumTransfers({...data,history:{}},wallets,exchanges);
+const ethComparison=transferComparison([fact], [{address:'cex',name:'Bitvavo'}],{'2023-01-06':0.5},{},{},'ETH','USD',transfers,data.history).at(-1)!;
+assert.deepEqual(ethComparison,{time,incoming:1.55,outgoing:1,inFiat:1550,outFiat:1000},'ETH comparison combines native ETH and transfer-day Cardano equivalents');
+assert.equal(comparisonNet(ethComparison,0,0.5,{}, {},'ETH','USD',time,6000,2000).amount,2.45);
+assert.equal(transferComparison([fact], [{address:'cex',name:'Bitvavo'}],{'2023-01-06':0.5},{},{},'ETH','USD',[],{}).at(-1)!.incoming,null,'missing ETH rate does not produce zero or use BTC');
+assert.equal(comparisonNet(ethComparison,0,0.5,{}, {},'ETH','USD',time,6000,null).amount,null);
 assert.equal(missing[0].usd,null);
 assert.equal(transferComparison([fact],[{address:'cex',name:'Bitvavo'}],{'2023-01-06':0.5},{}, {},'ADA','USD',missing).at(-1)!.inFiat,null,'missing ETH rates never treated as zero');
 assert.deepEqual(ethereumData(data),data);

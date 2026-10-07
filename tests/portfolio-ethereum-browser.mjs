@@ -33,6 +33,8 @@ try{
   });
   await page.goto('http://127.0.0.1:8998/');
   await page.addScriptTag({content:await readFile('shared/runtime.js','utf8')});
+  await page.addScriptTag({content:await readFile('vendor/chart.js','utf8')});
+  await page.evaluate(()=>{window.TDSPCharts={load:async()=>window.Chart};});
   await page.addStyleTag({content:await readFile('shared/styles.css','utf8')});
   await page.evaluate(({stake,address,exchange})=>{
     const settings=new Map([
@@ -80,6 +82,15 @@ try{
   assert.match(await gain.locator('.portfolio-gain-comparison').innerText(),/1,050\.00/,'CEX IN sums historical ADA and ETH fiat values');
   assert.match(await gain.locator('.portfolio-eth-comparison').innerText(),/ETH IN[\s\S]*ETH OUT[\s\S]*1 ETH[\s\S]*1,000\.00[\s\S]*0 ETH/,'native ETH IN/OUT are shown separately from combined equivalents');
   assert.equal(await gain.locator('a[href="https://etherscan.io/tx/'+hash+'"]').count(),1);
+  await gain.getByRole('combobox',{name:'Comparison cryptocurrency'}).selectOption('ETH');
+  await page.waitForFunction(()=>{
+    const chart=window.Chart.getChart(document.querySelector('#portfolio-gain-loss-overlay canvas'));
+    return chart?.data.datasets[0].label==='ETH IN';
+  });
+  const ethGraph=await gain.locator('canvas').evaluate(canvas=>window.Chart.getChart(canvas).data.datasets.map(row=>({label:row.label,last:row.data.at(-1).y})));
+  assert.deepEqual(ethGraph,[{label:'ETH IN',last:1.05},{label:'ETH OUT',last:0}],'ETH graph includes native ETH and Cardano daily-price equivalents');
+  assert.equal(await gain.locator('.portfolio-gain-comparison img[alt="Bitcoin"]').count(),0,'ETH never displays the Bitcoin icon');
+  await gain.getByRole('combobox',{name:'Comparison cryptocurrency'}).selectOption('ADA');
   await gain.getByRole('button',{name:'CEX OUT',exact:true}).click();assert.equal(await gain.locator('a[href*="etherscan.io/tx/"]').count(),0);
   await gain.getByRole('button',{name:'CEX IN',exact:true}).click();assert.equal(await gain.locator('a[href*="etherscan.io/tx/"]').count(),1);
   await gain.getByRole('button',{name:'ETH IN',exact:true}).click();

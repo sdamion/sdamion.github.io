@@ -4,7 +4,7 @@ import type {Fact} from './core.ts';
 import {historicalAdaPrice} from './transaction-amounts.ts';
 import {addKnownValues,type FiatTransfer} from './ethereum.ts';
 
-export type ComparisonCrypto='ADA'|'BTC';
+export type ComparisonCrypto='ADA'|'BTC'|'ETH';
 export type ComparisonFiat='USD'|'EUR'|'JPY';
 export type ComparisonCurrency=ComparisonFiat|'ADA';
 export function comparisonResultLabel(amount:number|null,crypto:ComparisonCrypto='ADA'):string{
@@ -33,10 +33,10 @@ export function transferFiatValue(amount:number|null,unitUsd:number|null,rate:nu
   const value=amount*unitUsd*rate;
   return Number.isFinite(value)?value:null;
 }
-export function fiatTransferComparison(rows:FiatTransfer[],adaHistory:Record<string,number>,btcHistory:Record<string,number>,fx:FxHistory,crypto:ComparisonCrypto,currency:ComparisonCurrency){
+export function fiatTransferComparison(rows:FiatTransfer[],adaHistory:Record<string,number>,btcHistory:Record<string,number>,fx:FxHistory,crypto:ComparisonCrypto,currency:ComparisonCurrency,ethHistory:Record<string,number>={}){
   let incoming:number|null=0,outgoing:number|null=0,inFiat:number|null=0,outFiat:number|null=0;
   return [...new Map(rows.map(row=>[row.hash,row])).values()].sort((a,b)=>a.time-b.time||a.hash.localeCompare(b.hash)).map(row=>{
-    const date=new Date(row.time*1000).toISOString().slice(0,10),ada=adaHistory[date],unit=(crypto==='ADA'?ada:btcHistory[date]);
+    const date=new Date(row.time*1000).toISOString().slice(0,10),ada=adaHistory[date],unit=(crypto==='ADA'?ada:crypto==='ETH'?ethHistory[date]:btcHistory[date]);
     const amount=row.usd!==null&&Number.isFinite(unit)&&unit>0?row.usd/unit:null;
     const rate=currency==='ADA'?Number.isFinite(ada)&&ada>0?1/ada:null:fiatRate(row.time,currency,fx);
     const value=row.usd!==null&&rate!==null?row.usd*rate:null;
@@ -54,8 +54,8 @@ export function nativeTransferTotals(rows:(FiatTransfer&{amount:number})[],adaHi
     inFiat:converted?converted.inFiat:0,outFiat:converted?converted.outFiat:0
   };
 }
-export function transferComparison(facts:Fact[],entries:CexAddress[],adaHistory:Record<string,number>,btcHistory:Record<string,number>,fx:FxHistory,crypto:ComparisonCrypto,currency:ComparisonCurrency,additional:FiatTransfer[]=[]){
-  if(additional.length)return fiatTransferComparison([...cexTimeline(facts,entries,adaHistory),...additional],adaHistory,btcHistory,fx,crypto,currency);
+export function transferComparison(facts:Fact[],entries:CexAddress[],adaHistory:Record<string,number>,btcHistory:Record<string,number>,fx:FxHistory,crypto:ComparisonCrypto,currency:ComparisonCurrency,additional:FiatTransfer[]=[],ethHistory:Record<string,number>={}){
+  if(additional.length||crypto==='ETH')return fiatTransferComparison([...cexTimeline(facts,entries,adaHistory),...additional],adaHistory,btcHistory,fx,crypto,currency,ethHistory);
   let incoming:number|null=0,outgoing:number|null=0,inFiat:number|null=0,outFiat:number|null=0;
   const add=(total:number|null,value:number|null)=>total===null||value===null?null:total+value;
   return cexTimeline(facts,entries,adaHistory).reverse().map(row=>{
@@ -69,9 +69,9 @@ export function transferComparison(facts:Fact[],entries:CexAddress[],adaHistory:
     return {time:row.time,incoming,outgoing,inFiat,outFiat};
   });
 }
-export function comparisonNet(last:ReturnType<typeof transferComparison>[number]|undefined,walletAda:number,currentAdaUsd:number|null,btcHistory:Record<string,number>,fx:FxHistory,crypto:ComparisonCrypto,currency:ComparisonCurrency,time:number,portfolioUsd:number|null=currentAdaUsd!==null?walletAda*currentAdaUsd:null){
+export function comparisonNet(last:ReturnType<typeof transferComparison>[number]|undefined,walletAda:number,currentAdaUsd:number|null,btcHistory:Record<string,number>,fx:FxHistory,crypto:ComparisonCrypto,currency:ComparisonCurrency,time:number,portfolioUsd:number|null=currentAdaUsd!==null?walletAda*currentAdaUsd:null,currentEthUsd:number|null=null){
   const rate=currency==='ADA'?currentAdaUsd!==null&&currentAdaUsd>0?1/currentAdaUsd:null:fiatRate(time,currency,fx),btc=datedRate(time,btcHistory);
-  const unitUsd=crypto==='ADA'?currentAdaUsd:btc;
+  const unitUsd=crypto==='ADA'?currentAdaUsd:crypto==='ETH'?currentEthUsd:btc;
   const walletCrypto=portfolioUsd!==null&&unitUsd!==null&&unitUsd>0?portfolioUsd/unitUsd:null;
   const walletFiat=portfolioUsd!==null&&rate!==null?portfolioUsd*rate:null;
   const totals=last??{incoming:0,outgoing:0,inFiat:0,outFiat:0};
