@@ -955,11 +955,11 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
     "portfolio_text_8cb605b9c495"
   ],
   [
-    "Your verified member stake address is included automatically. Portfolio finds its linked payment addresses, loads balances and analyses transactions. Open Cardano Wallets to add other wallets you own or manage exchange and Swap labels.",
+    "Your verified member stake address is included automatically. Portfolio finds its linked payment addresses, loads balances and analyses transactions. Open Wallets to add other wallets you own or manage exchange and Swap labels.",
     "portfolio_text_b49844af63a7"
   ],
   [
-    "Cardano Wallets counts only active, fully analysed addresses with at least 10 transactions. My Wallets counts wallets containing those addresses. Hidden and excluded addresses do not count on these tiles; their ADA balances, transaction ownership and gain/loss calculations are unchanged.",
+    "Wallets counts only active, fully analysed addresses with at least 10 transactions. My Wallets counts wallets containing those addresses. Hidden and excluded addresses do not count on these tiles; their ADA balances, transaction ownership and gain/loss calculations are unchanged.",
     "portfolio_text_7c439812b22a"
   ],
   [
@@ -975,7 +975,7 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
     "portfolio_text_16b12395c134"
   ],
   [
-    "Hide excluded addresses only hides rows; it does not delete data. Turn it off to re-enable an address. Re-enabling checks history missed while paused. The Cardano Wallets tile shows active / total unique tracked payment addresses, not the number of stake accounts or exchange labels.",
+    "Hide excluded addresses only hides rows; it does not delete data. Turn it off to re-enable an address. Re-enabling checks history missed while paused. The Wallets tile shows active / total unique tracked payment addresses, not the number of stake accounts or exchange labels.",
     "portfolio_text_bc95ec437aeb"
   ],
   [
@@ -999,7 +999,7 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
     "portfolio_text_2a28ea75fc03"
   ],
   [
-    "Rescan all wallets in Cardano Wallets rediscovers all linked addresses and checks their full history, including previously removed or excluded addresses. Exclusions are ignored for this scan only. Saved transaction details are reused, and empty linked addresses are removed again after complete analysis.",
+    "Rescan all wallets in Wallets rediscovers all linked addresses and checks their full history, including previously removed or excluded addresses. Exclusions are ignored for this scan only. Saved transaction details are reused, and empty linked addresses are removed again after complete analysis.",
     "portfolio_text_dfdbf576d1a3"
   ],
   [
@@ -1043,7 +1043,7 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
     "portfolio_text_6adc466b0d48"
   ],
   [
-    "Open the tile, select a tracked wallet address and press Assign. Portfolio loads the transaction details and checks that the address appears in its inputs or outputs. Only verified transaction data determines your ownership and amounts; a selection cannot make unrelated funds yours. Add a wallet you own through Cardano Wallets first if its address is not listed.",
+    "Open the tile, select a tracked wallet address and press Assign. Portfolio loads the transaction details and checks that the address appears in its inputs or outputs. Only verified transaction data determines your ownership and amounts; a selection cannot make unrelated funds yours. Add a wallet you own through Wallets first if its address is not listed.",
     "portfolio_text_807546dc54f5"
   ],
   [
@@ -1804,5 +1804,8 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
   ["Ethereum mainnet · ETH only. ERC-20 tokens, NFTs and other EVM networks are not included.", "portfolio_text_eth_scope"],
   ["Only ETH transfers to or from saved CEX addresses contribute to CEX IN/OUT. Own-wallet transfers are excluded.", "portfolio_text_eth_cex_scope"],
   ["Combined Cardano and Ethereum CEX totals. ADA/BTC amounts are transfer-day equivalents, not summed coin quantities.", "portfolio_text_eth_combined"],
-  ["Open Ethereum Wallets to add mainnet wallets you own and their CEX counterparties. ETH balances are included in Assets; ETH transfers to and from saved CEX addresses are combined with Cardano using daily fiat prices. Internal transfers and failed payments are excluded from CEX IN/OUT. ADA and BTC comparisons are price equivalents, not actual holdings. Ethereum tokens and NFTs are not supported yet. Ethereum data uses the same encrypted Portfolio storage.", "portfolio_text_eth_guide"]
+  ["Open Wallets, then My Wallets to add Ethereum mainnet wallets you own. Add their Ethereum CEX counterparties under DEX / CEX & Swap. ETH balances are included in Assets; ETH transfers to and from saved CEX addresses are combined with Cardano using daily fiat prices. Internal transfers and failed payments are excluded from CEX IN/OUT. ADA and BTC comparisons are price equivalents, not actual holdings. Ethereum tokens and NFTs are not supported yet. Ethereum data uses the same encrypted Portfolio storage.", "portfolio_text_eth_guide"]
+  , ["{wallets} own wallets · {exchanges} CEX addresses", "portfolio_text_eth_address_counts"]
+  , ["Add your own Ethereum wallet to scan ETH CEX transfers. CEX addresses are counterparties, not your holdings; shared exchange balances are never counted as yours.", "portfolio_text_eth_own_required"]
+  , ["Refresh Ethereum wallets", "portfolio_text_eth_refresh_wallets"]
 ]);

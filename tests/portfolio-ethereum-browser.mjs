@@ -21,7 +21,7 @@ try{
       const body=route.request().postDataJSON();requests.push(body);
       result=body.action==='head'?{block:200}:body.action==='balance'?{balanceWei:'1000000000000000000'}:{transactions:body.kind==='normal'?[{id:hash+':normal',hash,kind:'normal',block:180,time:1672963200,from:exchange,to:address,valueWei:'1000000000000000000',feeWei:'210000000000000',failed:false}]:[],more:false};
     }else if(operation==='historical-eth-prices')result={prices:[[Date.parse('2023-01-06'),1000]]};
-    else if(operation==='ethereum-price')result={usd:2000};
+    else if(operation==='ethereum-price'){await new Promise(resolve=>setTimeout(resolve,100));result={usd:2000};}
     else if(operation==='price')result={cardano:{usd:0.5}};
     if(result)return route.fulfill({contentType:'application/json',body:JSON.stringify(result)});
     return route.fulfill({contentType:'text/html',body:'<header><span id="portfolio-refresh-action"></span></header><div id="app"></div>'});
@@ -32,7 +32,7 @@ try{
   await page.evaluate(({stake,address,exchange})=>{
     const settings=new Map([
       ['tdsp-member-cex-v1:'+stake,JSON.stringify([{address:'stake1uxllvgd6s0mwhtzyjeg6mtlg0eqrkhasfnmfzqnpcgn50rsmgdu7c',name:'Cardano CEX'}])],
-      ['tdsp-member-ethereum-wallets:'+stake,JSON.stringify([{address,name:'ETH Savings'}])],
+      ['tdsp-member-ethereum-wallets:'+stake,JSON.stringify([])],
       ['tdsp-member-ethereum-cex:'+stake,JSON.stringify([{address:exchange,name:'Bitvavo'}])]
     ]);
     window.fixtureStorage={getItem:key=>settings.get(key)??null,setItem:(key,value)=>settings.set(key,value),keys:()=>[...settings.keys()]};
@@ -41,7 +41,25 @@ try{
   },{stake,address,exchange});
   await page.addScriptTag({type:'module',content:bundle.outputFiles[0].text});
   const assets=page.getByRole('button',{name:'Open Assets',exact:true}),cex=page.getByRole('button',{name:'Open CEX Transactions',exact:true});
+  const walletsTile=page.getByRole('button',{name:'Open Wallets',exact:true});
+  await walletsTile.waitFor();
+  assert.equal(await page.getByRole('button',{name:'Open Ethereum Wallets',exact:true}).count(),0);
+  assert.equal(requests.length,0,'a CEX-only setup never scans a shared exchange wallet');
+  await cex.click();
+  await page.locator('#portfolio-gain-loss-overlay').getByRole('button',{name:'Wallets',exact:true}).waitFor();
+  assert.match(await page.locator('#portfolio-gain-loss-overlay').innerText(),/Add your own Ethereum wallet/);
+  await page.locator('#portfolio-gain-loss-overlay').getByRole('button',{name:'Wallets',exact:true}).click();
+  await page.getByRole('button',{name:'Open My Wallets',exact:true}).click();
+  const setup=page.locator('#portfolio-wallet-menu-wallets');
+  await setup.locator('form').first().waitFor();
+  assert.match(await setup.innerText(),/Add your own Ethereum wallet/);
+  const ownForm=setup.locator('form').last();
+  await ownForm.locator('input').nth(0).fill('ETH Savings');await ownForm.locator('input').nth(1).fill(address);
+  await ownForm.getByRole('button',{name:'Add',exact:true}).click();
+  await setup.getByRole('button',{name:'Back',exact:true}).click();
+  await page.locator('#portfolio-wallets-overlay').getByRole('button',{name:'Back',exact:true}).click();
   await page.waitForFunction(()=>document.querySelector('main')?.textContent.includes('$2,050.00'));
+  assert.equal(await page.getByRole('button',{name:'Open Ethereum Wallets',exact:true}).count(),0);
   assert.match(await assets.innerText(),/2,050\.00/);assert.match(await cex.innerText(),/1,000\.00/);
   await assets.click();await page.getByRole('button',{name:'Open FTs',exact:true}).click();
   const overlay=page.locator('#portfolio-holdings-overlay');
@@ -71,14 +89,21 @@ try{
   }
   await page.setViewportSize({width:1200,height:900});
   await gain.getByRole('button',{name:'Back',exact:true}).click();
-  await page.getByRole('button',{name:'Open Ethereum Wallets',exact:true}).click();
-  const eth=page.locator('#portfolio-ethereum-overlay');
-  await eth.getByRole('button',{name:'Refresh',exact:true}).waitFor();
-  await eth.getByRole('button',{name:'Refresh',exact:true}).click();
+  await walletsTile.click();await page.getByRole('button',{name:'Open My Wallets',exact:true}).click();
+  const own=page.locator('#portfolio-wallet-menu-wallets');
+  await own.getByRole('button',{name:'Refresh Ethereum wallets',exact:true}).waitFor();
+  assert.match(await own.innerText(),/ETH Savings/);
+  assert.ok(!(await own.innerText()).includes('Ethereum CEX addresses'));
+  await own.getByRole('button',{name:'Refresh Ethereum wallets',exact:true}).click();
   await page.waitForFunction(()=>!document.querySelector('main [role="status"]')?.textContent?.includes('Checking Ethereum'));
   await page.waitForTimeout(100);
   assert.ok(requests.filter(r=>r.action==='history').slice(-2).every(r=>r.startBlock===136),'cached Ethereum history only checks the reorg window and new blocks');
-  const cexForm=eth.locator('form').nth(1);await cexForm.locator('input').nth(0).fill('Not a CEX');await cexForm.locator('input').nth(1).fill(address);await cexForm.getByRole('button',{name:'Add',exact:true}).click();
+  await own.getByRole('button',{name:'Back',exact:true}).click();
+  await page.getByRole('button',{name:'Open DEX / CEX & Swap',exact:true}).click();
+  const eth=page.locator('#portfolio-wallet-menu-exchanges');
+  await eth.locator('form').last().waitFor();
+  assert.match(await eth.innerText(),/Bitvavo/);
+  const cexForm=eth.locator('form').last();await cexForm.locator('input').nth(0).fill('Not a CEX');await cexForm.locator('input').nth(1).fill(address);await cexForm.getByRole('button',{name:'Add',exact:true}).click();
   assert.match(await eth.innerText(),/Your own wallet cannot/);
   for(const width of [1200,390,320]){
     await page.setViewportSize({width,height:900});

@@ -6,7 +6,7 @@ const steps=[
   ['Your member wallet','Your delegated stake key is included automatically. Its linked addresses, balances and transactions load in the background while you read this guide.'],
   ['Add your own wallets','Add a stake key or payment address you own to include its balances and transactions. A stake key includes its linked addresses. Your member stake key is already included.'],
   ['Add exchange addresses','Add known DEX / CEX payment addresses or stake keys to identify ADA transfers to and from exchanges. These use your buy/sell rule, not DEX trade decoding. Do not add your own wallets here.'],
-  ['Add Swap addresses','Add your internal Swap payment addresses or stake keys so their transfers are excluded from DEX / CEX totals. Shared service balances are not counted as yours. All additional addresses are optional and can be changed later in Cardano Wallets.']
+  ['Add Swap addresses','Add your internal Swap payment addresses or stake keys so their transfers are excluded from DEX / CEX totals. Shared service balances are not counted as yours. All additional addresses are optional and can be changed later in Wallets.']
 ];
 const keyFor=(stake:string)=>`tdsp-portfolio-setup-v1:${stake}`;
 function completed(stake:string){try{return localStorage.getItem(keyFor(stake))==='done';}catch{return false;}}

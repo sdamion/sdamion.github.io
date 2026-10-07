@@ -59,13 +59,14 @@ export function useEthereum(stake:string,ready:boolean){
       if(!history.ok)throw new Error('Historical Ethereum prices unavailable.');
       const rates=await history.json();
       if(!Array.isArray(rates.prices)||!rates.prices.length)throw new Error('Historical Ethereum prices unavailable.');
-      for(const [time,price] of rates.prices)if(Number.isFinite(time)&&Number.isFinite(price)&&price>0)next.history[new Date(time).toISOString().slice(0,10)]=price;
+      const priced: EthereumData={...next,history:{...next.history}};
+      for(const [time,price] of rates.prices)if(Number.isFinite(time)&&Number.isFinite(price)&&price>0)priced.history[new Date(time).toISOString().slice(0,10)]=price;
       const quote=await portfolioFetch('/ethereum-price',{signal});
       if(!quote.ok)throw new Error('Current Ethereum price unavailable.');
       const {usd}=await quote.json();
       if(typeof usd!=='number'||!Number.isFinite(usd)||usd<=0)throw new Error('Current Ethereum price unavailable.');
-      next.usd=usd;next.updated=new Date().toISOString();signal.throwIfAborted();
-      portfolioSettings.setItem(dataKey,JSON.stringify(next));current.current=next;setData(next);setStatus('');
+      priced.usd=usd;priced.updated=new Date().toISOString();signal.throwIfAborted();
+      portfolioSettings.setItem(dataKey,JSON.stringify(priced));current.current=priced;setData(priced);setStatus('');
     }catch(e){if(!signal.aborted){setError(e instanceof Error?e.message:'Ethereum refresh failed. Saved data is retained.');setStatus('');}}
     finally{if(controller.current===control)setBusy(false);}
   },[ready,loaded,scope,stake]);
