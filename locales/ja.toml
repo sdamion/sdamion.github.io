@@ -1335,3 +1335,7 @@ portfolio_text_comparison_no_out = "解析済み履歴に該当するCEX出金�
 portfolio_text_eth_address_counts = "自分のウォレット {wallets} · CEXアドレス {exchanges}"
 portfolio_text_eth_own_required = "ETHのCEX送金を調べるには、自分のEthereumウォレットを追加してください。CEXアドレスは取引相手であり、自分の保有資産ではありません。取引所の共有残高を自分の残高として数えることはありません。"
 portfolio_text_eth_refresh_wallets = "Ethereumウォレットを更新"
+portfolio_text_eth_miner = "マイナー"
+portfolio_text_eth_miner_label = "マイナーウォレット: {name}"
+portfolio_text_eth_mining_receipt = "マイニング報酬の受取"
+portfolio_text_eth_miner_help = "外部からの受取を採掘されたETH OUTとして扱います。自分のウォレット間の送金と登録済みCEXからの購入は除外します。"

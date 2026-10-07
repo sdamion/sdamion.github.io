@@ -1335,3 +1335,7 @@ portfolio_text_comparison_no_out = "No se encontraron salidas CEX en el historia
 portfolio_text_eth_address_counts = "{wallets} wallets propias · {exchanges} direcciones CEX"
 portfolio_text_eth_own_required = "Añade tu propia wallet de Ethereum para analizar transferencias ETH con direcciones CEX. Las direcciones CEX son contrapartes, no tus tenencias; los saldos compartidos de exchanges nunca se cuentan como tuyos."
 portfolio_text_eth_refresh_wallets = "Actualizar wallets de Ethereum"
+portfolio_text_eth_miner = "Minero"
+portfolio_text_eth_miner_label = "Wallet minera: {name}"
+portfolio_text_eth_mining_receipt = "Ingreso de minería"
+portfolio_text_eth_miner_help = "Contar ingresos externos como ETH OUT minado. Se excluyen transferencias entre wallets propias y compras desde direcciones CEX guardadas."

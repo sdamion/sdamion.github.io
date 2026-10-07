@@ -1,19 +1,20 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {portfolioFetch} from './transport';
-import {portfolioSettings} from './vault';
+import {portfolioSettings,flushVault} from './vault';
 import {emptyEthereum,ethereumData,ethereumWallets,validEthereumTransaction,type EthereumData,type EthereumTransaction,type EthereumWallet} from './ethereum';
 
 export function useEthereum(stake:string,ready:boolean){
   const walletKey='tdsp-member-ethereum-wallets:'+stake,cexKey='tdsp-member-ethereum-cex:'+stake,dataKey='tdsp-member-ethereum-data:'+stake;
   const [wallets,setWallets]=useState<EthereumWallet[]>([]),[exchanges,setExchanges]=useState<EthereumWallet[]>([]),[data,setData]=useState<EthereumData>(emptyEthereum);
-  const [loaded,setLoaded]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),[status,setStatus]=useState('');
+  const [loadedStake,setLoadedStake]=useState<string|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[status,setStatus]=useState('');
+  const loaded=loadedStake===stake;
   const current=useRef(data),controller=useRef<AbortController|null>(null);
   useEffect(()=>{
-    if(!ready)return;
+    if(!ready){setLoadedStake(null);return;}
     try{
       setWallets(ethereumWallets(JSON.parse(portfolioSettings.getItem(walletKey)||'[]')));
       setExchanges(ethereumWallets(JSON.parse(portfolioSettings.getItem(cexKey)||'[]')));
-      const saved=ethereumData(JSON.parse(portfolioSettings.getItem(dataKey)||'null'));current.current=saved;setData(saved);setLoaded(true);
+      const saved=ethereumData(JSON.parse(portfolioSettings.getItem(dataKey)||'null'));current.current=saved;setData(saved);setLoadedStake(stake);
     }catch{setError('Ethereum cache could not be opened.');}
     return()=>controller.current?.abort();
   },[ready,stake]);
@@ -30,7 +31,13 @@ export function useEthereum(stake:string,ready:boolean){
     try{
       const {block}=await request<{block:number}>({action:'head'});
       if(!Number.isSafeInteger(block)||block<0)throw new Error('Invalid Ethereum block response.');
-      const next: EthereumData={...current.current,accounts:{},history:{...current.current.history}};
+      const next: EthereumData={...current.current,accounts:Object.fromEntries(wallets.flatMap(wallet=>current.current.accounts[wallet.address]?[[wallet.address,current.current.accounts[wallet.address]]]:[])),history:{...current.current.history}};
+      async function persist(value:EthereumData){
+        signal.throwIfAborted();
+        const saved={...value,accounts:{...value.accounts},history:{...value.history},updated:new Date().toISOString()};
+        portfolioSettings.setItem(dataKey,JSON.stringify(saved));current.current=saved;setData(saved);
+        await flushVault();signal.throwIfAborted();
+      }
       for(const [index,wallet] of wallets.entries()){
         setStatus('Checking Ethereum transactions…');
         const previous=current.current.accounts[wallet.address];
@@ -50,23 +57,23 @@ export function useEthereum(stake:string,ready:boolean){
         const {balanceWei}=await request<{balanceWei:string}>({action:'balance',address:wallet.address});
         if(typeof balanceWei!=='string'||!/^\d{1,80}$/.test(balanceWei))throw new Error('Invalid Ethereum balance response.');
         next.accounts[wallet.address]={balanceWei,block,transactions:[...transactions.values()]};
+        // Save complete accounts immediately; a later wallet failure must not discard them.
+        await persist(next);
         setStatus(`${index+1} / ${wallets.length}`);
       }
-      // Commit complete history before quotes: a pricing outage must not trigger another full scan.
-      next.updated=new Date().toISOString();signal.throwIfAborted();
-      portfolioSettings.setItem(dataKey,JSON.stringify(next));current.current=next;setData(next);
       const history=await portfolioFetch('/historical-eth-prices',{signal});
       if(!history.ok)throw new Error('Historical Ethereum prices unavailable.');
       const rates=await history.json();
       if(!Array.isArray(rates.prices)||!rates.prices.length)throw new Error('Historical Ethereum prices unavailable.');
       const priced: EthereumData={...next,history:{...next.history}};
       for(const [time,price] of rates.prices)if(Number.isFinite(time)&&Number.isFinite(price)&&price>0)priced.history[new Date(time).toISOString().slice(0,10)]=price;
+      // CEX transfer values need historical prices, independently of the current holding quote.
+      await persist(priced);
       const quote=await portfolioFetch('/ethereum-price',{signal});
       if(!quote.ok)throw new Error('Current Ethereum price unavailable.');
       const {usd}=await quote.json();
       if(typeof usd!=='number'||!Number.isFinite(usd)||usd<=0)throw new Error('Current Ethereum price unavailable.');
-      priced.usd=usd;priced.updated=new Date().toISOString();signal.throwIfAborted();
-      portfolioSettings.setItem(dataKey,JSON.stringify(priced));current.current=priced;setData(priced);setStatus('');
+      priced.usd=usd;await persist(priced);setStatus('');
     }catch(e){if(!signal.aborted){setError(e instanceof Error?e.message:'Ethereum refresh failed. Saved data is retained.');setStatus('');}}
     finally{if(controller.current===control)setBusy(false);}
   },[ready,loaded,scope,stake]);

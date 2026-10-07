@@ -2,6 +2,7 @@ import {portfolioFetch,portfolioUpload,setSessionRole} from './transport';
 import {deriveVaultKey,unlockMessage,openVault,sealVault} from './vault-crypto';
 import {prepareCheckpoint,restoreCheckpoint,type Checkpoint,type CheckpointIndex} from './vault-checkpoint';
 import {setUploadProgress,resetUploadProgress} from './upload-progress';
+import {portfolioTransactionCounts} from './transaction-counts';
 import type {Snapshot} from './cache';
 import {memberWallets} from './member';
 import {loadLocal,saveLocal,removeLocal} from './local-store';
@@ -95,7 +96,8 @@ export async function unlockPortfolio(wallet:{signData:(payload:string,address:s
   if(!stored.payload)data=await importLegacy(stake);
   check();
   state={stake,mode:'remote',key,data,revision:stored.revision,expiresAt:stored.expires_at,dirty:!stored.payload,generation:0,blocked:false,controller:new AbortController(),index,saved:Object.keys(data.snapshot?.data.facts||{}).length};
-  setUploadProgress({phase:'saved',saved:state.saved!,transactions:data.snapshot?.data.txs.length||0});
+  const counts=portfolioTransactionCounts(data,stake);
+  setUploadProgress({phase:'saved',saved:counts.saved,transactions:counts.total});
   lastActivity=Date.now();
   if(!stored.payload)await flushVault();
   rememberStorage(stake,'remote');
@@ -131,11 +133,11 @@ function changed(){const current=active();current.dirty=true;current.generation+
 export const portfolioSettings={
   keys(){const current=active();return Object.keys(current.data.settings).filter(name=>ownSetting(current.stake,name));},
   getItem(name:string){const current=active();return ownSetting(current.stake,name)?current.data.settings[name]??null:null;},
-  setItem(name:string,value:string){const current=active();if(!ownSetting(current.stake,name))throw new Error('Wrong Portfolio member.');current.data.settings[name]=value;changed();clearTimeout(timer);timer=undefined;schedule(1000);}
+  setItem(name:string,value:string){const current=active();if(!ownSetting(current.stake,name))throw new Error('Wrong Portfolio member.');current.data.settings[name]=value;changed();if(current.mode==='remote')setUploadProgress({transactions:portfolioTransactionCounts(current.data,current.stake).total});clearTimeout(timer);timer=undefined;schedule(1000);}
 };
 export function cachedSnapshot(name:string){const current=active();return current.data.snapshot?.key===name?current.data.snapshot.data:null;}
 export function latestMemberSnapshot(name:string){const current=active();if(!name.startsWith(current.stake+'::'))throw new Error('Wrong Portfolio member.');return current.data.snapshot?.data??null;}
-export async function cacheSnapshot(name:string,data:Snapshot){const current=active();if(!name.startsWith(current.stake+'::'))throw new Error('Wrong Portfolio member.');current.data.snapshot={key:name,data};changed();if(current.mode==='remote'){setUploadProgress({transactions:data.txs.length});if(!running&&Object.keys(data.facts).length-(current.saved||0)>=500){clearTimeout(timer);timer=undefined;schedule(0);}}}
+export async function cacheSnapshot(name:string,data:Snapshot){const current=active();if(!name.startsWith(current.stake+'::'))throw new Error('Wrong Portfolio member.');current.data.snapshot={key:name,data};changed();if(current.mode==='remote'){setUploadProgress({transactions:portfolioTransactionCounts(current.data,current.stake).total});if(!running&&Object.keys(data.facts).length-(current.saved||0)>=500){clearTimeout(timer);timer=undefined;schedule(0);}}}
 export async function flushVault():Promise<void>{
   if(running){await running;if(state?.dirty)return flushVault();return;}
   const current=state;if(!current?.dirty||current.blocked)return;
@@ -156,14 +158,14 @@ export async function flushVault():Promise<void>{
     if(!current.pending)current.pending={checkpoint:await prepareCheckpoint(current.data,current.key!,current.stake,current.index||null,current.controller.signal),generation};
     if(current!==state)return;
     const {checkpoint,generation:capturedGeneration}=current.pending;
-    const {index,saved,total,...upload}=checkpoint;
+    const {index,saved,total,cardanoSaved,...upload}=checkpoint;
     setUploadProgress({phase:'uploading'});
     const response=await portfolioUpload(JSON.stringify({action:'checkpoint',revision:current.revision,...upload}),current.controller.signal,(loaded,total)=>{if(current===state)setUploadProgress({phase:loaded>=total?'confirming':'uploading',loaded,total});});
     if(!response.ok){if(response.status===409||response.status===410)current.blocked=true;throw new Error(response.status===409?'Portfolio changed on another device. Sign in and unlock again before saving.':response.status===410?'Portfolio cache expired. Sign in and unlock again.':response.status===507?'Remote Portfolio storage is full. Existing caches are preserved. Retry later or use encrypted local storage.':'Encrypted Portfolio cache could not be saved. Keep this page open and retry.');}
     const result=await response.json();if(current!==state)return;
     current.revision=result.revision;current.expiresAt=Math.max(current.expiresAt,result.expires_at);current.dirty=current.generation!==capturedGeneration;
-    current.index=index;current.saved=saved;current.pending=undefined;
-    setUploadProgress({phase:'saved',saved,transactions:current.data.snapshot?.data.txs.length||total,message:''});
+    current.index=index;current.saved=cardanoSaved;current.pending=undefined;
+    setUploadProgress({phase:'saved',saved,transactions:portfolioTransactionCounts(current.data,current.stake).total,message:''});
     await clearLegacy(current.stake);
     notice('Encrypted Portfolio cache saved.');
   })().catch(error=>{if(!current.controller.signal.aborted){notice(error.message);if(current.mode==='remote')setUploadProgress({phase:'error',message:error.message});}throw error;}).finally(()=>{running=null;if(current===state&&current.dirty&&!current.blocked)schedule();});

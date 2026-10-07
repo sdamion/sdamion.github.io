@@ -1335,3 +1335,7 @@ portfolio_text_comparison_canvas_label = "Cumulatief {crypto} IN en OUT in de ti
 portfolio_text_comparison_graph_note = "Cumulatief {crypto} IN / OUT · Schattingen in {currency} op de transferdatum · Alleen geclassificeerde transfers"
 portfolio_text_comparison_no_out = "Geen uitgaande CEX-transfers gevonden in de geanalyseerde historie. Controleer de opgeslagen bestemmingsadressen als transfers ontbreken."
 portfolio_text_eth_refresh_wallets = "Ethereum-wallets verversen"
+portfolio_text_eth_miner = "Miner"
+portfolio_text_eth_miner_label = "Miner-wallet: {name}"
+portfolio_text_eth_mining_receipt = "Mining-ontvangst"
+portfolio_text_eth_miner_help = "Tel externe ontvangsten als geminede ETH OUT. Transfers tussen eigen wallets en aankopen van opgeslagen CEX-adressen zijn uitgesloten."

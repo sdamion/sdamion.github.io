@@ -17,6 +17,17 @@ assert.equal(ethereumTransactions(data,wallets).length,5,'shared own-wallet hist
 assert.equal(ethereumTransfer(internal,wallets,[...exchanges,{address:b,name:'Not a CEX'}]),null,'own-wallet transfers never become CEX');
 assert.equal(ethereumTransfer(failed,wallets,exchanges),null,'failed sends are not CEX OUT');
 assert.deepEqual(ethereumTransfer(input,wallets,exchanges),{side:'buy',amount:1});
+const miners=wallets.map(w=>({...w,miner:w.address===a}));
+const reward=tx(6,'0x'+'d'.repeat(40),a);
+assert.deepEqual(ethereumTransfer(reward,miners,exchanges),{side:'sell',amount:1,mined:true});
+assert.equal(ethereumTransfer(reward,wallets,exchanges),null,'disabling Miner restores classification immediately');
+assert.deepEqual(ethereumTransfer(input,miners,exchanges),{side:'buy',amount:1},'known exchange purchases stay ETH IN');
+assert.equal(ethereumTransfer(internal,miners,exchanges),null,'own-wallet mining transfers never counted twice');
+assert.equal(ethereumTransfer({...reward,failed:true},miners,exchanges),null);
+assert.equal(ethereumTransfer({...reward,valueWei:'0'},miners,exchanges),null);
+assert.deepEqual(ethereumWallets([{address:a,name:'Miner',miner:true},{address:b,name:'Regular',miner:'true'}]),[{address:a,name:'Miner',miner:true},{address:b,name:'Regular'}]);
+const miningData={...data,accounts:{...data.accounts,[a]:{...data.accounts[a],transactions:[...data.accounts[a].transactions,reward]}}};
+assert.equal(nativeTransferTotals(ethereumTransfers(miningData,miners,exchanges),{}, {},'USD').outFiat,2000,'mined receipts use their historical ETH price');
 assert.equal(ethereumValue(data,wallets),6000);assert.equal(ethereumValue(emptyEthereum(),wallets),null);
 assert.equal(ethereumFees(data,wallets),0.00063,'fees only for own senders, including failed sends, never trace fees or duplicates');
 const transfers=ethereumTransfers(data,wallets,exchanges);

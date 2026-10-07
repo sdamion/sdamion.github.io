@@ -1,4 +1,4 @@
-export type EthereumWallet={address:string;name:string};
+export type EthereumWallet={address:string;name:string;miner?:boolean};
 export type EthereumTransaction={id:string;hash:string;kind:'normal'|'internal';block:number;time:number;from:string;to:string;valueWei:string;feeWei:string|null;failed:boolean};
 export type EthereumAccount={balanceWei:string;block:number;transactions:EthereumTransaction[]};
 export type EthereumData={accounts:Record<string,EthereumAccount>;history:Record<string,number>;usd:number|null;updated:string|null};
@@ -10,7 +10,7 @@ export function ethereumWallets(value:unknown):EthereumWallet[]{
   for(const item of value){
     if(typeof item?.address!=='string'||typeof item?.name!=='string')continue;
     const address=item.address.trim().toLowerCase(),name=item.name.trim().slice(0,60);
-    if(validEthereumAddress(address)&&name)rows.set(address,{address,name});
+    if(validEthereumAddress(address)&&name)rows.set(address,{address,name,...(item.miner===true?{miner:true}:{})});
     if(rows.size>=20)break;
   }
   return [...rows.values()];
@@ -40,10 +40,14 @@ export function weiToEth(value:string):number{return Number(BigInt(value))/1e18;
 export function ethereumTransactions(data:EthereumData,wallets:EthereumWallet[]){
   return [...new Map(wallets.flatMap(wallet=>data.accounts[wallet.address]?.transactions||[]).map(tx=>[tx.id,tx])).values()].sort((a,b)=>b.time-a.time||a.id.localeCompare(b.id));
 }
+export function ethereumTransactionCount(data:EthereumData,wallets:EthereumWallet[]){
+  return new Set(wallets.flatMap(wallet=>data.accounts[wallet.address]?.transactions.map(tx=>tx.hash)||[])).size;
+}
 export function ethereumTransfer(tx:EthereumTransaction,wallets:EthereumWallet[],exchanges:EthereumWallet[]){
   if(tx.failed||BigInt(tx.valueWei)===0n)return null;
   const owned=new Set(wallets.map(w=>w.address));
   if(owned.has(tx.from)&&owned.has(tx.to))return null;
+  if(wallets.some(w=>w.address===tx.to&&w.miner)&&!exchanges.some(e=>e.address===tx.from))return {side:'sell' as const,amount:weiToEth(tx.valueWei),mined:true};
   const side=owned.has(tx.to)&&exchanges.some(e=>e.address===tx.from)?'buy':owned.has(tx.from)&&exchanges.some(e=>e.address===tx.to)?'sell':null;
   return side?{side,amount:weiToEth(tx.valueWei)}:null;
 }

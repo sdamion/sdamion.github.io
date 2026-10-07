@@ -1,11 +1,12 @@
 import {openVault,sealVault} from './vault-crypto.ts';
 import type {VaultEnvelope} from './vault-crypto.ts';
 import type {Snapshot} from './cache';
+import {portfolioTransactionCounts} from './transaction-counts.ts';
 
 export type VaultData={version:1;settings:Record<string,string>;snapshot:{key:string;data:Snapshot}|null};
 type Reference={id:string;digest:string};
 export type CheckpointIndex={version:2;meta:Omit<VaultData,'snapshot'>&{snapshot:{key:string;data:Omit<Snapshot,'txs'|'facts'>}|null};buckets:Record<string,Reference>};
-export type Checkpoint={payload:VaultEnvelope;chunks:{id:string;payload:VaultEnvelope}[];chunk_ids:string[];commit_id:string;index:CheckpointIndex;saved:number;total:number};
+export type Checkpoint={payload:VaultEnvelope;chunks:{id:string;payload:VaultEnvelope}[];chunk_ids:string[];commit_id:string;index:CheckpointIndex;saved:number;total:number;cardanoSaved:number};
 const encoder=new TextEncoder();
 export const CHECKPOINT_DECODED_LIMIT=512*1024*1024;
 export function checkCheckpointSize(size:number){
@@ -38,7 +39,7 @@ export async function prepareCheckpoint(data:VaultData,key:CryptoKey,stake:strin
     chunks.push({id,payload:await sealVault(key,stake,content)});
   }
   signal?.throwIfAborted();
-  return {payload:await sealVault(key,stake,index),chunks,chunk_ids:Object.values(index.buckets).map(row=>row.id),commit_id:randomId(),index,saved:Object.keys(snapshot?.data.facts||{}).length,total:snapshot?.data.txs.length||0};
+  return {payload:await sealVault(key,stake,index),chunks,chunk_ids:Object.values(index.buckets).map(row=>row.id),commit_id:randomId(),index,...portfolioTransactionCounts(captured,stake)};
 }
 export async function restoreCheckpoint(index:CheckpointIndex,key:CryptoKey,stake:string,load:(ids:string[])=>Promise<{id:string;payload:VaultEnvelope}[]>):Promise<VaultData>{
   if(index.version!==2||index.meta?.version!==1||!index.meta.settings||!index.buckets||Object.keys(index.buckets).length>257)throw new Error('Invalid Portfolio checkpoint index.');

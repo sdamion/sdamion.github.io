@@ -45,7 +45,7 @@ import {useBtcHistory} from './use-btc-history';
 import {useEthereum} from './use-ethereum';
 import {EthereumWallets} from './EthereumWallets';
 import {EthereumTransaction} from './EthereumTransaction';
-import {ethereumTransactions,ethereumTransfers,ethereumTransfer,ethereumValue,ethereumFees,addKnownValues,weiToEth} from './ethereum';
+import {ethereumTransactions,ethereumTransactionCount,ethereumTransfers,ethereumTransfer,ethereumValue,ethereumFees,addKnownValues,weiToEth} from './ethereum';
 import {useFxHistory} from './use-fx-history';
 import {transferComparison,nativeTransferTotals,comparisonNet,fiatRate,comparisonResultLabel} from './transfer-comparison';
 import type {ComparisonCrypto,ComparisonFiat} from './transfer-comparison';
@@ -449,7 +449,7 @@ export default function Home({memberStake}:{memberStake:string}){
   const fees=useMemo(()=>portfolioFeeTotal(Object.values(snapshot?.facts||{}),trackedAddresses,swapAddresses),[snapshot,trackedAddresses,swapAddresses]);
   const loadedFacts=Object.keys(classifiedFacts).length;
   const transactionTotal=snapshot?.txs.length||0;
-  const allTransactionTotal=transactionTotal+new Set(ethTransactions.map(tx=>tx.hash)).size;
+  const allTransactionTotal=transactionTotal+ethereumTransactionCount(ethereum.data,ethereum.wallets);
   const ethFees=ethereumFees(ethereum.data,ethereum.wallets);
   const feeUsd=addKnownValues(currentAdaUsd!==null?fees*currentAdaUsd:null,!ethereum.wallets.length?0:ethFees!==null&&ethereum.data.usd!==null?ethFees*ethereum.data.usd:null);
   const cexPending=snapshot?.txs.filter(tx=>!hasCounterpartyData(snapshot.facts[tx.tx_hash])).length||0;
@@ -494,8 +494,10 @@ export default function Home({memberStake}:{memberStake:string}){
         <p className="small muted">{t('{done} / {total} assets valued',{done:valued.length+(ethereum.wallets.length&&!ethExcluded&&ethValue!==null?1:0),total:included.length+(ethereum.wallets.length&&!ethExcluded?1:0)})}{excludedCount+(ethereum.wallets.length&&ethExcluded?1:0)?' · '+t('{count} excluded',{count:excludedCount+(ethereum.wallets.length&&ethExcluded?1:0)}):''}</p>
         {(holdingsCurrency==='EUR'||holdingsCurrency==='JPY')&&holdingsValue===null&&<p className="small muted" role="status">{t(fx.status||'Historical exchange rates unavailable')}</p>}
       </MenuTile>
-      <Metric label="Network fees paid" value={loadedFacts||snapshot?.complete?ethereum.wallets.length?formatPortfolioUsd(feeUsd,currencyDisplay):formatPortfolioAda(fees,currencyDisplay):'Waiting for transaction details'}/>
-      {(cexAddresses.length>0||ethereum.exchanges.length>0)&&<Metric label="CEX Transactions" openLabel="CEX Transactions" value={snapshot?tileGainDisplay:'Waiting for wallet balances'} tone={tileGain===null?'':tileGain<0?'negative':'positive'} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('gain-loss');}}/>}
+      <Metric label="Network fees paid" value={loadedFacts||snapshot?.complete?ethereum.wallets.length?formatPortfolioUsd(feeUsd,currencyDisplay):formatPortfolioAda(fees,currencyDisplay):'Waiting for transaction details'}>
+        {ethereum.wallets.length>0&&<><span translate="no" className="small">Cardano: {loadedFacts||snapshot?.complete?formatPortfolioAda(fees,currencyDisplay):'—'}</span><span translate="no" className="small">ETH: {ethFees===null?'—':`${ethFees.toLocaleString(undefined,{maximumFractionDigits:8})} ETH`} · {formatPortfolioUsd(ethFees!==null&&ethereum.data.usd!==null?ethFees*ethereum.data.usd:null,currencyDisplay)}</span></>}
+      </Metric>
+      {(cexAddresses.length>0||ethereum.exchanges.length>0||ethereum.wallets.some(w=>w.miner))&&<Metric label="CEX Transactions" openLabel="CEX Transactions" value={snapshot?tileGainDisplay:'Waiting for wallet balances'} tone={tileGain===null?'':tileGain<0?'negative':'positive'} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('gain-loss');}}/>}
     </div></section>
     {section==='wallets'&&<AssetOverlay id="portfolio-wallets-overlay" name="Wallets" onClose={()=>setSection(null)}>
     <div className="portfolio-section">
@@ -651,10 +653,10 @@ function AssetImage({id,name,market,onOpen,compact=false,hideIdentifier=false}:{
   return onOpen?<button type="button" className="governance-vote-secondary portfolio-asset-button" onClick={onOpen} aria-label={`View ${name} details`}>{content}</button>:<div className={compact?'portfolio-token-inline':undefined}>{content}</div>;
 }
 
-function Metric({label,value,amount,note,tone='',onOpen,openLabel=label}:{label:string;value:string;amount?:{ada:number|null;usd:number|null};note?:string;tone?:string;onOpen?:()=>void;openLabel?:string}){
+function Metric({label,value,amount,note,tone='',onOpen,openLabel=label,children}:{label:string;value:string;amount?:{ada:number|null;usd:number|null};note?:string;tone?:string;onOpen?:()=>void;openLabel?:string;children?:React.ReactNode}){
   const t=usePortfolioText();
   const Tag=onOpen?'button':'div';
-  return <Tag type={onOpen?'button':undefined} onClick={onOpen} aria-label={onOpen?`Open ${openLabel}`:undefined} className="governance-menu-card"><strong translate="no" className={`governance-card-title ${tone}`}>{amount?<PortfolioCurrencyContext.Provider value={null}><AdaUsdAmount {...amount}/></PortfolioCurrencyContext.Provider>:t(value)}</strong><span className="governance-card-detail" data-i18n-auto-original={label}>{label}</span>{note&&<span className="small muted">{t(note)}</span>}</Tag>;
+  return <Tag type={onOpen?'button':undefined} onClick={onOpen} aria-label={onOpen?`Open ${openLabel}`:undefined} className="governance-menu-card"><strong translate="no" className={`governance-card-title ${tone}`}>{amount?<PortfolioCurrencyContext.Provider value={null}><AdaUsdAmount {...amount}/></PortfolioCurrencyContext.Provider>:t(value)}</strong><span className="governance-card-detail" data-i18n-auto-original={label}>{label}</span>{children}{note&&<span className="small muted">{t(note)}</span>}</Tag>;
 }
 function Transaction({tx,fact,markets,wallets,history,cexAddresses,swapAddresses}:{tx:Tx;fact?:Fact;markets:Record<string,Market>;wallets:Wallet[];history:Record<string,number>;cexAddresses:CexAddress[];swapAddresses:Set<string>}){
   const kind=fact?kindOf(fact):null,trade=fact?tradeOf(fact):null;
