@@ -181,7 +181,11 @@ try{
   assert.equal(savedWallets.find(w=>w.address===address).name,'ETH Savings','adding a swap retains regular wallets');
   await page.evaluate(()=>window.reopenPortfolio());
   await walletsTile.click();await page.getByRole('button',{name:'Open DEX / CEX & Swap',exact:true}).click();
-  assert.match(await swaps.innerText(),/ETH Swap/,'swap wallets restore in the Swap section');
+  assert.equal(await swaps.getByRole('textbox',{name:'Swap name',exact:true}).last().inputValue(),'ETH Swap','swap wallets restore in the shared name editor');
+  assert.deepEqual(await swaps.locator('thead th').allTextContents(),['Swap name','Wallet address','Remove'],'ADA and ETH swaps share the same table columns');
+  await swaps.getByRole('textbox',{name:'Swap name',exact:true}).last().fill('ETH Swap renamed');
+  await swaps.getByRole('button',{name:'Save Swap name',exact:true}).click();
+  assert.equal(await page.evaluate(({stake,swapAddress})=>JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-wallets:'+stake)).find(w=>w.address===swapAddress).name,{stake,swapAddress}),'ETH Swap renamed','shared editor saves ETH swap names');
   await swaps.getByRole('button',{name:'Remove',exact:true}).click();
   assert.equal(await page.evaluate(stake=>JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-wallets:'+stake)).length,stake),1,'removing a swap retains regular wallets');
   await page.evaluate(({stake,address})=>{
