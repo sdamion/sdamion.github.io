@@ -14,7 +14,7 @@ let state:State|null=null,timer:ReturnType<typeof setTimeout>|undefined,running:
 let unlockGeneration=0;
 let lastActivity=0,touchPending=false;
 const notice=(message:string)=>window.dispatchEvent(new CustomEvent('tdsp:portfolio-cache-notice',{detail:message}));
-const ownSetting=(stake:string,key:string)=>['tdsp-member-wallets-v1:','tdsp-member-cex-v1:','tdsp-member-basis:','tdsp-member-payments:'].some(prefix=>key===prefix+stake||key.startsWith(prefix+stake+'::'));
+const ownSetting=(stake:string,key:string)=>['tdsp-member-wallets-v1:','tdsp-member-cex-v1:','tdsp-member-basis:','tdsp-member-payments:','tdsp-member-ethereum-wallets:','tdsp-member-ethereum-cex:','tdsp-member-ethereum-data:'].some(prefix=>key===prefix+stake||key.startsWith(prefix+stake+'::'));
 async function legacySnapshot(stake:string,settings:Record<string,string>):Promise<Data['snapshot']>{
   const wallets=memberWallets(stake,JSON.parse(settings['tdsp-member-wallets-v1:'+stake]||'null'));
   const key=stake+'::'+wallets.map(w=>w.address).sort().join('|');

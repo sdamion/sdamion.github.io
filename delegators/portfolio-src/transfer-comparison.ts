@@ -2,6 +2,7 @@ import {cexTimeline} from './cex.ts';
 import type {CexAddress} from './cex.ts';
 import type {Fact} from './core.ts';
 import {historicalAdaPrice} from './transaction-amounts.ts';
+import {addKnownValues,type FiatTransfer} from './ethereum.ts';
 
 export type ComparisonCrypto='ADA'|'BTC';
 export type ComparisonFiat='USD'|'EUR'|'JPY';
@@ -32,7 +33,20 @@ export function transferFiatValue(amount:number|null,unitUsd:number|null,rate:nu
   const value=amount*unitUsd*rate;
   return Number.isFinite(value)?value:null;
 }
-export function transferComparison(facts:Fact[],entries:CexAddress[],adaHistory:Record<string,number>,btcHistory:Record<string,number>,fx:FxHistory,crypto:ComparisonCrypto,currency:ComparisonCurrency){
+export function fiatTransferComparison(rows:FiatTransfer[],adaHistory:Record<string,number>,btcHistory:Record<string,number>,fx:FxHistory,crypto:ComparisonCrypto,currency:ComparisonCurrency){
+  let incoming:number|null=0,outgoing:number|null=0,inFiat:number|null=0,outFiat:number|null=0;
+  return [...new Map(rows.map(row=>[row.hash,row])).values()].sort((a,b)=>a.time-b.time||a.hash.localeCompare(b.hash)).map(row=>{
+    const date=new Date(row.time*1000).toISOString().slice(0,10),ada=adaHistory[date],unit=(crypto==='ADA'?ada:btcHistory[date]);
+    const amount=row.usd!==null&&Number.isFinite(unit)&&unit>0?row.usd/unit:null;
+    const rate=currency==='ADA'?Number.isFinite(ada)&&ada>0?1/ada:null:fiatRate(row.time,currency,fx);
+    const value=row.usd!==null&&rate!==null?row.usd*rate:null;
+    if(row.side==='buy'){incoming=addKnownValues(incoming,amount);inFiat=addKnownValues(inFiat,value);}
+    else{outgoing=addKnownValues(outgoing,amount);outFiat=addKnownValues(outFiat,value);}
+    return {time:row.time,incoming,outgoing,inFiat,outFiat};
+  });
+}
+export function transferComparison(facts:Fact[],entries:CexAddress[],adaHistory:Record<string,number>,btcHistory:Record<string,number>,fx:FxHistory,crypto:ComparisonCrypto,currency:ComparisonCurrency,additional:FiatTransfer[]=[]){
+  if(additional.length)return fiatTransferComparison([...cexTimeline(facts,entries,adaHistory),...additional],adaHistory,btcHistory,fx,crypto,currency);
   let incoming:number|null=0,outgoing:number|null=0,inFiat:number|null=0,outFiat:number|null=0;
   const add=(total:number|null,value:number|null)=>total===null||value===null?null:total+value;
   return cexTimeline(facts,entries,adaHistory).reverse().map(row=>{

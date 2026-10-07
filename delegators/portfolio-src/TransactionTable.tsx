@@ -27,9 +27,9 @@ export function TransactionDate({time}:{time:number}){
   return <>{date.toLocaleDateString()}<div className="small muted">{date.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</div></>;
 }
 
-export function TransactionTable({children}:{children:ReactNode}){
+export function TransactionTable({children,multiAsset=false}:{children:ReactNode;multiAsset?:boolean}){
   const display=usePortfolioCurrency(),t=usePortfolioText();
-  return <div className="history-table"><Table><TableHeader><TableRow>{['ADA Amount','USD/ADA Price','Fee','Wallets','Date'].map(label=><TableHead key={label} translate="no">{display?t(label).replace(label==='ADA Amount'?'ADA':'USD',display.currency):t(label)}</TableHead>)}</TableRow></TableHeader><TableBody>{children}</TableBody></Table></div>;
+  return <div className="history-table"><Table><TableHeader><TableRow>{[multiAsset?'Amount':'ADA Amount',multiAsset?'Unit price':'USD/ADA Price','Fee','Wallets','Date'].map(label=><TableHead key={label} translate="no">{display?t(label).replace(label==='ADA Amount'?'ADA':'USD',display.currency):t(label)}</TableHead>)}</TableRow></TableHeader><TableBody>{children}</TableBody></Table></div>;
 }
 
 export function TransactionWalletLabels({labels,inline=false}:{labels:string[];inline?:boolean}){

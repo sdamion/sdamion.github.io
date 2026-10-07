@@ -149,7 +149,7 @@ try{
  assert.match(await gain.locator('.portfolio-gain-result').innerText(),/€8,540\.61/,'gain/loss follows header currency with transfer-day FX');
  const gainTile=page.getByRole('button',{name:'Open CEX Transactions',exact:true});
  assert.equal(await gainTile.locator('.governance-card-detail').innerText(),'CEX Transactions','tile title stays stable');
- assert.deepEqual(await page.locator('main .portfolio-body > .portfolio-section .tdsp-tile-grid > *').evaluateAll(elements=>elements.map(element=>element.getAttribute('aria-label')||element.querySelector('.governance-card-detail')?.textContent)),['Open Cardano Wallets','Open Transactions','Open Assets','Network fees paid','Open CEX Transactions']);
+ assert.deepEqual(await page.locator('main .portfolio-body > .portfolio-section .tdsp-tile-grid > *').evaluateAll(elements=>elements.map(element=>element.getAttribute('aria-label')||element.querySelector('.governance-card-detail')?.textContent)),['Open Cardano Wallets','Open Ethereum Wallets','Open Transactions','Open Assets','Network fees paid','Open CEX Transactions']);
  assert.equal(await page.getByRole('button',{name:'Open Unknown ownership',exact:true}).count(),0);
  assert.match(await gainTile.innerText(),/€8,540\.61/,'gain tile and overlay use the same transfer-day FX totals');
  assert.match(await gain.locator('a[href="https://cardanoscan.io/transaction/incoming"]').locator('xpath=ancestor::tr').innerText(),/€22\.50/,'incoming transaction matches its historical summary value, not current FX');

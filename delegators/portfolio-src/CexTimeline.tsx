@@ -7,11 +7,13 @@ import type {ComparisonCrypto,ComparisonCurrency,FxHistory} from './transfer-com
 import {formatAdaNumber} from './portfolio-currency';
 import {usePortfolioText} from './use-portfolio-text';
 import {siteChartDefaults} from '../../shared/chart-defaults.js';
+import type {FiatTransfer} from './ethereum';
 const emptyRates={};
+const emptyTransfers:FiatTransfer[]=[];
 
-export function CexTimeline({facts,entries,history,btcHistory=emptyRates,fxHistory=emptyRates,crypto='ADA',currency='USD',busy,dateFrom='',dateTo=''}:{facts:Record<string,Fact>;entries:CexAddress[];history:Record<string,number>;btcHistory?:Record<string,number>;fxHistory?:FxHistory;crypto?:ComparisonCrypto;currency?:ComparisonCurrency;busy:boolean;dateFrom?:string;dateTo?:string}){
+export function CexTimeline({facts,entries,history,btcHistory=emptyRates,fxHistory=emptyRates,crypto='ADA',currency='USD',busy,dateFrom='',dateTo='',additional=emptyTransfers}:{facts:Record<string,Fact>;entries:CexAddress[];history:Record<string,number>;btcHistory?:Record<string,number>;fxHistory?:FxHistory;crypto?:ComparisonCrypto;currency?:ComparisonCurrency;busy:boolean;dateFrom?:string;dateTo?:string;additional?:FiatTransfer[]}){
   const t=usePortfolioText();
-  const points=useMemo(()=>transferComparison(Object.values(facts).filter(fact=>withinTransactionDates(fact.time,dateFrom,dateTo)),entries,history,btcHistory,fxHistory,crypto,currency),[facts,entries,history,btcHistory,fxHistory,crypto,currency,dateFrom,dateTo]);
+  const points=useMemo(()=>transferComparison(Object.values(facts).filter(fact=>withinTransactionDates(fact.time,dateFrom,dateTo)),entries,history,btcHistory,fxHistory,crypto,currency,additional.filter(row=>withinTransactionDates(row.time,dateFrom,dateTo))),[facts,entries,history,btcHistory,fxHistory,crypto,currency,dateFrom,dateTo,additional]);
   const canvas=useRef<HTMLCanvasElement>(null);
   const [error,setError]=useState('');
   useEffect(()=>{

@@ -42,6 +42,10 @@ import {portfolioSettings as localStorage,flushVault,storageMode} from './vault'
 import {CacheUploadProgress} from './CacheUploadProgress';
 import {CexTimeline} from './CexTimeline';
 import {useBtcHistory} from './use-btc-history';
+import {useEthereum} from './use-ethereum';
+import {EthereumWallets} from './EthereumWallets';
+import {EthereumTransaction} from './EthereumTransaction';
+import {ethereumTransactions,ethereumTransfers,ethereumTransfer,ethereumValue,ethereumFees,addKnownValues,weiToEth} from './ethereum';
 import {useFxHistory} from './use-fx-history';
 import {transferComparison,comparisonNet,fiatRate,comparisonResultLabel} from './transfer-comparison';
 import type {ComparisonCrypto,ComparisonFiat} from './transfer-comparison';
@@ -96,7 +100,10 @@ export default function Home({memberStake}:{memberStake:string}){
   const [paymentLinks,setPaymentLinks]=useState<PaymentLink[]>([]);
   const [missingCostsOnly,setMissingCostsOnly]=useState(false);
   const [selectedAsset,setSelectedAsset]=useState<string|null>(null);
-  const [section,setSection]=useState<'wallets'|'holdings'|'transactions'|'gain-loss'|null>(null);
+  const [section,setSection]=useState<'wallets'|'ethereum'|'holdings'|'transactions'|'gain-loss'|null>(null);
+  const ethereum=useEthereum(memberStake,ready);
+  const ethTransactions=useMemo(()=>ethereumTransactions(ethereum.data,ethereum.wallets),[ethereum.data,ethereum.wallets]);
+  const ethTransfers=useMemo(()=>ethereumTransfers(ethereum.data,ethereum.wallets,ethereum.exchanges),[ethereum.data,ethereum.wallets,ethereum.exchanges]);
   const [holdingsGroup,setHoldingsGroup]=useState<'FTs'|'NFTs'|null>(null);
   const {expanded:expandedPolicies,toggle:togglePolicy,reset:resetPolicies}=useTableGroups();
   const btc=useBtcHistory(section==='gain-loss');
@@ -392,8 +399,9 @@ export default function Home({memberStake}:{memberStake:string}){
   const assetDecimals=useMemo(()=>knownDecimals(snapshot?.infos||[],Object.values(classifiedFacts)),[snapshot,classifiedFacts]);
   const payments=useMemo(()=>mintPayments(Object.values(classifiedFacts),paymentLinks),[classifiedFacts,paymentLinks]);
   const cexDollars=useMemo(()=>cexUsdNetPosition(Object.values(classifiedFacts),cexAddresses,holdings.find(h=>h.id==='lovelace')?.raw||'0',snapshot?.history||{},liveQuote?.usd??snapshot?.adaUsd??null),[classifiedFacts,cexAddresses,holdings,snapshot,liveQuote]);
-  const comparison=useMemo(()=>transferComparison(Object.values(classifiedFacts),cexAddresses,snapshot?.history||{},btc.history,fx.history,comparisonCrypto,comparisonFiat).at(-1),[classifiedFacts,cexAddresses,snapshot,btc.history,fx.history,comparisonCrypto,comparisonFiat]);
-  const adaComparison=useMemo(()=>comparisonCrypto==='ADA'?comparison:transferComparison(Object.values(classifiedFacts),cexAddresses,snapshot?.history||{}, {},fx.history,'ADA',holdingsCurrency).at(-1),[comparisonCrypto,comparison,classifiedFacts,cexAddresses,snapshot,fx.history,holdingsCurrency]);
+  const ethHistoryReady=ethereum.wallets.every(w=>!!ethereum.data.accounts[w.address]);
+  const comparison=useMemo(()=>ethHistoryReady?transferComparison(Object.values(classifiedFacts),cexAddresses,snapshot?.history||{},btc.history,fx.history,comparisonCrypto,comparisonFiat,ethTransfers).at(-1):{time:0,incoming:null,outgoing:null,inFiat:null,outFiat:null},[ethHistoryReady,classifiedFacts,cexAddresses,snapshot,btc.history,fx.history,comparisonCrypto,comparisonFiat,ethTransfers]);
+  const adaComparison=useMemo(()=>comparisonCrypto==='ADA'||!ethHistoryReady?comparison:transferComparison(Object.values(classifiedFacts),cexAddresses,snapshot?.history||{}, {},fx.history,'ADA',holdingsCurrency,ethTransfers).at(-1),[ethHistoryReady,comparisonCrypto,comparison,classifiedFacts,cexAddresses,snapshot,fx.history,holdingsCurrency,ethTransfers]);
   const basis=useMemo(()=>snapshot?remainingBasis(Object.values(classifiedFacts),snapshot.history,payments.acquisitions):{},[snapshot,classifiedFacts,payments]);
   const purchases=useMemo(()=>purchaseAverages(Object.values(classifiedFacts),snapshot?.history||{},payments.acquisitions),[classifiedFacts,snapshot,payments]);
   const adaLive=useMemo(()=>snapshot?liveAdaBasis(Object.values(classifiedFacts),snapshot.history,holdings.find(h=>h.id==='lovelace')?.raw||'0',snapshot.complete):null,[snapshot,holdings,classifiedFacts]);
@@ -419,7 +427,9 @@ export default function Home({memberStake}:{memberStake:string}){
   const valued=included.filter(r=>r.value!==null),covered=included.filter(r=>r.pnl!==null);
   const ada=Number(holdings.find(h=>h.id==='lovelace')?.raw||0)/1e6;
   const currentAdaUsd=liveQuote?.usd??snapshot?.adaUsd??null;
-  const portfolioUsd=holdingTotal(included,snapshot?.complete===true);
+  const ethExcluded=overrides['ethereum:1:native']?.excluded===true;
+  const ethValue=ethereumValue(ethereum.data,ethereum.wallets);
+  const portfolioUsd=addKnownValues(holdingTotal(included,snapshot?.complete===true),ethExcluded?0:ethValue);
   const portfolioAda=portfolioUsd!==null&&currentAdaUsd!==null&&currentAdaUsd>0?portfolioUsd/currentAdaUsd:null;
   const holdingsRate=holdingsCurrency==='ADA'?null:fiatRate(Date.now()/1000,holdingsCurrency,fx.history);
   const holdingsValue=holdingsCurrency==='ADA'?portfolioAda:portfolioUsd!==null&&holdingsRate!==null?portfolioUsd*holdingsRate:null;
@@ -438,13 +448,25 @@ export default function Home({memberStake}:{memberStake:string}){
   const fees=useMemo(()=>portfolioFeeTotal(Object.values(snapshot?.facts||{}),trackedAddresses,swapAddresses),[snapshot,trackedAddresses,swapAddresses]);
   const loadedFacts=Object.keys(classifiedFacts).length;
   const transactionTotal=snapshot?.txs.length||0;
+  const allTransactionTotal=transactionTotal+new Set(ethTransactions.map(tx=>tx.hash)).size;
+  const ethFees=ethereumFees(ethereum.data,ethereum.wallets);
+  const feeUsd=addKnownValues(currentAdaUsd!==null?fees*currentAdaUsd:null,!ethereum.wallets.length?0:ethFees!==null&&ethereum.data.usd!==null?ethFees*ethereum.data.usd:null);
   const cexPending=snapshot?.txs.filter(tx=>!hasCounterpartyData(snapshot.facts[tx.tx_hash])).length||0;
   const cexUnresolved=Object.values(classifiedFacts).filter(f=>isCexTransaction(f,cexAddresses)&&!cexAdaTransfer(f,cexAddresses)).length;
   const analysedTotal=snapshot?.txs.filter(tx=>!!snapshot.facts[tx.tx_hash]).length||0;
   const progress=analysisProgress(busy,analysis,analysedTotal,transactionTotal);
   const eta=analysis&&counted!==null?remainingSeconds(analysis.started,clock,analysis.done,analysis.total):null;
   const refreshTiming=refreshStarted?`${busy?'Elapsed':'Refresh duration'}: ${durationLabel((clock-refreshStarted)/1000)}${busy?(eta!==null?` · Estimated analysis remaining: ${durationLabel(eta)}`:' · Estimating remaining time…'):''}`:'';
-  const shown=(snapshot?.txs||[]).filter(t=>{const f=classifiedFacts[t.tx_hash];return withinTransactionDates(t.block_time,dateFrom,dateTo)&&(section==='gain-loss'?matchesGainLossTransfer(f,cexAddresses,filter):(filter==='all'||(filter==='cex'?isCexTransaction(f,cexAddresses):f&&kindOf(f)===filter)))&&matchesTransaction(query,t.tx_hash,f,snapshot?.markets||{},displayWallets);});
+  const cardanoShown=(snapshot?.txs||[]).filter(t=>{const f=classifiedFacts[t.tx_hash];return withinTransactionDates(t.block_time,dateFrom,dateTo)&&(section==='gain-loss'?matchesGainLossTransfer(f,cexAddresses,filter):(filter==='all'||(filter==='cex'?isCexTransaction(f,cexAddresses):f&&kindOf(f)===filter)))&&matchesTransaction(query,t.tx_hash,f,snapshot?.markets||{},displayWallets);});
+  const ethereumShown=ethTransactions.filter(tx=>{
+    const transfer=ethereumTransfer(tx,ethereum.wallets,ethereum.exchanges),own=new Set(ethereum.wallets.map(w=>w.address));
+    const kind=own.has(tx.from)&&own.has(tx.to)?'internal':own.has(tx.from)?'send':'receive';
+    const matches=section==='gain-loss'?!!transfer&&(filter==='all'||filter===(transfer.side==='buy'?'in':'out')):filter==='all'||filter===kind||filter==='cex'&&!!transfer;
+    const names=[...ethereum.wallets,...ethereum.exchanges].filter(w=>w.address===tx.from||w.address===tx.to).map(w=>w.name);
+    return matches&&withinTransactionDates(tx.time,dateFrom,dateTo)&&[tx.hash,tx.from,tx.to,'ETH',...names].join(' ').toLowerCase().includes(query.trim().toLowerCase());
+  });
+  const shown=[...cardanoShown.map(tx=>({chain:'cardano' as const,time:tx.block_time,tx})),...ethereumShown.map(tx=>({chain:'ethereum' as const,time:tx.time,tx}))].sort((a,b)=>b.time-a.time);
+  const visibleEthIds=new Set(ethereumShown.map(tx=>tx.id));
   const currentPage=transactionPage(page,shown.length).page;
   useEffect(()=>{if(page!==currentPage)setPage(currentPage);},[page,currentPage]);
 
@@ -454,24 +476,32 @@ export default function Home({memberStake}:{memberStake:string}){
   const exchangeForm=<CexAddresses entries={cexAddresses} owned={ownedAddresses} onChange={saveCexAddresses}/>;
   const swapForm=<SwapWallets inline wallets={wallets} groups={snapshot?.swapGroups} onChange={saveWallets}/>;
   return <PortfolioCurrencyContext.Provider value={currencyDisplay}><main className="member-portfolio"><PortfolioQuickstart stake={memberStake} status={status} wallets={walletForm} exchanges={exchangeForm} swap={swapForm}/><div className="portfolio-body"><div className="section-heading" aria-label="Portfolio refresh">
-    <PortfolioRefresh onRefresh={()=>void refresh()} disabled={busy||!ready} busy={busy} currencyControl={<select className="governance-vote-secondary" aria-label={t('Comparison currency')} value={holdingsCurrency} onChange={event=>setHoldingsCurrency(event.target.value as 'ADA'|ComparisonFiat)}><option value="ADA">ADA</option><option value="USD">USD ($)</option><option value="EUR">EUR (€)</option><option value="JPY">JPY (¥)</option></select>}/>
+    <PortfolioRefresh onRefresh={()=>{void refresh();void ethereum.refresh();}} disabled={busy||ethereum.busy||!ready} busy={busy||ethereum.busy} currencyControl={<select className="governance-vote-secondary" aria-label={t('Comparison currency')} value={holdingsCurrency} onChange={event=>setHoldingsCurrency(event.target.value as 'ADA'|ComparisonFiat)}><option value="ADA">ADA</option><option value="USD">USD ($)</option><option value="EUR">EUR (€)</option><option value="JPY">JPY (¥)</option></select>}/>
     <div className="portfolio-section">
       {!initialising&&!(busy&&analysis)&&<p role="status" className="status-line">{status}</p>}
       {error&&<p role="alert" className="message error">{error}</p>}{notice&&<p className="message">{notice}</p>}
+      {ethereum.error&&<p translate="no" role="alert" className="message error">{t(ethereum.error)}</p>}
+      {ethereum.busy&&<p translate="no" role="status" className="status-line">{t(ethereum.status)}</p>}
     </div>
   </div>
     <section className="portfolio-section"><div className="tdsp-tile-grid">
       <MenuTile title="Cardano Wallets" value={refreshCounts?`${num(refreshCounts.active,0)} / ${num(refreshCounts.total,0)} active`:initialising?'Initialising':'— / — active'} loading={initialising} loadingLabel={status} onOpen={()=>setSection('wallets')}/>
-      <MenuTile title="Transactions" value={snapshot?num(transactionTotal,0):'—'} analysis={snapshot?{done:progress.done,total:progress.total,counting:counting!==null,busy,status:transactionStatus}:undefined} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('transactions');}}>
+      <MenuTile title="Ethereum Wallets" value={String(ethereum.wallets.length)} onOpen={()=>setSection('ethereum')}/>
+      <MenuTile title="Transactions" value={snapshot?num(allTransactionTotal,0):'—'} analysis={snapshot?{done:progress.done,total:progress.total,counting:counting!==null,busy,status:transactionStatus}:undefined} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('transactions');}}>
         {storageMode()==='remote'?<CacheUploadProgress onRetry={()=>void flushVault().catch(()=>{})}/>:cacheNotice&&<p role="status" className="tdsp-bar-legend">{cacheNotice}</p>}
       </MenuTile>
       <MenuTile title="Assets" value={holdingsDisplay} onOpen={()=>{resetPolicies();setHoldingsGroup(null);setSection('holdings');}}>
-        <p className="small muted">{t('{done} / {total} assets valued',{done:valued.length,total:included.length})}{excludedCount?' · '+t('{count} excluded',{count:excludedCount}):''}</p>
+        <p className="small muted">{t('{done} / {total} assets valued',{done:valued.length+(ethereum.wallets.length&&!ethExcluded&&ethValue!==null?1:0),total:included.length+(ethereum.wallets.length&&!ethExcluded?1:0)})}{excludedCount+(ethereum.wallets.length&&ethExcluded?1:0)?' · '+t('{count} excluded',{count:excludedCount+(ethereum.wallets.length&&ethExcluded?1:0)}):''}</p>
         {(holdingsCurrency==='EUR'||holdingsCurrency==='JPY')&&holdingsValue===null&&<p className="small muted" role="status">{t(fx.status||'Historical exchange rates unavailable')}</p>}
       </MenuTile>
-      <Metric label="Network fees paid" value={loadedFacts||snapshot?.complete?formatPortfolioAda(fees,currencyDisplay):'Waiting for transaction details'}/>
-      {cexAddresses.length>0&&<Metric label="CEX Transactions" openLabel="CEX Transactions" value={snapshot?tileGainDisplay:'Waiting for wallet balances'} tone={tileGain===null?'':tileGain<0?'negative':'positive'} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('gain-loss');}}/>}
+      <Metric label="Network fees paid" value={loadedFacts||snapshot?.complete?ethereum.wallets.length?formatPortfolioUsd(feeUsd,currencyDisplay):formatPortfolioAda(fees,currencyDisplay):'Waiting for transaction details'}/>
+      {(cexAddresses.length>0||ethereum.exchanges.length>0)&&<Metric label="CEX Transactions" openLabel="CEX Transactions" value={snapshot?tileGainDisplay:'Waiting for wallet balances'} tone={tileGain===null?'':tileGain<0?'negative':'positive'} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('gain-loss');}}/>}
     </div></section>
+    {section==='ethereum'&&<AssetOverlay id="portfolio-ethereum-overlay" name="Ethereum Wallets" onClose={()=>setSection(null)}>
+      <button type="button" className="governance-vote-secondary" disabled={ethereum.busy} onClick={()=>void ethereum.refresh()}>{t('Refresh')}</button>
+      <EthereumWallets wallets={ethereum.wallets} data={ethereum.data} onChange={ethereum.saveWallets}/>
+      <EthereumWallets wallets={ethereum.exchanges} data={ethereum.data} exchanges owned={ethereum.wallets} onChange={ethereum.saveExchanges}/>
+    </AssetOverlay>}
     {section==='wallets'&&<AssetOverlay id="portfolio-wallets-overlay" name="Cardano Wallets" onClose={()=>setSection(null)}>
     <div className="portfolio-section">
       <button type="button" className="governance-vote-secondary" disabled={busy||!ready} onClick={()=>void refresh(true)}>Rescan all wallets</button>
@@ -495,8 +525,9 @@ export default function Home({memberStake}:{memberStake:string}){
     <section className="portfolio-section">
       {!holdingsGroup&&<div className="tdsp-tile-grid">{(['FTs','NFTs'] as const).map(group=>{
         const assets=rows.filter(row=>assetGroup(row.id)===group),active=includedAssets(assets,overrides),priced=active.filter(row=>row.value!==null);
-        const total=holdingTotal(active,snapshot?.complete===true);
-        return <MenuTile key={group} title={group} value={formatPortfolioUsd(total,currencyDisplay)} onOpen={()=>setHoldingsGroup(group)}><p className="small muted">{t('{done} / {total} assets valued',{done:priced.length,total:active.length})}{assets.length>active.length?' · '+t('{count} excluded',{count:assets.length-active.length}):''}</p></MenuTile>;
+        const total=addKnownValues(holdingTotal(active,snapshot?.complete===true),group==='FTs'&&!ethExcluded?ethValue:0);
+        const ethCount=group==='FTs'&&ethereum.wallets.length?1:0;
+        return <MenuTile key={group} title={group} value={formatPortfolioUsd(total,currencyDisplay)} onOpen={()=>setHoldingsGroup(group)}><p className="small muted">{t('{done} / {total} assets valued',{done:priced.length+(ethCount&&!ethExcluded&&ethValue!==null?1:0),total:active.length+(ethCount&&!ethExcluded?1:0)})}{assets.length-active.length+(ethCount&&ethExcluded?1:0)?' · '+t('{count} excluded',{count:assets.length-active.length+(ethCount&&ethExcluded?1:0)}):''}</p></MenuTile>;
       })}</div>}
       {holdingsGroup&&<>
       <button type="button" className="governance-vote-secondary" disabled={busy||!snapshot} onClick={()=>void refreshAssetPurchases()}>Refresh all purchase data</button>
@@ -504,7 +535,16 @@ export default function Home({memberStake}:{memberStake:string}){
       {error&&<p role="alert" className="negative">{error}</p>}
       <label className="small"><input type="checkbox" checked={missingCostsOnly} onChange={e=>setMissingCostsOnly(e.target.checked)}/> Show holdings with missing purchase cost ({valuationCoverage(groupIncluded).missingCost})</label>
       {payments.errors.length>0&&<p role="status" className="negative">Some saved payment links cannot be applied to the loaded history. Open the asset image to review its purchase payments.</p>}
-      {groupRows.length>0&&<Table className="portfolio-holdings-table"><TableHeader><TableRow>{['Asset','Balance','Price · USD','Value · USD','Average buy · USD','Gain / loss','Exclude'].map(label=><TableHead translate="no" key={label}>{t(label).replace('USD',holdingsCurrency)}</TableHead>)}</TableRow></TableHeader><TableBody>{holdingEntries.map(entry=>{
+      {(groupRows.length>0||holdingsGroup==='FTs'&&ethereum.wallets.length>0)&&<Table className="portfolio-holdings-table"><TableHeader><TableRow>{['Asset','Balance','Price · USD','Value · USD','Average buy · USD','Gain / loss','Exclude'].map(label=><TableHead translate="no" key={label}>{t(label).replace('USD',holdingsCurrency)}</TableHead>)}</TableRow></TableHeader><TableBody>
+      {holdingsGroup==='FTs'&&ethereum.wallets.length>0&&<TableRow>
+        <TableCell><button type="button" className="governance-vote-secondary" onClick={()=>setSection('ethereum')}>Ethereum · ETH</button></TableCell>
+        <TableCell translate="no">{ethereum.wallets.every(w=>ethereum.data.accounts[w.address])?num(ethereum.wallets.reduce((sum,w)=>sum+weiToEth(ethereum.data.accounts[w.address].balanceWei),0)):'—'}</TableCell>
+        <TableCell translate="no">{formatPortfolioUsd(ethereum.data.usd,currencyDisplay)}</TableCell>
+        <TableCell translate="no">{formatPortfolioUsd(ethValue,currencyDisplay)}</TableCell>
+        <TableCell>{t('Ethereum cost basis is not calculated yet.')}</TableCell><TableCell>—</TableCell>
+        <TableCell><AssetExclusionToggle compact name="Ethereum" excluded={ethExcluded} onChange={excluded=>excludeAsset('ethereum:1:native',excluded)}/></TableCell>
+      </TableRow>}
+      {holdingEntries.map(entry=>{
         if('policy' in entry){
           const active=includedAssets(entry.assets,overrides),priced=active.filter(row=>row.value!==null),expanded=expandedPolicies.has(entry.policy);
           const total=holdingTotal(active,snapshot?.complete===true);
@@ -528,7 +568,7 @@ export default function Home({memberStake}:{memberStake:string}){
         <TableCell>{r.id==='lovelace'?<><strong>{adaLive?.averageReceiptUsd!=null?(adaLive.provisional?'≈ ':'')+formatPortfolioUsd(adaLive.averageReceiptUsd,currencyDisplay,6):'—'}</strong><div className="small muted">All incoming ADA · weighted receipt-date prices{adaLive?.provisional?' · Partial history':''}</div>{!!adaLive?.missingReceiptAda&&<div className="small muted">Historical prices missing for {num(adaLive.missingReceiptAda)} ADA</div>}{r.cost!==null?<div className="small muted">Remaining cost for gain/loss: {usd(r.cost)}</div>:<div className="small muted">{adaBasisStatus}</div>}</>:<><strong>{r.buyAverage!==null?usd(r.buyAverage):'Unavailable'}</strong><div className="small muted">{parseAmount(overrides[r.id]?.average)!==null?'Your average cost':r.buyAverage!==null?'Known purchases · weighted historical USD cost':r.qty===null?'Token decimals required for per-unit price':'Purchase cost or historical USD price missing'}</div><details><summary translate="no" className="small">{t('Set average buy price')} (USD)</summary><Input className="cost-input" aria-label={`Average buy price in USD for ${r.name}`} type="number" min="0" step="any" value={overrides[r.id]?.average||''} onChange={e=>updateOverride(r.id,'average',e.target.value)} placeholder="Use calculated purchase cost"/></details></>}</TableCell>
         <TableCell className={overrides[r.id]?.excluded||r.pnl===null?'muted':r.pnl>=0?'positive':'negative'}>{r.pnl===null?'—':((r.id==='lovelace'&&provisional)||r.estimatedPurchaseCost?'≈ ':'')+signed(r.pnl)}{r.estimatedPurchaseCost&&<div className="small muted">Known purchase average · estimated cost</div>}{r.pnl===null&&r.value!==null&&<div className="small muted">Purchase cost required for gain / loss</div>}{r.pnl!==null&&r.cost!==null&&r.cost>0&&<div className="small">{num(r.pnl/r.cost*100,2)}%{r.id==='lovelace'&&provisional?' · provisional':''}</div>}</TableCell>
         <TableCell>{r.id!=='lovelace'&&<AssetExclusionToggle compact name={r.name} excluded={overrides[r.id]?.excluded===true} onChange={excluded=>excludeAsset(r.id,excluded)}/>}</TableCell>
-      </TableRow>;})}</TableBody></Table>}{!groupRows.length&&<p className="empty">{busy?'Fetching balances…':'No unspent holdings at the tracked addresses.'}</p>}
+      </TableRow>;})}</TableBody></Table>}{!groupRows.length&&!(holdingsGroup==='FTs'&&ethereum.wallets.length)&&<p className="empty">{busy?'Fetching balances…':'No unspent holdings at the tracked addresses.'}</p>}
       <p className="small muted table-note">Remaining cost uses the same calculation during and after refresh. ADA history must reconcile with the wallet balance; token lots must match the current holding. Missing history or receipt prices are not treated as zero. Values update as new facts and prices arrive, not because refresh finishes. Sends, spends and fees remove proportional ADA cost; internal transfers never reset the average. Daily prices approximate receipt-time prices. This is your receipt-price benchmark, not an exchange execution price or tax calculation. Token costs use FIFO trades, linked mint payments or your entry. Performance excludes realised gains; current holdings already reflect fees.</p>
       </>}
     </section>
@@ -540,11 +580,12 @@ export default function Home({memberStake}:{memberStake:string}){
       <label className="small">{t('Crypto')}<select aria-label={t('Comparison cryptocurrency')} value={comparisonCrypto} onChange={event=>setComparisonCrypto(event.target.value as ComparisonCrypto)}><option value="ADA">ADA</option><option value="BTC">BTC</option></select></label>
     </div>
     <div className="tdsp-chart-overview portfolio-gain-overview">
-    <CexTimeline facts={Object.fromEntries(shown.map(tx=>[tx.tx_hash,classifiedFacts[tx.tx_hash]]))} entries={cexAddresses} history={snapshot?.history||{}} btcHistory={btc.history} fxHistory={fx.history} crypto={comparisonCrypto} currency={comparisonFiat} busy={busy} dateFrom={dateFrom} dateTo={dateTo}/>
+    <CexTimeline facts={Object.fromEntries(cardanoShown.map(tx=>[tx.tx_hash,classifiedFacts[tx.tx_hash]]))} entries={cexAddresses} history={snapshot?.history||{}} btcHistory={btc.history} fxHistory={fx.history} crypto={comparisonCrypto} currency={comparisonFiat} busy={busy||ethereum.busy} dateFrom={dateFrom} dateTo={dateTo} additional={ethTransfers.filter(row=>visibleEthIds.has(row.hash))}/>
     <section className="portfolio-section tdsp-chart-summary portfolio-gain-summary" aria-label="ADA Gains/Loss breakdown">
       {(dateFrom||dateTo||query||filter!=='all')&&<p className="small muted">Gain/loss totals cover all loaded history and current wallet balances. Filters apply to the transfer graph and transaction list below.</p>}
+      {ethereum.wallets.length>0&&<p translate="no" className="small muted">{t('Combined Cardano and Ethereum CEX totals. ADA/BTC amounts are transfer-day equivalents, not summed coin quantities.')}</p>}
       {snapshot&&<Table variant="comparison" className="portfolio-gain-comparison">
-        <TableHeader><TableRow><TableHead translate="no">{comparisonCrypto} IN</TableHead><TableHead translate="no">{comparisonCrypto} OUT</TableHead></TableRow></TableHeader>
+        <TableHeader><TableRow><TableHead translate="no">{ethereum.wallets.length?'CEX':comparisonCrypto} IN</TableHead><TableHead translate="no">{ethereum.wallets.length?'CEX':comparisonCrypto} OUT</TableHead></TableRow></TableHeader>
         <TableBody><TableRow>
           <TableCell><ComparisonAmount amount={comparison?.incoming??null} value={comparison?.inFiat??null} crypto={comparisonCrypto} currency={comparisonFiat} tone=""/></TableCell>
           <TableCell><ComparisonAmount amount={comparison?.outgoing??null} value={comparison?.outFiat??null} crypto={comparisonCrypto} currency={comparisonFiat} tone="positive"/></TableCell>
@@ -558,9 +599,9 @@ export default function Home({memberStake}:{memberStake:string}){
       {(comparisonFiat==='EUR'||comparisonFiat==='JPY')&&<p className="small muted" role="status">{fx.status||'Historical FX rates use the latest available business day; wallet value uses the current rate.'}</p>}
       <p className="small muted">{snapshot?.complete&&!cexPending&&!cexUnresolved?'':'Partial · '}Transfer-day prices plus current wallet value; not exchange execution prices.{cexPending?` ${num(cexPending,0)} transactions need CEX address checks.`:''}{cexUnresolved?` ${num(cexUnresolved,0)} mixed CEX transactions excluded.`:''}{cexDollars.missingPrices?` ${cexDollars.missingPrices} transfers have no historical USD price.`:''}</p>
     </section></div></>}
-    <TransactionFilters id={section} options={section==='gain-loss'?{all:'All',in:'ADA IN',out:'ADA OUT'}:undefined} query={query} onQuery={value=>{setQuery(value);setFilter('all');}} filter={filter} onFilter={setFilter} dateFrom={dateFrom} dateTo={dateTo} onDates={(from,to)=>{setDateFrom(from);setDateTo(to);}} pagination={<TransactionPagination position="top" page={currentPage} count={shown.length} onPage={setPage}/>}/>
+    <TransactionFilters id={section} options={section==='gain-loss'?{all:'All',in:ethereum.wallets.length?'CEX IN':'ADA IN',out:ethereum.wallets.length?'CEX OUT':'ADA OUT'}:undefined} query={query} onQuery={value=>{setQuery(value);setFilter('all');}} filter={filter} onFilter={setFilter} dateFrom={dateFrom} dateTo={dateTo} onDates={(from,to)=>{setDateFrom(from);setDateTo(to);}} pagination={<TransactionPagination position="top" page={currentPage} count={shown.length} onPage={setPage}/>}/>
     <section className="portfolio-section">
-      <TransactionTable>{shown.slice(currentPage*100,(currentPage+1)*100).map(t=>section==='gain-loss'?<GainLossTransaction key={t.tx_hash} tx={t} fact={classifiedFacts[t.tx_hash]} wallets={displayWallets} entries={cexAddresses} history={snapshot?.history||{}}/>:<Transaction key={t.tx_hash} tx={t} fact={classifiedFacts[t.tx_hash]} wallets={displayWallets} markets={snapshot?.markets||{}} history={snapshot?.history||{}} cexAddresses={cexAddresses} swapAddresses={swapAddresses}/>)}</TransactionTable>{!shown.length&&<p className="empty">{busy?'Loading transactions…':'No matching transactions.'}</p>}
+      <TransactionTable multiAsset={ethereum.wallets.length>0}>{shown.slice(currentPage*100,(currentPage+1)*100).map(row=>row.chain==='ethereum'?<EthereumTransaction key={row.tx.id} tx={row.tx} wallets={ethereum.wallets} exchanges={ethereum.exchanges} history={ethereum.data.history} adaHistory={snapshot?.history||{}}/>:section==='gain-loss'?<GainLossTransaction key={row.tx.tx_hash} tx={row.tx} fact={classifiedFacts[row.tx.tx_hash]} wallets={displayWallets} entries={cexAddresses} history={snapshot?.history||{}}/>:<Transaction key={row.tx.tx_hash} tx={row.tx} fact={classifiedFacts[row.tx.tx_hash]} wallets={displayWallets} markets={snapshot?.markets||{}} history={snapshot?.history||{}} cexAddresses={cexAddresses} swapAddresses={swapAddresses}/>)}</TransactionTable>{!shown.length&&<p className="empty">{busy?'Loading transactions…':'No matching transactions.'}</p>}
       <TransactionPagination position="bottom" page={currentPage} count={shown.length} onPage={setPage}/>
       {section==='gain-loss'?<p className="small muted table-note">USD amounts use daily UTC transfer-date prices. The Fee column shows the total on-chain fee; paid-fee totals include only fees attributable to your wallet.</p>:<p className="small muted table-note">Internal transfers require all inputs and outputs to belong to tracked addresses. Their net change is only the fee. Mixed transactions remain separate. Buy/sell labels are inferred from opposing ADA and token changes; multi-step DEX orders may need further reconciliation.</p>}
     </section></AssetOverlay></PortfolioCurrencyContext.Provider>}
