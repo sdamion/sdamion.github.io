@@ -179,6 +179,11 @@ try{
   const savedWallets=await page.evaluate(stake=>JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-wallets:'+stake)),stake);
   assert.equal(savedWallets.length,2);assert.deepEqual(savedWallets.find(w=>w.address===swapAddress),{address:swapAddress,name:'ETH Swap',group:'swap'});
   assert.equal(savedWallets.find(w=>w.address===address).name,'ETH Savings','adding a swap retains regular wallets');
+  await page.waitForFunction(()=>document.querySelector('main')?.textContent.includes('Partial · waiting for remaining wallet data or prices'));
+  assert.match(await assets.innerText(),/2,050\.00/,'an unscanned ETH wallet does not erase available holdings');
+  assert.match(await cex.innerText(),/800\.00/,'available CEX result stays visible with a pending ETH wallet');
+  assert.match(await fees.innerText(),/\$0\.42/,'known gas and Cardano fees remain visible while another ETH wallet is pending');
+  assert.match(await cex.innerText(),/Partial/,'incomplete totals are explicitly labelled');
   await page.evaluate(()=>window.reopenPortfolio());
   await walletsTile.click();await page.getByRole('button',{name:'Open DEX / CEX & Swap',exact:true}).click();
   assert.equal(await swaps.getByRole('textbox',{name:'Swap name',exact:true}).last().inputValue(),'ETH Swap','swap wallets restore in the shared name editor');

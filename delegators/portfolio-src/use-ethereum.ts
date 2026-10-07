@@ -32,9 +32,9 @@ export function useEthereum(stake:string,ready:boolean){
       const {block}=await request<{block:number}>({action:'head'});
       if(!Number.isSafeInteger(block)||block<0)throw new Error('Invalid Ethereum block response.');
       const next: EthereumData={...current.current,accounts:Object.fromEntries(wallets.flatMap(wallet=>current.current.accounts[wallet.address]?[[wallet.address,current.current.accounts[wallet.address]]]:[])),history:{...current.current.history}};
-      async function persist(value:EthereumData){
+      async function persist(value:EthereumData,quote=false){
         signal.throwIfAborted();
-        const saved={...value,accounts:{...value.accounts},history:{...value.history},updated:new Date().toISOString()};
+        const saved={...value,usd:quote?value.usd:current.current.usd,accounts:{...value.accounts},history:{...value.history},updated:new Date().toISOString()};
         portfolioSettings.setItem(dataKey,JSON.stringify(saved));current.current=saved;setData(saved);
         await flushVault();signal.throwIfAborted();
       }
@@ -73,15 +73,15 @@ export function useEthereum(stake:string,ready:boolean){
       if(!quote.ok)throw new Error('Current Ethereum price unavailable.');
       const {usd}=await quote.json();
       if(typeof usd!=='number'||!Number.isFinite(usd)||usd<=0)throw new Error('Current Ethereum price unavailable.');
-      priced.usd=usd;await persist(priced);setStatus('');
+      priced.usd=usd;await persist(priced,true);setStatus('');
     }catch(e){if(!signal.aborted){setError(e instanceof Error?e.message:'Ethereum refresh failed. Saved data is retained.');setStatus('');}}
     finally{if(controller.current===control)setBusy(false);}
   },[ready,loaded,scope,stake]);
   useEffect(()=>{void refresh();return()=>controller.current?.abort();},[refresh]);
   useEffect(()=>{
-    if(!loaded||!wallets.length||busy)return;
+    if(!ready||!loaded||!wallets.length)return;
     const control=new AbortController();let pending=false;
-    const timer=setInterval(async()=>{
+    const updateQuote=async()=>{
       if(pending)return;pending=true;
       try{
         const response=await portfolioFetch('/ethereum-price',{signal:control.signal});
@@ -89,11 +89,14 @@ export function useEthereum(stake:string,ready:boolean){
         const {usd}=await response.json();
         if(control.signal.aborted||typeof usd!=='number'||!Number.isFinite(usd)||usd<=0)return;
         const next={...current.current,usd};
+        portfolioSettings.setItem(dataKey,JSON.stringify(next));
         current.current=next;setData(next);
       }catch{/* Retain the last successful quote. */}finally{pending=false;}
-    },60000);
+    };
+    void updateQuote();
+    const timer=setInterval(()=>void updateQuote(),60000);
     return()=>{clearInterval(timer);control.abort();};
-  },[loaded,scope,busy,stake]);
+  },[ready,loaded,scope,stake]);
   function saveWallets(next:EthereumWallet[]){
     const normalized=ethereumWallets(next);
     if(next.length>20){setError('A maximum of 20 Ethereum addresses can be added.');return false;}

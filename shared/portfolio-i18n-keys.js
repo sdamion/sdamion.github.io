@@ -1813,6 +1813,7 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
   , ["Internal cross-chain swap", "portfolio_text_internal_cross_chain_swap"]
   , ["Save Swap name", "portfolio_text_save_swap_name"]
   , ["Could not save Swap name.", "portfolio_text_save_swap_name_failed"]
+  , ["Partial · waiting for remaining wallet data or prices", "portfolio_text_partial_wallet_totals"]
   , ["Add only Ethereum Swap wallets you own. Balances and fees are included; transfers between your own wallets are excluded from CEX IN/OUT.", "portfolio_text_eth_swap_help"]
   , ["Miner wallet: {name}", "portfolio_text_eth_miner_label"]
   , ["Mining receipt", "portfolio_text_eth_mining_receipt"]

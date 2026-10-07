@@ -45,8 +45,9 @@ import {useBtcHistory} from './use-btc-history';
 import {useEthereum} from './use-ethereum';
 import {EthereumWallets} from './EthereumWallets';
 import {EthereumTransaction} from './EthereumTransaction';
-import {ethereumTransactions,ethereumTransactionCount,ethereumTransfers,ethereumTransfer,ethereumValue,ethereumFees,addKnownValues,weiToEth} from './ethereum';
+import {ethereumTransactions,ethereumTransactionCount,ethereumTransfers,ethereumTransfer,ethereumValue,weiToEth} from './ethereum';
 import {matchCrossChainSwaps} from './cross-chain-swaps';
+import {availableTotal,ethereumAvailableTotals,availableCexResult} from './portfolio-totals';
 import {useFxHistory} from './use-fx-history';
 import {transferComparison,nativeTransferTotals,comparisonNet,fiatRate,comparisonResultLabel} from './transfer-comparison';
 import type {ComparisonCrypto,ComparisonFiat} from './transfer-comparison';
@@ -67,7 +68,7 @@ import {WalletCard} from './WalletAddresses';
 import {refreshExcludedAddresses,walletRefreshCounts} from './member';
 import {validByronAddress} from './byron-address';
 import {exchangeExcludedAddresses,resolveSwapGroups,excludeInternalExchanges,swapOwnershipScope,swapAddressSet,isSwapTransaction} from './swap-wallets';
-import {normalizeCexAddresses,cexAdjustedFact,isCexTransaction,cexAdaTransfer,cexUsdNetPosition,transactionExchangeWallets} from './cex';
+import {normalizeCexAddresses,cexAdjustedFact,isCexTransaction,cexAdaTransfer,cexUsdNetPosition,cexTimeline,transactionExchangeWallets} from './cex';
 import type {CexAddress} from './cex';
 import {durationLabel,remainingSeconds,analysisProgress} from './progress';
 import {memberWallets,resolveWalletGroups,validWalletAddress,validStakeAddress,walletTransactionCount} from './member';
@@ -406,7 +407,6 @@ export default function Home({memberStake}:{memberStake:string}){
   const ethHistoryReady=ethereum.wallets.every(w=>!!ethereum.data.accounts[w.address]);
   const ethCexTotals=useMemo(()=>ethHistoryReady?nativeTransferTotals(ethTransfers,snapshot?.history||{},fx.history,comparisonFiat):{incoming:null,outgoing:null,inFiat:null,outFiat:null},[ethHistoryReady,ethTransfers,snapshot,fx.history,comparisonFiat]);
   const comparison=useMemo(()=>ethHistoryReady?transferComparison(Object.values(cexFacts),cexAddresses,snapshot?.history||{},btc.history,fx.history,comparisonCrypto,comparisonFiat,ethTransfers,ethereum.data.history).at(-1):{time:0,incoming:null,outgoing:null,inFiat:null,outFiat:null},[ethHistoryReady,cexFacts,cexAddresses,snapshot,btc.history,fx.history,comparisonCrypto,comparisonFiat,ethTransfers,ethereum.data.history]);
-  const adaComparison=useMemo(()=>comparisonCrypto==='ADA'||!ethHistoryReady?comparison:transferComparison(Object.values(cexFacts),cexAddresses,snapshot?.history||{}, {},fx.history,'ADA',holdingsCurrency,ethTransfers).at(-1),[ethHistoryReady,comparisonCrypto,comparison,cexFacts,cexAddresses,snapshot,fx.history,holdingsCurrency,ethTransfers]);
   const basis=useMemo(()=>snapshot?remainingBasis(Object.values(classifiedFacts),snapshot.history,payments.acquisitions):{},[snapshot,classifiedFacts,payments]);
   const purchases=useMemo(()=>purchaseAverages(Object.values(classifiedFacts),snapshot?.history||{},payments.acquisitions),[classifiedFacts,snapshot,payments]);
   const adaLive=useMemo(()=>snapshot?liveAdaBasis(Object.values(classifiedFacts),snapshot.history,holdings.find(h=>h.id==='lovelace')?.raw||'0',snapshot.complete):null,[snapshot,holdings,classifiedFacts]);
@@ -434,7 +434,10 @@ export default function Home({memberStake}:{memberStake:string}){
   const currentAdaUsd=liveQuote?.usd??snapshot?.adaUsd??null;
   const ethExcluded=overrides['ethereum:1:native']?.excluded===true;
   const ethValue=ethereumValue(ethereum.data,ethereum.wallets);
-  const portfolioUsd=addKnownValues(holdingTotal(included,snapshot?.complete===true),ethExcluded?0:ethValue);
+  const ethAvailable=ethereumAvailableTotals(ethereum.data,ethereum.wallets);
+  const availableAssets=availableTotal([holdingTotal(included,snapshot?.complete===true),...(!ethExcluded&&ethereum.wallets.length?[ethAvailable.value]:[])]);
+  const portfolioUsd=availableAssets.value;
+  const portfolioPartial=availableAssets.partial||included.some(row=>row.value===null)||!ethExcluded&&ethAvailable.partial;
   const portfolioAda=portfolioUsd!==null&&currentAdaUsd!==null&&currentAdaUsd>0?portfolioUsd/currentAdaUsd:null;
   const holdingsRate=holdingsCurrency==='ADA'?null:fiatRate(Date.now()/1000,holdingsCurrency,fx.history);
   const holdingsValue=holdingsCurrency==='ADA'?portfolioAda:portfolioUsd!==null&&holdingsRate!==null?portfolioUsd*holdingsRate:null;
@@ -443,8 +446,8 @@ export default function Home({memberStake}:{memberStake:string}){
   const usd=(value:number)=>formatPortfolioUsd(value,currencyDisplay);
   const signed=(value:number)=>usd(Math.abs(value));
   const holdingsDisplay=formatPortfolioUsd(portfolioUsd,currencyDisplay);
-  const adaResult=comparisonNet(adaComparison,ada,currentAdaUsd,{},fx.history,'ADA',holdingsCurrency,Date.now()/1000,portfolioUsd);
-  const tileGain=holdingsCurrency==='ADA'?adaResult.amount:adaResult.fiat;
+  const availableCex=availableCexResult([...cexTimeline(Object.values(cexFacts),cexAddresses,snapshot?.history||{}),...ethTransfers],portfolioUsd,holdingsCurrency,currentAdaUsd,snapshot?.history||{},fx.history,Date.now()/1000);
+  const tileGain=availableCex.value;
   const tileGainDisplay=(tileGain!==null&&tileGain<0?'− ':'')+formatPortfolioAmount(tileGain===null?null:Math.abs(tileGain),currencyDisplay);
   const comparisonResult=comparisonNet(comparison,ada,currentAdaUsd,btc.history,fx.history,comparisonCrypto,comparisonFiat,Date.now()/1000,portfolioUsd,ethereum.data.usd);
   const provisional=!snapshot?.complete&&covered.length>0;
@@ -454,8 +457,10 @@ export default function Home({memberStake}:{memberStake:string}){
   const loadedFacts=Object.keys(classifiedFacts).length;
   const transactionTotal=snapshot?.txs.length||0;
   const allTransactionTotal=transactionTotal+ethereumTransactionCount(ethereum.data,ethereum.wallets);
-  const ethFees=ethereumFees(ethereum.data,ethereum.wallets);
-  const feeUsd=addKnownValues(currentAdaUsd!==null?fees*currentAdaUsd:null,!ethereum.wallets.length?0:ethFees!==null&&ethereum.data.usd!==null?ethFees*ethereum.data.usd:null);
+  const ethFees=ethAvailable.fees;
+  const availableFees=availableTotal([currentAdaUsd!==null?fees*currentAdaUsd:null,...(ethereum.wallets.length?[ethAvailable.feeUsd]:[])]);
+  const feeUsd=availableFees.value;
+  const partialNote='Partial · waiting for remaining wallet data or prices';
   const cexPending=snapshot?.txs.filter(tx=>!hasCounterpartyData(snapshot.facts[tx.tx_hash])).length||0;
   const cexUnresolved=Object.values(cexFacts).filter(f=>isCexTransaction(f,cexAddresses)&&!cexAdaTransfer(f,cexAddresses)).length;
   const analysedTotal=snapshot?.txs.filter(tx=>!!snapshot.facts[tx.tx_hash]).length||0;
@@ -496,13 +501,14 @@ export default function Home({memberStake}:{memberStake:string}){
         {storageMode()==='remote'?<CacheUploadProgress onRetry={()=>void flushVault().catch(()=>{})}/>:cacheNotice&&<p role="status" className="tdsp-bar-legend">{cacheNotice}</p>}
       </MenuTile>
       <MenuTile title="Assets" value={holdingsDisplay} onOpen={()=>{resetPolicies();setHoldingsGroup(null);setSection('holdings');}}>
+        {portfolioPartial&&<p translate="no" className="small muted" role="status">{t(partialNote)}</p>}
         <p className="small muted">{t('{done} / {total} assets valued',{done:valued.length+(ethereum.wallets.length&&!ethExcluded&&ethValue!==null?1:0),total:included.length+(ethereum.wallets.length&&!ethExcluded?1:0)})}{excludedCount+(ethereum.wallets.length&&ethExcluded?1:0)?' · '+t('{count} excluded',{count:excludedCount+(ethereum.wallets.length&&ethExcluded?1:0)}):''}</p>
         {(holdingsCurrency==='EUR'||holdingsCurrency==='JPY')&&holdingsValue===null&&<p className="small muted" role="status">{t(fx.status||'Historical exchange rates unavailable')}</p>}
       </MenuTile>
-      <Metric label="Network fees paid" value={loadedFacts||snapshot?.complete?ethereum.wallets.length?formatPortfolioUsd(feeUsd,currencyDisplay):formatPortfolioAda(fees,currencyDisplay):'Waiting for transaction details'}>
-        {ethereum.wallets.length>0&&<><span translate="no" className="small">Cardano: {loadedFacts||snapshot?.complete?formatPortfolioAda(fees,currencyDisplay):'—'}</span><span translate="no" className="small">ETH: {ethFees===null?'—':`${ethFees.toLocaleString(undefined,{maximumFractionDigits:8})} ETH`} · {formatPortfolioUsd(ethFees!==null&&ethereum.data.usd!==null?ethFees*ethereum.data.usd:null,currencyDisplay)}</span></>}
+      <Metric label="Network fees paid" note={availableFees.partial||ethAvailable.feesPartial?partialNote:undefined} value={loadedFacts||snapshot?.complete?ethereum.wallets.length?formatPortfolioUsd(feeUsd,currencyDisplay):formatPortfolioAda(fees,currencyDisplay):'Waiting for transaction details'}>
+        {ethereum.wallets.length>0&&<><span translate="no" className="small">Cardano: {loadedFacts||snapshot?.complete?formatPortfolioAda(fees,currencyDisplay):'—'}</span><span translate="no" className="small">ETH: {ethFees===null?'—':`${ethFees.toLocaleString(undefined,{maximumFractionDigits:8})} ETH`} · {formatPortfolioUsd(ethAvailable.feeUsd,currencyDisplay)}</span></>}
       </Metric>
-      {(cexAddresses.length>0||ethereum.exchanges.length>0||ethereum.wallets.some(w=>w.miner))&&<Metric label="CEX Transactions" openLabel="CEX Transactions" value={snapshot?tileGainDisplay:'Waiting for wallet balances'} tone={tileGain===null?'':tileGain<0?'negative':'positive'} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('gain-loss');}}/>}
+      {(cexAddresses.length>0||ethereum.exchanges.length>0||ethereum.wallets.some(w=>w.miner))&&<Metric label="CEX Transactions" openLabel="CEX Transactions" note={portfolioPartial||availableCex.partial||!ethHistoryReady?partialNote:undefined} value={snapshot?tileGainDisplay:'Waiting for wallet balances'} tone={tileGain===null?'':tileGain<0?'negative':'positive'} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('gain-loss');}}/>}
     </div></section>
     {section==='wallets'&&<AssetOverlay id="portfolio-wallets-overlay" name="Wallets" onClose={()=>setSection(null)}>
     <div className="portfolio-section">
@@ -532,7 +538,7 @@ export default function Home({memberStake}:{memberStake:string}){
     <section className="portfolio-section">
       {!holdingsGroup&&<div className="tdsp-tile-grid">{(['FTs','NFTs'] as const).map(group=>{
         const assets=rows.filter(row=>assetGroup(row.id)===group),active=includedAssets(assets,overrides),priced=active.filter(row=>row.value!==null);
-        const total=addKnownValues(holdingTotal(active,snapshot?.complete===true),group==='FTs'&&!ethExcluded?ethValue:0);
+        const total=availableTotal([holdingTotal(active,snapshot?.complete===true),...(group==='FTs'&&!ethExcluded&&ethereum.wallets.length?[ethAvailable.value]:[])]).value;
         const ethCount=group==='FTs'&&ethereum.wallets.length?1:0;
         return <MenuTile key={group} title={group} value={formatPortfolioUsd(total,currencyDisplay)} onOpen={()=>setHoldingsGroup(group)}><p className="small muted">{t('{done} / {total} assets valued',{done:priced.length+(ethCount&&!ethExcluded&&ethValue!==null?1:0),total:active.length+(ethCount&&!ethExcluded?1:0)})}{assets.length-active.length+(ethCount&&ethExcluded?1:0)?' · '+t('{count} excluded',{count:assets.length-active.length+(ethCount&&ethExcluded?1:0)}):''}</p></MenuTile>;
       })}</div>}
