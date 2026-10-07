@@ -1337,6 +1337,7 @@ portfolio_text_eth_own_required = "Añade tu propia wallet de Ethereum para anal
 portfolio_text_eth_refresh_wallets = "Actualizar wallets de Ethereum"
 portfolio_text_eth_miner = "Minero"
 portfolio_text_eth_swap_wallets = "Wallets Swap de Ethereum"
+portfolio_text_internal_cross_chain_swap = "Swap interno entre cadenas"
 portfolio_text_eth_swap_help = "Añade solo wallets Swap de Ethereum propias. Se incluyen saldos y comisiones; las transferencias entre wallets propias se excluyen de CEX IN/OUT."
 portfolio_text_eth_miner_label = "Wallet minera: {name}"
 portfolio_text_eth_mining_receipt = "Ingreso de minería"

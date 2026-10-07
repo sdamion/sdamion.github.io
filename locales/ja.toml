@@ -1337,6 +1337,7 @@ portfolio_text_eth_own_required = "ETHのCEX送金を調べるには、自分の
 portfolio_text_eth_refresh_wallets = "Ethereumウォレットを更新"
 portfolio_text_eth_miner = "マイナー"
 portfolio_text_eth_swap_wallets = "Ethereum Swapウォレット"
+portfolio_text_internal_cross_chain_swap = "内部クロスチェーンスワップ"
 portfolio_text_eth_swap_help = "自分が所有するEthereum Swapウォレットのみ追加してください。残高と手数料は集計されます。自分のウォレット間の送金はCEX IN/OUTから除外されます。"
 portfolio_text_eth_miner_label = "マイナーウォレット: {name}"
 portfolio_text_eth_mining_receipt = "マイニング報酬の受取"

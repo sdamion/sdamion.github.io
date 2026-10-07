@@ -184,6 +184,27 @@ try{
   assert.match(await swaps.innerText(),/ETH Swap/,'swap wallets restore in the Swap section');
   await swaps.getByRole('button',{name:'Remove',exact:true}).click();
   assert.equal(await page.evaluate(stake=>JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-wallets:'+stake)).length,stake),1,'removing a swap retains regular wallets');
+  await page.evaluate(({stake,address})=>{
+    const swap='stake1u9ex0jtl4nv84rlzwuft5rczy2hgkjygewla04mgy7v2nccx4p4yr';
+    window.fixtureStorage.setItem('tdsp-member-wallets-v1:'+stake,JSON.stringify([{address:swap,label:'ADA Swap',group:'swap'}]));
+    window.fixtureStorage.setItem('tdsp-member-ethereum-wallets:'+stake,JSON.stringify([{address,name:'ETH Swap',group:'swap'}]));
+    const key='tdsp-member-ethereum-data:'+stake,data=JSON.parse(window.fixtureStorage.getItem(key));
+    data.accounts[address].transactions=data.accounts[address].transactions.slice(0,1);
+    data.accounts[address].transactions[0].time+=120;
+    window.fixtureStorage.setItem(key,JSON.stringify(data));
+    window.fixture.facts['ada-swap']={...window.fixture.facts.cardano,hash:'ada-swap',adaRaw:'-2400000000',wallets:[swap],externalInputs:[],externalOutputs:[{address:'stake1uxllvgd6s0mwhtzyjeg6mtlg0eqrkhasfnmfzqnpcgn50rsmgdu7c',lovelace:'2400000000'}]};
+    window.fixture.txs.push({tx_hash:'ada-swap',block_time:1672963200});window.reopenPortfolio();
+  },{stake,address});
+  await cex.click();
+  await page.locator('#portfolio-gain-loss-overlay .portfolio-eth-comparison').waitFor();
+  assert.match(await page.locator('#portfolio-gain-loss-overlay .portfolio-eth-comparison').innerText(),/0 ETH[\s\S]*0 ETH/,'matched ETH swap excluded from CEX totals');
+  assert.equal(await page.locator('#portfolio-gain-loss-overlay a[href*="etherscan.io/tx/"]').count(),0);
+  assert.equal(await page.locator('#portfolio-gain-loss-overlay a[href*="transaction/ada-swap"]').count(),0);
+  assert.match(await page.locator('#portfolio-gain-loss-overlay .portfolio-gain-comparison').innerText(),/50\.00[\s\S]*0\.00/,'matched ADA swap excluded while unrelated CEX transfer remains');
+  await page.locator('#portfolio-gain-loss-overlay').getByRole('button',{name:'Back',exact:true}).click();
+  await page.getByRole('button',{name:'Open Transactions',exact:true}).click();
+  await page.getByText('Internal cross-chain swap',{exact:true}).first().waitFor();
+  assert.equal(await page.getByText('Internal cross-chain swap',{exact:true}).count(),2,'both legs remain visible as internal transactions');
   assert.deepEqual(errors,[]);
   console.log('PASS: Ethereum wallets, native holdings/exclusion, combined CEX totals and filters, incremental refresh, own-wallet rejection and mobile layout.');
 }finally{await browser.close();}

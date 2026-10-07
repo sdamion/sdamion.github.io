@@ -1810,6 +1810,7 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
   , ["Refresh Ethereum wallets", "portfolio_text_eth_refresh_wallets"]
   , ["Miner", "portfolio_text_eth_miner"]
   , ["Ethereum Swap wallets", "portfolio_text_eth_swap_wallets"]
+  , ["Internal cross-chain swap", "portfolio_text_internal_cross_chain_swap"]
   , ["Add only Ethereum Swap wallets you own. Balances and fees are included; transfers between your own wallets are excluded from CEX IN/OUT.", "portfolio_text_eth_swap_help"]
   , ["Miner wallet: {name}", "portfolio_text_eth_miner_label"]
   , ["Mining receipt", "portfolio_text_eth_mining_receipt"]
