@@ -45,6 +45,15 @@ export function fiatTransferComparison(rows:FiatTransfer[],adaHistory:Record<str
     return {time:row.time,incoming,outgoing,inFiat,outFiat};
   });
 }
+export function nativeTransferTotals(rows:(FiatTransfer&{amount:number})[],adaHistory:Record<string,number>,fx:FxHistory,currency:ComparisonCurrency){
+  const unique=[...new Map(rows.map(row=>[row.hash,row])).values()];
+  const converted=fiatTransferComparison(unique,adaHistory,{},fx,'ADA',currency).at(-1);
+  return {
+    incoming:unique.filter(row=>row.side==='buy').reduce<number|null>((sum,row)=>addKnownValues(sum,row.amount),0),
+    outgoing:unique.filter(row=>row.side==='sell').reduce<number|null>((sum,row)=>addKnownValues(sum,row.amount),0),
+    inFiat:converted?converted.inFiat:0,outFiat:converted?converted.outFiat:0
+  };
+}
 export function transferComparison(facts:Fact[],entries:CexAddress[],adaHistory:Record<string,number>,btcHistory:Record<string,number>,fx:FxHistory,crypto:ComparisonCrypto,currency:ComparisonCurrency,additional:FiatTransfer[]=[]){
   if(additional.length)return fiatTransferComparison([...cexTimeline(facts,entries,adaHistory),...additional],adaHistory,btcHistory,fx,crypto,currency);
   let incoming:number|null=0,outgoing:number|null=0,inFiat:number|null=0,outFiat:number|null=0;

@@ -47,7 +47,7 @@ import {EthereumWallets} from './EthereumWallets';
 import {EthereumTransaction} from './EthereumTransaction';
 import {ethereumTransactions,ethereumTransfers,ethereumTransfer,ethereumValue,ethereumFees,addKnownValues,weiToEth} from './ethereum';
 import {useFxHistory} from './use-fx-history';
-import {transferComparison,comparisonNet,fiatRate,comparisonResultLabel} from './transfer-comparison';
+import {transferComparison,nativeTransferTotals,comparisonNet,fiatRate,comparisonResultLabel} from './transfer-comparison';
 import type {ComparisonCrypto,ComparisonFiat} from './transfer-comparison';
 import {ComparisonAmount} from './ComparisonAmount';
 import {PortfolioCurrencyContext,formatPortfolioUsd,formatPortfolioAda,formatPortfolioAmount} from './portfolio-currency';
@@ -400,6 +400,7 @@ export default function Home({memberStake}:{memberStake:string}){
   const payments=useMemo(()=>mintPayments(Object.values(classifiedFacts),paymentLinks),[classifiedFacts,paymentLinks]);
   const cexDollars=useMemo(()=>cexUsdNetPosition(Object.values(classifiedFacts),cexAddresses,holdings.find(h=>h.id==='lovelace')?.raw||'0',snapshot?.history||{},liveQuote?.usd??snapshot?.adaUsd??null),[classifiedFacts,cexAddresses,holdings,snapshot,liveQuote]);
   const ethHistoryReady=ethereum.wallets.every(w=>!!ethereum.data.accounts[w.address]);
+  const ethCexTotals=useMemo(()=>ethHistoryReady?nativeTransferTotals(ethTransfers,snapshot?.history||{},fx.history,comparisonFiat):{incoming:null,outgoing:null,inFiat:null,outFiat:null},[ethHistoryReady,ethTransfers,snapshot,fx.history,comparisonFiat]);
   const comparison=useMemo(()=>ethHistoryReady?transferComparison(Object.values(classifiedFacts),cexAddresses,snapshot?.history||{},btc.history,fx.history,comparisonCrypto,comparisonFiat,ethTransfers).at(-1):{time:0,incoming:null,outgoing:null,inFiat:null,outFiat:null},[ethHistoryReady,classifiedFacts,cexAddresses,snapshot,btc.history,fx.history,comparisonCrypto,comparisonFiat,ethTransfers]);
   const adaComparison=useMemo(()=>comparisonCrypto==='ADA'||!ethHistoryReady?comparison:transferComparison(Object.values(classifiedFacts),cexAddresses,snapshot?.history||{}, {},fx.history,'ADA',holdingsCurrency,ethTransfers).at(-1),[ethHistoryReady,comparisonCrypto,comparison,classifiedFacts,cexAddresses,snapshot,fx.history,holdingsCurrency,ethTransfers]);
   const basis=useMemo(()=>snapshot?remainingBasis(Object.values(classifiedFacts),snapshot.history,payments.acquisitions):{},[snapshot,classifiedFacts,payments]);
@@ -461,7 +462,7 @@ export default function Home({memberStake}:{memberStake:string}){
   const ethereumShown=ethTransactions.filter(tx=>{
     const transfer=ethereumTransfer(tx,ethereum.wallets,ethereum.exchanges),own=new Set(ethereum.wallets.map(w=>w.address));
     const kind=own.has(tx.from)&&own.has(tx.to)?'internal':own.has(tx.from)?'send':'receive';
-    const matches=section==='gain-loss'?!!transfer&&(filter==='all'||filter===(transfer.side==='buy'?'in':'out')):filter==='all'||filter===kind||filter==='cex'&&!!transfer;
+    const matches=section==='gain-loss'?!!transfer&&(filter==='all'||filter===(transfer.side==='buy'?'in':'out')||filter===(transfer.side==='buy'?'eth-in':'eth-out')):filter==='all'||filter===kind||filter==='cex'&&!!transfer;
     const names=[...ethereum.wallets,...ethereum.exchanges].filter(w=>w.address===tx.from||w.address===tx.to).map(w=>w.name);
     return matches&&withinTransactionDates(tx.time,dateFrom,dateTo)&&[tx.hash,tx.from,tx.to,'ETH',...names].join(' ').toLowerCase().includes(query.trim().toLowerCase());
   });
@@ -591,6 +592,16 @@ export default function Home({memberStake}:{memberStake:string}){
           <TableCell><ComparisonAmount amount={comparison?.outgoing??null} value={comparison?.outFiat??null} crypto={comparisonCrypto} currency={comparisonFiat} tone="positive"/></TableCell>
         </TableRow></TableBody>
       </Table>}
+      {ethereum.wallets.length>0&&<Table variant="comparison" className="portfolio-eth-comparison">
+        <TableHeader><TableRow><TableHead translate="no">ETH IN</TableHead><TableHead translate="no">ETH OUT</TableHead></TableRow></TableHeader>
+        <TableBody><TableRow>{[
+          {amount:ethCexTotals.incoming,value:ethCexTotals.inFiat,tone:''},
+          {amount:ethCexTotals.outgoing,value:ethCexTotals.outFiat,tone:'positive'}
+        ].map((total,index)=><TableCell key={index}><strong translate="no" className={`portfolio-transfer-amount ${total.tone}`}><span className="pool-delegator-amount">
+          <span>{total.amount===null?'—':total.amount.toLocaleString(holdingsLocale,{maximumFractionDigits:8})} ETH</span>
+          <span className="pool-delegator-usd">≈ {formatPortfolioAmount(total.value,{...currencyDisplay,currency:comparisonFiat})}</span>
+        </span></strong></TableCell>)}</TableRow></TableBody>
+      </Table>}
       <div className="portfolio-gain-result">
         <span translate="no" className="governance-card-detail">{t(comparisonResultLabel(comparisonResult.amount,comparisonCrypto),{crypto:comparisonCrypto})}</span>
         <strong className="governance-card-title">{snapshot?<ComparisonAmount amount={comparisonResult.amount} value={comparisonResult.fiat} crypto={comparisonCrypto} currency={comparisonFiat}/>: 'Waiting for wallet balances'}</strong>
@@ -599,7 +610,7 @@ export default function Home({memberStake}:{memberStake:string}){
       {(comparisonFiat==='EUR'||comparisonFiat==='JPY')&&<p className="small muted" role="status">{fx.status||'Historical FX rates use the latest available business day; wallet value uses the current rate.'}</p>}
       <p className="small muted">{snapshot?.complete&&!cexPending&&!cexUnresolved?'':'Partial · '}Transfer-day prices plus current wallet value; not exchange execution prices.{cexPending?` ${num(cexPending,0)} transactions need CEX address checks.`:''}{cexUnresolved?` ${num(cexUnresolved,0)} mixed CEX transactions excluded.`:''}{cexDollars.missingPrices?` ${cexDollars.missingPrices} transfers have no historical USD price.`:''}</p>
     </section></div></>}
-    <TransactionFilters id={section} options={section==='gain-loss'?{all:'All',in:ethereum.wallets.length?'CEX IN':'ADA IN',out:ethereum.wallets.length?'CEX OUT':'ADA OUT'}:undefined} query={query} onQuery={value=>{setQuery(value);setFilter('all');}} filter={filter} onFilter={setFilter} dateFrom={dateFrom} dateTo={dateTo} onDates={(from,to)=>{setDateFrom(from);setDateTo(to);}} pagination={<TransactionPagination position="top" page={currentPage} count={shown.length} onPage={setPage}/>}/>
+    <TransactionFilters id={section} options={section==='gain-loss'?{all:'All',in:ethereum.wallets.length?'CEX IN':'ADA IN',out:ethereum.wallets.length?'CEX OUT':'ADA OUT',...(ethereum.wallets.length?{'eth-in':'ETH IN','eth-out':'ETH OUT'}:{})}:undefined} query={query} onQuery={value=>{setQuery(value);setFilter('all');}} filter={filter} onFilter={setFilter} dateFrom={dateFrom} dateTo={dateTo} onDates={(from,to)=>{setDateFrom(from);setDateTo(to);}} pagination={<TransactionPagination position="top" page={currentPage} count={shown.length} onPage={setPage}/>}/>
     <section className="portfolio-section">
       <TransactionTable multiAsset={ethereum.wallets.length>0}>{shown.slice(currentPage*100,(currentPage+1)*100).map(row=>row.chain==='ethereum'?<EthereumTransaction key={row.tx.id} tx={row.tx} wallets={ethereum.wallets} exchanges={ethereum.exchanges} history={ethereum.data.history} adaHistory={snapshot?.history||{}}/>:section==='gain-loss'?<GainLossTransaction key={row.tx.tx_hash} tx={row.tx} fact={classifiedFacts[row.tx.tx_hash]} wallets={displayWallets} entries={cexAddresses} history={snapshot?.history||{}}/>:<Transaction key={row.tx.tx_hash} tx={row.tx} fact={classifiedFacts[row.tx.tx_hash]} wallets={displayWallets} markets={snapshot?.markets||{}} history={snapshot?.history||{}} cexAddresses={cexAddresses} swapAddresses={swapAddresses}/>)}</TransactionTable>{!shown.length&&<p className="empty">{busy?'Loading transactions…':'No matching transactions.'}</p>}
       <TransactionPagination position="bottom" page={currentPage} count={shown.length} onPage={setPage}/>

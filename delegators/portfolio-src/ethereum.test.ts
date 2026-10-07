@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {ethereumWallets,ethereumData,ethereumTransactions,ethereumTransfer,ethereumTransfers,ethereumValue,ethereumFees,emptyEthereum} from './ethereum.ts';
 import type {EthereumTransaction} from './ethereum.ts';
-import {transferComparison,comparisonNet} from './transfer-comparison.ts';
+import {transferComparison,nativeTransferTotals,comparisonNet} from './transfer-comparison.ts';
 import type {Fact} from './core.ts';
 const a='0x'+'a'.repeat(40),b='0x'+'b'.repeat(40),cex='0x'+'c'.repeat(40);
 const wallets=[{address:a,name:'Savings'},{address:b,name:'Ledger'}],exchanges=[{address:cex,name:'Bitvavo'}];
@@ -21,6 +21,16 @@ assert.equal(ethereumValue(data,wallets),6000);assert.equal(ethereumValue(emptyE
 assert.equal(ethereumFees(data,wallets),0.00063,'fees only for own senders, including failed sends, never trace fees or duplicates');
 const transfers=ethereumTransfers(data,wallets,exchanges);
 assert.equal(transfers.length,3);assert.equal(transfers.reduce((sum,t)=>sum+(t.side==='buy'?t.usd!:0),0),1500);
+for(const [currency,factor] of [['USD',1],['EUR',0.9],['JPY',130],['ADA',2]] as const){
+  assert.deepEqual(nativeTransferTotals([...transfers,transfers[0]],{'2023-01-06':0.5},{'2023-01-06':{EUR:0.9,JPY:130}},currency),
+    {incoming:1.5,outgoing:1,inFiat:1500*factor,outFiat:1000*factor},'native ETH totals preserve quantities and use dated currency conversion');
+}
+const missingTotals=nativeTransferTotals(ethereumTransfers({...data,history:{}},wallets,exchanges),{}, {},'USD');
+assert.deepEqual(missingTotals,{incoming:1.5,outgoing:1,inFiat:null,outFiat:null},'missing price does not hide known ETH quantities or become zero');
+assert.deepEqual(nativeTransferTotals([],{}, {},'USD'),{incoming:0,outgoing:0,inFiat:0,outFiat:0});
+assert.deepEqual(nativeTransferTotals([transfers[0],{...transfers[0],hash:'next-day',time:time+86400,usd:2000}],{},
+  {'2023-01-06':{EUR:0.9},'2023-01-07':{EUR:0.8}},'EUR'),
+  {incoming:2,outgoing:0,inFiat:2500,outFiat:0},'each transfer uses its own daily ETH price and FX rate');
 const fact:Fact={hash:'cardano',time,adaRaw:'100000000',feeRaw:'0',internal:false,assets:{},decimals:{},wallets:[],swapCandidate:false,externalInputs:[{address:'cex',lovelace:'100000000'}],externalOutputs:[]};
 for(const crypto of ['ADA','BTC'] as const){
   for(const [currency,factor] of [['USD',1],['EUR',0.9],['JPY',130]] as const){

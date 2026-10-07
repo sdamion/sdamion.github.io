@@ -55,9 +55,21 @@ try{
   const gain=page.locator('#portfolio-gain-loss-overlay');
   await gain.locator('.portfolio-gain-comparison').waitFor();
   assert.match(await gain.locator('.portfolio-gain-comparison').innerText(),/1,050\.00/,'CEX IN sums historical ADA and ETH fiat values');
+  assert.match(await gain.locator('.portfolio-eth-comparison').innerText(),/ETH IN[\s\S]*ETH OUT[\s\S]*1 ETH[\s\S]*1,000\.00[\s\S]*0 ETH/,'native ETH IN/OUT are shown separately from combined equivalents');
   assert.equal(await gain.locator('a[href="https://etherscan.io/tx/'+hash+'"]').count(),1);
   await gain.getByRole('button',{name:'CEX OUT',exact:true}).click();assert.equal(await gain.locator('a[href*="etherscan.io/tx/"]').count(),0);
   await gain.getByRole('button',{name:'CEX IN',exact:true}).click();assert.equal(await gain.locator('a[href*="etherscan.io/tx/"]').count(),1);
+  await gain.getByRole('button',{name:'ETH IN',exact:true}).click();
+  assert.equal(await gain.locator('a[href*="etherscan.io/tx/"]').count(),1);
+  assert.equal(await gain.locator('a[href*="cardanoscan.io/transaction/"]').count(),0);
+  await gain.getByRole('button',{name:'ETH OUT',exact:true}).click();
+  assert.equal(await gain.locator('a[href*="etherscan.io/tx/"]').count(),0);
+  await gain.getByRole('button',{name:'All',exact:true}).click();
+  for(const width of [1200,390,320]){
+    await page.setViewportSize({width,height:900});
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'CEX and ETH summaries fit the viewport');
+  }
+  await page.setViewportSize({width:1200,height:900});
   await gain.getByRole('button',{name:'Back',exact:true}).click();
   await page.getByRole('button',{name:'Open Ethereum Wallets',exact:true}).click();
   const eth=page.locator('#portfolio-ethereum-overlay');

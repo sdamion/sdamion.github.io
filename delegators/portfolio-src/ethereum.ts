@@ -53,7 +53,7 @@ export function ethereumTransfers(data:EthereumData,wallets:EthereumWallet[],exc
     if(!transfer)return [];
     const price=data.history[new Date(tx.time*1000).toISOString().slice(0,10)];
     const usd=transfer.amount*price;
-    return [{hash:tx.id,time:tx.time,side:transfer.side,usd:Number.isFinite(price)&&price>0&&Number.isFinite(usd)?usd:null}];
+    return [{hash:tx.id,time:tx.time,side:transfer.side,amount:transfer.amount,usd:Number.isFinite(price)&&price>0&&Number.isFinite(usd)?usd:null}];
   });
 }
 export function ethereumValue(data:EthereumData,wallets:EthereumWallet[]):number|null{
