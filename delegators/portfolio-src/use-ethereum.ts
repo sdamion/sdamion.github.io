@@ -96,6 +96,7 @@ export function useEthereum(stake:string,ready:boolean){
   },[loaded,scope,busy,stake]);
   function saveWallets(next:EthereumWallet[]){
     const normalized=ethereumWallets(next);
+    if(next.length>20){setError('A maximum of 20 Ethereum addresses can be added.');return false;}
     try{portfolioSettings.setItem(walletKey,JSON.stringify(normalized));setWallets(normalized);return true;}
     catch{setError('Ethereum wallet settings could not be saved.');return false;}
   }

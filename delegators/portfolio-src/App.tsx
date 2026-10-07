@@ -476,6 +476,7 @@ export default function Home({memberStake}:{memberStake:string}){
   </>;
   const exchangeForm=<CexAddresses entries={cexAddresses} owned={ownedAddresses} onChange={saveCexAddresses}/>;
   const swapForm=<SwapWallets inline wallets={wallets} groups={snapshot?.swapGroups} onChange={saveWallets}/>;
+  const ethSwapWallets=ethereum.wallets.filter(w=>w.group==='swap'),ethOwnWallets=ethereum.wallets.filter(w=>w.group!=='swap');
   return <PortfolioCurrencyContext.Provider value={currencyDisplay}><main className="member-portfolio"><PortfolioQuickstart stake={memberStake} status={status} wallets={walletForm} exchanges={exchangeForm} swap={swapForm}/><div className="portfolio-body"><div className="section-heading" aria-label="Portfolio refresh">
     <PortfolioRefresh onRefresh={()=>{void refresh();void ethereum.refresh();}} disabled={busy||ethereum.busy||!ready} busy={busy||ethereum.busy} currencyControl={<select className="governance-vote-secondary" aria-label={t('Comparison currency')} value={holdingsCurrency} onChange={event=>setHoldingsCurrency(event.target.value as 'ADA'|ComparisonFiat)}><option value="ADA">ADA</option><option value="USD">USD ($)</option><option value="EUR">EUR (€)</option><option value="JPY">JPY (¥)</option></select>}/>
     <div className="portfolio-section">
@@ -506,18 +507,19 @@ export default function Home({memberStake}:{memberStake:string}){
       {busy&&<p className="small muted" role="status">{transactionStatus||status}</p>}
       {error&&<p role="alert" className="negative">{error}</p>}
     </div>
-    <WalletMenu counts={{wallets:wallets.filter(wallet=>wallet.group!=='swap'&&(activeWalletGroups?.[wallet.address]?.length||0)>0).length+ethereum.wallets.length,exchanges:cexAddresses.filter(entry=>!validByronAddress(entry.address)).length+ethereum.exchanges.length,byron:cexAddresses.filter(entry=>validByronAddress(entry.address)).length,swap:wallets.filter(wallet=>wallet.group==='swap').length}}
+    <WalletMenu counts={{wallets:wallets.filter(wallet=>wallet.group!=='swap'&&(activeWalletGroups?.[wallet.address]?.length||0)>0).length+ethOwnWallets.length,exchanges:cexAddresses.filter(entry=>!validByronAddress(entry.address)).length+ethereum.exchanges.length,byron:cexAddresses.filter(entry=>validByronAddress(entry.address)).length,swap:wallets.filter(wallet=>wallet.group==='swap').length+ethSwapWallets.length}}
     wallets={<section className="portfolio-section"><p className="small muted">Your member stake address includes its linked payment addresses. Add only wallets you own.</p>
       <div className="history-table"><Table><TableHeader><TableRow><TableHead>Wallet</TableHead><TableHead>Address</TableHead><TableHead>{holdingsCurrency}</TableHead><TableHead>Transactions</TableHead><TableHead>Linked addresses</TableHead><TableHead>Remove</TableHead></TableRow></TableHeader><TableBody>{wallets.filter(wallet=>wallet.group!=='swap').map((w,i)=><WalletCard key={w.address} wallet={w} onRename={label=>saveWallets(wallets.map(wallet=>wallet.address===w.address?{...wallet,label}:wallet))} primary={i===0} snapshot={snapshot} busy={busy} excluded={excludedRefresh} onExclude={setRefreshExcluded} remove={()=>saveWallets(wallets.filter(x=>x.address!==w.address))}/>)}</TableBody></Table></div>
       {walletForm}
       <p className="small muted">Wallets, entered prices and history use your selected encrypted storage. Manual prices and average costs are saved per asset for your member account and retained when wallets change.</p>
       {ethereum.exchanges.length>0&&!ethereum.wallets.length&&<p translate="no" role="status" className="message">{t('Add your own Ethereum wallet to scan ETH CEX transfers. CEX addresses are counterparties, not your holdings; shared exchange balances are never counted as yours.')}</p>}
       <button type="button" className="governance-vote-secondary" disabled={ethereum.busy||!ready||!ethereum.wallets.length} onClick={()=>void ethereum.refresh()}>{t('Refresh Ethereum wallets')}</button>
-      <EthereumWallets wallets={ethereum.wallets} data={ethereum.data} onChange={ethereum.saveWallets}/>
+      <EthereumWallets wallets={ethOwnWallets} data={ethereum.data} owned={ethSwapWallets} onChange={next=>ethereum.saveWallets([...next,...ethSwapWallets])}/>
     </section>}
     exchanges={<section className="portfolio-section">
       <CexAddresses entries={cexAddresses} owned={ownedAddresses} onChange={saveCexAddresses} swap={{wallets,groups:snapshot?.swapGroups,onChange:saveWallets}}/>
       <EthereumWallets wallets={ethereum.exchanges} data={ethereum.data} exchanges owned={ethereum.wallets} onChange={ethereum.saveExchanges}/>
+      <EthereumWallets wallets={ethSwapWallets} data={ethereum.data} swap owned={ethOwnWallets} onChange={next=>ethereum.saveWallets([...ethOwnWallets,...next])}/>
       {cexAddresses.length>0&&Object.values(snapshot?.facts||{}).some(fact=>!Array.isArray(fact.externalInputs))&&<p className="small muted">Refresh to load sender and recipient stake addresses for older cached transactions.</p>}
     </section>}
     byron={<ByronExchanges facts={classifiedFacts} entries={cexAddresses} owned={ownedAddresses} wallets={displayWallets} history={snapshot?.history||{}} markets={snapshot?.markets||{}} complete={snapshot?.complete===true} onChange={saveCexAddresses}/>}/>

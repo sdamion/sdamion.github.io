@@ -122,9 +122,10 @@ try{
   await own.getByRole('button',{name:'Back',exact:true}).click();
   await page.getByRole('button',{name:'Open DEX / CEX & Swap',exact:true}).click();
   const eth=page.locator('#portfolio-wallet-menu-exchanges');
-  await eth.locator('form').last().waitFor();
+  const ethCexSection=eth.locator('section').filter({has:page.getByRole('heading',{name:'Ethereum CEX addresses',exact:true})}).last();
+  await ethCexSection.locator('form').waitFor();
   assert.match(await eth.innerText(),/Bitvavo/);
-  const cexForm=eth.locator('form').last();await cexForm.locator('input').nth(0).fill('Not a CEX');await cexForm.locator('input').nth(1).fill(address);await cexForm.getByRole('button',{name:'Add',exact:true}).click();
+  const cexForm=ethCexSection.locator('form');await cexForm.locator('input').nth(0).fill('Not a CEX');await cexForm.locator('input').nth(1).fill(address);await cexForm.getByRole('button',{name:'Add',exact:true}).click();
   assert.match(await eth.innerText(),/Your own wallet cannot/);
   for(const width of [1200,390,320]){
     await page.setViewportSize({width,height:900});
@@ -168,6 +169,21 @@ try{
   await page.locator('#portfolio-wallet-menu-wallets').getByRole('button',{name:'Back',exact:true}).click();
   await page.locator('#portfolio-wallets-overlay').getByRole('button',{name:'Back',exact:true}).click();await cex.click();
   assert.match(await page.locator('#portfolio-gain-loss-overlay .portfolio-eth-comparison').innerText(),/0 ETH/,'disabling Miner recalculates ETH OUT without a scan');
+  await page.locator('#portfolio-gain-loss-overlay').getByRole('button',{name:'Back',exact:true}).click();
+  await walletsTile.click();await page.getByRole('button',{name:'Open DEX / CEX & Swap',exact:true}).click();
+  const swaps=page.locator('#portfolio-wallet-menu-exchanges section').filter({has:page.getByRole('heading',{name:'Ethereum Swap wallets',exact:true})}).last();
+  const swapForm=swaps.locator('form'),swapAddress='0x'+'e'.repeat(40);
+  await swapForm.locator('input').nth(0).fill('ETH Swap');await swapForm.locator('input').nth(1).fill(address);await swapForm.getByRole('button',{name:'Add',exact:true}).click();
+  assert.match(await swaps.innerText(),/This address is already saved/,'own wallets cannot be duplicated as swap wallets');
+  await swapForm.locator('input').nth(1).fill(swapAddress);await swapForm.getByRole('button',{name:'Add',exact:true}).click();
+  const savedWallets=await page.evaluate(stake=>JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-wallets:'+stake)),stake);
+  assert.equal(savedWallets.length,2);assert.deepEqual(savedWallets.find(w=>w.address===swapAddress),{address:swapAddress,name:'ETH Swap',group:'swap'});
+  assert.equal(savedWallets.find(w=>w.address===address).name,'ETH Savings','adding a swap retains regular wallets');
+  await page.evaluate(()=>window.reopenPortfolio());
+  await walletsTile.click();await page.getByRole('button',{name:'Open DEX / CEX & Swap',exact:true}).click();
+  assert.match(await swaps.innerText(),/ETH Swap/,'swap wallets restore in the Swap section');
+  await swaps.getByRole('button',{name:'Remove',exact:true}).click();
+  assert.equal(await page.evaluate(stake=>JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-wallets:'+stake)).length,stake),1,'removing a swap retains regular wallets');
   assert.deepEqual(errors,[]);
   console.log('PASS: Ethereum wallets, native holdings/exclusion, combined CEX totals and filters, incremental refresh, own-wallet rejection and mobile layout.');
 }finally{await browser.close();}

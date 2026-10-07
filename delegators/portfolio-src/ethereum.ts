@@ -1,4 +1,4 @@
-export type EthereumWallet={address:string;name:string;miner?:boolean};
+export type EthereumWallet={address:string;name:string;miner?:boolean;group?:'swap'};
 export type EthereumTransaction={id:string;hash:string;kind:'normal'|'internal';block:number;time:number;from:string;to:string;valueWei:string;feeWei:string|null;failed:boolean};
 export type EthereumAccount={balanceWei:string;block:number;transactions:EthereumTransaction[]};
 export type EthereumData={accounts:Record<string,EthereumAccount>;history:Record<string,number>;usd:number|null;updated:string|null};
@@ -10,7 +10,7 @@ export function ethereumWallets(value:unknown):EthereumWallet[]{
   for(const item of value){
     if(typeof item?.address!=='string'||typeof item?.name!=='string')continue;
     const address=item.address.trim().toLowerCase(),name=item.name.trim().slice(0,60);
-    if(validEthereumAddress(address)&&name)rows.set(address,{address,name,...(item.miner===true?{miner:true}:{})});
+    if(validEthereumAddress(address)&&name)rows.set(address,{address,name,...(item.miner===true?{miner:true}:{}),...(item.group==='swap'?{group:'swap' as const}:{})});
     if(rows.size>=20)break;
   }
   return [...rows.values()];

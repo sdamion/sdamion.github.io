@@ -17,6 +17,11 @@ assert.equal(ethereumTransactions(data,wallets).length,5,'shared own-wallet hist
 assert.equal(ethereumTransfer(internal,wallets,[...exchanges,{address:b,name:'Not a CEX'}]),null,'own-wallet transfers never become CEX');
 assert.equal(ethereumTransfer(failed,wallets,exchanges),null,'failed sends are not CEX OUT');
 assert.deepEqual(ethereumTransfer(input,wallets,exchanges),{side:'buy',amount:1});
+const swapWallets=[wallets[0],{...wallets[1],group:'swap' as const}];
+assert.equal(ethereumTransfer(internal,swapWallets,exchanges),null,'own swap transfers are internal, not CEX');
+assert.equal(ethereumValue(data,swapWallets),6000,'swap holdings are included');
+assert.equal(ethereumFees(data,swapWallets),0.00063,'swap wallet gas is included');
+assert.deepEqual(ethereumWallets(swapWallets),swapWallets,'swap classification survives storage normalization');
 const miners=wallets.map(w=>({...w,miner:w.address===a}));
 const reward=tx(6,'0x'+'d'.repeat(40),a);
 assert.deepEqual(ethereumTransfer(reward,miners,exchanges),{side:'sell',amount:1,mined:true});

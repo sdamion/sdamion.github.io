@@ -1809,6 +1809,8 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
   , ["Add your own Ethereum wallet to scan ETH CEX transfers. CEX addresses are counterparties, not your holdings; shared exchange balances are never counted as yours.", "portfolio_text_eth_own_required"]
   , ["Refresh Ethereum wallets", "portfolio_text_eth_refresh_wallets"]
   , ["Miner", "portfolio_text_eth_miner"]
+  , ["Ethereum Swap wallets", "portfolio_text_eth_swap_wallets"]
+  , ["Add only Ethereum Swap wallets you own. Balances and fees are included; transfers between your own wallets are excluded from CEX IN/OUT.", "portfolio_text_eth_swap_help"]
   , ["Miner wallet: {name}", "portfolio_text_eth_miner_label"]
   , ["Mining receipt", "portfolio_text_eth_mining_receipt"]
   , ["Treat external receipts as mined ETH OUT. Own-wallet transfers and saved CEX purchases are excluded.", "portfolio_text_eth_miner_help"]

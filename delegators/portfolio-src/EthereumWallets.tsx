@@ -7,7 +7,7 @@ import {validEthereumAddress,weiToEth,type EthereumWallet,type EthereumData} fro
 import {formatPortfolioUsd,usePortfolioCurrency} from './portfolio-currency';
 import {usePortfolioText} from './use-portfolio-text';
 
-export function EthereumWallets({wallets,data,exchanges=false,owned=[],onChange}:{wallets:EthereumWallet[];data:EthereumData;exchanges?:boolean;owned?:EthereumWallet[];onChange:(wallets:EthereumWallet[])=>boolean}){
+export function EthereumWallets({wallets,data,exchanges=false,swap=false,owned=[],onChange}:{wallets:EthereumWallet[];data:EthereumData;exchanges?:boolean;swap?:boolean;owned?:EthereumWallet[];onChange:(wallets:EthereumWallet[])=>boolean}){
   const [name,setName]=useState(''),[address,setAddress]=useState(''),[error,setError]=useState('');
   const t=usePortfolioText(),display=usePortfolioCurrency();
   function add(event:React.FormEvent){
@@ -15,11 +15,12 @@ export function EthereumWallets({wallets,data,exchanges=false,owned=[],onChange}
     if(!validEthereumAddress(normalized)){setError('Enter an Ethereum mainnet address (0x…).');return;}
     if(wallets.some(w=>w.address===normalized)){setError('This address is already saved.');return;}
     if(exchanges&&owned.some(w=>w.address===normalized)){setError('Your own wallet cannot be added as a CEX address.');return;}
+    if(!exchanges&&owned.some(w=>w.address===normalized)){setError('This address is already saved.');return;}
     if(wallets.length>=20){setError('A maximum of 20 Ethereum addresses can be added.');return;}
-    if(onChange([...wallets,{address:normalized,name:name.trim()||'Ethereum'}])){setAddress('');setName('');setError('');}
+    if(onChange([...wallets,{address:normalized,name:name.trim()||'Ethereum',...(swap?{group:'swap' as const}:{})}])){setAddress('');setName('');setError('');}
   }
   return <section className="portfolio-section">
-    <h3>{t(exchanges?'Ethereum CEX addresses':'Ethereum Wallets')}</h3>
+    <h3>{t(exchanges?'Ethereum CEX addresses':swap?'Ethereum Swap wallets':'Ethereum Wallets')}</h3>
     <form className="wallet-form governance-drep-registration-form" onSubmit={add}>
       <label>{t('Wallet name')}<Input value={name} onChange={e=>setName(e.target.value)} maxLength={60}/></label>
       <label className="address-field">{t('Ethereum address')}<Input value={address} onChange={e=>setAddress(e.target.value)} placeholder="0x…" required/></label>
@@ -36,6 +37,7 @@ export function EthereumWallets({wallets,data,exchanges=false,owned=[],onChange}
       </TableRow>}/>
     </TableBody></Table>
     <p className="small muted">{t(exchanges?'Only ETH transfers to or from saved CEX addresses contribute to CEX IN/OUT. Own-wallet transfers are excluded.':'Ethereum mainnet · ETH only. ERC-20 tokens, NFTs and other EVM networks are not included.')}</p>
+    {swap&&<p className="small muted">{t('Add only Ethereum Swap wallets you own. Balances and fees are included; transfers between your own wallets are excluded from CEX IN/OUT.')}</p>}
     <p className="small muted"><a href="https://etherscan.io" target="_blank" rel="noreferrer">Powered by Etherscan.io APIs</a></p>
   </section>;
 }
