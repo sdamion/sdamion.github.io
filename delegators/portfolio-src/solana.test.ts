@@ -23,3 +23,11 @@ test('SOL exchange legs exclude own transfers, fees count once across wallets',(
  assert.equal(solanaTotals(emptySolana(),wallets).value,null);assert.equal(solanaTotals(emptySolana(),wallets).fees,null);
  assert.equal(solanaTotals({...data,accounts:{[own]:data.accounts[own]}},wallets).partial,true);
 });
+test('Pending SOL receipts survive cache loading without publishing incomplete totals',()=>{
+ const pending=solanaData({...emptySolana(),pending:[tx,tx]});
+ assert.equal(pending.pending?.length,1);
+ assert.equal(solanaTransactions(pending,wallets).length,0);
+ assert.equal(solanaTransfers(pending,wallets,exchanges).length,0);
+ assert.equal(solanaTotals(pending,wallets).fees,null);
+ assert.equal(solanaData({...emptySolana(),pending:[{...tx,feeRaw:'-1'}]}).pending,undefined);
+});

@@ -37,7 +37,7 @@ import {mintPayments,paymentBudget} from './mint-payments';
 import type {PaymentLink} from './mint-payments';
 import {PaymentLinks} from './PaymentLinks';
 import {AssetOverlay} from './AssetOverlay';
-import {MenuTile,AdaUsdAmount} from './ui';
+import {MenuTile,AdaUsdAmount,PortfolioMessage} from './ui';
 import {portfolioSettings as localStorage,flushVault,storageMode} from './vault';
 import {CacheUploadProgress} from './CacheUploadProgress';
 import {CexTimeline} from './CexTimeline';
@@ -542,10 +542,10 @@ export default function Home({memberStake,role='delegator'}:{memberStake:string;
     <PortfolioRefresh onRefresh={()=>{void refresh();void ethereum.refresh();void solana.refresh();}} disabled={busy||ethereum.busy||solana.busy||!ready} busy={busy||ethereum.busy||solana.busy} currencyControl={<select className="governance-vote-secondary" aria-label={t('Comparison currency')} value={holdingsCurrency} onChange={event=>setHoldingsCurrency(event.target.value as 'ADA'|ComparisonFiat)}><option value="ADA">ADA</option><option value="USD">USD ($)</option><option value="EUR">EUR (€)</option><option value="JPY">JPY (¥)</option></select>}/>
     <div className="portfolio-section">
       {!initialising&&!(busy&&analysis)&&<p role="status" className="status-line">{status}</p>}
-      {error&&<p role="alert" className="small-text error-text">{error}</p>}{notice&&<p className="message">{notice}</p>}
-      {ethereum.error&&<p translate="no" role="alert" className="small-text error-text">{t(ethereum.error)}</p>}
+      {error&&<PortfolioMessage error>{error}</PortfolioMessage>}{notice&&<PortfolioMessage>{notice}</PortfolioMessage>}
+      {ethereum.error&&<PortfolioMessage translate="no" error>{t(ethereum.error)}</PortfolioMessage>}
       {ethereum.busy&&<p translate="no" role="status" className="status-line">{t(ethereum.status)}</p>}
-      {solana.error&&<p translate="no" role="alert" className="small-text error-text">{t(solana.error)}</p>}
+      {solana.error&&<PortfolioMessage translate="no" error>{t(solana.error)}</PortfolioMessage>}
       {solana.busy&&<p translate="no" role="status" className="status-line">{t('Checking Solana transactions…')}</p>}
     </div>
   </div>

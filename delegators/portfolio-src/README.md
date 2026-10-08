@@ -127,3 +127,7 @@ existing fiat/equivalent totals and chart; native coin quantities are never
 added together. Fees appear on a separate SOL line. SPL tokens/NFTs and SOL
 cost-basis estimates are not included. Missing SOL purchase cost is unknown,
 not zero. SOL settings and transactions use the existing member vault.
+Interrupted SOL scans retain validated receipt batches in the same vault and
+reuse them on the next refresh. Pending receipts do not enter balances, fees
+or CEX totals until the wallet scan completes. Temporary upstream failures
+have at most two retries; missing backend credentials still require configuration.

@@ -22,17 +22,28 @@ export function useSolana(stake:string,enabled:boolean){
       for(let attempt=0;attempt<3;attempt++){
         const r=await portfolioFetch('/solana',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal});const result=await r.json();
         if(r.ok)return result;
-        if(r.status!==429||attempt===2)throw new Error(result.error||'Solana data unavailable. Saved data is retained.');
+        if(result.code==='credit_limit')throw new Error(result.error);
+        if(![429,502,503,504].includes(r.status)||attempt===2)throw new Error(result.error||'Solana data unavailable. Saved data is retained.');
+        if(r.status===503&&result.error==='Solana requires HELIUS_API_KEY in the backend.')throw new Error(result.error);
         await new Promise<void>((resolve,reject)=>{
           const abort=()=>{clearTimeout(timer);reject(signal.reason);};
-          const timer=setTimeout(()=>{signal.removeEventListener('abort',abort);resolve();},60000);
+          const retryAfter=Number(result.retryAfter??r.headers.get('Retry-After'));
+          const delay=r.status===429?Math.max(60000,Number.isFinite(retryAfter)&&retryAfter>0?retryAfter*1000:0):2000;
+          if(delay>86400000){reject(new Error(result.error));return;}
+          const timer=setTimeout(()=>{signal.removeEventListener('abort',abort);resolve();},delay);
           signal.addEventListener('abort',abort,{once:true});if(signal.aborted)abort();
         });
       }
     }
     async function persist(next:SolanaData,quote=false){signal.throwIfAborted();const saved={...next,usd:quote?next.usd:current.current.usd};portfolioSettings.setItem(dataKey,JSON.stringify(saved));current.current=saved;setData(saved);await flushVault();signal.throwIfAborted();}
+    const known=new Map([...solanaTransactionsForCache(current.current),...(current.current.pending||[])].map(tx=>[tx.hash,tx]));
+    let downloaded=0;
+    // Pending receipts are reusable after interruption, but never enter totals until history is complete.
+    async function savePending(){
+      const completed=new Set(solanaTransactionsForCache(current.current).map(tx=>tx.hash));
+      await persist({...current.current,pending:[...known.values()].filter(tx=>!completed.has(tx.hash)).slice(0,100000)});
+    }
     try{
-      const known=new Map(solanaTransactionsForCache(current.current).map(tx=>[tx.hash,tx]));
       const next:SolanaData={...current.current,accounts:Object.fromEntries(wallets.flatMap(w=>current.current.accounts[w.address]?[[w.address,current.current.accounts[w.address]]]:[])),history:{...current.current.history}};
       for(const wallet of wallets){
         const saved=current.current.accounts[wallet.address],rows=new Map((saved?.transactions||[]).map(tx=>[tx.hash,tx]));
@@ -45,7 +56,7 @@ export function useSolana(stake:string,enabled:boolean){
           for(const hash of result.signatures){
             if(seen.has(hash))throw new Error('Solana data unavailable. Saved data is retained.');seen.add(hash);
             let tx=known.get(hash);
-            if(!tx){const response=await request({action:'transaction',address:wallet.address,signature:hash});if(!validSolanaTransaction(response.transaction)||response.transaction.hash!==hash)throw new Error('Solana data unavailable. Saved data is retained.');tx=response.transaction;known.set(hash,tx);}
+            if(!tx){const response=await request({action:'transaction',address:wallet.address,signature:hash});if(!validSolanaTransaction(response.transaction)||response.transaction.hash!==hash)throw new Error('Solana data unavailable. Saved data is retained.');tx=response.transaction;known.set(hash,tx);if(++downloaded%25===0)await savePending();}
             rows.set(hash,tx);if(rows.size>100000)throw new Error('Solana history is incomplete. Saved data is retained.');
           }
           if(!result.more){complete=true;break;}
@@ -55,7 +66,8 @@ export function useSolana(stake:string,enabled:boolean){
         const balance=await request({action:'balance',address:wallet.address});
         if(typeof balance.raw!=='string'||!/^\d{1,30}$/.test(balance.raw)||!Number.isSafeInteger(balance.slot)||balance.slot<0)throw new Error('Solana data unavailable. Saved data is retained.');
         next.accounts[wallet.address]={raw:balance.raw,slot:balance.slot,checkpoint,transactions:[...rows.values()]};
-        await persist({...next,accounts:{...next.accounts}});
+        await persist({...next,accounts:{...next.accounts},pending:current.current.pending});
+        await savePending();next.pending=current.current.pending;
       }
       const history=await portfolioFetch('/historical-sol-prices',{signal});if(!history.ok)throw new Error('Solana prices unavailable.');const rates=await history.json();
       if(!Array.isArray(rates.prices)||!rates.prices.length)throw new Error('Solana prices unavailable.');
@@ -63,7 +75,7 @@ export function useSolana(stake:string,enabled:boolean){
       await persist({...next,history:{...next.history}});
       const quote=await portfolioFetch('/solana-price',{signal});if(!quote.ok)throw new Error('Solana prices unavailable.');const {usd}=await quote.json();if(!Number.isFinite(usd)||usd<=0)throw new Error('Solana prices unavailable.');
       await persist({...next,usd},true);
-    }catch(e){if(!signal.aborted)setError(e instanceof Error?e.message:'Solana data unavailable. Saved data is retained.');}
+    }catch(e){if(!signal.aborted){try{if(downloaded)await savePending();}catch{/* Preserve the original failure and the last durable batch. */}if(!signal.aborted)setError(e instanceof Error?e.message:'Solana data unavailable. Saved data is retained.');}}
     finally{if(controller.current===control)setBusy(false);}
   },[enabled,loaded,scope,stake]);
   useEffect(()=>{void refresh();return()=>controller.current?.abort();},[refresh]);

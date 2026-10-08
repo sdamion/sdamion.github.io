@@ -1,6 +1,9 @@
 import React from 'react';
 import {createPortal} from 'react-dom';
 import {usePortfolioCurrency,formatPortfolioUsd,formatPortfolioAda} from './portfolio-currency';
+export function PortfolioMessage({children,error=false,...props}:React.ComponentProps<'p'>&{error?:boolean}){
+  return <p {...props} role={error?'alert':'status'} className={`small-text${error?' error-text':''}`}>{children}</p>;
+}
 export function AdaUsdAmount({ada,usd}:{ada:number|null;usd:number|null}){
   const display=usePortfolioCurrency();
   const ref=React.useRef<HTMLSpanElement>(null);
