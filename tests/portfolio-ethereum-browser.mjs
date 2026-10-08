@@ -13,7 +13,7 @@ const bundle=await build({stdin:{contents:`import {createRoot} from 'react-dom/c
 const browser=await chromium.launch({channel:'chrome',headless:true});
 try{
   const page=await browser.newPage({viewport:{width:1200,height:900}}),errors=[],requests=[];
-  let quoteUnavailable=false,indexerUnavailable=false,historyUsd=1000;
+  let quoteUnavailable=false,indexerUnavailable=false,primaryLimited=false,fallbackIncomplete=false,historyUsd=1000;
   page.on('pageerror',error=>errors.push(error.message));
   await page.route('**/*',async route=>{
     const url=new URL(route.request().url()),operation=url.pathname.split('/').pop();
@@ -21,7 +21,10 @@ try{
     if(operation==='ethereum'){
       const body=route.request().postDataJSON();requests.push(body);
       if(indexerUnavailable)return route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'Ethereum refresh failed. Saved data is retained.'})});
+      if(primaryLimited&&body.action==='history'&&body.provider!=='blockscout')return route.fulfill({status:429,contentType:'application/json',body:JSON.stringify({error:'Etherscan rate limit reached. Retry shortly.'})});
+      if(fallbackIncomplete&&body.provider==='blockscout'&&body.kind==='internal')return route.fulfill({status:502,contentType:'application/json',body:JSON.stringify({error:'Blockscout data unavailable or incomplete. Saved Ethereum data is retained.'})});
       result=body.action==='head'?{block:200}:body.action==='balance'?{balanceWei:'1000000000000000000'}:{transactions:body.kind==='normal'?[{id:hash+':normal',hash,kind:'normal',block:180,time:1672963200,from:exchange,to:address,valueWei:'1000000000000000000',feeWei:'210000000000000',failed:false}]:[],more:false};
+      result.provider=body.provider||'etherscan';
     }else if(operation==='historical-eth-prices')result={prices:[[Date.parse('2023-01-06'),historyUsd]]};
     else if(operation==='ethereum-price'){
       if(quoteUnavailable)return route.fulfill({status:503,contentType:'application/json',body:'{}'});
@@ -232,6 +235,22 @@ try{
   await page.getByRole('button',{name:'Open Transactions',exact:true}).click();
   await page.getByText('Internal cross-chain swap',{exact:true}).first().waitFor();
   assert.equal(await page.getByText('Internal cross-chain swap',{exact:true}).count(),2,'both legs remain visible as internal transactions');
+  indexerUnavailable=false;quoteUnavailable=false;primaryLimited=true;
+  await page.locator('#portfolio-transactions-overlay').getByRole('button',{name:'Back',exact:true}).click();
+  await walletsTile.click();await page.getByRole('button',{name:'Open My Wallets',exact:true}).click();
+  const cachedBeforeFallback=await page.evaluate(stake=>JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)).accounts,stake);
+  fallbackIncomplete=true;
+  await page.getByRole('button',{name:'Refresh Ethereum wallets',exact:true}).click();
+  await page.getByRole('alert').filter({hasText:'Blockscout data unavailable or incomplete.'}).waitFor();
+  assert.deepEqual(await page.evaluate(stake=>JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)).accounts,stake),cachedBeforeFallback,'an incomplete fallback leaves all previous account history intact');
+  fallbackIncomplete=false;
+  const successfulFallbackStart=requests.length;
+  await page.getByRole('button',{name:'Refresh Ethereum wallets',exact:true}).click();
+  await page.waitForFunction(stake=>JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)).accounts[Object.keys(JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)).accounts)[0]].provider==='blockscout',stake);
+  const fallbackCalls=requests.slice(successfulFallbackStart);
+  assert.equal(fallbackCalls.filter(r=>r.action==='history'&&r.provider==='etherscan').length,1,'one primary failure triggers one fallback restart');
+  assert.ok(fallbackCalls.filter(r=>r.action==='history'&&r.provider==='blockscout').every(r=>r.startBlock===0),'source change fully replaces history rather than mixing provider pages');
+  assert.equal(await page.evaluate(stake=>Object.values(JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)).accounts)[0].transactions.length,stake),1,'fallback does not duplicate or retain stale trace history');
   assert.deepEqual(errors,[]);
   console.log('PASS: Ethereum wallets, native holdings/exclusion, combined CEX totals and filters, incremental refresh, own-wallet rejection and mobile layout.');
 }finally{await browser.close();}

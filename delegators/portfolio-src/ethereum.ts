@@ -1,6 +1,7 @@
 export type EthereumWallet={address:string;name:string;miner?:boolean;group?:'swap'};
 export type EthereumTransaction={id:string;hash:string;kind:'normal'|'internal';block:number;time:number;from:string;to:string;valueWei:string;feeWei:string|null;failed:boolean};
-export type EthereumAccount={balanceWei:string;block:number;transactions:EthereumTransaction[]};
+export type EthereumProvider='etherscan'|'blockscout';
+export type EthereumAccount={balanceWei:string;block:number;transactions:EthereumTransaction[];provider?:EthereumProvider};
 export type EthereumData={accounts:Record<string,EthereumAccount>;history:Record<string,number>;usd:number|null;updated:string|null};
 export const emptyEthereum=():EthereumData=>({accounts:{},history:{},usd:null,updated:null});
 export const validEthereumAddress=(value:string)=>/^0x[0-9a-f]{40}$/i.test(value);
@@ -29,7 +30,7 @@ export function ethereumData(value:unknown):EthereumData{
   for(const [address,row] of Object.entries(data.accounts).slice(0,20)){
     if(!validEthereumAddress(address)||!row||!/^\d{1,80}$/.test(row.balanceWei)||!Number.isSafeInteger(row.block)||row.block<0||
       !Array.isArray(row.transactions)||row.transactions.length>100000||!row.transactions.every(validEthereumTransaction))continue;
-    next.accounts[address]={...row,transactions:[...new Map(row.transactions.map(tx=>[tx.id,tx])).values()]};
+    next.accounts[address]={...row,provider:row.provider==='blockscout'?'blockscout':'etherscan',transactions:[...new Map(row.transactions.map(tx=>[tx.id,tx])).values()]};
   }
   for(const [date,price] of Object.entries(data.history||{}))if(/^\d{4}-\d{2}-\d{2}$/.test(date)&&Number.isFinite(price)&&price>0)next.history[date]=price;
   next.usd=typeof data.usd==='number'&&Number.isFinite(data.usd)&&data.usd>0?data.usd:null;

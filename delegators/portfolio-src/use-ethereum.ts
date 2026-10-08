@@ -1,7 +1,7 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {portfolioFetch} from './transport';
 import {portfolioSettings,flushVault} from './vault';
-import {emptyEthereum,ethereumData,ethereumWallets,validEthereumTransaction,type EthereumData,type EthereumTransaction,type EthereumWallet} from './ethereum';
+import {emptyEthereum,ethereumData,ethereumWallets,validEthereumTransaction,type EthereumData,type EthereumTransaction,type EthereumWallet,type EthereumProvider} from './ethereum';
 
 export function useEthereum(stake:string,ready:boolean){
   const walletKey='tdsp-member-ethereum-wallets:'+stake,cexKey='tdsp-member-ethereum-cex:'+stake,dataKey='tdsp-member-ethereum-data:'+stake;
@@ -24,14 +24,24 @@ export function useEthereum(stake:string,ready:boolean){
     controller.current?.abort();const control=new AbortController();controller.current=control;
     const signal=control.signal;
     setBusy(true);setError('');setStatus('Checking Ethereum transactions…');
+    let provider:EthereumProvider|undefined;
     async function request<T>(body:object):Promise<T>{
-      const r=await portfolioFetch('/ethereum',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal});
-      const result=await r.json();if(!r.ok)throw new Error(result.error||'Ethereum refresh failed. Saved data is retained.');return result;
+      const r=await portfolioFetch('/ethereum',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,...(provider?{provider}:{})}),signal});
+      const result=await r.json();if(!r.ok)throw Object.assign(new Error(result.error||'Ethereum refresh failed. Saved data is retained.'),{status:r.status});
+      if(result.provider!==undefined){
+        if(!['etherscan','blockscout'].includes(result.provider)||provider&&provider!==result.provider)throw new Error('Invalid Ethereum provider response.');
+        provider=result.provider;
+      }
+      return result;
     }
-    try{
+    async function scan(){
       const {block}=await request<{block:number}>({action:'head'});
       if(!Number.isSafeInteger(block)||block<0)throw new Error('Invalid Ethereum block response.');
       const next: EthereumData={...current.current,accounts:Object.fromEntries(wallets.flatMap(wallet=>current.current.accounts[wallet.address]?[[wallet.address,current.current.accounts[wallet.address]]]:[])),history:{...current.current.history}};
+      const changingProvider=wallets.some(w=>{
+        const account=current.current.accounts[w.address];
+        return account&&(account.provider||'etherscan')!==(provider||'etherscan');
+      });
       async function persist(value:EthereumData,quote=false){
         signal.throwIfAborted();
         const saved={...value,usd:quote?value.usd:current.current.usd,accounts:{...value.accounts},history:{...value.history},updated:new Date().toISOString()};
@@ -40,7 +50,9 @@ export function useEthereum(stake:string,ready:boolean){
       }
       for(const [index,wallet] of wallets.entries()){
         setStatus('Checking Ethereum transactions…');
-        const previous=current.current.accounts[wallet.address];
+        const cached=current.current.accounts[wallet.address];
+        // A source change replaces the complete history instead of mixing trace IDs or pages.
+        const previous=cached&&(cached.provider||'etherscan')===(provider||'etherscan')?cached:undefined;
         const startBlock=previous?Math.max(0,Math.min(previous.block,block)-64):0;
         const transactions=new Map((previous?.transactions||[]).filter(tx=>tx.block<startBlock).map(tx=>[tx.id,tx]));
         for(const kind of ['normal','internal'] as const){
@@ -56,11 +68,12 @@ export function useEthereum(stake:string,ready:boolean){
         }
         const {balanceWei}=await request<{balanceWei:string}>({action:'balance',address:wallet.address});
         if(typeof balanceWei!=='string'||!/^\d{1,80}$/.test(balanceWei))throw new Error('Invalid Ethereum balance response.');
-        next.accounts[wallet.address]={balanceWei,block,transactions:[...transactions.values()]};
-        // Save complete accounts immediately; a later wallet failure must not discard them.
-        await persist(next);
+        next.accounts[wallet.address]={balanceWei,block,transactions:[...transactions.values()],provider:provider||'etherscan'};
+        // Commit a source change atomically so shared internal traces are never mixed.
+        if(!changingProvider)await persist(next);
         setStatus(`${index+1} / ${wallets.length}`);
       }
+      if(changingProvider)await persist(next);
       const history=await portfolioFetch('/historical-eth-prices',{signal});
       if(!history.ok)throw new Error('Historical Ethereum prices unavailable.');
       const rates=await history.json();
@@ -74,6 +87,13 @@ export function useEthereum(stake:string,ready:boolean){
       const {usd}=await quote.json();
       if(typeof usd!=='number'||!Number.isFinite(usd)||usd<=0)throw new Error('Current Ethereum price unavailable.');
       priced.usd=usd;await persist(priced,true);setStatus('');
+    }
+    try{
+      try {await scan();}
+      catch(e){
+        if(signal.aborted||provider==='blockscout'||(e as {status?:number}).status!==429)throw e;
+        provider='blockscout';await scan();
+      }
     }catch(e){if(!signal.aborted){setError(e instanceof Error?e.message:'Ethereum refresh failed. Saved data is retained.');setStatus('');}}
     finally{if(controller.current===control)setBusy(false);}
   },[ready,loaded,scope,stake]);

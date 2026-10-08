@@ -77,6 +77,7 @@ assert.equal(transferComparison([fact], [{address:'cex',name:'Bitvavo'}],{'2023-
 assert.equal(comparisonNet(ethComparison,0,0.5,{}, {},'ETH','USD',time,6000,null).amount,null);
 assert.equal(missing[0].usd,null);
 assert.equal(transferComparison([fact],[{address:'cex',name:'Bitvavo'}],{'2023-01-06':0.5},{}, {},'ADA','USD',missing).at(-1)!.inFiat,null,'missing ETH rates never treated as zero');
-assert.deepEqual(ethereumData(data),data);
+assert.deepEqual(ethereumData(data),{...data,accounts:Object.fromEntries(Object.entries(data.accounts).map(([address,account])=>[address,{...account,provider:'etherscan'}]))},'legacy accounts use Etherscan provenance');
+assert.equal(ethereumData({...data,accounts:{[a]:{...data.accounts[a],provider:'blockscout'}}}).accounts[a].provider,'blockscout','fallback provenance survives cache restore');
 assert.equal(Object.keys(ethereumData({...data,accounts:{[a]:{...data.accounts[a],transactions:[{...input,valueWei:'invalid'}]}}}).accounts).length,0);
 console.log('PASS: Ethereum tracking, CEX classification, internal/failed transfers, gas fees, combined dated USD/EUR/JPY and missing history.');
