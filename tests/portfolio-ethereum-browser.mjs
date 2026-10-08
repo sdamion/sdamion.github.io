@@ -185,6 +185,14 @@ try{
   assert.match(await cex.innerText(),/800\.00/,'available CEX result stays visible with a pending ETH wallet');
   assert.match(await fees.innerText(),/\$0\.42/,'known gas and Cardano fees remain visible while another ETH wallet is pending');
   assert.match(await cex.innerText(),/Partial/,'incomplete totals are explicitly labelled');
+  await page.locator('#portfolio-wallet-menu-exchanges').getByRole('button',{name:'Back',exact:true}).click();
+  await page.locator('#portfolio-wallets-overlay').getByRole('button',{name:'Back',exact:true}).click();
+  await cex.click();
+  const partialOverlay=page.locator('#portfolio-gain-loss-overlay');
+  await partialOverlay.locator('.portfolio-eth-comparison').waitFor();
+  assert.match(await partialOverlay.innerText(),/Partial · waiting for remaining wallet data or prices/);
+  assert.match(await partialOverlay.locator('.portfolio-gain-comparison').innerText(),/1,250\.00/,'pending ETH wallet does not hide known combined CEX IN');
+  assert.match(await partialOverlay.locator('.portfolio-eth-comparison').innerText(),/1 ETH[\s\S]*1,200\.00[\s\S]*0 ETH/,'loaded ETH totals survive another wallet missing its cache');
   await page.evaluate(()=>window.reopenPortfolio());
   await walletsTile.click();await page.getByRole('button',{name:'Open DEX / CEX & Swap',exact:true}).click();
   assert.equal(await swaps.getByRole('textbox',{name:'Swap name',exact:true}).last().inputValue(),'ETH Swap','swap wallets restore in the shared name editor');
