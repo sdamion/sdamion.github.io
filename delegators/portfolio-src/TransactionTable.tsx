@@ -36,13 +36,23 @@ export function TransactionWalletLabels({labels,inline=false}:{labels:string[];i
   return <>{labels.map((label,index)=><span key={label} style={inline?undefined:{display:'block'}}>{inline&&index>0?' · ':''}<span translate={label.startsWith('DEX contract: ')?undefined:'no'} className={label.startsWith('DEX contract: ')?'portfolio-dex-label':undefined}>{label}</span></span>)}</>;
 }
 
-export function TransactionRow({hash,time,amount,kind,price,feeRaw,wallets,details,priceDetails}:{hash:string;time:number;amount:ReactNode;kind?:ReactNode;price?:number|null;feeRaw?:string|null;wallets:ReactNode;details?:ReactNode;priceDetails?:ReactNode}){
+export function TransactionLayout({cells,compact=false}:{cells:ReactNode[];compact?:boolean}){
+  const t=usePortfolioText();
+  if(compact)return <div className="portfolio-swap-leg">{cells[0]}<dl>{['Unit price','Fee','Wallets','Date'].map((label,index)=><div key={label}><dt>{t(label)}</dt><dd>{cells[index+1]}</dd></div>)}</dl></div>;
+  return <TableRow className="portfolio-transfer-row">{cells.map((cell,index)=><TableCell key={index}>{cell}</TableCell>)}</TableRow>;
+}
+
+export function TransactionPair({children}:{children:ReactNode}){
+  const t=usePortfolioText();
+  return <TableRow className="portfolio-swap-pair"><TableCell colSpan={5}><strong>{t('Internal cross-chain swap')} · <span translate="no">ADA / ETH</span></strong><div className="portfolio-swap-legs">{children}</div></TableCell></TableRow>;
+}
+
+export function TransactionRow({hash,time,amount,kind,price,feeRaw,wallets,details,priceDetails,compact=false}:{hash:string;time:number;amount:ReactNode;kind?:ReactNode;price?:number|null;feeRaw?:string|null;wallets:ReactNode;details?:ReactNode;priceDetails?:ReactNode;compact?:boolean}){
   const display=transactionCurrency(usePortfolioCurrency(),time,price??null);
-  return <PortfolioCurrencyContext.Provider value={display}><TableRow className="portfolio-transfer-row">
-    <TableCell>{amount}{kind&&<div className="small muted">{kind}</div>}<div className="small"><TransactionLink hash={hash}/></div>{details}</TableCell>
-    <TableCell>{price!=null&&price>0?display?'≈ '+formatPortfolioUsd(price,display,6):'≈ $'+price.toLocaleString('en-US',{maximumFractionDigits:6}):'Unavailable'}{priceDetails}</TableCell>
-    <TableCell title="Total on-chain transaction fee; not necessarily paid by your wallet">{feeRaw!=null?display?formatPortfolioAda(lovelaceToAda(feeRaw),display,price??null):'₳ '+formatAdaNumber(lovelaceToAda(feeRaw)!):'Unavailable'}</TableCell>
-    <TableCell>{wallets}</TableCell>
-    <TableCell><TransactionDate time={time}/></TableCell>
-  </TableRow></PortfolioCurrencyContext.Provider>;
+  return <PortfolioCurrencyContext.Provider value={display}><TransactionLayout compact={compact} cells={[
+    <>{amount}{kind&&<div className="small muted">{kind}</div>}<div className="small"><TransactionLink hash={hash}/></div>{details}</>,
+    <>{price!=null&&price>0?display?'≈ '+formatPortfolioUsd(price,display,6):'≈ $'+price.toLocaleString('en-US',{maximumFractionDigits:6}):'Unavailable'}{priceDetails}</>,
+    <span title="Total on-chain transaction fee; not necessarily paid by your wallet">{feeRaw!=null?display?formatPortfolioAda(lovelaceToAda(feeRaw),display,price??null):'₳ '+formatAdaNumber(lovelaceToAda(feeRaw)!):'Unavailable'}</span>,
+    wallets,<TransactionDate time={time}/>
+  ]}/></PortfolioCurrencyContext.Provider>;
 }

@@ -46,7 +46,7 @@ import {useEthereum} from './use-ethereum';
 import {EthereumWallets} from './EthereumWallets';
 import {EthereumTransaction} from './EthereumTransaction';
 import {ethereumTransactions,ethereumTransactionCount,ethereumTransfers,ethereumTransfer,ethereumValue,weiToEth} from './ethereum';
-import {matchCrossChainSwaps} from './cross-chain-swaps';
+import {matchCrossChainSwaps,groupSwapRows} from './cross-chain-swaps';
 import {availableTotal,ethereumAvailableTotals,availableCexResult} from './portfolio-totals';
 import {performanceTransfers} from './portfolio-flows';
 import {ethereumReceiptBasis} from './ethereum-basis';
@@ -57,7 +57,7 @@ import {ComparisonAmount} from './ComparisonAmount';
 import {PortfolioCurrencyContext,formatPortfolioUsd,formatPortfolioAda,formatPortfolioAmount} from './portfolio-currency';
 import {matchesGainLossTransfer} from './gain-loss-filter';
 import {GainLossTransaction} from './GainLossTransaction';
-import {TransactionTable,TransactionRow,TransactionAmount,TransactionWallets} from './TransactionTable';
+import {TransactionTable,TransactionRow,TransactionAmount,TransactionWallets,TransactionPair} from './TransactionTable';
 import {transactionAmounts,transactionNetworkFee,portfolioFeeTotal} from './transaction-amounts';
 import {loadPriceSettings} from './price-settings';
 import {matchesTransaction} from './transaction-search';
@@ -481,7 +481,7 @@ export default function Home({memberStake}:{memberStake:string}){
     const names=[...ethereum.wallets,...ethereum.exchanges].filter(w=>w.address===tx.from||w.address===tx.to).map(w=>w.name);
     return matches&&withinTransactionDates(tx.time,dateFrom,dateTo)&&[tx.hash,tx.from,tx.to,'ETH',...names].join(' ').toLowerCase().includes(query.trim().toLowerCase());
   });
-  const shown=[...cardanoShown.map(tx=>({chain:'cardano' as const,time:tx.block_time,tx})),...ethereumShown.map(tx=>({chain:'ethereum' as const,time:tx.time,tx}))].sort((a,b)=>b.time-a.time);
+  const shown=groupSwapRows([...cardanoShown.map(tx=>({chain:'cardano' as const,time:tx.block_time,tx})),...ethereumShown.map(tx=>({chain:'ethereum' as const,time:tx.time,tx}))].sort((a,b)=>b.time-a.time),crossChainSwaps.pairs);
   const visibleEthIds=new Set(ethereumShown.map(tx=>tx.id));
   const currentPage=transactionPage(page,shown.length).page;
   useEffect(()=>{if(page!==currentPage)setPage(currentPage);},[page,currentPage]);
@@ -634,7 +634,11 @@ export default function Home({memberStake}:{memberStake:string}){
     </section></div></>}
     <TransactionFilters id={section} options={section==='gain-loss'?{all:'All',in:ethereum.wallets.length?'CEX IN':'ADA IN',out:ethereum.wallets.length?'CEX OUT':'ADA OUT',...(ethereum.wallets.length?{'eth-in':'ETH IN','eth-out':'ETH OUT'}:{})}:undefined} query={query} onQuery={value=>{setQuery(value);setFilter('all');}} filter={filter} onFilter={setFilter} dateFrom={dateFrom} dateTo={dateTo} onDates={(from,to)=>{setDateFrom(from);setDateTo(to);}} pagination={<TransactionPagination position="top" page={currentPage} count={shown.length} onPage={setPage}/>}/>
     <section className="portfolio-section">
-      <TransactionTable multiAsset={ethereum.wallets.length>0}>{shown.slice(currentPage*100,(currentPage+1)*100).map(row=>row.chain==='ethereum'?<EthereumTransaction key={row.tx.id} tx={row.tx} internalSwap={crossChainSwaps.ethereum.has(row.tx.id)} wallets={ethereum.wallets} exchanges={ethereum.exchanges} history={ethereum.data.history} adaHistory={snapshot?.history||{}}/>:section==='gain-loss'?<GainLossTransaction key={row.tx.tx_hash} tx={row.tx} fact={classifiedFacts[row.tx.tx_hash]} wallets={displayWallets} entries={cexAddresses} history={snapshot?.history||{}}/>:<Transaction key={row.tx.tx_hash} tx={row.tx} internalSwap={crossChainSwaps.cardano.has(row.tx.tx_hash)} fact={classifiedFacts[row.tx.tx_hash]} wallets={displayWallets} markets={snapshot?.markets||{}} history={snapshot?.history||{}} cexAddresses={cexAddresses} swapAddresses={swapAddresses}/>)}</TransactionTable>{!shown.length&&<p className="empty">{busy?'Loading transactions…':'No matching transactions.'}</p>}
+      <TransactionTable multiAsset={ethereum.wallets.length>0}>{shown.slice(currentPage*100,(currentPage+1)*100).map(group=>{
+        const compact=group.length===2;
+        const children=group.map(row=>row.chain==='ethereum'?<EthereumTransaction key={row.tx.id} compact={compact} tx={row.tx} internalSwap={crossChainSwaps.ethereum.has(row.tx.id)} wallets={ethereum.wallets} exchanges={ethereum.exchanges} history={ethereum.data.history} adaHistory={snapshot?.history||{}}/>:section==='gain-loss'?<GainLossTransaction key={row.tx.tx_hash} tx={row.tx} fact={classifiedFacts[row.tx.tx_hash]} wallets={displayWallets} entries={cexAddresses} history={snapshot?.history||{}}/>:<Transaction key={row.tx.tx_hash} compact={compact} tx={row.tx} internalSwap={crossChainSwaps.cardano.has(row.tx.tx_hash)} fact={classifiedFacts[row.tx.tx_hash]} wallets={displayWallets} markets={snapshot?.markets||{}} history={snapshot?.history||{}} cexAddresses={cexAddresses} swapAddresses={swapAddresses}/>);
+        return compact?<TransactionPair key={group[0].chain==='cardano'?group[0].tx.tx_hash:group[0].tx.id}>{children}</TransactionPair>:children;
+      })}</TransactionTable>{!shown.length&&<p className="empty">{busy?'Loading transactions…':'No matching transactions.'}</p>}
       <TransactionPagination position="bottom" page={currentPage} count={shown.length} onPage={setPage}/>
       {section==='gain-loss'?<p className="small muted table-note">USD amounts use daily UTC transfer-date prices. The Fee column shows the total on-chain fee; paid-fee totals include only fees attributable to your wallet.</p>:<p className="small muted table-note">Internal transfers require all inputs and outputs to belong to tracked addresses. Their net change is only the fee. Mixed transactions remain separate. Buy/sell labels are inferred from opposing ADA and token changes; multi-step DEX orders may need further reconciliation.</p>}
     </section></AssetOverlay></PortfolioCurrencyContext.Provider>}
@@ -679,15 +683,15 @@ function Metric({label,value,amount,note,tone='',onOpen,openLabel=label,children
   const Tag=onOpen?'button':'div';
   return <Tag type={onOpen?'button':undefined} onClick={onOpen} aria-label={onOpen?`Open ${openLabel}`:undefined} className="governance-menu-card"><strong translate="no" className={`governance-card-title ${tone}`}>{amount?<PortfolioCurrencyContext.Provider value={null}><AdaUsdAmount {...amount}/></PortfolioCurrencyContext.Provider>:t(value)}</strong><span className="governance-card-detail" data-i18n-auto-original={label}>{label}</span>{children}{note&&<span className="small muted">{t(note)}</span>}</Tag>;
 }
-function Transaction({tx,fact,markets,wallets,history,cexAddresses,swapAddresses,internalSwap=false}:{tx:Tx;fact?:Fact;markets:Record<string,Market>;wallets:Wallet[];history:Record<string,number>;cexAddresses:CexAddress[];swapAddresses:Set<string>;internalSwap?:boolean}){
+function Transaction({tx,fact,markets,wallets,history,cexAddresses,swapAddresses,internalSwap=false,compact=false}:{tx:Tx;fact?:Fact;markets:Record<string,Market>;wallets:Wallet[];history:Record<string,number>;cexAddresses:CexAddress[];swapAddresses:Set<string>;internalSwap?:boolean;compact?:boolean}){
   const kind=fact?kindOf(fact):null,trade=fact?tradeOf(fact):null;
   const exchangeWallets=transactionExchangeWallets(fact,cexAddresses);
   const cexTrade=fact&&!internalSwap?cexAdaTransfer(fact,cexAddresses):null;
   const quantity=trade?units(trade.raw,markets[trade.id]?.decimals??fact?.decimals?.[trade.id]):null;
   const amount=transactionAmounts(fact?.adaRaw,fact?.time??tx.block_time,history,fact?.feeRaw);
-  return <TransactionRow hash={tx.tx_hash} time={tx.block_time} price={amount.price} feeRaw={transactionNetworkFee(fact)}
-    amount={<TransactionAmount ada={amount.ada} usd={amount.usd} tone={cexTrade?(cexTrade.side==='buy'?'negative':'positive'):undefined}/>}
-    kind={internalSwap?'Internal cross-chain swap':isSwapTransaction(fact,swapAddresses)?'Swap':cexTrade?(cexTrade.side==='buy'?'ADA IN':'ADA OUT'):kind==='internal'?'Internal transfer · fee only':kind?labels[kind]:'Awaiting analysis'}
+  return <TransactionRow compact={compact} hash={tx.tx_hash} time={tx.block_time} price={amount.price} feeRaw={transactionNetworkFee(fact)}
+    amount={<><TransactionAmount ada={amount.ada} usd={amount.usd} tone={cexTrade?(cexTrade.side==='buy'?'negative':'positive'):undefined}/>{compact&&amount.ada!==null&&<div translate="no" className="small muted">{num(Math.abs(amount.ada),6)} ADA</div>}</>}
+    kind={compact?(amount.ada!==null&&amount.ada>0?'ADA IN':'ADA OUT'):internalSwap?'Internal cross-chain swap':isSwapTransaction(fact,swapAddresses)?'Swap':cexTrade?(cexTrade.side==='buy'?'ADA IN':'ADA OUT'):kind==='internal'?'Internal transfer · fee only':kind?labels[kind]:'Awaiting analysis'}
     details={fact&&Object.entries(fact.assets).map(([id,raw])=>{const q=units(raw,markets[id]?.decimals??fact.decimals?.[id]);return <div className="small" key={id}>{BigInt(raw)>0n?'+':''}{q===null?raw+' raw':num(q)} <AssetImage id={id} name={markets[id]?.name||markets[id]?.ticker||assetName(id)} market={markets[id]} compact/></div>;})}
     priceDetails={trade&&<div className="small muted">{quantity?num(trade.ada/quantity,10)+' ₳ / token':num(trade.ada)+' ₳ consideration'}</div>}
     wallets={<TransactionWallets labels={transactionWalletNames(fact,wallets)} exchanges={exchangeWallets}/>}

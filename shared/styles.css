@@ -101,6 +101,14 @@
 .member-portfolio .portfolio-gain-result .portfolio-transfer-amount .pool-delegator-amount > .pool-delegator-usd.negative { color: var(--ai-unavailable-color); }
 .tdsp-table--numeric :is(th, td) { vertical-align: top; text-align: left; font-variant-numeric: tabular-nums; }
 .member-portfolio .portfolio-transfer-row .pool-delegator-amount { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+.member-portfolio .portfolio-swap-pair > td { border-inline-start: 3px solid var(--text); }
+.member-portfolio .portfolio-swap-legs { display: grid; gap: 12px; margin-top: 12px; min-width: 0; }
+.member-portfolio .portfolio-swap-leg { min-width: 0; overflow-wrap: anywhere; }
+.member-portfolio .portfolio-swap-leg + .portfolio-swap-leg { border-top: 1px solid var(--line); padding-top: 12px; }
+.member-portfolio .portfolio-swap-leg dl { margin: 8px 0 0; }
+.member-portfolio .portfolio-swap-leg dl > div { display: grid; grid-template-columns: minmax(0, 100px) minmax(0, 1fr); gap: 8px; }
+.member-portfolio .portfolio-swap-leg dt { color: var(--muted); }
+.member-portfolio .portfolio-swap-leg dd { margin: 0; min-width: 0; }
 .portfolio-dex-label { --portfolio-dex-color: #a64200; }
 html[data-theme="dark"] .portfolio-dex-label { --portfolio-dex-color: #fb923c; }
 @media (prefers-color-scheme: dark) {

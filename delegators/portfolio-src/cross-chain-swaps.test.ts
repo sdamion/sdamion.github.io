@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {matchCrossChainSwaps} from './cross-chain-swaps.ts';
+import {matchCrossChainSwaps,groupSwapRows} from './cross-chain-swaps.ts';
 import {ethereumFees,type EthereumData,type EthereumTransaction} from './ethereum.ts';
 import type {Fact} from './core.ts';
 const time=Date.parse('2023-01-06T23:55:00Z')/1000,address='0x'+'a'.repeat(40),external='0x'+'b'.repeat(40);
@@ -10,8 +10,19 @@ const data:EthereumData={accounts:{[address]:{balanceWei:'1000000000000000000',b
 const history={'2023-01-06':0.5};
 const match=(facts=[fact],eth=data,ws=wallets)=>matchCrossChainSwaps(facts,new Set(['swap']),eth,ws,history);
 assert.deepEqual([...match().cardano],['ada']);assert.deepEqual([...match().ethereum],[tx.id]);
+assert.deepEqual(match().pairs,[{cardano:'ada',ethereum:tx.id}]);
+const adaRow={chain:'cardano' as const,tx:{tx_hash:'ada'}},ethRow={chain:'ethereum' as const,tx:{id:tx.id}},otherRow={chain:'cardano' as const,tx:{tx_hash:'other'}};
+assert.deepEqual(groupSwapRows([ethRow,otherRow,adaRow],match().pairs),[[adaRow,ethRow],[otherRow]],'paired legs share one row, ordered ADA then ETH');
+assert.deepEqual(groupSwapRows([ethRow,otherRow],match().pairs),[[ethRow],[otherRow]],'filtered counterparts are not silently reintroduced');
+const fillers=Array.from({length:99},(_,i)=>({chain:'cardano' as const,tx:{tx_hash:'filler'+i}}));
+assert.deepEqual(groupSwapRows([...fillers,ethRow,adaRow],match().pairs).slice(0,100).at(-1),[adaRow,ethRow],'pagination cannot separate the pair');
 const withTx=(change:Partial<EthereumTransaction>)=>({...data,accounts:{[address]:{...data.accounts[address],transactions:[{...tx,...change}]}}});
-assert.equal(match([fact],withTx({time:time+601})).cardano.size,0,'ten-minute boundary');
+assert.equal(match([fact],withTx({time:time+601})).cardano.size,1,'delays over ten minutes now match');
+assert.equal(match([fact],withTx({time:time+3600})).cardano.size,1,'sixty-minute boundary is included');
+assert.equal(match([fact],withTx({time:time+3601})).cardano.size,0,'over sixty minutes is excluded');
+const earlier=(seconds:number)=>({...withTx({time:time-seconds}),history:{'2023-01-06':1000}});
+assert.equal(match([fact],earlier(3600)).cardano.size,1,'ETH may precede ADA by sixty minutes');
+assert.equal(match([fact],earlier(3601)).cardano.size,0,'earlier ETH beyond sixty minutes is excluded');
 assert.equal(match([fact],{...data,history:{'2023-01-07':950}}).cardano.size,1,'5% is included');
 assert.equal(match([fact],{...data,history:{'2023-01-07':949}}).cardano.size,0,'over 5% is excluded');
 assert.equal(match([fact],withTx({from:address,to:external})).cardano.size,0,'same-direction transfers do not match');

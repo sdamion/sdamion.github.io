@@ -1834,6 +1834,8 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
   , ["Blockscout fallback requires BLOCKSCOUT_API_KEY in the backend.", "portfolio_text_blockscout_key"]
   , ["Blockscout request failed. Saved Ethereum data is retained.", "portfolio_text_blockscout_failed"]
   , ["Blockscout rate limit reached. Retry shortly.", "portfolio_text_blockscout_limit"]
+  , ["Blockscout daily credit limit reached. Saved Ethereum data is retained; retry later.", "portfolio_text_blockscout_daily_limit"]
+  , ["Blockscout credit counter unavailable. Saved Ethereum data is retained.", "portfolio_text_blockscout_counter"]
   , ["Blockscout data unavailable or incomplete. Saved Ethereum data is retained.", "portfolio_text_blockscout_incomplete"]
   , ["Invalid Ethereum provider response.", "portfolio_text_eth_invalid_provider"]
   , ["Mining source", "portfolio_text_mining_source"]
