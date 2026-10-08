@@ -240,7 +240,8 @@ try{
     data.accounts[address].transactions.push({...older,id:olderHash+':normal',hash:olderHash,block:50,from:address,to:exchange,valueWei:'0',feeWei:'0'});
     window.fixtureStorage.setItem(key,JSON.stringify(data));
     window.fixture.facts['ada-swap']={...window.fixture.facts.cardano,hash:'ada-swap',adaRaw:'-2400000000',wallets:[swap],externalInputs:[],externalOutputs:[{address:'stake1uxllvgd6s0mwhtzyjeg6mtlg0eqrkhasfnmfzqnpcgn50rsmgdu7c',lovelace:'2400000000'}]};
-    window.fixture.txs.push({tx_hash:'ada-swap',block_time:1672963200});window.reopenPortfolio();
+    window.fixture.facts['nearby-swap']={...window.fixture.facts['ada-swap'],hash:'nearby-swap',time:1672963260,adaRaw:'4640000000',externalOutputs:[]};
+    window.fixture.txs.push({tx_hash:'ada-swap',block_time:1672963200},{tx_hash:'nearby-swap',block_time:1672963260});window.reopenPortfolio();
   },{stake,address,exchange});
   await cex.click();
   await page.locator('#portfolio-gain-loss-overlay .portfolio-eth-comparison').waitFor();
@@ -254,6 +255,7 @@ try{
   await pair.waitFor();
   assert.deepEqual(await page.locator('#portfolio-transactions-overlay .portfolio-transaction-types button').allTextContents(),['All','CEX','Swap','Trades','Sends','Receives'],'Internal, Mixed and Other are removed without hiding these rows from All');
   assert.equal(await pair.count(),1,'matched legs share one marked table row');
+  assert.equal(await page.locator('#portfolio-transactions-overlay a[href*="transaction/nearby-swap"]').count(),1,'the less accurate nearby candidate remains separate rather than blocking the best pair');
   assert.equal(await pair.locator('td').count(),1,'both legs occupy one column');
   assert.equal(await pair.locator('.portfolio-swap-leg').count(),2);
   assert.equal(await pair.locator('a[href*="cardanoscan.io/transaction/ada-swap"]').count(),1);
@@ -270,8 +272,10 @@ try{
     data.accounts[address].transactions[0]={...data.accounts[address].transactions[0],id:data.accounts[address].transactions[0].hash+':0',kind:'internal',feeWei:null,from:address,to:exchange,time:1672963200+42*60};
     window.fixtureStorage.setItem(key,JSON.stringify(data));
     const base=window.fixture.facts['ada-swap'];
+    const linked=['addr1v8qtg8wsfv8vqky8xfsr7x9nwyjdsz5c2p05vyd2zjheu7qvax8ad','addr1v8mn6dmk7tf9u26kr09a05lmvc9j4k9d940a88ta3hdczqgyt7whl'];
+    window.fixture.swapGroups={[base.wallets[0]]:linked};
     for(const [hash,raw,time] of [['ada-return-send','-330540000',1672981200],['ada-return-receipt','322380000',1672982760]]){
-      window.fixture.facts[hash]={...base,hash,adaRaw:raw,time};
+      window.fixture.facts[hash]={...base,hash,adaRaw:raw,time,wallets:[],externalInputs:raw.startsWith('-')?[]:[{address:linked[1],lovelace:raw}],externalOutputs:raw.startsWith('-')?[{address:linked[0],lovelace:raw.slice(1)}]:[]};
       window.fixture.txs.push({tx_hash:hash,block_time:time});
     }
     window.reopenPortfolio();
@@ -282,7 +286,7 @@ try{
   assert.equal(await crossPair.locator('.portfolio-swap-leg').count(),2,'internal ETH receipt between regular and Swap wallets pairs with ADA');
   assert.match(await crossPair.innerText(),/ETH IN/);
   const adaPair=page.locator('.portfolio-swap-pair').filter({has:page.locator('a[href*="transaction/ada-return-send"]')});
-  assert.equal(await adaPair.locator('.portfolio-swap-leg').count(),2,'same-chain ADA send and receipt share one table column');
+  assert.equal(await adaPair.locator('.portfolio-swap-leg').count(),2,'ADA legs using different linked addresses of the saved Swap stake wallet share one table column');
   assert.equal(await adaPair.locator('td').count(),1);
   assert.match(await adaPair.innerText(),/ADA IN/);assert.match(await adaPair.innerText(),/ADA OUT/);
   await adaPair.screenshot({path:'/tmp/tdsp-ada-swap-pair-desktop.png'});

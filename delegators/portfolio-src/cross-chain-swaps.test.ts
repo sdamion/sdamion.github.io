@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {matchCrossChainSwaps,groupSwapRows} from './cross-chain-swaps.ts';
 import {ethereumFees,ethereumTransactions,ethereumSwapDirection,type EthereumData,type EthereumTransaction} from './ethereum.ts';
-import type {Fact} from './core.ts';
+import {analyse,type Fact} from './core.ts';
 const time=Date.parse('2023-01-06T23:55:00Z')/1000,address='0x'+'a'.repeat(40),external='0x'+'b'.repeat(40);
 const hash='0x'+'1'.repeat(64),wallets=[{address,name:'Swap',group:'swap' as const}];
 const tx:EthereumTransaction={id:hash+':normal',hash,kind:'normal',block:1,time:time+600,from:external,to:address,valueWei:'1000000000000000000',feeWei:'210000000000000',failed:false};
@@ -56,4 +56,42 @@ assert.deepEqual(juneMatch.pairs,[{cardano:'june-send',cardanoReturn:'june-recei
 assert.deepEqual(groupSwapRows([{chain:'cardano',tx:{tx_hash:'june-receipt'}},{chain:'cardano',tx:{tx_hash:'june-send'}}],juneMatch.pairs).map(group=>group.length),[2]);
 assert.equal(juneMatch.cardano.size,2,'both ADA legs are excluded from CEX totals');
 assert.equal(matchCrossChainSwaps([juneSend,{...juneReceipt,wallets:['another-swap']}],new Set(['swap','another-swap']),{...data,accounts:{}},[],{'2026-06-09':0.165241}).pairs.length,0,'different saved Swap addresses are not paired on amount alone');
+const linkedSend={...juneSend,wallets:['own'],externalOutputs:[{address:'swap-payment-one',lovelace:'1000000000'}]};
+const linkedReceipt={...juneReceipt,wallets:['own'],externalInputs:[{address:'swap-payment-two',lovelace:'975000000'}]};
+const linkedAddresses=new Set(['swap-root','swap-payment-one','swap-payment-two']);
+const linkedGroups={'swap-root':['swap-payment-one','swap-payment-two']};
+assert.equal(matchCrossChainSwaps([linkedSend,linkedReceipt],linkedAddresses,{...data,accounts:{}},[],{'2026-06-09':0.165241}).pairs.length,0,'unrelated addresses still do not match without a saved group');
+assert.equal(matchCrossChainSwaps([linkedSend,linkedReceipt],linkedAddresses,{...data,accounts:{}},[],{'2026-06-09':0.165241},0.05,linkedGroups).pairs.length,1,'different payment addresses under one saved Swap stake wallet are paired');
+assert.equal(matchCrossChainSwaps([linkedSend,linkedReceipt],new Set(['swap-payment-one','swap-payment-two']),{...data,accounts:{}},[],{'2026-06-09':0.165241},0.05,linkedGroups).pairs.length,0,'an unsaved group root cannot establish a match');
+// Public transaction links supplied by the member; no private cache fixture.
+const actualAdaHash='ccf83bc7684f0c8a2b0ea29e480e07b9f772aaa971f0605eb9d51a6bddcf0162';
+const actualEthHash='0xa76c63ab3baba70af20ccaf8c72027f1e674fe1b9a30cc0ec2c41ee7fe7dc196';
+const actualOwnAda='addr1qx305ezuv38ltzrk6kqspakj55l4mv7zmzzauypv530guyygh07m3t8kdtgkexaqpet0gzfy6ttc6ghh5j7k3x8t2ens7pgdc0';
+const actualSwapAda='addr1qy687p9vy7p50qudx7p52evga9kwdm0l6lkvl2px5mgedjkxf8gapr5efxredcam0pwh7jleflrawrwdeqvlhz8sg62q8wmmps';
+const actualSwapStake='stake1u8ryn5ws36v5npukuwahshtlf0u5l37hphxusx0m3rcyd9q7tcygp';
+const changeToken={policy_id:'5d16cc1a177b5d9ba9cfa9793b07e60f1fb70fea1f8aef064415d114',asset_name:'494147',quantity:'9'};
+const actualFact=analyse({tx_hash:actualAdaHash,tx_timestamp:1780021100,fee:'173333',inputs:[
+  {value:'87947002',payment_addr:{bech32:actualOwnAda},asset_list:[changeToken]},
+  {value:'10421458237',payment_addr:{bech32:actualOwnAda}},
+  {value:'112177961',payment_addr:{bech32:actualOwnAda}}
+],outputs:[
+  {value:'21409867',payment_addr:{bech32:actualOwnAda},asset_list:[changeToken]},
+  {value:'10600000000',payment_addr:{bech32:actualSwapAda},stake_addr:actualSwapStake}
+]},new Set([actualOwnAda]));
+assert.equal(actualFact.adaRaw,'-10600173333');assert.deepEqual(actualFact.assets,{},'unchanged IAG in change is not a token swap');
+const actualFrom='0xa1abfa21f80ecf401bd41365adbb6fef6fefdf09',actualTo='0x529cf9c3e4c5f0112f2f9946143d5a0f1810202e';
+const actualEth={...tx,id:actualEthHash+':normal',hash:actualEthHash,block:25198190,time:1780023611,from:actualFrom,to:actualTo,valueWei:'1226010640000000000',feeWei:'45239590809'};
+const actualData={...data,accounts:{[actualTo]:{...data.accounts[address],block:25198190,transactions:[actualEth]}},history:{'2026-05-29':2008.753681}};
+const actualWallets=[{address:actualFrom,name:'Simple Swap',group:'swap' as const},{address:actualTo,name:'Metamask'}];
+const actualMatch=matchCrossChainSwaps([actualFact],new Set([actualSwapStake]),actualData,actualWallets,{'2026-05-29':0.232251});
+assert.deepEqual(actualMatch.pairs,[{cardano:actualAdaHash,ethereum:actualEth.id}],'exact public transaction pair matches at 41m51s when its ETH source is saved as Swap');
+const closeAdaReceipt={...actualFact,hash:'nearby-ada-receipt',time:actualFact.time-166,adaRaw:'10421458237',feeRaw:null,externalOutputs:[],externalInputs:[{address:actualSwapAda,stakeAddress:actualSwapStake,lovelace:'10421458237'}]};
+assert.deepEqual(matchCrossChainSwaps([closeAdaReceipt,actualFact],new Set([actualSwapStake]),actualData,actualWallets,{'2026-05-29':0.232251}).pairs,actualMatch.pairs,'a less accurate nearby ADA candidate must not block the near-exact cross-chain pair');
+assert.deepEqual(matchCrossChainSwaps([actualFact,closeAdaReceipt],new Set([actualSwapStake]),actualData,actualWallets,{'2026-05-29':0.232251}).pairs,actualMatch.pairs,'best pairing is independent of fact iteration order');
+const closeEth={...actualEth,id:'0x'+'3'.repeat(64)+':normal',hash:'0x'+'3'.repeat(64),valueWei:'1250000000000000000',time:actualEth.time-60};
+const extraEthData={...actualData,accounts:{[actualTo]:{...actualData.accounts[actualTo],transactions:[closeEth,actualEth]}}};
+assert.deepEqual(matchCrossChainSwaps([actualFact],new Set([actualSwapStake]),extraEthData,actualWallets,{'2026-05-29':0.232251}).pairs,actualMatch.pairs,'a closer-time but worse-value ETH transfer does not block the near-exact value match');
+const equallyPriced={...actualEth,id:'0x'+'4'.repeat(64)+':normal',hash:'0x'+'4'.repeat(64)};
+assert.equal(matchCrossChainSwaps([actualFact],new Set([actualSwapStake]),{...actualData,accounts:{[actualTo]:{...actualData.accounts[actualTo],transactions:[actualEth,equallyPriced]}}},actualWallets,{'2026-05-29':0.232251}).pairs.length,0,'equal-priced simultaneous ETH transfers remain ambiguous');
+assert.equal(matchCrossChainSwaps([actualFact],new Set([actualSwapStake]),actualData,actualWallets.map(({group,...wallet})=>wallet),{'2026-05-29':0.232251}).pairs.length,0,'ordinary tracked addresses cannot be inferred as Swap by name alone');
 console.log('PASS: cross-chain swap time/price boundaries, directions, scope, missing prices, ambiguity and immutable history.');

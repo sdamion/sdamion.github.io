@@ -400,7 +400,7 @@ export default function Home({memberStake}:{memberStake:string}){
   const assetWallets=useMemo(()=>snapshot?holdingWalletNames(snapshot.infos,wallets,snapshot.groups):{},[snapshot,wallets]);
   const assetAddresses=useMemo(()=>snapshot?holdingWalletAddresses(snapshot.infos):{},[snapshot]);
   const classifiedFacts=useMemo(()=>Object.fromEntries(Object.entries(snapshot?.facts||{}).map(([hash,fact])=>[hash,cexAdjustedFact(fact,cexAddresses)])),[snapshot,cexAddresses]);
-  const crossChainSwaps=useMemo(()=>matchCrossChainSwaps(Object.values(classifiedFacts),swapAddresses,ethereum.data,ethereum.wallets,snapshot?.history||{}),[classifiedFacts,swapAddresses,ethereum.data,ethereum.wallets,snapshot?.history]);
+  const crossChainSwaps=useMemo(()=>matchCrossChainSwaps(Object.values(classifiedFacts),swapAddresses,ethereum.data,ethereum.wallets,snapshot?.history||{},0.05,snapshot?.swapGroups||{}),[classifiedFacts,swapAddresses,ethereum.data,ethereum.wallets,snapshot?.history,snapshot?.swapGroups]);
   const cexFacts=useMemo(()=>Object.fromEntries(Object.entries(classifiedFacts).filter(([hash])=>!crossChainSwaps.cardano.has(hash))),[classifiedFacts,crossChainSwaps]);
   const ethTransfers=useMemo(()=>rawEthTransfers.filter(row=>!crossChainSwaps.ethereum.has(row.hash)),[rawEthTransfers,crossChainSwaps]);
   const assetDecimals=useMemo(()=>knownDecimals(snapshot?.infos||[],Object.values(classifiedFacts)),[snapshot,classifiedFacts]);
