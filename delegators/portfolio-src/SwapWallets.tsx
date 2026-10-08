@@ -9,6 +9,7 @@ import type {Wallet} from './core';
 import {addSwapWallet} from './swap-wallets';
 import {validStakeAddress} from './member';
 import {NamedTableGroups} from './TableGroupToggle';
+import {SwapLinkedAddresses} from './SwapLinkedAddresses';
 
 export function SwapWallets({wallets,groups={},onChange,inline=false,showForm=true}:{wallets:Wallet[];groups?:Record<string,string[]>;onChange:(wallets:Wallet[])=>void|boolean;inline?:boolean;showForm?:boolean}){
   const [open,setOpen]=useState(false),[error,setError]=useState('');
@@ -20,7 +21,7 @@ export function SwapWallets({wallets,groups={},onChange,inline=false,showForm=tr
         <p id="portfolio-swap-error" className="negative" role="status">{error}</p>
         <div className="history-table"><Table><TableHeader><TableRow><TableHead>Swap name</TableHead><TableHead>Wallet address</TableHead><TableHead>Remove</TableHead></TableRow></TableHeader><TableBody><NamedTableGroups rows={members} nameOf={wallet=>wallet.label||'Swap'} columns={3} renderRow={wallet=><TableRow key={wallet.address}>
           <TableCell><SwapNameField name={wallet.label||'Swap'} onSave={label=>{if(onChange(wallets.map(item=>item.address===wallet.address?{...item,label}:item))===false)return false;setError('');return true;}} onError={()=>setError('Could not save Swap name.')}/></TableCell>
-          <TableCell><a className="address" title={wallet.address} href={`https://cardanoscan.io/${validStakeAddress(wallet.address)?'stakekey':'address'}/${wallet.address}`} target="_blank" rel="noreferrer">{short(wallet.address)}</a>{validStakeAddress(wallet.address)&&<div className="small muted">{groups[wallet.address]?`${groups[wallet.address].length} linked addresses excluded from CEX`:'Linked addresses awaiting refresh'}</div>}</TableCell>
+          <TableCell><a className="address" title={wallet.address} href={`https://cardanoscan.io/${validStakeAddress(wallet.address)?'stakekey':'address'}/${wallet.address}`} target="_blank" rel="noreferrer">{short(wallet.address)}</a><SwapLinkedAddresses addresses={wallet.swapAddresses}/>{validStakeAddress(wallet.address)&&<div className="small muted">{groups[wallet.address]?`${groups[wallet.address].length} linked addresses excluded from CEX`:'Linked addresses awaiting refresh'}</div>}</TableCell>
           <TableCell><button type="button" className="governance-vote-secondary" aria-label={`Remove ${wallet.address} from Swap`} title="Remove wallet" onClick={()=>onChange(wallets.filter(item=>item.address!==wallet.address))}><Trash2 size={16}/></button></TableCell>
         </TableRow>}/></TableBody></Table></div>
         {!members.length&&<p className="empty">No Swap wallets added.</p>}

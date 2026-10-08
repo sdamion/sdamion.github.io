@@ -143,5 +143,5 @@ export function useEthereum(stake:string,ready:boolean){
     try{const normalized=ethereumWallets(next);portfolioSettings.setItem(cexKey,JSON.stringify(normalized));setExchanges(normalized);return true;}
     catch{setError('Ethereum wallet settings could not be saved.');return false;}
   }
-  return {wallets,exchanges:exchanges.filter(e=>!wallets.some(w=>w.address===e.address)),data,busy,error,status,refresh,saveWallets,saveExchanges};
+  return {wallets,exchanges:exchanges.filter(e=>!wallets.some(w=>w.address===e.address)),data,loaded,busy,error,status,refresh,saveWallets,saveExchanges};
 }

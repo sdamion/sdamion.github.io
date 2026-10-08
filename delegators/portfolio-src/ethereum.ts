@@ -1,5 +1,5 @@
 import {blake2b} from '@noble/hashes/blake2.js';
-export type EthereumWallet={address:string;name:string;miner?:boolean;group?:'swap'};
+export type EthereumWallet={address:string;name:string;miner?:boolean;group?:'swap';swapAddresses?:string[]};
 export type EthereumTransaction={id:string;hash:string;kind:'normal'|'internal';block:number;time:number;from:string;to:string;valueWei:string;feeWei:string|null;failed:boolean};
 export type EthereumProvider='etherscan'|'blockscout';
 export type EthereumAccount={balanceWei:string;block:number;transactions:EthereumTransaction[];provider?:EthereumProvider};
@@ -12,7 +12,8 @@ export function ethereumWallets(value:unknown):EthereumWallet[]{
   for(const item of value){
     if(typeof item?.address!=='string'||typeof item?.name!=='string')continue;
     const address=item.address.trim().toLowerCase(),name=item.name.trim().slice(0,60);
-    if(validEthereumAddress(address)&&name)rows.set(address,{address,name,...(item.miner===true?{miner:true}:{}),...(item.group==='swap'?{group:'swap' as const}:{})});
+    const links=item.group==='swap'&&Array.isArray(item.swapAddresses)?[...new Set<string>(item.swapAddresses.filter((value:unknown)=>typeof value==='string'&&validEthereumAddress(value)).map((value:string)=>value.toLowerCase()).filter((value:string)=>value!==address))].slice(0,200):[];
+    if(validEthereumAddress(address)&&name)rows.set(address,{address,name,...(item.miner===true?{miner:true}:{}),...(item.group==='swap'?{group:'swap' as const}:{}),...(links.length?{swapAddresses:links}:{})});
     if(rows.size>=20)break;
   }
   return [...rows.values()];
@@ -64,9 +65,15 @@ export function ethereumTransactionCount(data:EthereumData,wallets:EthereumWalle
 }
 export function ethereumSwapDirection(tx:EthereumTransaction,wallets:EthereumWallet[]):boolean|null{
   if(tx.failed||BigInt(tx.valueWei)===0n)return null;
-  const from=wallets.find(wallet=>wallet.address===tx.from),to=wallets.find(wallet=>wallet.address===tx.to);
+  const directFrom=wallets.find(wallet=>wallet.address===tx.from),directTo=wallets.find(wallet=>wallet.address===tx.to);
+  const from=directFrom||wallets.find(wallet=>wallet.group==='swap'&&wallet.swapAddresses?.includes(tx.from)),to=directTo||wallets.find(wallet=>wallet.group==='swap'&&wallet.swapAddresses?.includes(tx.to));
   const fromSwap=from?.group==='swap',toSwap=to?.group==='swap';
-  if(fromSwap===toSwap)return null;
+  if(fromSwap===toSwap){
+    if(!fromSwap)return null;
+    if(directTo&&!directFrom)return true;
+    if(directFrom&&!directTo)return false;
+    return null;
+  }
   // Across the saved Swap boundary, direction belongs to the regular wallet.
   // For standalone Swap wallets retain their receipt/send direction.
   return from&&to?fromSwap:!!to;

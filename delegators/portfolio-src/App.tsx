@@ -47,6 +47,7 @@ import {EthereumWallets} from './EthereumWallets';
 import {EthereumTransaction} from './EthereumTransaction';
 import {ethereumTransactions,ethereumTransactionCount,ethereumTransfers,ethereumTransfer,ethereumValue,weiToEth} from './ethereum';
 import {matchCrossChainSwaps,groupSwapRows} from './cross-chain-swaps';
+import {learnMatchedSwapAddresses} from './matched-swap-addresses';
 import {availableTotal,ethereumAvailableTotals,availableCexResult} from './portfolio-totals';
 import {performanceTransfers} from './portfolio-flows';
 import {ethereumReceiptBasis} from './ethereum-basis';
@@ -400,7 +401,18 @@ export default function Home({memberStake}:{memberStake:string}){
   const assetWallets=useMemo(()=>snapshot?holdingWalletNames(snapshot.infos,wallets,snapshot.groups):{},[snapshot,wallets]);
   const assetAddresses=useMemo(()=>snapshot?holdingWalletAddresses(snapshot.infos):{},[snapshot]);
   const classifiedFacts=useMemo(()=>Object.fromEntries(Object.entries(snapshot?.facts||{}).map(([hash,fact])=>[hash,cexAdjustedFact(fact,cexAddresses)])),[snapshot,cexAddresses]);
-  const crossChainSwaps=useMemo(()=>matchCrossChainSwaps(Object.values(classifiedFacts),swapAddresses,ethereum.data,ethereum.wallets,snapshot?.history||{},0.05,snapshot?.swapGroups||{}),[classifiedFacts,swapAddresses,ethereum.data,ethereum.wallets,snapshot?.history,snapshot?.swapGroups]);
+  const savedSwapGroups=useMemo(()=>Object.fromEntries(wallets.filter(wallet=>wallet.group==='swap').map(wallet=>[wallet.address,[...snapshot?.swapGroups?.[wallet.address]||[],...wallet.swapAddresses||[]]])),[wallets,snapshot?.swapGroups]);
+  const crossChainSwaps=useMemo(()=>matchCrossChainSwaps(Object.values(classifiedFacts),swapAddresses,ethereum.data,ethereum.wallets,snapshot?.history||{},0.05,savedSwapGroups),[classifiedFacts,swapAddresses,ethereum.data,ethereum.wallets,snapshot?.history,savedSwapGroups]);
+  useEffect(()=>{
+    if(!ready||!ethereum.loaded)return;
+    const owned=new Set(Object.values(snapshot?.groups||{}).flat());
+    for(const wallet of wallets.filter(wallet=>wallet.group!=='swap'))owned.add(wallet.address);
+    const learned=learnMatchedSwapAddresses(crossChainSwaps.pairs,Object.values(classifiedFacts),wallets,snapshot?.swapGroups||{},owned,ethereum.data,ethereum.wallets);
+    try{
+      if(learned.cardano!==wallets){localStorage.setItem(SETTINGS,JSON.stringify(learned.cardano));setWallets(learned.cardano);}
+      if(learned.ethereum!==ethereum.wallets)ethereum.saveWallets(learned.ethereum);
+    }catch{setCacheNotice('Wallet settings could not be saved to the selected cache.');}
+  },[ready,ethereum.loaded,crossChainSwaps,classifiedFacts,wallets,snapshot?.groups,snapshot?.swapGroups,ethereum.data,ethereum.wallets]);
   const cexFacts=useMemo(()=>Object.fromEntries(Object.entries(classifiedFacts).filter(([hash])=>!crossChainSwaps.cardano.has(hash))),[classifiedFacts,crossChainSwaps]);
   const ethTransfers=useMemo(()=>rawEthTransfers.filter(row=>!crossChainSwaps.ethereum.has(row.hash)),[rawEthTransfers,crossChainSwaps]);
   const assetDecimals=useMemo(()=>knownDecimals(snapshot?.infos||[],Object.values(classifiedFacts)),[snapshot,classifiedFacts]);
@@ -457,7 +469,7 @@ export default function Home({memberStake}:{memberStake:string}){
   const comparisonResult=comparisonNet(comparison,ada,currentAdaUsd,btc.history,fx.history,comparisonCrypto,comparisonFiat,Date.now()/1000,portfolioUsd,ethereum.data.usd);
   const provisional=!snapshot?.complete&&covered.length>0;
   const adaBasisStatus=!adaLive?.reconciled?snapshot?.complete?'History / balance mismatch — refresh to reconcile':'Waiting for transaction history to reconcile with the wallet balance':adaLive.usd===null?'Missing receipt prices':snapshot?.complete?'Remaining cost · receipt-date prices':'Remaining cost · refresh in progress';
-  const displayWallets=wallets.flatMap(w=>(w.group==='swap'?[w.address,...(snapshot?.swapGroups?.[w.address]||[])]:snapshot?.groups?.[w.address]||[w.address]).map(address=>({...w,address})));
+  const displayWallets=wallets.flatMap(w=>(w.group==='swap'?[...new Set([w.address,...snapshot?.swapGroups?.[w.address]||[],...w.swapAddresses||[]])]:snapshot?.groups?.[w.address]||[w.address]).map(address=>({...w,address})));
   const fees=useMemo(()=>portfolioFeeTotal(Object.values(snapshot?.facts||{}),trackedAddresses,swapAddresses),[snapshot,trackedAddresses,swapAddresses]);
   const loadedFacts=Object.keys(classifiedFacts).length;
   const transactionTotal=snapshot?.txs.length||0;
@@ -476,7 +488,7 @@ export default function Home({memberStake}:{memberStake:string}){
   const ethereumShown=ethTransactions.filter(tx=>{
     const internalSwap=crossChainSwaps.ethereum.has(tx.id),transfer=internalSwap?null:ethereumTransfer(tx,ethereum.wallets,ethereum.exchanges),own=new Set(ethereum.wallets.map(w=>w.address));
     const kind=internalSwap||own.has(tx.from)&&own.has(tx.to)?'internal':own.has(tx.from)?'send':'receive';
-    const swap=ethereum.wallets.some(w=>w.group==='swap'&&(w.address===tx.from||w.address===tx.to));
+    const swap=ethereum.wallets.some(w=>w.group==='swap'&&[w.address,...w.swapAddresses||[]].some(address=>address===tx.from||address===tx.to));
     const matches=section==='gain-loss'?!!transfer&&(filter==='all'||filter===(transfer.side==='buy'?'in':'out')||filter===(transfer.side==='buy'?'eth-in':'eth-out')):filter==='all'||filter===kind||filter==='cex'&&!!transfer||filter==='swap'&&swap;
     const names=[...ethereum.wallets,...ethereum.exchanges].filter(w=>w.address===tx.from||w.address===tx.to).map(w=>w.name);
     return matches&&withinTransactionDates(tx.time,dateFrom,dateTo)&&[tx.hash,tx.from,tx.to,'ETH',...names].join(' ').toLowerCase().includes(query.trim().toLowerCase());

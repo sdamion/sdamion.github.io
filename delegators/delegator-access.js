@@ -646,7 +646,7 @@ async function openMemberPortfolio() {
     closePortfolio = close;
     container.textContent = t('Loading member portfolio…');
     try {
-        const module = await import('./portfolio/app.js?v=20261008-reciprocal-swap-pairs');
+        const module = await import('./portfolio/app.js?v=20261008-swap-address-learning');
         if (closed) return;
         container.replaceChildren();
         dispose = module.mountPortfolio(container, { role: ROLE, getWallet: (reconnect, stake) => reconnect && !portfolioUnlockWallet ? reconnectPortfolioWallet(stake) : portfolioUnlockWallet });

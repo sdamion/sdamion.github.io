@@ -1,6 +1,6 @@
 import {historicalPurchaseCost} from './transaction-amounts.ts';
 
-export type Wallet = { address:string; label:string; group?:'swap'; excludedRefreshAddresses?:string[] };
+export type Wallet = { address:string; label:string; group?:'swap'; swapAddresses?:string[]; excludedRefreshAddresses?:string[] };
 export type Asset = { policy_id:string; asset_name:string; quantity:string; decimals?:number };
 export type Utxo = { tx_hash:string; tx_index:number; value:string; asset_list?:Asset[] };
 export type AddressInfo = { address:string; balance:string; utxo_set?:Utxo[] };

@@ -285,6 +285,12 @@ try{
   const crossPair=page.locator('.portfolio-swap-pair').filter({hasText:'ADA / ETH'});
   assert.equal(await crossPair.locator('.portfolio-swap-leg').count(),2,'internal ETH receipt between regular and Swap wallets pairs with ADA');
   assert.match(await crossPair.innerText(),/ETH IN/);
+  await page.waitForFunction(stake=>{
+    const wallets=JSON.parse(window.fixtureStorage.getItem('tdsp-member-wallets-v1:'+stake));
+    return wallets.some(wallet=>wallet.swapAddresses?.length===2);
+  },stake);
+  const learnedWallets=await page.evaluate(stake=>JSON.parse(window.fixtureStorage.getItem('tdsp-member-wallets-v1:'+stake)),stake);
+  assert.equal(learnedWallets.length,2,'learning keeps the member and Swap root without adding scanned wallets');
   const adaPair=page.locator('.portfolio-swap-pair').filter({has:page.locator('a[href*="transaction/ada-return-send"]')});
   assert.equal(await adaPair.locator('.portfolio-swap-leg').count(),2,'ADA legs using different linked addresses of the saved Swap stake wallet share one table column');
   assert.equal(await adaPair.locator('td').count(),1);
@@ -294,6 +300,11 @@ try{
   assert.equal(await adaPair.evaluate(el=>el.scrollWidth<=el.clientWidth+1),true);
   await adaPair.screenshot({path:'/tmp/tdsp-ada-swap-pair-mobile.png'});
   await page.setViewportSize({width:1200,height:900});
+  await page.locator('#portfolio-transactions-overlay').getByRole('button',{name:'Back',exact:true}).click();
+  await walletsTile.click();await page.getByRole('button',{name:'Open DEX / CEX & Swap',exact:true}).click();
+  const learnedLinks=page.locator('#portfolio-wallet-menu-exchanges details').filter({hasText:'Linked addresses (2)'});
+  await learnedLinks.locator('summary').click();
+  assert.equal(await learnedLinks.locator('a').count(),2,'learned service addresses appear under the existing Swap name');
   await page.evaluate(stake=>{
     const backup=window.swapRegressionBackup;
     window.fixture=backup.fixture;

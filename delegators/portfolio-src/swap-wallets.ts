@@ -24,7 +24,8 @@ export function resolveSwapGroups(wallets:Wallet[],accounts:{stake_address:strin
 }
 
 export function swapAddressSet(wallets:Wallet[],groups:Record<string,string[]>={}){
-  return new Set(trackedWalletAddresses(wallets.filter(wallet=>wallet.group==='swap'),groups));
+  const swaps=wallets.filter(wallet=>wallet.group==='swap');
+  return new Set([...trackedWalletAddresses(swaps,groups),...swaps.flatMap(wallet=>wallet.swapAddresses||[])]);
 }
 
 export function isSwapTransaction(fact:Fact|undefined,addresses:Set<string>):boolean{
@@ -35,7 +36,7 @@ export function isSwapTransaction(fact:Fact|undefined,addresses:Set<string>):boo
 }
 
 export function exchangeExcludedAddresses(wallets:Wallet[],groups:Record<string,string[]>={},swapGroups:Record<string,string[]>={}){
-  return [...new Set([...trackedWalletAddresses(wallets,groups),...wallets.filter(wallet=>wallet.group==='swap').flatMap(wallet=>swapGroups[wallet.address]||[])])];
+  return [...new Set([...trackedWalletAddresses(wallets,groups),...wallets.filter(wallet=>wallet.group==='swap').flatMap(wallet=>[...swapGroups[wallet.address]||[],...wallet.swapAddresses||[]])])];
 }
 
 export function excludeInternalExchanges<T extends {address:string}>(entries:T[],owned:string[]):T[]{
