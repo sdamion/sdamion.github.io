@@ -138,6 +138,21 @@ try{
   indexerUnavailable=true;
   await page.evaluate(()=>window.reopenPortfolio());
   await page.getByRole('alert').filter({hasText:'Ethereum refresh failed. Saved data is retained.'}).waitFor();
+  const apiError=page.getByRole('alert').filter({hasText:'Ethereum refresh failed. Saved data is retained.'});
+  for(const width of [1200,390,320]){
+    await page.setViewportSize({width,height:900});
+    const typography=await apiError.evaluate(el=>{
+      const reference=document.createElement('p');reference.className='small-text error-text';reference.textContent=el.textContent;document.body.append(reference);
+      const actual=getComputedStyle(el),standard=getComputedStyle(reference);
+      const result={size:actual.fontSize,standardSize:standard.fontSize,color:actual.color,standardColor:standard.color,line:actual.lineHeight,standardLine:standard.lineHeight,fits:el.scrollWidth<=el.clientWidth+1};
+      reference.remove();return result;
+    });
+    assert.equal(typography.size,typography.standardSize,'API errors use default site text size');
+    assert.equal(typography.color,typography.standardColor,'API errors use default site error color');
+    assert.equal(typography.line,typography.standardLine);
+    assert.ok(parseFloat(typography.size)<=15,'error text remains compact');
+    assert.ok(typography.fits,'error text wraps on mobile');
+  }
   await cex.click();
   await page.locator('#portfolio-gain-loss-overlay .portfolio-eth-comparison').waitFor();
   assert.match(await page.locator('#portfolio-gain-loss-overlay .portfolio-eth-comparison').innerText(),/1 ETH[\s\S]*1,200\.00/,'reopening restores cached ETH quantities and CEX values while the indexer is unavailable');

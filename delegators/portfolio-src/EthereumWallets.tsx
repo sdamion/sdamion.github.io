@@ -25,7 +25,7 @@ export function EthereumWallets({wallets,data,exchanges=false,swap=false,owned=[
   return <section className="portfolio-section">
     <h3>{t(exchanges?'Ethereum CEX addresses':swap?'Ethereum Swap wallets':'Ethereum Wallets')}</h3>
     <ServiceAddressForm id={swap?'portfolio-eth-swap':exchanges?'portfolio-eth-cex':'portfolio-eth-wallet'} type={swap?'swap':'exchange'} nameLabel={swap?'Swap name':exchanges?'Exchange name':'Wallet name'} addressLabel={swap?'Wallet address':'Ethereum address'} placeholder="0x…" onAdd={(_,name,address)=>add(name,address)}/>
-    {error&&<p translate="no" role="alert" className="negative">{t(error)}</p>}
+    {error&&<p translate="no" role="alert" className="small-text error-text">{t(error)}</p>}
     <Table><TableHeader><TableRow><TableHead>{t(swap?'Swap name':'Wallet')}</TableHead><TableHead>{t(swap?'Wallet address':'Address')}</TableHead>{!exchanges&&!swap&&<TableHead translate="no">ETH</TableHead>}{exchanges&&<TableHead>{t('Mining source')}</TableHead>}<TableHead>{t('Remove')}</TableHead></TableRow></TableHeader><TableBody>
       <NamedTableGroups rows={wallets} nameOf={w=>w.name} columns={swap?3:4} renderRow={wallet=><TableRow key={wallet.address}>
         <TableCell translate="no">{swap?<SwapNameField name={wallet.name} onSave={name=>{if(!onChange(wallets.map(w=>w.address===wallet.address?{...w,name}:w)))return false;setError('');return true;}} onError={()=>setError('Could not save Swap name.')}/>:wallet.name}</TableCell>

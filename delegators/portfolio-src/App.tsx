@@ -496,8 +496,8 @@ export default function Home({memberStake}:{memberStake:string}){
     <PortfolioRefresh onRefresh={()=>{void refresh();void ethereum.refresh();}} disabled={busy||ethereum.busy||!ready} busy={busy||ethereum.busy} currencyControl={<select className="governance-vote-secondary" aria-label={t('Comparison currency')} value={holdingsCurrency} onChange={event=>setHoldingsCurrency(event.target.value as 'ADA'|ComparisonFiat)}><option value="ADA">ADA</option><option value="USD">USD ($)</option><option value="EUR">EUR (€)</option><option value="JPY">JPY (¥)</option></select>}/>
     <div className="portfolio-section">
       {!initialising&&!(busy&&analysis)&&<p role="status" className="status-line">{status}</p>}
-      {error&&<p role="alert" className="message error">{error}</p>}{notice&&<p className="message">{notice}</p>}
-      {ethereum.error&&<p translate="no" role="alert" className="message error">{t(ethereum.error)}</p>}
+      {error&&<p role="alert" className="small-text error-text">{error}</p>}{notice&&<p className="message">{notice}</p>}
+      {ethereum.error&&<p translate="no" role="alert" className="small-text error-text">{t(ethereum.error)}</p>}
       {ethereum.busy&&<p translate="no" role="status" className="status-line">{t(ethereum.status)}</p>}
     </div>
   </div>
@@ -521,7 +521,7 @@ export default function Home({memberStake}:{memberStake:string}){
       <button type="button" className="governance-vote-secondary" disabled={busy||!ready} onClick={()=>void refresh(true)}>Rescan all wallets</button>
       <p className="small muted">Rediscover linked addresses and check full transaction history, including excluded addresses for this scan only. Saved transaction details are reused.</p>
       {busy&&<p className="small muted" role="status">{transactionStatus||status}</p>}
-      {error&&<p role="alert" className="negative">{error}</p>}
+      {error&&<p role="alert" className="small-text error-text">{error}</p>}
     </div>
     <WalletMenu counts={{wallets:wallets.filter(wallet=>wallet.group!=='swap'&&(activeWalletGroups?.[wallet.address]?.length||0)>0).length+ethOwnWallets.length,exchanges:cexAddresses.filter(entry=>!validByronAddress(entry.address)).length+ethereum.exchanges.length,byron:cexAddresses.filter(entry=>validByronAddress(entry.address)).length,swap:wallets.filter(wallet=>wallet.group==='swap').length+ethSwapWallets.length}}
     wallets={<section className="portfolio-section"><p className="small muted">Your member stake address includes its linked payment addresses. Add only wallets you own.</p>
@@ -551,7 +551,7 @@ export default function Home({memberStake}:{memberStake:string}){
       {holdingsGroup&&<>
       <button type="button" className="governance-vote-secondary" disabled={busy||!snapshot} onClick={()=>void refreshAssetPurchases()}>Refresh all purchase data</button>
       {purchaseProgress&&<div aria-live="polite"><p className="small muted" role="status">{status}</p><div className="section-heading"><span className="governance-vote-bar-track" style={{flex:1}} role="progressbar" aria-label="Purchase transactions checked" aria-valuemin={0} aria-valuemax={purchaseProgress.total} aria-valuenow={purchaseProgress.done}><span className="governance-vote-bar-fill governance-vote-bar-fill--yes" style={{flexBasis:`${purchaseProgress.done/purchaseProgress.total*100}%`}}/></span><span className="tdsp-bar-legend">{purchaseProgress.done} / {purchaseProgress.total}</span></div></div>}
-      {error&&<p role="alert" className="negative">{error}</p>}
+      {error&&<p role="alert" className="small-text error-text">{error}</p>}
       <label className="small"><input type="checkbox" checked={missingCostsOnly} onChange={e=>setMissingCostsOnly(e.target.checked)}/> Show holdings with missing purchase cost ({valuationCoverage(groupIncluded).missingCost})</label>
       {payments.errors.length>0&&<p role="status" className="negative">Some saved payment links cannot be applied to the loaded history. Open the asset image to review its purchase payments.</p>}
       {(groupRows.length>0||holdingsGroup==='FTs'&&ethereum.wallets.length>0)&&<Table className="portfolio-holdings-table"><TableHeader><TableRow>{['Asset','Balance','Price · USD','Value · USD','Average buy · USD','Gain / loss','Exclude'].map(label=><TableHead translate="no" key={label}>{t(label).replace('USD',holdingsCurrency)}</TableHead>)}</TableRow></TableHeader><TableBody>
@@ -650,7 +650,7 @@ export default function Home({memberStake}:{memberStake:string}){
         <p className="small muted">{assetWallets[r.id]?.join(' · ')}</p>
         <AssetWalletAddresses addresses={assetAddresses[r.id]||[]}/>
         <p className="address">{r.id}</p>
-        {r.id!=='lovelace'&&<><button type="button" className="governance-vote-secondary" disabled={busy} onClick={()=>void refreshAssetPurchases(r.id)}>Refresh purchase data</button><p className="small muted" role="status">{status}</p>{error&&<p role="alert" className="negative">{error}</p>}</>}
+        {r.id!=='lovelace'&&<><button type="button" className="governance-vote-secondary" disabled={busy} onClick={()=>void refreshAssetPurchases(r.id)}>Refresh purchase data</button><p className="small muted" role="status">{status}</p>{error&&<p role="alert" className="small-text error-text">{error}</p>}</>}
         {r.id!=='lovelace'&&<><AssetExclusionToggle name={r.name} excluded={overrides[r.id]?.excluded===true} onChange={excluded=>excludeAsset(r.id,excluded)}/><p className="small muted">Excludes this asset's value, purchase cost and gain/loss from portfolio totals and coverage. Individual details stay visible. Actual ADA movements and network fees remain unchanged. Saved for this portfolio in this browser.</p></>}
         {r.id!=='lovelace'&&<a href={`https://cardanoscan.io/token/${r.id}`} target="_blank" rel="noreferrer">View asset on Cardanoscan <ExternalLink size={14}/></a>}
         <div className="tdsp-tile-grid">
