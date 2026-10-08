@@ -5,7 +5,7 @@ import path from 'node:path';
 const source=path.resolve('delegators/portfolio-src'),require=createRequire(path.join(source,'package.json'));
 const {build}=require('esbuild'),{chromium}=await import(process.argv[2]);
 const stake='stake1uxythldc4nmx45tvnwsqu4h5pyjd94udytm6f0tgnr44vecjd8vel',address='0x'+'a'.repeat(40),exchange='0x'+'b'.repeat(40),hash='0x'+'1'.repeat(64);
-const bundle=await build({stdin:{contents:`import {createRoot} from 'react-dom/client';import Home from './App';const root=createRoot(document.getElementById('app'));let version=0;window.reopenPortfolio=()=>root.render(<Home key={++version} memberStake="${stake}"/>);window.reopenPortfolio();`,loader:'tsx',resolveDir:source},bundle:true,write:false,format:'esm',jsx:'automatic',alias:{'@/lib/portfolio':path.join(source,'core.ts'),'@/lib/portfolio-cache':path.join(source,'cache.ts'),'@/components/ui/input':path.join(source,'ui.tsx'),'@/components/ui/table':path.join(source,'ui.tsx'),'@/components/ui/pagination':path.join(source,'ui.tsx')},plugins:[{name:'ethereum-fixture',setup(build){
+const bundle=await build({stdin:{contents:`import {createRoot} from 'react-dom/client';import Home from './App';const root=createRoot(document.getElementById('app'));let version=0;window.reopenPortfolio=(role='admin')=>root.render(<Home key={++version} memberStake="${stake}" role={role}/>);window.reopenPortfolio();`,loader:'tsx',resolveDir:source},bundle:true,write:false,format:'esm',jsx:'automatic',alias:{'@/lib/portfolio':path.join(source,'core.ts'),'@/lib/portfolio-cache':path.join(source,'cache.ts'),'@/components/ui/input':path.join(source,'ui.tsx'),'@/components/ui/table':path.join(source,'ui.tsx'),'@/components/ui/pagination':path.join(source,'ui.tsx')},plugins:[{name:'ethereum-fixture',setup(build){
   build.onLoad({filter:/\/PortfolioQuickstart\.tsx$/},()=>({loader:'tsx',contents:'export function PortfolioQuickstart(){return null;}'}));
   build.onLoad({filter:/\/vault\.ts$/},()=>({loader:'ts',contents:'export const portfolioSettings=window.fixtureStorage; export const flushVault=async()=>{}; export const storageMode=()=>"local";export const cachedSnapshot=()=>window.fixture;export const latestMemberSnapshot=()=>window.fixture;export const cacheSnapshot=async()=>{};'}));
   build.onLoad({filter:/\/App\.tsx$/},async args=>({loader:'tsx',contents:(await readFile(args.path,'utf8')).replace('useState<Snapshot|null>(null)','useState<Snapshot|null>(window.fixture)').replace('setSnapshot(null);setError','setError').replace('async function refresh(fullScan=false){','async function refresh(fullScan=false){return;')}));
@@ -63,7 +63,7 @@ try{
   const setup=page.locator('#portfolio-wallet-menu-wallets');
   await setup.locator('form').first().waitFor();
   assert.match(await setup.innerText(),/Add your own Ethereum wallet/);
-  const ownForm=setup.locator('form').last();
+  const ownForm=setup.locator('form').filter({has:page.locator('#portfolio-eth-wallet-address')});
   await ownForm.locator('input').nth(0).fill('ETH Savings');await ownForm.locator('input').nth(1).fill(address);
   await ownForm.getByRole('button',{name:'Add',exact:true}).click();
   await setup.getByRole('button',{name:'Back',exact:true}).click();

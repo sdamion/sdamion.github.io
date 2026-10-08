@@ -10,7 +10,7 @@ export function useEthereum(stake:string,ready:boolean){
   const loaded=loadedStake===stake;
   const current=useRef(data),controller=useRef<AbortController|null>(null);
   useEffect(()=>{
-    if(!ready){setLoadedStake(null);return;}
+    if(!ready){controller.current?.abort();setLoadedStake(null);setWallets([]);setExchanges([]);const empty=emptyEthereum();current.current=empty;setData(empty);setBusy(false);setError('');setStatus('');return;}
     try{
       setWallets(ethereumWallets(JSON.parse(portfolioSettings.getItem(walletKey)||'[]')));
       setExchanges(ethereumWallets(JSON.parse(portfolioSettings.getItem(cexKey)||'[]')));
@@ -134,14 +134,16 @@ export function useEthereum(stake:string,ready:boolean){
     return()=>{clearInterval(timer);control.abort();};
   },[ready,loaded,scope,stake]);
   function saveWallets(next:EthereumWallet[]){
+    if(!ready)return false;
     const normalized=ethereumWallets(next);
     if(next.length>20){setError('A maximum of 20 Ethereum addresses can be added.');return false;}
     try{portfolioSettings.setItem(walletKey,JSON.stringify(normalized));setWallets(normalized);return true;}
     catch{setError('Ethereum wallet settings could not be saved.');return false;}
   }
   function saveExchanges(next:EthereumWallet[]){
+    if(!ready)return false;
     try{const normalized=ethereumWallets(next);portfolioSettings.setItem(cexKey,JSON.stringify(normalized));setExchanges(normalized);return true;}
     catch{setError('Ethereum wallet settings could not be saved.');return false;}
   }
-  return {wallets,exchanges:exchanges.filter(e=>!wallets.some(w=>w.address===e.address)),data,loaded,busy,error,status,refresh,saveWallets,saveExchanges};
+  return {wallets:ready?wallets:[],exchanges:ready?exchanges.filter(e=>!wallets.some(w=>w.address===e.address)):[],data:ready?data:emptyEthereum(),loaded:ready&&loaded,busy:ready&&busy,error:ready?error:'',status:ready?status:'',refresh,saveWallets,saveExchanges};
 }

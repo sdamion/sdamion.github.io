@@ -116,3 +116,14 @@ Run `node --test tests/portfolio-language-catalog.test.mjs tests/portfolio-metri
 ### Wallet Address Refresh Controls
 
 My Wallets opens the shared overlay from the wallet name or linked-address count. Each linked address has a compact Wallet / Address / ADA / Transactions row and an Exclude from refresh checkbox. Exclusions are saved in the existing wallet settings through the selected local or encrypted remote vault. They skip address balance/history requests on subsequent refreshes, but retain ownership, cached balances and cached transactions. Shared transactions discovered through another active address can still update. Controls remain usable during refresh and apply to the next run. An address needs its first cached balance before exclusion; re-enabling is always allowed. Re-enabling scans skipped history and preserves that pending scan across interrupted refreshes.
+# Admin Native Chains
+
+ETH and native SOL are available only to admins. The authenticated backend
+also rejects delegator requests to their history, quote and RPC endpoints.
+Solana uses Helius Free mainnet RPC through the backend HELIUS_API_KEY;
+credentials never enter the frontend. Configure the backend container key
+before using it. Native SOL CEX transfers use daily prices and join the
+existing fiat/equivalent totals and chart; native coin quantities are never
+added together. Fees appear on a separate SOL line. SPL tokens/NFTs and SOL
+cost-basis estimates are not included. Missing SOL purchase cost is unknown,
+not zero. SOL settings and transactions use the existing member vault.
