@@ -13,7 +13,7 @@ export function learnMatchedSwapAddresses(pairs:SwapPair[],facts:Fact[],cardano:
   let nextCardano=cardano,nextEthereum=ethereum;
   const byHash=new Map(facts.map(fact=>[fact.hash,fact])),byId=new Map(ethereumTransactions(data,ethereum).map(tx=>[tx.id,tx]));
   for(const pair of pairs){
-    const hashes='ethereum' in pair?[pair.cardano]:[pair.cardano,pair.cardanoReturn];
+    const hashes='cardanoReturn' in pair?[pair.cardano,pair.cardanoReturn]:[pair.cardano];
     for(const hash of hashes){
       const fact=byHash.get(hash);if(!fact)continue;
       const rows=BigInt(fact.adaRaw)+BigInt(fact.feeRaw||'0')<0n?fact.externalOutputs||[]:fact.externalInputs||[];

@@ -131,3 +131,8 @@ Interrupted SOL scans retain validated receipt batches in the same vault and
 reuse them on the next refresh. Pending receipts do not enter balances, fees
 or CEX totals until the wallet scan completes. Temporary upstream failures
 have at most two retries; missing backend credentials still require configuration.
+Native SOL transfers can pair with a saved Cardano Swap leg using the shared
+60-minute/5-percent reciprocal-best matcher. SOL candidates require a single
+external counterparty and direction; mixed flows, failed receipts, missing
+daily prices and ambiguous candidates stay separate. Matched ADA/SOL legs
+share one table row and are excluded from CEX totals/charts; fees are retained.

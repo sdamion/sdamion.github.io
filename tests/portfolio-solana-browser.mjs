@@ -100,6 +100,31 @@ try{
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
   await page.screenshot({path:`/tmp/tdsp-solana-${width}.png`,fullPage:true});
  }
+ await page.evaluate(({stake,own,cex,receipt,failed})=>{
+  const swap='stake1u9ex0jtl4nv84rlzwuft5rczy2hgkjygewla04mgy7v2nccx4p4yr',time=1672963200;
+  window.fixtureStorage.setItem('tdsp-member-wallets-v1:'+stake,JSON.stringify([{address:swap,label:'Simple Swap',group:'swap'}]));
+  const data=JSON.parse(window.fixtureStorage.getItem('tdsp-member-solana-data:'+stake));
+  data.history={'2023-01-06':103.801882};data.accounts[own].transactions=[
+   {hash:receipt,slot:1,time,payer:own,feeRaw:'79934',failed:false,transfers:[{from:own,to:cex,raw:'1000000000'}]},
+   {hash:failed,slot:2,time:time+60,payer:own,feeRaw:'5000',failed:false,transfers:[{from:cex,to:own,raw:'1'}]}
+  ];window.fixtureStorage.setItem('tdsp-member-solana-data:'+stake,JSON.stringify(data));
+  window.fixture={...window.fixture,txs:[{tx_hash:'ada-sol-receipt',block_time:time+420}],history:{'2023-01-06':0.2202},facts:{'ada-sol-receipt':{hash:'ada-sol-receipt',time:time+420,adaRaw:String(Math.round(102.16/0.2202*1e6)),feeRaw:null,internal:false,assets:{},decimals:{},wallets:[swap],swapCandidate:true,externalInputs:[],externalOutputs:[]}}};
+ },{stake,own,cex,receipt,failed});
+ for(const width of [1200,390]){
+  await page.setViewportSize({width,height:900});await page.evaluate(()=>window.reopen());
+  await page.getByRole('button',{name:'Open Transactions',exact:true}).click();
+  const pair=page.locator('.portfolio-swap-pair');await pair.waitFor();
+  assert.match(await pair.innerText(),/ADA \/ SOL/);
+  assert.equal(await pair.locator('.portfolio-swap-leg').count(),2,'ADA and SOL share one combined row');
+  assert.match(await pair.innerText(),/102\.16/);assert.match(await pair.innerText(),/103\.80/);
+  assert.equal(await page.locator('.history-table tbody tr').count(),2,'dust stays on a separate row');
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
+  await page.screenshot({path:`/tmp/tdsp-solana-swap-${width}.png`,fullPage:true});
+  await page.getByRole('button',{name:'Back',exact:true}).click();
+  await page.getByRole('button',{name:'Open CEX Transactions',exact:true}).click();
+  assert.equal(await page.locator('.portfolio-swap-pair').count(),0,'matched pairs excluded from CEX');
+  assert.equal(await page.locator(`a[href="https://solscan.io/tx/${receipt}"]`).count(),0,'SOL swap is not shown as CEX out');
+ }
  const count=requests.length;await page.evaluate(()=>window.reopen('delegator'));
  await page.getByRole('button',{name:'Open Wallets',exact:true}).click();await page.getByRole('button',{name:'Open My Wallets',exact:true}).click();
  assert.equal(await page.getByRole('heading',{name:'Solana Wallets',exact:true}).count(),0);

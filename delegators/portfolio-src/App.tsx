@@ -114,11 +114,7 @@ export default function Home({memberStake,role='delegator'}:{memberStake:string;
   const ethereum=useEthereum(memberStake,ready&&isAdmin);
   const solana=useSolana(memberStake,ready&&isAdmin);
   const solTransactions=useMemo(()=>solanaTransactions(solana.data,solana.wallets),[solana.data,solana.wallets]);
-  const solTransfers=useMemo(()=>solanaTransfers(solana.data,solana.wallets,solana.exchanges),[solana.data,solana.wallets,solana.exchanges]);
-  const solTransfersByHash=useMemo(()=>{
-    const rows=new Map<string,typeof solTransfers>();
-    for(const row of solTransfers){const hash=row.hash.split(':')[1],group=rows.get(hash)||[];group.push(row);rows.set(hash,group);}return rows;
-  },[solTransfers]);
+  const rawSolTransfers=useMemo(()=>solanaTransfers(solana.data,solana.wallets,solana.exchanges),[solana.data,solana.wallets,solana.exchanges]);
   const ethTransactions=useMemo(()=>ethereumTransactions(ethereum.data,ethereum.wallets),[ethereum.data,ethereum.wallets]);
   const rawEthTransfers=useMemo(()=>ethereumTransfers(ethereum.data,ethereum.wallets,ethereum.exchanges),[ethereum.data,ethereum.wallets,ethereum.exchanges]);
   const [holdingsGroup,setHoldingsGroup]=useState<'FTs'|'NFTs'|null>(null);
@@ -414,7 +410,7 @@ export default function Home({memberStake,role='delegator'}:{memberStake:string;
   const assetAddresses=useMemo(()=>snapshot?holdingWalletAddresses(snapshot.infos):{},[snapshot]);
   const classifiedFacts=useMemo(()=>Object.fromEntries(Object.entries(snapshot?.facts||{}).map(([hash,fact])=>[hash,cexAdjustedFact(fact,cexAddresses)])),[snapshot,cexAddresses]);
   const savedSwapGroups=useMemo(()=>Object.fromEntries(wallets.filter(wallet=>wallet.group==='swap').map(wallet=>[wallet.address,[...snapshot?.swapGroups?.[wallet.address]||[],...wallet.swapAddresses||[]]])),[wallets,snapshot?.swapGroups]);
-  const crossChainSwaps=useMemo(()=>matchCrossChainSwaps(Object.values(classifiedFacts),swapAddresses,ethereum.data,ethereum.wallets,snapshot?.history||{},0.05,savedSwapGroups),[classifiedFacts,swapAddresses,ethereum.data,ethereum.wallets,snapshot?.history,savedSwapGroups]);
+  const crossChainSwaps=useMemo(()=>matchCrossChainSwaps(Object.values(classifiedFacts),swapAddresses,ethereum.data,ethereum.wallets,snapshot?.history||{},0.05,savedSwapGroups,{data:solana.data,wallets:solana.wallets}),[classifiedFacts,swapAddresses,ethereum.data,ethereum.wallets,snapshot?.history,savedSwapGroups,solana.data,solana.wallets]);
   useEffect(()=>{
     if(!ready||!ethereum.loaded)return;
     const owned=new Set(Object.values(snapshot?.groups||{}).flat());
@@ -427,6 +423,11 @@ export default function Home({memberStake,role='delegator'}:{memberStake:string;
   },[ready,ethereum.loaded,crossChainSwaps,classifiedFacts,wallets,snapshot?.groups,snapshot?.swapGroups,ethereum.data,ethereum.wallets]);
   const cexFacts=useMemo(()=>Object.fromEntries(Object.entries(classifiedFacts).filter(([hash])=>!crossChainSwaps.cardano.has(hash))),[classifiedFacts,crossChainSwaps]);
   const ethTransfers=useMemo(()=>rawEthTransfers.filter(row=>!crossChainSwaps.ethereum.has(row.hash)),[rawEthTransfers,crossChainSwaps]);
+  const solTransfers=useMemo(()=>rawSolTransfers.filter(row=>!crossChainSwaps.solana.has(row.hash.split(':')[1])),[rawSolTransfers,crossChainSwaps]);
+  const solTransfersByHash=useMemo(()=>{
+    const rows=new Map<string,typeof solTransfers>();
+    for(const row of solTransfers){const hash=row.hash.split(':')[1],group=rows.get(hash)||[];group.push(row);rows.set(hash,group);}return rows;
+  },[solTransfers]);
   const assetDecimals=useMemo(()=>knownDecimals(snapshot?.infos||[],Object.values(classifiedFacts)),[snapshot,classifiedFacts]);
   const payments=useMemo(()=>mintPayments(Object.values(classifiedFacts),paymentLinks),[classifiedFacts,paymentLinks]);
   const cexDollars=useMemo(()=>cexUsdNetPosition(Object.values(cexFacts),cexAddresses,holdings.find(h=>h.id==='lovelace')?.raw||'0',snapshot?.history||{},liveQuote?.usd??snapshot?.adaUsd??null),[cexFacts,cexAddresses,holdings,snapshot,liveQuote]);
@@ -512,6 +513,7 @@ export default function Home({memberStake,role='delegator'}:{memberStake:string;
   });
   const solShown=solTransactions.filter(tx=>{
     if(!withinTransactionDates(tx.time,dateFrom,dateTo))return false;
+    const internalSwap=crossChainSwaps.solana.has(tx.hash);
     const transfers=solTransfersByHash.get(tx.hash)||[];
     if(section==='gain-loss'&&!transfers.length)return false;
     const own=new Set(solana.wallets.map(w=>w.address));
@@ -521,12 +523,12 @@ export default function Home({memberStake,role='delegator'}:{memberStake:string;
       if(['in','sol-in'].includes(filter)&&!transfers.some(row=>row.side==='buy'))return false;
       if(['out','sol-out'].includes(filter)&&!transfers.some(row=>row.side==='sell'))return false;
       if(!['all','in','out','sol-in','sol-out'].includes(filter))return false;
-    }else if(filter!=='all'&&!(filter==='cex'&&transfers.length)&&!(filter==='receive'&&incoming)&&!(filter==='send'&&outgoing))return false;
+    }else if(filter!=='all'&&!(filter==='swap'&&internalSwap)&&!(filter==='internal'&&internalSwap)&&!(filter==='cex'&&transfers.length)&&!(filter==='receive'&&incoming)&&!(filter==='send'&&outgoing))return false;
     const addresses=new Set([tx.payer,...tx.transfers.flatMap(row=>[row.from,row.to])]);
     const text=[tx.hash,'SOL',...[...solana.wallets,...solana.exchanges].filter(w=>addresses.has(w.address)).map(w=>w.name),...addresses].join(' ').toLowerCase();
     return !query.trim()||text.includes(query.trim().toLowerCase());
   });
-  const shown=[...groupSwapRows([...cardanoShown.map(tx=>({chain:'cardano' as const,time:tx.block_time,tx})),...ethereumShown.map(tx=>({chain:'ethereum' as const,time:tx.time,tx}))].sort((a,b)=>b.time-a.time),crossChainSwaps.pairs),...solShown.map(tx=>[{chain:'solana' as const,time:tx.time,tx}])].sort((a,b)=>b[0].time-a[0].time);
+  const shown=groupSwapRows([...cardanoShown.map(tx=>({chain:'cardano' as const,time:tx.block_time,tx})),...ethereumShown.map(tx=>({chain:'ethereum' as const,time:tx.time,tx})),...solShown.map(tx=>({chain:'solana' as const,time:tx.time,tx}))].sort((a,b)=>b.time-a.time),crossChainSwaps.pairs);
   const visibleEthIds=new Set(ethereumShown.map(tx=>tx.id));
   const visibleSolIds=new Set(solShown.map(tx=>tx.hash));
   const currentPage=transactionPage(page,shown.length).page;
@@ -697,8 +699,8 @@ export default function Home({memberStake,role='delegator'}:{memberStake:string;
     <section className="portfolio-section">
       <TransactionTable multiAsset={nativeCount>0}>{shown.slice(currentPage*100,(currentPage+1)*100).map(group=>{
         const compact=group.length===2;
-        const children=group.map(row=>row.chain==='solana'?<SolanaTransaction key={row.tx.hash} tx={row.tx} wallets={solana.wallets} exchanges={solana.exchanges} history={solana.data.history} adaHistory={snapshot?.history||{}}/>:row.chain==='ethereum'?<EthereumTransaction key={row.tx.id} compact={compact} tx={row.tx} internalSwap={crossChainSwaps.ethereum.has(row.tx.id)} wallets={ethereum.wallets} exchanges={ethereum.exchanges} history={ethereum.data.history} adaHistory={snapshot?.history||{}}/>:section==='gain-loss'?<GainLossTransaction key={row.tx.tx_hash} tx={row.tx} fact={classifiedFacts[row.tx.tx_hash]} wallets={displayWallets} entries={cexAddresses} history={snapshot?.history||{}}/>:<Transaction key={row.tx.tx_hash} compact={compact} tx={row.tx} internalSwap={crossChainSwaps.cardano.has(row.tx.tx_hash)} fact={classifiedFacts[row.tx.tx_hash]} wallets={displayWallets} markets={snapshot?.markets||{}} history={snapshot?.history||{}} cexAddresses={cexAddresses} swapAddresses={swapAddresses}/>);
-        return compact?<TransactionPair crossChain={group.some(row=>row.chain==='ethereum')} key={group[0].chain==='cardano'?group[0].tx.tx_hash:group[0].chain==='ethereum'?group[0].tx.id:group[0].tx.hash}>{children}</TransactionPair>:children;
+        const children=group.map(row=>row.chain==='solana'?<SolanaTransaction key={row.tx.hash} compact={compact} internalSwap={crossChainSwaps.solana.has(row.tx.hash)} tx={row.tx} wallets={solana.wallets} exchanges={solana.exchanges} history={solana.data.history} adaHistory={snapshot?.history||{}}/>:row.chain==='ethereum'?<EthereumTransaction key={row.tx.id} compact={compact} tx={row.tx} internalSwap={crossChainSwaps.ethereum.has(row.tx.id)} wallets={ethereum.wallets} exchanges={ethereum.exchanges} history={ethereum.data.history} adaHistory={snapshot?.history||{}}/>:section==='gain-loss'?<GainLossTransaction key={row.tx.tx_hash} tx={row.tx} fact={classifiedFacts[row.tx.tx_hash]} wallets={displayWallets} entries={cexAddresses} history={snapshot?.history||{}}/>:<Transaction key={row.tx.tx_hash} compact={compact} tx={row.tx} internalSwap={crossChainSwaps.cardano.has(row.tx.tx_hash)} fact={classifiedFacts[row.tx.tx_hash]} wallets={displayWallets} markets={snapshot?.markets||{}} history={snapshot?.history||{}} cexAddresses={cexAddresses} swapAddresses={swapAddresses}/>);
+        return compact?<TransactionPair crossChain={group.some(row=>row.chain!=='cardano')} symbols={group.some(row=>row.chain==='solana')?'ADA / SOL':'ADA / ETH'} key={group[0].chain==='cardano'?group[0].tx.tx_hash:group[0].chain==='ethereum'?group[0].tx.id:group[0].tx.hash}>{children}</TransactionPair>:children;
       })}</TransactionTable>{!shown.length&&<p className="empty">{busy?'Loading transactions…':'No matching transactions.'}</p>}
       <TransactionPagination position="bottom" page={currentPage} count={shown.length} onPage={setPage}/>
       {section==='gain-loss'?<p className="small muted table-note">USD amounts use daily UTC transfer-date prices. The Fee column shows the total on-chain fee; paid-fee totals include only fees attributable to your wallet.</p>:<p className="small muted table-note">Internal transfers require all inputs and outputs to belong to tracked addresses. Their net change is only the fee. Mixed transactions remain separate. Buy/sell labels are inferred from opposing ADA and token changes; multi-step DEX orders may need further reconciliation.</p>}
