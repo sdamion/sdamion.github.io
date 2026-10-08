@@ -1200,6 +1200,7 @@ async function authenticateAddress(wallet, address) {
     });
     sessionToken = session.token;
     sessionStorage.setItem(SESSION_KEY, sessionToken);
+    if (session.role === 'admin') sessionStorage.setItem(ADMIN_SESSION_KEY, sessionToken);
     window.dispatchEvent(new CustomEvent('tdsp:portfolio-session-expired'));
     portfolioUnlockWallet = wallet;
     setStatus('Wallet verified.');
