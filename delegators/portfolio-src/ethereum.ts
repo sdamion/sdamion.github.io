@@ -1,6 +1,6 @@
 import {blake2b} from '@noble/hashes/blake2.js';
 export type EthereumWallet={address:string;name:string;miner?:boolean;group?:'swap';swapAddresses?:string[]};
-export type EthereumTransaction={id:string;hash:string;kind:'normal'|'internal';block:number;time:number;from:string;to:string;valueWei:string;feeWei:string|null;failed:boolean};
+export type EthereumTransaction={id:string;hash:string;kind:'normal'|'internal';block:number;time:number;from:string;to:string;valueWei:string;feeWei:string|null;failed:boolean;transactionIndex?:number;traceIndex?:string};
 export type EthereumProvider='etherscan'|'blockscout';
 export type EthereumAccount={balanceWei:string;block:number;transactions:EthereumTransaction[];provider?:EthereumProvider};
 export type EthereumData={accounts:Record<string,EthereumAccount>;history:Record<string,number>;usd:number|null;updated:string|null};
@@ -23,7 +23,9 @@ export function validEthereumTransaction(row:unknown):row is EthereumTransaction
   return !!r&&typeof r.id==='string'&&/^0x[0-9a-f]{64}:(?:normal|\d+(?:_\d+)*)$/.test(r.id)&&r.id.split(':')[0]===r.hash&&
     ['normal','internal'].includes(r.kind)&&(r.id.endsWith(':normal')===(r.kind==='normal'))&&validEthereumAddress(r.from)&&(r.to===''||validEthereumAddress(r.to))&&
     typeof r.valueWei==='string'&&/^\d{1,80}$/.test(r.valueWei)&&(r.feeWei===null||typeof r.feeWei==='string'&&/^\d{1,80}$/.test(r.feeWei))&&
-    (r.kind==='normal'?r.feeWei!==null:r.feeWei===null)&&typeof r.failed==='boolean'&&Number.isSafeInteger(r.block)&&r.block>=0&&Number.isSafeInteger(r.time)&&r.time>0&&r.time<8640000000000;
+    (r.kind==='normal'?r.feeWei!==null:r.feeWei===null)&&typeof r.failed==='boolean'&&Number.isSafeInteger(r.block)&&r.block>=0&&Number.isSafeInteger(r.time)&&r.time>0&&r.time<8640000000000&&
+    (r.transactionIndex===undefined||Number.isSafeInteger(r.transactionIndex)&&r.transactionIndex>=0)&&
+    (r.traceIndex===undefined||r.kind==='internal'&&typeof r.traceIndex==='string'&&/^\d+(?:_\d+)*$/.test(r.traceIndex));
 }
 export function ethereumData(value:unknown):EthereumData{
   const data=value as EthereumData;
@@ -40,24 +42,25 @@ export function ethereumData(value:unknown):EthereumData{
   return next;
 }
 export function weiToEth(value:string):number{return Number(BigInt(value))/1e18;}
+export function ethereumAccountTransactions(transactions:EthereumTransaction[]){
+  const rows:EthereumTransaction[]=[];
+  const occurrences=new Map<string,number>();
+  for(const tx of new Map(transactions.map(tx=>[tx.id,tx])).values()){
+    if(tx.kind==='normal'){rows.push(tx);continue;}
+    // Providers number traces differently. Preserve repeated equal transfers,
+    // while counting the same transfer seen by two tracked wallets only once.
+    const signature=JSON.stringify([tx.hash,tx.block,tx.time,tx.from,tx.to,tx.valueWei,tx.failed]);
+    const ordinal=occurrences.get(signature)||0;occurrences.set(signature,ordinal+1);
+    const key=signature+':'+ordinal;
+    const bytes=blake2b(new TextEncoder().encode(key),{dkLen:32});
+    const trace=bytes.reduce((number,byte)=>(number<<8n)+BigInt(byte),0n);
+    rows.push({...tx,id:tx.hash+':'+trace.toString()});
+  }
+  return rows;
+}
 export function ethereumTransactions(data:EthereumData,wallets:EthereumWallet[]){
   const rows=new Map<string,EthereumTransaction>();
-  for(const wallet of wallets){
-    const occurrences=new Map<string,number>();
-    for(const tx of new Map((data.accounts[wallet.address]?.transactions||[]).map(tx=>[tx.id,tx])).values()){
-      if(tx.kind==='normal'){rows.set(tx.id,tx);continue;}
-      // Providers number traces differently. Preserve repeated equal transfers,
-      // while counting the same transfer seen by two tracked wallets only once.
-      const signature=JSON.stringify([tx.hash,tx.block,tx.time,tx.from,tx.to,tx.valueWei,tx.failed]);
-      const ordinal=occurrences.get(signature)||0;occurrences.set(signature,ordinal+1);
-      const key=signature+':'+ordinal;
-      if(!rows.has(key)){
-        const bytes=blake2b(new TextEncoder().encode(key),{dkLen:32});
-        const trace=bytes.reduce((number,byte)=>(number<<8n)+BigInt(byte),0n);
-        rows.set(key,{...tx,id:tx.hash+':'+trace.toString()});
-      }
-    }
-  }
+  for(const wallet of wallets)for(const tx of ethereumAccountTransactions(data.accounts[wallet.address]?.transactions||[]))if(!rows.has(tx.id))rows.set(tx.id,tx);
   return [...rows.values()].sort((a,b)=>b.time-a.time||a.id.localeCompare(b.id));
 }
 export function ethereumTransactionCount(data:EthereumData,wallets:EthereumWallet[]){

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {ethereumWallets,ethereumData,ethereumTransactions,ethereumTransfer,ethereumTransfers,ethereumValue,ethereumFees,emptyEthereum} from './ethereum.ts';
+import {ethereumWallets,ethereumData,ethereumTransactions,ethereumTransfer,ethereumTransfers,ethereumValue,ethereumFees,emptyEthereum,validEthereumTransaction} from './ethereum.ts';
 import type {EthereumTransaction} from './ethereum.ts';
 import {transferComparison,nativeTransferTotals,comparisonNet} from './transfer-comparison.ts';
 import type {Fact} from './core.ts';
@@ -13,6 +13,10 @@ function tx(n:number,from:string,to:string,valueWei='1000000000000000000',kind:'
   return {id:hash+':'+(kind==='normal'?'normal':'0_1'),hash,kind,block:100,time,from,to,valueWei,feeWei:kind==='normal'?'210000000000000':null,failed:false};
 }
 const input=tx(1,cex,a),output=tx(2,b,cex),internal=tx(3,a,b),failed={...tx(4,a,cex),failed:true},trace=tx(5,cex,a,'500000000000000000','internal');
+assert.ok(validEthereumTransaction({...input,transactionIndex:12}));
+assert.ok(validEthereumTransaction({...trace,transactionIndex:12,traceIndex:'0_10'}));
+for(const transactionIndex of [-1,1.5,Number.MAX_SAFE_INTEGER+1])assert.equal(validEthereumTransaction({...input,transactionIndex}),false);
+assert.equal(validEthereumTransaction({...trace,traceIndex:'invalid'}),false);
 const data={accounts:{[a]:{balanceWei:'2000000000000000000',block:100,transactions:[input,internal,failed,trace]},[b]:{balanceWei:'1000000000000000000',block:100,transactions:[output,internal]}},history:{'2023-01-06':1000},usd:2000,updated:null};
 assert.deepEqual(ethereumWallets([{address:a.toUpperCase().replace('0X','0x'),name:' Savings '},{address:a,name:'Updated'},{address:'addr1fake',name:'No'}]),[{address:a,name:'Updated'}]);
 assert.equal(ethereumTransactions(data,wallets).length,5,'shared own-wallet history counted once');

@@ -339,6 +339,22 @@ try{
   assert.ok(recoveryCalls.filter(r=>r.action==='history'&&r.provider==='etherscan').every(r=>r.startBlock===136),'indexing recovery also resumes from the cached checkpoint');
   assert.equal(recoveryCalls.filter(r=>r.action==='history'&&r.provider==='etherscan'&&r.kind==='normal').length,0,'completed normal history is reused when internal indexing fails');
   assert.equal(await page.evaluate(stake=>Object.values(JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)).accounts)[0].transactions.length,stake),2);
+  indexerUnavailable=true;
+  await page.evaluate(({stake,address,exchange})=>{
+    const tx=(character,from,to,valueWei,transactionIndex)=>{
+      const hash='0x'+character.repeat(64);
+      return {hash,id:hash+':normal',kind:'normal',block:180,time:1672963200,from,to,valueWei,feeWei:'0',failed:false,transactionIndex};
+    };
+    window.fixtureStorage.setItem('tdsp-member-ethereum-wallets:'+stake,JSON.stringify([{address,name:'ETH Savings'}]));
+    window.fixtureStorage.setItem('tdsp-member-ethereum-cex:'+stake,JSON.stringify([{address:exchange,name:'Bitvavo'}]));
+    window.fixtureStorage.setItem('tdsp-member-ethereum-data:'+stake,JSON.stringify({accounts:{[address]:{balanceWei:'1000000000000000000',block:200,transactions:[tx('1',address,exchange,'1000000000000000000',2),tx('f',exchange,address,'2000000000000000000',1)]}},history:{'2023-01-06':1000},usd:2000,updated:null}));
+    window.reopenPortfolio();
+  },{stake,address,exchange});
+  await page.getByRole('combobox',{name:'Comparison currency'}).selectOption('USD');
+  await assets.click();await page.getByRole('button',{name:'Open FTs',exact:true}).click();
+  const sameBlockRow=page.locator('#portfolio-holdings-overlay tbody tr').filter({has:page.getByRole('button',{name:'Ethereum · ETH',exact:true})});
+  assert.match(await sameBlockRow.locator('td').nth(4).innerText(),/1,000\.00/,'same-block receipts and sends show the correct ETH average in the holdings table');
+  assert.match(await sameBlockRow.locator('td').nth(5).innerText(),/1,000\.00/,'same-block remaining cost produces the correct ETH gain');
   assert.deepEqual(errors,[]);
   console.log('PASS: Ethereum wallets, native holdings/exclusion, combined CEX totals and filters, incremental refresh, own-wallet rejection and mobile layout.');
 }finally{await browser.close();}
