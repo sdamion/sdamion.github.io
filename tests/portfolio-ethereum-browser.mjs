@@ -252,6 +252,7 @@ try{
   await page.getByRole('button',{name:'Open Transactions',exact:true}).click();
   const pair=page.locator('.portfolio-swap-pair');
   await pair.waitFor();
+  assert.deepEqual(await page.locator('#portfolio-transactions-overlay .portfolio-transaction-types button').allTextContents(),['All','CEX','Swap','Trades','Sends','Receives'],'Internal, Mixed and Other are removed without hiding these rows from All');
   assert.equal(await pair.count(),1,'matched legs share one marked table row');
   assert.equal(await pair.locator('td').count(),1,'both legs occupy one column');
   assert.equal(await pair.locator('.portfolio-swap-leg').count(),2);
@@ -262,6 +263,42 @@ try{
   assert.equal(await pair.evaluate(el=>el.scrollWidth<=el.clientWidth+1),true,'paired swaps fit on mobile');
   await pair.screenshot({path:'/tmp/tdsp-swap-pair-mobile.png'});
   await page.setViewportSize({width:1200,height:900});
+  await page.evaluate(({stake,address,exchange})=>{
+    window.swapRegressionBackup={fixture:structuredClone(window.fixture),wallets:window.fixtureStorage.getItem('tdsp-member-ethereum-wallets:'+stake),data:window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)};
+    window.fixtureStorage.setItem('tdsp-member-ethereum-wallets:'+stake,JSON.stringify([{address,name:'Simple Swap',group:'swap'},{address:exchange,name:'Metamask'}]));
+    const key='tdsp-member-ethereum-data:'+stake,data=JSON.parse(window.fixtureStorage.getItem(key));
+    data.accounts[address].transactions[0]={...data.accounts[address].transactions[0],id:data.accounts[address].transactions[0].hash+':0',kind:'internal',feeWei:null,from:address,to:exchange,time:1672963200+42*60};
+    window.fixtureStorage.setItem(key,JSON.stringify(data));
+    const base=window.fixture.facts['ada-swap'];
+    for(const [hash,raw,time] of [['ada-return-send','-330540000',1672981200],['ada-return-receipt','322380000',1672982760]]){
+      window.fixture.facts[hash]={...base,hash,adaRaw:raw,time};
+      window.fixture.txs.push({tx_hash:hash,block_time:time});
+    }
+    window.reopenPortfolio();
+  },{stake,address,exchange});
+  await page.getByRole('button',{name:'Open Transactions',exact:true}).click();
+  await page.waitForFunction(()=>document.querySelectorAll('.portfolio-swap-pair').length===2);
+  const crossPair=page.locator('.portfolio-swap-pair').filter({hasText:'ADA / ETH'});
+  assert.equal(await crossPair.locator('.portfolio-swap-leg').count(),2,'internal ETH receipt between regular and Swap wallets pairs with ADA');
+  assert.match(await crossPair.innerText(),/ETH IN/);
+  const adaPair=page.locator('.portfolio-swap-pair').filter({has:page.locator('a[href*="transaction/ada-return-send"]')});
+  assert.equal(await adaPair.locator('.portfolio-swap-leg').count(),2,'same-chain ADA send and receipt share one table column');
+  assert.equal(await adaPair.locator('td').count(),1);
+  assert.match(await adaPair.innerText(),/ADA IN/);assert.match(await adaPair.innerText(),/ADA OUT/);
+  await adaPair.screenshot({path:'/tmp/tdsp-ada-swap-pair-desktop.png'});
+  await page.setViewportSize({width:390,height:844});
+  assert.equal(await adaPair.evaluate(el=>el.scrollWidth<=el.clientWidth+1),true);
+  await adaPair.screenshot({path:'/tmp/tdsp-ada-swap-pair-mobile.png'});
+  await page.setViewportSize({width:1200,height:900});
+  await page.evaluate(stake=>{
+    const backup=window.swapRegressionBackup;
+    window.fixture=backup.fixture;
+    window.fixtureStorage.setItem('tdsp-member-ethereum-wallets:'+stake,backup.wallets);
+    window.fixtureStorage.setItem('tdsp-member-ethereum-data:'+stake,backup.data);
+    window.reopenPortfolio();
+  },stake);
+  await page.getByRole('button',{name:'Open Transactions',exact:true}).click();
+  await pair.waitFor();
   indexerUnavailable=false;quoteUnavailable=false;primaryLimited=true;
   await page.locator('#portfolio-transactions-overlay').getByRole('button',{name:'Back',exact:true}).click();
   await walletsTile.click();await page.getByRole('button',{name:'Open My Wallets',exact:true}).click();

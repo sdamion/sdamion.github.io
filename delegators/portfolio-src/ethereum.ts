@@ -62,6 +62,15 @@ export function ethereumTransactions(data:EthereumData,wallets:EthereumWallet[])
 export function ethereumTransactionCount(data:EthereumData,wallets:EthereumWallet[]){
   return new Set(wallets.flatMap(wallet=>data.accounts[wallet.address]?.transactions.map(tx=>tx.hash)||[])).size;
 }
+export function ethereumSwapDirection(tx:EthereumTransaction,wallets:EthereumWallet[]):boolean|null{
+  if(tx.failed||BigInt(tx.valueWei)===0n)return null;
+  const from=wallets.find(wallet=>wallet.address===tx.from),to=wallets.find(wallet=>wallet.address===tx.to);
+  const fromSwap=from?.group==='swap',toSwap=to?.group==='swap';
+  if(fromSwap===toSwap)return null;
+  // Across the saved Swap boundary, direction belongs to the regular wallet.
+  // For standalone Swap wallets retain their receipt/send direction.
+  return from&&to?fromSwap:!!to;
+}
 export function ethereumTransfer(tx:EthereumTransaction,wallets:EthereumWallet[],exchanges:EthereumWallet[]){
   if(tx.failed||BigInt(tx.valueWei)===0n)return null;
   const owned=new Set(wallets.map(w=>w.address));

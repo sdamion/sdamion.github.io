@@ -42,9 +42,9 @@ export function TransactionLayout({cells,compact=false}:{cells:ReactNode[];compa
   return <TableRow className="portfolio-transfer-row">{cells.map((cell,index)=><TableCell key={index}>{cell}</TableCell>)}</TableRow>;
 }
 
-export function TransactionPair({children}:{children:ReactNode}){
+export function TransactionPair({children,crossChain=true}:{children:ReactNode;crossChain?:boolean}){
   const t=usePortfolioText();
-  return <TableRow className="portfolio-swap-pair"><TableCell colSpan={5}><strong>{t('Internal cross-chain swap')} · <span translate="no">ADA / ETH</span></strong><div className="portfolio-swap-legs">{children}</div></TableCell></TableRow>;
+  return <TableRow className="portfolio-swap-pair"><TableCell colSpan={5}><strong>{t(crossChain?'Internal cross-chain swap':'Swap')} · <span translate="no">{crossChain?'ADA / ETH':'ADA'}</span></strong><div className="portfolio-swap-legs">{children}</div></TableCell></TableRow>;
 }
 
 export function TransactionRow({hash,time,amount,kind,price,feeRaw,wallets,details,priceDetails,compact=false}:{hash:string;time:number;amount:ReactNode;kind?:ReactNode;price?:number|null;feeRaw?:string|null;wallets:ReactNode;details?:ReactNode;priceDetails?:ReactNode;compact?:boolean}){
