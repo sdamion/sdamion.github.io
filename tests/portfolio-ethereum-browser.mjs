@@ -158,7 +158,8 @@ try{
   await page.locator('#portfolio-wallet-menu-wallets').getByRole('button',{name:'Back',exact:true}).click();
   await page.locator('#portfolio-wallets-overlay').getByRole('button',{name:'Back',exact:true}).click();
   await cex.click();
-  assert.match(await page.locator('#portfolio-gain-loss-overlay .portfolio-eth-comparison').innerText(),/1 ETH[\s\S]*1,200\.00[\s\S]*1 ETH[\s\S]*1,200\.00/,'miner receipts are ETH OUT while CEX purchases remain ETH IN');
+  const miningSummary=await page.locator('#portfolio-gain-loss-overlay .portfolio-eth-comparison').innerText();
+  assert.match(miningSummary,/1 ETH[\s\S]*1,200\.00[\s\S]*0 ETH[\s\S]*Mining proceeds[\s\S]*1 ETH[\s\S]*1,200\.00/,'mining has its own line without increasing CEX OUT');
   await page.locator('#portfolio-gain-loss-overlay').getByRole('button',{name:'ETH OUT',exact:true}).click();
   assert.equal(await page.locator('#portfolio-gain-loss-overlay a[href="https://etherscan.io/tx/0x'+'2'.repeat(64)+'"]').count(),1);
   assert.match(await page.locator('#portfolio-gain-loss-overlay').innerText(),/Mining receipt/);

@@ -48,6 +48,8 @@ import {EthereumTransaction} from './EthereumTransaction';
 import {ethereumTransactions,ethereumTransactionCount,ethereumTransfers,ethereumTransfer,ethereumValue,weiToEth} from './ethereum';
 import {matchCrossChainSwaps} from './cross-chain-swaps';
 import {availableTotal,ethereumAvailableTotals,availableCexResult} from './portfolio-totals';
+import {performanceTransfers} from './portfolio-flows';
+import {ethereumReceiptBasis} from './ethereum-basis';
 import {useFxHistory} from './use-fx-history';
 import {transferComparison,nativeTransferTotals,comparisonNet,fiatRate,comparisonResultLabel} from './transfer-comparison';
 import type {ComparisonCrypto,ComparisonFiat} from './transfer-comparison';
@@ -405,8 +407,10 @@ export default function Home({memberStake}:{memberStake:string}){
   const payments=useMemo(()=>mintPayments(Object.values(classifiedFacts),paymentLinks),[classifiedFacts,paymentLinks]);
   const cexDollars=useMemo(()=>cexUsdNetPosition(Object.values(cexFacts),cexAddresses,holdings.find(h=>h.id==='lovelace')?.raw||'0',snapshot?.history||{},liveQuote?.usd??snapshot?.adaUsd??null),[cexFacts,cexAddresses,holdings,snapshot,liveQuote]);
   const ethHistoryReady=ethereum.wallets.every(w=>!!ethereum.data.accounts[w.address]);
-  const ethCexTotals=useMemo(()=>ethHistoryReady?nativeTransferTotals(ethTransfers,snapshot?.history||{},fx.history,comparisonFiat):{incoming:null,outgoing:null,inFiat:null,outFiat:null},[ethHistoryReady,ethTransfers,snapshot,fx.history,comparisonFiat]);
-  const comparison=useMemo(()=>ethHistoryReady?transferComparison(Object.values(cexFacts),cexAddresses,snapshot?.history||{},btc.history,fx.history,comparisonCrypto,comparisonFiat,ethTransfers,ethereum.data.history).at(-1):{time:0,incoming:null,outgoing:null,inFiat:null,outFiat:null},[ethHistoryReady,cexFacts,cexAddresses,snapshot,btc.history,fx.history,comparisonCrypto,comparisonFiat,ethTransfers,ethereum.data.history]);
+  const ethCexTotals=useMemo(()=>ethHistoryReady?nativeTransferTotals(performanceTransfers(ethTransfers),snapshot?.history||{},fx.history,comparisonFiat):{incoming:null,outgoing:null,inFiat:null,outFiat:null},[ethHistoryReady,ethTransfers,snapshot,fx.history,comparisonFiat]);
+  const miningTotals=useMemo(()=>ethHistoryReady?nativeTransferTotals(rawEthTransfers.filter(row=>row.performance===false),snapshot?.history||{},fx.history,comparisonFiat):{outgoing:null,outFiat:null},[ethHistoryReady,rawEthTransfers,snapshot,fx.history,comparisonFiat]);
+  const ethBasis=useMemo(()=>ethereumReceiptBasis(ethereum.data,ethereum.wallets,ethereum.exchanges),[ethereum.data,ethereum.wallets,ethereum.exchanges]);
+  const comparison=useMemo(()=>ethHistoryReady?transferComparison(Object.values(cexFacts),cexAddresses,snapshot?.history||{},btc.history,fx.history,comparisonCrypto,comparisonFiat,performanceTransfers(ethTransfers),ethereum.data.history).at(-1):{time:0,incoming:null,outgoing:null,inFiat:null,outFiat:null},[ethHistoryReady,cexFacts,cexAddresses,snapshot,btc.history,fx.history,comparisonCrypto,comparisonFiat,ethTransfers,ethereum.data.history]);
   const basis=useMemo(()=>snapshot?remainingBasis(Object.values(classifiedFacts),snapshot.history,payments.acquisitions):{},[snapshot,classifiedFacts,payments]);
   const purchases=useMemo(()=>purchaseAverages(Object.values(classifiedFacts),snapshot?.history||{},payments.acquisitions),[classifiedFacts,snapshot,payments]);
   const adaLive=useMemo(()=>snapshot?liveAdaBasis(Object.values(classifiedFacts),snapshot.history,holdings.find(h=>h.id==='lovelace')?.raw||'0',snapshot.complete):null,[snapshot,holdings,classifiedFacts]);
@@ -555,7 +559,7 @@ export default function Home({memberStake}:{memberStake:string}){
         <TableCell translate="no">{ethereum.wallets.every(w=>ethereum.data.accounts[w.address])?num(ethereum.wallets.reduce((sum,w)=>sum+weiToEth(ethereum.data.accounts[w.address].balanceWei),0)):'—'}</TableCell>
         <TableCell translate="no">{formatPortfolioUsd(ethereum.data.usd,currencyDisplay)}</TableCell>
         <TableCell translate="no">{formatPortfolioUsd(ethValue,currencyDisplay)}</TableCell>
-        <TableCell>{t('Ethereum cost basis is not calculated yet.')}</TableCell><TableCell>—</TableCell>
+        <TableCell translate="no">{formatPortfolioUsd(ethBasis.average,currencyDisplay)}<div className="small muted">{t(!ethBasis.reconciled?'Waiting for transaction history to reconcile with the wallet balance':ethBasis.usd===null?'Missing receipt prices':'Mining adds ETH with zero purchase cost. Daily prices estimate known purchases.')}</div></TableCell><TableCell translate="no">{formatPortfolioUsd(ethValue!==null&&ethBasis.usd!==null?ethValue-ethBasis.usd:null,currencyDisplay)}</TableCell>
         <TableCell><AssetExclusionToggle compact name="Ethereum" excluded={ethExcluded} onChange={excluded=>excludeAsset('ethereum:1:native',excluded)}/></TableCell>
       </TableRow>}
       {holdingEntries.map(entry=>{
@@ -594,7 +598,7 @@ export default function Home({memberStake}:{memberStake:string}){
       <label className="small">{t('Crypto')}<select aria-label={t('Comparison cryptocurrency')} value={comparisonCrypto} onChange={event=>setComparisonCrypto(event.target.value as ComparisonCrypto)}><option value="ADA">ADA</option><option value="BTC">BTC</option><option value="ETH">ETH</option></select></label>
     </div>
     <div className="tdsp-chart-overview portfolio-gain-overview">
-    <CexTimeline facts={Object.fromEntries(cardanoShown.map(tx=>[tx.tx_hash,classifiedFacts[tx.tx_hash]]))} entries={cexAddresses} history={snapshot?.history||{}} btcHistory={btc.history} ethHistory={ethereum.data.history} fxHistory={fx.history} crypto={comparisonCrypto} currency={comparisonFiat} busy={busy||ethereum.busy} dateFrom={dateFrom} dateTo={dateTo} additional={ethTransfers.filter(row=>visibleEthIds.has(row.hash))}/>
+    <CexTimeline facts={Object.fromEntries(cardanoShown.map(tx=>[tx.tx_hash,classifiedFacts[tx.tx_hash]]))} entries={cexAddresses} history={snapshot?.history||{}} btcHistory={btc.history} ethHistory={ethereum.data.history} fxHistory={fx.history} crypto={comparisonCrypto} currency={comparisonFiat} busy={busy||ethereum.busy} dateFrom={dateFrom} dateTo={dateTo} additional={performanceTransfers(ethTransfers).filter(row=>visibleEthIds.has(row.hash))}/>
     <section className="portfolio-section tdsp-chart-summary portfolio-gain-summary" aria-label="ADA Gains/Loss breakdown">
       {(dateFrom||dateTo||query||filter!=='all')&&<p className="small muted">Gain/loss totals cover all loaded history and current wallet balances. Filters apply to the transfer graph and transaction list below.</p>}
       {ethereum.exchanges.length>0&&!ethereum.wallets.length&&<p translate="no" role="status" className="message">{t('Add your own Ethereum wallet to scan ETH CEX transfers. CEX addresses are counterparties, not your holdings; shared exchange balances are never counted as yours.')} <button type="button" className="governance-vote-secondary" onClick={()=>setSection('wallets')}>{t('Wallets')}</button></p>}
@@ -614,7 +618,9 @@ export default function Home({memberStake}:{memberStake:string}){
         ].map((total,index)=><TableCell key={index}><strong translate="no" className={`portfolio-transfer-amount ${total.tone}`}><span className="pool-delegator-amount">
           <span>{total.amount===null?'—':total.amount.toLocaleString(holdingsLocale,{maximumFractionDigits:8})} ETH</span>
           <span className="pool-delegator-usd">≈ {formatPortfolioAmount(total.value,{...currencyDisplay,currency:comparisonFiat})}</span>
-        </span></strong></TableCell>)}</TableRow></TableBody>
+        </span></strong></TableCell>)}</TableRow>
+        {ethereum.wallets.some(w=>w.miner)&&<TableRow><TableCell>{t('Mining proceeds')}</TableCell><TableCell translate="no"><span>{miningTotals.outgoing===null?'—':miningTotals.outgoing.toLocaleString(holdingsLocale,{maximumFractionDigits:8})} ETH</span><div className="small muted">≈ {formatPortfolioAmount(miningTotals.outFiat,{...currencyDisplay,currency:comparisonFiat})}</div></TableCell></TableRow>}
+        </TableBody>
       </Table>}
       <div className="portfolio-gain-result">
         <span translate="no" className="governance-card-detail">{t(comparisonResultLabel(comparisonResult.amount,comparisonCrypto),{crypto:comparisonCrypto})}</span>

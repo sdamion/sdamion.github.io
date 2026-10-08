@@ -116,6 +116,7 @@ try{
  });
  const selectionGain=page.getByRole('button',{name:'Open CEX Transactions',exact:true});
  await selectionGain.waitFor();
+ await page.waitForFunction(()=>document.querySelector('main')?.textContent.includes('$4,551.64'));
  assert.match(await selectionGain.innerText(),/\$4,551\.64/,'disabled asset value is excluded from ADA gain/loss after reload');
  await selectionGain.click();
  assert.match(await page.locator('.portfolio-gain-result').innerText(),/\$4,551\.64/,'overlay and tile use the same selected assets');

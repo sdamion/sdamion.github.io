@@ -42,6 +42,30 @@ await assert.rejects(restoreCheckpoint(changed.index,key,stake,async()=>[]),/inc
 const tampered=structuredClone(changed.index);Object.values(tampered.buckets)[0].digest='0'.repeat(64);
 await assert.rejects(restoreCheckpoint(tampered,key,stake,async ids=>rows.filter(row=>ids.includes(row.id))),/integrity/);
 await assert.rejects(prepareCheckpoint(data,key,stake,null,AbortSignal.abort()),{name:'AbortError'});
+const settingsData:VaultData={version:1,snapshot:null,settings:{
+  private:'small',eth:'x'.repeat(5*1024*1024),futureToken:'日本語'.repeat(100000),unicodeBoundary:'x'.repeat(4*1024*1024-1)+'🚀',
+}};
+const settingsCheckpoint=await prepareCheckpoint(settingsData,key,stake,null);
+assert.ok(settingsCheckpoint.chunks.length>=3);
+assert.equal(settingsCheckpoint.index.meta.settings.eth,undefined);
+const settingsRestored=await restoreCheckpoint(settingsCheckpoint.index,key,stake,async ids=>settingsCheckpoint.chunks.filter(row=>ids.includes(row.id)));
+assert.deepEqual(settingsRestored,settingsData);
+assert.equal((await prepareCheckpoint(settingsData,key,stake,settingsCheckpoint.index)).chunks.length,0);
+settingsData.settings.private='only metadata changes';
+assert.equal((await prepareCheckpoint(settingsData,key,stake,settingsCheckpoint.index)).chunks.length,0);
+settingsData.settings.eth+='changed';
+assert.equal((await prepareCheckpoint(settingsData,key,stake,settingsCheckpoint.index)).chunks.length,1);
+const missingPart=structuredClone(settingsCheckpoint.index);
+missingPart.settingParts!.eth.push('absent');
+await assert.rejects(restoreCheckpoint(missingPart,key,stake,async ids=>settingsCheckpoint.chunks.filter(row=>ids.includes(row.id))),/integrity/);
+if(process.env.TEST_LARGE_SETTINGS==='1'){
+  const large:VaultData={version:1,snapshot:null,settings:{ethereum:'x'.repeat(101*1024*1024)}};
+  const checkpoint=await prepareCheckpoint(large,key,stake,null);
+  const result=await restoreCheckpoint(checkpoint.index,key,stake,async ids=>checkpoint.chunks.filter(row=>ids.includes(row.id)));
+  assert.equal(result.settings.ethereum,large.settings.ethereum);
+  assert.equal((await prepareCheckpoint(large,key,stake,checkpoint.index)).chunks.length,0);
+  console.log('PASS: 101 MB settings history encrypted, restored and reused through generic chunks.');
+}
 if(process.env.TEST_LARGE_CHECKPOINT==='1'){
   const large=structuredClone(data);
   large.snapshot!.data.facts[a]={padding:'x'.repeat(51*1024*1024)} as any;

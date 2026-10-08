@@ -57,7 +57,7 @@ export function ethereumTransfers(data:EthereumData,wallets:EthereumWallet[],exc
     if(!transfer)return [];
     const price=data.history[new Date(tx.time*1000).toISOString().slice(0,10)];
     const usd=transfer.amount*price;
-    return [{hash:tx.id,time:tx.time,side:transfer.side,amount:transfer.amount,usd:Number.isFinite(price)&&price>0&&Number.isFinite(usd)?usd:null}];
+    return [{hash:tx.id,time:tx.time,side:transfer.side,amount:transfer.amount,...('mined' in transfer?{performance:false}:{}),usd:Number.isFinite(price)&&price>0&&Number.isFinite(usd)?usd:null}];
   });
 }
 export function ethereumValue(data:EthereumData,wallets:EthereumWallet[]):number|null{
@@ -67,7 +67,7 @@ export function ethereumValue(data:EthereumData,wallets:EthereumWallet[]):number
   return Number.isFinite(value)?value:null;
 }
 export function addKnownValues(a:number|null,b:number|null):number|null{return a===null||b===null||!Number.isFinite(a+b)?null:a+b;}
-export type FiatTransfer={hash:string;time:number;side:'buy'|'sell';usd:number|null};
+export type FiatTransfer={hash:string;time:number;side:'buy'|'sell';usd:number|null;performance?:boolean};
 export function ethereumFees(data:EthereumData,wallets:EthereumWallet[]):number|null{
   if(wallets.some(w=>!data.accounts[w.address]))return null;
   const owned=new Set(wallets.map(w=>w.address));
