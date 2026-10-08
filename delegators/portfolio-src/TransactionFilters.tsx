@@ -1,7 +1,7 @@
 import {Input} from './ui';
 import type {ReactNode} from 'react';
 
-export const transactionFilters:Record<string,string>={all:'All',cex:'CEX',trade:'Trades',send:'Sends',receive:'Receives',internal:'Internal',mixed:'Mixed',other:'Other'};
+export const transactionFilters:Record<string,string>={all:'All',cex:'CEX',swap:'Swap',trade:'Trades',send:'Sends',receive:'Receives',internal:'Internal',mixed:'Mixed',other:'Other'};
 
 export function TransactionFilters({id,query,onQuery,filter,onFilter,dateFrom,dateTo,onDates,options=transactionFilters,placeholder='Asset name, transaction hash or wallet name',pagination}:{
   id:string;query:string;onQuery:(value:string)=>void;filter:string;onFilter:(value:string)=>void;

@@ -13,3 +13,8 @@ const policy='6c0394ebf4b6d7ed9709cf901863c254448a40785819a57f7c39a130';
 const bundle={...fact,hash:'fc77d1402b6856568ebe899388225857822a12f4589432c3f398c046cbfbcf0e',assets:Object.fromEntries(['DaggerofSacrilege999','AmuletofInfluence2022','SpearofCircumstance1251','RingofInvocation1669','CupOfConfusionAndIntellect383'].map(name=>[policy+Buffer.from(name).toString('hex'),'1']))};
 assert.equal(matchesTransaction('AmuletofInfluence2022',bundle.hash,bundle,{},[]),true);
 assert.equal(matchesTransaction('Amulet of Influence 2022',bundle.hash,bundle,{},[]),true);
+const swapWallets=[{address:'own',label:'Savings'},{address:'service',label:'My Swap',group:'swap' as const}];
+const swapReceipt={...fact,externalInputs:[{address:'service',lovelace:'1000000'}]};
+assert.equal(matchesTransaction('my swap',fact.hash,swapReceipt,{},swapWallets),true);
+assert.equal(matchesTransaction('my swap',fact.hash,fact,{},swapWallets),false);
+assert.equal(matchesTransaction('my swap',fact.hash,{...fact,source:{tx_hash:fact.hash,tx_timestamp:1,fee:'0',inputs:[{payment_addr:{bech32:'service'},value:'1000000'}],outputs:[]}}, {},swapWallets),true);

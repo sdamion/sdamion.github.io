@@ -467,11 +467,12 @@ export default function Home({memberStake}:{memberStake:string}){
   const progress=analysisProgress(busy,analysis,analysedTotal,transactionTotal);
   const eta=analysis&&counted!==null?remainingSeconds(analysis.started,clock,analysis.done,analysis.total):null;
   const refreshTiming=refreshStarted?`${busy?'Elapsed':'Refresh duration'}: ${durationLabel((clock-refreshStarted)/1000)}${busy?(eta!==null?` · Estimated analysis remaining: ${durationLabel(eta)}`:' · Estimating remaining time…'):''}`:'';
-  const cardanoShown=(snapshot?.txs||[]).filter(t=>{const f=classifiedFacts[t.tx_hash],internalSwap=crossChainSwaps.cardano.has(t.tx_hash);return withinTransactionDates(t.block_time,dateFrom,dateTo)&&(section==='gain-loss'?!internalSwap&&matchesGainLossTransfer(f,cexAddresses,filter):(filter==='all'||(filter==='cex'?!internalSwap&&isCexTransaction(f,cexAddresses):internalSwap?filter==='internal':f&&kindOf(f)===filter)))&&matchesTransaction(query,t.tx_hash,f,snapshot?.markets||{},displayWallets);});
+  const cardanoShown=(snapshot?.txs||[]).filter(t=>{const f=classifiedFacts[t.tx_hash],internalSwap=crossChainSwaps.cardano.has(t.tx_hash);return withinTransactionDates(t.block_time,dateFrom,dateTo)&&(section==='gain-loss'?!internalSwap&&matchesGainLossTransfer(f,cexAddresses,filter):(filter==='all'||(filter==='swap'?isSwapTransaction(f,swapAddresses):filter==='cex'?!internalSwap&&isCexTransaction(f,cexAddresses):internalSwap?filter==='internal':f&&kindOf(f)===filter)))&&matchesTransaction(query,t.tx_hash,f,snapshot?.markets||{},displayWallets);});
   const ethereumShown=ethTransactions.filter(tx=>{
     const internalSwap=crossChainSwaps.ethereum.has(tx.id),transfer=internalSwap?null:ethereumTransfer(tx,ethereum.wallets,ethereum.exchanges),own=new Set(ethereum.wallets.map(w=>w.address));
     const kind=internalSwap||own.has(tx.from)&&own.has(tx.to)?'internal':own.has(tx.from)?'send':'receive';
-    const matches=section==='gain-loss'?!!transfer&&(filter==='all'||filter===(transfer.side==='buy'?'in':'out')||filter===(transfer.side==='buy'?'eth-in':'eth-out')):filter==='all'||filter===kind||filter==='cex'&&!!transfer;
+    const swap=ethereum.wallets.some(w=>w.group==='swap'&&(w.address===tx.from||w.address===tx.to));
+    const matches=section==='gain-loss'?!!transfer&&(filter==='all'||filter===(transfer.side==='buy'?'in':'out')||filter===(transfer.side==='buy'?'eth-in':'eth-out')):filter==='all'||filter===kind||filter==='cex'&&!!transfer||filter==='swap'&&swap;
     const names=[...ethereum.wallets,...ethereum.exchanges].filter(w=>w.address===tx.from||w.address===tx.to).map(w=>w.name);
     return matches&&withinTransactionDates(tx.time,dateFrom,dateTo)&&[tx.hash,tx.from,tx.to,'ETH',...names].join(' ').toLowerCase().includes(query.trim().toLowerCase());
   });
