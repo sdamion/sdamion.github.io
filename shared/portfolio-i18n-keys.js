@@ -1831,5 +1831,8 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
   , ["Portfolio {operation} request timed out after 75 seconds. Your cached data is retained; please retry.", "portfolio_text_request_timeout"]
   , ["Portfolio checkpoint has too many chunks. Your saved cache has not been changed.", "portfolio_text_checkpoint_chunk_limit"]
   , ["Mining proceeds", "portfolio_text_mining_proceeds"]
+  , ["Mining source", "portfolio_text_mining_source"]
+  , ["Mining source: {name}", "portfolio_text_mining_source_label"]
+  , ["Receipts from this address are mining proceeds with zero purchase cost, not CEX purchases. Own-wallet transfers are excluded.", "portfolio_text_mining_source_help"]
   , ["Mining adds ETH with zero purchase cost. Daily prices estimate known purchases.", "portfolio_text_eth_mining_basis"]
 ]);

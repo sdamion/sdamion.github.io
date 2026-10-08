@@ -514,7 +514,7 @@ export default function Home({memberStake}:{memberStake:string}){
       <Metric label="Network fees paid" note={availableFees.partial||ethAvailable.feesPartial?partialNote:undefined} value={loadedFacts||snapshot?.complete?ethereum.wallets.length?formatPortfolioUsd(feeUsd,currencyDisplay):formatPortfolioAda(fees,currencyDisplay):'Waiting for transaction details'}>
         {ethereum.wallets.length>0&&<><span translate="no" className="small">Cardano: {loadedFacts||snapshot?.complete?formatPortfolioAda(fees,currencyDisplay):'—'}</span><span translate="no" className="small">ETH: {ethFees===null?'—':`${ethFees.toLocaleString(undefined,{maximumFractionDigits:8})} ETH`} · {formatPortfolioUsd(ethAvailable.feeUsd,currencyDisplay)}</span></>}
       </Metric>
-      {(cexAddresses.length>0||ethereum.exchanges.length>0||ethereum.wallets.some(w=>w.miner))&&<Metric label="CEX Transactions" openLabel="CEX Transactions" note={portfolioPartial||availableCex.partial||!ethHistoryReady?partialNote:undefined} value={snapshot?tileGainDisplay:'Waiting for wallet balances'} tone={tileGain===null?'':tileGain<0?'negative':'positive'} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('gain-loss');}}/>}
+      {(cexAddresses.length>0||ethereum.exchanges.length>0)&&<Metric label="CEX Transactions" openLabel="CEX Transactions" note={portfolioPartial||availableCex.partial||!ethHistoryReady?partialNote:undefined} value={snapshot?tileGainDisplay:'Waiting for wallet balances'} tone={tileGain===null?'':tileGain<0?'negative':'positive'} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('gain-loss');}}/>}
     </div></section>
     {section==='wallets'&&<AssetOverlay id="portfolio-wallets-overlay" name="Wallets" onClose={()=>setSection(null)}>
     <div className="portfolio-section">
@@ -621,7 +621,7 @@ export default function Home({memberStake}:{memberStake:string}){
           <span>{total.amount===null?'—':total.amount.toLocaleString(holdingsLocale,{maximumFractionDigits:8})} ETH</span>
           <span className="pool-delegator-usd">≈ {formatPortfolioAmount(total.value,{...currencyDisplay,currency:comparisonFiat})}</span>
         </span></strong></TableCell>)}</TableRow>
-        {ethereum.wallets.some(w=>w.miner)&&<TableRow><TableCell>{t('Mining proceeds')}</TableCell><TableCell translate="no"><span>{miningTotals.outgoing===null?'—':miningTotals.outgoing.toLocaleString(holdingsLocale,{maximumFractionDigits:8})} ETH</span><div className="small muted">≈ {formatPortfolioAmount(miningTotals.outFiat,{...currencyDisplay,currency:comparisonFiat})}</div></TableCell></TableRow>}
+        {ethereum.exchanges.some(w=>w.miner)&&<TableRow><TableCell>{t('Mining proceeds')}</TableCell><TableCell translate="no"><span>{miningTotals.outgoing===null?'—':miningTotals.outgoing.toLocaleString(holdingsLocale,{maximumFractionDigits:8})} ETH</span><div className="small muted">≈ {formatPortfolioAmount(miningTotals.outFiat,{...currencyDisplay,currency:comparisonFiat})}</div></TableCell></TableRow>}
         </TableBody>
       </Table>}
       <div className="portfolio-gain-result">

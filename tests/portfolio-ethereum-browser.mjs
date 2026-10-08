@@ -146,16 +146,23 @@ try{
       {...template,id:rewardHash+':normal',hash:rewardHash,from:external,to:address},
       {...template,id:sendHash+':normal',hash:sendHash,from:address,to:external,valueWei:'100000000000000000'}
     );
+    const cexKey='tdsp-member-ethereum-cex:'+stake;
+    const sources=JSON.parse(window.fixtureStorage.getItem(cexKey));
+    sources.push({address:external,name:'Mining pool'});
+    window.fixtureStorage.setItem(cexKey,JSON.stringify(sources));
     window.fixtureStorage.setItem(key,JSON.stringify(data));window.reopenPortfolio();
   },{stake,address});
   await page.getByRole('alert').filter({hasText:'Ethereum refresh failed. Saved data is retained.'}).waitFor();
   const fees=page.locator('main .governance-menu-card').filter({hasText:'Network fees paid'});
   assert.match(await fees.innerText(),/Cardano:[\s\S]*ETH: 0[.,]00021 ETH/,'ETH gas has a separate line on the fee tile');
   await walletsTile.click();await page.getByRole('button',{name:'Open My Wallets',exact:true}).click();
-  const miner=page.getByRole('checkbox',{name:'Miner wallet: ETH Savings',exact:true});
-  await miner.check();
-  assert.equal(await page.evaluate(stake=>JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-wallets:'+stake))[0].miner,stake),true);
+  assert.equal(await page.getByRole('checkbox',{name:'Miner wallet: ETH Savings',exact:true}).count(),0,'mining checkbox is removed from own wallets');
   await page.locator('#portfolio-wallet-menu-wallets').getByRole('button',{name:'Back',exact:true}).click();
+  await page.getByRole('button',{name:'Open DEX / CEX & Swap',exact:true}).click();
+  const miner=page.getByRole('checkbox',{name:'Mining source: Mining pool',exact:true});
+  await miner.check();
+  assert.equal(await page.evaluate(stake=>JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-cex:'+stake)).find(w=>w.name==='Mining pool').miner,stake),true);
+  await page.locator('#portfolio-wallet-menu-exchanges').getByRole('button',{name:'Back',exact:true}).click();
   await page.locator('#portfolio-wallets-overlay').getByRole('button',{name:'Back',exact:true}).click();
   await cex.click();
   const miningSummary=await page.locator('#portfolio-gain-loss-overlay .portfolio-eth-comparison').innerText();
@@ -164,14 +171,16 @@ try{
   assert.equal(await page.locator('#portfolio-gain-loss-overlay a[href="https://etherscan.io/tx/0x'+'2'.repeat(64)+'"]').count(),1);
   assert.match(await page.locator('#portfolio-gain-loss-overlay').innerText(),/Mining receipt/);
   await page.evaluate(()=>window.reopenPortfolio());
-  await walletsTile.click();await page.getByRole('button',{name:'Open My Wallets',exact:true}).click();
+  await walletsTile.click();await page.getByRole('button',{name:'Open DEX / CEX & Swap',exact:true}).click();
   assert.equal(await miner.isChecked(),true,'Miner selection is restored from settings');
   await miner.uncheck();
-  await page.locator('#portfolio-wallet-menu-wallets').getByRole('button',{name:'Back',exact:true}).click();
+  await page.locator('#portfolio-wallet-menu-exchanges').getByRole('button',{name:'Back',exact:true}).click();
   await page.locator('#portfolio-wallets-overlay').getByRole('button',{name:'Back',exact:true}).click();await cex.click();
-  assert.match(await page.locator('#portfolio-gain-loss-overlay .portfolio-eth-comparison').innerText(),/0 ETH/,'disabling Miner recalculates ETH OUT without a scan');
+  assert.match(await page.locator('#portfolio-gain-loss-overlay .portfolio-eth-comparison').innerText(),/2 ETH[\s\S]*0.1 ETH/,'disabling Mining source restores ordinary CEX classification without a scan');
+  assert.equal(await page.locator('#portfolio-gain-loss-overlay').getByText('Mining proceeds',{exact:true}).count(),0,'disabled mining source removes the mining line');
   await page.locator('#portfolio-gain-loss-overlay').getByRole('button',{name:'Back',exact:true}).click();
   await walletsTile.click();await page.getByRole('button',{name:'Open DEX / CEX & Swap',exact:true}).click();
+  await page.getByRole('checkbox',{name:'Mining source: Mining pool',exact:true}).locator('xpath=ancestor::tr').getByRole('button',{name:'Remove',exact:true}).click();
   const swaps=page.locator('#portfolio-wallet-menu-exchanges section').filter({has:page.getByRole('heading',{name:'Ethereum Swap wallets',exact:true})}).last();
   const swapForm=swaps.locator('form'),swapAddress='0x'+'e'.repeat(40);
   await swapForm.locator('input').nth(0).fill('ETH Swap');await swapForm.locator('input').nth(1).fill(address);await swapForm.getByRole('button',{name:'Add',exact:true}).click();

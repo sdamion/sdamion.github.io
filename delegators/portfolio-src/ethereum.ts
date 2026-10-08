@@ -47,8 +47,8 @@ export function ethereumTransfer(tx:EthereumTransaction,wallets:EthereumWallet[]
   if(tx.failed||BigInt(tx.valueWei)===0n)return null;
   const owned=new Set(wallets.map(w=>w.address));
   if(owned.has(tx.from)&&owned.has(tx.to))return null;
-  if(wallets.some(w=>w.address===tx.to&&w.miner)&&!exchanges.some(e=>e.address===tx.from))return {side:'sell' as const,amount:weiToEth(tx.valueWei),mined:true};
-  const side=owned.has(tx.to)&&exchanges.some(e=>e.address===tx.from)?'buy':owned.has(tx.from)&&exchanges.some(e=>e.address===tx.to)?'sell':null;
+  if(owned.has(tx.to)&&exchanges.some(e=>e.address===tx.from&&e.miner))return {side:'sell' as const,amount:weiToEth(tx.valueWei),mined:true};
+  const side=owned.has(tx.to)&&exchanges.some(e=>e.address===tx.from)?'buy':owned.has(tx.from)&&exchanges.some(e=>e.address===tx.to&&!e.miner)?'sell':null;
   return side?{side,amount:weiToEth(tx.valueWei)}:null;
 }
 export function ethereumTransfers(data:EthereumData,wallets:EthereumWallet[],exchanges:EthereumWallet[]){

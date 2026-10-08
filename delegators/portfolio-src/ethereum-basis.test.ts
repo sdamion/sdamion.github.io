@@ -3,7 +3,7 @@ import {ethereumReceiptBasis} from './ethereum-basis.ts';
 import {receiptBasis} from './receipt-basis.ts';
 import type {EthereumData,EthereumTransaction} from './ethereum.ts';
 const own='0x'+'a'.repeat(40),cex='0x'+'b'.repeat(40),pool='0x'+'c'.repeat(40);
-const wallets=[{address:own,name:'Miner',miner:true}],exchanges=[{address:cex,name:'Exchange'}];
+const wallets=[{address:own,name:'Wallet'}],exchanges=[{address:cex,name:'Exchange'},{address:pool,name:'Mining pool',miner:true}];
 const unit=10n**18n,time=Date.parse('2023-01-06')/1000;
 function tx(n:number,from:string,to:string,amount:bigint,fee=0n):EthereumTransaction{
   const hash='0x'+String(n).padStart(64,'0');
@@ -21,7 +21,7 @@ assert.equal(basis.usd,495);
 assert.equal(ethereumReceiptBasis(data([mine],unit,{}),wallets,exchanges).average,0,'mining does not require historical prices');
 assert.equal(ethereumReceiptBasis(data([buy,mine],2n*unit,{}),wallets,exchanges).average,null,'missing purchase price is not zero');
 assert.equal(ethereumReceiptBasis(data([buy,mine],3n*unit),wallets,exchanges).reconciled,false);
-assert.equal(ethereumReceiptBasis(data([buy,mine],2n*unit),[{address:own,name:'Regular'}],exchanges).average,null,'unclassified external receipts have unknown cost');
+assert.equal(ethereumReceiptBasis(data([buy,mine],2n*unit),wallets,[exchanges[0]]).average,null,'unclassified external receipts have unknown cost');
 assert.equal(ethereumReceiptBasis({...data([],0n),accounts:{}},wallets,exchanges).average,null);
 assert.equal(ethereumReceiptBasis(data([buy,tx(2,own,own,unit,unit/100n)],99n*unit/100n),wallets,exchanges).average,1000,'self-transfers only spend gas');
 assert.equal(receiptBasis([{receivedRaw:1n,spentRaw:0n,costUsd:NaN}],1n,0).average,null);
