@@ -16,6 +16,16 @@ const input=tx(1,cex,a),output=tx(2,b,cex),internal=tx(3,a,b),failed={...tx(4,a,
 const data={accounts:{[a]:{balanceWei:'2000000000000000000',block:100,transactions:[input,internal,failed,trace]},[b]:{balanceWei:'1000000000000000000',block:100,transactions:[output,internal]}},history:{'2023-01-06':1000},usd:2000,updated:null};
 assert.deepEqual(ethereumWallets([{address:a.toUpperCase().replace('0X','0x'),name:' Savings '},{address:a,name:'Updated'},{address:'addr1fake',name:'No'}]),[{address:a,name:'Updated'}]);
 assert.equal(ethereumTransactions(data,wallets).length,5,'shared own-wallet history counted once');
+const firstTrace={...tx(20,a,b,'123','internal'),id:tx(20,a,b,'123','internal').hash+':0_1'};
+const secondTrace={...firstTrace,id:firstTrace.hash+':0_2'};
+const mixedTraces={...data,accounts:{
+  [a]:{balanceWei:'0',block:100,transactions:[firstTrace,secondTrace]},
+  [b]:{balanceWei:'0',block:100,transactions:[{...firstTrace,id:firstTrace.hash+':5'},{...secondTrace,id:firstTrace.hash+':6'}]}
+}};
+const normalizedTraces=ethereumTransactions(mixedTraces,wallets);
+assert.equal(normalizedTraces.length,2,'provider trace IDs do not duplicate shared transfers, but repeated transfers remain distinct');
+assert.equal(new Set(normalizedTraces.map(row=>row.id)).size,2);
+assert.deepEqual(ethereumTransactions(mixedTraces,[wallets[1],wallets[0]]),normalizedTraces,'normalized trace identity is independent of wallet order');
 assert.equal(ethereumTransfer(internal,wallets,[...exchanges,{address:b,name:'Not a CEX'}]),null,'own-wallet transfers never become CEX');
 assert.equal(ethereumTransfer(failed,wallets,exchanges),null,'failed sends are not CEX OUT');
 assert.deepEqual(ethereumTransfer(input,wallets,exchanges),{side:'buy',amount:1});

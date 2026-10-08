@@ -1,3 +1,4 @@
+import {blake2b} from '@noble/hashes/blake2.js';
 export type EthereumWallet={address:string;name:string;miner?:boolean;group?:'swap'};
 export type EthereumTransaction={id:string;hash:string;kind:'normal'|'internal';block:number;time:number;from:string;to:string;valueWei:string;feeWei:string|null;failed:boolean};
 export type EthereumProvider='etherscan'|'blockscout';
@@ -39,7 +40,24 @@ export function ethereumData(value:unknown):EthereumData{
 }
 export function weiToEth(value:string):number{return Number(BigInt(value))/1e18;}
 export function ethereumTransactions(data:EthereumData,wallets:EthereumWallet[]){
-  return [...new Map(wallets.flatMap(wallet=>data.accounts[wallet.address]?.transactions||[]).map(tx=>[tx.id,tx])).values()].sort((a,b)=>b.time-a.time||a.id.localeCompare(b.id));
+  const rows=new Map<string,EthereumTransaction>();
+  for(const wallet of wallets){
+    const occurrences=new Map<string,number>();
+    for(const tx of new Map((data.accounts[wallet.address]?.transactions||[]).map(tx=>[tx.id,tx])).values()){
+      if(tx.kind==='normal'){rows.set(tx.id,tx);continue;}
+      // Providers number traces differently. Preserve repeated equal transfers,
+      // while counting the same transfer seen by two tracked wallets only once.
+      const signature=JSON.stringify([tx.hash,tx.block,tx.time,tx.from,tx.to,tx.valueWei,tx.failed]);
+      const ordinal=occurrences.get(signature)||0;occurrences.set(signature,ordinal+1);
+      const key=signature+':'+ordinal;
+      if(!rows.has(key)){
+        const bytes=blake2b(new TextEncoder().encode(key),{dkLen:32});
+        const trace=bytes.reduce((number,byte)=>(number<<8n)+BigInt(byte),0n);
+        rows.set(key,{...tx,id:tx.hash+':'+trace.toString()});
+      }
+    }
+  }
+  return [...rows.values()].sort((a,b)=>b.time-a.time||a.id.localeCompare(b.id));
 }
 export function ethereumTransactionCount(data:EthereumData,wallets:EthereumWallet[]){
   return new Set(wallets.flatMap(wallet=>data.accounts[wallet.address]?.transactions.map(tx=>tx.hash)||[])).size;

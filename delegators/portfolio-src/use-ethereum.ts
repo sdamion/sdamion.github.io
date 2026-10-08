@@ -25,9 +25,10 @@ export function useEthereum(stake:string,ready:boolean){
     const signal=control.signal;
     setBusy(true);setError('');setStatus('Checking Ethereum transactions…');
     let provider:EthereumProvider|undefined;
+    const completedRanges=new Map<string,EthereumTransaction[]>();
     async function request<T>(body:object):Promise<T>{
       const r=await portfolioFetch('/ethereum',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,...(provider?{provider}:{})}),signal});
-      const result=await r.json();if(!r.ok)throw Object.assign(new Error(result.error||'Ethereum refresh failed. Saved data is retained.'),{status:r.status});
+      const result=await r.json();if(!r.ok)throw Object.assign(new Error(result.error||'Ethereum refresh failed. Saved data is retained.'),{status:r.status,code:result.code==='indexing_incomplete'?'indexing_incomplete':undefined});
       if(result.provider!==undefined){
         if(!['etherscan','blockscout'].includes(result.provider)||provider&&provider!==result.provider)throw new Error('Invalid Ethereum provider response.');
         provider=result.provider;
@@ -51,25 +52,30 @@ export function useEthereum(stake:string,ready:boolean){
       for(const [index,wallet] of wallets.entries()){
         setStatus('Checking Ethereum transactions…');
         const cached=current.current.accounts[wallet.address];
-        // A source change replaces the complete history instead of mixing trace IDs or pages.
-        const previous=cached&&(cached.provider||'etherscan')===(provider||'etherscan')?cached:undefined;
+        // Complete older block ranges remain valid when the provider changes.
+        const previous=cached;
         const startBlock=previous?Math.max(0,Math.min(previous.block,block)-64):0;
         const transactions=new Map((previous?.transactions||[]).filter(tx=>tx.block<startBlock).map(tx=>[tx.id,tx]));
         for(const kind of ['normal','internal'] as const){
+          const rangeKey=`${wallet.address}:${kind}:${startBlock}:${block}`;
+          const reused=completedRanges.get(rangeKey);
+          if(reused){for(const tx of reused)transactions.set(tx.id,tx);continue;}
+          const fetched:EthereumTransaction[]=[];
           let complete=false;
           for(let page=1;page<=100;page++){
             const result=await request<{transactions:EthereumTransaction[];more:boolean}>({action:'history',address:wallet.address,kind,page,startBlock,endBlock:block});
             if(!Array.isArray(result.transactions)||!result.transactions.every(validEthereumTransaction)||typeof result.more!=='boolean')throw new Error('Invalid Ethereum history response.');
-            for(const tx of result.transactions)transactions.set(tx.id,tx);
+            for(const tx of result.transactions){transactions.set(tx.id,tx);fetched.push(tx);}
             if(transactions.size>100000)throw new Error('Ethereum history is too large. Saved data is retained.');
             if(!result.more){complete=true;break;}
           }
           if(!complete)throw new Error('Ethereum history is incomplete. Saved data is retained.');
+          completedRanges.set(rangeKey,fetched);
         }
         const {balanceWei}=await request<{balanceWei:string}>({action:'balance',address:wallet.address});
         if(typeof balanceWei!=='string'||!/^\d{1,80}$/.test(balanceWei))throw new Error('Invalid Ethereum balance response.');
         next.accounts[wallet.address]={balanceWei,block,transactions:[...transactions.values()],provider:provider||'etherscan'};
-        // Commit a source change atomically so shared internal traces are never mixed.
+        // Publish provider changes only after every wallet range is complete.
         if(!changingProvider)await persist(next);
         setStatus(`${index+1} / ${wallets.length}`);
       }
@@ -91,8 +97,18 @@ export function useEthereum(stake:string,ready:boolean){
     try{
       try {await scan();}
       catch(e){
-        if(signal.aborted||provider==='blockscout'||(e as {status?:number}).status!==429)throw e;
-        provider='blockscout';await scan();
+        if(signal.aborted)throw e;
+        let failure=e;
+        if(provider!=='blockscout'&&(e as {status?:number}).status===429){
+          provider='blockscout';
+          try{await scan();return;}catch(fallback){if(signal.aborted)throw fallback;failure=fallback;}
+        }
+        // Retry missing ranges; partial Blockscout pages never enter the cache.
+        if(provider==='blockscout'&&(failure as {code?:string}).code==='indexing_incomplete'){
+          provider='etherscan';
+          try{await scan();return;}catch(recovery){if(signal.aborted)throw recovery;}
+        }
+        throw failure;
       }
     }catch(e){if(!signal.aborted){setError(e instanceof Error?e.message:'Ethereum refresh failed. Saved data is retained.');setStatus('');}}
     finally{if(controller.current===control)setBusy(false);}

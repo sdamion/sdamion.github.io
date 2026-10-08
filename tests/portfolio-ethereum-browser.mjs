@@ -13,7 +13,7 @@ const bundle=await build({stdin:{contents:`import {createRoot} from 'react-dom/c
 const browser=await chromium.launch({channel:'chrome',headless:true});
 try{
   const page=await browser.newPage({viewport:{width:1200,height:900}}),errors=[],requests=[];
-  let quoteUnavailable=false,indexerUnavailable=false,primaryLimited=false,fallbackIncomplete=false,historyUsd=1000;
+  let quoteUnavailable=false,indexerUnavailable=false,primaryLimited=false,fallbackIncomplete=false,headBlockscout=false,historyUsd=1000;
   page.on('pageerror',error=>errors.push(error.message));
   await page.route('**/*',async route=>{
     const url=new URL(route.request().url()),operation=url.pathname.split('/').pop();
@@ -22,9 +22,9 @@ try{
       const body=route.request().postDataJSON();requests.push(body);
       if(indexerUnavailable)return route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'Ethereum refresh failed. Saved data is retained.'})});
       if(primaryLimited&&body.action==='history'&&body.provider!=='blockscout')return route.fulfill({status:429,contentType:'application/json',body:JSON.stringify({error:'Etherscan rate limit reached. Retry shortly.'})});
-      if(fallbackIncomplete&&body.provider==='blockscout'&&body.kind==='internal')return route.fulfill({status:502,contentType:'application/json',body:JSON.stringify({error:'Blockscout data unavailable or incomplete. Saved Ethereum data is retained.'})});
+      if(fallbackIncomplete&&body.provider==='blockscout'&&body.kind==='internal')return route.fulfill({status:502,contentType:'application/json',body:JSON.stringify({error:'Blockscout data unavailable or incomplete. Saved Ethereum data is retained.',code:'indexing_incomplete'})});
       result=body.action==='head'?{block:200}:body.action==='balance'?{balanceWei:'1000000000000000000'}:{transactions:body.kind==='normal'?[{id:hash+':normal',hash,kind:'normal',block:180,time:1672963200,from:exchange,to:address,valueWei:'1000000000000000000',feeWei:'210000000000000',failed:false}]:[],more:false};
-      result.provider=body.provider||'etherscan';
+      result.provider=body.provider||(headBlockscout&&body.action==='head'?'blockscout':'etherscan');
     }else if(operation==='historical-eth-prices')result={prices:[[Date.parse('2023-01-06'),historyUsd]]};
     else if(operation==='ethereum-price'){
       if(quoteUnavailable)return route.fulfill({status:503,contentType:'application/json',body:'{}'});
@@ -229,17 +229,19 @@ try{
   assert.equal(await page.evaluate(({stake,swapAddress})=>JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-wallets:'+stake)).find(w=>w.address===swapAddress).name,{stake,swapAddress}),'ETH Swap renamed','shared editor saves ETH swap names');
   await swaps.getByRole('button',{name:'Remove',exact:true}).click();
   assert.equal(await page.evaluate(stake=>JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-wallets:'+stake)).length,stake),1,'removing a swap retains regular wallets');
-  await page.evaluate(({stake,address})=>{
+  await page.evaluate(({stake,address,exchange})=>{
     const swap='stake1u9ex0jtl4nv84rlzwuft5rczy2hgkjygewla04mgy7v2nccx4p4yr';
     window.fixtureStorage.setItem('tdsp-member-wallets-v1:'+stake,JSON.stringify([{address:swap,label:'ADA Swap',group:'swap'}]));
     window.fixtureStorage.setItem('tdsp-member-ethereum-wallets:'+stake,JSON.stringify([{address,name:'ETH Swap',group:'swap'}]));
     const key='tdsp-member-ethereum-data:'+stake,data=JSON.parse(window.fixtureStorage.getItem(key));
     data.accounts[address].transactions=data.accounts[address].transactions.slice(0,1);
     data.accounts[address].transactions[0].time+=120;
+    const older=data.accounts[address].transactions[0],olderHash='0x'+'9'.repeat(64);
+    data.accounts[address].transactions.push({...older,id:olderHash+':normal',hash:olderHash,block:50,from:address,to:exchange,valueWei:'0',feeWei:'0'});
     window.fixtureStorage.setItem(key,JSON.stringify(data));
     window.fixture.facts['ada-swap']={...window.fixture.facts.cardano,hash:'ada-swap',adaRaw:'-2400000000',wallets:[swap],externalInputs:[],externalOutputs:[{address:'stake1uxllvgd6s0mwhtzyjeg6mtlg0eqrkhasfnmfzqnpcgn50rsmgdu7c',lovelace:'2400000000'}]};
     window.fixture.txs.push({tx_hash:'ada-swap',block_time:1672963200});window.reopenPortfolio();
-  },{stake,address});
+  },{stake,address,exchange});
   await cex.click();
   await page.locator('#portfolio-gain-loss-overlay .portfolio-eth-comparison').waitFor();
   assert.match(await page.locator('#portfolio-gain-loss-overlay .portfolio-eth-comparison').innerText(),/0 ETH[\s\S]*0 ETH/,'matched ETH swap excluded from CEX totals');
@@ -274,8 +276,17 @@ try{
   await page.waitForFunction(stake=>JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)).accounts[Object.keys(JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)).accounts)[0]].provider==='blockscout',stake);
   const fallbackCalls=requests.slice(successfulFallbackStart);
   assert.equal(fallbackCalls.filter(r=>r.action==='history'&&r.provider==='etherscan').length,1,'one primary failure triggers one fallback restart');
-  assert.ok(fallbackCalls.filter(r=>r.action==='history'&&r.provider==='blockscout').every(r=>r.startBlock===0),'source change fully replaces history rather than mixing provider pages');
-  assert.equal(await page.evaluate(stake=>Object.values(JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)).accounts)[0].transactions.length,stake),1,'fallback does not duplicate or retain stale trace history');
+  assert.ok(fallbackCalls.filter(r=>r.action==='history'&&r.provider==='blockscout').every(r=>r.startBlock===136),'fallback resumes from the cached checkpoint, not genesis');
+  assert.equal(await page.evaluate(stake=>Object.values(JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)).accounts)[0].transactions.length,stake),2,'fallback keeps complete older history and replaces only the overlap');
+  primaryLimited=false;fallbackIncomplete=true;headBlockscout=true;
+  const recoveryStart=requests.length;
+  await page.getByRole('button',{name:'Refresh Ethereum wallets',exact:true}).click();
+  await page.waitForFunction(stake=>Object.values(JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)).accounts)[0].provider==='etherscan',stake);
+  const recoveryCalls=requests.slice(recoveryStart);
+  assert.equal(recoveryCalls.filter(r=>r.action==='head'&&r.provider==='etherscan').length,1,'pending Blockscout indexing triggers one complete primary restart');
+  assert.ok(recoveryCalls.filter(r=>r.action==='history'&&r.provider==='etherscan').every(r=>r.startBlock===136),'indexing recovery also resumes from the cached checkpoint');
+  assert.equal(recoveryCalls.filter(r=>r.action==='history'&&r.provider==='etherscan'&&r.kind==='normal').length,0,'completed normal history is reused when internal indexing fails');
+  assert.equal(await page.evaluate(stake=>Object.values(JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)).accounts)[0].transactions.length,stake),2);
   assert.deepEqual(errors,[]);
   console.log('PASS: Ethereum wallets, native holdings/exclusion, combined CEX totals and filters, incremental refresh, own-wallet rejection and mobile layout.');
 }finally{await browser.close();}
