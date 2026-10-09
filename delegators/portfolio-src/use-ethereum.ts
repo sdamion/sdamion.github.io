@@ -3,6 +3,7 @@ import {portfolioFetch} from './transport';
 import {portfolioSettings,flushVault} from './vault';
 import {emptyEthereum,ethereumData,ethereumWallets,type EthereumData,type EthereumTransaction,type EthereumWallet,type EthereumProvider} from './ethereum';
 import {ethereumHistory} from './ethereum-history';
+import {ethereumRequest} from './ethereum-request';
 
 export function useEthereum(stake:string,ready:boolean){
   const walletKey='tdsp-member-ethereum-wallets:'+stake,cexKey='tdsp-member-ethereum-cex:'+stake,dataKey='tdsp-member-ethereum-data:'+stake;
@@ -28,8 +29,7 @@ export function useEthereum(stake:string,ready:boolean){
     let provider:EthereumProvider|undefined;
     const completedRanges=new Map<string,EthereumTransaction[]>();
     async function request<T>(body:object):Promise<T>{
-      const r=await portfolioFetch('/ethereum',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,...(provider?{provider}:{})}),signal});
-      const result=await r.json();if(!r.ok)throw Object.assign(new Error(result.error||'Ethereum refresh failed. Saved data is retained.'),{status:r.status,code:['indexing_incomplete','history_window_limit'].includes(result.code)?result.code:undefined});
+      const result=await ethereumRequest<any>(()=>portfolioFetch('/ethereum',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,...(provider?{provider}:{})}),signal}),signal);
       if(result.provider!==undefined){
         if(!['etherscan','blockscout'].includes(result.provider)||provider&&provider!==result.provider)throw new Error('Invalid Ethereum provider response.');
         provider=result.provider;
@@ -100,7 +100,7 @@ export function useEthereum(stake:string,ready:boolean){
         // Retry missing ranges; partial Blockscout pages never enter the cache.
         if(provider==='blockscout'&&(failure as {code?:string}).code==='indexing_incomplete'){
           provider='etherscan';
-          try{await scan();return;}catch(recovery){if(signal.aborted)throw recovery;}
+          try{await scan();return;}catch(recovery){if(signal.aborted)throw recovery;failure=recovery;}
         }
         throw failure;
       }

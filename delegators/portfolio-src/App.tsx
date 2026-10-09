@@ -32,6 +32,8 @@ import {TableGroupToggle,useTableGroups} from './TableGroupToggle';
 import {valuationCoverage} from './valuation-coverage';
 import {averageBuy,purchaseAverages} from './average-buy';
 import {assetImageCandidates} from './asset-image';
+import {applyCachedImages,watchImageCache} from './image-cache-status';
+import {waitForRetry} from './retry-wait';
 import {knownDecimals,tokenDecimals,holdingValue,holdingDecimals,estimatedPurchaseBasis} from './valuation';
 import {mintPayments,paymentBudget} from './mint-payments';
 import type {PaymentLink} from './mint-payments';
@@ -407,6 +409,21 @@ export default function Home({memberStake,role='delegator'}:{memberStake:string;
     finally{if(controller.current===control)setBusy(false);}
   }
   const holdings=useMemo(()=>snapshot?combineHoldings(snapshot.infos):[],[snapshot]);
+  const missingImageIds=[...new Set([...holdings.map(h=>h.id),...(selectedAsset?[selectedAsset]:[])])].filter(id=>/^[a-f0-9]{56}(?:[a-f0-9]{2}){0,32}$/.test(id)&&!snapshot?.markets[id]?.registry_logo&&!snapshot?.markets[id]?.cached_image).sort().join('|');
+  useEffect(()=>{
+    if(!ready||busy||!missingImageIds)return;
+    const control=new AbortController(),signal=control.signal;
+    void watchImageCache(missingImageIds.split('|'),async assets=>{
+      const response=await portfolioFetch('/image-status',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({assets}),signal});
+      if(!response.ok)throw new Error('Image cache status unavailable.');
+      return response.json();
+    },images=>setSnapshot(previous=>{
+      if(!previous||signal.aborted)return previous;
+      const markets=applyCachedImages(previous.markets,images);
+      return markets===previous.markets?previous:{...previous,markets};
+    }),signal,ms=>waitForRetry(ms,signal)).catch(()=>{/* Image availability never interrupts portfolio analysis. */});
+    return()=>control.abort();
+  },[ready,busy,key,missingImageIds]);
   const assetWallets=useMemo(()=>snapshot?holdingWalletNames(snapshot.infos,wallets,snapshot.groups):{},[snapshot,wallets]);
   const assetAddresses=useMemo(()=>snapshot?holdingWalletAddresses(snapshot.infos):{},[snapshot]);
   const classifiedFacts=useMemo(()=>Object.fromEntries(Object.entries(snapshot?.facts||{}).map(([hash,fact])=>[hash,cexAdjustedFact(fact,cexAddresses)])),[snapshot,cexAddresses]);

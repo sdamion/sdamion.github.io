@@ -13,7 +13,7 @@ const bundle=await build({stdin:{contents:`import {createRoot} from 'react-dom/c
 const browser=await chromium.launch({channel:'chrome',headless:true});
 try{
   const page=await browser.newPage({viewport:{width:1200,height:900}}),errors=[],requests=[];
-  let quoteUnavailable=false,indexerUnavailable=false,primaryLimited=false,fallbackIncomplete=false,headBlockscout=false,windowLimited=false,historyUsd=1000;
+  let quoteUnavailable=false,indexerUnavailable=false,primaryLimited=false,temporaryLimit=0,fallbackIncomplete=false,headBlockscout=false,windowLimited=false,historyUsd=1000;
   page.on('pageerror',error=>errors.push(error.message));
   await page.route('**/*',async route=>{
     const url=new URL(route.request().url()),operation=url.pathname.split('/').pop();
@@ -21,6 +21,10 @@ try{
     if(operation==='ethereum'){
       const body=route.request().postDataJSON();requests.push(body);
       if(indexerUnavailable)return route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'Ethereum refresh failed. Saved data is retained.'})});
+      if(temporaryLimit&&body.action==='history'&&body.provider!=='blockscout'){
+        temporaryLimit--;
+        return route.fulfill({status:429,contentType:'application/json',body:JSON.stringify({error:'Etherscan rate limit reached. Retry shortly.',code:'upstream_rate_limit',retryAfter:1})});
+      }
       if(windowLimited&&body.action==='history'&&body.kind==='normal'&&body.endBlock-body.startBlock>40)return route.fulfill({status:502,contentType:'application/json',body:JSON.stringify({error:'Etherscan data unavailable. Check the backend API key and plan.',code:'history_window_limit'})});
       if(primaryLimited&&body.action==='history'&&body.provider!=='blockscout')return route.fulfill({status:429,contentType:'application/json',body:JSON.stringify({error:'Etherscan rate limit reached. Retry shortly.'})});
       if(fallbackIncomplete&&body.provider==='blockscout'&&body.kind==='internal')return route.fulfill({status:502,contentType:'application/json',body:JSON.stringify({error:'Blockscout data unavailable or incomplete. Saved Ethereum data is retained.',code:'indexing_incomplete'})});
@@ -330,20 +334,30 @@ try{
   },stake);
   await page.getByRole('button',{name:'Open Transactions',exact:true}).click();
   await pair.waitFor();
-  indexerUnavailable=false;quoteUnavailable=false;primaryLimited=true;
+  indexerUnavailable=false;quoteUnavailable=false;
   await page.locator('#portfolio-transactions-overlay').getByRole('button',{name:'Back',exact:true}).click();
   await walletsTile.click();await page.getByRole('button',{name:'Open My Wallets',exact:true}).click();
+  temporaryLimit=1;
+  const retryStart=requests.length;
+  await page.getByRole('button',{name:'Refresh Ethereum wallets',exact:true}).click();
+  await page.waitForFunction(()=>[...document.querySelectorAll('button')].some(button=>button.textContent==='Refresh Ethereum wallets'&&!button.disabled));
+  const retryCalls=requests.slice(retryStart);
+  const retryHistory=retryCalls.filter(r=>r.action==='history'&&r.kind==='normal');
+  assert.equal(retryHistory.length,2,'a temporary primary limit retries only the failed history request');
+  assert.deepEqual(retryHistory[0],retryHistory[1],'the retry uses the exact same wallet, range, page and provider');
+  assert.ok(retryCalls.every(r=>r.provider!=='blockscout'),'temporary limits do not trigger a secondary scan');
   const cachedBeforeFallback=await page.evaluate(stake=>JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)).accounts,stake);
+  primaryLimited=true;
   fallbackIncomplete=true;
   await page.getByRole('button',{name:'Refresh Ethereum wallets',exact:true}).click();
-  await page.getByRole('alert').filter({hasText:'Blockscout data unavailable or incomplete.'}).waitFor();
+  await page.getByRole('alert').filter({hasText:'Etherscan rate limit reached.'}).waitFor();
   assert.deepEqual(await page.evaluate(stake=>JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)).accounts,stake),cachedBeforeFallback,'an incomplete fallback leaves all previous account history intact');
   fallbackIncomplete=false;
   const successfulFallbackStart=requests.length;
   await page.getByRole('button',{name:'Refresh Ethereum wallets',exact:true}).click();
   await page.waitForFunction(stake=>JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)).accounts[Object.keys(JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)).accounts)[0]].provider==='blockscout',stake);
   const fallbackCalls=requests.slice(successfulFallbackStart);
-  assert.equal(fallbackCalls.filter(r=>r.action==='history'&&r.provider==='etherscan').length,1,'one primary failure triggers one fallback restart');
+  assert.equal(fallbackCalls.filter(r=>r.action==='history'&&r.provider==='etherscan').length,3,'bounded primary retries precede one fallback restart');
   assert.ok(fallbackCalls.filter(r=>r.action==='history'&&r.provider==='blockscout').every(r=>r.startBlock===136),'fallback resumes from the cached checkpoint, not genesis');
   assert.equal(await page.evaluate(stake=>Object.values(JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)).accounts)[0].transactions.length,stake),2,'fallback keeps complete older history and replaces only the overlap');
   primaryLimited=false;fallbackIncomplete=true;headBlockscout=true;
