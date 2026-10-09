@@ -83,8 +83,15 @@ export function comparisonNet(last:ReturnType<typeof transferComparison>[number]
   };
 }
 
-// One result for all chains, valued in a common unit rather than adding coins.
+// Calculate cash-flow performance first; crypto is a current-price display unit.
 export function portfolioTransferResult(rows:FiatTransfer[],portfolioUsd:number|null,adaHistory:Record<string,number>,btcHistory:Record<string,number>,ethHistory:Record<string,number>,fx:FxHistory,crypto:ComparisonCrypto,currency:ComparisonCurrency,time:number,currentAdaUsd:number|null,currentEthUsd:number|null,solHistory:Record<string,number>={},currentSolUsd:number|null=null){
-  const totals=fiatTransferComparison(performanceTransfers(rows),adaHistory,btcHistory,fx,crypto,currency,ethHistory,solHistory).at(-1);
-  return comparisonNet(totals,0,currentAdaUsd,btcHistory,fx,crypto,currency,time,portfolioUsd,currentEthUsd,currentSolUsd);
+  const fiatCurrency=currency==='ADA'?'USD':currency;
+  const totals=fiatTransferComparison(performanceTransfers(rows),adaHistory,btcHistory,fx,'ADA',fiatCurrency,ethHistory,solHistory).at(-1);
+  const net=comparisonNet(totals,0,currentAdaUsd,btcHistory,fx,'ADA',fiatCurrency,time,portfolioUsd).fiat;
+  const unitUsd=crypto==='ADA'?currentAdaUsd:crypto==='ETH'?currentEthUsd:crypto==='SOL'?currentSolUsd:datedRate(time,btcHistory);
+  const rate=fiatRate(time,fiatCurrency,fx);
+  return {
+    amount:net!==null&&unitUsd!==null&&unitUsd>0&&rate!==null?net/(unitUsd*rate):null,
+    fiat:currency==='ADA'?net!==null&&currentAdaUsd!==null&&currentAdaUsd>0?net/currentAdaUsd:null:net
+  };
 }

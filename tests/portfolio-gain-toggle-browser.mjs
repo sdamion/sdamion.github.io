@@ -121,7 +121,7 @@ try{
  await selectionGain.click();
  assert.match(await page.locator('.portfolio-gain-result').innerText(),/\$4,551\.64/,'overlay and tile use the same selected assets');
  await page.locator('#portfolio-gain-loss-overlay').getByRole('combobox',{name:'Comparison cryptocurrency'}).selectOption('BTC');
- await page.waitForFunction(()=>document.querySelector('.portfolio-gain-result')?.textContent.includes('0.0448464'));
+ await page.waitForFunction(()=>document.querySelector('.portfolio-gain-result')?.textContent.includes('0.0455164'));
  assert.match(await page.locator('.portfolio-gain-result').innerText(),/\$4,551\.64/,'BTC comparison also excludes disabled asset value');
  await page.locator('#portfolio-gain-loss-overlay').getByRole('combobox',{name:'Comparison cryptocurrency'}).selectOption('ADA');
  await page.locator('#portfolio-gain-loss-overlay').getByRole('button',{name:'Back',exact:true}).click();
@@ -142,7 +142,7 @@ try{
  assert.equal(await gain.locator('.portfolio-gain-result .governance-card-detail').innerText(),'ADA Gain','ADA uses a concise result label');
  assert.equal(await gain.locator('.portfolio-gain-comparison td').first().locator('.negative,.positive').count(),0,'ADA IN uses default color');
  assert.equal(await gain.locator('.portfolio-gain-comparison td').last().locator('.portfolio-transfer-amount.positive').count(),1,'ADA OUT remains green');
- assert.match(await gain.locator('.portfolio-gain-result').innerText(),/42,708/,'ADA result rounded only for display');
+ assert.match(await gain.locator('.portfolio-gain-result').innerText(),/42,716/,'total USD gain converted to ADA at its current price, rounded only for display');
  assert.match(await gain.locator('.portfolio-gain-result').innerText(),/10,678\.89/,'historical USD OUT plus current asset value minus historical USD IN');
  assert.equal(await gain.locator('.portfolio-gain-result .portfolio-transfer-amount.positive').count(),1,'positive result is styled as a gain');
  await holdingsCurrency.selectOption('EUR');

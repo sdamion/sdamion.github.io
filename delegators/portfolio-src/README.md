@@ -8,6 +8,11 @@ classified CEX flows using transfer-day prices and adds the current value of all
 included holdings. Coin quantities are never added across chains. Duplicate flows,
 paired internal swaps and mining/service receipts are excluded from CEX flows.
 Missing historical prices leave the full comparison unknown rather than zero.
+The gain/loss result is OUT plus current holdings minus IN in the display
+currency; the selected crypto amount converts that result at its current quote.
+The graph remains a transfer-day crypto comparison. Mining/services contribute
+through retained holdings or subsequent OUT payments, never a second historical
+income addition. ADA IN/OUT remains native ADA regardless of the result unit.
 
 ## Mining / Services Sources
 

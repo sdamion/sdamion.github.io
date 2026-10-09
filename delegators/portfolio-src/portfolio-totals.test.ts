@@ -20,6 +20,7 @@ assert.deepEqual(networkFeeNotes([{chain:'ETH',historyComplete:true,feeUsd:498}]
 const time=Date.parse('2023-01-06')/1000,rows=[{hash:'known',time,side:'buy' as const,usd:100},{hash:'unknown',time,side:'sell' as const,usd:null}];
 assert.deepEqual(availableCexResult(rows,2000,'USD',0.5,{}, {},time),{value:1900,partial:true});
 assert.deepEqual(availableCexResult(rows,2000,'ADA',0.5,{'2023-01-06':0.5},{},time),{value:3800,partial:true});
+assert.deepEqual(availableCexResult(rows,2000,'ADA',0.25,{'2023-01-06':0.5},{},time),{value:7600,partial:true},'ADA tile expresses total gain at current ADA price, not transfer-day ADA quantities');
 assert.deepEqual(availableCexResult(rows,2000,'EUR',0.5,{}, {'2023-01-06':{EUR:0.9}},time),{value:1710,partial:true});
 assert.deepEqual(availableCexResult(rows,2000,'JPY',0.5,{}, {'2023-01-06':{JPY:130}},time),{value:247000,partial:true});
 assert.deepEqual(availableCexResult(rows,null,'USD',0.5,{}, {},time),{value:null,partial:true},'unknown holdings cannot yield a gain from cash flows alone');

@@ -106,7 +106,7 @@ try{
  const solGraph=await gain.locator('canvas').evaluate(canvas=>window.Chart.getChart(canvas).data.datasets.map(row=>({label:row.label,last:row.data.at(-1).y})));
  assert.deepEqual(solGraph,[{label:'SOL IN',last:2},{label:'SOL OUT',last:0}]);
  assert.equal(await gain.locator('.portfolio-gain-result .governance-card-detail').innerText(),'SOL Gain');
- assert.match(await gain.locator('.portfolio-gain-result').innerText(),/0\.45/);
+ assert.match(await gain.locator('.portfolio-gain-result').innerText(),/1\.45/,'total $145 gain is 1.45 SOL at the current $100 quote, not historical SOL flow net');
  assert.equal(await gain.getByRole('img',{name:'Bitcoin',exact:true}).count(),0,'SOL never uses the Bitcoin logo');
  await page.evaluate(()=>window.reopen());
  await page.getByRole('button',{name:'Open Wallets',exact:true}).click();

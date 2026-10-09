@@ -65,7 +65,17 @@ const solGraph=transferComparison([input],entries,ada,btc,fx,'SOL','USD',[allCry
 assert.equal(solGraph.incoming,22,'ADA, ETH and SOL all use transfer-day SOL equivalents');
 assert.equal(solGraph.inFiat,1100);
 const solResult=portfolioTransferResult(allCrypto,2000,ada,btc,{},fx,'SOL','USD',time,0.5,null,solHistory,100);
-assert.ok(Math.abs(solResult.amount!-(-1.6))<1e-10,'current holdings use the current SOL price');
+assert.ok(Math.abs(solResult.amount!-9.2)<1e-10,'total gain is converted at the current SOL price, not a historical SOL quantity comparison');
 assert.equal(solResult.fiat,920);
 assert.equal(transferComparison([input],entries,ada,btc,fx,'SOL','USD').at(-1)!.incoming,null,'missing SOL history never falls back to BTC');
 assert.equal(portfolioTransferResult(allCrypto,2000,ada,btc,{},fx,'SOL','USD',time,0.5,null,solHistory,null).amount,null,'missing current SOL quote keeps the SOL result unknown');
+
+const rewardRows=[
+  {hash:'ada:in',time,side:'buy' as const,usd:100},
+  {hash:'eth:mining',time,side:'sell' as const,usd:50,performance:false},
+  {hash:'sol:services',time,side:'sell' as const,usd:30,performance:false}
+];
+assert.deepEqual(portfolioTransferResult(rewardRows,180,ada,{}, {},{},'ADA','USD',time,0.25,null),{amount:320,fiat:80},'held mining/services income contributes once through current holdings; ADA result is the same total gain in ADA');
+assert.deepEqual(portfolioTransferResult([...rewardRows,{hash:'eth:out',time,side:'sell' as const,usd:50}],130,ada,{}, {},{},'ETH','USD',time,0.25,100),{amount:0.8,fiat:80},'paid-out mining proceeds contribute once through OUT, not again as a reward receipt');
+assert.deepEqual(portfolioTransferResult(rewardRows,180,ada,{}, {},{},'ADA','ADA',time,0.25,null),{amount:320,fiat:320},'ADA display and result agree on actual total gain');
+assert.deepEqual(nativeTransferTotals([{hash:'ada:in',time,side:'buy',amount:200,usd:100}],ada,{},'USD'),{incoming:200,outgoing:0,inFiat:100,outFiat:0},'native ADA IN excludes ETH and SOL income and equivalents');

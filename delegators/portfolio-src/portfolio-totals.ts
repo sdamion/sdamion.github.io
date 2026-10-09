@@ -30,8 +30,7 @@ export function availableCexResult(rows:FiatTransfer[],portfolioUsd:number|null,
   if(portfolioUsd===null)return {value:null,partial:true};
   const rate=currency==='ADA'?currentAdaUsd!==null&&currentAdaUsd>0?1/currentAdaUsd:null:fiatRate(time,currency,fx);
   const transfers=availableTotal([...new Map(performanceTransfers(rows).map(row=>[row.hash,row])).values()].map(row=>{
-    const ada=adaHistory[new Date(row.time*1000).toISOString().slice(0,10)];
-    const dayRate=currency==='ADA'?Number.isFinite(ada)&&ada>0?1/ada:null:fiatRate(row.time,currency,fx);
+    const dayRate=currency==='ADA'?rate:fiatRate(row.time,currency,fx);
     return row.usd!==null&&dayRate!==null?row.usd*dayRate*(row.side==='sell'?1:-1):null;
   }));
   const total=availableTotal([transfers.value,portfolioUsd!==null&&rate!==null?portfolioUsd*rate:null]);
