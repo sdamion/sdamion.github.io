@@ -2,15 +2,29 @@ import {validEthereumTransaction,type EthereumTransaction} from './ethereum.ts';
 
 type Range={startBlock:number;endBlock:number};
 type Page={transactions:EthereumTransaction[];more:boolean};
+export type EthereumHistoryCheckpoints=Map<string,{startBlock:number;endBlock:number;transactions:EthereumTransaction[]}>;
 
 // Split only explicitly rejected windows; incomplete ranges never become checkpoints.
-export async function ethereumHistory(range:Range,request:(range:Range&{page:number})=>Promise<Page>):Promise<EthereumTransaction[]>{
+export async function ethereumHistory(range:Range,request:(range:Range&{page:number})=>Promise<Page>,completed:EthereumHistoryCheckpoints=new Map(),maxRequests=2000):Promise<EthereumTransaction[]>{
   let calls=0;
+  function remember(current:Range,records:Map<string,EthereumTransaction>){
+    completed.set(`${current.startBlock}:${current.endBlock}`,{...current,transactions:[...records.values()]});
+  }
   async function scan(current:Range):Promise<Map<string,EthereumTransaction>>{
+    const prefix=[...completed.values()].filter(row=>row.startBlock===current.startBlock&&row.endBlock<=current.endBlock).sort((a,b)=>b.endBlock-a.endBlock)[0];
+    if(prefix){
+      const records=new Map(prefix.transactions.map(tx=>[tx.id,tx]));
+      if(prefix.endBlock<current.endBlock){
+        const remaining=await scan({startBlock:prefix.endBlock+1,endBlock:current.endBlock});
+        for(const [id,tx] of remaining)records.set(id,tx);
+      }
+      if(records.size>100000)throw new Error('Ethereum history is too large. Saved data is retained.');
+      return records;
+    }
     const records=new Map<string,EthereumTransaction>();
     let lastBlock=current.startBlock;
     for(let page=1;page<=100;page++){
-      if(++calls>300)throw new Error('Ethereum history is incomplete. Saved data is retained.');
+      if(++calls>maxRequests)throw Object.assign(new Error('Ethereum history is incomplete. Saved data is retained.'),{code:'history_scan_budget'});
       let result:Page;
       try{result=await request({...current,page});}
       catch(error){
@@ -29,7 +43,7 @@ export async function ethereumHistory(range:Range,request:(range:Range&{page:num
       }
       for(const tx of result.transactions)records.set(tx.id,tx);
       if(records.size>100000)throw new Error('Ethereum history is too large. Saved data is retained.');
-      if(!result.more)return records;
+      if(!result.more){remember(current,records);return records;}
       // Page 11 at 1,000 records crosses the common 10,000-record window.
       // Re-read the boundary block so equal-block transactions cannot be skipped.
       if(page===10&&current.startBlock<current.endBlock){
@@ -37,6 +51,7 @@ export async function ethereumHistory(range:Range,request:(range:Range&{page:num
         const boundary=Math.max(current.startBlock,...blocks);
         if(boundary>current.startBlock){
           for(const [id,tx] of records)if(tx.block>=boundary)records.delete(id);
+          remember({startBlock:current.startBlock,endBlock:boundary-1},records);
           const remaining=await scan({startBlock:boundary,endBlock:current.endBlock});
           for(const [id,tx] of remaining)records.set(id,tx);
           if(records.size>100000)throw new Error('Ethereum history is too large. Saved data is retained.');

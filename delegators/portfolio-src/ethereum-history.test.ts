@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {ethereumHistory} from './ethereum-history.ts';
+import type {EthereumHistoryCheckpoints} from './ethereum-history.ts';
 import type {EthereumTransaction} from './ethereum.ts';
 const address='0x'+'a'.repeat(40),other='0x'+'b'.repeat(40);
 const tx=(block:number):EthereumTransaction=>({id:'0x'+'1'.repeat(64)+':normal',hash:'0x'+'1'.repeat(64),kind:'normal',block,time:1700000000,from:address,to:other,valueWei:'1',feeWei:'1',failed:false});
@@ -50,4 +51,70 @@ test('advances before page eleven and rechecks the full boundary block',async()=
   assert.deepEqual(calls.at(-1),{startBlock:10,endBlock:99,page:1});
   assert.equal(rows.length,4);
   assert.deepEqual(rows.filter(row=>row.block===10).map(row=>row.id),[make(10,'2').id,make(10,'3').id]);
+});
+
+test('large provider window trees continue beyond the former 300-request cutoff',async()=>{
+  let calls=0;
+  const rows=await ethereumHistory({startBlock:0,endBlock:255},async range=>{
+    calls++;
+    if(range.startBlock!==range.endBlock)throw windowError();
+    return {transactions:[],more:false};
+  });
+  assert.deepEqual(rows,[]);assert.equal(calls,511);
+});
+
+test('interrupted split scans reuse only fully completed windows on the next attempt',async()=>{
+  const checkpoints:EthereumHistoryCheckpoints=new Map();let failed=true;const calls:object[]=[];
+  const request=async(range:{startBlock:number;endBlock:number;page:number})=>{
+    calls.push(range);
+    if(range.startBlock===0&&range.endBlock===99)throw windowError();
+    if(range.startBlock===50&&failed)throw new Error('temporary outage');
+    const hash='0x'+(range.startBlock===0?'1':'2').repeat(64);
+    return {transactions:[{...tx(range.startBlock+1),hash,id:hash+':normal'}],more:false};
+  };
+  await assert.rejects(ethereumHistory({startBlock:0,endBlock:99},request,checkpoints),/temporary outage/);
+  assert.equal(checkpoints.size,1);failed=false;calls.length=0;
+  const rows=await ethereumHistory({startBlock:0,endBlock:99},request,checkpoints);
+  assert.deepEqual(calls,[{startBlock:50,endBlock:99,page:1}]);
+  assert.deepEqual(rows.map(row=>row.block),[1,51],'both completed and resumed rows survive');
+});
+
+test('page-window boundaries survive interruptions without skipping equal-block rows',async()=>{
+  const checkpoints:EthereumHistoryCheckpoints=new Map();let failed=true;const starts:number[]=[];
+  const request=async(range:{startBlock:number;endBlock:number;page:number})=>{
+    starts.push(range.startBlock);
+    if(range.startBlock===0)return {transactions:[tx(range.page)],more:true};
+    if(failed)throw new Error('temporary outage');
+    return {transactions:[tx(10)],more:false};
+  };
+  await assert.rejects(ethereumHistory({startBlock:0,endBlock:99},request,checkpoints),/temporary outage/);
+  failed=false;starts.length=0;
+  await ethereumHistory({startBlock:0,endBlock:99},request,checkpoints);
+  assert.deepEqual(starts,[10],'completed prefix is reused while boundary block is fetched again');
+});
+
+test('pathological provider windows still stop at a bounded request budget',async()=>{
+  let calls=0;
+  await assert.rejects(ethereumHistory({startBlock:0,endBlock:4095},async range=>{
+    calls++;if(range.startBlock!==range.endBlock)throw windowError();
+    return {transactions:[],more:false};
+  }),error=>(error as {code?:string}).code==='history_scan_budget');
+  assert.equal(calls,2000);
+});
+
+test('admin scans can pass the per-kind cutoff while a shared caller enforces the API budget',async()=>{
+  let calls=0;
+  const request=async(range:{startBlock:number;endBlock:number;page:number})=>{
+    calls++;
+    if(range.startBlock!==range.endBlock)throw windowError();
+    return {transactions:[],more:false};
+  };
+  assert.deepEqual(await ethereumHistory({startBlock:0,endBlock:2047},request,new Map(),Infinity),[]);
+  assert.equal(calls,4095);
+  let remaining=3;
+  const limited=async()=>{
+    if(remaining--<=0)throw Object.assign(new Error('shared budget exhausted'),{code:'history_scan_budget'});
+    return {transactions:[],more:true};
+  };
+  await assert.rejects(ethereumHistory({startBlock:0,endBlock:0},limited,new Map(),Infinity),/shared budget exhausted/);
 });

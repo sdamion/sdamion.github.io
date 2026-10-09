@@ -114,7 +114,7 @@ export default function Home({memberStake,role='delegator'}:{memberStake:string;
   const [selectedAsset,setSelectedAsset]=useState<string|null>(null);
   const [section,setSection]=useState<'wallets'|'holdings'|'transactions'|'gain-loss'|null>(null);
   const isAdmin=role==='admin';
-  const ethereum=useEthereum(memberStake,ready&&isAdmin);
+  const ethereum=useEthereum(memberStake,ready&&isAdmin,isAdmin);
   const solana=useSolana(memberStake,ready&&isAdmin);
   const solTransactions=useMemo(()=>solanaTransactions(solana.data,solana.wallets),[solana.data,solana.wallets]);
   const rawSolTransfers=useMemo(()=>solanaTransfers(solana.data,solana.wallets,solana.exchanges),[solana.data,solana.wallets,solana.exchanges]);

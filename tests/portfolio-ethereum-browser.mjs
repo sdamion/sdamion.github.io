@@ -358,7 +358,7 @@ try{
   await page.waitForFunction(stake=>JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)).accounts[Object.keys(JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)).accounts)[0]].provider==='blockscout',stake);
   const fallbackCalls=requests.slice(successfulFallbackStart);
   assert.equal(fallbackCalls.filter(r=>r.action==='history'&&r.provider==='etherscan').length,3,'bounded primary retries precede one fallback restart');
-  assert.ok(fallbackCalls.filter(r=>r.action==='history'&&r.provider==='blockscout').every(r=>r.startBlock===136),'fallback resumes from the cached checkpoint, not genesis');
+  assert.deepEqual(fallbackCalls.filter(r=>r.action==='history'&&r.provider==='blockscout').map(r=>[r.kind,r.startBlock]),[['normal',137],['internal',136]],'fallback reuses the completed stable block and rereads the latest 64 blocks; incomplete internal history resumes from the account checkpoint');
   assert.equal(await page.evaluate(stake=>Object.values(JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)).accounts)[0].transactions.length,stake),2,'fallback keeps complete older history and replaces only the overlap');
   primaryLimited=false;fallbackIncomplete=true;headBlockscout=true;
   const recoveryStart=requests.length;

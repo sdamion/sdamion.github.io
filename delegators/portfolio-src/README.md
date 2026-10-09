@@ -2,6 +2,15 @@
 
 ## Cross-chain CEX summary
 
+Ethereum history scans normally allow up to 2,000 requests per history kind.
+Admins instead share a 99,076-request budget across all Ethereum wallets,
+providers, head/balance requests and retries in one refresh. This is a local
+ceiling, not a live remaining-daily-quota counter; provider limits may stop the
+scan earlier. Completed block windows are kept in memory for
+retries while Portfolio remains open; incomplete pages never become account
+checkpoints. Resumed scans recheck the latest 64 blocks. In-memory windows are
+cleared when the member or wallet scope changes and after a successful save.
+
 `NativeTransferSummary` shows ADA, ETH and SOL quantities separately. ADA IN/OUT
 filters never include ETH or SOL legs. `portfolioTransferResult` combines all
 classified CEX flows using transfer-day prices and adds the current value of all

@@ -2,15 +2,16 @@ import {useCallback,useEffect,useRef,useState} from 'react';
 import {portfolioFetch} from './transport';
 import {portfolioSettings,flushVault} from './vault';
 import {emptyEthereum,ethereumData,ethereumWallets,type EthereumData,type EthereumTransaction,type EthereumWallet,type EthereumProvider} from './ethereum';
-import {ethereumHistory} from './ethereum-history';
+import {ethereumHistory,type EthereumHistoryCheckpoints} from './ethereum-history';
 import {ethereumRequest} from './ethereum-request';
 
-export function useEthereum(stake:string,ready:boolean){
+export function useEthereum(stake:string,ready:boolean,admin=false){
   const walletKey='tdsp-member-ethereum-wallets:'+stake,cexKey='tdsp-member-ethereum-cex:'+stake,dataKey='tdsp-member-ethereum-data:'+stake;
   const [wallets,setWallets]=useState<EthereumWallet[]>([]),[exchanges,setExchanges]=useState<EthereumWallet[]>([]),[data,setData]=useState<EthereumData>(emptyEthereum);
   const [loadedStake,setLoadedStake]=useState<string|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[status,setStatus]=useState('');
   const loaded=loadedStake===stake;
   const current=useRef(data),controller=useRef<AbortController|null>(null);
+  const historyCheckpoints=useRef(new Map<string,EthereumHistoryCheckpoints>());
   useEffect(()=>{
     if(!ready){controller.current?.abort();setLoadedStake(null);setWallets([]);setExchanges([]);const empty=emptyEthereum();current.current=empty;setData(empty);setBusy(false);setError('');setStatus('');return;}
     try{
@@ -21,15 +22,21 @@ export function useEthereum(stake:string,ready:boolean){
     return()=>controller.current?.abort();
   },[ready,stake]);
   const scope=wallets.map(w=>w.address).sort().join('|');
+  useEffect(()=>{historyCheckpoints.current.clear();},[ready,stake,scope]);
   const refresh=useCallback(async()=>{
     if(!ready||!loaded||!wallets.length)return;
     controller.current?.abort();const control=new AbortController();controller.current=control;
     const signal=control.signal;
     setBusy(true);setError('');setStatus('Checking Ethereum transactions…');
     let provider:EthereumProvider|undefined;
+    let apiCalls=0;
     const completedRanges=new Map<string,EthereumTransaction[]>();
     async function request<T>(body:object):Promise<T>{
-      const result=await ethereumRequest<any>(()=>portfolioFetch('/ethereum',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,...(provider?{provider}:{})}),signal}),signal);
+      const result=await ethereumRequest<any>(()=>{
+        // One budget includes all wallets, providers and retries in this refresh.
+        if(admin&&++apiCalls>99076)throw Object.assign(new Error('Ethereum history is incomplete. Saved data is retained.'),{code:'history_scan_budget'});
+        return portfolioFetch('/ethereum',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,...(provider?{provider}:{})}),signal});
+      },signal);
       if(result.provider!==undefined){
         if(!['etherscan','blockscout'].includes(result.provider)||provider&&provider!==result.provider)throw new Error('Invalid Ethereum provider response.');
         provider=result.provider;
@@ -61,7 +68,15 @@ export function useEthereum(stake:string,ready:boolean){
           const rangeKey=`${wallet.address}:${kind}:${startBlock}:${block}`;
           const reused=completedRanges.get(rangeKey);
           if(reused){for(const tx of reused)transactions.set(tx.id,tx);continue;}
-          const fetched=await ethereumHistory({startBlock,endBlock:block},range=>request({action:'history',address:wallet.address,kind,...range}));
+          const checkpointKey=`${wallet.address}:${kind}:${startBlock}`;
+          let checkpoints=historyCheckpoints.current.get(checkpointKey);
+          if(!checkpoints){checkpoints=new Map();historyCheckpoints.current.set(checkpointKey,checkpoints);}
+          const safeBlock=block-64;
+          for(const [key,range] of checkpoints)if(range.endBlock>safeBlock){
+            checkpoints.delete(key);
+            if(range.startBlock<=safeBlock)checkpoints.set(`${range.startBlock}:${safeBlock}`,{...range,endBlock:safeBlock,transactions:range.transactions.filter(tx=>tx.block<=safeBlock)});
+          }
+          const fetched=await ethereumHistory({startBlock,endBlock:block},range=>request({action:'history',address:wallet.address,kind,...range}),checkpoints,admin?Infinity:2000);
           for(const tx of fetched)transactions.set(tx.id,tx);
           if(transactions.size>100000)throw new Error('Ethereum history is too large. Saved data is retained.');
           completedRanges.set(rangeKey,fetched);
@@ -70,10 +85,13 @@ export function useEthereum(stake:string,ready:boolean){
         if(typeof balanceWei!=='string'||!/^\d{1,80}$/.test(balanceWei))throw new Error('Invalid Ethereum balance response.');
         next.accounts[wallet.address]={balanceWei,block,transactions:[...transactions.values()],provider:provider||'etherscan'};
         // Publish provider changes only after every wallet range is complete.
-        if(!changingProvider)await persist(next);
+        if(!changingProvider){
+          await persist(next);
+          for(const key of historyCheckpoints.current.keys())if(key.startsWith(wallet.address+':'))historyCheckpoints.current.delete(key);
+        }
         setStatus(`${index+1} / ${wallets.length}`);
       }
-      if(changingProvider)await persist(next);
+      if(changingProvider){await persist(next);historyCheckpoints.current.clear();}
       const history=await portfolioFetch('/historical-eth-prices',{signal});
       if(!history.ok)throw new Error('Historical Ethereum prices unavailable.');
       const rates=await history.json();
@@ -106,7 +124,7 @@ export function useEthereum(stake:string,ready:boolean){
       }
     }catch(e){if(!signal.aborted){setError(e instanceof Error?e.message:'Ethereum refresh failed. Saved data is retained.');setStatus('');}}
     finally{if(controller.current===control)setBusy(false);}
-  },[ready,loaded,scope,stake]);
+  },[ready,loaded,scope,stake,admin]);
   useEffect(()=>{void refresh();return()=>controller.current?.abort();},[refresh]);
   useEffect(()=>{
     if(!ready||!loaded||!wallets.length)return;
