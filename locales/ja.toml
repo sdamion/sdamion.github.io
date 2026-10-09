@@ -1388,3 +1388,6 @@ portfolio_text_helius_counter = "Heliusクレジットカウンターを利用�
 portfolio_text_helius_rate = "Heliusリクエスト上限に達しました。しばらくしてから再試行してください。"
 portfolio_text_native_admin = "管理者権限が必要です。"
 portfolio_text_native_cex_help = "CEX合計には送金日の価格を使用し、異なる通貨の数量は合算しません。"
+portfolio_text_fee_history_incomplete = "一部のみ · {chain}: 取引履歴が不完全です"
+portfolio_text_fee_price_unavailable = "一部のみ · {chain}: ネットワーク手数料の価格が不明です"
+portfolio_text_fee_currency_unavailable = "一部のみ · 選択した通貨の為替レートが不明です"

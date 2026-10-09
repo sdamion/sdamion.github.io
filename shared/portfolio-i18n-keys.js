@@ -1861,4 +1861,7 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
   , ["Helius rate limit reached. Retry shortly.", "portfolio_text_helius_rate"]
   , ["Admin access required.", "portfolio_text_native_admin"]
   , ["Combined CEX totals use transfer-day prices, not summed coin quantities.", "portfolio_text_native_cex_help"]
+  , ["Partial · {chain}: transaction history incomplete", "portfolio_text_fee_history_incomplete"]
+  , ["Partial · {chain}: fee price unavailable", "portfolio_text_fee_price_unavailable"]
+  , ["Partial · selected currency rate unavailable", "portfolio_text_fee_currency_unavailable"]
 ]);

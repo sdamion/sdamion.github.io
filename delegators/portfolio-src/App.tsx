@@ -52,7 +52,7 @@ import {EthereumTransaction} from './EthereumTransaction';
 import {ethereumTransactions,ethereumTransactionCount,ethereumTransfers,ethereumTransfer,ethereumValue,weiToEth} from './ethereum';
 import {matchCrossChainSwaps,groupSwapRows} from './cross-chain-swaps';
 import {learnMatchedSwapAddresses} from './matched-swap-addresses';
-import {availableTotal,ethereumAvailableTotals,availableCexResult} from './portfolio-totals';
+import {availableTotal,ethereumAvailableTotals,availableCexResult,networkFeeNotes} from './portfolio-totals';
 import {performanceTransfers} from './portfolio-flows';
 import {ethereumReceiptBasis} from './ethereum-basis';
 import {useFxHistory} from './use-fx-history';
@@ -495,6 +495,11 @@ export default function Home({memberStake,role='delegator'}:{memberStake:string;
   const ethFees=ethAvailable.fees;
   const availableFees=availableTotal([currentAdaUsd!==null?fees*currentAdaUsd:null,...(ethereum.wallets.length?[ethAvailable.feeUsd]:[]),...(solana.wallets.length?[solAvailable.feeUsd]:[])]);
   const feeUsd=availableFees.value;
+  const feeNotes=networkFeeNotes([
+    {chain:'Cardano',historyComplete:snapshot?.complete===true,feeUsd:currentAdaUsd!==null?fees*currentAdaUsd:null},
+    ...(ethereum.wallets.length?[{chain:'ETH',historyComplete:!ethAvailable.feesPartial,feeUsd:ethAvailable.feeUsd,feeKnown:ethAvailable.fees!==null}]:[]),
+    ...(solana.wallets.length?[{chain:'SOL',historyComplete:!solAvailable.feesPartial,feeUsd:solAvailable.feeUsd,feeKnown:solAvailable.fees!==null}]:[])
+  ],holdingsCurrency==='ADA'?currentAdaUsd!==null&&currentAdaUsd>0:holdingsRate!==null);
   const partialNote='Partial · waiting for remaining wallet data or prices';
   const cexPending=snapshot?.txs.filter(tx=>!hasCounterpartyData(snapshot.facts[tx.tx_hash])).length||0;
   const cexUnresolved=Object.values(cexFacts).filter(f=>isCexTransaction(f,cexAddresses)&&!cexAdaTransfer(f,cexAddresses)).length;
@@ -561,9 +566,10 @@ export default function Home({memberStake,role='delegator'}:{memberStake:string;
         <p className="small muted">{t('{done} / {total} assets valued',{done:valued.length+(ethereum.wallets.length&&!ethExcluded&&ethValue!==null?1:0)+(solana.wallets.length&&!solExcluded&&solAvailable.value!==null?1:0),total:included.length+(ethereum.wallets.length&&!ethExcluded?1:0)+(solana.wallets.length&&!solExcluded?1:0)})}{excludedCount+(ethereum.wallets.length&&ethExcluded?1:0)+(solana.wallets.length&&solExcluded?1:0)?' · '+t('{count} excluded',{count:excludedCount+(ethereum.wallets.length&&ethExcluded?1:0)+(solana.wallets.length&&solExcluded?1:0)}):''}</p>
         {(holdingsCurrency==='EUR'||holdingsCurrency==='JPY')&&holdingsValue===null&&<p className="small muted" role="status">{t(fx.status||'Historical exchange rates unavailable')}</p>}
       </MenuTile>
-      <Metric label="Network fees paid" note={availableFees.partial||ethAvailable.feesPartial||solAvailable.feesPartial?partialNote:undefined} value={loadedFacts||snapshot?.complete?nativeCount?formatPortfolioUsd(feeUsd,currencyDisplay):formatPortfolioAda(fees,currencyDisplay):'Waiting for transaction details'}>
+      <Metric label="Network fees paid" value={loadedFacts||snapshot?.complete?nativeCount?formatPortfolioUsd(feeUsd,currencyDisplay):formatPortfolioAda(fees,currencyDisplay):'Waiting for transaction details'}>
         {ethereum.wallets.length>0&&<><span translate="no" className="small">Cardano: {loadedFacts||snapshot?.complete?formatPortfolioAda(fees,currencyDisplay):'—'}</span><span translate="no" className="small">ETH: {ethFees===null?'—':`${ethFees.toLocaleString(undefined,{maximumFractionDigits:8})} ETH`} · {formatPortfolioUsd(ethAvailable.feeUsd,currencyDisplay)}</span></>}
         {solana.wallets.length>0&&<span translate="no" className="small">SOL: {solAvailable.fees===null?'—':`${solAvailable.fees.toLocaleString(undefined,{maximumFractionDigits:9})} SOL`} · {formatPortfolioUsd(solAvailable.feeUsd,currencyDisplay)}</span>}
+        {feeNotes.map(note=><span key={note} translate="no" className="small muted" role="status">{t(note)}</span>)}
       </Metric>
       {(cexAddresses.length>0||ethereum.exchanges.length>0||solana.exchanges.length>0)&&<Metric label="CEX Transactions" openLabel="CEX Transactions" note={portfolioPartial||availableCex.partial||!ethHistoryReady||!solHistoryReady?partialNote:undefined} value={snapshot?tileGainDisplay:'Waiting for wallet balances'} tone={tileGain===null?'':tileGain<0?'negative':'positive'} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('gain-loss');}}/>}
     </div></section>

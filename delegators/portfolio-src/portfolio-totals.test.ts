@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {availableTotal,ethereumAvailableTotals,availableCexResult} from './portfolio-totals.ts';
+import {availableTotal,ethereumAvailableTotals,availableCexResult,networkFeeNotes} from './portfolio-totals.ts';
 import {emptyEthereum,type EthereumData} from './ethereum.ts';
 assert.deepEqual(availableTotal([100,null]),{value:100,partial:true});
 assert.deepEqual(availableTotal([null]),{value:null,partial:true});
@@ -10,6 +10,13 @@ assert.deepEqual(ethereumAvailableTotals(data,wallets),{value:2000,partial:true,
 assert.equal(ethereumAvailableTotals({...data,usd:null},wallets).value,null);
 assert.equal(ethereumAvailableTotals({...data,usd:null,accounts:{[address]:{...data.accounts[address],balanceWei:'0'}}},[wallets[0]]).value,0,'zero ETH holdings do not need a quote');
 assert.equal(ethereumAvailableTotals(emptyEthereum(),wallets).fees,null,'unknown history is not zero gas');
+const missingGas:EthereumData={...data,accounts:{[address]:{...data.accounts[address],transactions:[{id:'normal:fee',hash:'fee',kind:'normal',block:1,time:1,from:address,to:other,valueWei:'0',feeWei:null,failed:true}]}}};
+assert.equal(ethereumAvailableTotals(missingGas,[wallets[0]]).feesPartial,true,'missing gas on an owned failed transaction is incomplete fee coverage');
+assert.deepEqual(networkFeeNotes([{chain:'Cardano',historyComplete:true,feeUsd:537},{chain:'ETH',historyComplete:false,feeUsd:498},{chain:'SOL',historyComplete:true,feeUsd:5}]),['Partial · ETH: transaction history incomplete']);
+assert.deepEqual(networkFeeNotes([{chain:'ETH',historyComplete:true,feeUsd:null}]),['Partial · ETH: fee price unavailable']);
+assert.deepEqual(networkFeeNotes([{chain:'ETH',historyComplete:false,feeUsd:null,feeKnown:false}]),['Partial · ETH: transaction history incomplete']);
+assert.deepEqual(networkFeeNotes([{chain:'Cardano',historyComplete:true,feeUsd:0}],false),['Partial · selected currency rate unavailable']);
+assert.deepEqual(networkFeeNotes([{chain:'ETH',historyComplete:true,feeUsd:498}]),[],'complete cached fee data stays complete even when a refresh fails or an unrelated asset is unvalued');
 const time=Date.parse('2023-01-06')/1000,rows=[{hash:'known',time,side:'buy' as const,usd:100},{hash:'unknown',time,side:'sell' as const,usd:null}];
 assert.deepEqual(availableCexResult(rows,2000,'USD',0.5,{}, {},time),{value:1900,partial:true});
 assert.deepEqual(availableCexResult(rows,2000,'ADA',0.5,{'2023-01-06':0.5},{},time),{value:3800,partial:true});

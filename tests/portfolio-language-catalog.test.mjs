@@ -41,6 +41,9 @@ test('Ethereum provider and universal timeout errors translate in every Portfoli
   'Etherscan daily API limit reached. Saved Ethereum data is retained; retry later.',
   'Etherscan usage counter unavailable. Saved Ethereum data is retained.',
   'Ethereum history did not match the requested wallet.',
+  'Partial · ETH: transaction history incomplete',
+  'Partial · SOL: fee price unavailable',
+  'Partial · selected currency rate unavailable',
   'Portfolio ethereum request timed out after 75 seconds. Your cached data is retained; please retry.',
   'Portfolio historical-eth-prices request timed out after 75 seconds. Your cached data is retained; please retry.'
  ];
