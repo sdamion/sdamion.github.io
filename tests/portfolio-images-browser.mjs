@@ -22,7 +22,9 @@ try{
     if(url.pathname===image)return route.fulfill({contentType:'image/gif',body:Buffer.from('R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==','base64')});
     if(url.pathname.endsWith('/image-status')){
       operations.push('image-status');assert.deepEqual(route.request().postDataJSON(),{assets:[id]});
-      return route.fulfill({contentType:'application/json',body:JSON.stringify({tokens:[++checks===1?{token_id:id,state:'pending'}:{token_id:id,state:'cached',cached_image:image}]})});
+      checks++;
+      if(checks===1)return route.fulfill({status:429,headers:{'Retry-After':'1'},contentType:'application/json',body:JSON.stringify({error:'Portfolio rate limit reached. Please retry shortly.',code:'portfolio_rate_limit',retryAfter:1})});
+      return route.fulfill({contentType:'application/json',body:JSON.stringify({tokens:[checks===2?{token_id:id,state:'pending'}:{token_id:id,state:'cached',cached_image:image}]})});
     }
     if(url.pathname.includes('/api/portfolio/'))operations.push(url.pathname.split('/').pop());
     if(url.hostname!=='127.0.0.1')return route.fulfill({status:404,body:''});
@@ -39,8 +41,8 @@ try{
   await page.getByRole('button',{name:'Open Assets',exact:true}).click();
   await page.getByRole('button',{name:'Open NFTs',exact:true}).click();
   await page.waitForFunction(image=>[...document.images].some(img=>img.src.endsWith(image)&&img.complete&&img.naturalWidth>0),image);
-  assert.equal(checks,2,'the completed background download appears without refreshing the portfolio');
-  assert.deepEqual(operations,['image-status','image-status'],'no price, metadata or transaction re-scan');
+  assert.equal(checks,3,'a Portfolio cooldown resumes automatically before the completed background download appears');
+  assert.deepEqual(operations,['image-status','image-status','image-status'],'no price, metadata or transaction re-scan');
   const asset=page.getByRole('button',{name:'View Cached test asset details',exact:true});
   assert.equal(await asset.locator('img').count(),1);
   for(const width of [1200,390]){

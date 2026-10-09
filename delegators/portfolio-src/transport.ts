@@ -1,9 +1,13 @@
 export const apiBase=['localhost','127.0.0.1','::1','[::1]'].includes(location.hostname)?'/api/portfolio':'https://api.tdsp.online/api/portfolio';
 import {acceptRenewedSession} from './session';
+import {requestWithPortfolioLimit} from './portfolio-limit';
 let activeRole:'delegator'|'admin'='delegator';
 export function setSessionRole(role:'delegator'|'admin'){activeRole=role;}
 export function sessionToken(){return sessionStorage.getItem('tdsp-raffle-session-'+activeRole)||'';}
-export async function portfolioUpload(body:string,signal:AbortSignal,progress:(loaded:number,total:number)=>void,retryRenewed=true):Promise<Response>{
+export function portfolioUpload(body:string,signal:AbortSignal,progress:(loaded:number,total:number)=>void,retryRenewed=true):Promise<Response>{
+  return requestWithPortfolioLimit(()=>sendPortfolioUpload(body,signal,progress,retryRenewed),signal);
+}
+async function sendPortfolioUpload(body:string,signal:AbortSignal,progress:(loaded:number,total:number)=>void,retryRenewed=true):Promise<Response>{
   signal.throwIfAborted();
   const sentToken=sessionToken();
   const response=await new Promise<Response>((resolve,reject)=>{
@@ -16,16 +20,19 @@ export async function portfolioUpload(body:string,signal:AbortSignal,progress:(l
     xhr.onerror=()=>{finish();reject(new Error('Cache upload failed. Retrying while this page stays open.'));};
     xhr.ontimeout=()=>{finish();reject(new Error('Cache upload timed out. Retrying while this page stays open.'));};
     xhr.onabort=()=>{finish();reject(new DOMException('Upload cancelled','AbortError'));};
-    xhr.onload=()=>{finish();resolve(new Response(xhr.responseText,{status:xhr.status,headers:{'X-TDSP-Session':xhr.getResponseHeader('X-TDSP-Session')||''}}));};
+    xhr.onload=()=>{finish();resolve(new Response(xhr.responseText,{status:xhr.status,headers:{'X-TDSP-Session':xhr.getResponseHeader('X-TDSP-Session')||'','Retry-After':xhr.getResponseHeader('Retry-After')||''}}));};
     signal.addEventListener('abort',abort,{once:true});xhr.send(body);
   });
   if(response.status===401||response.status===403){
-    if(retryRenewed&&sessionToken()&&sessionToken()!==sentToken)return portfolioUpload(body,signal,progress,false);
+    if(retryRenewed&&sessionToken()&&sessionToken()!==sentToken)return sendPortfolioUpload(body,signal,progress,false);
     window.dispatchEvent(new Event('tdsp:portfolio-session-expired'));
   }else acceptRenewedSession(sessionStorage,sentToken,response.headers.get('X-TDSP-Session'));
   return response;
 }
-export async function portfolioFetch(path:string,options:RequestInit={},retryRenewed=true):Promise<Response>{
+export function portfolioFetch(path:string,options:RequestInit={},retryRenewed=true):Promise<Response>{
+  return requestWithPortfolioLimit(()=>sendPortfolioRequest(path,options,retryRenewed),options.signal||new AbortController().signal);
+}
+async function sendPortfolioRequest(path:string,options:RequestInit={},retryRenewed=true):Promise<Response>{
   const operation=path.split('/').pop();
   const timeout=new AbortController();
   const timer=setTimeout(()=>timeout.abort(),75000);
@@ -37,7 +44,7 @@ export async function portfolioFetch(path:string,options:RequestInit={},retryRen
     if(response.status===401||response.status===403){
       if(retryRenewed&&sessionToken()&&sessionToken()!==sentToken){
         await response.body?.cancel();clearTimeout(timer);
-        return portfolioFetch(path,options,false);
+        return sendPortfolioRequest(path,options,false);
       }
       window.dispatchEvent(new Event('tdsp:portfolio-session-expired'));
     }else{

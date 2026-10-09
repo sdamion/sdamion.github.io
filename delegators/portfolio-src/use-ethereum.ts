@@ -93,7 +93,7 @@ export function useEthereum(stake:string,ready:boolean){
       catch(e){
         if(signal.aborted)throw e;
         let failure=e;
-        if(provider!=='blockscout'&&(e as {status?:number}).status===429){
+        if(provider!=='blockscout'&&(e as {status?:number}).status===429&&(e as {code?:string}).code!=='portfolio_rate_limit'){
           provider='blockscout';
           try{await scan();return;}catch(fallback){if(signal.aborted)throw fallback;failure=fallback;}
         }
