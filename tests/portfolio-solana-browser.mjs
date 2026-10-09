@@ -100,6 +100,22 @@ try{
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
   await page.screenshot({path:`/tmp/tdsp-solana-${width}.png`,fullPage:true});
  }
+ await page.evaluate(()=>window.reopen());
+ await page.getByRole('button',{name:'Open Wallets',exact:true}).click();
+ await page.getByRole('button',{name:'Open DEX / CEX & Swap',exact:true}).click();
+ const serviceSource=page.getByRole('checkbox',{name:'Mining / services source: SOL Exchange',exact:true});
+ await serviceSource.check();
+ assert.equal(await page.evaluate(stake=>JSON.parse(window.fixtureStorage.getItem('tdsp-member-solana-cex:'+stake))[0].miner,stake),true);
+ await page.evaluate(()=>window.reopen());
+ await page.getByRole('button',{name:'Open CEX Transactions',exact:true}).click();
+ const proceeds=page.locator('.portfolio-service-proceeds');
+ assert.match(await proceeds.innerText(),/2 SOL/);
+ assert.equal(await page.locator('#portfolio-gain-loss-overlay .history-table tbody tr').count(),0,'service receipts excluded from CEX');
+ await page.evaluate(()=>window.reopen());
+ await page.getByRole('button',{name:'Open Wallets',exact:true}).click();
+ await page.getByRole('button',{name:'Open DEX / CEX & Swap',exact:true}).click();
+ assert.equal(await serviceSource.isChecked(),true,'service selection restored');
+ await serviceSource.uncheck();
  await page.evaluate(({stake,own,cex,receipt,failed})=>{
   const swap='stake1u9ex0jtl4nv84rlzwuft5rczy2hgkjygewla04mgy7v2nccx4p4yr',time=1672963200;
   window.fixtureStorage.setItem('tdsp-member-wallets-v1:'+stake,JSON.stringify([{address:swap,label:'Simple Swap',group:'swap'}]));

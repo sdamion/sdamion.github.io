@@ -7,7 +7,7 @@ export function averageBuy(cost:number|null,quantity:number|null){
 }
 
 // Purchase averages describe acquisitions, not the FIFO lots still held after sends.
-export function purchaseAverages(facts:Fact[],history:Record<string,number>,acquisitions:Acquisitions){
+export function purchaseAverages(facts:Fact[],history:Record<string,number>,acquisitions:Acquisitions,isReward:(fact:Fact)=>boolean=()=>false){
   const result:Record<string,{raw:bigint;usd:number|null;count:number}>={};
   for(const fact of new Map(facts.map(f=>[f.hash,f])).values()){
     if(fact.internal)continue;
@@ -15,7 +15,7 @@ export function purchaseAverages(facts:Fact[],history:Record<string,number>,acqu
     for(const [id,raw] of Object.entries(fact.assets)){
       if(BigInt(raw)<=0n)continue;
       const linked=acquisitions[fact.hash]?.[id];
-      const ada=linked?.ada??(trade?.id===id&&trade.side==='buy'?trade.costAda:null);
+      const ada=isReward(fact)?0:linked?.ada??(trade?.id===id&&trade.side==='buy'?trade.costAda:null);
       if(ada===null)continue;
       const usd=historicalPurchaseCost(ada,linked?.time??fact.time,history);
       const previous=result[id]??{raw:0n,usd:0,count:0};

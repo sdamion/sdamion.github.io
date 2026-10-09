@@ -1,5 +1,14 @@
 # Member portfolio
 
+## Mining / Services Sources
+
+Counterparty lists share `RewardSourceCheckbox` and `reward-sources.ts` across
+Cardano, Ethereum and native Solana. The existing boolean `miner` setting is kept
+for cache compatibility. Marked receipts are reported separately from CEX flows;
+own-wallet transfers are excluded. ADA, Cardano-token and ETH receipt basis uses
+zero acquisition cost. SOL does not yet have a purchase-basis calculation.
+SPL and ERC-20 tracking are not added by this setting.
+
 ## Private encrypted cache
 
 Opening Portfolio offers local or remote storage; member sign-in itself does not request

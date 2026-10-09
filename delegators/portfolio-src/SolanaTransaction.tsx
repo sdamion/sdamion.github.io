@@ -1,3 +1,4 @@
+import {isRewardSource} from './reward-sources';
 import {short} from './core';
 import {TransactionLayout,TransactionDate} from './TransactionTable';
 import {transactionCurrency,usePortfolioCurrency,formatPortfolioUsd} from './portfolio-currency';
@@ -10,7 +11,7 @@ export function SolanaTransaction({tx,wallets,exchanges,history,adaHistory,compa
   const format=(amount:number)=>display?formatPortfolioUsd(price===null?null:amount*price,display):'—';
   const addresses=new Set([tx.payer,...tx.transfers.flatMap(row=>[row.from,row.to])]);
   return <TransactionLayout compact={compact} cells={[
-    <><strong translate="no" className={amount<0?'positive':''}>{format(Math.abs(amount))}</strong><div translate="no" className="small muted">{amount.toLocaleString(undefined,{maximumFractionDigits:9})} SOL</div><div className="small muted">{tx.failed?t('Failed'):internalSwap?t('Swap'):t('Solana transfer')}</div><a translate="no" href={`https://solscan.io/tx/${tx.hash}`} target="_blank" rel="noreferrer">{short(tx.hash)}</a></>,
+    <><strong translate="no" className={amount<0?'positive':''}>{format(Math.abs(amount))}</strong><div translate="no" className="small muted">{amount.toLocaleString(undefined,{maximumFractionDigits:9})} SOL</div><div className="small muted">{tx.failed?t('Failed'):internalSwap?t('Swap'):tx.transfers.some(row=>own.has(row.to)&&!own.has(row.from)&&BigInt(row.raw)>0n&&isRewardSource(row.from,exchanges))?t('Mining / services receipt'):t('Solana transfer')}</div><a translate="no" href={`https://solscan.io/tx/${tx.hash}`} target="_blank" rel="noreferrer">{short(tx.hash)}</a></>,
     <span translate="no">{display?formatPortfolioUsd(price,display,6):'—'}<div className="small muted">SOL</div></span>,
     <span translate="no">{format(solAmount(tx.feeRaw))}<div className="small muted">{solAmount(tx.feeRaw).toLocaleString(undefined,{maximumFractionDigits:9})} SOL</div></span>,
     <>{[...wallets,...exchanges].filter(w=>addresses.has(w.address)).map(w=><div translate="no" key={w.address}>{w.name}</div>)}</>,

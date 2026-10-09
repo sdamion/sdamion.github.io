@@ -1,6 +1,6 @@
 "use client";
 
-import {useEffect,useMemo,useRef,useState} from 'react';
+import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {ExternalLink,Plus,Trash2} from 'lucide-react';
 import {PortfolioRefresh} from './PortfolioRefresh';
 import {usePortfolioText} from './use-portfolio-text';
@@ -75,7 +75,7 @@ import {WalletCard} from './WalletAddresses';
 import {refreshExcludedAddresses,walletRefreshCounts} from './member';
 import {validByronAddress} from './byron-address';
 import {exchangeExcludedAddresses,resolveSwapGroups,excludeInternalExchanges,swapOwnershipScope,swapAddressSet,isSwapTransaction} from './swap-wallets';
-import {normalizeCexAddresses,cexAdjustedFact,isCexTransaction,cexAdaTransfer,cexUsdNetPosition,cexTimeline,transactionExchangeWallets} from './cex';
+import {normalizeCexAddresses,cexAdjustedFact,isCexTransaction,isCardanoReward,cexAdaTransfer,cexUsdNetPosition,cexTimeline,transactionExchangeWallets} from './cex';
 import type {CexAddress} from './cex';
 import {durationLabel,remainingSeconds,analysisProgress} from './progress';
 import {memberWallets,resolveWalletGroups,validWalletAddress,validStakeAddress,walletTransactionCount} from './member';
@@ -423,7 +423,7 @@ export default function Home({memberStake,role='delegator'}:{memberStake:string;
   },[ready,ethereum.loaded,crossChainSwaps,classifiedFacts,wallets,snapshot?.groups,snapshot?.swapGroups,ethereum.data,ethereum.wallets]);
   const cexFacts=useMemo(()=>Object.fromEntries(Object.entries(classifiedFacts).filter(([hash])=>!crossChainSwaps.cardano.has(hash))),[classifiedFacts,crossChainSwaps]);
   const ethTransfers=useMemo(()=>rawEthTransfers.filter(row=>!crossChainSwaps.ethereum.has(row.hash)),[rawEthTransfers,crossChainSwaps]);
-  const solTransfers=useMemo(()=>rawSolTransfers.filter(row=>!crossChainSwaps.solana.has(row.hash.split(':')[1])),[rawSolTransfers,crossChainSwaps]);
+  const solTransfers=useMemo(()=>performanceTransfers(rawSolTransfers).filter(row=>!crossChainSwaps.solana.has(row.hash.split(':')[1])),[rawSolTransfers,crossChainSwaps]);
   const solTransfersByHash=useMemo(()=>{
     const rows=new Map<string,typeof solTransfers>();
     for(const row of solTransfers){const hash=row.hash.split(':')[1],group=rows.get(hash)||[];group.push(row);rows.set(hash,group);}return rows;
@@ -439,9 +439,15 @@ export default function Home({memberStake,role='delegator'}:{memberStake:string;
   const comparison=useMemo(()=>transferComparison(Object.values(cexFacts),cexAddresses,snapshot?.history||{},btc.history,fx.history,comparisonCrypto,comparisonFiat,[...performanceTransfers(ethTransfers),...solTransfers],ethereum.data.history).at(-1),[cexFacts,cexAddresses,snapshot,btc.history,fx.history,comparisonCrypto,comparisonFiat,ethTransfers,ethereum.data.history,solTransfers]);
   const solHistoryReady=solana.wallets.every(w=>!!solana.data.accounts[w.address]);
   const solCexTotals=solana.wallets.length&&!solana.wallets.some(w=>solana.data.accounts[w.address])?{incoming:null,outgoing:null,inFiat:null,outFiat:null}:nativeTransferTotals(solTransfers,snapshot?.history||{},fx.history,comparisonFiat);
-  const basis=useMemo(()=>snapshot?remainingBasis(Object.values(classifiedFacts),snapshot.history,payments.acquisitions):{},[snapshot,classifiedFacts,payments]);
-  const purchases=useMemo(()=>purchaseAverages(Object.values(classifiedFacts),snapshot?.history||{},payments.acquisitions),[classifiedFacts,snapshot,payments]);
-  const adaLive=useMemo(()=>snapshot?liveAdaBasis(Object.values(classifiedFacts),snapshot.history,holdings.find(h=>h.id==='lovelace')?.raw||'0',snapshot.complete):null,[snapshot,holdings,classifiedFacts]);
+  const cardanoReward=useCallback((fact:Fact)=>isCardanoReward(fact,cexAddresses),[cexAddresses]);
+  const basis=useMemo(()=>snapshot?remainingBasis(Object.values(classifiedFacts),snapshot.history,payments.acquisitions,cardanoReward):{},[snapshot,classifiedFacts,payments,cardanoReward]);
+  const purchases=useMemo(()=>purchaseAverages(Object.values(classifiedFacts),snapshot?.history||{},payments.acquisitions,cardanoReward),[classifiedFacts,snapshot,payments,cardanoReward]);
+  const adaLive=useMemo(()=>snapshot?liveAdaBasis(Object.values(classifiedFacts),snapshot.history,holdings.find(h=>h.id==='lovelace')?.raw||'0',snapshot.complete,cardanoReward):null,[snapshot,holdings,classifiedFacts,cardanoReward]);
+  const serviceReceipts=Object.values(classifiedFacts).filter(cardanoReward);
+  const serviceAda=serviceReceipts.reduce((sum,fact)=>sum+BigInt(fact.adaRaw)+BigInt(fact.feeRaw||'0'),0n);
+  const serviceAssets=new Map<string,bigint>();
+  for(const fact of serviceReceipts)for(const [id,raw] of Object.entries(fact.assets))if(BigInt(raw)>0n)serviceAssets.set(id,(serviceAssets.get(id)||0n)+BigInt(raw));
+  const solServiceTotals=nativeTransferTotals(rawSolTransfers.filter(row=>row.performance===false),snapshot?.history||{},fx.history,comparisonFiat);
   const rows=holdings.map(h=>{
     const m=snapshot?.markets[h.id],automaticDecimals=holdingDecimals(m,assetDecimals[h.id]);
     const decimals=h.id==='lovelace'?6:tokenDecimals(parseAmount(overrides[h.id]?.decimals))??automaticDecimals;
@@ -689,10 +695,15 @@ export default function Home({memberStake,role='delegator'}:{memberStake:string;
           <span>{total.amount===null?'—':total.amount.toLocaleString(holdingsLocale,{maximumFractionDigits:8})} ETH</span>
           <span className="pool-delegator-usd">≈ {formatPortfolioAmount(total.value,{...currencyDisplay,currency:comparisonFiat})}</span>
         </span></strong></TableCell>)}</TableRow>
-        {ethereum.exchanges.some(w=>w.miner)&&<TableRow><TableCell>{t('Mining proceeds')}</TableCell><TableCell translate="no"><span>{miningTotals.outgoing===null?'—':miningTotals.outgoing.toLocaleString(holdingsLocale,{maximumFractionDigits:8})} ETH</span><div className="small muted">≈ {formatPortfolioAmount(miningTotals.outFiat,{...currencyDisplay,currency:comparisonFiat})}</div></TableCell></TableRow>}
+        {ethereum.exchanges.some(w=>w.miner)&&<TableRow><TableCell>{t('Mining / services proceeds')}</TableCell><TableCell translate="no"><span>{miningTotals.outgoing===null?'—':miningTotals.outgoing.toLocaleString(holdingsLocale,{maximumFractionDigits:8})} ETH</span><div className="small muted">≈ {formatPortfolioAmount(miningTotals.outFiat,{...currencyDisplay,currency:comparisonFiat})}</div></TableCell></TableRow>}
         </TableBody>
       </Table>}
       {solana.wallets.length>0&&<Table variant="comparison"><TableHeader><TableRow><TableHead translate="no">SOL IN</TableHead><TableHead translate="no">SOL OUT</TableHead></TableRow></TableHeader><TableBody><TableRow>{[{amount:solCexTotals.incoming,value:solCexTotals.inFiat},{amount:solCexTotals.outgoing,value:solCexTotals.outFiat}].map((total,index)=><TableCell key={index}><strong translate="no" className={`portfolio-transfer-amount ${index?'positive':''}`}><span className="pool-delegator-amount"><span>{total.amount===null?'—':total.amount.toLocaleString(holdingsLocale,{maximumFractionDigits:9})} SOL</span><span className="pool-delegator-usd">≈ {formatPortfolioAmount(total.value,{...currencyDisplay,currency:comparisonFiat})}</span></span></strong></TableCell>)}</TableRow></TableBody></Table>}
+        {(cexAddresses.some(row=>row.miner)||solana.exchanges.some(row=>row.miner))&&<Table className="portfolio-service-proceeds"><TableHeader><TableRow><TableHead>{t('Mining / services proceeds')}</TableHead><TableHead>{t('Amount')}</TableHead></TableRow></TableHeader><TableBody>
+          {cexAddresses.some(row=>row.miner)&&<TableRow><TableCell translate="no">ADA</TableCell><TableCell translate="no">{snapshot?num(Number(serviceAda)/1e6,6):'—'} ADA</TableCell></TableRow>}
+          {[...serviceAssets].map(([id,raw])=><TableRow key={id}><TableCell><AssetImage id={id} name={snapshot?.markets[id]?.name||assetName(id)} market={snapshot?.markets[id]} compact/></TableCell><TableCell translate="no">{units(String(raw),assetDecimals[id])===null?String(raw)+' raw':num(units(String(raw),assetDecimals[id])!,8)}</TableCell></TableRow>)}
+          {solana.exchanges.some(row=>row.miner)&&<TableRow><TableCell translate="no">SOL</TableCell><TableCell translate="no">{solHistoryReady?num(solServiceTotals.outgoing??0,9)+' SOL':'—'}<div className="small muted">≈ {formatPortfolioAmount(solHistoryReady?solServiceTotals.outFiat:null,{...currencyDisplay,currency:comparisonFiat})}</div></TableCell></TableRow>}
+        </TableBody></Table>}
       <div className="portfolio-gain-result">
         <span translate="no" className="governance-card-detail">{t(comparisonResultLabel(comparisonResult.amount,comparisonCrypto),{crypto:comparisonCrypto})}</span>
         <strong className="governance-card-title">{snapshot?<ComparisonAmount amount={comparisonResult.amount} value={comparisonResult.fiat} crypto={comparisonCrypto} currency={comparisonFiat}/>: 'Waiting for wallet balances'}</strong>
@@ -760,7 +771,7 @@ function Transaction({tx,fact,markets,wallets,history,cexAddresses,swapAddresses
   const amount=transactionAmounts(fact?.adaRaw,fact?.time??tx.block_time,history,fact?.feeRaw);
   return <TransactionRow compact={compact} hash={tx.tx_hash} time={tx.block_time} price={amount.price} feeRaw={transactionNetworkFee(fact)}
     amount={<><TransactionAmount ada={amount.ada} usd={amount.usd} tone={cexTrade?(cexTrade.side==='buy'?'negative':'positive'):undefined}/>{compact&&amount.ada!==null&&<div translate="no" className="small muted">{num(Math.abs(amount.ada),6)} ADA</div>}</>}
-    kind={compact?(amount.ada!==null&&amount.ada>0?'ADA IN':'ADA OUT'):internalSwap?'Internal cross-chain swap':isSwapTransaction(fact,swapAddresses)?'Swap':cexTrade?(cexTrade.side==='buy'?'ADA IN':'ADA OUT'):kind==='internal'?'Internal transfer · fee only':kind?labels[kind]:'Awaiting analysis'}
+    kind={compact?(amount.ada!==null&&amount.ada>0?'ADA IN':'ADA OUT'):fact&&isCardanoReward(fact,cexAddresses)?'Mining / services receipt':internalSwap?'Internal cross-chain swap':isSwapTransaction(fact,swapAddresses)?'Swap':cexTrade?(cexTrade.side==='buy'?'ADA IN':'ADA OUT'):kind==='internal'?'Internal transfer · fee only':kind?labels[kind]:'Awaiting analysis'}
     details={fact&&Object.entries(fact.assets).map(([id,raw])=>{const q=units(raw,markets[id]?.decimals??fact.decimals?.[id]);return <div className="small" key={id}>{BigInt(raw)>0n?'+':''}{q===null?raw+' raw':num(q)} <AssetImage id={id} name={markets[id]?.name||markets[id]?.ticker||assetName(id)} market={markets[id]} compact/></div>;})}
     priceDetails={trade&&<div className="small muted">{quantity?num(trade.ada/quantity,10)+' ₳ / token':num(trade.ada)+' ₳ consideration'}</div>}
     wallets={<TransactionWallets labels={transactionWalletNames(fact,wallets)} exchanges={exchangeWallets}/>}

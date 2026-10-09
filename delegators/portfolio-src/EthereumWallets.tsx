@@ -9,6 +9,8 @@ import {validEthereumAddress,weiToEth,type EthereumWallet,type EthereumData} fro
 import {formatPortfolioUsd,usePortfolioCurrency} from './portfolio-currency';
 import {usePortfolioText} from './use-portfolio-text';
 import {SwapLinkedAddresses} from './SwapLinkedAddresses';
+import {RewardSourceCheckbox} from './RewardSourceCheckbox';
+import {rewardSourceTitle} from './reward-sources';
 
 export function EthereumWallets({wallets,data,exchanges=false,swap=false,owned=[],onChange}:{wallets:EthereumWallet[];data:EthereumData;exchanges?:boolean;swap?:boolean;owned?:EthereumWallet[];onChange:(wallets:EthereumWallet[])=>boolean}){
   const [error,setError]=useState('');
@@ -27,12 +29,12 @@ export function EthereumWallets({wallets,data,exchanges=false,swap=false,owned=[
     <h3>{t(exchanges?'Ethereum CEX addresses':swap?'Ethereum Swap wallets':'Ethereum Wallets')}</h3>
     <ServiceAddressForm id={swap?'portfolio-eth-swap':exchanges?'portfolio-eth-cex':'portfolio-eth-wallet'} type={swap?'swap':'exchange'} nameLabel={swap?'Swap name':exchanges?'Exchange name':'Wallet name'} addressLabel={swap?'Wallet address':'Ethereum address'} placeholder="0x…" onAdd={(_,name,address)=>add(name,address)}/>
     {error&&<p translate="no" role="alert" className="small-text error-text">{t(error)}</p>}
-    <Table><TableHeader><TableRow><TableHead>{t(swap?'Swap name':'Wallet')}</TableHead><TableHead>{t(swap?'Wallet address':'Address')}</TableHead>{!exchanges&&!swap&&<TableHead translate="no">ETH</TableHead>}{exchanges&&<TableHead>{t('Mining source')}</TableHead>}<TableHead>{t('Remove')}</TableHead></TableRow></TableHeader><TableBody>
+    <Table><TableHeader><TableRow><TableHead>{t(swap?'Swap name':'Wallet')}</TableHead><TableHead>{t(swap?'Wallet address':'Address')}</TableHead>{!exchanges&&!swap&&<TableHead translate="no">ETH</TableHead>}{exchanges&&<TableHead translate="no">{t(rewardSourceTitle)}</TableHead>}<TableHead>{t('Remove')}</TableHead></TableRow></TableHeader><TableBody>
       <NamedTableGroups rows={wallets} nameOf={w=>w.name} columns={swap?3:4} renderRow={wallet=><TableRow key={wallet.address}>
         <TableCell translate="no">{swap?<SwapNameField name={wallet.name} onSave={name=>{if(!onChange(wallets.map(w=>w.address===wallet.address?{...w,name}:w)))return false;setError('');return true;}} onError={()=>setError('Could not save Swap name.')}/>:wallet.name}</TableCell>
         <TableCell translate="no"><a href={`https://etherscan.io/address/${wallet.address}`} target="_blank" rel="noreferrer" title={wallet.address}>{short(wallet.address)} <ExternalLink size={12}/></a> <button type="button" className="governance-vote-secondary" title={t('Copy address')} aria-label={t('Copy address')} onClick={()=>void navigator.clipboard.writeText(wallet.address).catch(()=>setError('Could not copy address.'))}><Copy size={14}/></button>{swap&&<SwapLinkedAddresses addresses={wallet.swapAddresses} ethereum/>}</TableCell>
         {!exchanges&&!swap&&<TableCell translate="no">{data.accounts[wallet.address]?weiToEth(data.accounts[wallet.address].balanceWei).toLocaleString(undefined,{maximumFractionDigits:6}):'—'}{display&&<div className="small muted">{formatPortfolioUsd(data.accounts[wallet.address]&&data.usd!==null?weiToEth(data.accounts[wallet.address].balanceWei)*data.usd:null,display)}</div>}</TableCell>}
-        {exchanges&&<TableCell><input type="checkbox" checked={wallet.miner===true} aria-label={t('Mining source: {name}',{name:wallet.name})} title={t('Receipts from this address are mining proceeds with zero purchase cost, not CEX purchases. Own-wallet transfers are excluded.')} onChange={event=>onChange(wallets.map(w=>w.address===wallet.address?{...w,miner:event.target.checked}:w))}/></TableCell>}
+        {exchanges&&<TableCell><RewardSourceCheckbox name={wallet.name} checked={wallet.miner===true} onChange={miner=>onChange(wallets.map(w=>w.address===wallet.address?{...w,miner}:w))}/></TableCell>}
         <TableCell><button type="button" className="governance-vote-secondary" title={t('Remove')} aria-label={t('Remove')} onClick={()=>onChange(wallets.filter(w=>w.address!==wallet.address))}><Trash2 size={14}/></button></TableCell>
       </TableRow>}/>
     </TableBody></Table>

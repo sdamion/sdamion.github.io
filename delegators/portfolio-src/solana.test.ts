@@ -31,3 +31,15 @@ test('Pending SOL receipts survive cache loading without publishing incomplete t
  assert.equal(solanaTotals(pending,wallets).fees,null);
  assert.equal(solanaData({...emptySolana(),pending:[{...tx,feeRaw:'-1'}]}).pending,undefined);
 });
+
+test('SOL source selections survive settings loading and exclude ordinary CEX totals',()=>{
+ const sources=nativeWallets([{...exchanges[0],miner:true}]);
+ assert.equal(sources[0].miner,true);
+ const data={...emptySolana(),history:{'2023-01-06':20},accounts:{[own]:{raw:'1000000000',slot:2,checkpoint:hash,transactions:[tx]}}};
+ const rows=solanaTransfers(data,wallets,sources);
+ assert.equal(rows.length,1);
+ assert.equal(rows[0].amount,2);
+ assert.equal(rows[0].performance,false);
+ assert.equal(rows.filter(row=>row.performance!==false).length,0);
+ assert.equal(nativeWallets([{...exchanges[0],miner:'true'}])[0].miner,undefined);
+});

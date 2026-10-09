@@ -1864,4 +1864,9 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
   , ["Partial · {chain}: transaction history incomplete", "portfolio_text_fee_history_incomplete"]
   , ["Partial · {chain}: fee price unavailable", "portfolio_text_fee_price_unavailable"]
   , ["Partial · selected currency rate unavailable", "portfolio_text_fee_currency_unavailable"]
+  , ["Mining / Services Sources", "portfolio_text_services_sources"]
+  , ["Mining / services source: {name}", "portfolio_text_services_source_label"]
+  , ["Receipts from this address have zero purchase cost and are not CEX purchases or sales. Own-wallet transfers are excluded.", "portfolio_text_services_source_help"]
+  , ["Mining / services proceeds", "portfolio_text_services_proceeds"]
+  , ["Mining / services receipt", "portfolio_text_services_receipt"]
 ]);

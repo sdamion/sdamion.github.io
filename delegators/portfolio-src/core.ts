@@ -83,7 +83,7 @@ export function currentPrice(id:string, markets:Record<string,Market>, adaUsd:nu
 // User-defined receipt valuation, not exchange execution cost or tax basis.
 // Combine owned inputs/outputs first so change and self transfers cannot be buys.
 // Outgoing ADA and fees remove proportional cost, preserving the remaining average.
-export function adaReceiptBasis(facts:Fact[], history:Record<string,number>,onSpend?:(fact:Fact,averageUsd:number|null)=>void){
+export function adaReceiptBasis(facts:Fact[], history:Record<string,number>,onSpend?:(fact:Fact,averageUsd:number|null)=>void,isReward:(fact:Fact)=>boolean=()=>false){
   let raw=0n,usd:number|null=0,valid=true,missingPrices=0;
   const seen=new Set<string>();
   // Receipts first within a block-time bucket avoid false deficits when an output
@@ -94,8 +94,8 @@ export function adaReceiptBasis(facts:Fact[], history:Record<string,number>,onSp
     const delta=BigInt(f.adaRaw),fee=BigInt(f.feeRaw||'0');
     const received=f.internal?0n:delta+fee>0n?delta+fee:0n;
     if(received>0n){
-      const price=history[new Date(f.time*1000).toISOString().slice(0,10)];
-      if(!Number.isFinite(price)||price<=0){usd=null;missingPrices++;}
+      const price=isReward(f)?0:history[new Date(f.time*1000).toISOString().slice(0,10)];
+      if(!Number.isFinite(price)||price<0||price===0&&!isReward(f)){usd=null;missingPrices++;}
       else if(usd!==null)usd+=Number(received)/1e6*price;
       raw+=received;
     }
@@ -110,7 +110,7 @@ export function adaReceiptBasis(facts:Fact[], history:Record<string,number>,onSp
 }
 // Use the same remaining-cost calculation during and after refresh. Loaded
 // history must reconcile to the current balance before it can value that balance.
-export function liveAdaBasis(facts:Fact[],history:Record<string,number>,currentRaw:string,complete:boolean){
+export function liveAdaBasis(facts:Fact[],history:Record<string,number>,currentRaw:string,complete:boolean,isReward:(fact:Fact)=>boolean=()=>false){
   let receiptRaw=0n,pricedRaw=0n,receiptCount=0,receiptUsd=0;
   const seen=new Set<string>();
   for(const f of facts){
@@ -118,11 +118,11 @@ export function liveAdaBasis(facts:Fact[],history:Record<string,number>,currentR
     const received=BigInt(f.adaRaw)+BigInt(f.feeRaw||0);
     if(received<=0n)continue;
     receiptRaw+=received;
-    const price=history[new Date(f.time*1000).toISOString().slice(0,10)];
-    if(!Number.isFinite(price)||price<=0)continue;
+    const price=isReward(f)?0:history[new Date(f.time*1000).toISOString().slice(0,10)];
+    if(!Number.isFinite(price)||price<0||price===0&&!isReward(f))continue;
     pricedRaw+=received;receiptCount++;receiptUsd+=Number(received)/1e6*price;
   }
-  const exact=adaReceiptBasis(facts,history);
+  const exact=adaReceiptBasis(facts,history,undefined,isReward);
   const reconciled=exact.valid&&exact.raw===currentRaw;
   const usd=reconciled?exact.usd:null;
   const averageReceiptUsd=receiptRaw>0n&&receiptRaw===pricedRaw?receiptUsd/(Number(receiptRaw)/1e6):null;
@@ -130,10 +130,10 @@ export function liveAdaBasis(facts:Fact[],history:Record<string,number>,currentR
 }
 // Tokens use FIFO across the portfolio; ADA uses the receipt-price method above.
 // Incoming token transfers retain unknown acquisition cost, unlike ADA receipts.
-export function remainingBasis(facts:Fact[], history:Record<string,number>,acquisitions:Acquisitions={}):Record<string,{raw:string;usd:number|null}>{
+export function remainingBasis(facts:Fact[], history:Record<string,number>,acquisitions:Acquisitions={},isReward:(fact:Fact)=>boolean=()=>false):Record<string,{raw:string;usd:number|null}>{
   const lots=new Map<string,{raw:bigint;usd:number|null}[]>();
   const incomplete=new Set<string>();
   const unique=[...new Map(facts.map(f=>[f.hash,f])).values()];
-  for(const f of unique.sort((a,b)=>a.time-b.time||a.hash.localeCompare(b.hash))){if(f.internal)continue;const trade=tradeOf(f);for(const [id,v] of Object.entries(f.assets)){const amount=BigInt(v);const rows=lots.get(id)||[];if(amount>0n){const acquisition=acquisitions[f.hash]?.[id];const costAda=acquisition?.ada??(trade?.id===id&&trade.side==='buy'?trade.costAda:null);rows.push({raw:amount,usd:historicalPurchaseCost(costAda,acquisition?.time??f.time,history)});}else{let consume=-amount;while(consume>0n&&rows.length){const first=rows[0],take=consume<first.raw?consume:first.raw;if(first.usd!==null)first.usd*=Number(first.raw-take)/Number(first.raw);first.raw-=take;consume-=take;if(first.raw===0n)rows.shift();}if(consume>0n)incomplete.add(id);}lots.set(id,rows);}}
-  return {...Object.fromEntries([...lots].map(([id,rows])=>[id,{raw:String(rows.reduce((s,r)=>s+r.raw,0n)),usd:incomplete.has(id)||rows.some(r=>r.usd===null)?null:rows.reduce((s,r)=>s+(r.usd||0),0)}])),lovelace:adaReceiptBasis(facts,history)};
+  for(const f of unique.sort((a,b)=>a.time-b.time||a.hash.localeCompare(b.hash))){if(f.internal)continue;const trade=tradeOf(f);for(const [id,v] of Object.entries(f.assets)){const amount=BigInt(v);const rows=lots.get(id)||[];if(amount>0n){const acquisition=acquisitions[f.hash]?.[id];const costAda=isReward(f)?0:acquisition?.ada??(trade?.id===id&&trade.side==='buy'?trade.costAda:null);rows.push({raw:amount,usd:historicalPurchaseCost(costAda,acquisition?.time??f.time,history)});}else{let consume=-amount;while(consume>0n&&rows.length){const first=rows[0],take=consume<first.raw?consume:first.raw;if(first.usd!==null)first.usd*=Number(first.raw-take)/Number(first.raw);first.raw-=take;consume-=take;if(first.raw===0n)rows.shift();}if(consume>0n)incomplete.add(id);}lots.set(id,rows);}}
+  return {...Object.fromEntries([...lots].map(([id,rows])=>[id,{raw:String(rows.reduce((s,r)=>s+r.raw,0n)),usd:incomplete.has(id)||rows.some(r=>r.usd===null)?null:rows.reduce((s,r)=>s+(r.usd||0),0)}])),lovelace:adaReceiptBasis(facts,history,undefined,isReward)};
 }

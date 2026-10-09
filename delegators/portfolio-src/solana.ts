@@ -1,8 +1,9 @@
 import {base58} from '@scure/base';
 import type {FiatTransfer} from './ethereum';
 import {availableTotal} from './portfolio-totals.ts';
+import {isRewardSource} from './reward-sources.ts';
 
-export type NativeWallet={address:string;name:string};
+export type NativeWallet={address:string;name:string;miner?:boolean};
 export type SolanaTransaction={hash:string;slot:number;time:number;payer:string;feeRaw:string;failed:boolean;transfers:{from:string;to:string;raw:string}[]};
 export type SolanaData={accounts:Record<string,{raw:string;slot:number;checkpoint:string|null;transactions:SolanaTransaction[]}>;pending?:SolanaTransaction[];history:Record<string,number>;usd:number|null};
 export const emptySolana=():SolanaData=>({accounts:{},history:{},usd:null});
@@ -14,7 +15,7 @@ export const solAmount=(raw:string)=>Number(BigInt(raw))/1e9;
 const raw=(value:unknown)=>typeof value==='string'&&/^\d{1,30}$/.test(value);
 export function nativeWallets(value:unknown):NativeWallet[]{
   if(!Array.isArray(value))return [];
-  return [...new Map(value.filter(row=>row&&validSolana(row.address)&&typeof row.name==='string'&&row.name.trim()).slice(0,20).map(row=>[row.address,{address:row.address,name:row.name.trim().slice(0,60)}])).values()];
+  return [...new Map(value.filter(row=>row&&validSolana(row.address)&&typeof row.name==='string'&&row.name.trim()).slice(0,20).map(row=>[row.address,{address:row.address,name:row.name.trim().slice(0,60),...(row.miner===true?{miner:true}:{})}])).values()];
 }
 export function validSolanaTransaction(value:unknown):value is SolanaTransaction{
   const row=value as SolanaTransaction;
@@ -35,10 +36,11 @@ export function solanaTransfers(data:SolanaData,wallets:NativeWallet[],exchanges
   const own=new Set(wallets.map(w=>w.address)),cex=new Set(exchanges.map(w=>w.address));
   return solanaTransactions(data,wallets).flatMap(tx=>tx.transfers.flatMap((transfer,index)=>{
     if(tx.failed||own.has(transfer.from)&&own.has(transfer.to))return [];
-    const side=own.has(transfer.to)&&cex.has(transfer.from)?'buy' as const:own.has(transfer.from)&&cex.has(transfer.to)?'sell' as const:null;
+    const reward=own.has(transfer.to)&&isRewardSource(transfer.from,exchanges);
+    const side=reward?'sell' as const:own.has(transfer.to)&&cex.has(transfer.from)?'buy' as const:own.has(transfer.from)&&cex.has(transfer.to)&&!isRewardSource(transfer.to,exchanges)?'sell' as const:null;
     if(!side)return [];
     const amount=solAmount(transfer.raw),price=data.history[new Date(tx.time*1000).toISOString().slice(0,10)];
-    return [{hash:`sol:${tx.hash}:${index}`,time:tx.time,side,amount,usd:Number.isFinite(price)&&price>0?amount*price:null}];
+    return [{hash:`sol:${tx.hash}:${index}`,time:tx.time,side,amount,...(reward?{performance:false}:{}),usd:Number.isFinite(price)&&price>0?amount*price:null}];
   }));
 }
 export function solanaTotals(data:SolanaData,wallets:NativeWallet[]){
