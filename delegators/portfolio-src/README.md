@@ -1,5 +1,14 @@
 # Member portfolio
 
+## Cross-chain CEX summary
+
+`NativeTransferSummary` shows ADA, ETH and SOL quantities separately. ADA IN/OUT
+filters never include ETH or SOL legs. `portfolioTransferResult` combines all
+classified CEX flows using transfer-day prices and adds the current value of all
+included holdings. Coin quantities are never added across chains. Duplicate flows,
+paired internal swaps and mining/service receipts are excluded from CEX flows.
+Missing historical prices leave the full comparison unknown rather than zero.
+
 ## Mining / Services Sources
 
 Counterparty lists share `RewardSourceCheckbox` and `reward-sources.ts` across

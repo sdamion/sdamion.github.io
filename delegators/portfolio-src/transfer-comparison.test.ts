@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {transferComparison,comparisonNet,fiatRate,transferFiatValue,comparisonResultLabel} from './transfer-comparison.ts';
+import {transferComparison,comparisonNet,portfolioTransferResult,nativeTransferTotals,fiatRate,transferFiatValue,comparisonResultLabel} from './transfer-comparison.ts';
 import type {Fact} from './core.ts';
 const time=Date.parse('2023-01-06')/1000;
 assert.equal(comparisonResultLabel(10),'{crypto} Gain');
@@ -47,3 +47,25 @@ assert.equal(adaDisplay.inFiat,100,'BTC comparison follows an ADA display select
 assert.equal(adaDisplay.outFiat,100);
 assert.equal(comparisonNet(adaDisplay,50,1,btc,fx,'BTC','ADA',time+86400,50).fiat,50);
 console.log('PASS: crypto/fiat selection, dated prices, weekend FX, deduplication, net balances and missing rates.');
+
+const allCrypto=[
+  {hash:'ada:buy',time,side:'buy' as const,usd:50,amount:100},
+  {hash:'eth:buy',time,side:'buy' as const,usd:1000,amount:1},
+  {hash:'sol:buy',time,side:'buy' as const,usd:50,amount:2},
+  {hash:'sol:sell',time,side:'sell' as const,usd:20,amount:0.8},
+  {hash:'eth:services',time,side:'sell' as const,usd:500,amount:0.5,performance:false}
+];
+const combined=portfolioTransferResult([...allCrypto,allCrypto[0]],2000,ada,btc,{'2023-01-06':1000},fx,'ADA','USD',time,0.5,1000);
+assert.deepEqual(combined,{amount:1840,fiat:920},'all native CEX flows plus all current holdings, duplicates and service receipts excluded');
+assert.deepEqual(nativeTransferTotals(allCrypto.slice(0,1),ada,fx,'USD'),{incoming:100,outgoing:0,inFiat:50,outFiat:0},'ADA summary reports only real ADA, not ETH/SOL equivalents');
+assert.equal(nativeTransferTotals(allCrypto.slice(4),ada,fx,'USD').outFiat,500,'separate service summary still shows receipt value');
+assert.deepEqual(portfolioTransferResult([...allCrypto,{hash:'unpriced',time,side:'buy',usd:null}],2000,ada,btc,{},fx,'ADA','USD',time,0.5,1000),{amount:null,fiat:null},'missing prices cannot fabricate a complete all-crypto result');
+const solHistory={'2023-01-06':50};
+const solGraph=transferComparison([input],entries,ada,btc,fx,'SOL','USD',[allCrypto[1],allCrypto[2]],{},solHistory).at(-1)!;
+assert.equal(solGraph.incoming,22,'ADA, ETH and SOL all use transfer-day SOL equivalents');
+assert.equal(solGraph.inFiat,1100);
+const solResult=portfolioTransferResult(allCrypto,2000,ada,btc,{},fx,'SOL','USD',time,0.5,null,solHistory,100);
+assert.ok(Math.abs(solResult.amount!-(-1.6))<1e-10,'current holdings use the current SOL price');
+assert.equal(solResult.fiat,920);
+assert.equal(transferComparison([input],entries,ada,btc,fx,'SOL','USD').at(-1)!.incoming,null,'missing SOL history never falls back to BTC');
+assert.equal(portfolioTransferResult(allCrypto,2000,ada,btc,{},fx,'SOL','USD',time,0.5,null,solHistory,null).amount,null,'missing current SOL quote keeps the SOL result unknown');

@@ -11,9 +11,9 @@ import type {FiatTransfer} from './ethereum';
 const emptyRates={};
 const emptyTransfers:FiatTransfer[]=[];
 
-export function CexTimeline({facts,entries,history,btcHistory=emptyRates,ethHistory=emptyRates,fxHistory=emptyRates,crypto='ADA',currency='USD',busy,dateFrom='',dateTo='',additional=emptyTransfers}:{facts:Record<string,Fact>;entries:CexAddress[];history:Record<string,number>;btcHistory?:Record<string,number>;ethHistory?:Record<string,number>;fxHistory?:FxHistory;crypto?:ComparisonCrypto;currency?:ComparisonCurrency;busy:boolean;dateFrom?:string;dateTo?:string;additional?:FiatTransfer[]}){
+export function CexTimeline({facts,entries,history,btcHistory=emptyRates,ethHistory=emptyRates,solHistory=emptyRates,fxHistory=emptyRates,crypto='ADA',currency='USD',busy,dateFrom='',dateTo='',additional=emptyTransfers}:{facts:Record<string,Fact>;entries:CexAddress[];history:Record<string,number>;btcHistory?:Record<string,number>;ethHistory?:Record<string,number>;solHistory?:Record<string,number>;fxHistory?:FxHistory;crypto?:ComparisonCrypto;currency?:ComparisonCurrency;busy:boolean;dateFrom?:string;dateTo?:string;additional?:FiatTransfer[]}){
   const t=usePortfolioText();
-  const points=useMemo(()=>transferComparison(Object.values(facts).filter(fact=>withinTransactionDates(fact.time,dateFrom,dateTo)),entries,history,btcHistory,fxHistory,crypto,currency,additional.filter(row=>withinTransactionDates(row.time,dateFrom,dateTo)),ethHistory),[facts,entries,history,btcHistory,ethHistory,fxHistory,crypto,currency,dateFrom,dateTo,additional]);
+  const points=useMemo(()=>transferComparison(Object.values(facts).filter(fact=>withinTransactionDates(fact.time,dateFrom,dateTo)),entries,history,btcHistory,fxHistory,crypto,currency,additional.filter(row=>withinTransactionDates(row.time,dateFrom,dateTo)),ethHistory,solHistory),[facts,entries,history,btcHistory,ethHistory,solHistory,fxHistory,crypto,currency,dateFrom,dateTo,additional]);
   const canvas=useRef<HTMLCanvasElement>(null);
   const [error,setError]=useState('');
   useEffect(()=>{
@@ -28,7 +28,7 @@ export function CexTimeline({facts,entries,history,btcHistory=emptyRates,ethHist
         const green=defaults.positive,incomingColor=defaults.color;
         const i18n=(window as unknown as {TDSPI18n?:{translateText:(text:string)=>string;getLanguage:()=>string}}).TDSPI18n;
         const locale=i18n?.getLanguage()||'en';
-        const fmt=(n:number)=>n.toLocaleString(locale,{maximumFractionDigits:crypto==='ADA'?6:8});
+        const fmt=(n:number)=>n.toLocaleString(locale,{maximumFractionDigits:crypto==='ADA'?6:crypto==='SOL'?9:8});
         const compact=new Intl.NumberFormat(undefined,{notation:'compact',maximumFractionDigits:1});
         const last=points[points.length-1];
         const floor=-Math.max(crypto==='ADA'?1:0.00000001,Math.max(last.incoming??0,last.outgoing??0)*0.05);

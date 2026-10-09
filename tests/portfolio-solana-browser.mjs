@@ -100,16 +100,34 @@ try{
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
   await page.screenshot({path:`/tmp/tdsp-solana-${width}.png`,fullPage:true});
  }
+ const gain=page.locator('#portfolio-gain-loss-overlay');
+ await gain.getByRole('combobox',{name:'Comparison cryptocurrency'}).selectOption('SOL');
+ await page.waitForFunction(()=>window.Chart.getChart(document.querySelector('#portfolio-gain-loss-overlay canvas'))?.data.datasets[0].label==='SOL IN');
+ const solGraph=await gain.locator('canvas').evaluate(canvas=>window.Chart.getChart(canvas).data.datasets.map(row=>({label:row.label,last:row.data.at(-1).y})));
+ assert.deepEqual(solGraph,[{label:'SOL IN',last:2},{label:'SOL OUT',last:0}]);
+ assert.equal(await gain.locator('.portfolio-gain-result .governance-card-detail').innerText(),'SOL Gain');
+ assert.match(await gain.locator('.portfolio-gain-result').innerText(),/0\.45/);
+ assert.equal(await gain.getByRole('img',{name:'Bitcoin',exact:true}).count(),0,'SOL never uses the Bitcoin logo');
  await page.evaluate(()=>window.reopen());
  await page.getByRole('button',{name:'Open Wallets',exact:true}).click();
  await page.getByRole('button',{name:'Open DEX / CEX & Swap',exact:true}).click();
  const serviceSource=page.getByRole('checkbox',{name:'Mining / services source: SOL Exchange',exact:true});
  await serviceSource.check();
  assert.equal(await page.evaluate(stake=>JSON.parse(window.fixtureStorage.getItem('tdsp-member-solana-cex:'+stake))[0].miner,stake),true);
+ await page.evaluate(stake=>{
+  const source='stake1uxllvgd6s0mwhtzyjeg6mtlg0eqrkhasfnmfzqnpcgn50rsmgdu7c',time=1672963200;
+  window.fixtureStorage.setItem('tdsp-member-cex-v1:'+stake,JSON.stringify([{address:source,name:'ADA Services',miner:true}]));
+  window.fixture={...window.fixture,txs:[{tx_hash:'ada-services',block_time:time}],facts:{'ada-services':{hash:'ada-services',time,adaRaw:'3000000',feeRaw:'0',internal:false,assets:{},decimals:{},wallets:[],swapCandidate:false,externalInputs:[{address:source,lovelace:'3000000'}],externalOutputs:[]}}};
+ },stake);
  await page.evaluate(()=>window.reopen());
  await page.getByRole('button',{name:'Open CEX Transactions',exact:true}).click();
- const proceeds=page.locator('.portfolio-service-proceeds');
+ const proceeds=page.locator('.portfolio-sol-comparison tbody tr').filter({hasText:'Mining / services proceeds'});
  assert.match(await proceeds.innerText(),/2 SOL/);
+ const adaProceeds=page.locator('.portfolio-gain-comparison tbody tr').filter({hasText:'Mining / services proceeds'});
+ assert.match(await adaProceeds.innerText(),/3 ADA[\s\S]*1\.50/,'ADA proceeds appear inside the ADA table with transfer-day value');
+ assert.equal(await page.locator('.portfolio-sol-comparison tbody tr').count(),2);
+ assert.equal(await page.locator('.portfolio-gain-comparison tbody tr').count(),2);
+ assert.equal(await page.locator('.portfolio-service-proceeds').count(),0,'no separate services table');
  assert.equal(await page.locator('#portfolio-gain-loss-overlay .history-table tbody tr').count(),0,'service receipts excluded from CEX');
  await page.evaluate(()=>window.reopen());
  await page.getByRole('button',{name:'Open Wallets',exact:true}).click();

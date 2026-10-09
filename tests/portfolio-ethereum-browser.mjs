@@ -84,9 +84,19 @@ try{
   await cex.click();
   const gain=page.locator('#portfolio-gain-loss-overlay');
   await gain.locator('.portfolio-gain-comparison').waitFor();
-  assert.match(await gain.locator('.portfolio-gain-comparison').innerText(),/1,050\.00/,'CEX IN sums historical ADA and ETH fiat values');
+  assert.match(await gain.locator('.portfolio-gain-comparison').innerText(),/100 ADA[\s\S]*50\.00/,'ADA IN shows native Cardano flows only');
+  assert.match(await gain.locator('.portfolio-gain-result').innerText(),/1,000\.00/,'combined result still subtracts ADA and ETH purchases');
   assert.match(await gain.locator('.portfolio-eth-comparison').innerText(),/ETH IN[\s\S]*ETH OUT[\s\S]*1 ETH[\s\S]*1,000\.00[\s\S]*0 ETH/,'native ETH IN/OUT are shown separately from combined equivalents');
   assert.equal(await gain.locator('a[href="https://etherscan.io/tx/'+hash+'"]').count(),1);
+  const search=gain.locator('input[name="gain-loss-search"]');
+  for(const [query,chain] of [['cardano-cex','cardanoscan.io/transaction/'],['eth-savings','etherscan.io/tx/'],['BITVAVO','etherscan.io/tx/']]){
+    await search.fill(query);
+    await gain.locator(`a[href*="${chain}"]`).waitFor();
+    assert.equal(await gain.locator('.history-table tbody tr').count(),1,'search matches only the wallet or counterparty in this transaction');
+  }
+  await search.fill('Unrelated wallet');
+  await page.waitForFunction(()=>document.querySelectorAll('#portfolio-gain-loss-overlay .history-table tbody tr').length===0);
+  await search.fill('');
   await gain.getByRole('combobox',{name:'Comparison cryptocurrency'}).selectOption('ETH');
   await page.waitForFunction(()=>{
     const chart=window.Chart.getChart(document.querySelector('#portfolio-gain-loss-overlay canvas'));
@@ -96,8 +106,9 @@ try{
   assert.deepEqual(ethGraph,[{label:'ETH IN',last:1.05},{label:'ETH OUT',last:0}],'ETH graph includes native ETH and Cardano daily-price equivalents');
   assert.equal(await gain.locator('.portfolio-gain-comparison img[alt="Bitcoin"]').count(),0,'ETH never displays the Bitcoin icon');
   await gain.getByRole('combobox',{name:'Comparison cryptocurrency'}).selectOption('ADA');
-  await gain.getByRole('button',{name:'CEX OUT',exact:true}).click();assert.equal(await gain.locator('a[href*="etherscan.io/tx/"]').count(),0);
-  await gain.getByRole('button',{name:'CEX IN',exact:true}).click();assert.equal(await gain.locator('a[href*="etherscan.io/tx/"]').count(),1);
+  await gain.getByRole('button',{name:'ADA OUT',exact:true}).click();assert.equal(await gain.locator('a[href*="etherscan.io/tx/"]').count(),0);
+  await gain.getByRole('button',{name:'ADA IN',exact:true}).click();assert.equal(await gain.locator('a[href*="etherscan.io/tx/"]').count(),0);
+  assert.equal(await gain.locator('a[href*="cardanoscan.io/transaction/"]').count(),1);
   await gain.getByRole('button',{name:'ETH IN',exact:true}).click();
   assert.equal(await gain.locator('a[href*="etherscan.io/tx/"]').count(),1);
   assert.equal(await gain.locator('a[href*="cardanoscan.io/transaction/"]').count(),0);
@@ -223,7 +234,7 @@ try{
   const partialOverlay=page.locator('#portfolio-gain-loss-overlay');
   await partialOverlay.locator('.portfolio-eth-comparison').waitFor();
   assert.match(await partialOverlay.innerText(),/Partial · waiting for remaining wallet data or prices/);
-  assert.match(await partialOverlay.locator('.portfolio-gain-comparison').innerText(),/1,250\.00/,'pending ETH wallet does not hide known combined CEX IN');
+  assert.match(await partialOverlay.locator('.portfolio-gain-comparison').innerText(),/50\.00/,'pending ETH wallet does not alter native ADA IN');
   assert.match(await partialOverlay.locator('.portfolio-eth-comparison').innerText(),/1 ETH[\s\S]*1,200\.00[\s\S]*0 ETH/,'loaded ETH totals survive another wallet missing its cache');
   await page.evaluate(()=>window.reopenPortfolio());
   await walletsTile.click();await page.getByRole('button',{name:'Open DEX / CEX & Swap',exact:true}).click();

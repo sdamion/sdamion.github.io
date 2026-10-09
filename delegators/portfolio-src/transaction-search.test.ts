@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {matchesTransaction} from './transaction-search.ts';
+import {matchesTransaction,matchesSearchText} from './transaction-search.ts';
 import type {Fact} from './core.ts';
 const id='a'.repeat(56)+Buffer.from('MallardOrder1176').toString('hex');
 const fact:Fact={hash:'abcdef',time:1,adaRaw:'0',assets:{[id]:'1'},decimals:{},feeRaw:null,internal:false,wallets:['own'],swapCandidate:true};
@@ -17,4 +17,18 @@ const swapWallets=[{address:'own',label:'Savings'},{address:'service',label:'My 
 const swapReceipt={...fact,externalInputs:[{address:'service',lovelace:'1000000'}]};
 assert.equal(matchesTransaction('my swap',fact.hash,swapReceipt,{},swapWallets),true);
 assert.equal(matchesTransaction('my swap',fact.hash,fact,{},swapWallets),false);
+const sourceReceipt={...fact,externalInputs:[{address:'service',lovelace:'1000000'}]};
+const exchanges=[{address:'service',name:'My Services Source'},{address:'unrelated',name:'Other Exchange'}];
+assert.equal(matchesTransaction(' SERVICES ',fact.hash,sourceReceipt,{},[],exchanges),true);
+assert.equal(matchesTransaction('my-services-source',fact.hash,sourceReceipt,{},[],exchanges),true);
+assert.equal(matchesTransaction('other exchange',fact.hash,sourceReceipt,{},[],exchanges),false);
+assert.equal(matchesTransaction('services',fact.hash,undefined,{},[],exchanges),false);
+assert.equal(matchesTransaction('SECOND LABEL',fact.hash,fact,{},[{address:'own',label:'Savings'},{address:'own',label:'Second Label'}]),true);
+assert.equal(matchesTransaction('my-services-source',fact.hash,{...sourceReceipt,externalInputs:[{address:'payment',stakeAddress:'service',lovelace:'1000000'}]}, {},[],exchanges),true);
+for(const name of ['ETH Savings','SOL Savings']){
+  assert.equal(matchesSearchText(name.toUpperCase(),[name]),true);
+  assert.equal(matchesSearchText(name.replace(' ','-'),[name]),true);
+  assert.equal(matchesSearchText('ＳＡＶＩＮＧＳ',[name]),true);
+}
+assert.equal(matchesSearchText('Other Wallet',['SOL Savings']),false);
 assert.equal(matchesTransaction('my swap',fact.hash,{...fact,source:{tx_hash:fact.hash,tx_timestamp:1,fee:'0',inputs:[{payment_addr:{bech32:'service'},value:'1000000'}],outputs:[]}}, {},swapWallets),true);

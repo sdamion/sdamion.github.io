@@ -84,7 +84,7 @@ export function ByronExchanges({facts,entries,owned,history,markets={},wallets=[
     const fact=row.facts[0];
     if((dateFrom||dateTo)&&(row.lastSeen===null||!withinTransactionDates(row.lastSeen,dateFrom,dateTo)))return false;
     if(filter!=='all'&&(!fact||(filter==='cex'?!isCexTransaction(fact,group):kindOf(fact)!==filter)))return false;
-    return row.addresses.some(address=>`${address} ${names[address]??savedNames[address]??''}`.toLowerCase().includes(query.trim().toLowerCase()))||matchesTransaction(query,row.id,fact,markets,wallets);
+    return row.addresses.some(address=>`${address} ${names[address]??savedNames[address]??''}`.toLowerCase().includes(query.trim().toLowerCase()))||matchesTransaction(query,row.id,fact,markets,wallets,group);
   });
   const exchangeGroups=byronExchangeGroups(filtered,savedNames);
   const {pages,page:current}=transactionPage(page,exchangeGroups.length,25);
