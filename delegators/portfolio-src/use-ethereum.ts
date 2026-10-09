@@ -1,7 +1,8 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {portfolioFetch} from './transport';
 import {portfolioSettings,flushVault} from './vault';
-import {emptyEthereum,ethereumData,ethereumWallets,validEthereumTransaction,type EthereumData,type EthereumTransaction,type EthereumWallet,type EthereumProvider} from './ethereum';
+import {emptyEthereum,ethereumData,ethereumWallets,type EthereumData,type EthereumTransaction,type EthereumWallet,type EthereumProvider} from './ethereum';
+import {ethereumHistory} from './ethereum-history';
 
 export function useEthereum(stake:string,ready:boolean){
   const walletKey='tdsp-member-ethereum-wallets:'+stake,cexKey='tdsp-member-ethereum-cex:'+stake,dataKey='tdsp-member-ethereum-data:'+stake;
@@ -28,7 +29,7 @@ export function useEthereum(stake:string,ready:boolean){
     const completedRanges=new Map<string,EthereumTransaction[]>();
     async function request<T>(body:object):Promise<T>{
       const r=await portfolioFetch('/ethereum',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,...(provider?{provider}:{})}),signal});
-      const result=await r.json();if(!r.ok)throw Object.assign(new Error(result.error||'Ethereum refresh failed. Saved data is retained.'),{status:r.status,code:result.code==='indexing_incomplete'?'indexing_incomplete':undefined});
+      const result=await r.json();if(!r.ok)throw Object.assign(new Error(result.error||'Ethereum refresh failed. Saved data is retained.'),{status:r.status,code:['indexing_incomplete','history_window_limit'].includes(result.code)?result.code:undefined});
       if(result.provider!==undefined){
         if(!['etherscan','blockscout'].includes(result.provider)||provider&&provider!==result.provider)throw new Error('Invalid Ethereum provider response.');
         provider=result.provider;
@@ -60,16 +61,9 @@ export function useEthereum(stake:string,ready:boolean){
           const rangeKey=`${wallet.address}:${kind}:${startBlock}:${block}`;
           const reused=completedRanges.get(rangeKey);
           if(reused){for(const tx of reused)transactions.set(tx.id,tx);continue;}
-          const fetched:EthereumTransaction[]=[];
-          let complete=false;
-          for(let page=1;page<=100;page++){
-            const result=await request<{transactions:EthereumTransaction[];more:boolean}>({action:'history',address:wallet.address,kind,page,startBlock,endBlock:block});
-            if(!Array.isArray(result.transactions)||!result.transactions.every(validEthereumTransaction)||typeof result.more!=='boolean')throw new Error('Invalid Ethereum history response.');
-            for(const tx of result.transactions){transactions.set(tx.id,tx);fetched.push(tx);}
-            if(transactions.size>100000)throw new Error('Ethereum history is too large. Saved data is retained.');
-            if(!result.more){complete=true;break;}
-          }
-          if(!complete)throw new Error('Ethereum history is incomplete. Saved data is retained.');
+          const fetched=await ethereumHistory({startBlock,endBlock:block},range=>request({action:'history',address:wallet.address,kind,...range}));
+          for(const tx of fetched)transactions.set(tx.id,tx);
+          if(transactions.size>100000)throw new Error('Ethereum history is too large. Saved data is retained.');
           completedRanges.set(rangeKey,fetched);
         }
         const {balanceWei}=await request<{balanceWei:string}>({action:'balance',address:wallet.address});

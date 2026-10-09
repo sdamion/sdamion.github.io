@@ -13,7 +13,7 @@ const bundle=await build({stdin:{contents:`import {createRoot} from 'react-dom/c
 const browser=await chromium.launch({channel:'chrome',headless:true});
 try{
   const page=await browser.newPage({viewport:{width:1200,height:900}}),errors=[],requests=[];
-  let quoteUnavailable=false,indexerUnavailable=false,primaryLimited=false,fallbackIncomplete=false,headBlockscout=false,historyUsd=1000;
+  let quoteUnavailable=false,indexerUnavailable=false,primaryLimited=false,fallbackIncomplete=false,headBlockscout=false,windowLimited=false,historyUsd=1000;
   page.on('pageerror',error=>errors.push(error.message));
   await page.route('**/*',async route=>{
     const url=new URL(route.request().url()),operation=url.pathname.split('/').pop();
@@ -21,10 +21,12 @@ try{
     if(operation==='ethereum'){
       const body=route.request().postDataJSON();requests.push(body);
       if(indexerUnavailable)return route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'Ethereum refresh failed. Saved data is retained.'})});
+      if(windowLimited&&body.action==='history'&&body.kind==='normal'&&body.endBlock-body.startBlock>40)return route.fulfill({status:502,contentType:'application/json',body:JSON.stringify({error:'Etherscan data unavailable. Check the backend API key and plan.',code:'history_window_limit'})});
       if(primaryLimited&&body.action==='history'&&body.provider!=='blockscout')return route.fulfill({status:429,contentType:'application/json',body:JSON.stringify({error:'Etherscan rate limit reached. Retry shortly.'})});
       if(fallbackIncomplete&&body.provider==='blockscout'&&body.kind==='internal')return route.fulfill({status:502,contentType:'application/json',body:JSON.stringify({error:'Blockscout data unavailable or incomplete. Saved Ethereum data is retained.',code:'indexing_incomplete'})});
       result=body.action==='head'?{block:200}:body.action==='balance'?{balanceWei:'1000000000000000000'}:{transactions:body.kind==='normal'?[{id:hash+':normal',hash,kind:'normal',block:180,time:1672963200,from:exchange,to:address,valueWei:'1000000000000000000',feeWei:'210000000000000',failed:false}]:[],more:false};
       result.provider=body.provider||(headBlockscout&&body.action==='head'?'blockscout':'etherscan');
+      if(body.action==='history')result.transactions=result.transactions.filter(tx=>tx.block>=body.startBlock&&tx.block<=body.endBlock);
     }else if(operation==='historical-eth-prices')result={prices:[[Date.parse('2023-01-06'),historyUsd]]};
     else if(operation==='ethereum-price'){
       if(quoteUnavailable)return route.fulfill({status:503,contentType:'application/json',body:'{}'});
@@ -342,6 +344,14 @@ try{
   assert.ok(recoveryCalls.filter(r=>r.action==='history'&&r.provider==='etherscan').every(r=>r.startBlock===136),'indexing recovery also resumes from the cached checkpoint');
   assert.equal(recoveryCalls.filter(r=>r.action==='history'&&r.provider==='etherscan'&&r.kind==='normal').length,0,'completed normal history is reused when internal indexing fails');
   assert.equal(await page.evaluate(stake=>Object.values(JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)).accounts)[0].transactions.length,stake),2);
+  windowLimited=true;fallbackIncomplete=false;headBlockscout=false;
+  const splitStart=requests.length;
+  await page.getByRole('button',{name:'Refresh Ethereum wallets',exact:true}).click();
+  await page.waitForFunction(()=>[...document.querySelectorAll('button')].some(button=>button.textContent==='Refresh Ethereum wallets'&&!button.disabled));
+  const splitCalls=requests.slice(splitStart).filter(r=>r.action==='history'&&r.kind==='normal');
+  assert.deepEqual(splitCalls.map(r=>[r.startBlock,r.endBlock]),[[136,200],[136,168],[169,200]],'window recovery covers the incremental range in nonoverlapping halves');
+  assert.equal(await page.evaluate(stake=>Object.values(JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)).accounts)[0].transactions.length,stake),2,'split recovery preserves older history without duplicates');
+  windowLimited=false;
   indexerUnavailable=true;
   await page.evaluate(({stake,address,exchange})=>{
     const tx=(character,from,to,valueWei,transactionIndex)=>{
