@@ -55,7 +55,7 @@ import {ethereumTransactions,ethereumTransactionCount,ethereumTransfers,ethereum
 import {matchCrossChainSwaps,groupSwapRows} from './cross-chain-swaps';
 import {learnMatchedSwapAddresses} from './matched-swap-addresses';
 import {availableTotal,ethereumAvailableTotals,availableCexResult,networkFeeNotes} from './portfolio-totals';
-import {performanceTransfers} from './portfolio-flows';
+import {performanceTransfers,gainTransfers} from './portfolio-flows';
 import {ethereumReceiptBasis} from './ethereum-basis';
 import {useFxHistory} from './use-fx-history';
 import {nativeTransferTotals,portfolioTransferResult,fiatRate,comparisonResultLabel} from './transfer-comparison';
@@ -468,11 +468,12 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   const purchases=useMemo(()=>purchaseAverages(Object.values(classifiedFacts),snapshot?.history||{},payments.acquisitions,cardanoReward),[classifiedFacts,snapshot,payments,cardanoReward]);
   const adaLive=useMemo(()=>snapshot?liveAdaBasis(Object.values(classifiedFacts),snapshot.history,holdings.find(h=>h.id==='lovelace')?.raw||'0',snapshot.complete,cardanoReward):null,[snapshot,holdings,classifiedFacts,cardanoReward]);
   const serviceReceipts=Object.values(classifiedFacts).filter(cardanoReward);
-  const serviceAdaTotals=nativeTransferTotals(serviceReceipts.map(fact=>{
+  const serviceAdaTransfers=serviceReceipts.map(fact=>{
     const raw=String(BigInt(fact.adaRaw)+BigInt(fact.feeRaw||'0'));
     const amounts=transactionAmounts(raw,fact.time,snapshot?.history||{});
     return {hash:fact.hash,time:fact.time,side:'sell' as const,amount:amounts.ada!,usd:amounts.usd};
-  }),snapshot?.history||{},fx.history,comparisonFiat);
+  });
+  const serviceAdaTotals=nativeTransferTotals(serviceAdaTransfers,snapshot?.history||{},fx.history,comparisonFiat);
   const serviceAssets=new Map<string,bigint>();
   for(const fact of serviceReceipts)for(const [id,raw] of Object.entries(fact.assets))if(BigInt(raw)>0n)serviceAssets.set(id,(serviceAssets.get(id)||0n)+BigInt(raw));
   const solServiceTotals=nativeTransferTotals(rawSolTransfers.filter(row=>row.performance===false),snapshot?.history||{},fx.history,comparisonFiat);
@@ -515,10 +516,17 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   const usd=(value:number)=>formatPortfolioUsd(value,currencyDisplay);
   const signed=(value:number)=>usd(Math.abs(value));
   const holdingsDisplay=formatPortfolioUsd(portfolioUsd,currencyDisplay);
-  const availableCex=availableCexResult(cexFlows,portfolioUsd,holdingsCurrency,currentAdaUsd,snapshot?.history||{},fx.history,Date.now()/1000);
+  const serviceTokenTransfers=[...serviceAssets].map(([id,raw])=>{
+    const market=snapshot?.markets[id];
+    const decimals=tokenDecimals(parseAmount(overrides[id]?.decimals))??holdingDecimals(market,assetDecimals[id]);
+    const quote=currentValuation(id,units(String(raw),decimals),parseAmount(overrides[id]?.price),market,currentAdaUsd);
+    return {hash:'service-token:'+id,time:Date.now()/1000,side:'sell' as const,usd:quote.value};
+  });
+  const gainFlows=gainTransfers(cexFlows,[...serviceAdaTransfers,...rawEthTransfers.filter(row=>row.performance===false),...rawSolTransfers.filter(row=>row.performance===false),...serviceTokenTransfers]);
+  const availableCex=availableCexResult(gainFlows,portfolioUsd,holdingsCurrency,currentAdaUsd,snapshot?.history||{},fx.history,Date.now()/1000);
   const tileGain=availableCex.value;
   const tileGainDisplay=(tileGain!==null&&tileGain<0?'− ':'')+formatPortfolioAmount(tileGain===null?null:Math.abs(tileGain),currencyDisplay);
-  const comparisonResult=portfolioTransferResult(cexFlows,portfolioUsd,snapshot?.history||{},btc.history,ethereum.data.history,fx.history,comparisonCrypto,comparisonFiat,Date.now()/1000,currentAdaUsd,ethereum.data.usd,solana.data.history,solana.data.usd);
+  const comparisonResult=portfolioTransferResult(gainFlows,portfolioUsd,snapshot?.history||{},btc.history,ethereum.data.history,fx.history,comparisonCrypto,comparisonFiat,Date.now()/1000,currentAdaUsd,ethereum.data.usd,solana.data.history,solana.data.usd);
   const provisional=!snapshot?.complete&&covered.length>0;
   const adaBasisStatus=!adaLive?.reconciled?snapshot?.complete?'History / balance mismatch — refresh to reconcile':'Waiting for transaction history to reconcile with the wallet balance':adaLive.usd===null?'Missing receipt prices':snapshot?.complete?'Remaining cost · receipt-date prices':'Remaining cost · refresh in progress';
   const displayWallets=wallets.flatMap(w=>(w.group==='swap'?[...new Set([w.address,...snapshot?.swapGroups?.[w.address]||[],...w.swapAddresses||[]])]:snapshot?.groups?.[w.address]||[w.address]).map(address=>({...w,address})));
