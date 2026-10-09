@@ -5,7 +5,7 @@ import {emptyEthereum,ethereumData,ethereumWallets,type EthereumData,type Ethere
 import {ethereumHistory,type EthereumHistoryCheckpoints} from './ethereum-history';
 import {ethereumRequest} from './ethereum-request';
 
-export function useEthereum(stake:string,ready:boolean,admin=false){
+export function useEthereum(stake:string,ready:boolean){
   const walletKey='tdsp-member-ethereum-wallets:'+stake,cexKey='tdsp-member-ethereum-cex:'+stake,dataKey='tdsp-member-ethereum-data:'+stake;
   const [wallets,setWallets]=useState<EthereumWallet[]>([]),[exchanges,setExchanges]=useState<EthereumWallet[]>([]),[data,setData]=useState<EthereumData>(emptyEthereum);
   const [loadedStake,setLoadedStake]=useState<string|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[status,setStatus]=useState('');
@@ -29,14 +29,9 @@ export function useEthereum(stake:string,ready:boolean,admin=false){
     const signal=control.signal;
     setBusy(true);setError('');setStatus('Checking Ethereum transactions…');
     let provider:EthereumProvider|undefined;
-    let apiCalls=0;
     const completedRanges=new Map<string,EthereumTransaction[]>();
     async function request<T>(body:object):Promise<T>{
-      const result=await ethereumRequest<any>(()=>{
-        // One budget includes all wallets, providers and retries in this refresh.
-        if(admin&&++apiCalls>99076)throw Object.assign(new Error('Ethereum history is incomplete. Saved data is retained.'),{code:'history_scan_budget'});
-        return portfolioFetch('/ethereum',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,...(provider?{provider}:{})}),signal});
-      },signal);
+      const result=await ethereumRequest<any>(()=>portfolioFetch('/ethereum',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,...(provider?{provider}:{})}),signal}),signal);
       if(result.provider!==undefined){
         if(!['etherscan','blockscout'].includes(result.provider)||provider&&provider!==result.provider)throw new Error('Invalid Ethereum provider response.');
         provider=result.provider;
@@ -76,9 +71,8 @@ export function useEthereum(stake:string,ready:boolean,admin=false){
             checkpoints.delete(key);
             if(range.startBlock<=safeBlock)checkpoints.set(`${range.startBlock}:${safeBlock}`,{...range,endBlock:safeBlock,transactions:range.transactions.filter(tx=>tx.block<=safeBlock)});
           }
-          const fetched=await ethereumHistory({startBlock,endBlock:block},range=>request({action:'history',address:wallet.address,kind,...range}),checkpoints,admin?Infinity:2000);
+          const fetched=await ethereumHistory({startBlock,endBlock:block},range=>request({action:'history',address:wallet.address,kind,...range}),checkpoints);
           for(const tx of fetched)transactions.set(tx.id,tx);
-          if(transactions.size>100000)throw new Error('Ethereum history is too large. Saved data is retained.');
           completedRanges.set(rangeKey,fetched);
         }
         const {balanceWei}=await request<{balanceWei:string}>({action:'balance',address:wallet.address});
@@ -124,7 +118,7 @@ export function useEthereum(stake:string,ready:boolean,admin=false){
       }
     }catch(e){if(!signal.aborted){setError(e instanceof Error?e.message:'Ethereum refresh failed. Saved data is retained.');setStatus('');}}
     finally{if(controller.current===control)setBusy(false);}
-  },[ready,loaded,scope,stake,admin]);
+  },[ready,loaded,scope,stake]);
   useEffect(()=>{void refresh();return()=>controller.current?.abort();},[refresh]);
   useEffect(()=>{
     if(!ready||!loaded||!wallets.length)return;

@@ -97,7 +97,7 @@ async function historicalPrices(signal:AbortSignal):Promise<{prices?:[number,num
 
 const request=createCardanoRequest(portfolioFetch);
 
-export default function Home({memberStake,role='delegator'}:{memberStake:string;role?:'delegator'|'admin'}){
+export default function Home({memberStake,role='delegator',portfolioAccess}:{memberStake:string;role?:'delegator'|'admin';portfolioAccess?:{ethereum:boolean;solana:boolean}}){
   const t=usePortfolioText();
   const SETTINGS='tdsp-member-wallets-v1:'+memberStake;
   const CEX_SETTINGS='tdsp-member-cex-v1:'+memberStake;
@@ -114,8 +114,9 @@ export default function Home({memberStake,role='delegator'}:{memberStake:string;
   const [selectedAsset,setSelectedAsset]=useState<string|null>(null);
   const [section,setSection]=useState<'wallets'|'holdings'|'transactions'|'gain-loss'|null>(null);
   const isAdmin=role==='admin';
-  const ethereum=useEthereum(memberStake,ready&&isAdmin,isAdmin);
-  const solana=useSolana(memberStake,ready&&isAdmin);
+  const canEthereum=isAdmin||portfolioAccess?.ethereum===true,canSolana=isAdmin||portfolioAccess?.solana===true;
+  const ethereum=useEthereum(memberStake,ready&&canEthereum);
+  const solana=useSolana(memberStake,ready&&canSolana);
   const solTransactions=useMemo(()=>solanaTransactions(solana.data,solana.wallets),[solana.data,solana.wallets]);
   const rawSolTransfers=useMemo(()=>solanaTransfers(solana.data,solana.wallets,solana.exchanges),[solana.data,solana.wallets,solana.exchanges]);
   const ethTransactions=useMemo(()=>ethereumTransactions(ethereum.data,ethereum.wallets),[ethereum.data,ethereum.wallets]);
@@ -124,6 +125,9 @@ export default function Home({memberStake,role='delegator'}:{memberStake:string;
   const {expanded:expandedPolicies,toggle:togglePolicy,reset:resetPolicies}=useTableGroups();
   const btc=useBtcHistory(section==='gain-loss');
   const [comparisonCrypto,setComparisonCrypto]=useState<ComparisonCrypto>('ADA');
+  useEffect(()=>{
+    if(comparisonCrypto==='ETH'&&!canEthereum||comparisonCrypto==='SOL'&&!canSolana)setComparisonCrypto('ADA');
+  },[comparisonCrypto,canEthereum,canSolana]);
   const [holdingsCurrency,setHoldingsCurrency]=useState<'ADA'|ComparisonFiat>('USD');
   const comparisonFiat=holdingsCurrency;
   const fx=useFxHistory(holdingsCurrency==='EUR'||holdingsCurrency==='JPY');
@@ -616,15 +620,17 @@ export default function Home({memberStake,role='delegator'}:{memberStake:string;
       {walletForm}
       <p className="small muted">Wallets, entered prices and history use your selected encrypted storage. Manual prices and average costs are saved per asset for your member account and retained when wallets change.</p>
       {ethereum.exchanges.length>0&&!ethereum.wallets.length&&<p translate="no" role="status" className="message">{t('Add your own Ethereum wallet to scan ETH CEX transfers. CEX addresses are counterparties, not your holdings; shared exchange balances are never counted as yours.')}</p>}
-      {isAdmin&&<><button type="button" className="governance-vote-secondary" disabled={ethereum.busy||!ready||!ethereum.wallets.length} onClick={()=>void ethereum.refresh()}>{t('Refresh Ethereum wallets')}</button>
+      {canEthereum&&<><button type="button" className="governance-vote-secondary" disabled={ethereum.busy||!ready||!ethereum.wallets.length} onClick={()=>void ethereum.refresh()}>{t('Refresh Ethereum wallets')}</button>
       <EthereumWallets wallets={ethOwnWallets} data={ethereum.data} owned={ethSwapWallets} onChange={next=>ethereum.saveWallets([...next,...ethSwapWallets])}/>
+      </>}{canSolana&&<>
       <button type="button" className="governance-vote-secondary" disabled={solana.busy||!solana.wallets.length} onClick={()=>void solana.refresh()}>{t('Refresh Solana wallets')}</button>
       <SolanaWallets wallets={solana.wallets} data={solana.data} owned={solana.exchanges} onChange={solana.saveWallets}/></>}
     </section>}
     exchanges={<section className="portfolio-section">
       <CexAddresses entries={cexAddresses} owned={ownedAddresses} onChange={saveCexAddresses} swap={{wallets,groups:snapshot?.swapGroups,onChange:saveWallets}}/>
-      {isAdmin&&<><EthereumWallets wallets={ethereum.exchanges} data={ethereum.data} exchanges owned={ethereum.wallets} onChange={ethereum.saveExchanges}/>
+      {canEthereum&&<><EthereumWallets wallets={ethereum.exchanges} data={ethereum.data} exchanges owned={ethereum.wallets} onChange={ethereum.saveExchanges}/>
       <EthereumWallets wallets={ethSwapWallets} data={ethereum.data} swap owned={ethOwnWallets} onChange={next=>ethereum.saveWallets([...ethOwnWallets,...next])}/>
+      </>}{canSolana&&<>
       <SolanaWallets wallets={solana.exchanges} data={solana.data} exchanges owned={solana.wallets} onChange={solana.saveExchanges}/></>}
       {cexAddresses.length>0&&Object.values(snapshot?.facts||{}).some(fact=>!Array.isArray(fact.externalInputs))&&<p className="small muted">Refresh to load sender and recipient stake addresses for older cached transactions.</p>}
     </section>}
@@ -694,7 +700,7 @@ export default function Home({memberStake,role='delegator'}:{memberStake:string;
     {(section==='transactions'||section==='gain-loss')&&<PortfolioCurrencyContext.Provider value={currencyDisplay}><AssetOverlay id={section==='gain-loss'?'portfolio-gain-loss-overlay':'portfolio-transactions-overlay'} name={section==='gain-loss'?'CEX Transactions':'Transactions'} onClose={()=>setSection(null)}>
     {section==='gain-loss'&&<>
     <div className="portfolio-comparison-controls">
-      <label className="small">{t('Crypto')}<select aria-label={t('Comparison cryptocurrency')} value={comparisonCrypto} onChange={event=>setComparisonCrypto(event.target.value as ComparisonCrypto)}><option value="ADA">ADA</option><option value="BTC">BTC</option>{isAdmin&&<><option value="ETH">ETH</option><option value="SOL">SOL</option></>}</select></label>
+      <label className="small">{t('Crypto')}<select aria-label={t('Comparison cryptocurrency')} value={comparisonCrypto} onChange={event=>setComparisonCrypto(event.target.value as ComparisonCrypto)}><option value="ADA">ADA</option><option value="BTC">BTC</option>{canEthereum&&<option value="ETH">ETH</option>}{canSolana&&<option value="SOL">SOL</option>}</select></label>
     </div>
     <div className="tdsp-chart-overview portfolio-gain-overview">
     <CexTimeline facts={Object.fromEntries(cardanoShown.map(tx=>[tx.tx_hash,classifiedFacts[tx.tx_hash]]))} entries={cexAddresses} history={snapshot?.history||{}} btcHistory={btc.history} ethHistory={ethereum.data.history} solHistory={solana.data.history} fxHistory={fx.history} crypto={comparisonCrypto} currency={comparisonFiat} busy={busy||ethereum.busy||solana.busy} dateFrom={dateFrom} dateTo={dateTo} additional={[...performanceTransfers(ethTransfers).filter(row=>visibleEthIds.has(row.hash)),...solTransfers.filter(row=>visibleSolIds.has(row.hash.split(':')[1]))]}/>

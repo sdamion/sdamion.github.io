@@ -210,6 +210,7 @@ const proxyRoutes = {
     `${TDSP_API_ORIGIN}/api/raffle/admin/exclusions`,
   '/__raffle_admin_users_proxy__': () =>
     `${TDSP_API_ORIGIN}/api/raffle/admin/users`,
+  '/__raffle_admin_portfolio_access_proxy__': () => `${TDSP_API_ORIGIN}/api/raffle/admin/portfolio-access`,
   '/__raffle_admin_lost_stake_proxy__': () =>
     `${TDSP_API_ORIGIN}/api/raffle/admin/lost-stake`,
   '/__raffle_admin_lost_stake_message_state_proxy__': () =>
@@ -777,6 +778,7 @@ export const server = createServer(async (req, res) => {
         '/__raffle_admin_preview_proxy__',
         '/__raffle_admin_exclusions_proxy__',
         '/__raffle_admin_users_proxy__',
+        '/__raffle_admin_portfolio_access_proxy__',
         '/__raffle_admin_lost_stake_proxy__',
         '/__raffle_admin_lost_stake_message_state_proxy__',
         '/__raffle_admin_anchor_proxy__',
@@ -786,7 +788,7 @@ export const server = createServer(async (req, res) => {
       ].includes(url.pathname)) {
         const allowedMethods = url.pathname === '/__website_status_proxy__' || url.pathname === '/__raffle_admin_proxy__' || url.pathname === '/__raffle_admin_lost_stake_proxy__' || url.pathname === '/__raffle_delegator_proxy__' || url.pathname === '/__raffle_prizes_proxy__' || url.pathname === '/__raffle_prize_image_proxy__'
           ? new Set(['GET'])
-          : url.pathname === '/__raffle_admin_exclusions_proxy__' || url.pathname === '/__raffle_admin_users_proxy__' || url.pathname === '/__raffle_admin_lost_stake_message_state_proxy__'
+          : url.pathname === '/__raffle_admin_exclusions_proxy__' || url.pathname === '/__raffle_admin_users_proxy__' || url.pathname === '/__raffle_admin_portfolio_access_proxy__' || url.pathname === '/__raffle_admin_lost_stake_message_state_proxy__'
             ? new Set(['POST', 'PUT'])
             : new Set(['POST']);
         if (!allowedMethods.has(req.method || 'GET')) {

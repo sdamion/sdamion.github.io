@@ -2,11 +2,16 @@
 
 ## Cross-chain CEX summary
 
-Ethereum history scans normally allow up to 2,000 requests per history kind.
-Admins instead share a 99,076-request budget across all Ethereum wallets,
-providers, head/balance requests and retries in one refresh. This is a local
-ceiling, not a live remaining-daily-quota counter; provider limits may stop the
-scan earlier. Completed block windows are kept in memory for
+Native Ethereum and Solana wallets default to admin-only. Admins can grant each
+chain independently to individual delegators in Portfolio access. The backend
+checks current stored grants on every chain/price request; the UI reads session
+capabilities on opening and once per minute. Disabling a grant retains encrypted
+wallet data but stops the disabled hook. Cardano remains available to delegators.
+Wallet history has no local total
+request, transaction-count or history-page cutoff. Provider
+quotas, request pacing, response validation and encrypted-cache byte-size limits
+still apply. Repeated or empty provider pages claiming more data fail closed.
+Completed Ethereum block windows are kept in memory for
 retries while Portfolio remains open; incomplete pages never become account
 checkpoints. Resumed scans recheck the latest 64 blocks. In-memory windows are
 cleared when the member or wallet scope changes and after a successful save.

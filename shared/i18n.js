@@ -3,9 +3,9 @@
     const DEFAULT_LANGUAGE = 'en';
     const LANGUAGE_CONFIG = Object.freeze({
         en: { label: 'English', flag: '🇺🇸' },
-        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20261009-service-sources' },
-        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20261009-service-sources' },
-        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20261009-service-sources' }
+        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20261009-portfolio-access' },
+        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20261009-portfolio-access' },
+        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20261009-portfolio-access' }
     });
     const TRANSLATION_ATTR = 'data-i18n';
     const TRANSLATION_ORIGINAL_ATTR = 'data-i18n-original';
@@ -101,6 +101,11 @@
         ['Active Relay Non-cloud SPOs', 'active_relay_non_cloud_spos'],
         ['Admin Area', 'admin_area'],
         ['Admin Users', 'admin_users'],
+        ['Portfolio access', 'portfolio_access'],
+        ['Portfolio access requires a backend update.', 'portfolio_access_backend'],
+        ['Saving Portfolio access...', 'portfolio_access_saving'],
+        ['Portfolio access saved.', 'portfolio_access_saved'],
+        ['Portfolio access could not be saved.', 'portfolio_access_failed'],
         ['Add Admin Users', 'add_admin_users'],
         ['Add Cardano Mainnet payment or stake addresses that may open the Admin Area. At least one admin must remain.', 'add_admin_users_help'],
         ['Add Exclusions', 'add_exclusions'],

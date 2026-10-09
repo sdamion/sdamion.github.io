@@ -155,6 +155,9 @@
                                 <strong class="governance-card-title">Admin Users</strong>
                                 <span class="governance-card-detail" id="raffle-dashboard-admin-count">1 admin</span>
                             </button>
+                            <button class="governance-menu-card raffle-open-tile" id="portfolio-access-open" type="button">
+                                <strong class="governance-card-title">Portfolio access</strong>
+                            </button>
                             <button class="governance-menu-card raffle-open-tile" id="website-status-open" type="button">
                                 <strong class="governance-card-title">Website Status</strong>
                                 <span class="governance-card-detail">Backend, API calls and caches</span>
@@ -260,6 +263,10 @@
                                     <button class="governance-vote-secondary" type="submit">Add Admin Users</button>
                                     <p class="raffle-inline-status" id="raffle-admin-users-status" role="status" aria-live="polite"></p>
                                 </form>
+                            </section>
+                            <section class="raffle-admin-panel" data-raffle-view-panel="portfolio_access" hidden>
+                                <div id="portfolio-access-list" class="raffle-exclusion-list"></div>
+                                <p id="portfolio-access-status" class="raffle-inline-status" role="status" aria-live="polite"></p>
                             </section>
 
                             <section class="raffle-admin-panel" data-raffle-view-panel="lost_stake" hidden>

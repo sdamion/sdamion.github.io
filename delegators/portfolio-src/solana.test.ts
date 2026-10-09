@@ -12,6 +12,15 @@ test('Solana addresses are case sensitive and caches validate native quantities'
  assert.equal(nativeWallets([{address:own,name:'Own'},{address:own,name:'Duplicate'}]).length,1);
  const invalid=solanaData({accounts:{[own]:{raw:'0',slot:1,checkpoint:hash,transactions:[{...tx,hash:'invalid'}]}}});assert.equal(Object.keys(invalid.accounts).length,0);
 });
+test('all members can restore more than 100,000 SOL receipts, including pending receipts',()=>{
+ const transactions=Array.from({length:100001},(_,index)=>{
+  const bytes=new Uint8Array(64).fill(4);new DataView(bytes.buffer).setUint32(0,index);
+  return {...tx,hash:base58.encode(bytes),transfers:[]};
+ });
+ const data=solanaData({...emptySolana(),accounts:{[own]:{raw:'0',slot:1,checkpoint:hash,transactions}},pending:transactions});
+ assert.equal(data.accounts[own].transactions.length,100001);
+ assert.equal(data.pending?.length,100001);
+});
 test('SOL exchange legs exclude own transfers, fees count once across wallets',()=>{
  const data={...emptySolana(),usd:100,history:{'2023-01-06':20},accounts:Object.fromEntries(wallets.map(w=>[w.address,{raw:'1000000000',slot:2,checkpoint:hash,transactions:[tx]}]))};
  assert.equal(solanaTransactions(data,wallets).length,1);

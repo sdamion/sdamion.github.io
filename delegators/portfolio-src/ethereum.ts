@@ -28,13 +28,13 @@ export function validEthereumTransaction(row:unknown):row is EthereumTransaction
     (r.transactionIndex===undefined||Number.isSafeInteger(r.transactionIndex)&&r.transactionIndex>=0)&&
     (r.traceIndex===undefined||r.kind==='internal'&&typeof r.traceIndex==='string'&&/^\d+(?:_\d+)*$/.test(r.traceIndex));
 }
-export function ethereumData(value:unknown):EthereumData{
+export function ethereumData(value:unknown,maxTransactions=Infinity):EthereumData{
   const data=value as EthereumData;
   if(!data||typeof data.accounts!=='object'||!data.accounts)return emptyEthereum();
   const next=emptyEthereum();
   for(const [address,row] of Object.entries(data.accounts).slice(0,20)){
     if(!validEthereumAddress(address)||!row||!/^\d{1,80}$/.test(row.balanceWei)||!Number.isSafeInteger(row.block)||row.block<0||
-      !Array.isArray(row.transactions)||row.transactions.length>100000||!row.transactions.every(validEthereumTransaction))continue;
+      !Array.isArray(row.transactions)||row.transactions.length>maxTransactions||!row.transactions.every(validEthereumTransaction))continue;
     next.accounts[address]={...row,provider:row.provider==='blockscout'?'blockscout':'etherscan',transactions:[...new Map(row.transactions.map(tx=>[tx.id,tx])).values()]};
   }
   for(const [date,price] of Object.entries(data.history||{}))if(/^\d{4}-\d{2}-\d{2}$/.test(date)&&Number.isFinite(price)&&price>0)next.history[date]=price;

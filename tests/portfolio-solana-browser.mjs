@@ -5,7 +5,7 @@ import path from 'node:path';
 const source=path.resolve('delegators/portfolio-src'),require=createRequire(path.join(source,'package.json'));
 const {build}=require('esbuild'),{base58}=require('@scure/base'),{chromium}=await import(process.argv[2]);
 const stake='stake1uxythldc4nmx45tvnwsqu4h5pyjd94udytm6f0tgnr44vecjd8vel',own=base58.encode(new Uint8Array(32).fill(1)),cex=base58.encode(new Uint8Array(32).fill(2)),receipt=base58.encode(new Uint8Array(64).fill(3)),failed=base58.encode(new Uint8Array(64).fill(4));
-const bundle=await build({stdin:{contents:`import {createRoot} from 'react-dom/client';import Home from './App';const root=createRoot(document.getElementById('app'));let version=0;window.reopen=(role='admin')=>root.render(<Home key={++version} memberStake="${stake}" role={role}/>);window.reopen();`,loader:'tsx',resolveDir:source},bundle:true,write:false,format:'esm',jsx:'automatic',alias:{'@/lib/portfolio':path.join(source,'core.ts'),'@/lib/portfolio-cache':path.join(source,'cache.ts'),'@/components/ui/input':path.join(source,'ui.tsx'),'@/components/ui/table':path.join(source,'ui.tsx')},plugins:[{name:'native-fixtures',setup(build){
+const bundle=await build({stdin:{contents:`import {createRoot} from 'react-dom/client';import Home from './App';const root=createRoot(document.getElementById('app'));let version=0;window.reopen=(role='admin',portfolioAccess)=>root.render(<Home key={++version} memberStake="${stake}" role={role} portfolioAccess={portfolioAccess}/>);window.reopen();`,loader:'tsx',resolveDir:source},bundle:true,write:false,format:'esm',jsx:'automatic',alias:{'@/lib/portfolio':path.join(source,'core.ts'),'@/lib/portfolio-cache':path.join(source,'cache.ts'),'@/components/ui/input':path.join(source,'ui.tsx'),'@/components/ui/table':path.join(source,'ui.tsx')},plugins:[{name:'native-fixtures',setup(build){
   build.onLoad({filter:/\/PortfolioQuickstart\.tsx$/},()=>({loader:'tsx',contents:'export function PortfolioQuickstart(){return null;}'}));
   build.onLoad({filter:/\/vault\.ts$/},()=>({loader:'ts',contents:'export const portfolioSettings=window.fixtureStorage;export const flushVault=async()=>{};export const storageMode=()=>"local";export const cachedSnapshot=()=>window.fixture;export const latestMemberSnapshot=()=>window.fixture;export const cacheSnapshot=async()=>{};'}));
   build.onLoad({filter:/\/App\.tsx$/},async args=>({loader:'tsx',contents:(await readFile(args.path,'utf8')).replace("[notice,setNotice]=useState('')","[notice,setNotice]=useState('Token prices or images could not be refreshed. Saved data and transaction analysis are retained.')").replace('useState<Snapshot|null>(null)','useState<Snapshot|null>(window.fixture)').replace('setSnapshot(null);setError','setError').replace('async function refresh(fullScan=false){','async function refresh(fullScan=false){return;')}));
@@ -27,7 +27,7 @@ try{
    if(body.action==='transaction')result={transaction:{hash:body.signature,slot:body.signature===receipt?1:2,time:1672963200,payer:body.signature===receipt?cex:own,feeRaw:body.signature===receipt?'5000':'50000000',failed:body.signature===failed,transfers:body.signature===receipt?[{from:cex,to:own,raw:'2000000000'}]:[]}};
   }else if(operation==='historical-sol-prices')result={prices:[[Date.parse('2023-01-06'),50]]};
   else if(operation==='solana-price')result={usd:100};
-  else if(operation==='ethereum')return route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'Ethereum refresh failed. Saved data is retained.'})});
+  else if(operation==='ethereum'){requests.push(route.request().postDataJSON());return route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'Ethereum refresh failed. Saved data is retained.'})});}
   else if(operation==='ethereum-price')result={usd:2000};
   else if(operation==='price')result={cardano:{usd:0.5}};
   if(result)return route.fulfill({contentType:'application/json',body:JSON.stringify(result)});
@@ -165,6 +165,20 @@ try{
  assert.equal(await page.getByRole('heading',{name:'Ethereum Wallets',exact:true}).count(),0);
  assert.equal(requests.length,count,'delegators do not request ETH or SOL even with saved wallets');
  assert.ok(await page.evaluate(stake=>!!window.fixtureStorage.getItem('tdsp-member-solana-data:'+stake),stake),'admin data retained, not deleted');
+ for(const access of [{ethereum:true,solana:false},{ethereum:false,solana:true},{ethereum:true,solana:true},{ethereum:false,solana:false}]){
+  const start=requests.length;
+  await page.evaluate(async access=>{window.reopen('delegator',access);await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));},access);
+  await page.getByRole('button',{name:'Open Wallets',exact:true}).click();
+  await page.getByRole('button',{name:'Open My Wallets',exact:true}).click();
+  await page.locator('#portfolio-wallet-menu-wallets .portfolio-section').first().waitFor();
+  assert.equal(await page.getByRole('heading',{name:'Ethereum Wallets',exact:true}).count(),Number(access.ethereum),JSON.stringify(access)+' '+await page.locator('body').innerText());
+  assert.equal(await page.getByRole('heading',{name:'Solana Wallets',exact:true}).count(),Number(access.solana));
+  if(access.solana)await page.waitForFunction(()=>[...document.querySelectorAll('button')].some(button=>button.textContent==='Refresh Solana wallets'&&!button.disabled));
+  if(access.ethereum)await page.waitForFunction(()=>[...document.querySelectorAll('button')].some(button=>button.textContent==='Refresh Ethereum wallets'&&!button.disabled));
+  const calls=requests.slice(start);
+  assert.equal(calls.some(row=>row.action==='head'),access.ethereum,'ETH grant controls the ETH hook independently');
+  assert.equal(calls.some(row=>row.action==='signatures'),access.solana,'SOL grant controls the SOL hook independently');
+ }
  assert.deepEqual(errors,[]);
  console.log('PASS: admin-only native wallets, SOL CEX totals and fees, incremental encrypted cache, retention on failure, desktop/mobile.');
 }finally{await browser.close();}

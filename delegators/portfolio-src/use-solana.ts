@@ -41,7 +41,7 @@ export function useSolana(stake:string,enabled:boolean){
     // Pending receipts are reusable after interruption, but never enter totals until history is complete.
     async function savePending(){
       const completed=new Set(solanaTransactionsForCache(current.current).map(tx=>tx.hash));
-      await persist({...current.current,pending:[...known.values()].filter(tx=>!completed.has(tx.hash)).slice(0,100000)});
+      await persist({...current.current,pending:[...known.values()].filter(tx=>!completed.has(tx.hash))});
     }
     try{
       const next:SolanaData={...current.current,accounts:Object.fromEntries(wallets.flatMap(w=>current.current.accounts[w.address]?[[w.address,current.current.accounts[w.address]]]:[])),history:{...current.current.history}};
@@ -49,7 +49,7 @@ export function useSolana(stake:string,enabled:boolean){
         const saved=current.current.accounts[wallet.address],rows=new Map((saved?.transactions||[]).map(tx=>[tx.hash,tx]));
         let before:string|undefined,checkpoint=saved?.checkpoint||null,complete=false;
         const seen=new Set<string>();
-        for(let page=0;page<100;page++){
+        for(let page=0;;page++){
           const result=await request({action:'signatures',address:wallet.address,...(before?{before}:{}),...(saved?.checkpoint?{until:saved.checkpoint}:{})});
           if(!Array.isArray(result.signatures)||!result.signatures.every((value:unknown)=>validSolana(value,64))||typeof result.more!=='boolean')throw new Error('Solana data unavailable. Saved data is retained.');
           if(page===0&&result.signatures.length)checkpoint=result.signatures[0];
@@ -57,7 +57,7 @@ export function useSolana(stake:string,enabled:boolean){
             if(seen.has(hash))throw new Error('Solana data unavailable. Saved data is retained.');seen.add(hash);
             let tx=known.get(hash);
             if(!tx){const response=await request({action:'transaction',address:wallet.address,signature:hash});if(!validSolanaTransaction(response.transaction)||response.transaction.hash!==hash)throw new Error('Solana data unavailable. Saved data is retained.');tx=response.transaction;known.set(hash,tx);if(++downloaded%25===0)await savePending();}
-            rows.set(hash,tx);if(rows.size>100000)throw new Error('Solana history is incomplete. Saved data is retained.');
+            rows.set(hash,tx);
           }
           if(!result.more){complete=true;break;}
           if(!result.signatures.length)throw new Error('Solana data unavailable. Saved data is retained.');before=result.signatures.at(-1);

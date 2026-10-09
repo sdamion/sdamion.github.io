@@ -22,6 +22,7 @@ const ENDPOINTS = IS_LOCAL ? {
     preview: '/__raffle_admin_preview_proxy__',
     exclusions: '/__raffle_admin_exclusions_proxy__',
     admins: '/__raffle_admin_users_proxy__',
+    portfolioAccess: '/__raffle_admin_portfolio_access_proxy__',
     anchor: '/__raffle_admin_anchor_proxy__',
     delegator: '/__raffle_delegator_proxy__',
     prizes: '/__raffle_prizes_proxy__',
@@ -36,6 +37,7 @@ const ENDPOINTS = IS_LOCAL ? {
     preview: 'https://api.tdsp.online/api/raffle/admin/draw/preview',
     exclusions: 'https://api.tdsp.online/api/raffle/admin/exclusions',
     admins: 'https://api.tdsp.online/api/raffle/admin/users',
+    portfolioAccess: 'https://api.tdsp.online/api/raffle/admin/portfolio-access',
     anchor: 'https://api.tdsp.online/api/raffle/admin/anchor',
     delegator: 'https://api.tdsp.online/api/raffle/delegator',
     prizes: 'https://api.tdsp.online/api/raffle/prizes',
@@ -73,6 +75,7 @@ const RAFFLE_ADMIN_VIEW_TITLES = Object.freeze({
     exclusions: 'Exclusion List',
     history: 'History',
     admins: 'Admin Users',
+    portfolio_access: 'Portfolio access',
     lost_stake: 'Lost stake'
 });
 
@@ -646,7 +649,7 @@ async function openMemberPortfolio() {
     closePortfolio = close;
     container.textContent = t('Loading member portfolio…');
     try {
-        const module = await import('./portfolio/app.js?v=20261009-eth-history-resume');
+        const module = await import('./portfolio/app.js?v=20261009-portfolio-access');
         if (closed) return;
         container.replaceChildren();
         dispose = module.mountPortfolio(container, { role: ROLE, getWallet: (reconnect, stake) => reconnect && !portfolioUnlockWallet ? reconnectPortfolioWallet(stake) : portfolioUnlockWallet });
@@ -1714,6 +1717,7 @@ function renderDraws(draws, viewerAddress = null) {
 }
 
 function renderAdmin(payload) {
+    renderPortfolioAccess(payload);
     raffleMinimumSupported = payload.capabilities?.minimum_stake === true;
     raffleAnchorSupported = payload.capabilities?.on_chain_proof === true;
     raffleExclusionsSupported = payload.capabilities?.stake_key_exclusions === true;
@@ -1758,6 +1762,54 @@ function renderAdmin(payload) {
     raffleAdminUsers = Array.isArray(payload.admin_users) ? payload.admin_users : [];
     renderAdminUsers(raffleAdminUsers);
     if (lostStakePayload) renderLostStake(lostStakePayload);
+}
+
+function renderPortfolioAccess(payload) {
+    const list = document.getElementById('portfolio-access-list');
+    if (!list) return;
+    list.replaceChildren();
+    const supported = payload.capabilities?.portfolio_access === true;
+    const status = document.getElementById('portfolio-access-status');
+    if (!supported && status) setTranslatedText(status, 'Portfolio access requires a backend update.');
+    for (const entry of Array.isArray(payload.portfolio_delegators) ? payload.portfolio_delegators : []) {
+        const row = document.createElement('div');
+        row.className = 'governance-menu-card raffle-exclusion-item';
+        const identity = document.createElement('div');
+        identity.className = 'raffle-exclusion-identity';
+        const name = document.createElement('strong');
+        name.className = 'governance-card-title';
+        name.textContent = entry.ada_handle || shorten(entry.stake_address);
+        identity.append(name, addressLine(entry.stake_address));
+        const actions = document.createElement('div');
+        actions.className = 'raffle-exclusion-actions';
+        const inputs = {};
+        for (const [chain, title] of [['ethereum', 'ETH'], ['solana', 'SOL']]) {
+            const label = document.createElement('label');
+            label.className = 'portfolio-access-toggle';
+            const input = document.createElement('input');
+            input.type = 'checkbox';
+            input.checked = entry[chain] === true;
+            input.disabled = !supported;
+            input.setAttribute('aria-label', `${title}: ${entry.ada_handle || entry.stake_address}`);
+            inputs[chain] = input;
+            label.append(input, document.createTextNode(` ${title}`));
+            actions.append(label);
+            input.addEventListener('change', async () => {
+                Object.values(inputs).forEach(control => { control.disabled = true; });
+                if (status) { status.classList.remove('is-error'); setTranslatedText(status, 'Saving Portfolio access...'); }
+                try {
+                    const saved = await authorizedRequest(ENDPOINTS.portfolioAccess, {method: 'PUT', body: JSON.stringify({stake_address: entry.stake_address, ethereum: inputs.ethereum.checked, solana: inputs.solana.checked})});
+                    entry.ethereum = saved.ethereum === true; entry.solana = saved.solana === true;
+                    if (status) setTranslatedText(status, 'Portfolio access saved.');
+                } catch (error) {
+                    if (status) { status.textContent = error.message || t('Portfolio access could not be saved.'); status.classList.add('is-error'); }
+                } finally {
+                    for (const chain of ['ethereum', 'solana']) { inputs[chain].checked = entry[chain] === true; inputs[chain].disabled = !supported; }
+                }
+            });
+        }
+        row.append(identity, actions); list.append(row);
+    }
 }
 
 function renderExcludedStakeKeys(excludedDelegators) {
@@ -2194,6 +2246,7 @@ async function init(options = {}) {
     document.getElementById('raffle-prizes-open')?.addEventListener('click', () => setPrizeOverlay(true));
     document.getElementById('member-portfolio-open')?.addEventListener('click', openMemberPortfolio);
     document.getElementById('raffle-admin-users-open')?.addEventListener('click', () => setRaffleOverlay(true, 'admins'));
+    document.getElementById('portfolio-access-open')?.addEventListener('click', () => setRaffleOverlay(true, 'portfolio_access'));
     document.getElementById('website-status-open')?.addEventListener('click', async () => {
         try {
             const { createWebsiteStatusPanel } = await import('./website-status.js?v=20261003-backend-storage');

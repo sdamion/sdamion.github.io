@@ -98,23 +98,35 @@ test('pathological provider windows still stop at a bounded request budget',asyn
   await assert.rejects(ethereumHistory({startBlock:0,endBlock:4095},async range=>{
     calls++;if(range.startBlock!==range.endBlock)throw windowError();
     return {transactions:[],more:false};
-  }),error=>(error as {code?:string}).code==='history_scan_budget');
+  },new Map(),2000),error=>(error as {code?:string}).code==='history_scan_budget');
   assert.equal(calls,2000);
 });
 
-test('admin scans can pass the per-kind cutoff while a shared caller enforces the API budget',async()=>{
+test('all member scans can pass the former per-kind cutoff',async()=>{
   let calls=0;
   const request=async(range:{startBlock:number;endBlock:number;page:number})=>{
     calls++;
     if(range.startBlock!==range.endBlock)throw windowError();
     return {transactions:[],more:false};
   };
-  assert.deepEqual(await ethereumHistory({startBlock:0,endBlock:2047},request,new Map(),Infinity),[]);
+  assert.deepEqual(await ethereumHistory({startBlock:0,endBlock:2047},request),[]);
   assert.equal(calls,4095);
   let remaining=3;
   const limited=async()=>{
     if(remaining--<=0)throw Object.assign(new Error('shared budget exhausted'),{code:'history_scan_budget'});
-    return {transactions:[],more:true};
+    const hash='0x'+(remaining+1).toString(16).repeat(64);
+    return {transactions:[{...tx(0),hash,id:hash+':normal'}],more:true};
   };
   await assert.rejects(ethereumHistory({startBlock:0,endBlock:0},limited,new Map(),Infinity),/shared budget exhausted/);
+});
+
+test('single-block histories can exceed 100 pages but repeated pages cannot loop forever',async()=>{
+  let calls=0;
+  const rows=await ethereumHistory({startBlock:0,endBlock:0},async({page})=>{
+    calls++;const hash='0x'+page.toString(16).padStart(64,'0');
+    return {transactions:[{...tx(0),hash,id:hash+':normal'}],more:page<101};
+  });
+  assert.equal(calls,101);assert.equal(rows.length,101);
+  await assert.rejects(ethereumHistory({startBlock:0,endBlock:0},async()=>({transactions:[tx(0)],more:true})),/Invalid Ethereum history/);
+  await assert.rejects(ethereumHistory({startBlock:0,endBlock:0},async()=>({transactions:[],more:true})),/Invalid Ethereum history/);
 });

@@ -24,8 +24,8 @@ export function validSolanaTransaction(value:unknown):value is SolanaTransaction
 export function solanaData(value:unknown):SolanaData{
   const data=value as SolanaData,next=emptySolana();
   if(!data||!data.accounts||typeof data.accounts!=='object')return next;
-  for(const [address,account] of Object.entries(data.accounts).slice(0,20))if(validSolana(address)&&account&&raw(account.raw)&&Number.isSafeInteger(account.slot)&&account.slot>=0&&(account.checkpoint===null||validSolana(account.checkpoint,64))&&Array.isArray(account.transactions)&&account.transactions.length<=100000&&account.transactions.every(validSolanaTransaction))next.accounts[address]=account;
-  if(Array.isArray(data.pending)&&data.pending.length<=100000&&data.pending.every(validSolanaTransaction))next.pending=[...new Map(data.pending.map(tx=>[tx.hash,tx])).values()];
+  for(const [address,account] of Object.entries(data.accounts).slice(0,20))if(validSolana(address)&&account&&raw(account.raw)&&Number.isSafeInteger(account.slot)&&account.slot>=0&&(account.checkpoint===null||validSolana(account.checkpoint,64))&&Array.isArray(account.transactions)&&account.transactions.every(validSolanaTransaction))next.accounts[address]=account;
+  if(Array.isArray(data.pending)&&data.pending.every(validSolanaTransaction))next.pending=[...new Map(data.pending.map(tx=>[tx.hash,tx])).values()];
   for(const [date,price] of Object.entries(data.history||{}))if(/^\d{4}-\d{2}-\d{2}$/.test(date)&&Number.isFinite(price)&&price>0)next.history[date]=price;
   next.usd=Number.isFinite(data.usd)&&data.usd!>0?data.usd:null;return next;
 }
