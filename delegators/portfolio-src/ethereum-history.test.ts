@@ -37,3 +37,17 @@ test('ordinary pagination stays in the incremental range and deduplicates identi
   assert.equal(rows.length,1);
   assert.deepEqual(calls,[{startBlock:60,endBlock:99,page:1},{startBlock:60,endBlock:99,page:2}]);
 });
+test('advances before page eleven and rechecks the full boundary block',async()=>{
+  const calls:{startBlock:number;endBlock:number;page:number}[]=[];
+  const make=(block:number,id:string)=>({...tx(block),id:'0x'+id.repeat(64)+':normal',hash:'0x'+id.repeat(64)});
+  const rows=await ethereumHistory({startBlock:0,endBlock:99},async range=>{
+    calls.push(range);
+    if(range.startBlock===0)return {transactions:[make(range.page,range.page<10?'1':'2')],more:true};
+    assert.equal(range.startBlock,10);
+    return {transactions:[make(10,'2'),make(10,'3'),make(15,'4')],more:false};
+  });
+  assert.ok(!calls.some(range=>range.page>10));
+  assert.deepEqual(calls.at(-1),{startBlock:10,endBlock:99,page:1});
+  assert.equal(rows.length,4);
+  assert.deepEqual(rows.filter(row=>row.block===10).map(row=>row.id),[make(10,'2').id,make(10,'3').id]);
+});
