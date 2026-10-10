@@ -13,7 +13,7 @@ export function useEthereum(stake:string,ready:boolean){
   const loaded=loadedStake===stake;
   function saveData(value:EthereumData){
     const settings=encodeEthereumSettings(dataKey,value);
-    if(Object.keys(settings).length===1&&!portfolioSettings.getItem(dataKey)?.includes('"storageVersion":1')){
+    if(Object.keys(settings).length===1&&!portfolioSettings.getItem(dataKey)?.includes('"storageVersion":')){
       portfolioSettings.setItem(dataKey,settings[dataKey]);return;
     }
     portfolioSettings.setItems(settings,portfolioSettings.keys().filter(key=>key.startsWith(dataKey+'::')&&!Object.hasOwn(settings,key)));

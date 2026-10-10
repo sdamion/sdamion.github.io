@@ -6,6 +6,9 @@ import {portfolioTransactionCounts} from './transaction-counts';
 import type {Snapshot} from './cache';
 import {memberWallets} from './member';
 import {loadLocal,saveLocal,removeLocal} from './local-store';
+import {compactEthereumSettings} from './ethereum-storage';
+import {compactSolanaSettings} from './solana-storage';
+import {compactBlock,expandBlock} from './compact-storage';
 
 type Data={version:1;settings:Record<string,string>;snapshot:{key:string;data:Snapshot}|null};
 export type StorageMode='local'|'remote';
@@ -60,7 +63,7 @@ export async function openLocalPortfolio(stake:string,wallet:SigningWallet){
     const saved=stored.data as {encrypted_version?:number;payload?:any;version?:number};
     if(saved.encrypted_version!==undefined){
       if(saved.encrypted_version!==1)throw new Error('Unsupported local Portfolio encryption version.');
-      try{data=await openVault(key,stake,saved.payload);}catch{throw new Error('This wallet approval could not unlock the saved local Portfolio. Use the same wallet app and stake account. The cache has not been changed.');}
+      try{data=expandBlock(await openVault(key,stake,saved.payload));}catch{throw new Error('This wallet approval could not unlock the saved local Portfolio. Use the same wallet app and stake account. The cache has not been changed.');}
     }else data=stored.data as Data;
   }else data=await importLegacy(stake);
   if(data.version!==1||!data.settings||typeof data.settings!=='object')throw new Error('Unsupported Portfolio cache version.');
@@ -154,7 +157,8 @@ export async function flushVault():Promise<void>{
   running=(async()=>{
     const generation=current.generation;
     if(current.mode==='local'){
-      const payload=await sealVault(current.key!,current.stake,current.data);
+      current.data={...current.data,settings:compactSolanaSettings(compactEthereumSettings(current.data.settings))};
+      const payload=await sealVault(current.key!,current.stake,compactBlock(current.data));
       // Never replace a plaintext record until encryption has succeeded.
       if(current!==state||current.controller.signal.aborted)return;
       const saved=await saveLocal(current.stake,{encrypted_version:1,payload},current.revision,current.expiresAt);
@@ -163,6 +167,7 @@ export async function flushVault():Promise<void>{
       await clearLegacy(current.stake);notice('Encrypted Portfolio cache saved in this browser.');return;
     }
     setUploadProgress({phase:'preparing',loaded:0,total:0,message:''});
+    if(!current.pending)current.data={...current.data,settings:compactSolanaSettings(compactEthereumSettings(current.data.settings))};
     if(!current.pending)current.pending={checkpoint:await prepareCheckpoint(current.data,current.key!,current.stake,current.index||null,current.controller.signal),generation};
     if(current!==state)return;
     const {checkpoint,generation:capturedGeneration}=current.pending;

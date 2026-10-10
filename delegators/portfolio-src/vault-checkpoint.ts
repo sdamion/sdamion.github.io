@@ -3,6 +3,7 @@ import type {VaultEnvelope} from './vault-crypto.ts';
 import type {Snapshot} from './cache';
 import {portfolioTransactionCounts} from './transaction-counts.ts';
 import {chunkSettings,restoreSettings} from './checkpoint-settings.ts';
+import {compactBlock,expandBlock,CACHE_RECORDS_PER_PART} from './compact-storage.ts';
 
 export type VaultData={version:1;settings:Record<string,string>;snapshot:{key:string;data:Snapshot}|null};
 type Reference={id:string;digest:string};
@@ -31,11 +32,19 @@ export async function prepareCheckpoint(data:VaultData,key:CryptoKey,stake:strin
   let decodedBytes=encoder.encode(JSON.stringify(index.meta)).length;
   checkCheckpointSize(decodedBytes);
   const chunks:Checkpoint['chunks']=[];
-  const contents=new Map<string,unknown>(groups);
+  const contents=new Map<string,unknown>();
+  for(const [bucket,group] of groups){
+    const txs=new Map(group.txs.map(tx=>[tx.tx_hash,tx]));
+    const hashes=[...new Set([...txs.keys(),...Object.keys(group.facts)])].sort();
+    for(let offset=0;offset<hashes.length;offset+=CACHE_RECORDS_PER_PART){
+      const part=hashes.slice(offset,offset+CACHE_RECORDS_PER_PART);
+      contents.set(`${bucket}:${offset/CACHE_RECORDS_PER_PART}`,compactBlock({txs:part.flatMap(hash=>txs.has(hash)?[txs.get(hash)!]:[]),facts:Object.fromEntries(part.filter(hash=>Object.hasOwn(group.facts,hash)).map(hash=>[hash,group.facts[hash]]))}));
+    }
+  }
   for(const [bucket,value] of settings.chunks)contents.set(bucket,{setting:value});
   if(contents.size>257)throw new Error('Portfolio checkpoint has too many chunks. Your saved cache has not been changed.');
   for(const [bucket,content] of contents){
-    signal?.throwIfAborted();if(groups.has(bucket))groups.get(bucket)!.txs.sort((a,b)=>a.tx_hash.localeCompare(b.tx_hash));
+    signal?.throwIfAborted();
     decodedBytes+=encoder.encode(JSON.stringify(content)).length;
     checkCheckpointSize(decodedBytes);
     const fingerprint=await digest(content),old=previous?.buckets[bucket];
@@ -60,17 +69,18 @@ export async function restoreCheckpoint(index:CheckpointIndex,key:CryptoKey,stak
     const batch=refs.slice(offset,offset+4),rows=await load(batch.map(row=>row.id));
     for(const ref of batch){
       const row=rows.find(row=>row.id===ref.id);if(!row)throw new Error('Portfolio checkpoint is incomplete. Reopen it to retry.');
-      const content=await openVault(key,stake,row.payload);
-      decodedBytes+=encoder.encode(JSON.stringify(content)).length;
+      const encoded=await openVault(key,stake,row.payload);
+      const content=expandBlock(encoded);
+      decodedBytes+=encoder.encode(JSON.stringify(encoded)).length;
       checkCheckpointSize(decodedBytes);
-      if(await digest(content)!==ref.digest)throw new Error('Portfolio checkpoint integrity check failed.');
+      if(await digest(encoded)!==ref.digest)throw new Error('Portfolio checkpoint integrity check failed.');
       const bucket=Object.keys(index.buckets).find(bucket=>index.buckets[bucket]===ref)!;
       if(settingBuckets.has(bucket)){
         if(typeof content.setting!=='string')throw new Error('Portfolio checkpoint integrity check failed.');
         settingsChunks.set(bucket,content.setting);continue;
       }
       if(!Array.isArray(content.txs)||!content.facts)throw new Error('Portfolio checkpoint integrity check failed.');
-      txs.push(...content.txs);Object.assign(facts,content.facts);
+      for(const tx of content.txs)txs.push(tx);Object.assign(facts,content.facts);
     }
   }
   txs.sort((a,b)=>b.block_time-a.block_time||a.tx_hash.localeCompare(b.tx_hash));

@@ -16,6 +16,12 @@ retries while Portfolio remains open; incomplete pages never become account
 checkpoints. Resumed scans recheck the latest 64 blocks. In-memory windows are
 cleared when the member or wallet scope changes and after a successful save.
 
+`compact-storage.ts` provides shared lossless dictionary encoding for encrypted
+ADA, ETH and SOL storage. Cardano time buckets and native-chain account history
+are split into blocks of at most 10,000 records. Existing checkpoint formats remain
+readable; upload retries compact already fetched native histories without API calls.
+Hash deduplication is block-local, and distinct Ethereum traces remain distinct.
+
 `NativeTransferSummary` shows ADA, ETH and SOL quantities separately. ADA IN/OUT
 filters never include ETH or SOL legs. `portfolioTransferResult` combines all
 classified CEX flows using transfer-day prices and adds the current value of all

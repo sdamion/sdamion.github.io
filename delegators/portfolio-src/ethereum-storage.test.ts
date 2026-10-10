@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {encodeEthereumSettings,readEthereumSettings} from './ethereum-storage.ts';
+import {encodeEthereumSettings,readEthereumSettings,compactEthereumSettings} from './ethereum-storage.ts';
 import {emptyEthereum,type EthereumTransaction} from './ethereum.ts';
 import {portfolioTransactionCounts} from './transaction-counts.ts';
 import {prepareCheckpoint,restoreCheckpoint} from './vault-checkpoint.ts';
@@ -13,6 +13,19 @@ const data={...emptyEthereum(),accounts:{[address]:{balanceWei:'1',block:25001,t
 const settings=encodeEthereumSettings(key,data);
 assert.equal(Object.keys(settings).length,4);
 assert.ok(!settings[key].includes(transactions[0].hash),'index contains no transaction history');
+const legacySettings:Record<string,string>={};
+const index=JSON.parse(settings[key]);
+legacySettings[key]=JSON.stringify({...index,storageVersion:1});
+for(let part=0;part<index.accounts[address].parts;part++)legacySettings[`${key}::${address}:${part}`]=JSON.stringify(transactions.slice(part*10000,(part+1)*10000));
+const compacted=compactEthereumSettings(legacySettings);
+assert.deepEqual(readEthereumSettings(key,name=>compacted[name]??null),readEthereumSettings(key,name=>legacySettings[name]??null),'upgrade preserves every transaction');
+const size=(values:Record<string,string>)=>Object.values(values).reduce((sum,value)=>sum+Buffer.byteLength(value),0);
+assert.ok(size(compacted)<size(legacySettings)*0.4,'repeated-address history shrinks by more than 60 percent');
+assert.deepEqual(compactEthereumSettings(compacted),compacted,'retrying an upload does not rewrite compacted history');
+const traceHash='0x'+'f'.repeat(64);
+const mixed={...data,accounts:{[address]:{...data.accounts[address],transactions:[...transactions,{id:traceHash+':0_1',hash:traceHash,kind:'internal' as const,block:25001,time:1700025001,from:address,to:'',valueWei:'0',feeWei:null,failed:true,transactionIndex:0,traceIndex:'0_1'}]}}};
+const mixedSettings=encodeEthereumSettings(key,mixed);
+assert.deepEqual(readEthereumSettings(key,name=>mixedSettings[name]??null),readEthereumSettings(key,()=>JSON.stringify(mixed)),'internal traces, failed transactions, empty recipients and optional indexes are retained');
 assert.deepEqual(readEthereumSettings(key,name=>settings[name]??null),readEthereumSettings(key,()=>JSON.stringify(data)),'partitioned and legacy caches have identical normalized data');
 settings['tdsp-member-ethereum-wallets:member']=JSON.stringify([{address,name:'Test'}]);
 assert.equal(portfolioTransactionCounts({settings,snapshot:null},'member').total,25001);

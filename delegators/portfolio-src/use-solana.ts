@@ -1,16 +1,22 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {portfolioFetch} from './transport';
 import {portfolioSettings,flushVault} from './vault';
-import {emptySolana,solanaData,nativeWallets,validSolana,validSolanaTransaction,type SolanaData,type SolanaTransaction,type NativeWallet} from './solana';
+import {emptySolana,nativeWallets,validSolana,validSolanaTransaction,type SolanaData,type SolanaTransaction,type NativeWallet} from './solana';
+import {encodeSolanaSettings,readSolanaSettings} from './solana-storage';
 
 export function useSolana(stake:string,enabled:boolean){
   const walletKey='tdsp-member-solana-wallets:'+stake,cexKey='tdsp-member-solana-cex:'+stake,dataKey='tdsp-member-solana-data:'+stake;
   const [wallets,setWallets]=useState<NativeWallet[]>([]),[exchanges,setExchanges]=useState<NativeWallet[]>([]),[data,setData]=useState(emptySolana),[loaded,setLoaded]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');
   const current=useRef(data),controller=useRef<AbortController|null>(null);
+  function saveData(value:SolanaData){
+    const settings=encodeSolanaSettings(dataKey,value);
+    if(Object.keys(settings).length===1&&!portfolioSettings.getItem(dataKey)?.includes('"storageVersion":')){portfolioSettings.setItem(dataKey,settings[dataKey]);return;}
+    portfolioSettings.setItems(settings,portfolioSettings.keys().filter(key=>key.startsWith(dataKey+'::')&&!Object.hasOwn(settings,key)));
+  }
   useEffect(()=>{
     setLoaded(false);controller.current?.abort();setError('');setBusy(false);
     if(!enabled){setWallets([]);setExchanges([]);const empty=emptySolana();current.current=empty;setData(empty);return;}
-    try{setWallets(nativeWallets(JSON.parse(portfolioSettings.getItem(walletKey)||'[]')));setExchanges(nativeWallets(JSON.parse(portfolioSettings.getItem(cexKey)||'[]')));const saved=solanaData(JSON.parse(portfolioSettings.getItem(dataKey)||'null'));current.current=saved;setData(saved);setLoaded(true);}catch{setError('Solana cache could not be opened.');}
+    try{setWallets(nativeWallets(JSON.parse(portfolioSettings.getItem(walletKey)||'[]')));setExchanges(nativeWallets(JSON.parse(portfolioSettings.getItem(cexKey)||'[]')));const saved=readSolanaSettings(dataKey,key=>portfolioSettings.getItem(key));current.current=saved;setData(saved);setLoaded(true);}catch{setError('Solana cache could not be opened.');}
     return()=>controller.current?.abort();
   },[enabled,stake]);
   const scope=wallets.map(w=>w.address).sort().join('|');
@@ -35,7 +41,7 @@ export function useSolana(stake:string,enabled:boolean){
         });
       }
     }
-    async function persist(next:SolanaData,quote=false){signal.throwIfAborted();const saved={...next,usd:quote?next.usd:current.current.usd};portfolioSettings.setItem(dataKey,JSON.stringify(saved));current.current=saved;setData(saved);await flushVault();signal.throwIfAborted();}
+    async function persist(next:SolanaData,quote=false){signal.throwIfAborted();const saved={...next,usd:quote?next.usd:current.current.usd};saveData(saved);current.current=saved;setData(saved);await flushVault();signal.throwIfAborted();}
     const known=new Map([...solanaTransactionsForCache(current.current),...(current.current.pending||[])].map(tx=>[tx.hash,tx]));
     let downloaded=0;
     // Pending receipts are reusable after interruption, but never enter totals until history is complete.
@@ -84,7 +90,7 @@ export function useSolana(stake:string,enabled:boolean){
     const control=new AbortController();let pending=false;
     const timer=setInterval(async()=>{
       if(pending)return;pending=true;
-      try{const response=await portfolioFetch('/solana-price',{signal:control.signal});if(!response.ok)return;const {usd}=await response.json();if(control.signal.aborted||!Number.isFinite(usd)||usd<=0)return;const next={...current.current,usd};portfolioSettings.setItem(dataKey,JSON.stringify(next));current.current=next;setData(next);}catch{/* Keep the last successful quote. */}finally{pending=false;}
+      try{const response=await portfolioFetch('/solana-price',{signal:control.signal});if(!response.ok)return;const {usd}=await response.json();if(control.signal.aborted||!Number.isFinite(usd)||usd<=0)return;const next={...current.current,usd};saveData(next);current.current=next;setData(next);}catch{/* Keep the last successful quote. */}finally{pending=false;}
     },60000);
     return()=>{clearInterval(timer);control.abort();};
   },[enabled,loaded,scope,stake]);
