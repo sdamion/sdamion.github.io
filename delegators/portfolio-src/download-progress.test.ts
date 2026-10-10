@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {downloadProgressValues} from './download-progress.ts';
+import {combinedTransactionProgress,createTransactionProgress,transactionProgress,downloadProgressValues} from './download-progress.ts';
 import {ethereumHistory} from './ethereum-history.ts';
 import type {EthereumTransaction} from './ethereum.ts';
 
@@ -15,3 +15,17 @@ assert.equal(ids.size,1,'overlapping pages are not counted twice');
 ids.clear();
 await ethereumHistory({startBlock:0,endBlock:2},async()=>{throw new Error('must reuse checkpoint');},completed,Infinity,Infinity,count);
 assert.equal(ids.size,1,'resumed completed ranges contribute to download counts');
+
+for(const chain of ['ADA','ETH','SOL']){
+  const cached=[{id:'a'},{id:'b'},{id:'a'}];
+  const progress=createTransactionProgress(cached,row=>row.id);
+  assert.deepEqual(progress.snapshot(),{downloaded:2,total:null},`${chain} restores unique cached receipts before making requests`);
+  assert.deepEqual(progress.add([{id:'b'},{id:'c'}]),{downloaded:3,total:null},`${chain} merges overlapping pages`);
+  const resumed=createTransactionProgress([{id:'a'},{id:'b'},{id:'c'}],row=>row.id);
+  assert.deepEqual(resumed.snapshot(),progress.snapshot(),`${chain} preserves durable counts after an interruption`);
+  assert.deepEqual(resumed.complete([{id:'a'},{id:'c'}]),{downloaded:2,total:2},`${chain} replaces stale or reorganised rows on completion`);
+  assert.deepEqual(transactionProgress(cached,row=>row.id,3),{downloaded:2,total:3},`${chain} separates downloaded receipts from a known discovered total`);
+}
+assert.deepEqual(transactionProgress([],String,null),{downloaded:0,total:null});
+assert.deepEqual(combinedTransactionProgress([{downloaded:20,total:20},{downloaded:3,total:null},{downloaded:5,total:5}]),{downloaded:28,total:null},'a partial chain never displays a fabricated complete percentage');
+assert.deepEqual(combinedTransactionProgress([{downloaded:20,total:20},{downloaded:3,total:3},{downloaded:5,total:5}]),{downloaded:28,total:28});

@@ -5,6 +5,7 @@ import {ExternalLink,Plus,Trash2} from 'lucide-react';
 import {PortfolioRefresh} from './PortfolioRefresh';
 import {usePortfolioText} from './use-portfolio-text';
 import {DownloadStatus} from './DownloadStatus';
+import {combinedTransactionProgress,transactionProgress} from './download-progress';
 import {AssetWalletAddresses} from './AssetWalletAddresses';
 import {createCardanoRequest} from './cardano-request';
 import {planWalletDiscovery,pruneUnusedWalletAddresses,lowActivityWalletAddresses,activeAnalysedWalletGroups} from './wallet-discovery';
@@ -42,7 +43,6 @@ import {PaymentLinks} from './PaymentLinks';
 import {AssetOverlay} from './AssetOverlay';
 import {MenuTile,AdaUsdAmount,PortfolioMessage} from './ui';
 import {portfolioSettings as localStorage,flushVault,storageMode} from './vault';
-import {CacheUploadProgress} from './CacheUploadProgress';
 import {CexTimeline} from './CexTimeline';
 import {useBtcHistory} from './use-btc-history';
 import {useEthereum} from './use-ethereum';
@@ -52,7 +52,7 @@ import {SolanaTransaction} from './SolanaTransaction';
 import {solanaTransactions,solanaTransfers,solanaTotals,solAmount} from './solana';
 import {EthereumWallets} from './EthereumWallets';
 import {EthereumTransaction} from './EthereumTransaction';
-import {ethereumTransactions,ethereumTransactionCount,ethereumTransfers,ethereumTransfer,ethereumValue,weiToEth} from './ethereum';
+import {ethereumTransactions,ethereumTransfers,ethereumTransfer,ethereumValue,weiToEth} from './ethereum';
 import {matchCrossChainSwaps,groupSwapRows} from './cross-chain-swaps';
 import {learnMatchedSwapAddresses} from './matched-swap-addresses';
 import {availableTotal,ethereumAvailableTotals,availableCexResult,networkFeeNotes} from './portfolio-totals';
@@ -81,7 +81,7 @@ import {validByronAddress} from './byron-address';
 import {exchangeExcludedAddresses,resolveSwapGroups,excludeInternalExchanges,swapOwnershipScope,swapAddressSet,isSwapTransaction} from './swap-wallets';
 import {normalizeCexAddresses,cexAdjustedFact,isCexTransaction,isCardanoReward,cexAdaTransfer,cexUsdNetPosition,cexTimeline,transactionExchangeWallets} from './cex';
 import type {CexAddress} from './cex';
-import {durationLabel,remainingSeconds,analysisProgress} from './progress';
+import {durationLabel,remainingSeconds} from './progress';
 import {memberWallets,resolveWalletGroups,validWalletAddress,validStakeAddress,walletTransactionCount} from './member';
 const num=(n:number,max=6)=>n.toLocaleString('en-US',{maximumFractionDigits:max});
 type Overrides=Record<string,{average?:string;price?:string;decimals?:string;excluded?:boolean}>;
@@ -534,8 +534,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   const fees=useMemo(()=>portfolioFeeTotal(Object.values(snapshot?.facts||{}),trackedAddresses,swapAddresses),[snapshot,trackedAddresses,swapAddresses]);
   const loadedFacts=Object.keys(classifiedFacts).length;
   const transactionTotal=snapshot?.txs.length||0;
-  const analysedTotal=snapshot?.txs.filter(tx=>!!snapshot.facts[tx.tx_hash]).length||0;
-  const allTransactionTotal=transactionTotal+ethereumTransactionCount(ethereum.data,ethereum.wallets)+solTransactions.length;
+  const allTransactionTotal=transactionTotal+ethereum.downloadProgress.downloaded+solana.downloadProgress.downloaded;
   const ethFees=ethAvailable.fees;
   const availableFees=availableTotal([currentAdaUsd!==null?fees*currentAdaUsd:null,...(ethereum.wallets.length?[ethAvailable.feeUsd]:[]),...(solana.wallets.length?[solAvailable.feeUsd]:[])]);
   const feeUsd=availableFees.value;
@@ -545,14 +544,14 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
     ...(solana.wallets.length?[{chain:'SOL',historyComplete:!solAvailable.feesPartial,feeUsd:solAvailable.feeUsd,feeKnown:solAvailable.fees!==null}]:[])
   ],holdingsCurrency==='ADA'?currentAdaUsd!==null&&currentAdaUsd>0:holdingsRate!==null);
   const downloadChains=[
-    {chain:'ADA',progress:{downloaded:analysedTotal,total:snapshot?.complete?transactionTotal:null}},
+    {chain:'ADA',progress:transactionProgress(snapshot?.txs.filter(tx=>!!snapshot.facts[tx.tx_hash])||[],tx=>tx.tx_hash,counting!==null?null:counted??(snapshot?.complete?transactionTotal:null))},
     ...(ethereum.wallets.length?[{chain:'ETH',progress:ethereum.downloadProgress}]:[]),
     ...(solana.wallets.length?[{chain:'SOL',progress:solana.downloadProgress}]:[])
   ];
+  const combinedProgress=combinedTransactionProgress(downloadChains.map(row=>row.progress));
   const partialNote=<DownloadStatus chains={downloadChains} missingWallets={ethereum.wallets.filter(wallet=>!ethereum.data.accounts[wallet.address]).length+solana.wallets.filter(wallet=>!solana.data.accounts[wallet.address]).length} missingAssets={included.filter(row=>row.value===null).length+Number(!ethExcluded&&ethereum.wallets.length>0&&ethAvailable.value===null)+Number(!solExcluded&&solana.wallets.length>0&&solAvailable.value===null)} missingTransfers={gainFlows.filter(row=>row.usd===null).length} missingCurrency={holdingsCurrency!=='ADA'&&holdingsRate===null}/>;
   const cexPending=snapshot?.txs.filter(tx=>!hasCounterpartyData(snapshot.facts[tx.tx_hash])).length||0;
   const cexUnresolved=Object.values(cexFacts).filter(f=>isCexTransaction(f,cexAddresses)&&!cexAdaTransfer(f,cexAddresses)).length;
-  const progress=analysisProgress(busy,analysis,analysedTotal,transactionTotal);
   const eta=analysis&&counted!==null?remainingSeconds(analysis.started,clock,analysis.done,analysis.total):null;
   const refreshTiming=refreshStarted?`${busy?'Elapsed':'Refresh duration'}: ${durationLabel((clock-refreshStarted)/1000)}${busy?(eta!==null?` · Estimated analysis remaining: ${durationLabel(eta)}`:' · Estimating remaining time…'):''}`:'';
   const cardanoShown=(snapshot?.txs||[]).filter(t=>{const f=classifiedFacts[t.tx_hash],internalSwap=crossChainSwaps.cardano.has(t.tx_hash);return withinTransactionDates(t.block_time,dateFrom,dateTo)&&(section==='gain-loss'?!internalSwap&&matchesGainLossTransfer(f,cexAddresses,filter):(filter==='all'||(filter==='swap'?isSwapTransaction(f,swapAddresses):filter==='cex'?!internalSwap&&isCexTransaction(f,cexAddresses):internalSwap?filter==='internal':f&&kindOf(f)===filter)))&&matchesTransaction(query,t.tx_hash,f,snapshot?.markets||{},displayWallets,cexAddresses);});
@@ -606,9 +605,9 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   </div>
     <section className="portfolio-section"><div className="tdsp-tile-grid">
       <MenuTile title="Wallets" value={refreshCounts?`${num(refreshCounts.active+ethereum.wallets.length+solana.wallets.length,0)} / ${num(refreshCounts.total+ethereum.wallets.length+solana.wallets.length,0)} active`:initialising?'Initialising':'— / — active'} loading={initialising} loadingLabel={status} onOpen={()=>setSection('wallets')}/>
-      <MenuTile title="Transactions" value={snapshot?num(allTransactionTotal,0):'—'} analysis={snapshot?{done:progress.done+allTransactionTotal-transactionTotal,total:progress.total+allTransactionTotal-transactionTotal,counting:counting!==null||ethereum.busy&&ethereum.downloadProgress.total===null||solana.busy&&solana.downloadProgress.total===null,busy:busy||ethereum.busy||solana.busy,status:transactionStatus}:undefined} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('transactions');}}>
+      <MenuTile title="Transactions" value={snapshot?num(allTransactionTotal,0):'—'} analysis={snapshot?{done:combinedProgress.downloaded,total:combinedProgress.total??allTransactionTotal,counting:combinedProgress.total===null,busy:busy||ethereum.busy||solana.busy,status:transactionStatus}:undefined} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('transactions');}}>
         <DownloadStatus chains={downloadChains}/>
-        {storageMode()==='remote'?<CacheUploadProgress onRetry={()=>void flushVault().catch(()=>{})}/>:cacheNotice&&<p role="status" className="tdsp-bar-legend">{cacheNotice}</p>}
+        {storageMode()!=='remote'&&cacheNotice&&<p role="status" className="tdsp-bar-legend">{cacheNotice}</p>}
       </MenuTile>
       <MenuTile title="Assets" value={holdingsDisplay} onOpen={()=>{resetPolicies();setHoldingsGroup(null);setSection('holdings');}}>
         {portfolioPartial&&partialNote}

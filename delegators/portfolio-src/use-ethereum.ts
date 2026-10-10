@@ -5,7 +5,7 @@ import {emptyEthereum,ethereumWallets,type EthereumData,type EthereumTransaction
 import {ethereumHistory,type EthereumHistoryCheckpoints} from './ethereum-history';
 import {ethereumRequest} from './ethereum-request';
 import {encodeEthereumSettings,readEthereumSettings} from './ethereum-storage';
-import {emptyDownloadProgress,type DownloadProgress} from './download-progress';
+import {createTransactionProgress,emptyDownloadProgress,type DownloadProgress} from './download-progress';
 import {encodeEthereumScanCheckpoint,readEthereumScanCheckpoints} from './ethereum-scan-storage';
 
 export function useEthereum(stake:string,ready:boolean){
@@ -36,23 +36,32 @@ export function useEthereum(stake:string,ready:boolean){
     return()=>controller.current?.abort();
   },[ready,stake]);
   const scope=ownedWallets.map(w=>w.address).sort().join('|');
+  function savedTransactions(){
+    const addresses=new Set(ownedWallets.map(wallet=>wallet.address));
+    const rows=ownedWallets.flatMap(wallet=>current.current.accounts[wallet.address]?.transactions||[]);
+    for(const [scope,ranges] of historyCheckpoints.current){
+      if(!addresses.has(scope.split(':')[0]))continue;
+      for(const range of ranges.values())for(const tx of range.transactions)rows.push(tx);
+    }
+    return rows;
+  }
   useEffect(()=>{
     historyCheckpoints.current.clear();
     if(ready)try{historyCheckpoints.current=readEthereumScanCheckpoints(scanKey,portfolioSettings.keys(),key=>portfolioSettings.getItem(key));}catch{setError('Ethereum scan checkpoint could not be opened. Saved data is retained.');}
     const accounts=ownedWallets.map(wallet=>current.current.accounts[wallet.address]);
-    const count=new Set(accounts.flatMap(account=>account?.transactions.map(tx=>tx.id)||[])).size;
-    setDownloadProgress({downloaded:count,total:ready&&accounts.length>0&&accounts.every(Boolean)?count:null});
+    const progress=createTransactionProgress(savedTransactions(),tx=>tx.id);
+    const hasPending=[...historyCheckpoints.current.keys()].some(key=>ownedWallets.some(wallet=>key.startsWith(wallet.address+':')));
+    setDownloadProgress(ready&&accounts.length>0&&accounts.every(Boolean)&&!hasPending?progress.complete(accounts.flatMap(account=>account.transactions)):progress.snapshot());
   },[ready,stake,scope]);
   const refresh=useCallback(async()=>{
     if(!ready||!loaded||!ownedWallets.length)return;
     controller.current?.abort();const control=new AbortController();controller.current=control;
     const signal=control.signal;
-    const downloadedIds=new Set(ownedWallets.flatMap(wallet=>current.current.accounts[wallet.address]?.transactions.map(tx=>tx.id)||[]));
-    setDownloadProgress({downloaded:downloadedIds.size,total:null});
+    const progress=createTransactionProgress(savedTransactions(),tx=>tx.id);
+    setDownloadProgress(progress.snapshot());
     function countTransactions(transactions:EthereumTransaction[]){
       signal.throwIfAborted();
-      for(const tx of transactions)downloadedIds.add(tx.id);
-      setDownloadProgress({downloaded:downloadedIds.size,total:null});
+      setDownloadProgress(progress.add(transactions));
     }
     setBusy(true);setError('');setStatus('Checking Ethereum transactions…');
     let provider:EthereumProvider|undefined;
@@ -115,8 +124,7 @@ export function useEthereum(stake:string,ready:boolean){
         if(typeof balanceWei!=='string'||!/^\d{1,80}$/.test(balanceWei))throw new Error('Invalid Ethereum balance response.');
         next.accounts[wallet.address]={balanceWei,block,transactions:[...transactions.values()],provider:provider||'etherscan'};
         if(index===ownedWallets.length-1){
-          const count=new Set(Object.values(next.accounts).flatMap(account=>account.transactions.map(tx=>tx.id))).size;
-          setDownloadProgress({downloaded:count,total:count});
+          setDownloadProgress(progress.complete(Object.values(next.accounts).flatMap(account=>account.transactions)));
         }
         // Publish provider changes only after every wallet range is complete.
         if(!changingProvider){

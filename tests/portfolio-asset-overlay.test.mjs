@@ -33,11 +33,13 @@ test('portfolio sections use separate shared overlays and the universal tile ren
   assert.match(overlay,/governance-dialog-wide/);
   assert.doesNotMatch(overlay,/\.css|abort\(|refresh\(/);
 });
-test('cache upload status belongs to the Transactions tile rather than the refresh header',()=>{
+test('remote checkpoint messages are hidden without disabling persistence',()=>{
   const app=source('App.tsx');
   const header=app.slice(app.indexOf('aria-label="Portfolio refresh"'),app.indexOf('<MenuTile title="Transactions"'));
   assert.doesNotMatch(header,/CacheUploadProgress|\{cacheNotice/);
-  assert.match(app,/<MenuTile title="Transactions"[\s\S]*?<CacheUploadProgress[\s\S]*?<\/MenuTile>/);
+  assert.doesNotMatch(app,/CacheUploadProgress/);
+  assert.match(app,/storageMode\(\)!=='remote'&&cacheNotice/);
+  assert.match(app,/await flushVault\(\)/);
   assert.match(source('ui.tsx'),/createPortal\(children,footer\)/);
 });
 test('CEX metric opens its shared transaction overlay without stale search or pagination',()=>{

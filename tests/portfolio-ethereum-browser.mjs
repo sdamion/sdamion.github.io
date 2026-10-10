@@ -408,6 +408,11 @@ try{
   await page.getByRole('alert').filter({hasText:'Fixture history interrupted'}).waitFor();
   const savedRanges=await page.evaluate(stake=>window.fixtureStorage.keys().filter(key=>key.startsWith('tdsp-member-ethereum-data:'+stake+'::scan::')),stake);
   assert.equal(savedRanges.length,2,'a confirmed first-page prefix is persisted before the next page fails');
+  indexerUnavailable=true;
+  await page.evaluate(()=>window.reopenPortfolio());
+  await page.getByRole('alert').filter({hasText:'Ethereum refresh failed. Saved data is retained.'}).waitFor();
+  assert.ok(await page.getByText('ETH: 1 / ? transactions',{exact:true}).count(),'durable partial ETH count is restored even when the provider is offline');
+  indexerUnavailable=false;
   const resumedStart=requests.length;durableMode='resume';
   await page.evaluate(()=>window.reopenPortfolio());
   await page.waitForFunction(stake=>Object.keys(JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)).accounts).length===1,stake);

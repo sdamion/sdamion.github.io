@@ -16,6 +16,12 @@ in `ethereum-scan-storage.ts`, separate from completed accounts and financial to
 Restarted scans reuse these windows per wallet, kind and provider, and recheck the
 latest 64 blocks. Accepted prefixes of rejected windows are reused while their last
 block is fetched again. Scan settings are retired only after account history is saved.
+`download-progress.ts` provides the shared ADA/ETH/SOL transaction progress helper.
+It restores unique receipt identities before network requests, merges overlapping pages,
+and replaces stale identities with the final validated history on completion. ETH scan
+settings and SOL pending receipts contribute to visible progress, not financial totals.
+The Transactions tile uses the same combined counts; unknown discovery totals stay
+indeterminate instead of showing a misleading 100%.
 Ethereum Swap addresses are counterparties, not owned accounts: only regular wallets
 are scanned and contribute balances/fees, while their transactions retain Swap labels
 and cross-chain pairing. Saved shared-address histories are excluded from totals.
@@ -85,9 +91,8 @@ settings, balances and market data are in the encrypted index. The server publis
 index atomically after storing all required chunks. Opaque chunk IDs reveal no addresses
 or dates, although encrypted sizes and upload timing remain observable. Lost acknowledgements
 retry the same commit ID. Only one upload runs at a time; pending changes schedule a trailing
-checkpoint. Failed saves retry without stopping transaction analysis. The shared progress
-bar measures bytes uploaded, stays below 100% until acknowledgement, and shows the number of
-analysed transactions in the last confirmed checkpoint. Old whole-envelope caches are readable
+checkpoint. Failed saves retry without stopping transaction analysis. Remote checkpoint
+messages and upload progress are hidden in the Portfolio UI. Old whole-envelope caches are readable
 and migrate on their next save. Deploy the checkpoint-capable backend before this frontend.
 Replaced chunks are retained briefly for concurrent readers and cleaned on later writes or hourly pruning;
 expiry/deletion removes the entire member cache, including retained chunks.

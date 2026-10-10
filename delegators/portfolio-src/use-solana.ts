@@ -3,7 +3,7 @@ import {portfolioFetch} from './transport';
 import {portfolioSettings,flushVault} from './vault';
 import {emptySolana,nativeWallets,validSolana,validSolanaTransaction,type SolanaData,type SolanaTransaction,type NativeWallet} from './solana';
 import {encodeSolanaSettings,readSolanaSettings} from './solana-storage';
-import {emptyDownloadProgress,type DownloadProgress} from './download-progress';
+import {createTransactionProgress,emptyDownloadProgress,type DownloadProgress} from './download-progress';
 
 export function useSolana(stake:string,enabled:boolean){
   const walletKey='tdsp-member-solana-wallets:'+stake,cexKey='tdsp-member-solana-cex:'+stake,dataKey='tdsp-member-solana-data:'+stake;
@@ -24,8 +24,9 @@ export function useSolana(stake:string,enabled:boolean){
   const scope=wallets.map(w=>w.address).sort().join('|');
   useEffect(()=>{
     const accounts=wallets.map(wallet=>current.current.accounts[wallet.address]);
-    const count=new Set(accounts.flatMap(account=>account?.transactions.map(tx=>tx.hash)||[])).size;
-    setDownloadProgress({downloaded:count,total:enabled&&accounts.length>0&&accounts.every(Boolean)?count:null});
+    const rows=accounts.flatMap(account=>account?.transactions||[]);
+    const progress=createTransactionProgress([...rows,...(current.current.pending||[])],tx=>tx.hash);
+    setDownloadProgress(enabled&&accounts.length>0&&accounts.every(Boolean)&&!current.current.pending?.length?progress.complete(rows):progress.snapshot());
   },[enabled,stake,scope]);
   const refresh=useCallback(async()=>{
     if(!enabled||!loaded||!wallets.length)return;
@@ -50,8 +51,8 @@ export function useSolana(stake:string,enabled:boolean){
     }
     async function persist(next:SolanaData,quote=false){signal.throwIfAborted();const saved={...next,usd:quote?next.usd:current.current.usd};saveData(saved);current.current=saved;setData(saved);await flushVault();signal.throwIfAborted();}
     const known=new Map([...solanaTransactionsForCache(current.current),...(current.current.pending||[])].map(tx=>[tx.hash,tx]));
-    const downloadedIds=new Set(wallets.flatMap(wallet=>current.current.accounts[wallet.address]?.transactions.map(tx=>tx.hash)||[]));
-    setDownloadProgress({downloaded:downloadedIds.size,total:null});
+    const progress=createTransactionProgress([...wallets.flatMap(wallet=>current.current.accounts[wallet.address]?.transactions||[]),...(current.current.pending||[])],tx=>tx.hash);
+    setDownloadProgress(progress.snapshot());
     let downloaded=0;
     // Pending receipts are reusable after interruption, but never enter totals until history is complete.
     async function savePending(){
@@ -73,7 +74,7 @@ export function useSolana(stake:string,enabled:boolean){
             let tx=known.get(hash);
             if(!tx){const response=await request({action:'transaction',address:wallet.address,signature:hash});if(!validSolanaTransaction(response.transaction)||response.transaction.hash!==hash)throw new Error('Solana data unavailable. Saved data is retained.');tx=response.transaction;known.set(hash,tx);if(++downloaded%25===0)await savePending();}
             rows.set(hash,tx);
-            downloadedIds.add(hash);setDownloadProgress({downloaded:downloadedIds.size,total:null});
+            setDownloadProgress(progress.add([tx]));
           }
           if(!result.more){complete=true;break;}
           if(!result.signatures.length)throw new Error('Solana data unavailable. Saved data is retained.');before=result.signatures.at(-1);
@@ -82,7 +83,7 @@ export function useSolana(stake:string,enabled:boolean){
         const balance=await request({action:'balance',address:wallet.address});
         if(typeof balance.raw!=='string'||!/^\d{1,30}$/.test(balance.raw)||!Number.isSafeInteger(balance.slot)||balance.slot<0)throw new Error('Solana data unavailable. Saved data is retained.');
         next.accounts[wallet.address]={raw:balance.raw,slot:balance.slot,checkpoint,transactions:[...rows.values()]};
-        if(wallet===wallets.at(-1)){const count=new Set(Object.values(next.accounts).flatMap(account=>account.transactions.map(tx=>tx.hash))).size;setDownloadProgress({downloaded:count,total:count});}
+        if(wallet===wallets.at(-1))setDownloadProgress(progress.complete(Object.values(next.accounts).flatMap(account=>account.transactions)));
         await persist({...next,accounts:{...next.accounts},pending:current.current.pending});
         await savePending();next.pending=current.current.pending;
       }
