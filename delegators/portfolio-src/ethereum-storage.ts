@@ -2,11 +2,11 @@ import {ethereumData,type EthereumData,type EthereumTransaction} from './ethereu
 import {stringDictionary,expandBlock,CACHE_RECORDS_PER_PART} from './compact-storage.ts';
 
 const TRANSACTIONS_PER_PART=CACHE_RECORDS_PER_PART;
-function compactPart(transactions:EthereumTransaction[]){
+export function compactEthereumPart(transactions:EthereumTransaction[]){
   const {strings:addresses,index:address}=stringDictionary();
   return JSON.stringify({addresses,transactions:transactions.map(tx=>[tx.hash,tx.kind==='normal'?0:1,tx.block,tx.time,address(tx.from),address(tx.to),tx.valueWei,tx.feeWei,tx.failed,tx.transactionIndex??null,tx.id.slice(tx.hash.length+1),tx.traceIndex??null])});
 }
-function expandPart(raw:string):EthereumTransaction[]{
+export function expandEthereumPart(raw:string):EthereumTransaction[]{
   const value=expandBlock(JSON.parse(raw));
   if(Array.isArray(value))return value;
   if(!Array.isArray(value?.addresses)||!value.addresses.every((address:unknown)=>typeof address==='string')||!Array.isArray(value.transactions))throw new Error('Invalid Ethereum cache part.');
@@ -31,7 +31,7 @@ export function compactEthereumSettings(settings:Record<string,string>):Record<s
         for(let part=0;part<parts;part++){
           const partKey=`${key}::${address}:${part}`;
           if(!Object.hasOwn(settings,partKey))throw new Error('Ethereum cache is incomplete. Saved data is retained.');
-          next[partKey]=compactPart(expandPart(settings[partKey]));
+          next[partKey]=compactEthereumPart(expandEthereumPart(settings[partKey]));
         }
       }
       next[key]=JSON.stringify({...value,storageVersion:2});
@@ -48,25 +48,26 @@ export function encodeEthereumSettings(key:string,data:EthereumData):Record<stri
     const {transactions,...header}=account;
     const parts=Math.ceil(transactions.length/TRANSACTIONS_PER_PART);
     accounts[address]={...header,parts};
-    for(let part=0;part<parts;part++)settings[`${key}::${address}:${part}`]=compactPart(transactions.slice(part*TRANSACTIONS_PER_PART,(part+1)*TRANSACTIONS_PER_PART));
+    for(let part=0;part<parts;part++)settings[`${key}::${address}:${part}`]=compactEthereumPart(transactions.slice(part*TRANSACTIONS_PER_PART,(part+1)*TRANSACTIONS_PER_PART));
   }
   settings[key]=JSON.stringify({...data,accounts,storageVersion:2});
   return settings;
 }
 
-export function readEthereumSettings(key:string,get:(key:string)=>string|null):EthereumData{
+export function readEthereumSettings(key:string,get:(key:string)=>string|null,addresses?:Set<string>):EthereumData{
   const value=JSON.parse(get(key)||'null');
-  if(value?.storageVersion!==1&&value?.storageVersion!==2)return ethereumData(value);
+  if(value?.storageVersion!==1&&value?.storageVersion!==2)return ethereumData(addresses&&value?.accounts?{...value,accounts:Object.fromEntries(Object.entries(value.accounts).filter(([address])=>addresses.has(address)))}:value);
   if(!value.accounts||typeof value.accounts!=='object')throw new Error('Invalid Ethereum cache index.');
   const accounts:Record<string,unknown>={};
   for(const [address,account] of Object.entries(value.accounts)){
+    if(addresses&&!addresses.has(address))continue;
     const row=account as {parts:number};
     if(!Number.isSafeInteger(row.parts)||row.parts<0)throw new Error('Invalid Ethereum cache index.');
     const transactions:EthereumTransaction[]=[];
     for(let part=0;part<row.parts;part++){
       const raw=get(`${key}::${address}:${part}`);
       if(raw===null)throw new Error('Ethereum cache is incomplete. Saved data is retained.');
-      const rows=expandPart(raw);
+      const rows=expandEthereumPart(raw);
       if(!Array.isArray(rows)||rows.length>TRANSACTIONS_PER_PART)throw new Error('Invalid Ethereum cache part.');
       for(const tx of rows)transactions.push(tx);
     }

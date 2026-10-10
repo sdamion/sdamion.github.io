@@ -1,8 +1,9 @@
-import {ethereumTransfer,weiToEth,type EthereumData,type EthereumWallet} from './ethereum.ts';
+import {ethereumTransfer,ownedEthereumWallets,weiToEth,type EthereumData,type EthereumWallet} from './ethereum.ts';
 import {receiptBasis,type ReceiptEvent} from './receipt-basis.ts';
 import {ethereumExecutionOrder} from './ethereum-order.ts';
 
 export function ethereumReceiptBasis(data:EthereumData,wallets:EthereumWallet[],exchanges:EthereumWallet[]){
+  wallets=ownedEthereumWallets(wallets);
   if(!wallets.length||wallets.some(w=>!data.accounts[w.address]))return {reconciled:false,usd:null,average:null};
   const transactions=ethereumExecutionOrder(data,wallets);
   if(!transactions)return {reconciled:false,usd:null,average:null};

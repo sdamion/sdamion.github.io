@@ -11,10 +11,14 @@ Wallet history has no local total
 request, transaction-count or history-page cutoff. Provider
 quotas, request pacing, response validation and encrypted-cache byte-size limits
 still apply. Repeated or empty provider pages claiming more data fail closed.
-Completed Ethereum block windows are kept in memory for
-retries while Portfolio remains open; incomplete pages never become account
-checkpoints. Resumed scans recheck the latest 64 blocks. In-memory windows are
-cleared when the member or wallet scope changes and after a successful save.
+Completed Ethereum block windows are saved as encrypted, partitioned scan settings
+in `ethereum-scan-storage.ts`, separate from completed accounts and financial totals.
+Restarted scans reuse these windows per wallet, kind and provider, and recheck the
+latest 64 blocks. Accepted prefixes of rejected windows are reused while their last
+block is fetched again. Scan settings are retired only after account history is saved.
+Ethereum Swap addresses are counterparties, not owned accounts: only regular wallets
+are scanned and contribute balances/fees, while their transactions retain Swap labels
+and cross-chain pairing. Saved shared-address histories are excluded from totals.
 
 `compact-storage.ts` provides shared lossless dictionary encoding for encrypted
 ADA, ETH and SOL storage. Cardano time buckets and native-chain account history

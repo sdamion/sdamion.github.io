@@ -12,12 +12,12 @@ const wallets:Wallet[]=[{address:stake,label:'My wallet'},{address:root,label:'S
 const fact:Fact={hash:'ada',time:1780021100,adaRaw:'-10600173333',feeRaw:'173333',internal:false,assets:{},decimals:{},wallets:[owned],swapCandidate:true,externalOutputs:[{address:service,stakeAddress:root,lovelace:'10600000000'}]};
 const ethRoot='0x'+'a'.repeat(40),ethSource='0x'+'c'.repeat(40),hash='0x'+'1'.repeat(64);
 const tx:EthereumTransaction={id:hash+':normal',hash,block:1,time:1780023611,from:ethSource,to:ethRoot,valueWei:'1000000000000000000',feeWei:'21000',kind:'normal',failed:false};
-const ethWallets=[{address:ethRoot,name:'Simple Swap',group:'swap' as const}];
+const ethWallets=[{address:ethRoot,name:'Own wallet'},{address:ethSource,name:'Simple Swap',group:'swap' as const}];
 const data={accounts:{[ethRoot]:{block:1,balanceWei:'1000000000000000000',transactions:[tx]}},history:{},usd:2000,updated:null};
 const pairs=[{cardano:'ada',ethereum:tx.id}],before=structuredClone({wallets,ethWallets,fact,data});
 const learned=learnMatchedSwapAddresses(pairs,[fact],wallets,{},new Set([owned]),data,ethWallets);
 assert.deepEqual(learned.cardano[1].swapAddresses,[service]);
-assert.deepEqual(learned.ethereum[0].swapAddresses,[ethSource]);
+assert.equal(learned.ethereum,ethWallets,'a known service-to-owned transfer does not turn either address into another scanned wallet');
 assert.equal(learned.cardano.length,wallets.length);assert.equal(learned.ethereum.length,ethWallets.length,'counterparties do not become newly scanned wallets');
 assert.deepEqual({wallets,ethWallets,fact,data},before,'learning preserves facts, cache and original settings');
 const restored=memberWallets(stake,JSON.parse(JSON.stringify(learned.cardano)));

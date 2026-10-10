@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import {matchCrossChainSwaps,groupSwapRows} from './cross-chain-swaps.ts';
-import {ethereumFees,ethereumTransactions,ethereumSwapDirection,type EthereumData,type EthereumTransaction} from './ethereum.ts';
+import {ethereumFees,ethereumTransactions,ethereumSwapDirection,type EthereumData,type EthereumTransaction,type EthereumWallet} from './ethereum.ts';
 import {analyse,type Fact} from './core.ts';
 import {emptySolana} from './solana.ts';
 const time=Date.parse('2023-01-06T23:55:00Z')/1000,address='0x'+'a'.repeat(40),external='0x'+'b'.repeat(40);
-const hash='0x'+'1'.repeat(64),wallets=[{address,name:'Swap',group:'swap' as const}];
+const hash='0x'+'1'.repeat(64),wallets:EthereumWallet[]=[{address,name:'Own'},{address:external,name:'Swap',group:'swap'}];
 const tx:EthereumTransaction={id:hash+':normal',hash,kind:'normal',block:1,time:time+600,from:external,to:address,valueWei:'1000000000000000000',feeWei:'210000000000000',failed:false};
 const fact:Fact={hash:'ada',time,adaRaw:'-2002000000',feeRaw:'2000000',internal:false,assets:{},decimals:{},wallets:['swap'],swapCandidate:true,externalInputs:[],externalOutputs:[]};
 const data:EthereumData={accounts:{[address]:{balanceWei:'1000000000000000000',block:1,transactions:[tx]}},history:{'2023-01-07':1000},usd:1000,updated:null};
@@ -37,11 +37,11 @@ assert.equal(match([fact],{...data,accounts:{[address]:{...data.accounts[address
 const before=structuredClone({fact,data});match();assert.deepEqual({fact,data},before,'matching never mutates history or fees');
 assert.equal(ethereumFees(withTx({from:address,to:external}),wallets),0.00021,'gas remains attributable');
 const ownWallet={address:external,name:'Metamask'};
-const bothWallets=[...wallets,ownWallet];
+const bothWallets=[{address,name:'Swap',group:'swap' as const},ownWallet];
 assert.equal(ethereumSwapDirection(tx,bothWallets),false,'regular wallet to saved Swap wallet is outgoing');
 assert.equal(ethereumSwapDirection({...tx,from:address,to:external},bothWallets),true,'saved Swap wallet to regular wallet is incoming');
 assert.equal(ethereumSwapDirection(tx,[ownWallet,{address,name:'Regular'}]),null,'ordinary self transfers are not swap legs');
-assert.equal(ethereumSwapDirection(tx,[...wallets,{...ownWallet,group:'swap'}]),null,'transfers between two Swap wallets are not inferred');
+assert.equal(ethereumSwapDirection(tx,[{address,name:'Swap',group:'swap'},{...ownWallet,group:'swap'}]),null,'transfers between two Swap wallets are not inferred');
 const mayTime=Date.parse('2026-05-29T02:18:00Z')/1000;
 const mayFact={...fact,time:mayTime,adaRaw:String(-Math.round(2461.90/0.232251*1e6)),feeRaw:null};
 const mayTx={...tx,id:hash+':0',kind:'internal' as const,feeWei:null,time:mayTime+42*60,from:address,to:external,valueWei:'1226010640000000000'};

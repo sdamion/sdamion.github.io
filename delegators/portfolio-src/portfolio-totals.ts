@@ -1,4 +1,4 @@
-import {ethereumTransactions,weiToEth,type EthereumData,type EthereumWallet,type FiatTransfer} from './ethereum.ts';
+import {ethereumTransactions,ownedEthereumWallets,weiToEth,type EthereumData,type EthereumWallet,type FiatTransfer} from './ethereum.ts';
 import {fiatRate,type ComparisonCurrency,type FxHistory} from './transfer-comparison.ts';
 import {performanceTransfers} from './portfolio-flows.ts';
 
@@ -15,6 +15,7 @@ export function networkFeeNotes(chains:{chain:string;historyComplete:boolean;fee
   return notes;
 }
 export function ethereumAvailableTotals(data:EthereumData,wallets:EthereumWallet[]){
+  wallets=ownedEthereumWallets(wallets);
   const values=availableTotal(wallets.map(w=>{
     const account=data.accounts[w.address];if(!account)return null;
     const amount=weiToEth(account.balanceWei);return amount===0?0:data.usd===null?null:amount*data.usd;

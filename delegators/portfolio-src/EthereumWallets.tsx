@@ -39,7 +39,7 @@ export function EthereumWallets({wallets,data,exchanges=false,swap=false,owned=[
       </TableRow>}/>
     </TableBody></Table>
     <p className="small muted">{t(exchanges?'Only ETH transfers to or from saved CEX addresses contribute to CEX IN/OUT. Own-wallet transfers are excluded.':'Ethereum mainnet · ETH only. ERC-20 tokens, NFTs and other EVM networks are not included.')}</p>
-    {swap&&<p className="small muted">{t('Add only Ethereum Swap wallets you own. Balances and fees are included; transfers between your own wallets are excluded from CEX IN/OUT.')}</p>}
+    {swap&&<p className="small muted">{t('Swap addresses identify counterparties in your wallet transactions. Their balances and unrelated history are not downloaded or included in your Portfolio.')}</p>}
     <p className="small muted"><a href="https://etherscan.io" target="_blank" rel="noreferrer">Powered by Etherscan.io APIs</a></p>
   </section>;
 }

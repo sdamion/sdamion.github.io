@@ -7,6 +7,7 @@ export type EthereumAccount={balanceWei:string;block:number;transactions:Ethereu
 export type EthereumData={accounts:Record<string,EthereumAccount>;history:Record<string,number>;usd:number|null;updated:string|null};
 export const emptyEthereum=():EthereumData=>({accounts:{},history:{},usd:null,updated:null});
 export const validEthereumAddress=(value:string)=>/^0x[0-9a-f]{40}$/i.test(value);
+export const ownedEthereumWallets=(wallets:EthereumWallet[])=>wallets.filter(wallet=>wallet.group!=='swap');
 export function ethereumWallets(value:unknown):EthereumWallet[]{
   if(!Array.isArray(value))return [];
   const rows=new Map<string,EthereumWallet>();
@@ -60,11 +61,13 @@ export function ethereumAccountTransactions(transactions:EthereumTransaction[]){
   return rows;
 }
 export function ethereumTransactions(data:EthereumData,wallets:EthereumWallet[]){
+  wallets=ownedEthereumWallets(wallets);
   const rows=new Map<string,EthereumTransaction>();
   for(const wallet of wallets)for(const tx of ethereumAccountTransactions(data.accounts[wallet.address]?.transactions||[]))if(!rows.has(tx.id))rows.set(tx.id,tx);
   return [...rows.values()].sort((a,b)=>b.time-a.time||a.id.localeCompare(b.id));
 }
 export function ethereumTransactionCount(data:EthereumData,wallets:EthereumWallet[]){
+  wallets=ownedEthereumWallets(wallets);
   return new Set(wallets.flatMap(wallet=>data.accounts[wallet.address]?.transactions.map(tx=>tx.hash)||[])).size;
 }
 export function ethereumSwapDirection(tx:EthereumTransaction,wallets:EthereumWallet[]):boolean|null{
@@ -83,6 +86,7 @@ export function ethereumSwapDirection(tx:EthereumTransaction,wallets:EthereumWal
   return from&&to?fromSwap:!!to;
 }
 export function ethereumTransfer(tx:EthereumTransaction,wallets:EthereumWallet[],exchanges:EthereumWallet[]){
+  wallets=ownedEthereumWallets(wallets);
   if(tx.failed||BigInt(tx.valueWei)===0n)return null;
   const owned=new Set(wallets.map(w=>w.address));
   if(owned.has(tx.from)&&owned.has(tx.to))return null;
@@ -100,6 +104,7 @@ export function ethereumTransfers(data:EthereumData,wallets:EthereumWallet[],exc
   });
 }
 export function ethereumValue(data:EthereumData,wallets:EthereumWallet[]):number|null{
+  wallets=ownedEthereumWallets(wallets);
   if(!wallets.length)return 0;
   if(data.usd===null||wallets.some(w=>!data.accounts[w.address]))return null;
   const value=wallets.reduce((sum,w)=>sum+weiToEth(data.accounts[w.address].balanceWei)*data.usd!,0);
@@ -108,6 +113,7 @@ export function ethereumValue(data:EthereumData,wallets:EthereumWallet[]):number
 export function addKnownValues(a:number|null,b:number|null):number|null{return a===null||b===null||!Number.isFinite(a+b)?null:a+b;}
 export type FiatTransfer={hash:string;time:number;side:'buy'|'sell';usd:number|null;performance?:boolean};
 export function ethereumFees(data:EthereumData,wallets:EthereumWallet[]):number|null{
+  wallets=ownedEthereumWallets(wallets);
   if(wallets.some(w=>!data.accounts[w.address]))return null;
   const owned=new Set(wallets.map(w=>w.address));
   return weiToEth(String(ethereumTransactions(data,wallets).reduce((sum,tx)=>sum+(tx.kind==='normal'&&owned.has(tx.from)&&tx.feeWei!==null?BigInt(tx.feeWei):0n),0n)));

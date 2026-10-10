@@ -3,9 +3,9 @@
     const DEFAULT_LANGUAGE = 'en';
     const LANGUAGE_CONFIG = Object.freeze({
         en: { label: 'English', flag: '🇺🇸' },
-        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20261009-portfolio-access' },
-        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20261009-portfolio-access' },
-        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20261009-portfolio-access' }
+        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20261010-eth-recovery' },
+        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20261010-eth-recovery' },
+        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20261010-eth-recovery' }
     });
     const TRANSLATION_ATTR = 'data-i18n';
     const TRANSLATION_ORIGINAL_ATTR = 'data-i18n-original';
@@ -102,6 +102,14 @@
         ['Admin Area', 'admin_area'],
         ['Admin Users', 'admin_users'],
         ['Portfolio access', 'portfolio_access'],
+        ['Swap addresses identify counterparties in your wallet transactions. Their balances and unrelated history are not downloaded or included in your Portfolio.', 'portfolio_eth_swap_counterparties'],
+        ['Ethereum scan checkpoint could not be opened. Saved data is retained.', 'portfolio_eth_scan_checkpoint_failed'],
+        ['{chain}: {done} / {total} transactions downloaded', 'portfolio_download_counts'],
+        ['Total unknown until wallet history discovery finishes', 'portfolio_download_unknown'],
+        ['Waiting for {count} wallet balances', 'portfolio_download_wallets'],
+        ['Missing prices: {count} assets', 'portfolio_download_assets'],
+        ['Missing historical prices: {count} transfers', 'portfolio_download_transfers'],
+        ['Selected currency rate unavailable', 'portfolio_download_currency'],
         ['Portfolio access requires a backend update.', 'portfolio_access_backend'],
         ['Saving Portfolio access...', 'portfolio_access_saving'],
         ['Portfolio access saved.', 'portfolio_access_saved'],

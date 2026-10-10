@@ -4,6 +4,7 @@ import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {ExternalLink,Plus,Trash2} from 'lucide-react';
 import {PortfolioRefresh} from './PortfolioRefresh';
 import {usePortfolioText} from './use-portfolio-text';
+import {DownloadStatus} from './DownloadStatus';
 import {AssetWalletAddresses} from './AssetWalletAddresses';
 import {createCardanoRequest} from './cardano-request';
 import {planWalletDiscovery,pruneUnusedWalletAddresses,lowActivityWalletAddresses,activeAnalysedWalletGroups} from './wallet-discovery';
@@ -432,17 +433,17 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   const assetAddresses=useMemo(()=>snapshot?holdingWalletAddresses(snapshot.infos):{},[snapshot]);
   const classifiedFacts=useMemo(()=>Object.fromEntries(Object.entries(snapshot?.facts||{}).map(([hash,fact])=>[hash,cexAdjustedFact(fact,cexAddresses)])),[snapshot,cexAddresses]);
   const savedSwapGroups=useMemo(()=>Object.fromEntries(wallets.filter(wallet=>wallet.group==='swap').map(wallet=>[wallet.address,[...snapshot?.swapGroups?.[wallet.address]||[],...wallet.swapAddresses||[]]])),[wallets,snapshot?.swapGroups]);
-  const crossChainSwaps=useMemo(()=>matchCrossChainSwaps(Object.values(classifiedFacts),swapAddresses,ethereum.data,ethereum.wallets,snapshot?.history||{},0.05,savedSwapGroups,{data:solana.data,wallets:solana.wallets}),[classifiedFacts,swapAddresses,ethereum.data,ethereum.wallets,snapshot?.history,savedSwapGroups,solana.data,solana.wallets]);
+  const crossChainSwaps=useMemo(()=>matchCrossChainSwaps(Object.values(classifiedFacts),swapAddresses,ethereum.data,ethereum.allWallets,snapshot?.history||{},0.05,savedSwapGroups,{data:solana.data,wallets:solana.wallets}),[classifiedFacts,swapAddresses,ethereum.data,ethereum.allWallets,snapshot?.history,savedSwapGroups,solana.data,solana.wallets]);
   useEffect(()=>{
     if(!ready||!ethereum.loaded)return;
     const owned=new Set(Object.values(snapshot?.groups||{}).flat());
     for(const wallet of wallets.filter(wallet=>wallet.group!=='swap'))owned.add(wallet.address);
-    const learned=learnMatchedSwapAddresses(crossChainSwaps.pairs,Object.values(classifiedFacts),wallets,snapshot?.swapGroups||{},owned,ethereum.data,ethereum.wallets);
+    const learned=learnMatchedSwapAddresses(crossChainSwaps.pairs,Object.values(classifiedFacts),wallets,snapshot?.swapGroups||{},owned,ethereum.data,ethereum.allWallets);
     try{
       if(learned.cardano!==wallets){localStorage.setItem(SETTINGS,JSON.stringify(learned.cardano));setWallets(learned.cardano);}
-      if(learned.ethereum!==ethereum.wallets)ethereum.saveWallets(learned.ethereum);
+      if(learned.ethereum!==ethereum.allWallets)ethereum.saveWallets(learned.ethereum);
     }catch{setCacheNotice('Wallet settings could not be saved to the selected cache.');}
-  },[ready,ethereum.loaded,crossChainSwaps,classifiedFacts,wallets,snapshot?.groups,snapshot?.swapGroups,ethereum.data,ethereum.wallets]);
+  },[ready,ethereum.loaded,crossChainSwaps,classifiedFacts,wallets,snapshot?.groups,snapshot?.swapGroups,ethereum.data,ethereum.allWallets]);
   const cexFacts=useMemo(()=>Object.fromEntries(Object.entries(classifiedFacts).filter(([hash])=>!crossChainSwaps.cardano.has(hash))),[classifiedFacts,crossChainSwaps]);
   const ethTransfers=useMemo(()=>rawEthTransfers.filter(row=>!crossChainSwaps.ethereum.has(row.hash)),[rawEthTransfers,crossChainSwaps]);
   const solTransfers=useMemo(()=>performanceTransfers(rawSolTransfers).filter(row=>!crossChainSwaps.solana.has(row.hash.split(':')[1])),[rawSolTransfers,crossChainSwaps]);
@@ -533,6 +534,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   const fees=useMemo(()=>portfolioFeeTotal(Object.values(snapshot?.facts||{}),trackedAddresses,swapAddresses),[snapshot,trackedAddresses,swapAddresses]);
   const loadedFacts=Object.keys(classifiedFacts).length;
   const transactionTotal=snapshot?.txs.length||0;
+  const analysedTotal=snapshot?.txs.filter(tx=>!!snapshot.facts[tx.tx_hash]).length||0;
   const allTransactionTotal=transactionTotal+ethereumTransactionCount(ethereum.data,ethereum.wallets)+solTransactions.length;
   const ethFees=ethAvailable.fees;
   const availableFees=availableTotal([currentAdaUsd!==null?fees*currentAdaUsd:null,...(ethereum.wallets.length?[ethAvailable.feeUsd]:[]),...(solana.wallets.length?[solAvailable.feeUsd]:[])]);
@@ -542,10 +544,14 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
     ...(ethereum.wallets.length?[{chain:'ETH',historyComplete:!ethAvailable.feesPartial,feeUsd:ethAvailable.feeUsd,feeKnown:ethAvailable.fees!==null}]:[]),
     ...(solana.wallets.length?[{chain:'SOL',historyComplete:!solAvailable.feesPartial,feeUsd:solAvailable.feeUsd,feeKnown:solAvailable.fees!==null}]:[])
   ],holdingsCurrency==='ADA'?currentAdaUsd!==null&&currentAdaUsd>0:holdingsRate!==null);
-  const partialNote='Partial · waiting for remaining wallet data or prices';
+  const downloadChains=[
+    {chain:'ADA',progress:{downloaded:analysedTotal,total:snapshot?.complete?transactionTotal:null}},
+    ...(ethereum.wallets.length?[{chain:'ETH',progress:ethereum.downloadProgress}]:[]),
+    ...(solana.wallets.length?[{chain:'SOL',progress:solana.downloadProgress}]:[])
+  ];
+  const partialNote=<DownloadStatus chains={downloadChains} missingWallets={ethereum.wallets.filter(wallet=>!ethereum.data.accounts[wallet.address]).length+solana.wallets.filter(wallet=>!solana.data.accounts[wallet.address]).length} missingAssets={included.filter(row=>row.value===null).length+Number(!ethExcluded&&ethereum.wallets.length>0&&ethAvailable.value===null)+Number(!solExcluded&&solana.wallets.length>0&&solAvailable.value===null)} missingTransfers={gainFlows.filter(row=>row.usd===null).length} missingCurrency={holdingsCurrency!=='ADA'&&holdingsRate===null}/>;
   const cexPending=snapshot?.txs.filter(tx=>!hasCounterpartyData(snapshot.facts[tx.tx_hash])).length||0;
   const cexUnresolved=Object.values(cexFacts).filter(f=>isCexTransaction(f,cexAddresses)&&!cexAdaTransfer(f,cexAddresses)).length;
-  const analysedTotal=snapshot?.txs.filter(tx=>!!snapshot.facts[tx.tx_hash]).length||0;
   const progress=analysisProgress(busy,analysis,analysedTotal,transactionTotal);
   const eta=analysis&&counted!==null?remainingSeconds(analysis.started,clock,analysis.done,analysis.total):null;
   const refreshTiming=refreshStarted?`${busy?'Elapsed':'Refresh duration'}: ${durationLabel((clock-refreshStarted)/1000)}${busy?(eta!==null?` · Estimated analysis remaining: ${durationLabel(eta)}`:' · Estimating remaining time…'):''}`:'';
@@ -553,9 +559,9 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   const ethereumShown=ethTransactions.filter(tx=>{
     const internalSwap=crossChainSwaps.ethereum.has(tx.id),transfer=internalSwap?null:ethereumTransfer(tx,ethereum.wallets,ethereum.exchanges),own=new Set(ethereum.wallets.map(w=>w.address));
     const kind=internalSwap||own.has(tx.from)&&own.has(tx.to)?'internal':own.has(tx.from)?'send':'receive';
-    const swap=ethereum.wallets.some(w=>w.group==='swap'&&[w.address,...w.swapAddresses||[]].some(address=>address===tx.from||address===tx.to));
+    const swap=ethereum.swapWallets.some(w=>[w.address,...w.swapAddresses||[]].some(address=>address===tx.from||address===tx.to));
     const matches=section==='gain-loss'?!!transfer&&(filter==='all'||filter===(transfer.side==='buy'?'eth-in':'eth-out')):filter==='all'||filter===kind||filter==='cex'&&!!transfer||filter==='swap'&&swap;
-    const names=[...ethereum.wallets,...ethereum.exchanges].filter(w=>[w.address,...('swapAddresses' in w?w.swapAddresses||[]:[])].some(address=>address===tx.from||address===tx.to)).map(w=>w.name);
+    const names=[...ethereum.allWallets,...ethereum.exchanges].filter(w=>[w.address,...('swapAddresses' in w?w.swapAddresses||[]:[])].some(address=>address===tx.from||address===tx.to)).map(w=>w.name);
     return matches&&withinTransactionDates(tx.time,dateFrom,dateTo)&&matchesSearchText(query,[tx.hash,tx.from,tx.to,'ETH',...names]);
   });
   const solShown=solTransactions.filter(tx=>{
@@ -586,7 +592,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   </>;
   const exchangeForm=<CexAddresses entries={cexAddresses} owned={ownedAddresses} onChange={saveCexAddresses}/>;
   const swapForm=<SwapWallets inline wallets={wallets} groups={snapshot?.swapGroups} onChange={saveWallets}/>;
-  const ethSwapWallets=ethereum.wallets.filter(w=>w.group==='swap'),ethOwnWallets=ethereum.wallets.filter(w=>w.group!=='swap');
+  const ethSwapWallets=ethereum.swapWallets,ethOwnWallets=ethereum.wallets;
   return <PortfolioCurrencyContext.Provider value={currencyDisplay}><main className="member-portfolio"><PortfolioQuickstart stake={memberStake} status={status} wallets={walletForm} exchanges={exchangeForm} swap={swapForm}/><div className="portfolio-body"><div className="section-heading" aria-label="Portfolio refresh">
     <PortfolioRefresh onRefresh={()=>{void refresh();void ethereum.refresh();void solana.refresh();}} disabled={busy||ethereum.busy||solana.busy||!ready} busy={busy||ethereum.busy||solana.busy} currencyControl={<select className="governance-vote-secondary" aria-label={t('Comparison currency')} value={holdingsCurrency} onChange={event=>setHoldingsCurrency(event.target.value as 'ADA'|ComparisonFiat)}><option value="ADA">ADA</option><option value="USD">USD ($)</option><option value="EUR">EUR (€)</option><option value="JPY">JPY (¥)</option></select>}/>
     <div className="portfolio-section">
@@ -600,11 +606,12 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   </div>
     <section className="portfolio-section"><div className="tdsp-tile-grid">
       <MenuTile title="Wallets" value={refreshCounts?`${num(refreshCounts.active+ethereum.wallets.length+solana.wallets.length,0)} / ${num(refreshCounts.total+ethereum.wallets.length+solana.wallets.length,0)} active`:initialising?'Initialising':'— / — active'} loading={initialising} loadingLabel={status} onOpen={()=>setSection('wallets')}/>
-      <MenuTile title="Transactions" value={snapshot?num(allTransactionTotal,0):'—'} analysis={snapshot?{done:progress.done+allTransactionTotal-transactionTotal,total:progress.total+allTransactionTotal-transactionTotal,counting:counting!==null,busy:busy||ethereum.busy||solana.busy,status:transactionStatus}:undefined} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('transactions');}}>
+      <MenuTile title="Transactions" value={snapshot?num(allTransactionTotal,0):'—'} analysis={snapshot?{done:progress.done+allTransactionTotal-transactionTotal,total:progress.total+allTransactionTotal-transactionTotal,counting:counting!==null||ethereum.busy&&ethereum.downloadProgress.total===null||solana.busy&&solana.downloadProgress.total===null,busy:busy||ethereum.busy||solana.busy,status:transactionStatus}:undefined} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('transactions');}}>
+        <DownloadStatus chains={downloadChains}/>
         {storageMode()==='remote'?<CacheUploadProgress onRetry={()=>void flushVault().catch(()=>{})}/>:cacheNotice&&<p role="status" className="tdsp-bar-legend">{cacheNotice}</p>}
       </MenuTile>
       <MenuTile title="Assets" value={holdingsDisplay} onOpen={()=>{resetPolicies();setHoldingsGroup(null);setSection('holdings');}}>
-        {portfolioPartial&&<p translate="no" className="small muted" role="status">{t(partialNote)}</p>}
+        {portfolioPartial&&partialNote}
         <p className="small muted">{t('{done} / {total} assets valued',{done:valued.length+(ethereum.wallets.length&&!ethExcluded&&ethValue!==null?1:0)+(solana.wallets.length&&!solExcluded&&solAvailable.value!==null?1:0),total:included.length+(ethereum.wallets.length&&!ethExcluded?1:0)+(solana.wallets.length&&!solExcluded?1:0)})}{excludedCount+(ethereum.wallets.length&&ethExcluded?1:0)+(solana.wallets.length&&solExcluded?1:0)?' · '+t('{count} excluded',{count:excludedCount+(ethereum.wallets.length&&ethExcluded?1:0)+(solana.wallets.length&&solExcluded?1:0)}):''}</p>
         {(holdingsCurrency==='EUR'||holdingsCurrency==='JPY')&&holdingsValue===null&&<p className="small muted" role="status">{t(fx.status||'Historical exchange rates unavailable')}</p>}
       </MenuTile>
@@ -636,7 +643,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
     </section>}
     exchanges={<section className="portfolio-section">
       <CexAddresses entries={cexAddresses} owned={ownedAddresses} onChange={saveCexAddresses} swap={{wallets,groups:snapshot?.swapGroups,onChange:saveWallets}}/>
-      {canEthereum&&<><EthereumWallets wallets={ethereum.exchanges} data={ethereum.data} exchanges owned={ethereum.wallets} onChange={ethereum.saveExchanges}/>
+      {canEthereum&&<><EthereumWallets wallets={ethereum.exchanges} data={ethereum.data} exchanges owned={ethereum.allWallets} onChange={ethereum.saveExchanges}/>
       <EthereumWallets wallets={ethSwapWallets} data={ethereum.data} swap owned={ethOwnWallets} onChange={next=>ethereum.saveWallets([...ethOwnWallets,...next])}/>
       </>}{canSolana&&<>
       <SolanaWallets wallets={solana.exchanges} data={solana.data} exchanges owned={solana.wallets} onChange={solana.saveExchanges}/></>}
@@ -713,7 +720,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
     <div className="tdsp-chart-overview portfolio-gain-overview">
     <CexTimeline facts={Object.fromEntries(cardanoShown.map(tx=>[tx.tx_hash,classifiedFacts[tx.tx_hash]]))} entries={cexAddresses} history={snapshot?.history||{}} btcHistory={btc.history} ethHistory={ethereum.data.history} solHistory={solana.data.history} fxHistory={fx.history} crypto={comparisonCrypto} currency={comparisonFiat} busy={busy||ethereum.busy||solana.busy} dateFrom={dateFrom} dateTo={dateTo} additional={[...performanceTransfers(ethTransfers).filter(row=>visibleEthIds.has(row.hash)),...solTransfers.filter(row=>visibleSolIds.has(row.hash.split(':')[1]))]}/>
     <section className="portfolio-section tdsp-chart-summary portfolio-gain-summary" aria-label="ADA Gains/Loss breakdown">
-      {(!ethHistoryReady||!solHistoryReady||portfolioPartial||availableCex.partial)&&<p translate="no" className="small muted" role="status">{t(partialNote)}</p>}
+      {(!ethHistoryReady||!solHistoryReady||portfolioPartial||availableCex.partial)&&partialNote}
       {(dateFrom||dateTo||query||filter!=='all')&&<p className="small muted">Gain/loss totals cover all loaded history and current wallet balances. Filters apply to the transfer graph and transaction list below.</p>}
       {ethereum.exchanges.length>0&&!ethereum.wallets.length&&<p translate="no" role="status" className="message">{t('Add your own Ethereum wallet to scan ETH CEX transfers. CEX addresses are counterparties, not your holdings; shared exchange balances are never counted as yours.')} <button type="button" className="governance-vote-secondary" onClick={()=>setSection('wallets')}>{t('Wallets')}</button></p>}
       {nativeCount>0&&<p translate="no" className="small muted">{t('Combined CEX totals use transfer-day prices, not summed coin quantities.')}</p>}
@@ -732,7 +739,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
     <section className="portfolio-section">
       <TransactionTable multiAsset={nativeCount>0}>{shown.slice(currentPage*100,(currentPage+1)*100).map(group=>{
         const compact=group.length===2;
-        const children=group.map(row=>row.chain==='solana'?<SolanaTransaction key={row.tx.hash} compact={compact} internalSwap={crossChainSwaps.solana.has(row.tx.hash)} tx={row.tx} wallets={solana.wallets} exchanges={solana.exchanges} history={solana.data.history} adaHistory={snapshot?.history||{}}/>:row.chain==='ethereum'?<EthereumTransaction key={row.tx.id} compact={compact} tx={row.tx} internalSwap={crossChainSwaps.ethereum.has(row.tx.id)} wallets={ethereum.wallets} exchanges={ethereum.exchanges} history={ethereum.data.history} adaHistory={snapshot?.history||{}}/>:section==='gain-loss'?<GainLossTransaction key={row.tx.tx_hash} tx={row.tx} fact={classifiedFacts[row.tx.tx_hash]} wallets={displayWallets} entries={cexAddresses} history={snapshot?.history||{}}/>:<Transaction key={row.tx.tx_hash} compact={compact} tx={row.tx} internalSwap={crossChainSwaps.cardano.has(row.tx.tx_hash)} fact={classifiedFacts[row.tx.tx_hash]} wallets={displayWallets} markets={snapshot?.markets||{}} history={snapshot?.history||{}} cexAddresses={cexAddresses} swapAddresses={swapAddresses}/>);
+        const children=group.map(row=>row.chain==='solana'?<SolanaTransaction key={row.tx.hash} compact={compact} internalSwap={crossChainSwaps.solana.has(row.tx.hash)} tx={row.tx} wallets={solana.wallets} exchanges={solana.exchanges} history={solana.data.history} adaHistory={snapshot?.history||{}}/>:row.chain==='ethereum'?<EthereumTransaction key={row.tx.id} compact={compact} tx={row.tx} internalSwap={crossChainSwaps.ethereum.has(row.tx.id)} wallets={ethereum.allWallets} exchanges={ethereum.exchanges} history={ethereum.data.history} adaHistory={snapshot?.history||{}}/>:section==='gain-loss'?<GainLossTransaction key={row.tx.tx_hash} tx={row.tx} fact={classifiedFacts[row.tx.tx_hash]} wallets={displayWallets} entries={cexAddresses} history={snapshot?.history||{}}/>:<Transaction key={row.tx.tx_hash} compact={compact} tx={row.tx} internalSwap={crossChainSwaps.cardano.has(row.tx.tx_hash)} fact={classifiedFacts[row.tx.tx_hash]} wallets={displayWallets} markets={snapshot?.markets||{}} history={snapshot?.history||{}} cexAddresses={cexAddresses} swapAddresses={swapAddresses}/>);
         return compact?<TransactionPair crossChain={group.some(row=>row.chain!=='cardano')} symbols={group.some(row=>row.chain==='solana')?'ADA / SOL':'ADA / ETH'} key={group[0].chain==='cardano'?group[0].tx.tx_hash:group[0].chain==='ethereum'?group[0].tx.id:group[0].tx.hash}>{children}</TransactionPair>:children;
       })}</TransactionTable>{!shown.length&&<p className="empty">{busy?'Loading transactions…':'No matching transactions.'}</p>}
       <TransactionPagination position="bottom" page={currentPage} count={shown.length} onPage={setPage}/>
@@ -774,10 +781,10 @@ function AssetImage({id,name,market,onOpen,compact=false,hideIdentifier=false}:{
   return onOpen?<button type="button" className="governance-vote-secondary portfolio-asset-button" onClick={onOpen} aria-label={`View ${name} details`}>{content}</button>:<div className={compact?'portfolio-token-inline':undefined}>{content}</div>;
 }
 
-function Metric({label,value,amount,note,tone='',onOpen,openLabel=label,children}:{label:string;value:string;amount?:{ada:number|null;usd:number|null};note?:string;tone?:string;onOpen?:()=>void;openLabel?:string;children?:React.ReactNode}){
+function Metric({label,value,amount,note,tone='',onOpen,openLabel=label,children}:{label:string;value:string;amount?:{ada:number|null;usd:number|null};note?:React.ReactNode;tone?:string;onOpen?:()=>void;openLabel?:string;children?:React.ReactNode}){
   const t=usePortfolioText();
   const Tag=onOpen?'button':'div';
-  return <Tag type={onOpen?'button':undefined} onClick={onOpen} aria-label={onOpen?`Open ${openLabel}`:undefined} className="governance-menu-card"><strong translate="no" className={`governance-card-title ${tone}`}>{amount?<PortfolioCurrencyContext.Provider value={null}><AdaUsdAmount {...amount}/></PortfolioCurrencyContext.Provider>:t(value)}</strong><span className="governance-card-detail" data-i18n-auto-original={label}>{label}</span>{children}{note&&<span className="small muted">{t(note)}</span>}</Tag>;
+  return <Tag type={onOpen?'button':undefined} onClick={onOpen} aria-label={onOpen?`Open ${openLabel}`:undefined} className="governance-menu-card"><strong translate="no" className={`governance-card-title ${tone}`}>{amount?<PortfolioCurrencyContext.Provider value={null}><AdaUsdAmount {...amount}/></PortfolioCurrencyContext.Provider>:t(value)}</strong><span className="governance-card-detail" data-i18n-auto-original={label}>{label}</span>{children}{note&&<span className="small muted">{typeof note==='string'?t(note):note}</span>}</Tag>;
 }
 function Transaction({tx,fact,markets,wallets,history,cexAddresses,swapAddresses,internalSwap=false,compact=false}:{tx:Tx;fact?:Fact;markets:Record<string,Market>;wallets:Wallet[];history:Record<string,number>;cexAddresses:CexAddress[];swapAddresses:Set<string>;internalSwap?:boolean;compact?:boolean}){
   const kind=fact?kindOf(fact):null,trade=fact?tradeOf(fact):null;

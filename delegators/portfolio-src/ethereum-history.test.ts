@@ -6,14 +6,14 @@ import type {EthereumTransaction} from './ethereum.ts';
 const address='0x'+'a'.repeat(40),other='0x'+'b'.repeat(40);
 const tx=(block:number):EthereumTransaction=>({id:'0x'+'1'.repeat(64)+':normal',hash:'0x'+'1'.repeat(64),kind:'normal',block,time:1700000000,from:address,to:other,valueWei:'1',feeWei:'1',failed:false});
 const windowError=()=>Object.assign(new Error('window'),{code:'history_window_limit'});
-test('splits rejected windows without gaps and discards incomplete parent pages',async()=>{
+test('reuses verified prefixes of rejected windows and rechecks the boundary block',async()=>{
   const calls:object[]=[];
   const rows=await ethereumHistory({startBlock:0,endBlock:99},async range=>{
     calls.push(range);
     if(range.startBlock===0&&range.endBlock===99){if(range.page===1)return {transactions:[tx(10)],more:true};throw windowError();}
-    return {transactions:range.startBlock===50?[tx(60)]:[],more:false};
+    return {transactions:[tx(60)],more:false};
   });
-  assert.deepEqual(calls,[{startBlock:0,endBlock:99,page:1},{startBlock:0,endBlock:99,page:2},{startBlock:0,endBlock:49,page:1},{startBlock:50,endBlock:99,page:1}]);
+  assert.deepEqual(calls,[{startBlock:0,endBlock:99,page:1},{startBlock:0,endBlock:99,page:2},{startBlock:10,endBlock:99,page:1}]);
   assert.deepEqual(rows,[tx(60)]);
 });
 test('does not return partial histories if a child fails or a single block is too dense',async()=>{

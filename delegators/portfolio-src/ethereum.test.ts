@@ -35,8 +35,8 @@ assert.equal(ethereumTransfer(failed,wallets,exchanges),null,'failed sends are n
 assert.deepEqual(ethereumTransfer(input,wallets,exchanges),{side:'buy',amount:1});
 const swapWallets=[wallets[0],{...wallets[1],group:'swap' as const}];
 assert.equal(ethereumTransfer(internal,swapWallets,exchanges),null,'own swap transfers are internal, not CEX');
-assert.equal(ethereumValue(data,swapWallets),6000,'swap holdings are included');
-assert.equal(ethereumFees(data,swapWallets),0.00063,'swap wallet gas is included');
+assert.equal(ethereumValue(data,swapWallets),4000,'shared swap balances are not personal holdings');
+assert.equal(ethereumFees(data,swapWallets),0.00042,'shared swap gas is not paid by the member');
 assert.deepEqual(ethereumWallets(swapWallets),swapWallets,'swap classification survives storage normalization');
 const miners=wallets;
 const miningExchanges=[...exchanges,{address:'0x'+'d'.repeat(40),name:'Mining pool',miner:true}];

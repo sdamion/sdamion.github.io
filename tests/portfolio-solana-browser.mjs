@@ -44,7 +44,7 @@ try{
    ['tdsp-member-solana-cex:'+stake,JSON.stringify([{address:cex,name:'SOL Exchange'}])],
    ['tdsp-member-ethereum-wallets:'+stake,JSON.stringify([{address:'0x'+'a'.repeat(40),name:'ETH Savings'}])]
   ]);
-  window.fixtureStorage={getItem:key=>settings.get(key)??null,setItem:(key,value)=>settings.set(key,value),keys:()=>[...settings.keys()]};
+  window.fixtureStorage={getItem:key=>settings.get(key)??null,setItem:(key,value)=>settings.set(key,value),keys:()=>[...settings.keys()],setItems:(values,remove=[])=>{for(const key of remove)settings.delete(key);for(const [key,value] of Object.entries(values))settings.set(key,value);}};
   window.fixture={groups:{},infos:[{address:'wallet',balance:'100000000',utxo_set:[{tx_hash:'holding',tx_index:0,value:'100000000',asset_list:[]}]}],facts:{},txs:[],markets:{},adaUsd:0.5,history:{'2023-01-06':0.5},complete:true};
   window.createUniversalOverlay=options=>{const overlay=document.createElement('section');overlay.id=options.id;const back=document.createElement('button');back.textContent='Back';back.onclick=()=>options.closeOverlay?.();overlay.append(back,...options.bodyNodes);document.body.append(overlay);return {overlay};};
  },{stake,own,cex});

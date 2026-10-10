@@ -32,7 +32,7 @@ try{
  await page.addScriptTag({content:await readFile('shared/runtime.js','utf8')});
  await page.evaluate(({id,other})=>{
    const settings=new Map([['tdsp-member-basis:stake1uxythldc4nmx45tvnwsqu4h5pyjd94udytm6f0tgnr44vecjd8vel',JSON.stringify({[id]:{average:'0'},[other]:{average:'0'}})]]);
-   window.fixtureStorage={getItem:key=>settings.get(key)??null,setItem:(key,value)=>settings.set(key,value),keys:()=>[...settings.keys()]};
+   window.fixtureStorage={getItem:key=>settings.get(key)??null,setItem:(key,value)=>settings.set(key,value),keys:()=>[...settings.keys()],setItems:(values,remove=[])=>{for(const key of remove)settings.delete(key);for(const [key,value] of Object.entries(values))settings.set(key,value);}};
    window.fixture={groups:{},infos:[{address:'wallet',balance:'0',utxo_set:[{tx_hash:'fixture',tx_index:0,value:'0',asset_list:[id,other].map(id=>({policy_id:id.slice(0,56),asset_name:id.slice(56),quantity:'1',decimals:0}))}]}],facts:{},txs:[],markets:{[id]:{token_id:id,name:'Intersect badge',decimals:0,is_nft:true,price_by_usd:6127.25},[other]:{token_id:other,name:'Other asset',decimals:0,is_nft:true,price_by_usd:4564.64}},adaUsd:0.25,history:{},complete:true};
    window.createUniversalOverlay=options=>{const overlay=document.createElement('section');overlay.id=options.id;const back=document.createElement('button');back.textContent='Back';back.onclick=options.closeOverlay;overlay.append(back,...options.bodyNodes);document.body.append(overlay);return {overlay};};
  },{id,other});
