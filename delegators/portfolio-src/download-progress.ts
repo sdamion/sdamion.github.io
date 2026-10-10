@@ -1,5 +1,10 @@
 export type DownloadProgress={downloaded:number;total:number|null};
 export const emptyDownloadProgress=():DownloadProgress=>({downloaded:0,total:null});
+// This is the saved receipt total, not a claim that a new chain scan has finished.
+export function cachedTransactionProgress<T>(rows:Iterable<T>,identity:(row:T)=>string):DownloadProgress{
+  const saved=[...rows];
+  return createTransactionProgress(saved,identity).complete(saved);
+}
 // Chain adapters supply stable identities; partial receipts never become financial totals.
 export function createTransactionProgress<T>(rows:Iterable<T>,identity:(row:T)=>string){
   const ids=new Set<string>();
@@ -20,5 +25,7 @@ export function combinedTransactionProgress(chains:DownloadProgress[]):DownloadP
   return {downloaded:chains.reduce((sum,chain)=>sum+chain.downloaded,0),total:chains.some(chain=>chain.total===null)?null:chains.reduce((sum,chain)=>sum+chain.total!,0)};
 }
 export function downloadProgressValues(progress:DownloadProgress){
-  return {done:progress.downloaded.toLocaleString('en-US'),total:progress.total===null?'?':progress.total.toLocaleString('en-US')};
+  // Keep the saved receipt baseline visible while discovery has no final total.
+  const total=progress.total??(progress.downloaded>0?progress.downloaded:null);
+  return {done:progress.downloaded.toLocaleString('en-US'),total:total===null?'?':total.toLocaleString('en-US')};
 }

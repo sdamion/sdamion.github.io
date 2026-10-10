@@ -1870,4 +1870,6 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
   , ["Mining / services proceeds", "portfolio_text_services_proceeds"]
   , ["Mining / services receipt", "portfolio_text_services_receipt"]
   , ["Calculation", "portfolio_text_calculation"]
+  , ["Checking for additional transactions…", "portfolio_text_check_additional_transactions"]
+  , ["Ethereum finalized block unavailable. Saved data is retained.", "portfolio_text_eth_finality_unavailable"]
 ]);

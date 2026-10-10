@@ -3,7 +3,7 @@ import {portfolioFetch} from './transport';
 import {portfolioSettings,flushVault} from './vault';
 import {emptySolana,nativeWallets,validSolana,validSolanaTransaction,type SolanaData,type SolanaTransaction,type NativeWallet} from './solana';
 import {encodeSolanaSettings,readSolanaSettings} from './solana-storage';
-import {createTransactionProgress,emptyDownloadProgress,type DownloadProgress} from './download-progress';
+import {cachedTransactionProgress,createTransactionProgress,emptyDownloadProgress,type DownloadProgress} from './download-progress';
 
 export function useSolana(stake:string,enabled:boolean){
   const walletKey='tdsp-member-solana-wallets:'+stake,cexKey='tdsp-member-solana-cex:'+stake,dataKey='tdsp-member-solana-data:'+stake;
@@ -25,9 +25,8 @@ export function useSolana(stake:string,enabled:boolean){
   useEffect(()=>{
     const accounts=wallets.map(wallet=>current.current.accounts[wallet.address]);
     const rows=accounts.flatMap(account=>account?.transactions||[]);
-    const progress=createTransactionProgress([...rows,...(current.current.pending||[])],tx=>tx.hash);
-    setDownloadProgress(enabled&&accounts.length>0&&accounts.every(Boolean)&&!current.current.pending?.length?progress.complete(rows):progress.snapshot());
-  },[enabled,stake,scope]);
+    setDownloadProgress(enabled&&loaded&&accounts.length?cachedTransactionProgress([...rows,...(current.current.pending||[])],tx=>tx.hash):emptyDownloadProgress());
+  },[enabled,loaded,stake,scope]);
   const refresh=useCallback(async()=>{
     if(!enabled||!loaded||!wallets.length)return;
     controller.current?.abort();const control=new AbortController();controller.current=control;const signal=control.signal;
@@ -52,7 +51,7 @@ export function useSolana(stake:string,enabled:boolean){
     async function persist(next:SolanaData,quote=false){signal.throwIfAborted();const saved={...next,usd:quote?next.usd:current.current.usd};saveData(saved);current.current=saved;setData(saved);await flushVault();signal.throwIfAborted();}
     const known=new Map([...solanaTransactionsForCache(current.current),...(current.current.pending||[])].map(tx=>[tx.hash,tx]));
     const progress=createTransactionProgress([...wallets.flatMap(wallet=>current.current.accounts[wallet.address]?.transactions||[]),...(current.current.pending||[])],tx=>tx.hash);
-    setDownloadProgress(progress.snapshot());
+    setDownloadProgress(cachedTransactionProgress([...wallets.flatMap(wallet=>current.current.accounts[wallet.address]?.transactions||[]),...(current.current.pending||[])],tx=>tx.hash));
     let downloaded=0;
     // Pending receipts are reusable after interruption, but never enter totals until history is complete.
     async function savePending(){

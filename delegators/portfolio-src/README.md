@@ -13,15 +13,21 @@ quotas, request pacing, response validation and encrypted-cache byte-size limits
 still apply. Repeated or empty provider pages claiming more data fail closed.
 Completed Ethereum block windows are saved as encrypted, partitioned scan settings
 in `ethereum-scan-storage.ts`, separate from completed accounts and financial totals.
-Restarted scans reuse these windows per wallet, kind and provider, and recheck the
-latest 64 blocks. Accepted prefixes of rejected windows are reused while their last
+Restarted scans reuse these windows per wallet, kind and provider. Completed accounts
+record `finalizedBlock`; later scans start immediately after that saved boundary, not
+a fixed 64-block overlap. The backend queries the public Ethereum mainnet RPC for
+`eth_getBlockByNumber("finalized", false)` and shares its result for 30 seconds.
+No wallet data is sent to that RPC. Missing or regressing finality stops the scan
+without replacing saved data. Legacy accounts validate their former overlap once
+before recording finality. Accepted prefixes of rejected windows reuse all finalized data while their last
 block is fetched again. Scan settings are retired only after account history is saved.
 `download-progress.ts` provides the shared ADA/ETH/SOL transaction progress helper.
 It restores unique receipt identities before network requests, merges overlapping pages,
 and replaces stale identities with the final validated history on completion. ETH scan
 settings and SOL pending receipts contribute to visible progress, not financial totals.
 The Transactions tile uses the same combined counts; unknown discovery totals stay
-indeterminate instead of showing a misleading 100%.
+indeterminate instead of showing a misleading 100%. Per-chain labels retain the
+saved receipt count as their visible baseline while checking for additional history.
 Ethereum Swap addresses are counterparties, not owned accounts: only regular wallets
 are scanned and contribute balances/fees, while their transactions retain Swap labels
 and cross-chain pairing. Saved shared-address histories are excluded from totals.

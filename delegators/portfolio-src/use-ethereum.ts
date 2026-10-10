@@ -5,8 +5,9 @@ import {emptyEthereum,ethereumWallets,type EthereumData,type EthereumTransaction
 import {ethereumHistory,type EthereumHistoryCheckpoints} from './ethereum-history';
 import {ethereumRequest} from './ethereum-request';
 import {encodeEthereumSettings,readEthereumSettings} from './ethereum-storage';
-import {createTransactionProgress,emptyDownloadProgress,type DownloadProgress} from './download-progress';
+import {cachedTransactionProgress,createTransactionProgress,emptyDownloadProgress,type DownloadProgress} from './download-progress';
 import {encodeEthereumScanCheckpoint,readEthereumScanCheckpoints} from './ethereum-scan-storage';
+import {ethereumScanStart} from './ethereum-finality';
 
 export function useEthereum(stake:string,ready:boolean){
   const walletKey='tdsp-member-ethereum-wallets:'+stake,cexKey='tdsp-member-ethereum-cex:'+stake,dataKey='tdsp-member-ethereum-data:'+stake;
@@ -48,17 +49,15 @@ export function useEthereum(stake:string,ready:boolean){
   useEffect(()=>{
     historyCheckpoints.current.clear();
     if(ready)try{historyCheckpoints.current=readEthereumScanCheckpoints(scanKey,portfolioSettings.keys(),key=>portfolioSettings.getItem(key));}catch{setError('Ethereum scan checkpoint could not be opened. Saved data is retained.');}
-    const accounts=ownedWallets.map(wallet=>current.current.accounts[wallet.address]);
-    const progress=createTransactionProgress(savedTransactions(),tx=>tx.id);
-    const hasPending=[...historyCheckpoints.current.keys()].some(key=>ownedWallets.some(wallet=>key.startsWith(wallet.address+':')));
-    setDownloadProgress(ready&&accounts.length>0&&accounts.every(Boolean)&&!hasPending?progress.complete(accounts.flatMap(account=>account.transactions)):progress.snapshot());
-  },[ready,stake,scope]);
+    setDownloadProgress(ready&&loaded&&ownedWallets.length?cachedTransactionProgress(savedTransactions(),tx=>tx.id):emptyDownloadProgress());
+  },[ready,loaded,stake,scope]);
   const refresh=useCallback(async()=>{
     if(!ready||!loaded||!ownedWallets.length)return;
     controller.current?.abort();const control=new AbortController();controller.current=control;
     const signal=control.signal;
-    const progress=createTransactionProgress(savedTransactions(),tx=>tx.id);
-    setDownloadProgress(progress.snapshot());
+    const saved=savedTransactions();
+    const progress=createTransactionProgress(saved,tx=>tx.id);
+    setDownloadProgress(cachedTransactionProgress(saved,tx=>tx.id));
     function countTransactions(transactions:EthereumTransaction[]){
       signal.throwIfAborted();
       setDownloadProgress(progress.add(transactions));
@@ -75,8 +74,8 @@ export function useEthereum(stake:string,ready:boolean){
       return result;
     }
     async function scan(){
-      const {block}=await request<{block:number}>({action:'head'});
-      if(!Number.isSafeInteger(block)||block<0)throw new Error('Invalid Ethereum block response.');
+      const {block,finalizedBlock}=await request<{block:number;finalizedBlock:number}>({action:'head',finality:true});
+      ethereumScanStart(undefined,block,finalizedBlock);
       const next: EthereumData={...current.current,accounts:Object.fromEntries(ownedWallets.flatMap(wallet=>current.current.accounts[wallet.address]?[[wallet.address,current.current.accounts[wallet.address]]]:[])),history:{...current.current.history}};
       const changingProvider=ownedWallets.some(w=>{
         const account=current.current.accounts[w.address];
@@ -93,23 +92,24 @@ export function useEthereum(stake:string,ready:boolean){
         const cached=current.current.accounts[wallet.address];
         // Complete older block ranges remain valid when the provider changes.
         const previous=cached;
-        const startBlock=previous?Math.max(0,Math.min(previous.block,block)-64):0;
+        const startBlock=ethereumScanStart(previous,block,finalizedBlock);
         const transactions=new Map((previous?.transactions||[]).filter(tx=>tx.block<startBlock).map(tx=>[tx.id,tx]));
         for(const kind of ['normal','internal'] as const){
+          if(startBlock>block)continue;
           const rangeKey=`${wallet.address}:${kind}:${startBlock}:${block}`;
           const reused=completedRanges.get(rangeKey);
           if(reused){for(const tx of reused)transactions.set(tx.id,tx);continue;}
           const checkpointKey=`${wallet.address}:${kind}:${provider||'etherscan'}:${startBlock}`;
           let checkpoints=historyCheckpoints.current.get(checkpointKey);
           if(!checkpoints){checkpoints=new Map();historyCheckpoints.current.set(checkpointKey,checkpoints);}
-          const safeBlock=block-64;
+          const safeBlock=finalizedBlock;
           for(const [key,range] of checkpoints)if(range.endBlock>safeBlock){
             checkpoints.delete(key);
             if(range.startBlock<=safeBlock)checkpoints.set(`${range.startBlock}:${safeBlock}`,{...range,endBlock:safeBlock,transactions:range.transactions.filter(tx=>tx.block<=safeBlock)});
           }
           const fetched=await ethereumHistory({startBlock,endBlock:block},range=>request({action:'history',address:wallet.address,kind,...range}),checkpoints,Infinity,Infinity,countTransactions,async range=>{
             signal.throwIfAborted();
-            // Recent blocks must be fetched again after a reorganisation or restart.
+            // Only finalized ranges can be reused after a restart.
             const endBlock=Math.min(range.endBlock,safeBlock);
             if(endBlock<range.startBlock)return;
             const values=encodeEthereumScanCheckpoint(scanKey,checkpointKey,{...range,endBlock,transactions:range.transactions.filter(tx=>tx.block<=endBlock)});
@@ -122,7 +122,7 @@ export function useEthereum(stake:string,ready:boolean){
         }
         const {balanceWei}=await request<{balanceWei:string}>({action:'balance',address:wallet.address});
         if(typeof balanceWei!=='string'||!/^\d{1,80}$/.test(balanceWei))throw new Error('Invalid Ethereum balance response.');
-        next.accounts[wallet.address]={balanceWei,block,transactions:[...transactions.values()],provider:provider||'etherscan'};
+        next.accounts[wallet.address]={balanceWei,block,finalizedBlock,transactions:[...transactions.values()],provider:provider||'etherscan'};
         if(index===ownedWallets.length-1){
           setDownloadProgress(progress.complete(Object.values(next.accounts).flatMap(account=>account.transactions)));
         }

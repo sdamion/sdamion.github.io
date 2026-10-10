@@ -13,7 +13,7 @@ export function AdaUsdAmount({ada,usd}:{ada:number|null;usd:number|null}){
   },[ada,usd,display]);
   return display?<span translate="no">{display.currency==='ADA'?formatPortfolioAda(ada,display):formatPortfolioUsd(usd,display)}</span>:<span ref={ref}/>;
 }
-export function MenuTile({title,value,onOpen,analysis,loading=false,loadingLabel='Initialising',children}:{title:string;value:string;onOpen:()=>void;loading?:boolean;loadingLabel?:string;analysis?:{done:number;total:number;counting:boolean;busy:boolean;status?:string};children?:React.ReactNode}){
+export function MenuTile({title,value,onOpen,analysis,loading=false,loadingLabel='Initialising',children}:{title:string;value:string;onOpen:()=>void;loading?:boolean;loadingLabel?:string;analysis?:{done:number;total:number|null;counting:boolean;busy:boolean;status?:string};children?:React.ReactNode}){
   const ref=React.useRef<HTMLDivElement>(null);
   const footer=React.useMemo(()=>document.createElement('div'),[]);
   React.useLayoutEffect(()=>{
@@ -33,10 +33,11 @@ export function MenuTile({title,value,onOpen,analysis,loading=false,loadingLabel
         const activity=document.createElement('span');activity.className='tdsp-bar-legend';
         activity.textContent=analysis.status;activity.setAttribute('role','status');button.append(activity);
       }
-      const {done,total,counting,busy}=analysis;
-      const percent=total>0?Math.min(100,done/total*100):0;
+      const {done,total,busy}=analysis;
+      const counting=analysis.counting||total===null;
+      const percent=total!==null&&total>0?Math.min(100,done/total*100):0;
       const label=document.createElement('span');label.className='tdsp-bar-legend';
-      label.textContent=counting?`${done.toLocaleString()} analysed · counting transactions…`:`${done.toLocaleString()} of ${total.toLocaleString()} ${busy?'analysing':'analysed'}`;
+      label.textContent=counting?`${done.toLocaleString()} analysed · counting transactions…`:`${done.toLocaleString()} of ${total!.toLocaleString()} ${busy?'analysing':'analysed'}`;
       const row=document.createElement('span');row.className='section-heading';row.style.width='100%';
       const track=document.createElement('span');track.className='governance-vote-bar-track';track.style.flex='1';
       track.setAttribute('role','progressbar');track.setAttribute('aria-label','Transactions analysed');

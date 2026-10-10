@@ -13,7 +13,7 @@ const bundle=await build({stdin:{contents:`import {createRoot} from 'react-dom/c
 const browser=await chromium.launch({channel:'chrome',headless:true});
 try{
   const page=await browser.newPage({viewport:{width:1200,height:900}}),errors=[],requests=[];
-  let quoteUnavailable=false,indexerUnavailable=false,primaryLimited=false,temporaryLimit=0,fallbackIncomplete=false,headBlockscout=false,windowLimited=false,historyUsd=1000,durableMode='';
+  let quoteUnavailable=false,indexerUnavailable=false,primaryLimited=false,temporaryLimit=0,fallbackIncomplete=false,headBlockscout=false,windowLimited=false,historyUsd=1000,durableMode='',finalizedBlock=135;
   page.on('pageerror',error=>errors.push(error.message));
   await page.route('**/*',async route=>{
     const url=new URL(route.request().url()),operation=url.pathname.split('/').pop();
@@ -28,7 +28,7 @@ try{
       if(windowLimited&&body.action==='history'&&body.kind==='normal'&&body.endBlock-body.startBlock>40)return route.fulfill({status:502,contentType:'application/json',body:JSON.stringify({error:'Etherscan data unavailable. Check the backend API key and plan.',code:'history_window_limit'})});
       if(primaryLimited&&body.action==='history'&&body.provider!=='blockscout')return route.fulfill({status:429,contentType:'application/json',body:JSON.stringify({error:'Etherscan rate limit reached. Retry shortly.'})});
       if(fallbackIncomplete&&body.provider==='blockscout'&&body.kind==='internal')return route.fulfill({status:502,contentType:'application/json',body:JSON.stringify({error:'Blockscout data unavailable or incomplete. Saved Ethereum data is retained.',code:'indexing_incomplete'})});
-      result=body.action==='head'?{block:200}:body.action==='balance'?{balanceWei:'1000000000000000000'}:{transactions:body.kind==='normal'?[{id:hash+':normal',hash,kind:'normal',block:180,time:1672963200,from:exchange,to:address,valueWei:'1000000000000000000',feeWei:'210000000000000',failed:false}]:[],more:false};
+      result=body.action==='head'?{block:200,finalizedBlock}:body.action==='balance'?{balanceWei:'1000000000000000000'}:{transactions:body.kind==='normal'?[{id:hash+':normal',hash,kind:'normal',block:180,time:1672963200,from:exchange,to:address,valueWei:'1000000000000000000',feeWei:'210000000000000',failed:false}]:[],more:false};
       if(durableMode&&body.action==='history'&&body.kind==='normal'){
         if(durableMode==='interrupt'&&body.page===2)return route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'Fixture history interrupted'})});
         const blocks=body.startBlock===0?[1,2]:[2];
@@ -365,7 +365,7 @@ try{
   await page.waitForFunction(stake=>JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)).accounts[Object.keys(JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)).accounts)[0]].provider==='blockscout',stake);
   const fallbackCalls=requests.slice(successfulFallbackStart);
   assert.equal(fallbackCalls.filter(r=>r.action==='history'&&r.provider==='etherscan').length,3,'bounded primary retries precede one fallback restart');
-  assert.deepEqual(fallbackCalls.filter(r=>r.action==='history'&&r.provider==='blockscout').map(r=>[r.kind,r.startBlock]),[['normal',137],['internal',136]],'fallback reuses the completed stable block and rereads the latest 64 blocks; incomplete internal history resumes from the account checkpoint');
+  assert.deepEqual(fallbackCalls.filter(r=>r.action==='history'&&r.provider==='blockscout').map(r=>[r.kind,r.startBlock]),[['normal',136],['internal',136]],'fallback scans only blocks after the saved finalized boundary');
   assert.equal(await page.evaluate(stake=>Object.values(JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)).accounts)[0].transactions.length,stake),2,'fallback keeps complete older history and replaces only the overlap');
   primaryLimited=false;fallbackIncomplete=true;headBlockscout=true;
   const recoveryStart=requests.length;
@@ -411,13 +411,28 @@ try{
   indexerUnavailable=true;
   await page.evaluate(()=>window.reopenPortfolio());
   await page.getByRole('alert').filter({hasText:'Ethereum refresh failed. Saved data is retained.'}).waitFor();
-  assert.ok(await page.getByText('ETH: 1 / ? transactions',{exact:true}).count(),'durable partial ETH count is restored even when the provider is offline');
+  assert.ok(await page.getByText('ETH: 1 / 1 transactions',{exact:true}).count(),'the saved ETH receipt total is restored even when the provider is offline');
   indexerUnavailable=false;
   const resumedStart=requests.length;durableMode='resume';
   await page.evaluate(()=>window.reopenPortfolio());
   await page.waitForFunction(stake=>Object.keys(JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)).accounts).length===1,stake);
   assert.deepEqual(requests.slice(resumedStart).filter(request=>request.action==='history'&&request.kind==='normal').map(request=>request.startBlock),[2],'reopening Portfolio resumes the durable prefix without repeating earlier blocks');
   assert.equal(await page.evaluate(stake=>Object.values(JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)).accounts)[0].transactions.length,stake),2,'both old and resumed transactions survive');
+  durableMode='';finalizedBlock=180;
+  await page.evaluate(()=>window.reopenPortfolio());
+  await page.waitForFunction(stake=>Object.values(JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)).accounts)[0].finalizedBlock===180,stake);
+  const finalizedStart=requests.length;
+  await page.evaluate(stake=>{window.previousEthereumUpdate=JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)).updated;window.reopenPortfolio();},stake);
+  await page.waitForFunction(stake=>JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)).updated!==window.previousEthereumUpdate,stake);
+  const finalizedHistory=requests.slice(finalizedStart).filter(row=>row.action==='history');
+  assert.equal(finalizedHistory.length,2,'both history kinds check the nonfinalized tail');
+  assert.ok(finalizedHistory.every(row=>row.startBlock===181),'persisted finality skips finalized transactions instead of rereading a fixed overlap');
+  assert.equal(await page.evaluate(stake=>Object.values(JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)).accounts)[0].transactions.length,stake),3,'finalized receipts survive while the recent tail is replaced');
+  finalizedBlock=null;
+  const unavailableStart=requests.length;
+  await page.evaluate(()=>window.reopenPortfolio());
+  await page.getByRole('alert').filter({hasText:'Ethereum finalized block unavailable. Saved data is retained.'}).waitFor();
+  assert.equal(requests.slice(unavailableStart).filter(row=>row.action==='history').length,0,'missing finality retains data without silently rescanning finalized history');
   assert.deepEqual(errors,[]);
   console.log('PASS: Ethereum wallets, native holdings/exclusion, combined CEX totals and filters, incremental refresh, own-wallet rejection and mobile layout.');
 }finally{await browser.close();}
