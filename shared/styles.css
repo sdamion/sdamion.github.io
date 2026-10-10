@@ -88,6 +88,11 @@
 #portfolio-refresh-action .portfolio-currency-select { position: relative; display: inline-flex; flex: 0 0 auto; }
 #portfolio-refresh-action .portfolio-currency-select select { appearance: none; -webkit-appearance: none; padding-inline: 12px 34px; }
 #portfolio-refresh-action .portfolio-currency-select svg { position: absolute; inset-inline-end: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--text); }
+#portfolio-refresh-action .portfolio-sync-button { background: #737b79; color: #fff; border-color: #737b79; }
+#portfolio-refresh-action .portfolio-sync-button.is-syncing { background: #15803d; border-color: #15803d; opacity: 1; }
+#portfolio-refresh-action .portfolio-sync-button.is-syncing svg { animation: portfolio-sync-blink 1.2s ease-in-out infinite; }
+@keyframes portfolio-sync-blink { 50% { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) { #portfolio-refresh-action .portfolio-sync-button.is-syncing svg { animation: none; } }
 .member-portfolio .portfolio-comparison-crypto { display: inline-flex; align-items: center; gap: 5px; }
 .member-portfolio .portfolio-comparison-crypto img { width: 16px; height: 16px; flex: 0 0 16px; object-fit: contain; }
 .member-portfolio .portfolio-timeline p { margin: 0; }

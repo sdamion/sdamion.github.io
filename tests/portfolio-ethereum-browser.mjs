@@ -141,7 +141,7 @@ try{
   const stored=await page.evaluate(stake=>JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)),stake);
   assert.equal(stored.history['2023-01-06'],1200,'historical CEX prices are cached even when the live quote fails');
   assert.equal(stored.accounts[address].transactions.length,1,'complete history is cached before optional quotes');
-  assert.ok(await page.getByText('ETH: 1 / 1 transactions downloaded',{exact:true}).count(),'completed download count remains visible when current prices fail');
+  assert.ok(await page.getByText('ETH: 1 / 1 transactions',{exact:true}).count(),'completed transaction count remains visible when current prices fail');
   await page.waitForFunction(()=>!document.querySelector('main [role="status"]')?.textContent?.includes('Checking Ethereum'));
   await page.waitForTimeout(100);
   assert.ok(requests.filter(r=>r.action==='history').slice(-2).every(r=>r.startBlock===136),'cached Ethereum history only checks the reorg window and new blocks');

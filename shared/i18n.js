@@ -3,9 +3,9 @@
     const DEFAULT_LANGUAGE = 'en';
     const LANGUAGE_CONFIG = Object.freeze({
         en: { label: 'English', flag: '🇺🇸' },
-        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20261010-eth-recovery' },
-        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20261010-eth-recovery' },
-        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20261010-eth-recovery' }
+        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20261010-sync-status' },
+        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20261010-sync-status' },
+        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20261010-sync-status' }
     });
     const TRANSLATION_ATTR = 'data-i18n';
     const TRANSLATION_ORIGINAL_ATTR = 'data-i18n-original';
@@ -104,7 +104,9 @@
         ['Portfolio access', 'portfolio_access'],
         ['Swap addresses identify counterparties in your wallet transactions. Their balances and unrelated history are not downloaded or included in your Portfolio.', 'portfolio_eth_swap_counterparties'],
         ['Ethereum scan checkpoint could not be opened. Saved data is retained.', 'portfolio_eth_scan_checkpoint_failed'],
-        ['{chain}: {done} / {total} transactions downloaded', 'portfolio_download_counts'],
+        ['{chain}: {done} / {total} transactions', 'portfolio_download_counts'],
+        ['Portfolio syncing', 'portfolio_sync_active'],
+        ['Portfolio not syncing', 'portfolio_sync_idle'],
         ['Total unknown until wallet history discovery finishes', 'portfolio_download_unknown'],
         ['Waiting for {count} wallet balances', 'portfolio_download_wallets'],
         ['Missing prices: {count} assets', 'portfolio_download_assets'],

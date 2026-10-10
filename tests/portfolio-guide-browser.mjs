@@ -24,7 +24,7 @@ try{
    assert.ok(bounds.at(-1).right<=width);
  }
  await help.click();
- assert.equal(await page.getByRole('button',{name:'Refresh Portfolio',exact:true}).isDisabled(),true);
+ assert.equal(await page.getByRole('button',{name:'Refresh Portfolio'}).isDisabled(),true);
  const guide=page.locator('#portfolio-guide-overlay');
  await guide.waitFor();
  await guide.getByRole('heading',{name:'Getting started',exact:true}).waitFor();
