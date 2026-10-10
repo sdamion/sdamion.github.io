@@ -201,6 +201,14 @@ try{
  const comparison=summary.locator('.portfolio-gain-comparison');
  assert.equal(await comparison.locator('th').first().innerText(),'ADA IN');
  assert.equal(await comparison.locator('th').last().innerText(),'ADA OUT');
+ const explanation=summary.locator('.portfolio-gain-explanation');
+ assert.equal(await explanation.evaluate(el=>el.open),false,'calculation explanation is collapsed initially');
+ await explanation.locator('summary').click();
+ assert.equal(await explanation.evaluate(el=>el.open),true,'calculation explanation remains accessible');
+ assert.match(await explanation.innerText(),/Transfer-day prices plus current wallet value/);
+ await explanation.locator('summary').click();
+ assert.ok(await comparison.locator('.pool-delegator-amount > span').first().getAttribute('title'),'exact native amount remains available');
+ assert.ok(await comparison.locator('td').first().evaluate(el=>parseFloat(getComputedStyle(el).fontSize)<=14),'native summary uses compact typography');
  assert.ok((await summary.locator('.portfolio-gain-result').boundingBox()).y>=(await comparison.boundingBox()).y+(await comparison.boundingBox()).height,'gain/loss below comparison table');
  for(const total of await comparison.locator('td').all()){
    const neutral=await total.evaluate(el=>getComputedStyle(el).color);
@@ -218,6 +226,7 @@ try{
    await page.waitForFunction(()=>{const el=document.querySelector('.portfolio-gain-overview');return el&&el.scrollWidth<=el.clientWidth+1;});
    assert.ok((await summary.boundingBox()).y>(await graph.boundingBox()).y,'summary stacks below graph');
    assert.ok(await overview.evaluate(el=>el.scrollWidth<=el.clientWidth+1),'chart and summary fit mobile');
+   assert.ok(await comparison.evaluate(el=>el.scrollWidth<=el.clientWidth+1),'compact summary fits without horizontal clipping');
    const cells=await comparison.locator('td').all();
    assert.ok((await cells[1].boundingBox()).x>(await cells[0].boundingBox()).x,'IN precedes OUT side by side on mobile');
    assert.ok(Math.abs((await cells[0].boundingBox()).width-(await cells[1].boundingBox()).width)<2,'comparison columns have equal mobile widths');

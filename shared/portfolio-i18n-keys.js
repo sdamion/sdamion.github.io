@@ -1869,4 +1869,5 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
   , ["Receipts from this address have zero purchase cost and are not CEX purchases or sales. Own-wallet transfers are excluded.", "portfolio_text_services_source_help"]
   , ["Mining / services proceeds", "portfolio_text_services_proceeds"]
   , ["Mining / services receipt", "portfolio_text_services_receipt"]
+  , ["Calculation", "portfolio_text_calculation"]
 ]);
