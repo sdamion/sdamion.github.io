@@ -52,16 +52,16 @@ try{
   const start=async()=>{await page.goto('http://127.0.0.1:8999/');await page.evaluate(async()=>{window.vault=await import('/vault-test.js');sessionStorage.setItem('tdsp-raffle-session-delegator','test-session');});};
   await start();
   await page.evaluate(()=>{window.vault.renderProgress();window.vault.setUploadProgress({phase:'uploading',loaded:50,total:100,saved:500,transactions:1000});});
-  await page.getByRole('progressbar',{name:'Portfolio cache upload'}).waitFor();
-  assert.equal(await page.getByRole('progressbar').getAttribute('aria-valuenow'),'50');
+  await page.getByRole('button',{name:'Open Transactions',exact:true}).waitFor();
+  assert.equal(await page.getByRole('progressbar',{name:'Portfolio cache upload'}).count(),0);
+  assert.equal(await page.getByText(/Cache saved:/).count(),0);
   for(const width of [1280,390]){
     await page.setViewportSize({width,height:800});
-    const bar=await page.getByRole('progressbar').boundingBox();assert.ok(bar.width>50&&bar.x+bar.width<=width,JSON.stringify({width,bar}));
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   }
   await page.screenshot({path:'/tmp/portfolio-upload-progress.png'});
   await page.evaluate(()=>window.vault.setUploadProgress({phase:'confirming',loaded:100,total:100}));
-  assert.equal(await page.getByRole('progressbar').getAttribute('aria-valuenow'),'99');
+  assert.equal(await page.getByRole('progressbar').count(),0);
   await page.evaluate(()=>window.vault.setUploadProgress({phase:'saved'}));
   await page.getByRole('progressbar').waitFor({state:'detached'});
   await page.evaluate(()=>{window.vault.renderProgress('1001');window.vault.setUploadProgress({phase:'error',message:'Upload failed'});});
