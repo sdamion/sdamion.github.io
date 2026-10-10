@@ -131,6 +131,14 @@ function active(){if(!vaultUnlocked())throw new Error('Approve Portfolio unlock 
 function schedule(delay=30000){if(!timer)timer=setTimeout(()=>{timer=undefined;void flushVault().catch(()=>{});},delay);}
 function changed(){const current=active();current.dirty=true;current.generation++;schedule();}
 export const portfolioSettings={
+  setItems(values:Record<string,string>,remove:string[]=[]){
+    const current=active();
+    if([...Object.keys(values),...remove].some(name=>!ownSetting(current.stake,name)))throw new Error('Wrong Portfolio member.');
+    for(const name of remove)delete current.data.settings[name];
+    Object.assign(current.data.settings,values);changed();
+    if(current.mode==='remote')setUploadProgress({transactions:portfolioTransactionCounts(current.data,current.stake).total});
+    clearTimeout(timer);timer=undefined;schedule(1000);
+  },
   keys(){const current=active();return Object.keys(current.data.settings).filter(name=>ownSetting(current.stake,name));},
   getItem(name:string){const current=active();return ownSetting(current.stake,name)?current.data.settings[name]??null:null;},
   setItem(name:string,value:string){const current=active();if(!ownSetting(current.stake,name))throw new Error('Wrong Portfolio member.');current.data.settings[name]=value;changed();if(current.mode==='remote')setUploadProgress({transactions:portfolioTransactionCounts(current.data,current.stake).total});clearTimeout(timer);timer=undefined;schedule(1000);}

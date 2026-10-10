@@ -1,15 +1,23 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {portfolioFetch} from './transport';
 import {portfolioSettings,flushVault} from './vault';
-import {emptyEthereum,ethereumData,ethereumWallets,type EthereumData,type EthereumTransaction,type EthereumWallet,type EthereumProvider} from './ethereum';
+import {emptyEthereum,ethereumWallets,type EthereumData,type EthereumTransaction,type EthereumWallet,type EthereumProvider} from './ethereum';
 import {ethereumHistory,type EthereumHistoryCheckpoints} from './ethereum-history';
 import {ethereumRequest} from './ethereum-request';
+import {encodeEthereumSettings,readEthereumSettings} from './ethereum-storage';
 
 export function useEthereum(stake:string,ready:boolean){
   const walletKey='tdsp-member-ethereum-wallets:'+stake,cexKey='tdsp-member-ethereum-cex:'+stake,dataKey='tdsp-member-ethereum-data:'+stake;
   const [wallets,setWallets]=useState<EthereumWallet[]>([]),[exchanges,setExchanges]=useState<EthereumWallet[]>([]),[data,setData]=useState<EthereumData>(emptyEthereum);
   const [loadedStake,setLoadedStake]=useState<string|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[status,setStatus]=useState('');
   const loaded=loadedStake===stake;
+  function saveData(value:EthereumData){
+    const settings=encodeEthereumSettings(dataKey,value);
+    if(Object.keys(settings).length===1&&!portfolioSettings.getItem(dataKey)?.includes('"storageVersion":1')){
+      portfolioSettings.setItem(dataKey,settings[dataKey]);return;
+    }
+    portfolioSettings.setItems(settings,portfolioSettings.keys().filter(key=>key.startsWith(dataKey+'::')&&!Object.hasOwn(settings,key)));
+  }
   const current=useRef(data),controller=useRef<AbortController|null>(null);
   const historyCheckpoints=useRef(new Map<string,EthereumHistoryCheckpoints>());
   useEffect(()=>{
@@ -17,7 +25,7 @@ export function useEthereum(stake:string,ready:boolean){
     try{
       setWallets(ethereumWallets(JSON.parse(portfolioSettings.getItem(walletKey)||'[]')));
       setExchanges(ethereumWallets(JSON.parse(portfolioSettings.getItem(cexKey)||'[]')));
-      const saved=ethereumData(JSON.parse(portfolioSettings.getItem(dataKey)||'null'));current.current=saved;setData(saved);setLoadedStake(stake);
+      const saved=readEthereumSettings(dataKey,key=>portfolioSettings.getItem(key));current.current=saved;setData(saved);setLoadedStake(stake);
     }catch{setError('Ethereum cache could not be opened.');}
     return()=>controller.current?.abort();
   },[ready,stake]);
@@ -49,7 +57,7 @@ export function useEthereum(stake:string,ready:boolean){
       async function persist(value:EthereumData,quote=false){
         signal.throwIfAborted();
         const saved={...value,usd:quote?value.usd:current.current.usd,accounts:{...value.accounts},history:{...value.history},updated:new Date().toISOString()};
-        portfolioSettings.setItem(dataKey,JSON.stringify(saved));current.current=saved;setData(saved);
+        saveData(saved);current.current=saved;setData(saved);
         await flushVault();signal.throwIfAborted();
       }
       for(const [index,wallet] of wallets.entries()){
@@ -131,7 +139,7 @@ export function useEthereum(stake:string,ready:boolean){
         const {usd}=await response.json();
         if(control.signal.aborted||typeof usd!=='number'||!Number.isFinite(usd)||usd<=0)return;
         const next={...current.current,usd};
-        portfolioSettings.setItem(dataKey,JSON.stringify(next));
+        saveData(next);
         current.current=next;setData(next);
       }catch{/* Retain the last successful quote. */}finally{pending=false;}
     };
