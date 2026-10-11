@@ -200,7 +200,7 @@ try{
   },{stake,address});
   await page.getByRole('alert').filter({hasText:'Ethereum refresh failed. Saved data is retained.'}).waitFor();
   const fees=page.locator('main .governance-menu-card').filter({hasText:'Network fees paid'});
-  assert.match(await fees.innerText(),/Cardano:[\s\S]*ETH: 0[.,]00021 ETH/,'ETH gas has a separate line on the fee tile');
+  assert.match(await fees.innerText(),/ADA:[\s\S]*ETH: 0[.,]00021 ETH/,'ADA and ETH gas have separate lines on the fee tile');
   assert.doesNotMatch(await fees.innerText(),/Partial/,'complete fee history does not inherit unrelated valuation warnings');
   await walletsTile.click();await page.getByRole('button',{name:'Open My Wallets',exact:true}).click();
   assert.equal(await page.getByRole('checkbox',{name:'Miner wallet: ETH Savings',exact:true}).count(),0,'mining checkbox is removed from own wallets');
