@@ -7,11 +7,13 @@ chain independently to individual delegators in Portfolio access. The backend
 checks current stored grants on every chain/price request; the UI reads session
 capabilities on opening and once per minute. Disabling a grant retains encrypted
 wallet data but stops the disabled hook. Cardano remains available to delegators.
-Token prices and image metadata refresh in deduplicated 100-asset batches with at
+Token prices and image metadata refresh in deduplicated 50-asset batches with at
 most two requests in flight. Results are merged and saved sequentially; transient
-failures get one retry through sequential batches of at most 50 assets, without
+failures returning within five seconds get one retry through sequential batches of
+at most 25 assets, without
 repeating successful peers. Other batches continue if a transient failure remains.
-Authentication, quota and invalid-response errors stop further requests. Cached
+Timeouts, slow failures, authentication, quota and invalid-response errors stop
+further requests instead of multiplying long waits. Cached
 images remain reusable through the existing backend image cache.
 
 Wallet history has no local total
