@@ -17,7 +17,9 @@ Restarted scans reuse these windows per wallet, kind and provider. Completed acc
 record `finalizedBlock`; later scans start immediately after that saved boundary, not
 a fixed 64-block overlap. The backend queries the public Ethereum mainnet RPC for
 `eth_getBlockByNumber("finalized", false)` and shares its result for 30 seconds.
-No wallet data is sent to that RPC. Missing or regressing finality stops the scan
+No wallet data is sent to that RPC. Missing finality keeps the last verified boundary
+and updates only its unfinalized tail; legacy accounts use the conservative 64-block
+overlap without recording new finality. Invalid or regressing finality stops the scan
 without replacing saved data. Legacy accounts validate their former overlap once
 before recording finality. Accepted prefixes of rejected windows reuse all finalized data while their last
 block is fetched again. Scan settings are retired only after account history is saved.

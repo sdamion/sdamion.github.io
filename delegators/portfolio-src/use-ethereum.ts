@@ -74,7 +74,7 @@ export function useEthereum(stake:string,ready:boolean){
       return result;
     }
     async function scan(){
-      const {block,finalizedBlock}=await request<{block:number;finalizedBlock:number}>({action:'head',finality:true});
+      const {block,finalizedBlock}=await request<{block:number;finalizedBlock?:number|null}>({action:'head',finality:true});
       ethereumScanStart(undefined,block,finalizedBlock);
       const next: EthereumData={...current.current,accounts:Object.fromEntries(ownedWallets.flatMap(wallet=>current.current.accounts[wallet.address]?[[wallet.address,current.current.accounts[wallet.address]]]:[])),history:{...current.current.history}};
       const changingProvider=ownedWallets.some(w=>{
@@ -102,7 +102,8 @@ export function useEthereum(stake:string,ready:boolean){
           const checkpointKey=`${wallet.address}:${kind}:${provider||'etherscan'}:${startBlock}`;
           let checkpoints=historyCheckpoints.current.get(checkpointKey);
           if(!checkpoints){checkpoints=new Map();historyCheckpoints.current.set(checkpointKey,checkpoints);}
-          const safeBlock=finalizedBlock;
+          // Missing RPC finality must never promote an unverified block to a durable prefix.
+          const safeBlock=finalizedBlock??previous?.finalizedBlock??-1;
           for(const [key,range] of checkpoints)if(range.endBlock>safeBlock){
             checkpoints.delete(key);
             if(range.startBlock<=safeBlock)checkpoints.set(`${range.startBlock}:${safeBlock}`,{...range,endBlock:safeBlock,transactions:range.transactions.filter(tx=>tx.block<=safeBlock)});
@@ -122,7 +123,7 @@ export function useEthereum(stake:string,ready:boolean){
         }
         const {balanceWei}=await request<{balanceWei:string}>({action:'balance',address:wallet.address});
         if(typeof balanceWei!=='string'||!/^\d{1,80}$/.test(balanceWei))throw new Error('Invalid Ethereum balance response.');
-        next.accounts[wallet.address]={balanceWei,block,finalizedBlock,transactions:[...transactions.values()],provider:provider||'etherscan'};
+        next.accounts[wallet.address]={balanceWei,block,finalizedBlock:finalizedBlock??previous?.finalizedBlock,transactions:[...transactions.values()],provider:provider||'etherscan'};
         if(index===ownedWallets.length-1){
           setDownloadProgress(progress.complete(Object.values(next.accounts).flatMap(account=>account.transactions)));
         }

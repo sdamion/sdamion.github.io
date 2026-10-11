@@ -595,7 +595,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   return <PortfolioCurrencyContext.Provider value={currencyDisplay}><main className="member-portfolio"><PortfolioQuickstart stake={memberStake} status={status} wallets={walletForm} exchanges={exchangeForm} swap={swapForm}/><div className="portfolio-body"><div className="section-heading" aria-label="Portfolio refresh">
     <PortfolioRefresh onRefresh={()=>{void refresh();void ethereum.refresh();void solana.refresh();}} disabled={busy||ethereum.busy||solana.busy||!ready} busy={busy||ethereum.busy||solana.busy} currencyControl={<select className="governance-vote-secondary" aria-label={t('Comparison currency')} value={holdingsCurrency} onChange={event=>setHoldingsCurrency(event.target.value as 'ADA'|ComparisonFiat)}><option value="ADA">ADA</option><option value="USD">USD ($)</option><option value="EUR">EUR (€)</option><option value="JPY">JPY (¥)</option></select>}/>
     <div className="portfolio-section">
-      {!initialising&&!(busy&&analysis)&&<p role="status" className="status-line">{status}</p>}
+      {!initialising&&!(busy&&analysis)&&!status.startsWith('Balances updated')&&<p role="status" className="status-line">{status}</p>}
       {error&&<PortfolioMessage error>{error}</PortfolioMessage>}{notice&&<PortfolioMessage>{notice}</PortfolioMessage>}
       {ethereum.error&&<PortfolioMessage translate="no" error>{t(ethereum.error)}</PortfolioMessage>}
       {ethereum.busy&&<p translate="no" role="status" className="status-line">{t(ethereum.status)}</p>}
@@ -604,7 +604,9 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
     </div>
   </div>
     <section className="portfolio-section"><div className="tdsp-tile-grid">
-      <MenuTile title="Wallets" value={refreshCounts?`${num(refreshCounts.active+ethereum.wallets.length+solana.wallets.length,0)} / ${num(refreshCounts.total+ethereum.wallets.length+solana.wallets.length,0)} active`:initialising?'Initialising':'— / — active'} loading={initialising} loadingLabel={status} onOpen={()=>setSection('wallets')}/>
+      <MenuTile title="Wallets" value={refreshCounts?`${num(refreshCounts.active+ethereum.wallets.length+solana.wallets.length,0)} / ${num(refreshCounts.total+ethereum.wallets.length+solana.wallets.length,0)} active`:initialising?'Initialising':'— / — active'} loading={initialising} loadingLabel={status} onOpen={()=>setSection('wallets')}>
+        {!initialising&&status.startsWith('Balances updated')&&<p role="status" className="small muted">{status}</p>}
+      </MenuTile>
       <MenuTile title="Transactions" value={snapshot?num(allTransactionTotal,0):'—'} analysis={snapshot?{done:combinedProgress.downloaded,total:combinedProgress.total,counting:combinedProgress.total===null,busy:busy||ethereum.busy||solana.busy,status:transactionStatus}:undefined} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('transactions');}}>
         <DownloadStatus chains={downloadChains}/>
         {storageMode()!=='remote'&&cacheNotice&&<p role="status" className="tdsp-bar-legend">{cacheNotice}</p>}
