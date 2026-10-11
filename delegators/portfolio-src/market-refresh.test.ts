@@ -17,12 +17,31 @@ test('100-token batches, two concurrent reads, ordered serial cache writes and u
   assert.equal(counts.at(-1),5);assert.ok(counts.every((value,index)=>!index||value>=counts[index-1]));
 });
 
-test('failed optional batch keeps its successful peer and starts no further requests',async()=>{
+test('an unrecoverable optional batch keeps its successful peer and later batches',async()=>{
   const requested:number[]=[],applied:number[]=[];
   const ok=await refreshMarketBatches(Array.from({length:300},(_,i)=>String(i)),async batch=>{
     const id=Number(batch[0]);requested.push(id);if(id===0)throw new Error('Unavailable');return id;
   },async value=>{applied.push(value);},()=>{},new AbortController().signal);
-  assert.equal(ok,false);assert.deepEqual(requested,[0,100]);assert.deepEqual(applied,[100]);
+  assert.equal(ok,false);assert.deepEqual(requested,[0,100,0,50,200]);assert.deepEqual(applied,[50,100,200]);
+});
+
+test('oversized or slow batches recover through two 50-token requests without repeating successful peers',async()=>{
+  const requested:string[][]=[],applied:string[][]=[];
+  const ok=await refreshMarketBatches(Array.from({length:300},(_,i)=>String(i)),async batch=>{
+    requested.push(batch);if(batch[0]==='0'&&batch.length===100)throw Object.assign(new Error('Too large'),{status:413});return batch;
+  },async value=>{applied.push(value);},()=>{},new AbortController().signal);
+  assert.equal(ok,true);assert.deepEqual(requested.map(batch=>[batch[0],batch.length]),[['0',100],['100',100],['0',50],['50',50],['200',100]]);
+  assert.deepEqual(applied.flat(),Array.from({length:300},(_,i)=>String(i)));
+});
+
+test('auth, quota and invalid response failures do not retry or start later batches',async()=>{
+  for(const reason of [{status:401},{status:403},{status:429},{code:'invalid_token_data'}]){
+    const requested:string[]=[],applied:string[]=[];
+    const ok=await refreshMarketBatches(Array.from({length:300},(_,i)=>String(i)),async batch=>{
+      requested.push(batch[0]);if(batch[0]==='0')throw reason;return batch[0];
+    },async value=>{applied.push(value);},()=>{},new AbortController().signal);
+    assert.equal(ok,false);assert.deepEqual(requested,['0','100']);assert.deepEqual(applied,['100']);
+  }
 });
 
 test('cancellation prevents publishing fetched data; an empty list makes no requests',async()=>{

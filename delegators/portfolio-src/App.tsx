@@ -313,9 +313,12 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
       try{
         const complete=await refreshMarketBatches(assetIds,async batch=>{
           const r=await portfolioFetch('/api/markets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({assets:batch}),signal});
-          if(!r.ok)throw new Error('Token data unavailable');
+          if(!r.ok){
+            console.warn('Portfolio token data request failed',{status:r.status,assets:batch.length});
+            throw Object.assign(new Error('Token data unavailable'),{status:r.status});
+          }
           const data=await r.json() as {tokens:Market[];pricing_unavailable?:boolean};
-          if(!Array.isArray(data.tokens)||data.tokens.some(token=>!token||!batch.includes(token.token_id)))throw new Error('Invalid token data');
+          if(!Array.isArray(data.tokens)||data.tokens.some(token=>!token||!batch.includes(token.token_id)))throw Object.assign(new Error('Invalid token data'),{code:'invalid_token_data'});
           return data;
         },async data=>{
           for(const m of data.tokens)next.markets[m.token_id]=mergeMarketQuote(next.markets[m.token_id],m);
