@@ -7,6 +7,11 @@ chain independently to individual delegators in Portfolio access. The backend
 checks current stored grants on every chain/price request; the UI reads session
 capabilities on opening and once per minute. Disabling a grant retains encrypted
 wallet data but stops the disabled hook. Cardano remains available to delegators.
+Token prices and image metadata refresh in deduplicated 100-asset batches with at
+most two requests in flight. Results are merged and saved sequentially; a failed
+optional request retains successful results and stops further batches. Cached
+images remain reusable through the existing backend image cache.
+
 Wallet history has no local total
 request, transaction-count or history-page cutoff. Provider
 quotas, request pacing, response validation and encrypted-cache byte-size limits

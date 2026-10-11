@@ -6,6 +6,7 @@ import {PortfolioRefresh} from './PortfolioRefresh';
 import {usePortfolioText} from './use-portfolio-text';
 import {DownloadStatus} from './DownloadStatus';
 import {combinedTransactionProgress,transactionProgress} from './download-progress';
+import {refreshMarketBatches} from './market-refresh';
 import {AssetWalletAddresses} from './AssetWalletAddresses';
 import {createCardanoRequest} from './cardano-request';
 import {planWalletDiscovery,pruneUnusedWalletAddresses,lowActivityWalletAddresses,activeAnalysedWalletGroups} from './wallet-discovery';
@@ -309,21 +310,22 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
       for(const id of new Set(Object.values(next.facts).flatMap(fact=>Object.keys(fact.assets)))){
         if(id!=='lovelace'&&!assetIds.includes(id))assetIds.push(id);
       }
-      for(let i=0;i<assetIds.length;i+=50){
-        setStatus(`Transactions saved · loading token prices and images ${Math.floor(i/50)+1} / ${Math.ceil(assetIds.length/50)}`);
-        try{
-          const r=await portfolioFetch('/api/markets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({assets:assetIds.slice(i,i+50)}),signal});
+      try{
+        const complete=await refreshMarketBatches(assetIds,async batch=>{
+          const r=await portfolioFetch('/api/markets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({assets:batch}),signal});
           if(!r.ok)throw new Error('Token data unavailable');
           const data=await r.json() as {tokens:Market[];pricing_unavailable?:boolean};
-          if(!Array.isArray(data.tokens))throw new Error('Invalid token data');
+          if(!Array.isArray(data.tokens)||data.tokens.some(token=>!token||!batch.includes(token.token_id)))throw new Error('Invalid token data');
+          return data;
+        },async data=>{
           for(const m of data.tokens)next.markets[m.token_id]=mergeMarketQuote(next.markets[m.token_id],m);
           if(data.pricing_unavailable)warnings.push('Token market prices unavailable; asset images and fallback valuations can still load.');
           await persist();signal.throwIfAborted();setSnapshot({...next,markets:{...next.markets}});
-        }catch{
-          signal.throwIfAborted();
-          warnings.push('Token prices or images could not be refreshed. Saved data and transaction analysis are retained.');
-          break;
-        }
+        },(done,total)=>setStatus(`Transactions saved · loading token prices and images ${done} / ${total}`),signal);
+        if(!complete)warnings.push('Token prices or images could not be refreshed. Saved data and transaction analysis are retained.');
+      }catch{
+        signal.throwIfAborted();
+        warnings.push('Token prices or images could not be refreshed. Saved data and transaction analysis are retained.');
       }
       setNotice(warnings.join(' '));
       await flushVault().catch(()=>{});signal.throwIfAborted();
