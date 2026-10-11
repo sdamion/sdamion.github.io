@@ -13,7 +13,7 @@ export function AdaUsdAmount({ada,usd}:{ada:number|null;usd:number|null}){
   },[ada,usd,display]);
   return display?<span translate="no">{display.currency==='ADA'?formatPortfolioAda(ada,display):formatPortfolioUsd(usd,display)}</span>:<span ref={ref}/>;
 }
-export function MenuTile({title,value,onOpen,analysis,loading=false,loadingLabel='Initialising',children}:{title:string;value:string;onOpen:()=>void;loading?:boolean;loadingLabel?:string;analysis?:{done:number;total:number|null;counting:boolean;busy:boolean;status?:string};children?:React.ReactNode}){
+export function MenuTile({title,value,onOpen,analysis,loading=false,loadingLabel='Initialising',children}:{title:string;value:string;onOpen:()=>void;loading?:boolean;loadingLabel?:string;analysis?:{done:number;total:number|null;counting:boolean;busy:boolean;status?:string;compact?:boolean};children?:React.ReactNode}){
   const ref=React.useRef<HTMLDivElement>(null);
   const footer=React.useMemo(()=>document.createElement('div'),[]);
   React.useLayoutEffect(()=>{
@@ -46,10 +46,10 @@ export function MenuTile({title,value,onOpen,analysis,loading=false,loadingLabel
       if(!counting)track.setAttribute('aria-valuenow',String(percent));
       const fill=document.createElement('span');fill.className='governance-vote-bar-fill governance-vote-bar-fill--yes';fill.style.flexBasis=`${counting?0:percent}%`;track.append(fill);
       const percentage=document.createElement('span');percentage.className='tdsp-bar-legend';percentage.textContent=counting?'…':`${percent.toLocaleString(undefined,{maximumFractionDigits:1})}%`;
-      row.append(track,percentage);button.append(label,row);
+      row.append(track,percentage);if(!analysis.compact)button.append(label);button.append(row);
     }
     if(children)button.append(footer);
-  },[title,value,loading,loadingLabel,analysis?.done,analysis?.total,analysis?.counting,analysis?.busy,analysis?.status,!!children,footer]);
+  },[title,value,loading,loadingLabel,analysis?.done,analysis?.total,analysis?.counting,analysis?.busy,analysis?.status,analysis?.compact,!!children,footer]);
   const interactive=(target:EventTarget|null)=>target instanceof Element&&!!target.closest('button,a,input,select,textarea');
   return <div ref={ref} role="button" tabIndex={0} className="governance-card governance-menu-card" onClick={event=>{if(!interactive(event.target))onOpen();}} onKeyDown={event=>{if(!interactive(event.target)&&(event.key==='Enter'||event.key===' ')){event.preventDefault();onOpen();}}} aria-label={`Open ${title}`} aria-busy={loading}>{children&&createPortal(children,footer)}</div>;
 }

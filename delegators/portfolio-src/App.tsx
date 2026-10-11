@@ -42,7 +42,7 @@ import {mintPayments,paymentBudget} from './mint-payments';
 import type {PaymentLink} from './mint-payments';
 import {PaymentLinks} from './PaymentLinks';
 import {AssetOverlay} from './AssetOverlay';
-import {MenuTile,AdaUsdAmount,PortfolioMessage} from './ui';
+import {MenuTile,AdaUsdAmount} from './ui';
 import {WalletSyncStatus} from './WalletSyncStatus';
 import {portfolioSettings as localStorage,flushVault,storageMode} from './vault';
 import {CexTimeline} from './CexTimeline';
@@ -241,7 +241,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
       if(!next.history[today]&&freshPrice!==null&&freshPrice>0)next.history[today]=freshPrice;
       const warnings:string[]=[];if(freshPrice===null)warnings.push('Current ADA/USD price unavailable.');if(!hist?.prices?.length)warnings.push('Historical ADA/USD refresh failed. Saved prices are retained; missing receipt prices will not be counted as zero.');
       const assetIds=holdings.filter(h=>h.id!=='lovelace').map(h=>h.id);
-      signal.throwIfAborted();setSnapshot({...next});setNotice(warnings.join(' '));
+      signal.throwIfAborted();setSnapshot({...next});setNotice([...new Set(warnings)].join(' '));
       const persist=async()=>{try{await saveCache(key,next);}catch{setCacheNotice('Portfolio cache could not be updated. Keep this page open and check Storage settings.');}};
       const incremental=plan.batches.some(batch=>batch.incremental);
       const historyIndex=createHistoryIndex(next.txs,incremental);
@@ -330,7 +330,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
         signal.throwIfAborted();
         warnings.push('Token prices could not be refreshed. Saved data and transaction analysis are retained.');
       }
-      setNotice(warnings.join(' '));
+      setNotice([...new Set(warnings)].join(' '));
       await flushVault().catch(()=>{});signal.throwIfAborted();
       setStatus(next.complete?`Updated ${new Date(next.updated).toLocaleString()}`:'Some transactions are awaiting analysis. Refresh to retry.');
     }catch(e){if(!signal.aborted){setError(e instanceof Error?e.message:'Could not update this portfolio.');setStatus('Refresh incomplete · showing available data');setTransactionStatus(current=>current?'Transaction refresh incomplete · cached data retained':'');}}
@@ -548,7 +548,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   const availableFees=availableTotal([currentAdaUsd!==null?fees*currentAdaUsd:null,...(ethereum.wallets.length?[ethAvailable.feeUsd]:[]),...(solana.wallets.length?[solAvailable.feeUsd]:[])]);
   const feeUsd=availableFees.value;
   const feeNotes=networkFeeNotes([
-    {chain:'Cardano',historyComplete:snapshot?.complete===true,feeUsd:currentAdaUsd!==null?fees*currentAdaUsd:null},
+    {chain:'ADA',historyComplete:snapshot?.complete===true,feeUsd:currentAdaUsd!==null?fees*currentAdaUsd:null},
     ...(ethereum.wallets.length?[{chain:'ETH',historyComplete:!ethAvailable.feesPartial,feeUsd:ethAvailable.feeUsd,feeKnown:ethAvailable.fees!==null}]:[]),
     ...(solana.wallets.length?[{chain:'SOL',historyComplete:!solAvailable.feesPartial,feeUsd:solAvailable.feeUsd,feeKnown:solAvailable.fees!==null}]:[])
   ],holdingsCurrency==='ADA'?currentAdaUsd!==null&&currentAdaUsd>0:holdingsRate!==null);
@@ -606,19 +606,18 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   </div>
     <section className="portfolio-section"><div className="tdsp-tile-grid">
       <MenuTile title="Wallets" value={refreshCounts?`${num(refreshCounts.active+ethereum.wallets.length+solana.wallets.length,0)} / ${num(refreshCounts.total+ethereum.wallets.length+solana.wallets.length,0)} active`:initialising?'Initialising':'— / — active'} loading={initialising} loadingLabel={status} onOpen={()=>setSection('wallets')}>
-        <WalletSyncStatus cardano={initialising?'':busy&&analysis?transactionStatus||status:status} ethereum={ethereum.busy?ethereum.status:undefined} solana={solana.busy?'Checking Solana transactions…':undefined}/>
+        <WalletSyncStatus cardano={initialising||error?'':busy&&analysis?transactionStatus||status:status} ethereum={ethereum.busy?ethereum.status:undefined} solana={solana.busy?'Checking Solana transactions…':undefined} messages={[
+          {text:error,error:true},{text:notice},{text:ethereum.error,error:true},{text:solana.error,error:true},
+          {text:storageMode()!=='remote'?cacheNotice:''},
+          {text:payments.errors.length?'Some saved payment links cannot be applied to the loaded history. Open the asset image to review its purchase payments.':'',error:true},
+          {text:snapshot&&comparisonCrypto==='BTC'?btc.status||'BTC equivalents use transfer-day ADA/USD and BTC/USD prices, not actual Bitcoin purchases.':''},
+          {text:comparisonFiat==='EUR'||comparisonFiat==='JPY'?fx.status||'Historical FX rates use the latest available business day; wallet value uses the current rate.':''}
+        ]}/>
         {imageProgress.total>0&&<p translate="no" role="status" className="small muted" title={t('Images available in the cache')}>{t('Images: {done} / {total}',imageProgress)}</p>}
         {refreshTiming&&<p translate="no" className="small muted" role="timer">{refreshTiming}</p>}
-        {error&&<PortfolioMessage error>{error}</PortfolioMessage>}{notice&&<PortfolioMessage>{notice}</PortfolioMessage>}
-        {ethereum.error&&<PortfolioMessage translate="no" error>{t(ethereum.error)}</PortfolioMessage>}
-        {solana.error&&<PortfolioMessage translate="no" error>{t(solana.error)}</PortfolioMessage>}
-        {storageMode()!=='remote'&&cacheNotice&&<PortfolioMessage>{cacheNotice}</PortfolioMessage>}
-        {payments.errors.length>0&&<PortfolioMessage error>Some saved payment links cannot be applied to the loaded history. Open the asset image to review its purchase payments.</PortfolioMessage>}
-        {snapshot&&comparisonCrypto==='BTC'&&<PortfolioMessage>{btc.status||'BTC equivalents use transfer-day ADA/USD and BTC/USD prices, not actual Bitcoin purchases.'}</PortfolioMessage>}
-        {(comparisonFiat==='EUR'||comparisonFiat==='JPY')&&<PortfolioMessage>{fx.status||'Historical FX rates use the latest available business day; wallet value uses the current rate.'}</PortfolioMessage>}
       </MenuTile>
-      <MenuTile title="Transactions" value={snapshot?num(allTransactionTotal,0):'—'} analysis={snapshot?{done:combinedProgress.downloaded,total:combinedProgress.total,counting:combinedProgress.total===null,busy:busy||ethereum.busy||solana.busy}:undefined} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('transactions');}}>
-        <DownloadStatus chains={downloadChains}/>
+      <MenuTile title="Transactions" value={snapshot?num(allTransactionTotal,0):'—'} analysis={snapshot?{done:combinedProgress.downloaded,total:combinedProgress.total,counting:combinedProgress.total===null,busy:busy||ethereum.busy||solana.busy,compact:true}:undefined} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('transactions');}}>
+        <DownloadStatus chains={downloadChains} showDiscovery={!(busy||ethereum.busy||solana.busy)}/>
       </MenuTile>
       <MenuTile title="Assets" value={holdingsDisplay} onOpen={()=>{resetPolicies();setHoldingsGroup(null);setSection('holdings');}}>
         {portfolioPartial&&partialNote}
@@ -626,7 +625,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
         {(holdingsCurrency==='EUR'||holdingsCurrency==='JPY')&&holdingsValue===null&&<p className="small muted" role="status">{t(fx.status||'Historical exchange rates unavailable')}</p>}
       </MenuTile>
       <Metric label="Network fees paid" value={loadedFacts||snapshot?.complete?nativeCount?formatPortfolioUsd(feeUsd,currencyDisplay):formatPortfolioAda(fees,currencyDisplay):'Waiting for transaction details'}>
-        {ethereum.wallets.length>0&&<><span translate="no" className="small">Cardano: {loadedFacts||snapshot?.complete?formatPortfolioAda(fees,currencyDisplay):'—'}</span><span translate="no" className="small">ETH: {ethFees===null?'—':`${ethFees.toLocaleString(undefined,{maximumFractionDigits:8})} ETH`} · {formatPortfolioUsd(ethAvailable.feeUsd,currencyDisplay)}</span></>}
+        {ethereum.wallets.length>0&&<><span translate="no" className="small">ADA: {loadedFacts||snapshot?.complete?formatPortfolioAda(fees,currencyDisplay):'—'}</span><span translate="no" className="small">ETH: {ethFees===null?'—':`${ethFees.toLocaleString(undefined,{maximumFractionDigits:8})} ETH`} · {formatPortfolioUsd(ethAvailable.feeUsd,currencyDisplay)}</span></>}
         {solana.wallets.length>0&&<span translate="no" className="small">SOL: {solAvailable.fees===null?'—':`${solAvailable.fees.toLocaleString(undefined,{maximumFractionDigits:9})} SOL`} · {formatPortfolioUsd(solAvailable.feeUsd,currencyDisplay)}</span>}
         {feeNotes.map(note=><span key={note} translate="no" className="small muted" role="status">{t(note)}</span>)}
       </Metric>

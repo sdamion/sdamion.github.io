@@ -15,10 +15,11 @@ const root=createRoot(document.getElementById('app'));
 const walletRoot=createRoot(document.getElementById('wallet'));
 window.renderWalletStatus=(checking)=>walletRoot.render(<MenuTile title="Wallets" value="3 / 3 active" onOpen={()=>{}}><WalletSyncStatus cardano={checking?'Checking balances · batch 1 of 2':'Balances updated · updating prices…'} ethereum={checking?'Checking Ethereum transactions…':undefined} solana={checking?'Checking Solana transactions…':undefined}/></MenuTile>);
 window.renderWalletStatus(true);
-window.renderProgress=(total)=>{
+window.renderDuplicateWalletStatus=()=>walletRoot.render(<MenuTile title="Wallets" value="3 / 3 active" onOpen={()=>{}}><WalletSyncStatus cardano="Checking Ethereum transactions…" ethereum="Checking Ethereum transactions…" messages={[{text:'Checking Ethereum transactions…',error:true},{text:'Checking Ethereum transactions…'},{text:''}]}/></MenuTile>);
+window.renderProgress=(total,compact=false)=>{
   const chains=[{chain:'ADA',progress:{downloaded:21591,total:21591}},{chain:'ETH',progress:{downloaded:266,total}},{chain:'SOL',progress:{downloaded:778,total:778}}];
   const progress=combinedTransactionProgress(chains.map(row=>row.progress));
-  root.render(<MenuTile title="Transactions" value={String(progress.downloaded)} onOpen={()=>{}} analysis={{done:progress.downloaded,total:progress.total,counting:false,busy:false}}><DownloadStatus chains={chains}/></MenuTile>);
+  root.render(<MenuTile title="Transactions" value={String(progress.downloaded)} onOpen={()=>{}} analysis={{done:progress.downloaded,total:progress.total,counting:false,busy:false,compact}}><DownloadStatus chains={chains} showDiscovery={!compact}/></MenuTile>);
 };
 window.renderProgress(null);`,loader:'tsx',resolveDir:source},bundle:true,write:false,format:'esm',jsx:'automatic'});
 const browser=await chromium.launch({channel:'chrome',headless:true});
@@ -47,5 +48,14 @@ try{
  await page.evaluate(()=>window.renderProgress(null));
  await page.waitForFunction(()=>!document.querySelector('[role="progressbar"]').hasAttribute('aria-valuenow'));
  assert.equal(await page.getByText('100%',{exact:true}).count(),0,'a new incomplete scan clears the previous percentage');
- console.log('PASS: mixed-chain progress stays indeterminate until every total is known.');
+ await page.evaluate(()=>window.renderProgress(null,true));
+ await page.waitForFunction(()=>!document.querySelector('#app').innerText.includes('Checking for additional transactions'));
+ assert.doesNotMatch(await page.locator('#app').innerText(),/analysed|counting transactions/,'compact progress does not repeat the per-chain counts');
+ assert.match(await bar.getAttribute('aria-valuetext'),/analysed/,'the combined summary remains available to screen readers');
+ assert.match(await page.locator('#app').innerText(),/ETH: 266 \/ 266 transactions/,'compact mode retains cached transaction counts');
+ await page.evaluate(()=>window.renderDuplicateWalletStatus());
+ await wallets.getByRole('alert').waitFor();
+ assert.equal(await wallets.getByRole('alert').count(),1,'duplicate text retains the highest severity');
+ assert.equal(await wallets.getByRole('status').count(),0,'duplicate status does not repeat an error');
+ console.log('PASS: mixed-chain progress stays accurate and compact; duplicate Wallet messages appear once.');
 }finally{await browser.close();}
