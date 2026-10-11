@@ -5,6 +5,7 @@ type Valuation={price:number|null;value:number|null;source:string;ada:number|nul
 
 export function mergeMarketQuote(previous:Market|undefined,incoming:Market):Market{
   const merged={...previous,...incoming,decimals:incoming.decimals??previous?.decimals};
+  if(typeof incoming.image_source_hash==='string'&&/^[a-f0-9]{64}$/.test(incoming.image_source_hash)&&incoming.image_source_hash!==previous?.image_source_hash&&!incoming.cached_image)delete merged.cached_image;
   const previousTime=Date.parse(previous?.wayup_quoted_at||'');
   const incomingTime=Date.parse(incoming.wayup_quoted_at||'');
   const validPrevious=typeof previous?.wayup_floor_ada==='number'&&Number.isFinite(previous.wayup_floor_ada)&&previous.wayup_floor_ada>0&&Number.isFinite(previousTime);

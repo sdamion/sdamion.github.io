@@ -2,6 +2,11 @@ import type {Market} from './core.ts';
 
 type ImageState={token_id:string;state:string;cached_image?:string;retryAt?:number};
 const cachedPath=/^\/api\/portfolio\/images\/[a-f0-9]{64}\.(png|jpg|gif|webp)$/;
+export function cachedImageProgress(ids:string[],markets:Record<string,Market>){
+  const assets=[...new Set(ids)].filter(id=>/^[a-f0-9]{56}(?:[a-f0-9]{2}){0,32}$/.test(id));
+  const done=assets.filter(id=>cachedPath.test(markets[id]?.cached_image||'')||/^data:image\/png;base64,iVBORw0KGgo/.test(markets[id]?.registry_logo||'')).length;
+  return {done,total:assets.length};
+}
 export function applyCachedImages(markets:Record<string,Market>,images:Record<string,string>):Record<string,Market>{
   let next=markets;
   for(const [id,url] of Object.entries(images)){

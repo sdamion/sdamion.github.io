@@ -1,7 +1,17 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {applyCachedImages,watchImageCache} from './image-cache-status.ts';
+import {applyCachedImages,cachedImageProgress,watchImageCache} from './image-cache-status.ts';
 const id='a'.repeat(56),url='/api/portfolio/images/'+'b'.repeat(64)+'.gif';
+test('image progress counts cached images, not metadata batches, with a stable unique total',()=>{
+  const ids=Array.from({length:66},(_,i)=>i.toString(16).padStart(56,'0'));
+  const markets=Object.fromEntries(ids.slice(0,20).map(token_id=>[token_id,{token_id,cached_image:url}]));
+  assert.deepEqual(cachedImageProgress([...ids,ids[0],'lovelace'],markets),{done:20,total:66});
+  markets[ids[20]]={token_id:ids[20],cached_image:'https://example.test/image.png'};
+  assert.deepEqual(cachedImageProgress(ids,markets),{done:20,total:66},'a remote URL is not a completed cached download');
+  const next=applyCachedImages(markets,{[ids[20]]:url});
+  assert.deepEqual(cachedImageProgress(ids,next),{done:21,total:66});
+  assert.deepEqual(cachedImageProgress(ids,markets),{done:20,total:66},'progress does not mutate saved metadata');
+});
 test('completed background images update only image metadata, never prices or analysis',()=>{
   const market={token_id:id,price_by_usd:4,decimals:6,name:'Original asset'},markets={[id]:market};
   const next=applyCachedImages(markets,{[id]:url,unknown:url});

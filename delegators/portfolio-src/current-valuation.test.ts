@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import {currentValuation,mergeMarketQuote} from './current-valuation.ts';
 const id='a'.repeat(56)+'01',at=1000000;
+const cached={token_id:id,cached_image:'/api/portfolio/images/'+'b'.repeat(64)+'.gif',image_source_hash:'c'.repeat(64),price_by_usd:4};
+assert.equal(mergeMarketQuote(cached,{token_id:id,image_source_hash:'c'.repeat(64)}).cached_image,cached.cached_image,'same source keeps the cached image');
+const replacement=mergeMarketQuote(cached,{token_id:id,image_source_hash:'d'.repeat(64)});
+assert.equal(replacement.cached_image,undefined,'changed source follows the new background download');
+assert.equal(replacement.price_by_usd,4,'image invalidation never changes saved prices');
+assert.equal(mergeMarketQuote(cached,{token_id:id}).cached_image,cached.cached_image,'incomplete metadata preserves cached images');
 const nft={token_id:id,is_nft:true,wayup_floor_ada:10,wayup_quoted_at:new Date(at).toISOString()};
 assert.equal(currentValuation(id,1,null,nft,0.5,at).value,5);
 assert.equal(currentValuation(id,1,3,nft,0.5,at).value,3);

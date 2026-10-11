@@ -35,7 +35,7 @@ import {TableGroupToggle,useTableGroups} from './TableGroupToggle';
 import {valuationCoverage} from './valuation-coverage';
 import {averageBuy,purchaseAverages} from './average-buy';
 import {assetImageCandidates} from './asset-image';
-import {applyCachedImages,watchImageCache} from './image-cache-status';
+import {applyCachedImages,cachedImageProgress,watchImageCache} from './image-cache-status';
 import {waitForRetry} from './retry-wait';
 import {knownDecimals,tokenDecimals,holdingValue,holdingDecimals,estimatedPurchaseBasis} from './valuation';
 import {mintPayments,paymentBudget} from './mint-payments';
@@ -324,11 +324,11 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
           for(const m of data.tokens)next.markets[m.token_id]=mergeMarketQuote(next.markets[m.token_id],m);
           if(data.pricing_unavailable)warnings.push('Token market prices unavailable; asset images and fallback valuations can still load.');
           await persist();signal.throwIfAborted();setSnapshot({...next,markets:{...next.markets}});
-        },(done,total)=>setStatus(`Transactions saved · loading token prices and images ${done} / ${total}`),signal);
-        if(!complete)warnings.push('Token prices or images could not be refreshed. Saved data and transaction analysis are retained.');
+        },(done,total)=>setStatus(`Transactions saved · updating token prices ${done} / ${total}`),signal);
+        if(!complete)warnings.push('Token prices could not be refreshed. Saved data and transaction analysis are retained.');
       }catch{
         signal.throwIfAborted();
-        warnings.push('Token prices or images could not be refreshed. Saved data and transaction analysis are retained.');
+        warnings.push('Token prices could not be refreshed. Saved data and transaction analysis are retained.');
       }
       setNotice(warnings.join(' '));
       await flushVault().catch(()=>{});signal.throwIfAborted();
@@ -422,6 +422,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
     finally{if(controller.current===control)setBusy(false);}
   }
   const holdings=useMemo(()=>snapshot?combineHoldings(snapshot.infos):[],[snapshot]);
+  const imageProgress=cachedImageProgress([...holdings.map(holding=>holding.id),...(selectedAsset?[selectedAsset]:[])],snapshot?.markets||{});
   const missingImageIds=[...new Set([...holdings.map(h=>h.id),...(selectedAsset?[selectedAsset]:[])])].filter(id=>/^[a-f0-9]{56}(?:[a-f0-9]{2}){0,32}$/.test(id)&&!snapshot?.markets[id]?.registry_logo&&!snapshot?.markets[id]?.cached_image).sort().join('|');
   useEffect(()=>{
     if(!ready||busy||!missingImageIds)return;
@@ -606,6 +607,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
     <section className="portfolio-section"><div className="tdsp-tile-grid">
       <MenuTile title="Wallets" value={refreshCounts?`${num(refreshCounts.active+ethereum.wallets.length+solana.wallets.length,0)} / ${num(refreshCounts.total+ethereum.wallets.length+solana.wallets.length,0)} active`:initialising?'Initialising':'— / — active'} loading={initialising} loadingLabel={status} onOpen={()=>setSection('wallets')}>
         <WalletSyncStatus cardano={initialising?'':busy&&analysis?transactionStatus||status:status} ethereum={ethereum.busy?ethereum.status:undefined} solana={solana.busy?'Checking Solana transactions…':undefined}/>
+        {imageProgress.total>0&&<p translate="no" role="status" className="small muted" title={t('Images available in the cache')}>{t('Images: {done} / {total}',imageProgress)}</p>}
         {refreshTiming&&<p translate="no" className="small muted" role="timer">{refreshTiming}</p>}
         {error&&<PortfolioMessage error>{error}</PortfolioMessage>}{notice&&<PortfolioMessage>{notice}</PortfolioMessage>}
         {ethereum.error&&<PortfolioMessage translate="no" error>{t(ethereum.error)}</PortfolioMessage>}

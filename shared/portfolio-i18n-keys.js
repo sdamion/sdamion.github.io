@@ -879,7 +879,7 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
     "portfolio_text_19ae063fccf1"
   ],
   [
-    "Transactions saved · loading token prices and images {done} / {total}",
+    "Transactions saved · updating token prices {done} / {total}",
     "portfolio_text_1051fb2f5785"
   ],
   [
@@ -1872,4 +1872,7 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
   , ["Calculation", "portfolio_text_calculation"]
   , ["Checking for additional transactions…", "portfolio_text_check_additional_transactions"]
   , ["Ethereum finalized block unavailable. Saved data is retained.", "portfolio_text_eth_finality_unavailable"]
+  , ["Images: {done} / {total}", "portfolio_text_image_progress"]
+  , ["Images available in the cache", "portfolio_text_image_progress_help"]
+  , ["Token prices could not be refreshed. Saved data and transaction analysis are retained.", "portfolio_text_price_refresh_failed"]
 ]);
