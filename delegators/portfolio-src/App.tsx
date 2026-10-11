@@ -42,6 +42,7 @@ import type {PaymentLink} from './mint-payments';
 import {PaymentLinks} from './PaymentLinks';
 import {AssetOverlay} from './AssetOverlay';
 import {MenuTile,AdaUsdAmount,PortfolioMessage} from './ui';
+import {WalletSyncStatus} from './WalletSyncStatus';
 import {portfolioSettings as localStorage,flushVault,storageMode} from './vault';
 import {CexTimeline} from './CexTimeline';
 import {useBtcHistory} from './use-btc-history';
@@ -137,6 +138,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   const [liveQuote,setLiveQuote]=useState<{usd:number;at:string}|null>(null);
   const controller=useRef<AbortController|null>(null);
   const [refreshStarted,setRefreshStarted]=useState(0),[clock,setClock]=useState(0);
+  const syncing=busy||ethereum.busy||solana.busy;
   const [analysis,setAnalysis]=useState<{started:number;done:number;total:number}|null>(null);
   const [counting,setCounting]=useState<number|null>(null);
   const [transactionStatus,setTransactionStatus]=useState('');
@@ -169,10 +171,11 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
     return keepRefreshSessionAlive(signal=>portfolioFetch('/session',{signal}));
   },[busy,ready]);
   useEffect(()=>{
-    if(!busy)return;
+    if(!syncing){setClock(Date.now());return;}
+    const started=Date.now();setRefreshStarted(started);setClock(started);
     const timer=setInterval(()=>setClock(Date.now()),1000);
     return()=>clearInterval(timer);
-  },[busy]);
+  },[syncing]);
   useEffect(()=>{
     if(!ready)return;
     const control=new AbortController();let pending=false;
@@ -553,7 +556,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   const cexPending=snapshot?.txs.filter(tx=>!hasCounterpartyData(snapshot.facts[tx.tx_hash])).length||0;
   const cexUnresolved=Object.values(cexFacts).filter(f=>isCexTransaction(f,cexAddresses)&&!cexAdaTransfer(f,cexAddresses)).length;
   const eta=analysis&&counted!==null?remainingSeconds(analysis.started,clock,analysis.done,analysis.total):null;
-  const refreshTiming=refreshStarted?`${busy?'Elapsed':'Refresh duration'}: ${durationLabel((clock-refreshStarted)/1000)}${busy?(eta!==null?` · Estimated analysis remaining: ${durationLabel(eta)}`:' · Estimating remaining time…'):''}`:'';
+  const refreshTiming=refreshStarted?`${syncing?t('Elapsed: {time}',{time:durationLabel((clock-refreshStarted)/1000)}):`${t('Refresh duration')}: ${durationLabel((clock-refreshStarted)/1000)}`}${busy?(eta!==null?` · ${t('Estimated analysis remaining: {time}',{time:durationLabel(eta)})}`:` · ${t('Estimating remaining time…')}`):''}`:'';
   const cardanoShown=(snapshot?.txs||[]).filter(t=>{const f=classifiedFacts[t.tx_hash],internalSwap=crossChainSwaps.cardano.has(t.tx_hash);return withinTransactionDates(t.block_time,dateFrom,dateTo)&&(section==='gain-loss'?!internalSwap&&matchesGainLossTransfer(f,cexAddresses,filter):(filter==='all'||(filter==='swap'?isSwapTransaction(f,swapAddresses):filter==='cex'?!internalSwap&&isCexTransaction(f,cexAddresses):internalSwap?filter==='internal':f&&kindOf(f)===filter)))&&matchesTransaction(query,t.tx_hash,f,snapshot?.markets||{},displayWallets,cexAddresses);});
   const ethereumShown=ethTransactions.filter(tx=>{
     const internalSwap=crossChainSwaps.ethereum.has(tx.id),transfer=internalSwap?null:ethereumTransfer(tx,ethereum.wallets,ethereum.exchanges),own=new Set(ethereum.wallets.map(w=>w.address));
@@ -592,24 +595,23 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   const exchangeForm=<CexAddresses entries={cexAddresses} owned={ownedAddresses} onChange={saveCexAddresses}/>;
   const swapForm=<SwapWallets inline wallets={wallets} groups={snapshot?.swapGroups} onChange={saveWallets}/>;
   const ethSwapWallets=ethereum.swapWallets,ethOwnWallets=ethereum.wallets;
-  return <PortfolioCurrencyContext.Provider value={currencyDisplay}><main className="member-portfolio"><PortfolioQuickstart stake={memberStake} status={status} wallets={walletForm} exchanges={exchangeForm} swap={swapForm}/><div className="portfolio-body"><div className="section-heading" aria-label="Portfolio refresh">
+  return <PortfolioCurrencyContext.Provider value={currencyDisplay}><main className="member-portfolio"><PortfolioQuickstart stake={memberStake} wallets={walletForm} exchanges={exchangeForm} swap={swapForm}/><div className="portfolio-body"><div className="section-heading" aria-label="Portfolio refresh">
     <PortfolioRefresh onRefresh={()=>{void refresh();void ethereum.refresh();void solana.refresh();}} disabled={busy||ethereum.busy||solana.busy||!ready} busy={busy||ethereum.busy||solana.busy} currencyControl={<select className="governance-vote-secondary" aria-label={t('Comparison currency')} value={holdingsCurrency} onChange={event=>setHoldingsCurrency(event.target.value as 'ADA'|ComparisonFiat)}><option value="ADA">ADA</option><option value="USD">USD ($)</option><option value="EUR">EUR (€)</option><option value="JPY">JPY (¥)</option></select>}/>
-    <div className="portfolio-section">
-      {!initialising&&!(busy&&analysis)&&!status.startsWith('Balances updated')&&<p role="status" className="status-line">{status}</p>}
-      {error&&<PortfolioMessage error>{error}</PortfolioMessage>}{notice&&<PortfolioMessage>{notice}</PortfolioMessage>}
-      {ethereum.error&&<PortfolioMessage translate="no" error>{t(ethereum.error)}</PortfolioMessage>}
-      {ethereum.busy&&<p translate="no" role="status" className="status-line">{t(ethereum.status)}</p>}
-      {solana.error&&<PortfolioMessage translate="no" error>{t(solana.error)}</PortfolioMessage>}
-      {solana.busy&&<p translate="no" role="status" className="status-line">{t('Checking Solana transactions…')}</p>}
-    </div>
   </div>
     <section className="portfolio-section"><div className="tdsp-tile-grid">
       <MenuTile title="Wallets" value={refreshCounts?`${num(refreshCounts.active+ethereum.wallets.length+solana.wallets.length,0)} / ${num(refreshCounts.total+ethereum.wallets.length+solana.wallets.length,0)} active`:initialising?'Initialising':'— / — active'} loading={initialising} loadingLabel={status} onOpen={()=>setSection('wallets')}>
-        {!initialising&&status.startsWith('Balances updated')&&<p role="status" className="small muted">{status}</p>}
+        <WalletSyncStatus cardano={initialising?'':busy&&analysis?transactionStatus||status:status} ethereum={ethereum.busy?ethereum.status:undefined} solana={solana.busy?'Checking Solana transactions…':undefined}/>
+        {refreshTiming&&<p translate="no" className="small muted" role="timer">{refreshTiming}</p>}
+        {error&&<PortfolioMessage error>{error}</PortfolioMessage>}{notice&&<PortfolioMessage>{notice}</PortfolioMessage>}
+        {ethereum.error&&<PortfolioMessage translate="no" error>{t(ethereum.error)}</PortfolioMessage>}
+        {solana.error&&<PortfolioMessage translate="no" error>{t(solana.error)}</PortfolioMessage>}
+        {storageMode()!=='remote'&&cacheNotice&&<PortfolioMessage>{cacheNotice}</PortfolioMessage>}
+        {payments.errors.length>0&&<PortfolioMessage error>Some saved payment links cannot be applied to the loaded history. Open the asset image to review its purchase payments.</PortfolioMessage>}
+        {snapshot&&comparisonCrypto==='BTC'&&<PortfolioMessage>{btc.status||'BTC equivalents use transfer-day ADA/USD and BTC/USD prices, not actual Bitcoin purchases.'}</PortfolioMessage>}
+        {(comparisonFiat==='EUR'||comparisonFiat==='JPY')&&<PortfolioMessage>{fx.status||'Historical FX rates use the latest available business day; wallet value uses the current rate.'}</PortfolioMessage>}
       </MenuTile>
-      <MenuTile title="Transactions" value={snapshot?num(allTransactionTotal,0):'—'} analysis={snapshot?{done:combinedProgress.downloaded,total:combinedProgress.total,counting:combinedProgress.total===null,busy:busy||ethereum.busy||solana.busy,status:transactionStatus}:undefined} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('transactions');}}>
+      <MenuTile title="Transactions" value={snapshot?num(allTransactionTotal,0):'—'} analysis={snapshot?{done:combinedProgress.downloaded,total:combinedProgress.total,counting:combinedProgress.total===null,busy:busy||ethereum.busy||solana.busy}:undefined} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('transactions');}}>
         <DownloadStatus chains={downloadChains}/>
-        {storageMode()!=='remote'&&cacheNotice&&<p role="status" className="tdsp-bar-legend">{cacheNotice}</p>}
       </MenuTile>
       <MenuTile title="Assets" value={holdingsDisplay} onOpen={()=>{resetPolicies();setHoldingsGroup(null);setSection('holdings');}}>
         {portfolioPartial&&partialNote}
@@ -627,8 +629,6 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
     <div className="portfolio-section">
       <button type="button" className="governance-vote-secondary" disabled={busy||!ready} onClick={()=>void refresh(true)}>Rescan all wallets</button>
       <p className="small muted">Rediscover linked addresses and check full transaction history, including excluded addresses for this scan only. Saved transaction details are reused.</p>
-      {busy&&<p className="small muted" role="status">{transactionStatus||status}</p>}
-      {error&&<p role="alert" className="small-text error-text">{error}</p>}
     </div>
     <WalletMenu counts={{wallets:wallets.filter(wallet=>wallet.group!=='swap'&&(activeWalletGroups?.[wallet.address]?.length||0)>0).length+ethOwnWallets.length+solana.wallets.length,exchanges:cexAddresses.filter(entry=>!validByronAddress(entry.address)).length+ethereum.exchanges.length+solana.exchanges.length,byron:cexAddresses.filter(entry=>validByronAddress(entry.address)).length,swap:wallets.filter(wallet=>wallet.group==='swap').length+ethSwapWallets.length}}
     wallets={<section className="portfolio-section"><p className="small muted">Your member stake address includes its linked payment addresses. Add only wallets you own.</p>
@@ -663,10 +663,8 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
       })}</div>}
       {holdingsGroup&&<>
       <button type="button" className="governance-vote-secondary" disabled={busy||!snapshot} onClick={()=>void refreshAssetPurchases()}>Refresh all purchase data</button>
-      {purchaseProgress&&<div aria-live="polite"><p className="small muted" role="status">{status}</p><div className="section-heading"><span className="governance-vote-bar-track" style={{flex:1}} role="progressbar" aria-label="Purchase transactions checked" aria-valuemin={0} aria-valuemax={purchaseProgress.total} aria-valuenow={purchaseProgress.done}><span className="governance-vote-bar-fill governance-vote-bar-fill--yes" style={{flexBasis:`${purchaseProgress.done/purchaseProgress.total*100}%`}}/></span><span className="tdsp-bar-legend">{purchaseProgress.done} / {purchaseProgress.total}</span></div></div>}
-      {error&&<p role="alert" className="small-text error-text">{error}</p>}
+      {purchaseProgress&&<div aria-live="polite"><div className="section-heading"><span className="governance-vote-bar-track" style={{flex:1}} role="progressbar" aria-label="Purchase transactions checked" aria-valuemin={0} aria-valuemax={purchaseProgress.total} aria-valuenow={purchaseProgress.done}><span className="governance-vote-bar-fill governance-vote-bar-fill--yes" style={{flexBasis:`${purchaseProgress.done/purchaseProgress.total*100}%`}}/></span><span className="tdsp-bar-legend">{purchaseProgress.done} / {purchaseProgress.total}</span></div></div>}
       <label className="small"><input type="checkbox" checked={missingCostsOnly} onChange={e=>setMissingCostsOnly(e.target.checked)}/> Show holdings with missing purchase cost ({valuationCoverage(groupIncluded).missingCost})</label>
-      {payments.errors.length>0&&<p role="status" className="negative">Some saved payment links cannot be applied to the loaded history. Open the asset image to review its purchase payments.</p>}
       {(groupRows.length>0||holdingsGroup==='FTs'&&nativeCount>0)&&<Table className="portfolio-holdings-table"><TableHeader><TableRow>{['Asset','Balance','Price · USD','Value · USD','Average buy · USD','Gain / loss','Exclude'].map(label=><TableHead translate="no" key={label}>{t(label).replace('USD',holdingsCurrency)}</TableHead>)}</TableRow></TableHeader><TableBody>
       {holdingsGroup==='FTs'&&solana.wallets.length>0&&<TableRow>
         <TableCell><button type="button" className="governance-vote-secondary" onClick={()=>setSection('wallets')}>Solana · SOL</button></TableCell>
@@ -731,8 +729,6 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
         <span translate="no" className="governance-card-detail">{t(comparisonResultLabel(comparisonResult.amount,comparisonCrypto),{crypto:comparisonCrypto})}</span>
         <strong className="governance-card-title">{snapshot?<ComparisonAmount amount={comparisonResult.amount} value={comparisonResult.fiat} crypto={comparisonCrypto} currency={comparisonFiat}/>: 'Waiting for wallet balances'}</strong>
       </div>
-      {snapshot&&comparisonCrypto==='BTC'&&<p className="small muted" role="status">{btc.status||'BTC equivalents use transfer-day ADA/USD and BTC/USD prices, not actual Bitcoin purchases.'}</p>}
-      {(comparisonFiat==='EUR'||comparisonFiat==='JPY')&&<p className="small muted" role="status">{fx.status||'Historical FX rates use the latest available business day; wallet value uses the current rate.'}</p>}
       <details className="portfolio-gain-explanation"><summary translate="no">{t('Calculation')}</summary>
         {nativeCount>0&&<p translate="no" className="small muted">{t('Combined CEX totals use transfer-day prices, not summed coin quantities.')}</p>}
         <p className="small muted">{snapshot?.complete&&!cexPending&&!cexUnresolved?'':'Partial · '}Transfer-day prices plus current wallet value; not exchange execution prices.{cexPending?` ${num(cexPending,0)} transactions need CEX address checks.`:''}{cexUnresolved?` ${num(cexUnresolved,0)} mixed CEX transactions excluded.`:''}{cexDollars.missingPrices?` ${cexDollars.missingPrices} transfers have no historical USD price.`:''}</p>
@@ -748,7 +744,6 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
       <TransactionPagination position="bottom" page={currentPage} count={shown.length} onPage={setPage}/>
       {section==='gain-loss'?<p className="small muted table-note">USD amounts use daily UTC transfer-date prices. The Fee column shows the total on-chain fee; paid-fee totals include only fees attributable to your wallet.</p>:<p className="small muted table-note">Internal transfers require all inputs and outputs to belong to tracked addresses. Their net change is only the fee. Mixed transactions remain separate. Buy/sell labels are inferred from opposing ADA and token changes; multi-step DEX orders may need further reconciliation.</p>}
     </section></AssetOverlay></PortfolioCurrencyContext.Provider>}
-    {busy&&<p className="small muted" role="timer">{refreshTiming}</p>}
     </div>
     {selectedAsset&&rows.filter(r=>r.id===selectedAsset).map(r=><AssetOverlay key={r.id} name={r.name} literalTitle onClose={()=>setSelectedAsset(null)}>
       <section className="portfolio-section">
@@ -756,7 +751,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
         <p className="small muted">{assetWallets[r.id]?.join(' · ')}</p>
         <AssetWalletAddresses addresses={assetAddresses[r.id]||[]}/>
         <p className="address">{r.id}</p>
-        {r.id!=='lovelace'&&<><button type="button" className="governance-vote-secondary" disabled={busy} onClick={()=>void refreshAssetPurchases(r.id)}>Refresh purchase data</button><p className="small muted" role="status">{status}</p>{error&&<p role="alert" className="small-text error-text">{error}</p>}</>}
+        {r.id!=='lovelace'&&<button type="button" className="governance-vote-secondary" disabled={busy} onClick={()=>void refreshAssetPurchases(r.id)}>Refresh purchase data</button>}
         {r.id!=='lovelace'&&<><AssetExclusionToggle name={r.name} excluded={overrides[r.id]?.excluded===true} onChange={excluded=>excludeAsset(r.id,excluded)}/><p className="small muted">Excludes this asset's value, purchase cost and gain/loss from portfolio totals and coverage. Individual details stay visible. Actual ADA movements and network fees remain unchanged. Saved for this portfolio in this browser.</p></>}
         {r.id!=='lovelace'&&<a href={`https://cardanoscan.io/token/${r.id}`} target="_blank" rel="noreferrer">View asset on Cardanoscan <ExternalLink size={14}/></a>}
         <div className="tdsp-tile-grid">

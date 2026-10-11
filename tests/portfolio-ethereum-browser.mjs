@@ -8,7 +8,7 @@ const stake='stake1uxythldc4nmx45tvnwsqu4h5pyjd94udytm6f0tgnr44vecjd8vel',addres
 const bundle=await build({stdin:{contents:`import {createRoot} from 'react-dom/client';import Home from './App';const root=createRoot(document.getElementById('app'));let version=0;window.reopenPortfolio=(role='admin')=>root.render(<Home key={++version} memberStake="${stake}" role={role}/>);window.reopenPortfolio();`,loader:'tsx',resolveDir:source},bundle:true,write:false,format:'esm',jsx:'automatic',alias:{'@/lib/portfolio':path.join(source,'core.ts'),'@/lib/portfolio-cache':path.join(source,'cache.ts'),'@/components/ui/input':path.join(source,'ui.tsx'),'@/components/ui/table':path.join(source,'ui.tsx'),'@/components/ui/pagination':path.join(source,'ui.tsx')},plugins:[{name:'ethereum-fixture',setup(build){
   build.onLoad({filter:/\/PortfolioQuickstart\.tsx$/},()=>({loader:'tsx',contents:'export function PortfolioQuickstart(){return null;}'}));
   build.onLoad({filter:/\/vault\.ts$/},()=>({loader:'ts',contents:'export const portfolioSettings=window.fixtureStorage; export const flushVault=async()=>{}; export const storageMode=()=>"local";export const cachedSnapshot=()=>window.fixture;export const latestMemberSnapshot=()=>window.fixture;export const cacheSnapshot=async()=>{};'}));
-  build.onLoad({filter:/\/App\.tsx$/},async args=>({loader:'tsx',contents:(await readFile(args.path,'utf8')).replace('useState<Snapshot|null>(null)','useState<Snapshot|null>(window.fixture)').replace('setSnapshot(null);setError','setError').replace('async function refresh(fullScan=false){','async function refresh(fullScan=false){setInitialising(false);setStatus("Balances updated · updating prices…");return;')}));
+  build.onLoad({filter:/\/App\.tsx$/},async args=>({loader:'tsx',contents:(await readFile(args.path,'utf8')).replace('useState<Snapshot|null>(null)','useState<Snapshot|null>(window.fixture)').replace('setSnapshot(null);setError','setError').replace('async function refresh(fullScan=false){','async function refresh(fullScan=false){setInitialising(false);setRefreshStarted(1000);setClock(2000);setStatus("Balances updated · updating prices…");return;')}));
 }}]});
 const browser=await chromium.launch({channel:'chrome',headless:true});
 try{
@@ -65,6 +65,8 @@ try{
   const walletsTile=page.getByRole('button',{name:'Open Wallets',exact:true});
   await walletsTile.waitFor({timeout:10000}).catch(error=>{console.error('Portfolio startup errors:',errors);throw error;});
   await walletsTile.getByRole('status').filter({hasText:'Balances updated'}).waitFor();
+  assert.match(await walletsTile.getByRole('timer').innerText(),/Refresh duration:/,'refresh timing belongs to Wallets');
+  assert.equal(await page.getByRole('timer').count(),1,'timing is not duplicated outside the tile');
   assert.equal(await page.locator('.status-line').filter({hasText:'Balances updated'}).count(),0,'balance updates belong to the Wallet tile, not the global header');
   assert.equal(await page.getByRole('button',{name:'Open Ethereum Wallets',exact:true}).count(),0);
   assert.equal(requests.length,0,'a CEX-only setup never scans a shared exchange wallet');
@@ -140,6 +142,7 @@ try{
   quoteUnavailable=true;historyUsd=1200;
   await own.getByRole('button',{name:'Refresh Ethereum wallets',exact:true}).click();
   await page.getByRole('alert').filter({hasText:'Current Ethereum price unavailable.'}).waitFor();
+  assert.equal(await walletsTile.getByRole('alert').filter({hasText:'Current Ethereum price unavailable.'}).count(),1,'API errors appear in Wallets');
   const stored=await page.evaluate(stake=>JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)),stake);
   assert.equal(stored.history['2023-01-06'],1200,'historical CEX prices are cached even when the live quote fails');
   assert.equal(stored.accounts[address].transactions.length,1,'complete history is cached before optional quotes');

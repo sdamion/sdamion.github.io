@@ -9,8 +9,12 @@ const bundle=await build({stdin:{contents:`
 import {createRoot} from 'react-dom/client';
 import {MenuTile} from './ui';
 import {DownloadStatus} from './DownloadStatus';
+import {WalletSyncStatus} from './WalletSyncStatus';
 import {combinedTransactionProgress} from './download-progress';
 const root=createRoot(document.getElementById('app'));
+const walletRoot=createRoot(document.getElementById('wallet'));
+window.renderWalletStatus=(checking)=>walletRoot.render(<MenuTile title="Wallets" value="3 / 3 active" onOpen={()=>{}}><WalletSyncStatus cardano={checking?'Checking balances · batch 1 of 2':'Balances updated · updating prices…'} ethereum={checking?'Checking Ethereum transactions…':undefined} solana={checking?'Checking Solana transactions…':undefined}/></MenuTile>);
+window.renderWalletStatus(true);
 window.renderProgress=(total)=>{
   const chains=[{chain:'ADA',progress:{downloaded:21591,total:21591}},{chain:'ETH',progress:{downloaded:266,total}},{chain:'SOL',progress:{downloaded:778,total:778}}];
   const progress=combinedTransactionProgress(chains.map(row=>row.progress));
@@ -20,11 +24,19 @@ window.renderProgress(null);`,loader:'tsx',resolveDir:source},bundle:true,write:
 const browser=await chromium.launch({channel:'chrome',headless:true});
 try{
  const page=await browser.newPage();
- await page.setContent('<div id="app"></div>');
+ await page.setContent('<div id="app"></div><div id="wallet"></div>');
  await page.evaluate(()=>{window.TDSPRuntime={appendUniversalTileContent(node,{title,primaryText}){node.textContent=title+' '+primaryText;}};});
  await page.addScriptTag({type:'module',content:bundle.outputFiles[0].text});
  const bar=page.getByRole('progressbar');
  await bar.waitFor({state:'attached'});
+ const wallets=page.getByRole('button',{name:'Open Wallets',exact:true});
+ await wallets.getByRole('status').filter({hasText:'Checking Ethereum transactions…'}).waitFor();
+ assert.match(await wallets.innerText(),/Checking balances · batch 1 of 2/);
+ assert.match(await wallets.innerText(),/Checking Solana transactions…/);
+ assert.equal(await page.locator('#app').getByRole('status').filter({hasText:/Checking (Ethereum|Solana) transactions/}).count(),0,'chain sync messages stay in Wallets');
+ await page.evaluate(()=>window.renderWalletStatus(false));
+ await wallets.getByRole('status').filter({hasText:'Balances updated'}).waitFor();
+ assert.equal(await wallets.getByRole('status').count(),1,'finished chains remove their checking messages');
  assert.equal(await bar.getAttribute('aria-valuenow'),null,'unknown ETH total has no numeric percentage, even when idle');
  assert.equal(await page.getByText('100%',{exact:true}).count(),0);
  assert.match(await page.locator('#app').innerText(),/ETH: 266 \/ 266 transactions/,'cached ETH total stays visible during discovery');

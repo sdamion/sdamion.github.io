@@ -11,7 +11,7 @@ const steps=[
 const keyFor=(stake:string)=>`tdsp-portfolio-setup-v1:${stake}`;
 function completed(stake:string){try{return localStorage.getItem(keyFor(stake))==='done';}catch{return false;}}
 
-export function PortfolioQuickstart({stake,status,wallets,exchanges,swap}:{stake:string;status:string;wallets?:ReactNode;exchanges?:ReactNode;swap?:ReactNode}){
+export function PortfolioQuickstart({stake,wallets,exchanges,swap}:{stake:string;wallets?:ReactNode;exchanges?:ReactNode;swap?:ReactNode}){
   const anchor=useRef<HTMLSpanElement>(null);
   const dismissed=useRef(false);
   const [open,setOpen]=useState(false),[step,setStep]=useState(0),[,setLanguage]=useState(0);
@@ -43,7 +43,6 @@ export function PortfolioQuickstart({stake,status,wallets,exchanges,swap}:{stake
       </div>
       {step===1?wallets:step===2?exchanges:step===3?swap:null}
       <div translate="no">
-      <p className="small muted" role="status">{t(status)}</p>
       <div className="section-heading">
         <button type="button" className="governance-vote-secondary" onClick={close}>{t('Skip setup')}</button>
         {step>0&&<button type="button" className="governance-vote-secondary" onClick={()=>setStep(value=>value-1)}>{t('Back')}</button>}

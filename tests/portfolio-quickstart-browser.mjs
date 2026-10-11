@@ -12,12 +12,14 @@ import {PortfolioQuickstart} from './PortfolioQuickstart';
 import {CexAddresses} from './CexAddresses';
 import {SwapWallets} from './SwapWallets';
 import {WalletMenu} from './WalletMenu';
+import {MenuTile} from './ui';
+import {WalletSyncStatus} from './WalletSyncStatus';
 function Test(){const [status,setStatus]=useState('Initialising');
 const [entries,setEntries]=useState([]),[wallets,setWallets]=useState([]);
 useEffect(()=>{window.loadingStarted=true;window.complete=()=>setStatus('Loaded');return()=>{window.loadingStopped=true;};},[]);
 const exchange=<CexAddresses entries={entries} owned={[]} onChange={next=>{setEntries(next);return true;}}/>;
 const swap=<SwapWallets inline wallets={wallets} onChange={setWallets}/>;
-return <><PortfolioQuickstart stake="test-member" status={status} exchanges={exchange} swap={swap}/><WalletMenu counts={{wallets:0,exchanges:entries.length,byron:0,swap:wallets.length}} wallets={null} exchanges={<CexAddresses entries={entries} owned={[]} onChange={next=>{setEntries(next);return true;}} swap={{wallets,onChange:setWallets}}/>} byron={null}/></>;}
+return <><PortfolioQuickstart stake="test-member" exchanges={exchange} swap={swap}/><MenuTile title="Wallets" value="0" onOpen={()=>{}}><WalletSyncStatus cardano={status}/></MenuTile><WalletMenu counts={{wallets:0,exchanges:entries.length,byron:0,swap:wallets.length}} wallets={null} exchanges={<CexAddresses entries={entries} owned={[]} onChange={next=>{setEntries(next);return true;}} swap={{wallets,onChange:setWallets}}/>} byron={null}/></>;}
 window.mount=()=>{window.root=createRoot(document.getElementById('app'));window.root.render(<Test/>);};window.mount();
 `,loader:'tsx',resolveDir:path.resolve('delegators/portfolio-src')},bundle:true,write:false,format:'esm',jsx:'automatic',alias:{'@/components/ui/table':path.resolve('delegators/portfolio-src/ui.tsx')}});
 const browser=await chromium.launch({channel:'chrome',headless:true});
@@ -34,7 +36,8 @@ try{
  await guide.getByRole('heading',{name:'Your member wallet'}).waitFor();
  assert.equal(await page.evaluate(()=>window.loadingStarted),true);
  await page.evaluate(()=>window.complete());
- await guide.getByRole('status').filter({hasText:'Loaded'}).waitFor();
+ await page.getByRole('button',{name:'Open Wallets',exact:true}).getByRole('status').filter({hasText:'Loaded'}).waitFor();
+ assert.equal(await guide.getByRole('status').count(),0,'setup does not duplicate Wallet sync messages');
  for(const width of [1200,390]){
    await page.setViewportSize({width,height:850});
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
