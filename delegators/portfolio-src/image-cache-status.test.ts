@@ -25,10 +25,16 @@ test('pending downloads are discovered without repeating price or transaction re
   await watchImageCache([id],async ids=>{assert.deepEqual(ids,[id]);return {tokens:[++calls===1?{token_id:id,state:'pending'}:{token_id:id,state:'cached',cached_image:url}]};},images=>updates.push(images),new AbortController().signal,async ms=>{waits.push(ms);});
   assert.equal(calls,2);assert.deepEqual(updates,[{[id]:url}]);assert.deepEqual(waits,[5000]);
 });
-test('failed downloads are not requested again until their twelve-hour retry time',async()=>{
+test('deferred images are checked again within a minute without waiting for the download retry deadline',async()=>{
   let clock=1000,calls=0;const retryAt=clock+43200000;
-  await watchImageCache([id],async()=>({tokens:[++calls===1?{token_id:id,state:'deferred',retryAt}:{token_id:id,state:'cached',cached_image:url}]}),()=>{},new AbortController().signal,async ms=>{assert.equal(ms,60000);clock=retryAt;},()=>clock);
+  await watchImageCache([id],async()=>({tokens:[++calls===1?{token_id:id,state:'deferred',retryAt}:{token_id:id,state:'cached',cached_image:url}]}),()=>{},new AbortController().signal,async ms=>{assert.equal(ms,60000);clock+=ms;},()=>clock);
   assert.equal(calls,2);
+  assert.ok(clock<retryAt);
+});
+test('temporary status errors retry and publish completed images instead of stopping permanently',async()=>{
+  let clock=1000,calls=0;const updates:unknown[]=[];
+  await watchImageCache([id],async()=>{if(++calls===1)throw new Error('Network unavailable');return {tokens:[{token_id:id,state:'cached',cached_image:url}]};},images=>updates.push(images),new AbortController().signal,async ms=>{assert.equal(ms,60000);clock+=ms;},()=>clock);
+  assert.equal(calls,2);assert.deepEqual(updates,[{[id]:url}]);
 });
 test('status checks stop when unavailable or cancelled and ignore unsolicited assets',async()=>{
   let calls=0;

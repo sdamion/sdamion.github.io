@@ -24,7 +24,13 @@ export async function watchImageCache(ids:string[],request:(ids:string[])=>Promi
     for(let offset=0;offset<due.length;offset+=100){
       signal.throwIfAborted();
       const batch=due.slice(offset,offset+100),allowed=new Set(batch);
-      const result=await request(batch);signal.throwIfAborted();
+      let result:{tokens:ImageState[]};
+      try{result=await request(batch);}catch{
+        signal.throwIfAborted();
+        for(const id of batch)pending.set(id,now()+60000);
+        continue;
+      }
+      signal.throwIfAborted();
       if(!Array.isArray(result.tokens))throw new Error('Invalid image cache status.');
       const images:Record<string,string>={};
       for(const row of result.tokens){
@@ -32,7 +38,8 @@ export async function watchImageCache(ids:string[],request:(ids:string[])=>Promi
         if(row.state==='cached'&&typeof row.cached_image==='string'&&cachedPath.test(row.cached_image)){
           images[row.token_id]=row.cached_image;pending.delete(row.token_id);
         }else if(row.state==='unavailable')pending.delete(row.token_id);
-        else if(row.state==='deferred'&&typeof row.retryAt==='number'&&Number.isSafeInteger(row.retryAt)&&row.retryAt>now())pending.set(row.token_id,row.retryAt);
+        // Status checks do not start downloads during the server's cooldown.
+        else if(row.state==='deferred'&&typeof row.retryAt==='number'&&Number.isSafeInteger(row.retryAt)&&row.retryAt>now())pending.set(row.token_id,Math.min(row.retryAt,now()+60000));
       }
       if(Object.keys(images).length)publish(images);
     }
