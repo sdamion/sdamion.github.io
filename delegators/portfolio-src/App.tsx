@@ -42,6 +42,7 @@ import {mintPayments,paymentBudget} from './mint-payments';
 import type {PaymentLink} from './mint-payments';
 import {PaymentLinks} from './PaymentLinks';
 import {AssetOverlay} from './AssetOverlay';
+import {historicalNfts} from './historical-nfts';
 import {MenuTile,AdaUsdAmount} from './ui';
 import {WalletSyncStatus} from './WalletSyncStatus';
 import {portfolioSettings as localStorage,flushVault,storageMode} from './vault';
@@ -124,7 +125,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   const rawSolTransfers=useMemo(()=>solanaTransfers(solana.data,solana.wallets,solana.exchanges),[solana.data,solana.wallets,solana.exchanges]);
   const ethTransactions=useMemo(()=>ethereumTransactions(ethereum.data,ethereum.wallets),[ethereum.data,ethereum.wallets]);
   const rawEthTransfers=useMemo(()=>ethereumTransfers(ethereum.data,ethereum.wallets,ethereum.exchanges),[ethereum.data,ethereum.wallets,ethereum.exchanges]);
-  const [holdingsGroup,setHoldingsGroup]=useState<'FTs'|'NFTs'|null>(null);
+  const [holdingsGroup,setHoldingsGroup]=useState<'FTs'|'NFTs'|'Historical NFTs'|null>(null);
   const {expanded:expandedPolicies,toggle:togglePolicy,reset:resetPolicies}=useTableGroups();
   const btc=useBtcHistory(section==='gain-loss');
   const [comparisonCrypto,setComparisonCrypto]=useState<ComparisonCrypto>('ADA');
@@ -502,6 +503,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
     return {...h,name:m?.name||m?.ticker||assetName(h.id),qty,price,value,cost,pnl,buyAverage,estimatedPurchaseCost:!!estimated,manualPrice,quote,automaticDecimals,automatic:avg===null&&cost!==null};
   }).sort((a,b)=>a.id==='lovelace'?-1:b.id==='lovelace'?1:(b.value??-1)-(a.value??-1));
   const included=includedAssets(rows,overrides),excludedCount=rows.length-included.length;
+  const nftHistory=useMemo(()=>historicalNfts(Object.values(classifiedFacts),holdings,snapshot?.markets||{}),[classifiedFacts,holdings,snapshot?.markets]);
   const assetGroup=(id:string)=>id!=='lovelace'&&snapshot?.markets[id]?.is_nft===true?'NFTs':'FTs';
   const groupRows=holdingsGroup?rows.filter(row=>assetGroup(row.id)===holdingsGroup):rows;
   const holdingEntries=policyTableRows(groupRows,expandedPolicies,r=>!missingCostsOnly||(r.cost===null&&(r.id==='lovelace'||overrides[r.id]?.excluded!==true)));
@@ -666,8 +668,12 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
         const ethCount=group==='FTs'&&ethereum.wallets.length?1:0;
         const solCount=group==='FTs'&&solana.wallets.length?1:0;
         return <MenuTile key={group} title={group} value={formatPortfolioUsd(total,currencyDisplay)} onOpen={()=>setHoldingsGroup(group)}><p className="small muted">{t('{done} / {total} assets valued',{done:priced.length+(ethCount&&!ethExcluded&&ethValue!==null?1:0)+(solCount&&!solExcluded&&solAvailable.value!==null?1:0),total:active.length+(ethCount&&!ethExcluded?1:0)+(solCount&&!solExcluded?1:0)})}{assets.length-active.length+(ethCount&&ethExcluded?1:0)+(solCount&&solExcluded?1:0)?' · '+t('{count} excluded',{count:assets.length-active.length+(ethCount&&ethExcluded?1:0)+(solCount&&solExcluded?1:0)}):''}</p></MenuTile>;
-      })}</div>}
-      {holdingsGroup&&<>
+      })}<MenuTile title="Historical NFTs" value={num(nftHistory.length,0)} onOpen={()=>setHoldingsGroup('Historical NFTs')}/></div>}
+      {holdingsGroup==='Historical NFTs'&&<>
+        {!snapshot?.complete&&<p className="small muted" translate="no">{t('Partial history')}</p>}
+        {nftHistory.length?<Table className="portfolio-holdings-table"><TableHeader><TableRow><TableHead translate="no">{t('Asset')}</TableHead><TableHead translate="no">{t('Balance')}</TableHead></TableRow></TableHeader><TableBody>{nftHistory.map(row=><TableRow key={row.id}><TableCell><AssetImage id={row.id} name={row.name} market={snapshot?.markets[row.id]} preview/></TableCell><TableCell translate="no">{row.raw}</TableCell></TableRow>)}</TableBody></Table>:<p className="empty" translate="no">{t('No NFTs found in loaded wallet history.')}</p>}
+      </>}
+      {holdingsGroup&&holdingsGroup!=='Historical NFTs'&&<>
       <button type="button" className="governance-vote-secondary" disabled={busy||!snapshot} onClick={()=>void refreshAssetPurchases()}>Refresh all purchase data</button>
       {purchaseProgress&&<div aria-live="polite"><div className="section-heading"><span className="governance-vote-bar-track" style={{flex:1}} role="progressbar" aria-label="Purchase transactions checked" aria-valuemin={0} aria-valuemax={purchaseProgress.total} aria-valuenow={purchaseProgress.done}><span className="governance-vote-bar-fill governance-vote-bar-fill--yes" style={{flexBasis:`${purchaseProgress.done/purchaseProgress.total*100}%`}}/></span><span className="tdsp-bar-legend">{purchaseProgress.done} / {purchaseProgress.total}</span></div></div>}
       <label className="small"><input type="checkbox" checked={missingCostsOnly} onChange={e=>setMissingCostsOnly(e.target.checked)}/> Show holdings with missing purchase cost ({valuationCoverage(groupIncluded).missingCost})</label>
@@ -777,12 +783,17 @@ function AssetExclusionToggle({name,excluded,onChange,compact=false}:{name:strin
   return <label className="small muted"><input type="checkbox" checked={excluded} aria-label={t('Exclude {name} from Assets Across Wallets',{name})} onChange={event=>onChange(event.target.checked)}/>{!compact&&t('Exclude from Assets Across Wallets')}</label>;
 }
 
-function AssetImage({id,name,market,onOpen,compact=false,hideIdentifier=false}:{id:string;name:string;market?:Market;onOpen?:()=>void;compact?:boolean;hideIdentifier?:boolean}){
+function AssetImage({id,name,market,onOpen,compact=false,hideIdentifier=false,preview=false}:{id:string;name:string;market?:Market;onOpen?:()=>void;compact?:boolean;hideIdentifier?:boolean;preview?:boolean}){
   const [failed,setFailed]=useState<string[]>([]);
+  const [previewSource,setPreviewSource]=useState<string|null>(null);
+  const t=usePortfolioText();
   const source=assetImageCandidates(id,[market?.registry_logo,market?.cached_image,market?.wayup_image,market?.image,market?.image_url,market?.logo]).find(url=>!failed.includes(url));
   const image=source?<img className="portfolio-asset-image" src={source} alt={name} title={name} width={48} height={48} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={()=>setFailed(previous=>[...previous,source])}/>:null;
-  const content=<>{image}<span className="portfolio-asset-name" title={hideIdentifier?name:id}>{name}</span></>;
-  return onOpen?<button type="button" className="governance-vote-secondary portfolio-asset-button" onClick={onOpen} aria-label={`View ${name} details`}>{content}</button>:<div className={compact?'portfolio-token-inline':undefined}>{content}</div>;
+  const thumbnail=preview&&image?<button type="button" className="portfolio-image-preview-button" aria-label={t('View {name} details').replace('{name}',name)} onClick={()=>setPreviewSource(source!)}>{image}</button>:image;
+  const content=<>{thumbnail}<span className="portfolio-asset-name" title={hideIdentifier?name:id}>{name}</span></>;
+  return <>{onOpen?<button type="button" className="governance-vote-secondary portfolio-asset-button" onClick={onOpen} aria-label={`View ${name} details`}>{content}</button>:<div className={compact?'portfolio-token-inline':undefined}>{content}</div>}
+    {previewSource&&<AssetOverlay id="portfolio-image-preview-overlay" name={name} literalTitle onClose={()=>setPreviewSource(null)}><img className="portfolio-image-preview" src={previewSource} alt={name} translate="no" decoding="async" referrerPolicy="no-referrer"/></AssetOverlay>}
+  </>;
 }
 
 function Metric({label,value,amount,note,tone='',onOpen,openLabel=label,children}:{label:string;value:string;amount?:{ada:number|null;usd:number|null};note?:React.ReactNode;tone?:string;onOpen?:()=>void;openLabel?:string;children?:React.ReactNode}){
@@ -799,7 +810,7 @@ function Transaction({tx,fact,markets,wallets,history,cexAddresses,swapAddresses
   return <TransactionRow compact={compact} hash={tx.tx_hash} time={tx.block_time} price={amount.price} feeRaw={transactionNetworkFee(fact)}
     amount={<><TransactionAmount ada={amount.ada} usd={amount.usd} tone={cexTrade?(cexTrade.side==='buy'?'negative':'positive'):undefined}/>{compact&&amount.ada!==null&&<div translate="no" className="small muted">{num(Math.abs(amount.ada),6)} ADA</div>}</>}
     kind={compact?(amount.ada!==null&&amount.ada>0?'ADA IN':'ADA OUT'):fact&&isCardanoReward(fact,cexAddresses)?'Mining / services receipt':internalSwap?'Internal cross-chain swap':isSwapTransaction(fact,swapAddresses)?'Swap':cexTrade?(cexTrade.side==='buy'?'ADA IN':'ADA OUT'):kind==='internal'?'Internal transfer · fee only':kind?labels[kind]:'Awaiting analysis'}
-    details={fact&&Object.entries(fact.assets).map(([id,raw])=>{const q=units(raw,markets[id]?.decimals??fact.decimals?.[id]);return <div className="small" key={id}>{BigInt(raw)>0n?'+':''}{q===null?raw+' raw':num(q)} <AssetImage id={id} name={markets[id]?.name||markets[id]?.ticker||assetName(id)} market={markets[id]} compact/></div>;})}
+    details={fact&&Object.entries(fact.assets).map(([id,raw])=>{const q=units(raw,markets[id]?.decimals??fact.decimals?.[id]);return <div className="small" key={id}>{BigInt(raw)>0n?'+':''}{q===null?raw+' raw':num(q)} <AssetImage id={id} name={markets[id]?.name||markets[id]?.ticker||assetName(id)} market={markets[id]} compact preview/></div>;})}
     priceDetails={trade&&<div className="small muted">{quantity?num(trade.ada/quantity,10)+' ₳ / token':num(trade.ada)+' ₳ consideration'}</div>}
     wallets={<TransactionWallets labels={transactionWalletNames(fact,wallets)} exchanges={exchangeWallets}/>}
   />;

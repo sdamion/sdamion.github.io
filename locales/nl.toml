@@ -1417,3 +1417,5 @@ portfolio_eth_scan_checkpoint_failed = "Het Ethereum-scancheckpoint kon niet wor
 portfolio_text_image_progress = "Afbeeldingen: {done} / {total}"
 portfolio_text_image_progress_help = "Afbeeldingen beschikbaar in de cache"
 portfolio_text_price_refresh_failed = "Tokenprijzen konden niet worden bijgewerkt. Opgeslagen gegevens en transactieanalyse blijven behouden."
+portfolio_text_historical_nfts = "Historische NFT's"
+portfolio_text_historical_nfts_empty = "Geen NFT's gevonden in de geladen walletgeschiedenis."

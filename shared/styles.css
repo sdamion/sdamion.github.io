@@ -163,6 +163,9 @@ html[data-theme="dark"] .portfolio-dex-label { --portfolio-dex-color: #fb923c; }
 .portfolio-storage-choice details { margin-top: 12px; }
 .portfolio-storage-choice summary { cursor: pointer; }
 .portfolio-asset-image { display: block; width: 48px; height: 48px; object-fit: contain; }
+.member-portfolio .portfolio-image-preview-button { padding: 0; border: 0; background: transparent; cursor: zoom-in; flex-shrink: 0; }
+.member-portfolio .portfolio-image-preview-button:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+.member-portfolio .portfolio-image-preview { display: block; width: min(100%, 720px); height: auto; max-height: 75vh; object-fit: contain; margin: 0 auto; }
 .portfolio-asset-button { flex-direction: column; align-items: flex-start; }
 .portfolio-asset-name { display: block; overflow-wrap: anywhere; white-space: normal; }
 .member-portfolio .portfolio-asset-address-row { display: flex; align-items: center; gap: 8px; margin-block: 8px; }

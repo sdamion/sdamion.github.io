@@ -1875,4 +1875,6 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
   , ["Images: {done} / {total}", "portfolio_text_image_progress"]
   , ["Images available in the cache", "portfolio_text_image_progress_help"]
   , ["Token prices could not be refreshed. Saved data and transaction analysis are retained.", "portfolio_text_price_refresh_failed"]
+  , ["Historical NFTs", "portfolio_text_historical_nfts"]
+  , ["No NFTs found in loaded wallet history.", "portfolio_text_historical_nfts_empty"]
 ]);

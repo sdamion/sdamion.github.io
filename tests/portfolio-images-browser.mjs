@@ -50,6 +50,14 @@ try{
     assert.equal(await asset.locator('img').evaluate(img=>img.naturalWidth>0),true);
     await asset.screenshot({path:`/tmp/tdsp-cached-image-${width}.png`});
   }
+  await page.getByRole('button',{name:'Back',exact:true}).click();
+  await page.getByRole('button',{name:'Open Historical NFTs',exact:true}).click();
+  await page.locator('#portfolio-holdings-overlay tbody tr').waitFor();
+  assert.equal(await page.locator('#portfolio-holdings-overlay tbody tr').count(),1);
+  const historicalImage=page.locator('#portfolio-holdings-overlay .portfolio-image-preview-button');
+  await historicalImage.click();
+  assert.equal(new URL(await page.locator('#portfolio-image-preview-overlay img').getAttribute('src')).pathname,image);
+  await page.locator('#portfolio-image-preview-overlay').getByRole('button',{name:'Back',exact:true}).click();
   assert.deepEqual(errors,[]);
   console.log('PASS: background Portfolio images appear automatically on desktop and mobile without re-scanning prices or transactions.');
 }finally{await browser.close();}

@@ -1416,4 +1416,6 @@ portfolio_eth_swap_counterparties = "スワップアドレスはウォレット�
 portfolio_eth_scan_checkpoint_failed = "Ethereumのスキャンチェックポイントを開けませんでした。保存済みデータは保持されています。"
 portfolio_text_image_progress = "画像: {done} / {total}"
 portfolio_text_image_progress_help = "キャッシュ内で利用可能な画像"
+portfolio_text_historical_nfts = "過去に保有したNFT"
+portfolio_text_historical_nfts_empty = "読み込まれたウォレット履歴にNFTはありません。"
 portfolio_text_price_refresh_failed = "トークン価格を更新できませんでした。保存済みデータと取引分析は保持されます。"

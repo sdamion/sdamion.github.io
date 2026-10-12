@@ -1416,4 +1416,6 @@ portfolio_eth_swap_counterparties = "Las direcciones de swap identifican contrap
 portfolio_eth_scan_checkpoint_failed = "No se pudo abrir el punto de control del análisis de Ethereum. Los datos guardados se conservan."
 portfolio_text_image_progress = "Imágenes: {done} / {total}"
 portfolio_text_image_progress_help = "Imágenes disponibles en la caché"
+portfolio_text_historical_nfts = "NFT históricos"
+portfolio_text_historical_nfts_empty = "No se encontraron NFT en el historial cargado de las wallets."
 portfolio_text_price_refresh_failed = "No se pudieron actualizar los precios de los tokens. Se conservan los datos guardados y el análisis de transacciones."
