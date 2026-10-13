@@ -792,7 +792,7 @@ function HistoricalNftCollage({rows,markets}:{rows:ReturnType<typeof historicalN
     query.addEventListener('change',update);
     return()=>query.removeEventListener('change',update);
   },[]);
-  const pageSize=mobile?1:9,current=transactionPage(page,rows.length,pageSize);
+  const pageSize=mobile?1:6,current=transactionPage(page,rows.length,pageSize);
   return <><div className="portfolio-nft-collage">{rows.slice(current.page*pageSize,current.page*pageSize+pageSize).map(row=><AssetImage key={row.id} id={row.id} name={row.name} market={markets[row.id]} preview collage={{firstReceived:row.firstReceived}}/>)}</div>
     {rows.length>pageSize&&<TransactionPagination position="bottom" page={current.page} count={rows.length} pageSize={pageSize} onPage={setPage} ariaLabel="Historical NFT pages"/>}
   </>;
