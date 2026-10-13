@@ -12,5 +12,5 @@ export function historicalNfts(facts:Fact[],holdings:Holding[],markets:Record<st
   }
   return [...ids].filter(id=>markets[id]?.is_nft===true)
     .map(id=>({id,name:markets[id]?.name||markets[id]?.ticker||id,raw:balances.get(id)||'0',firstReceived:received.get(id)??null}))
-    .sort((a,b)=>a.name.localeCompare(b.name)||a.id.localeCompare(b.id));
+    .sort((a,b)=>(b.firstReceived??0)-(a.firstReceived??0)||a.name.localeCompare(b.name)||a.id.localeCompare(b.id));
 }

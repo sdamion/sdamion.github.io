@@ -18,3 +18,10 @@ test('first receipt uses the earliest valid incoming transaction, not a sale or 
   assert.equal(historicalNfts(facts,[],markets)[0].firstReceived,100);
   assert.equal(historicalNfts([{time:100,assets:{nft:'-1'}}],[],markets)[0].firstReceived,null);
 });
+test('sorts by first receipt newest first, with stable name ties and unknown dates last',()=>{
+  const facts=[{time:100,assets:{old:'1'}},{time:300,assets:{old:'1',newest:'1'}},{time:200,assets:{tieZ:'1',tieA:'1'}},{time:400,assets:{unknown:'-1'}}];
+  const markets=Object.fromEntries(['old','newest','tieZ','tieA','unknown'].map(id=>[id,{name:id,is_nft:true}]));
+  const original=JSON.stringify(facts);
+  assert.deepEqual(historicalNfts(facts,[],markets).map(row=>row.id),['newest','tieA','tieZ','old','unknown']);
+  assert.equal(JSON.stringify(facts),original);
+});
