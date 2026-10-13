@@ -1877,4 +1877,7 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
   , ["Token prices could not be refreshed. Saved data and transaction analysis are retained.", "portfolio_text_price_refresh_failed"]
   , ["Historical NFTs", "portfolio_text_historical_nfts"]
   , ["No NFTs found in loaded wallet history.", "portfolio_text_historical_nfts_empty"]
+  , ["First received: {date}", "portfolio_text_nft_first_received"]
+  , ["First received: unknown", "portfolio_text_nft_first_received_unknown"]
+  , ["Historical NFT pages", "portfolio_text_nft_pages"]
 ]);

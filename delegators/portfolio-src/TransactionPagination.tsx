@@ -2,9 +2,9 @@ import {Pagination,PaginationContent,PaginationItem} from './ui';
 import {transactionPage} from './transaction-date';
 import {ChevronLeft,ChevronRight,ChevronsLeft,ChevronsRight} from 'lucide-react';
 
-export function TransactionPagination({page,count,onPage,position,pageSize=100}:{page:number;count:number;onPage:(page:number)=>void;position:'top'|'bottom';pageSize?:number}){
+export function TransactionPagination({page,count,onPage,position,pageSize=100,ariaLabel=`Transaction pages ${position}`}:{page:number;count:number;onPage:(page:number)=>void;position:'top'|'bottom';pageSize?:number;ariaLabel?:string}){
   const current=transactionPage(page,count,pageSize);
-  return <Pagination className="portfolio-pagination" aria-label={`Transaction pages ${position}`} data-i18n-aria-label-original={`Transaction pages ${position}`}><PaginationContent>
+  return <Pagination className="portfolio-pagination" aria-label={ariaLabel} data-i18n-aria-label-original={ariaLabel}><PaginationContent>
     <PaginationItem><button type="button" className="governance-back-to-root" aria-label="First page" data-i18n-aria-label-original="First page" title="First page" data-i18n-title-original="First page" disabled={current.page===0} onClick={()=>onPage(0)}><ChevronsLeft size={18}/></button></PaginationItem>
     <PaginationItem><button type="button" className="governance-back-to-root" aria-label="Previous page" data-i18n-aria-label-original="Previous page" title="Previous page" data-i18n-title-original="Previous page" disabled={current.page===0} onClick={()=>onPage(current.page-1)}><ChevronLeft size={18}/></button></PaginationItem>
     <PaginationItem><span className="small" aria-live="polite"><span data-i18n="portfolio_page">Page</span> {current.page+1}/{current.pages}</span></PaginationItem>

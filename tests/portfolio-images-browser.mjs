@@ -52,8 +52,8 @@ try{
   }
   await page.getByRole('button',{name:'Back',exact:true}).click();
   await page.getByRole('button',{name:'Open Historical NFTs',exact:true}).click();
-  await page.locator('#portfolio-holdings-overlay tbody tr').waitFor();
-  assert.equal(await page.locator('#portfolio-holdings-overlay tbody tr').count(),1);
+  await page.locator('#portfolio-holdings-overlay .portfolio-nft-tile').waitFor();
+  assert.equal(await page.locator('#portfolio-holdings-overlay .portfolio-nft-tile').count(),1);
   const historicalImage=page.locator('#portfolio-holdings-overlay .portfolio-image-preview-button');
   await historicalImage.click();
   assert.equal(new URL(await page.locator('#portfolio-image-preview-overlay img').getAttribute('src')).pathname,image);

@@ -1,7 +1,7 @@
 "use client";
 
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
-import {ExternalLink,Plus,Trash2} from 'lucide-react';
+import {ExternalLink,Plus,Trash2,ImageOff} from 'lucide-react';
 import {PortfolioRefresh} from './PortfolioRefresh';
 import {usePortfolioText} from './use-portfolio-text';
 import {DownloadStatus} from './DownloadStatus';
@@ -671,7 +671,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
       })}<MenuTile title="Historical NFTs" value={num(nftHistory.length,0)} onOpen={()=>setHoldingsGroup('Historical NFTs')}/></div>}
       {holdingsGroup==='Historical NFTs'&&<>
         {!snapshot?.complete&&<p className="small muted" translate="no">{t('Partial history')}</p>}
-        {nftHistory.length?<Table className="portfolio-holdings-table"><TableHeader><TableRow><TableHead translate="no">{t('Asset')}</TableHead><TableHead translate="no">{t('Balance')}</TableHead></TableRow></TableHeader><TableBody>{nftHistory.map(row=><TableRow key={row.id}><TableCell><AssetImage id={row.id} name={row.name} market={snapshot?.markets[row.id]} preview/></TableCell><TableCell translate="no">{row.raw}</TableCell></TableRow>)}</TableBody></Table>:<p className="empty" translate="no">{t('No NFTs found in loaded wallet history.')}</p>}
+        {nftHistory.length?<HistoricalNftCollage rows={nftHistory} markets={snapshot?.markets||{}}/>:<p className="empty" translate="no">{t('No NFTs found in loaded wallet history.')}</p>}
       </>}
       {holdingsGroup&&holdingsGroup!=='Historical NFTs'&&<>
       <button type="button" className="governance-vote-secondary" disabled={busy||!snapshot} onClick={()=>void refreshAssetPurchases()}>Refresh all purchase data</button>
@@ -783,15 +783,23 @@ function AssetExclusionToggle({name,excluded,onChange,compact=false}:{name:strin
   return <label className="small muted"><input type="checkbox" checked={excluded} aria-label={t('Exclude {name} from Assets Across Wallets',{name})} onChange={event=>onChange(event.target.checked)}/>{!compact&&t('Exclude from Assets Across Wallets')}</label>;
 }
 
-function AssetImage({id,name,market,onOpen,compact=false,hideIdentifier=false,preview=false}:{id:string;name:string;market?:Market;onOpen?:()=>void;compact?:boolean;hideIdentifier?:boolean;preview?:boolean}){
+function HistoricalNftCollage({rows,markets}:{rows:ReturnType<typeof historicalNfts>;markets:Record<string,Market>}){
+  const [page,setPage]=useState(0);
+  const current=transactionPage(page,rows.length,9);
+  return <><div className="portfolio-nft-collage">{rows.slice(current.page*9,current.page*9+9).map(row=><AssetImage key={row.id} id={row.id} name={row.name} market={markets[row.id]} preview collage={{firstReceived:row.firstReceived}}/>)}</div>
+    {rows.length>9&&<TransactionPagination position="bottom" page={current.page} count={rows.length} pageSize={9} onPage={setPage} ariaLabel="Historical NFT pages"/>}
+  </>;
+}
+function AssetImage({id,name,market,onOpen,compact=false,hideIdentifier=false,preview=false,collage}:{id:string;name:string;market?:Market;onOpen?:()=>void;compact?:boolean;hideIdentifier?:boolean;preview?:boolean;collage?:{firstReceived:number|null}}){
   const [failed,setFailed]=useState<string[]>([]);
   const [previewSource,setPreviewSource]=useState<string|null>(null);
   const t=usePortfolioText();
   const source=assetImageCandidates(id,[market?.registry_logo,market?.cached_image,market?.wayup_image,market?.image,market?.image_url,market?.logo]).find(url=>!failed.includes(url));
   const image=source?<img className="portfolio-asset-image" src={source} alt={name} title={name} width={48} height={48} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={()=>setFailed(previous=>[...previous,source])}/>:null;
-  const thumbnail=preview&&image?<button type="button" className="portfolio-image-preview-button" aria-label={t('View {name} details').replace('{name}',name)} onClick={()=>setPreviewSource(source!)}>{image}</button>:image;
+  const caption=collage?<span className="portfolio-nft-caption" translate="no"><strong>{name}</strong><span>{collage.firstReceived!==null?t('First received: {date}',{date:new Date(collage.firstReceived*1000).toISOString().slice(0,10)}):t('First received: unknown')}</span></span>:null;
+  const thumbnail=preview&&image?<button type="button" className="portfolio-image-preview-button" aria-label={t('View {name} details').replace('{name}',name)} onClick={()=>setPreviewSource(source!)}>{image}{caption}</button>:collage?<div className="portfolio-nft-placeholder"><ImageOff size={32} aria-hidden="true"/>{caption}</div>:image;
   const content=<>{thumbnail}<span className="portfolio-asset-name" title={hideIdentifier?name:id}>{name}</span></>;
-  return <>{onOpen?<button type="button" className="governance-vote-secondary portfolio-asset-button" onClick={onOpen} aria-label={`View ${name} details`}>{content}</button>:<div className={compact?'portfolio-token-inline':undefined}>{content}</div>}
+  return <>{onOpen?<button type="button" className="governance-vote-secondary portfolio-asset-button" onClick={onOpen} aria-label={`View ${name} details`}>{content}</button>:<div className={collage?'portfolio-nft-tile':compact?'portfolio-token-inline':undefined}>{collage?thumbnail:content}</div>}
     {previewSource&&<AssetOverlay id="portfolio-image-preview-overlay" name={name} literalTitle onClose={()=>setPreviewSource(null)}><img className="portfolio-image-preview" src={previewSource} alt={name} translate="no" decoding="async" referrerPolicy="no-referrer"/></AssetOverlay>}
   </>;
 }
