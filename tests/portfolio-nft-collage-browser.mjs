@@ -5,7 +5,7 @@ import path from 'node:path';
 const source=path.resolve('delegators/portfolio-src'),require=createRequire(path.join(source,'package.json'));
 const {build}=require('esbuild'),{chromium}=await import(process.argv[2]);
 const bundle=await build({stdin:{contents:`import {createRoot} from 'react-dom/client';import {HistoricalNftCollage} from './App';
-const rows=Array.from({length:12},(_,i)=>({id:'a'.repeat(56)+i.toString(16).padStart(2,'0'),name:'Frigid #'+i,raw:'0',firstReceived:i?1704067200:null}));
+const rows=Array.from({length:12},(_,i)=>({id:'a'.repeat(56)+i.toString(16).padStart(2,'0'),name:i===1?'Frigid #1 with an unusually long collectible name':'Frigid #'+i,raw:'0',firstReceived:i?1704067200:null}));
 const markets=Object.fromEntries(rows.map((row,i)=>[row.id,i===5?{}:{image:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a0V8AAAAASUVORK5CYII='}]));
 createRoot(document.getElementById('app')).render(<HistoricalNftCollage rows={rows} markets={markets}/>);`,loader:'tsx',resolveDir:source},bundle:true,write:false,format:'esm',jsx:'automatic',alias:{'@/lib/portfolio':path.join(source,'core.ts'),'@/lib/portfolio-cache':path.join(source,'cache.ts'),'@/components/ui/input':path.join(source,'ui.tsx'),'@/components/ui/table':path.join(source,'ui.tsx'),'@/components/ui/pagination':path.join(source,'ui.tsx')},plugins:[{name:'collage-fixture',setup(build){build.onLoad({filter:/\/App\.tsx$/},async args=>({loader:'tsx',contents:(await readFile(args.path,'utf8')).replace('function HistoricalNftCollage(','export function HistoricalNftCollage(')}));}}]});
 const browser=await chromium.launch({channel:'chrome',headless:true});
@@ -33,7 +33,9 @@ try{
     for(const tile of await tiles.all()){
       const bounds=await tile.boundingBox();assert.ok(bounds.x>=0&&bounds.x+bounds.width<=width);
       assert.equal(await tile.evaluate(node=>node.scrollWidth<=node.clientWidth),true);
+      for(const line of await tile.locator('.portfolio-nft-caption > *').all())assert.equal(await line.evaluate(node=>getComputedStyle(node).whiteSpace==='nowrap'&&node.clientHeight<=parseFloat(getComputedStyle(node).lineHeight)+1),true);
     }
+    if(!mobile)assert.ok(await page.locator('.portfolio-nft-caption strong').nth(1).evaluate(node=>parseFloat(getComputedStyle(node).fontSize)<14));
     await page.screenshot({path:`/private/tmp/portfolio-nft-collage-${width}.png`,fullPage:true});
     await page.getByRole('button',{name:'Next page',exact:true}).click();assert.equal(await tiles.count(),mobile?1:6);
     if(!mobile)assert.match(await page.locator('.portfolio-nft-caption').first().innerText(),/Frigid #6/);

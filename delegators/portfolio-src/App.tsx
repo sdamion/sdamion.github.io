@@ -797,13 +797,30 @@ function HistoricalNftCollage({rows,markets}:{rows:ReturnType<typeof historicalN
     {rows.length>pageSize&&<TransactionPagination position="bottom" page={current.page} count={rows.length} pageSize={pageSize} onPage={setPage} ariaLabel="Historical NFT pages"/>}
   </>;
 }
+function NftCaption({name,firstReceived}:{name:string;firstReceived:number|null}){
+  const t=usePortfolioText(),ref=useRef<HTMLSpanElement>(null);
+  const date=firstReceived!==null?t('First received: {date}',{date:new Date(firstReceived*1000).toISOString().slice(0,10)}):t('First received: unknown');
+  useEffect(()=>{
+    const caption=ref.current;if(!caption)return;
+    const fit=()=>{
+      for(const line of Array.from(caption.children) as HTMLElement[]){
+        line.style.fontSize='';
+        const size=parseFloat(getComputedStyle(line).fontSize);
+        if(line.scrollWidth>line.clientWidth&&line.clientWidth>0)line.style.fontSize=`${Math.max(8,Math.floor(size*line.clientWidth/line.scrollWidth*10)/10)}px`;
+      }
+    };
+    fit();const observer=new ResizeObserver(fit);observer.observe(caption.parentElement!);
+    return()=>observer.disconnect();
+  },[name,date]);
+  return <span ref={ref} className="portfolio-nft-caption" translate="no"><strong title={name}>{name}</strong><span title={date}>{date}</span></span>;
+}
 function AssetImage({id,name,market,onOpen,compact=false,hideIdentifier=false,preview=false,collage}:{id:string;name:string;market?:Market;onOpen?:()=>void;compact?:boolean;hideIdentifier?:boolean;preview?:boolean;collage?:{firstReceived:number|null}}){
   const [failed,setFailed]=useState<string[]>([]);
   const [previewSource,setPreviewSource]=useState<string|null>(null);
   const t=usePortfolioText();
   const source=assetImageCandidates(id,[market?.registry_logo,market?.cached_image,market?.wayup_image,market?.image,market?.image_url,market?.logo]).find(url=>!failed.includes(url));
   const image=source?<img className="portfolio-asset-image" src={source} alt={name} title={name} width={48} height={48} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={()=>setFailed(previous=>[...previous,source])}/>:null;
-  const caption=collage?<span className="portfolio-nft-caption" translate="no"><strong>{name}</strong><span>{collage.firstReceived!==null?t('First received: {date}',{date:new Date(collage.firstReceived*1000).toISOString().slice(0,10)}):t('First received: unknown')}</span></span>:null;
+  const caption=collage?<NftCaption name={name} firstReceived={collage.firstReceived}/>:null;
   const thumbnail=preview&&image?<button type="button" className="portfolio-image-preview-button" aria-label={t('View {name} details').replace('{name}',name)} onClick={()=>setPreviewSource(source!)}>{image}{caption}</button>:collage?<div className="portfolio-nft-placeholder"><ImageOff size={32} aria-hidden="true"/>{caption}</div>:image;
   const content=<>{thumbnail}<span className="portfolio-asset-name" title={hideIdentifier?name:id}>{name}</span></>;
   return <>{onOpen?<button type="button" className="governance-vote-secondary portfolio-asset-button" onClick={onOpen} aria-label={`View ${name} details`}>{content}</button>:<div className={collage?'portfolio-nft-tile':compact?'portfolio-token-inline':undefined}>{collage?thumbnail:content}</div>}
