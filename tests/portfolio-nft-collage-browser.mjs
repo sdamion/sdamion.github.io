@@ -21,19 +21,23 @@ try{
   await page.locator('.portfolio-nft-placeholder').waitFor();
   for(const width of [1200,390]){
     await page.setViewportSize({width,height:1000});
-    assert.equal(await tiles.count(),9);
-    assert.equal(await page.locator('.portfolio-nft-placeholder').count(),1);
+    const mobile=width<768;
+    await page.waitForFunction(count=>document.querySelectorAll('.portfolio-nft-tile').length===count,mobile?1:9);
+    assert.equal(await tiles.count(),mobile?1:9);
+    assert.equal(await page.locator('.portfolio-nft-placeholder').count(),mobile?0:1);
     assert.equal(await page.locator('.portfolio-nft-caption').first().innerText(),'Frigid #0\nFirst received: unknown');
-    assert.match(await page.locator('.portfolio-nft-caption').nth(1).innerText(),/2024-01-01/);
+    if(!mobile)assert.match(await page.locator('.portfolio-nft-caption').nth(1).innerText(),/2024-01-01/);
     const columns=await page.locator('.portfolio-nft-collage').evaluate(node=>getComputedStyle(node).gridTemplateColumns.split(' ').length);
-    assert.equal(columns,width===1200?3:2);
+    assert.equal(columns,mobile?1:3);
+    const grid=await page.locator('.portfolio-nft-collage').boundingBox();assert.ok(grid.height<=821,JSON.stringify(grid));
     for(const tile of await tiles.all()){
       const bounds=await tile.boundingBox();assert.ok(bounds.x>=0&&bounds.x+bounds.width<=width);
       assert.equal(await tile.evaluate(node=>node.scrollWidth<=node.clientWidth),true);
     }
     await page.screenshot({path:`/private/tmp/portfolio-nft-collage-${width}.png`,fullPage:true});
-    await page.getByRole('button',{name:'Next page',exact:true}).click();assert.equal(await tiles.count(),3);
-    await page.getByRole('button',{name:'Previous page',exact:true}).click();assert.equal(await tiles.count(),9);
+    await page.getByRole('button',{name:'Next page',exact:true}).click();assert.equal(await tiles.count(),mobile?1:3);
+    if(mobile)assert.match(await page.locator('.portfolio-nft-caption').innerText(),/Frigid #1/);
+    await page.getByRole('button',{name:'Previous page',exact:true}).click();assert.equal(await tiles.count(),mobile?1:9);
     const button=page.locator('.portfolio-image-preview-button').first();await button.focus();await page.keyboard.press('Enter');
     await page.locator('.portfolio-image-preview').waitFor();
     await page.getByRole('button',{name:'Back',exact:true}).click();

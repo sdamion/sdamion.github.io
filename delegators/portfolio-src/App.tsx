@@ -785,9 +785,16 @@ function AssetExclusionToggle({name,excluded,onChange,compact=false}:{name:strin
 
 function HistoricalNftCollage({rows,markets}:{rows:ReturnType<typeof historicalNfts>;markets:Record<string,Market>}){
   const [page,setPage]=useState(0);
-  const current=transactionPage(page,rows.length,9);
-  return <><div className="portfolio-nft-collage">{rows.slice(current.page*9,current.page*9+9).map(row=><AssetImage key={row.id} id={row.id} name={row.name} market={markets[row.id]} preview collage={{firstReceived:row.firstReceived}}/>)}</div>
-    {rows.length>9&&<TransactionPagination position="bottom" page={current.page} count={rows.length} pageSize={9} onPage={setPage} ariaLabel="Historical NFT pages"/>}
+  const [mobile,setMobile]=useState(()=>window.matchMedia('(max-width: 767px)').matches);
+  useEffect(()=>{
+    const query=window.matchMedia('(max-width: 767px)');
+    const update=()=>{setMobile(query.matches);setPage(0);};
+    query.addEventListener('change',update);
+    return()=>query.removeEventListener('change',update);
+  },[]);
+  const pageSize=mobile?1:9,current=transactionPage(page,rows.length,pageSize);
+  return <><div className="portfolio-nft-collage">{rows.slice(current.page*pageSize,current.page*pageSize+pageSize).map(row=><AssetImage key={row.id} id={row.id} name={row.name} market={markets[row.id]} preview collage={{firstReceived:row.firstReceived}}/>)}</div>
+    {rows.length>pageSize&&<TransactionPagination position="bottom" page={current.page} count={rows.length} pageSize={pageSize} onPage={setPage} ariaLabel="Historical NFT pages"/>}
   </>;
 }
 function AssetImage({id,name,market,onOpen,compact=false,hideIdentifier=false,preview=false,collage}:{id:string;name:string;market?:Market;onOpen?:()=>void;compact?:boolean;hideIdentifier?:boolean;preview?:boolean;collage?:{firstReceived:number|null}}){
