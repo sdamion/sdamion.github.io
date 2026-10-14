@@ -52,6 +52,8 @@ try{
     assert.equal(await button.evaluate(node=>node===document.activeElement),true);
   }
   const search=page.getByRole('textbox',{name:'Search historical NFTs'}),collection=page.getByLabel('Collection',{exact:true}),sort=page.getByLabel('Sort images',{exact:true});
+  assert.deepEqual(await collection.locator('option').allTextContents(),['All collections','Frigid','Frigid']);
+  assert.deepEqual(await collection.locator('option').evaluateAll(options=>options.map(option=>option.value)),['','a'.repeat(56),'b'.repeat(56)]);
   await search.fill('ledger');assert.equal(await tiles.count(),1);assert.match(await tiles.first().innerText(),/Frigid #0/);
   await search.fill('missing nft');assert.equal(await tiles.count(),0);await page.getByText('No matching NFTs.',{exact:true}).waitFor();
   await search.fill('');await collection.selectOption('b'.repeat(56));assert.match(await tiles.first().innerText(),/Frigid #6/);
