@@ -9,7 +9,7 @@ const rows=Array.from({length:12},(_,i)=>({id:(i<6?'a':'b').repeat(56)+i.toStrin
 const markets=Object.fromEntries(rows.map((row,i)=>[row.id,i===5?{}:{image:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a0V8AAAAASUVORK5CYII='}]));
 const wallets={[rows[0].id]:['Main wallet','Ledger'],[rows[1].id]:['Old wallet'],[rows[5].id]:['NFT wallet']};
 const prices={[rows[0].id]:{buy:10,sell:50},[rows[1].id]:{buy:30,sell:20}};
-createRoot(document.getElementById('app')).render(<HistoricalNftCollage rows={rows} markets={markets} wallets={wallets} prices={prices}/>);`,loader:'tsx',resolveDir:source},bundle:true,write:false,format:'esm',jsx:'automatic',alias:{'@/lib/portfolio':path.join(source,'core.ts'),'@/lib/portfolio-cache':path.join(source,'cache.ts'),'@/components/ui/input':path.join(source,'ui.tsx'),'@/components/ui/table':path.join(source,'ui.tsx'),'@/components/ui/pagination':path.join(source,'ui.tsx')},plugins:[{name:'collage-fixture',setup(build){build.onLoad({filter:/\/App\.tsx$/},async args=>({loader:'tsx',contents:(await readFile(args.path,'utf8')).replace('function HistoricalNftCollage(','export function HistoricalNftCollage(')}));}}]});
+window.collageRoot=createRoot(document.getElementById('app'));window.collageRoot.render(<HistoricalNftCollage rows={rows} markets={markets} wallets={wallets} prices={prices} onVisibleAssets={ids=>{window.visibleAssetIds=ids;}}/>);`,loader:'tsx',resolveDir:source},bundle:true,write:false,format:'esm',jsx:'automatic',alias:{'@/lib/portfolio':path.join(source,'core.ts'),'@/lib/portfolio-cache':path.join(source,'cache.ts'),'@/components/ui/input':path.join(source,'ui.tsx'),'@/components/ui/table':path.join(source,'ui.tsx'),'@/components/ui/pagination':path.join(source,'ui.tsx')},plugins:[{name:'collage-fixture',setup(build){build.onLoad({filter:/\/App\.tsx$/},async args=>({loader:'tsx',contents:(await readFile(args.path,'utf8')).replace('function HistoricalNftCollage(','export function HistoricalNftCollage(')}));}}]});
 const browser=await chromium.launch({channel:'chrome',headless:true});
 try{
   const page=await browser.newPage(),errors=[];
@@ -26,6 +26,7 @@ try{
     const mobile=width<768;
     await page.waitForFunction(count=>document.querySelectorAll('.portfolio-nft-tile').length===count,mobile?1:6);
     assert.equal(await tiles.count(),mobile?1:6);
+    await page.waitForFunction(count=>window.visibleAssetIds.split('|').length===count,mobile?1:6);
     assert.equal(await page.locator('.portfolio-nft-owned').count(),mobile?1:2);
     assert.equal(await tiles.first().locator('.portfolio-nft-owned').innerText(),'Owned\nMain wallet, Ledger');
     assert.equal(await page.locator('.portfolio-nft-placeholder').count(),mobile?0:1);
@@ -44,6 +45,9 @@ try{
     await page.getByRole('button',{name:'Next page',exact:true}).click();assert.equal(await tiles.count(),mobile?1:6);
     if(!mobile)assert.match(await page.locator('.portfolio-nft-caption').first().innerText(),/Frigid #6/);
     if(mobile)assert.match(await page.locator('.portfolio-nft-caption').innerText(),/Frigid #1/);
+    const nextFirst=(mobile?'a':'b').repeat(56)+(mobile?'01':'06');
+    await page.waitForFunction(id=>window.visibleAssetIds.split('|').includes(id),nextFirst);
+    assert.equal(await page.evaluate(()=>window.visibleAssetIds.includes('a'.repeat(56)+'00')),false,'previous page is no longer watched');
     assert.equal(await page.locator('.portfolio-nft-owned').count(),0,'sold NFTs are not marked owned even with old wallet labels');
     await page.getByRole('button',{name:'Previous page',exact:true}).click();assert.equal(await tiles.count(),mobile?1:6);
     const button=page.locator('.portfolio-image-preview-button').first();await button.focus();await page.keyboard.press('Enter');
@@ -52,14 +56,17 @@ try{
     assert.equal(await button.evaluate(node=>node===document.activeElement),true);
   }
   const search=page.getByRole('textbox',{name:'Search historical NFTs'}),collection=page.getByLabel('Collection',{exact:true}),sort=page.getByLabel('Sort images',{exact:true});
-  assert.deepEqual(await collection.locator('option').allTextContents(),['All collections','Frigid','Frigid']);
+  assert.deepEqual(await collection.locator('option').allTextContents(),['All collections (12)','Frigid (6)','Frigid (6)']);
   assert.deepEqual(await collection.locator('option').evaluateAll(options=>options.map(option=>option.value)),['','a'.repeat(56),'b'.repeat(56)]);
   await search.fill('ledger');assert.equal(await tiles.count(),1);assert.match(await tiles.first().innerText(),/Frigid #0/);
   await search.fill('missing nft');assert.equal(await tiles.count(),0);await page.getByText('No matching NFTs.',{exact:true}).waitFor();
+  await page.waitForFunction(()=>window.visibleAssetIds==='');
   await search.fill('');await collection.selectOption('b'.repeat(56));assert.match(await tiles.first().innerText(),/Frigid #6/);
   await collection.selectOption('');await sort.selectOption('buy-high');assert.match(await tiles.first().innerText(),/Frigid #1/);
   await sort.selectOption('buy-low');assert.match(await tiles.first().innerText(),/Frigid #0/);
   await sort.selectOption('sell-low');assert.match(await tiles.first().innerText(),/Frigid #1/);
   await sort.selectOption('sell-high');assert.match(await tiles.first().innerText(),/Frigid #0/);
+  await page.evaluate(()=>window.collageRoot.unmount());
+  assert.equal(await page.evaluate(()=>window.visibleAssetIds),'','closing the collage clears historical image polling');
   assert.deepEqual(errors,[]);console.log('PASS: NFT collage shows six images on desktop and one on mobile, with pagination, dates and previews.');
 }finally{await browser.close();}

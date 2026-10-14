@@ -5,6 +5,7 @@ import path from 'node:path';
 const source=path.resolve('delegators/portfolio-src'),require=createRequire(path.join(source,'package.json'));
 const {build}=require('esbuild'),{chromium}=await import(process.argv[2]);
 const id='a'.repeat(56)+'01',image='/api/portfolio/images/'+'b'.repeat(64)+'.gif';
+const soldId='c'.repeat(56)+'02',soldImage='/api/portfolio/images/'+'d'.repeat(64)+'.gif';
 const stake='stake1uxythldc4nmx45tvnwsqu4h5pyjd94udytm6f0tgnr44vecjd8vel';
 const bundle=await build({stdin:{contents:`import {createRoot} from 'react-dom/client';import App from './App';createRoot(document.getElementById('app')).render(<App memberStake="${stake}" role="admin"/>);`,loader:'tsx',resolveDir:source},bundle:true,write:false,format:'esm',jsx:'automatic',alias:{'@/lib/portfolio':path.join(source,'core.ts'),'@/lib/portfolio-cache':path.join(source,'cache.ts'),'@/components/ui/input':path.join(source,'ui.tsx'),'@/components/ui/table':path.join(source,'ui.tsx'),'@/components/ui/pagination':path.join(source,'ui.tsx')},plugins:[{name:'image-fixture',setup(build){
   build.onLoad({filter:/\/PortfolioQuickstart\.tsx$/},()=>({loader:'tsx',contents:'export function PortfolioQuickstart(){return null;}'}));
@@ -19,8 +20,14 @@ try{
   await page.route('**/*',async route=>{
     const url=new URL(route.request().url());
     if(url.hostname==='fonts.googleapis.com')return route.fulfill({contentType:'text/css',body:''});
-    if(url.pathname===image)return route.fulfill({contentType:'image/gif',body:Buffer.from('R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==','base64')});
+    if([image,soldImage].includes(url.pathname))return route.fulfill({contentType:'image/gif',body:Buffer.from('R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==','base64')});
     if(url.pathname.endsWith('/image-status')){
+      const assets=route.request().postDataJSON().assets;
+      if(assets.includes(soldId)){
+        assert.deepEqual(assets,[soldId],'only the visible sold NFT is added to the watcher');
+        operations.push('sold-image-status');
+        return route.fulfill({contentType:'application/json',body:JSON.stringify({tokens:[{token_id:soldId,state:'cached',cached_image:soldImage}]})});
+      }
       operations.push('image-status');assert.deepEqual(route.request().postDataJSON(),{assets:[id]});
       checks++;
       if(checks===1)return route.fulfill({status:429,headers:{'Retry-After':'1'},contentType:'application/json',body:JSON.stringify({error:'Portfolio rate limit reached. Please retry shortly.',code:'portfolio_rate_limit',retryAfter:1})});
@@ -33,10 +40,12 @@ try{
   await page.goto('http://127.0.0.1:8998/');
   await page.addScriptTag({content:await readFile('shared/runtime.js','utf8')});
   await page.addStyleTag({content:await readFile('shared/styles.css','utf8')});
-  await page.evaluate(id=>{
+  await page.evaluate(({id,soldId})=>{
     window.fixture={groups:{},infos:[{address:'wallet',balance:'0',utxo_set:[{tx_hash:'holding',tx_index:0,value:'0',asset_list:[{policy_id:id.slice(0,56),asset_name:id.slice(56),quantity:'1',decimals:0}]}]}],txs:[],facts:{},markets:{[id]:{token_id:id,name:'Cached test asset',is_nft:true,decimals:0,image:'ipfs://QmMissingImage',price_by_usd:10}},adaUsd:0.5,history:{},complete:true};
+    window.fixture.markets[soldId]={token_id:soldId,name:'Sold historical asset',is_nft:true,decimals:0};
+    window.fixture.facts={receipt:{hash:'receipt',time:1700000000,adaRaw:'0',assets:{[soldId]:'1'},decimals:{[soldId]:0},feeRaw:null,internal:false,wallets:['wallet'],swapCandidate:false},sale:{hash:'sale',time:1700000100,adaRaw:'0',assets:{[soldId]:'-1'},decimals:{[soldId]:0},feeRaw:null,internal:false,wallets:['wallet'],swapCandidate:false}};
     window.createUniversalOverlay=options=>{const overlay=document.createElement('section');overlay.id=options.id;const back=document.createElement('button');back.textContent='Back';back.onclick=options.closeOverlay;overlay.append(back,...options.bodyNodes);document.body.append(overlay);return {overlay};};
-  },id);
+  },{id,soldId});
   await page.addScriptTag({type:'module',content:bundle.outputFiles[0].text});
   await page.getByRole('button',{name:'Open Assets',exact:true}).click();
   await page.getByRole('button',{name:'Open NFTs',exact:true}).click();
@@ -55,9 +64,11 @@ try{
   await page.locator('#portfolio-holdings-overlay .portfolio-nft-tile').waitFor();
   assert.equal(await page.locator('#portfolio-holdings-overlay .portfolio-nft-tile').count(),1);
   const historicalImage=page.locator('#portfolio-holdings-overlay .portfolio-image-preview-button');
+  await page.waitForFunction(image=>[...document.images].some(img=>img.src.endsWith(image)&&img.complete&&img.naturalWidth>0),soldImage);
   await historicalImage.click();
-  assert.equal(new URL(await page.locator('#portfolio-image-preview-overlay img').getAttribute('src')).pathname,image);
+  assert.equal(new URL(await page.locator('#portfolio-image-preview-overlay img').getAttribute('src')).pathname,soldImage);
   await page.locator('#portfolio-image-preview-overlay').getByRole('button',{name:'Back',exact:true}).click();
+  assert.deepEqual(operations,['image-status','image-status','image-status','sold-image-status'],'sold NFT cache updates do not re-scan prices or transactions');
   assert.deepEqual(errors,[]);
   console.log('PASS: background Portfolio images appear automatically on desktop and mobile without re-scanning prices or transactions.');
 }finally{await browser.close();}

@@ -6,6 +6,17 @@ import type {historicalNfts} from './historical-nfts';
 
 export type NftPrices=Record<string,{buy:number|null;sell:number|null}>;
 export type NftSort='date'|'buy-high'|'buy-low'|'sell-high'|'sell-low';
+const collectionNames:Record<string,string>={
+  f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a:'ADA Handle',
+  '6c32db33a422e0bc2cb535bb850b5a6e9a9572222056d6ddc9cbc26e':'ADA Handle',
+};
+const collectionNameHints=new Map([
+  ['101 stanhope terrace, ko71r','The Ape Society Cabins'],
+  ['aesho of devilube','Jelly Cubes'],
+  ['ailen hill','The Ape Society'],
+  ['alden garrison','Strongholds by House Of Titans'],
+  ['amulet of influence','The Mallard Order - Relics'],
+]);
 export function historicalNftPrices(facts:Fact[],acquisitions:Acquisitions={}):NftPrices{
   const result:NftPrices={},times=new Map<string,number>();
   const record=(id:string,side:'buy'|'sell',amount:number,time:number,raw:string)=>{
@@ -30,7 +41,7 @@ export function historicalNftPrices(facts:Fact[],acquisitions:Acquisitions={}):N
 export function nftCollections(rows:ReturnType<typeof historicalNfts>){
   const groups=new Map<string,typeof rows>();
   for(const row of rows){const policy=row.id.slice(0,56);const assets=groups.get(policy)||[];assets.push(row);groups.set(policy,assets);}
-  return [...groups].map(([policy,assets])=>({policy,name:collectionRepresentative(assets)?.name||short(policy)})).sort((a,b)=>a.name.localeCompare(b.name)||a.policy.localeCompare(b.policy));
+  return [...groups].map(([policy,assets])=>({policy,count:assets.length,name:collectionNames[policy]||assets.map(asset=>collectionNameHints.get(asset.name.trim().toLowerCase())).find(Boolean)||collectionRepresentative(assets)?.name||short(policy)})).sort((a,b)=>a.name.localeCompare(b.name)||a.policy.localeCompare(b.policy));
 }
 export function filterNftCollage(rows:ReturnType<typeof historicalNfts>,prices:NftPrices,wallets:Record<string,string[]>,query:string,collection:string,sort:NftSort){
   return rows.filter(row=>(!collection||row.id.slice(0,56)===collection)&&matchesSearchText(query,[row.name,row.id,...wallets[row.id]||[]])).sort((a,b)=>{

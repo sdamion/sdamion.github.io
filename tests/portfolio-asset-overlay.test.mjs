@@ -14,7 +14,7 @@ test('asset details use the universal overlay and retain the mounted portfolio',
 });
 test('holdings show names with images and move payment details into the overlay',()=>{
   const app=source('App.tsx');
-  assert.match(app,/\{image\}<span className="portfolio-asset-name"/);
+  assert.match(app,/\{thumbnail\}<span className="portfolio-asset-name"/);
   assert.match(app,/onOpen=\{\(\)=>setSelectedAsset\(r.id\)\}/);
   assert.doesNotMatch(app,/<TableCell>[^\n]*<PaymentLinks/);
   assert.doesNotMatch(source('PaymentLinks.tsx'),/<details|<summary/);
