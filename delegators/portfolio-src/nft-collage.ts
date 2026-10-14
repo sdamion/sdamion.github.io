@@ -1,6 +1,6 @@
 import {tradeOf,short} from './core.ts';
 import type {Fact,Acquisitions} from './core.ts';
-import {collectionRepresentative} from './holding-groups.ts';
+import {collectionName,collectionRepresentative} from './holding-groups.ts';
 import {matchesSearchText} from './transaction-search.ts';
 import type {historicalNfts} from './historical-nfts';
 
@@ -12,6 +12,8 @@ const collectionNames:Record<string,string>={
 };
 const collectionNameHints=new Map([
   ['101 stanhope terrace, ko71r','The Ape Society Cabins'],
+  ['101 stanhope terrace, ko71 r','The Ape Society Cabins'],
+  ['ape society frame level','The Ape Society Frames'],
   ['aesho of devilube','Jelly Cubes'],
   ['ailen hill','The Ape Society'],
   ['alden garrison','Strongholds by House Of Titans'],
@@ -41,7 +43,7 @@ export function historicalNftPrices(facts:Fact[],acquisitions:Acquisitions={}):N
 export function nftCollections(rows:ReturnType<typeof historicalNfts>){
   const groups=new Map<string,typeof rows>();
   for(const row of rows){const policy=row.id.slice(0,56);const assets=groups.get(policy)||[];assets.push(row);groups.set(policy,assets);}
-  return [...groups].map(([policy,assets])=>({policy,count:assets.length,name:collectionNames[policy]||assets.map(asset=>collectionNameHints.get(asset.name.trim().toLowerCase())).find(Boolean)||collectionRepresentative(assets)?.name||short(policy)})).sort((a,b)=>a.name.localeCompare(b.name)||a.policy.localeCompare(b.policy));
+  return [...groups].map(([policy,assets])=>({policy,count:assets.length,name:collectionNames[policy]||assets.map(asset=>collectionNameHints.get(collectionName(asset.name).trim().toLowerCase())).find(Boolean)||collectionRepresentative(assets)?.name||short(policy)})).sort((a,b)=>a.name.localeCompare(b.name)||a.policy.localeCompare(b.policy));
 }
 export function filterNftCollage(rows:ReturnType<typeof historicalNfts>,prices:NftPrices,wallets:Record<string,string[]>,query:string,collection:string,sort:NftSort){
   return rows.filter(row=>(!collection||row.id.slice(0,56)===collection)&&matchesSearchText(query,[row.name,row.id,...wallets[row.id]||[]])).sort((a,b)=>{
