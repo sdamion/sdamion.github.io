@@ -5,9 +5,11 @@ import path from 'node:path';
 const source=path.resolve('delegators/portfolio-src'),require=createRequire(path.join(source,'package.json'));
 const {build}=require('esbuild'),{chromium}=await import(process.argv[2]);
 const bundle=await build({stdin:{contents:`import {createRoot} from 'react-dom/client';import {HistoricalNftCollage} from './App';
-const rows=Array.from({length:12},(_,i)=>({id:'a'.repeat(56)+i.toString(16).padStart(2,'0'),name:i===1?'Frigid #1 with an unusually long collectible name':'Frigid #'+i,raw:'0',firstReceived:i?1704067200:null}));
+const rows=Array.from({length:12},(_,i)=>({id:(i<6?'a':'b').repeat(56)+i.toString(16).padStart(2,'0'),name:i===1?'Frigid #1 with an unusually long collectible name':'Frigid #'+i,raw:i===0||i===5?'1':'0',firstReceived:1704067200+(12-i)*86400}));
 const markets=Object.fromEntries(rows.map((row,i)=>[row.id,i===5?{}:{image:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a0V8AAAAASUVORK5CYII='}]));
-createRoot(document.getElementById('app')).render(<HistoricalNftCollage rows={rows} markets={markets}/>);`,loader:'tsx',resolveDir:source},bundle:true,write:false,format:'esm',jsx:'automatic',alias:{'@/lib/portfolio':path.join(source,'core.ts'),'@/lib/portfolio-cache':path.join(source,'cache.ts'),'@/components/ui/input':path.join(source,'ui.tsx'),'@/components/ui/table':path.join(source,'ui.tsx'),'@/components/ui/pagination':path.join(source,'ui.tsx')},plugins:[{name:'collage-fixture',setup(build){build.onLoad({filter:/\/App\.tsx$/},async args=>({loader:'tsx',contents:(await readFile(args.path,'utf8')).replace('function HistoricalNftCollage(','export function HistoricalNftCollage(')}));}}]});
+const wallets={[rows[0].id]:['Main wallet','Ledger'],[rows[1].id]:['Old wallet'],[rows[5].id]:['NFT wallet']};
+const prices={[rows[0].id]:{buy:10,sell:50},[rows[1].id]:{buy:30,sell:20}};
+createRoot(document.getElementById('app')).render(<HistoricalNftCollage rows={rows} markets={markets} wallets={wallets} prices={prices}/>);`,loader:'tsx',resolveDir:source},bundle:true,write:false,format:'esm',jsx:'automatic',alias:{'@/lib/portfolio':path.join(source,'core.ts'),'@/lib/portfolio-cache':path.join(source,'cache.ts'),'@/components/ui/input':path.join(source,'ui.tsx'),'@/components/ui/table':path.join(source,'ui.tsx'),'@/components/ui/pagination':path.join(source,'ui.tsx')},plugins:[{name:'collage-fixture',setup(build){build.onLoad({filter:/\/App\.tsx$/},async args=>({loader:'tsx',contents:(await readFile(args.path,'utf8')).replace('function HistoricalNftCollage(','export function HistoricalNftCollage(')}));}}]});
 const browser=await chromium.launch({channel:'chrome',headless:true});
 try{
   const page=await browser.newPage(),errors=[];
@@ -24,9 +26,11 @@ try{
     const mobile=width<768;
     await page.waitForFunction(count=>document.querySelectorAll('.portfolio-nft-tile').length===count,mobile?1:6);
     assert.equal(await tiles.count(),mobile?1:6);
+    assert.equal(await page.locator('.portfolio-nft-owned').count(),mobile?1:2);
+    assert.equal(await tiles.first().locator('.portfolio-nft-owned').innerText(),'Owned\nMain wallet, Ledger');
     assert.equal(await page.locator('.portfolio-nft-placeholder').count(),mobile?0:1);
-    assert.equal(await page.locator('.portfolio-nft-caption').first().innerText(),'Frigid #0\nFirst received: unknown');
-    if(!mobile)assert.match(await page.locator('.portfolio-nft-caption').nth(1).innerText(),/2024-01-01/);
+    assert.equal(await page.locator('.portfolio-nft-caption').first().innerText(),'Frigid #0\nFirst received: 2024-01-13\nBuy: 10 ADA\nSell: 50 ADA');
+    if(!mobile)assert.match(await page.locator('.portfolio-nft-caption').nth(1).innerText(),/2024-01-12/);
     const columns=await page.locator('.portfolio-nft-collage').evaluate(node=>getComputedStyle(node).gridTemplateColumns.split(' ').length);
     assert.equal(columns,mobile?1:3);
     const grid=await page.locator('.portfolio-nft-collage').boundingBox();assert.ok(grid.height<=821,JSON.stringify(grid));
@@ -40,11 +44,20 @@ try{
     await page.getByRole('button',{name:'Next page',exact:true}).click();assert.equal(await tiles.count(),mobile?1:6);
     if(!mobile)assert.match(await page.locator('.portfolio-nft-caption').first().innerText(),/Frigid #6/);
     if(mobile)assert.match(await page.locator('.portfolio-nft-caption').innerText(),/Frigid #1/);
+    assert.equal(await page.locator('.portfolio-nft-owned').count(),0,'sold NFTs are not marked owned even with old wallet labels');
     await page.getByRole('button',{name:'Previous page',exact:true}).click();assert.equal(await tiles.count(),mobile?1:6);
     const button=page.locator('.portfolio-image-preview-button').first();await button.focus();await page.keyboard.press('Enter');
     await page.locator('.portfolio-image-preview').waitFor();
     await page.getByRole('button',{name:'Back',exact:true}).click();
     assert.equal(await button.evaluate(node=>node===document.activeElement),true);
   }
+  const search=page.getByRole('textbox',{name:'Search historical NFTs'}),collection=page.getByLabel('Collection',{exact:true}),sort=page.getByLabel('Sort images',{exact:true});
+  await search.fill('ledger');assert.equal(await tiles.count(),1);assert.match(await tiles.first().innerText(),/Frigid #0/);
+  await search.fill('missing nft');assert.equal(await tiles.count(),0);await page.getByText('No matching NFTs.',{exact:true}).waitFor();
+  await search.fill('');await collection.selectOption('b'.repeat(56));assert.match(await tiles.first().innerText(),/Frigid #6/);
+  await collection.selectOption('');await sort.selectOption('buy-high');assert.match(await tiles.first().innerText(),/Frigid #1/);
+  await sort.selectOption('buy-low');assert.match(await tiles.first().innerText(),/Frigid #0/);
+  await sort.selectOption('sell-low');assert.match(await tiles.first().innerText(),/Frigid #1/);
+  await sort.selectOption('sell-high');assert.match(await tiles.first().innerText(),/Frigid #0/);
   assert.deepEqual(errors,[]);console.log('PASS: NFT collage shows six images on desktop and one on mobile, with pagination, dates and previews.');
 }finally{await browser.close();}

@@ -171,6 +171,11 @@ html[data-theme="dark"] .portfolio-dex-label { --portfolio-dex-color: #fb923c; }
 .member-portfolio .portfolio-nft-caption { position: absolute; bottom: 0; left: 0; right: 0; display: grid; gap: 3px; padding: 8px; background: rgba(0, 0, 0, .78); color: #fff; text-align: left; overflow-wrap: anywhere; font-size: 12px; }
 .member-portfolio .portfolio-nft-caption strong { font-size: 14px; line-height: 1.25; }
 .member-portfolio .portfolio-nft-caption > * { display: block; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.25; }
+.member-portfolio .portfolio-nft-owned { position: absolute; top: 8px; left: 8px; max-width: calc(100% - 16px); display: grid; gap: 2px; padding: 5px 8px; border-radius: 4px; background: #075e4c; color: #fff; font-size: 12px; line-height: 1.25; box-sizing: border-box; pointer-events: none; }
+.member-portfolio .portfolio-nft-owned > * { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.member-portfolio .portfolio-nft-filters { display: flex; flex-wrap: wrap; gap: 12px; }
+.member-portfolio .portfolio-nft-filters label { display: grid; gap: 4px; flex: 1 1 180px; min-width: 0; }
+.member-portfolio .portfolio-nft-filters select { width: 100%; min-width: 0; padding: 8px; border: 1px solid #b7c5c1; border-radius: 4px; background: #fff; color: #1b2422; font: inherit; }
 .member-portfolio .portfolio-nft-tile .portfolio-image-preview-button:focus-visible { outline: 3px solid #19c58d; outline-offset: -3px; }
 @media (max-width: 767px) { .member-portfolio .portfolio-nft-collage { grid-template-columns: minmax(0, 1fr); gap: 8px; } }
 .member-portfolio .portfolio-image-preview-button { padding: 0; border: 0; background: transparent; cursor: zoom-in; flex-shrink: 0; }

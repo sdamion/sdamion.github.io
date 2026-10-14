@@ -3,9 +3,9 @@
     const DEFAULT_LANGUAGE = 'en';
     const LANGUAGE_CONFIG = Object.freeze({
         en: { label: 'English', flag: '🇺🇸' },
-        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20261013-nft-collage' },
-        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20261013-nft-collage' },
-        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20261013-nft-collage' }
+        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20261014-nft-filters' },
+        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20261014-nft-filters' },
+        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20261014-nft-filters' }
     });
     const TRANSLATION_ATTR = 'data-i18n';
     const TRANSLATION_ORIGINAL_ATTR = 'data-i18n-original';
