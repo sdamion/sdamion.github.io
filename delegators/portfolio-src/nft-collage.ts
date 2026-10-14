@@ -15,7 +15,10 @@ const collectionNameHints=new Map([
   ['101 stanhope terrace, ko71 r','The Ape Society Cabins'],
   ['ape society frame level','The Ape Society Frames'],
   ['aesho of devilube','Jelly Cubes'],
-  ['ailen hill','The Ape Society'],
+  ['ailen hill','The Ape Society V2'],
+  ['the ape society','The Ape Society V2'],
+  ['adonis brown','The Ape Society V1'],
+  ['air','ADA Clouds'],
   ['alden garrison','Strongholds by House Of Titans'],
   ['amulet of influence','The Mallard Order - Relics'],
 ]);

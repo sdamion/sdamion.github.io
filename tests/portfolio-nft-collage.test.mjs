@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {historicalNftPrices,filterNftCollage,nftCollections} from '../delegators/portfolio-src/nft-collage.ts';
 const fact=(hash,time,assets,adaRaw,extra={})=>({hash,time,assets,adaRaw,feeRaw:'1000000',internal:false,swapCandidate:true,...extra});
 test('supplied NFT name hints label their policy collections without changing assets or counts',()=>{
-  const aliases=[['Aesho of Devilube','Jelly Cubes'],['Ailen Hill','The Ape Society'],['alden Garrison','Strongholds by House Of Titans'],['Amulet of influence','The Mallard Order - Relics'],['101 Stanhope Terrace, KO71 R','The Ape Society Cabins'],['Ape Society Frame Level','The Ape Society Frames'],['Ape Society Frame Level 3','The Ape Society Frames']];
+  const aliases=[['Aesho of Devilube','Jelly Cubes'],['Ailen Hill','The Ape Society V2'],['The Ape Society','The Ape Society V2'],['Adonis Brown','The Ape Society V1'],['Air','ADA Clouds'],['alden Garrison','Strongholds by House Of Titans'],['Amulet of influence','The Mallard Order - Relics'],['101 Stanhope Terrace, KO71 R','The Ape Society Cabins'],['Ape Society Frame Level','The Ape Society Frames'],['Ape Society Frame Level 3','The Ape Society Frames']];
   for(const [assetName,collectionName] of aliases){
     const policy='a'.repeat(56),otherPolicy='b'.repeat(56);
     const rows=[{id:policy+'01',name:'Another NFT',raw:'0',firstReceived:100},{id:policy+'02',name:` ${assetName} `,raw:'1',firstReceived:200},{id:otherPolicy+'01',name:'Unrelated #1',raw:'1',firstReceived:300}];
