@@ -1899,8 +1899,6 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
   , ["No confirmed buy-to-sell match", "portfolio_text_nft_no_flip"]
   , ["{count} NFTs", "portfolio_text_nft_count_label"]
   , ["{days}d {hours}h {minutes}m {seconds}s", "portfolio_text_nft_duration"]
-  , ["NFT transaction timeline", "portfolio_text_nft_timeline"]
-  , ["No NFT transactions in loaded history.", "portfolio_text_nft_no_transactions"]
   , ["Mint", "portfolio_text_nft_mint"]
   , ["Burn", "portfolio_text_nft_burn"]
   , ["Internal transfer", "portfolio_text_nft_internal_transfer"]

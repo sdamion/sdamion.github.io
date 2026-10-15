@@ -170,20 +170,7 @@ html[data-theme="dark"] .portfolio-dex-label { --portfolio-dex-color: #fb923c; }
 .member-portfolio .portfolio-nft-highlights small { color: #075e4c; font-weight: 700; }
 .member-portfolio .portfolio-nft-strip { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
 .member-portfolio .portfolio-nft-strip > * { width: 100%; aspect-ratio: 1; object-fit: contain; min-width: 0; background: #e7ebeb; border-radius: 4px; }
-.member-portfolio .portfolio-nft-history-layout { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 24px; align-items: start; }
-.member-portfolio .portfolio-nft-gallery { min-width: 0; }
-.member-portfolio .portfolio-nft-timeline { display: flex; flex-direction: column; min-width: 0; min-height: 0; height: var(--nft-timeline-height, 60dvh); box-sizing: border-box; margin: 0; border-top: 1px solid #b7c5c1; padding-top: 12px; }
-.member-portfolio .portfolio-nft-timeline h3 { flex: none; margin: 0 0 12px; font-size: 16px; font-weight: 700; }
-.member-portfolio .portfolio-nft-timeline-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; scrollbar-gutter: stable; }
-.member-portfolio .portfolio-nft-timeline-scroll:focus-visible { outline: 2px solid #075e4c; outline-offset: -2px; }
-.member-portfolio .portfolio-nft-timeline > .portfolio-pagination { flex: none; }
-.member-portfolio .portfolio-nft-timeline ol { list-style: none; margin: 16px 0; padding: 0 0 0 16px; border-left: 2px solid #19c58d; }
-.member-portfolio .portfolio-nft-timeline li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px; padding: 12px 0; border-bottom: 1px solid #e7ebeb; overflow-wrap: anywhere; }
-.member-portfolio .portfolio-nft-timeline li strong { grid-column: 1 / -1; }
-.member-portfolio .portfolio-nft-timeline li > * { min-width: 0; }
-.member-portfolio .portfolio-nft-timeline time { font-size: 12px; }
-.member-portfolio .portfolio-nft-event-kind { color: #075e4c; font-weight: 700; }
-@media (max-width: 767px) { .member-portfolio .portfolio-nft-highlights, .member-portfolio .portfolio-nft-history-layout { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 767px) { .member-portfolio .portfolio-nft-highlights { grid-template-columns: minmax(0, 1fr); } }
 .member-portfolio .portfolio-nft-tile { position: relative; min-width: 0; aspect-ratio: 1; overflow: hidden; border-radius: 8px; background: #e7ebeb; }
 .member-portfolio .portfolio-nft-tile .portfolio-image-preview-button,
 .member-portfolio .portfolio-nft-placeholder { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }

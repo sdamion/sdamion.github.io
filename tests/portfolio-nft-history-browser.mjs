@@ -23,32 +23,20 @@ try{
     await page.setViewportSize({width,height:900});
     const search=page.getByRole('textbox',{name:'Search historical NFTs'});
     await search.fill('Minted artwork');
-    await page.waitForFunction(()=>document.querySelectorAll('.portfolio-nft-timeline ol > li').length===1);
+    await page.waitForFunction(()=>document.querySelectorAll('.portfolio-nft-tile').length===1);
     assert.match(await page.locator('.portfolio-nft-caption').innerText(),/Mint/);
-    assert.match(await page.locator('.portfolio-nft-timeline ol > li').innerText(),/Mint/);
     assert.doesNotMatch(await page.locator('.portfolio-nft-caption').innerText(),/Buy:/);
     await search.fill('');
-    await page.waitForFunction(()=>document.querySelectorAll('.portfolio-nft-timeline ol > li').length===12);
-    await page.waitForFunction(()=>{
-      const tile=document.querySelector('.portfolio-nft-tile'),timeline=document.querySelector('.portfolio-nft-timeline'),collage=document.querySelector('.portfolio-nft-collage');
-      return Math.abs(timeline.getBoundingClientRect().height-(tile.getBoundingClientRect().height*2+parseFloat(getComputedStyle(collage).rowGap)))<2;
-    });
-    const scroll=page.locator('.portfolio-nft-timeline-scroll');
-    assert.equal(await scroll.evaluate(node=>node.scrollHeight>node.clientHeight),true);
-    await scroll.focus();await page.keyboard.press('PageDown');
-    await page.waitForFunction(()=>document.querySelector('.portfolio-nft-timeline-scroll').scrollTop>0);
-    await page.screenshot({path:'/tmp/tdsp-nft-timeline-scroll-'+width+'.png',fullPage:true});
-    assert.equal(await page.locator('.portfolio-nft-timeline a').first().getAttribute('rel'),'noopener noreferrer');
-    await page.locator('.portfolio-nft-timeline').getByRole('button',{name:'Next page',exact:true}).click();
-    assert.equal(await page.locator('.portfolio-nft-timeline ol > li').count(),5);
+    await page.waitForFunction(count=>document.querySelectorAll('.portfolio-nft-tile').length===count,width>=768?6:1);
+    assert.match(await page.locator('.portfolio-nft-caption').first().innerText(),/Frigid #14/);
+    await page.getByRole('button',{name:'Next page',exact:true}).click();
+    assert.match(await page.locator('.portfolio-nft-caption').first().innerText(),width>=768?/Frigid #8/:/Frigid #13/);
     await search.fill('Minted artwork');
-    await page.waitForFunction(()=>document.querySelectorAll('.portfolio-nft-timeline ol > li').length===1);
+    await page.waitForFunction(()=>document.querySelectorAll('.portfolio-nft-tile').length===1);
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
-    const gallery=await page.locator('.portfolio-nft-gallery').boundingBox(),timeline=await page.locator('.portfolio-nft-timeline').boundingBox();
-    if(width>=768)assert.ok(timeline.x>=gallery.x+gallery.width,'desktop timeline sits to the right of the gallery');
-    else assert.ok(timeline.y>=gallery.y+gallery.height,'mobile timeline sits below the gallery');
+    assert.equal(await page.locator('.portfolio-nft-timeline,.portfolio-nft-history-layout').count(),0,'no timeline or sidebar space remains');
     await page.screenshot({path:'/tmp/tdsp-nft-history-'+width+'.png',fullPage:true});
   }
   assert.deepEqual(errors,[]);
-  console.log('PASS: highlights, confirmed mint caption, filtered NFT-only timeline and pagination fit desktop and mobile.');
+  console.log('PASS: highlights, mint captions and date-ordered gallery pagination fit desktop and mobile without a timeline.');
 }finally{await browser.close();}
