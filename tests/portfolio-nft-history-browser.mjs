@@ -12,6 +12,23 @@ events.unshift({id:rows[1].id,name:rows[1].name,hash:'b'.repeat(64),time:1700000
 createRoot(document.getElementById('app')).render(<HistoricalNftCollage rows={rows} markets={markets} events={events}/>);`,loader:'tsx',resolveDir:source},bundle:true,write:false,format:'esm',jsx:'automatic',alias:{'@/lib/portfolio':path.join(source,'core.ts'),'@/lib/portfolio-cache':path.join(source,'cache.ts'),'@/components/ui/input':path.join(source,'ui.tsx'),'@/components/ui/table':path.join(source,'ui.tsx'),'@/components/ui/pagination':path.join(source,'ui.tsx')},plugins:[{name:'fixture',setup(build){build.onLoad({filter:/\/App\.tsx$/},async args=>({loader:'tsx',contents:(await readFile(args.path,'utf8')).replace('function HistoricalNftCollage(','export function HistoricalNftCollage(')}));}}]});
 const browser=await chromium.launch({channel:'chrome',headless:true});
 try{
+  const contrastPage=await browser.newPage();
+  await contrastPage.setContent('<div class="governance-dialog member-portfolio"><div class="portfolio-nft-highlights"><div><small>15 NFTs</small></div><div><small>0d 0h 5m 0s</small></div></div></div>');
+  await contrastPage.addStyleTag({content:await readFile('shared/styles.css','utf8')});
+  for(const theme of ['light','dark','auto-light','auto-dark']){
+    await contrastPage.emulateMedia({colorScheme:theme.endsWith('dark')?'dark':'light'});
+    await contrastPage.evaluate(theme=>{
+      if(theme.startsWith('auto-'))document.documentElement.removeAttribute('data-theme');
+      else document.documentElement.dataset.theme=theme;
+    },theme);
+    const ratios=await contrastPage.locator('.portfolio-nft-highlights small').evaluateAll(elements=>elements.map(element=>{
+      const luminance=color=>color.match(/[\d.]+/g).slice(0,3).map(Number).map(value=>value/255).map(value=>value<=0.04045?value/12.92:((value+0.055)/1.055)**2.4).reduce((sum,value,index)=>sum+value*[0.2126,0.7152,0.0722][index],0);
+      const foreground=luminance(getComputedStyle(element).color),background=luminance(getComputedStyle(element.closest('.governance-dialog')).backgroundColor);
+      return (Math.max(foreground,background)+0.05)/(Math.min(foreground,background)+0.05);
+    }));
+    assert.ok(ratios.every(ratio=>ratio>=4.5),theme+' NFT counts and flip duration contrast: '+ratios.join(', '));
+  }
+  await contrastPage.close();
   const page=await browser.newPage(),errors=[];
   page.on('pageerror',error=>errors.push(error.message));
   await page.setContent('<div id="app" class="member-portfolio" style="max-width:900px;margin:auto"></div>');

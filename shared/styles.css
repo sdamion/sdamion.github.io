@@ -167,7 +167,7 @@ html[data-theme="dark"] .portfolio-dex-label { --portfolio-dex-color: #fb923c; }
 .member-portfolio .portfolio-nft-highlights { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; width: 100%; margin-block: 12px; padding-block: 12px; border-top: 3px solid #19c58d; text-align: left; }
 .member-portfolio .portfolio-nft-highlights > div:not(.portfolio-nft-strip) { display: grid; align-content: start; gap: 5px; min-width: 0; overflow-wrap: anywhere; }
 .member-portfolio .portfolio-nft-highlights strong { font-size: 16px; line-height: 1.3; }
-.member-portfolio .portfolio-nft-highlights small { color: #075e4c; font-weight: 700; }
+.member-portfolio .portfolio-nft-highlights small { color: var(--accent-strong); font-weight: 700; }
 .member-portfolio .portfolio-nft-strip { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
 .member-portfolio .portfolio-nft-strip > * { width: 100%; aspect-ratio: 1; object-fit: contain; min-width: 0; background: #e7ebeb; border-radius: 4px; }
 .member-portfolio .portfolio-nft-highlights-layout { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 1fr); gap: 24px; align-items: start; }
