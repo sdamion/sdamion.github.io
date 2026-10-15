@@ -35,6 +35,9 @@ try{
     await search.fill('Minted artwork');
     await page.waitForFunction(()=>document.querySelectorAll('.portfolio-nft-timeline ol > li').length===1);
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+    const gallery=await page.locator('.portfolio-nft-gallery').boundingBox(),timeline=await page.locator('.portfolio-nft-timeline').boundingBox();
+    if(width>=768)assert.ok(timeline.x>=gallery.x+gallery.width,'desktop timeline sits to the right of the gallery');
+    else assert.ok(timeline.y>=gallery.y+gallery.height,'mobile timeline sits below the gallery');
     await page.screenshot({path:'/tmp/tdsp-nft-history-'+width+'.png',fullPage:true});
   }
   assert.deepEqual(errors,[]);

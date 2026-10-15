@@ -811,9 +811,12 @@ function HistoricalNftCollage({rows,markets,wallets={},prices={},events=[],onVis
     <div className="portfolio-nft-filters"><label translate="no">{t('Collection')}<select aria-label={t('Collection')} value={collection} onChange={event=>{setCollection(event.target.value);setPage(0);}}><option value="">{t('All collections')} ({rows.length})</option>{collections.map(row=><option key={row.policy} value={row.policy}>{row.name} ({row.count})</option>)}</select></label>
     <label translate="no">{t('Sort images')}<select aria-label={t('Sort images')} value={sort} onChange={event=>{setSort(event.target.value as NftSort);setPage(0);}}>{Object.entries({date:'Newest received first','buy-high':'Buy price: high to low','buy-low':'Buy price: low to high','sell-high':'Sell price: high to low','sell-low':'Sell price: low to high'}).map(([value,label])=><option key={value} value={value}>{t(label)}</option>)}</select></label></div>
     </TransactionFilters>
+    <div className="portfolio-nft-history-layout"><div className="portfolio-nft-gallery">
     {filtered.length?<div className="portfolio-nft-collage">{visible.map(row=><AssetImage key={row.id} id={row.id} name={row.name} market={markets[row.id]} preview collage={{firstReceived:row.firstReceived,prices:prices[row.id],minted:mintedIds.has(row.id),ownedWallets:/^\d+$/.test(row.raw)&&BigInt(row.raw)>0n?wallets[row.id]||[]:undefined}}/>)}</div>:<p className="empty" translate="no">{t('No matching NFTs.')}</p>}
     {filtered.length>pageSize&&<TransactionPagination position="bottom" page={current.page} count={filtered.length} pageSize={pageSize} onPage={setPage} ariaLabel="Historical NFT pages"/>}
+    </div>
     <NftTimeline events={events.filter(event=>filteredIds.has(event.id))}/>
+    </div>
   </>;
 }
 function NftCaption({name,firstReceived,prices,minted=false}:{name:string;firstReceived:number|null;prices?:{buy:number|null;sell:number|null};minted?:boolean}){
