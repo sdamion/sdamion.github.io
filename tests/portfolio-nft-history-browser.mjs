@@ -29,6 +29,15 @@ try{
     assert.doesNotMatch(await page.locator('.portfolio-nft-caption').innerText(),/Buy:/);
     await search.fill('');
     await page.waitForFunction(()=>document.querySelectorAll('.portfolio-nft-timeline ol > li').length===12);
+    await page.waitForFunction(()=>{
+      const tile=document.querySelector('.portfolio-nft-tile'),timeline=document.querySelector('.portfolio-nft-timeline'),collage=document.querySelector('.portfolio-nft-collage');
+      return Math.abs(timeline.getBoundingClientRect().height-(tile.getBoundingClientRect().height*2+parseFloat(getComputedStyle(collage).rowGap)))<2;
+    });
+    const scroll=page.locator('.portfolio-nft-timeline-scroll');
+    assert.equal(await scroll.evaluate(node=>node.scrollHeight>node.clientHeight),true);
+    await scroll.focus();await page.keyboard.press('PageDown');
+    await page.waitForFunction(()=>document.querySelector('.portfolio-nft-timeline-scroll').scrollTop>0);
+    await page.screenshot({path:'/tmp/tdsp-nft-timeline-scroll-'+width+'.png',fullPage:true});
     assert.equal(await page.locator('.portfolio-nft-timeline a').first().getAttribute('rel'),'noopener noreferrer');
     await page.locator('.portfolio-nft-timeline').getByRole('button',{name:'Next page',exact:true}).click();
     assert.equal(await page.locator('.portfolio-nft-timeline ol > li').count(),5);

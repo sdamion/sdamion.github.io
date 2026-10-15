@@ -1,4 +1,4 @@
-import React,{useEffect,useState} from 'react';
+import React,{useEffect,useRef,useState} from 'react';
 import type {Market} from './core';
 import {assetImageCandidates} from './asset-image';
 import {nftHighlights,type NftEvent} from './nft-history';
@@ -22,9 +22,12 @@ function HistoryImage({id,market}:{id:string;market?:Market}){
 }
 export function NftTimeline({events}:{events:NftEvent[]}){
   const t=usePortfolioText(),[page,setPage]=useState(0),signature=events.map(event=>event.hash+event.id).join('|');
+  const scrollRef=useRef<HTMLDivElement>(null);
   useEffect(()=>{setPage(0);},[signature]);
+  useEffect(()=>{if(scrollRef.current)scrollRef.current.scrollTop=0;},[signature,page]);
   const current=transactionPage(page,events.length,12);
-  return <details className="portfolio-nft-timeline" open><summary translate="no">{t('NFT transaction timeline')} ({events.length})</summary>
+  return <section className="portfolio-nft-timeline"><h3 translate="no">{t('NFT transaction timeline')} ({events.length})</h3>
+    <div ref={scrollRef} className="portfolio-nft-timeline-scroll" role="region" aria-label={t('NFT transaction timeline')} tabIndex={0}>
     {!events.length&&<p className="empty" translate="no">{t('No NFT transactions in loaded history.')}</p>}
     <ol>{events.slice(current.page*12,current.page*12+12).map(event=><li key={event.hash+':'+event.id}>
       <time dateTime={new Date(event.time*1000).toISOString()}>{new Date(event.time*1000).toISOString().replace('T',' ').slice(0,19)} UTC</time>
@@ -32,6 +35,7 @@ export function NftTimeline({events}:{events:NftEvent[]}){
       <span translate="no">{event.raw} {t('NFTs')}{event.price!==null?` · ${event.price.toLocaleString(undefined,{maximumFractionDigits:6})} ADA`:''}</span>
       <a href={'https://cexplorer.io/tx/'+encodeURIComponent(event.hash)} target="_blank" rel="noopener noreferrer" translate="no">{t('Transaction')}</a>
     </li>)}</ol>
+    </div>
     {events.length>12&&<TransactionPagination position="bottom" page={current.page} count={events.length} pageSize={12} onPage={setPage} ariaLabel="NFT transaction timeline"/>}
-  </details>;
+  </section>;
 }
