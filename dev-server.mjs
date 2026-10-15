@@ -229,8 +229,6 @@ const proxyRoutes = {
   },
   '/__mithril_proxy__': () =>
     `${TDSP_API_ORIGIN}/api/mithril`,
-  '/__icebreaker_proxy__': () =>
-    `${TDSP_API_ORIGIN}/api/icebreaker`,
   '/__leader_schedule_proxy__': () =>
     LEADER_SCHEDULE_URL,
   '/__stake_status_proxy__': url => {

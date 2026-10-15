@@ -2,7 +2,6 @@
     const IS_LOCAL_PREVIEW = window.TDSPRuntime?.isLocalPreview === true;
     const POOL_API_URL = IS_LOCAL_PREVIEW ? '/__pool_proxy__' : 'https://api.tdsp.online/api/pool';
     const MITHRIL_API_URL = IS_LOCAL_PREVIEW ? '/__mithril_proxy__' : 'https://api.tdsp.online/api/mithril';
-    const ICEBREAKER_API_URL = IS_LOCAL_PREVIEW ? '/__icebreaker_proxy__' : 'https://api.tdsp.online/api/icebreaker';
     const STARCH_POOL_API_URL = IS_LOCAL_PREVIEW ? '/__starch_pools_proxy__' : 'https://api.tdsp.online/api/starch/pools';
     const LEADER_SCHEDULE_API_URL = IS_LOCAL_PREVIEW ? '/__leader_schedule_proxy__' : 'https://api.tdsp.online/api/leader-schedule';
 
@@ -109,7 +108,6 @@
     }
     const state = {
         poolStatus: null,
-        icebreakerStatus: null,
         leaderSchedule: null,
         poolDelegators: [],
         mithrilSigners: [],
@@ -168,14 +166,6 @@
         if (!status) return;
 
         window.TDSPRuntime.setText('pool-mithril-status', label);
-        window.TDSPRuntime.setBinaryStatusClasses(status, active);
-    }
-
-    function setIcebreakerCardStatus(label, active) {
-        const status = document.getElementById('pool-icebreaker-status');
-        if (!status) return;
-
-        window.TDSPRuntime.setText('pool-icebreaker-status', label);
         window.TDSPRuntime.setBinaryStatusClasses(status, active);
     }
 
@@ -312,18 +302,6 @@
         }
     }
 
-    async function loadIcebreaker() {
-        try {
-            const payload = await window.TDSPRuntime.fetchJson(ICEBREAKER_API_URL);
-            const active = payload?.active;
-            setIcebreakerCardStatus(active === true ? 'Active' : active === false ? 'Inactive' : 'N/A', active);
-            state.icebreakerStatus = payload;
-        } catch (error) {
-            if (state.icebreakerStatus) return;
-            setIcebreakerCardStatus('N/A', null);
-        }
-    }
-
     async function loadStarchPools() {
         try {
             renderStarchPoolStatus(await window.TDSPRuntime.fetchJson(STARCH_POOL_API_URL));
@@ -352,7 +330,6 @@
     window.TDSPPoolStatus = Object.freeze({
         loadPool,
         loadMithril,
-        loadIcebreaker,
         loadStarchPools,
         loadLeaderSchedule,
         setStarchPoolCardStatus,

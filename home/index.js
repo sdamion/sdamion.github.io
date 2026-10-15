@@ -411,7 +411,6 @@ document.addEventListener("DOMContentLoaded", () => {
         { key: 'events', callback: fetchCardanoEvents, interval: 900000, options: { selector: '#calendar' } },
         { key: 'pool', callback: fetchPoolStatus, interval: 300000 },
         { key: 'mithril', callback: fetchMithrilStatus, interval: 300000, options: { selector: '#pool' } },
-        { key: 'icebreaker', callback: fetchIcebreakerStatus, interval: 300000, options: { selector: '#pool' } },
         { key: 'starch-pools', callback: fetchStarchPoolStatus, interval: 300000, options: { selector: '#pool' } },
         { key: 'leader-schedule', callback: fetchLeaderSchedule, interval: 300000, options: { selector: '#pool' } },
         { key: 'database-status', callback: fetchDatabaseStatus, interval: 300000 }
@@ -601,10 +600,6 @@ async function fetchMithrilStatus() {
     return loadPoolStatusModule().then(module => module.loadMithril?.());
 }
 
-async function fetchIcebreakerStatus() {
-    return loadPoolStatusModule().then(module => module.loadIcebreaker?.());
-}
-
 async function fetchStarchPoolStatus() {
     return loadPoolStatusModule().then(module => module.loadStarchPools?.());
 }
@@ -615,7 +610,7 @@ async function fetchLeaderSchedule() {
 
 function loadPoolStatusModule() {
     if (window.TDSPPoolStatus) return Promise.resolve(window.TDSPPoolStatus);
-    return window.TDSPRuntime.loadScript('pool/status.js?v=20261002-live-balances', {
+    return window.TDSPRuntime.loadScript('pool/status.js?v=20261015-pool-status', {
         datasetName: 'poolStatus',
         selector: 'script[data-pool-status]',
         ready: () => window.TDSPPoolStatus || null

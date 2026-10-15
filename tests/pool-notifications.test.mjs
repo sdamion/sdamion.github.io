@@ -9,6 +9,14 @@ const formatStart = runtimeCode.indexOf('    function parseLovelaceBigInt(');
 const formatEnd = runtimeCode.indexOf('    function getLovelaceAmount(', formatStart);
 const formatLovelaceAmount = vm.runInNewContext(`${runtimeCode.slice(formatStart, formatEnd)}\nformatLovelaceAmount`);
 
+test('retired integration is absent from the pool UI, refresh tasks and preview routes', () => {
+    for (const file of ['../pool/status.js', '../home/index.js', '../index.html', '../dev-server.mjs']) {
+        assert.doesNotMatch(readFileSync(new URL(file, import.meta.url), 'utf8'), /icebreaker/i, file);
+    }
+    assert.match(code, /loadMithril/);
+    assert.match(code, /loadStarchPools/);
+});
+
 function setup() {
     let payload;
     const alerts = [];
