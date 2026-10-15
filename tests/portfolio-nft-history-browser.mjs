@@ -9,7 +9,7 @@ const rows=Array.from({length:15},(_,i)=>({id:'a'.repeat(56)+i.toString(16).padS
 const markets=Object.fromEntries(rows.map(row=>[row.id,{image:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a0V8AAAAASUVORK5CYII='}]));
 const events=rows.map((row,i)=>({id:row.id,name:row.name,hash:(i+1).toString(16).padStart(64,'0'),time:1699999000+i,raw:'1',kind:i===0?'Mint':'Received',price:null}));
 events.unshift({id:rows[1].id,name:rows[1].name,hash:'b'.repeat(64),time:1700000301,raw:'-1',kind:'Sell',price:20},{id:rows[1].id,name:rows[1].name,hash:'c'.repeat(64),time:1700000001,raw:'1',kind:'Buy',price:10});
-createRoot(document.getElementById('app')).render(<><NftHighlights rows={rows} markets={markets} events={events} preview/><HistoricalNftCollage rows={rows} markets={markets} events={events}/></>);`,loader:'tsx',resolveDir:source},bundle:true,write:false,format:'esm',jsx:'automatic',alias:{'@/lib/portfolio':path.join(source,'core.ts'),'@/lib/portfolio-cache':path.join(source,'cache.ts'),'@/components/ui/input':path.join(source,'ui.tsx'),'@/components/ui/table':path.join(source,'ui.tsx'),'@/components/ui/pagination':path.join(source,'ui.tsx')},plugins:[{name:'fixture',setup(build){build.onLoad({filter:/\/App\.tsx$/},async args=>({loader:'tsx',contents:(await readFile(args.path,'utf8')).replace('function HistoricalNftCollage(','export function HistoricalNftCollage(')}));}}]});
+createRoot(document.getElementById('app')).render(<HistoricalNftCollage rows={rows} markets={markets} events={events}/>);`,loader:'tsx',resolveDir:source},bundle:true,write:false,format:'esm',jsx:'automatic',alias:{'@/lib/portfolio':path.join(source,'core.ts'),'@/lib/portfolio-cache':path.join(source,'cache.ts'),'@/components/ui/input':path.join(source,'ui.tsx'),'@/components/ui/table':path.join(source,'ui.tsx'),'@/components/ui/pagination':path.join(source,'ui.tsx')},plugins:[{name:'fixture',setup(build){build.onLoad({filter:/\/App\.tsx$/},async args=>({loader:'tsx',contents:(await readFile(args.path,'utf8')).replace('function HistoricalNftCollage(','export function HistoricalNftCollage(')}));}}]});
 const browser=await chromium.launch({channel:'chrome',headless:true});
 try{
   const page=await browser.newPage(),errors=[];
@@ -35,6 +35,13 @@ try{
     await page.waitForFunction(()=>document.querySelectorAll('.portfolio-nft-tile').length===1);
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
     assert.equal(await page.locator('.portfolio-nft-timeline,.portfolio-nft-history-layout').count(),0,'no timeline or sidebar space remains');
+    await page.waitForFunction(()=>document.querySelector('.portfolio-nft-highlights-layout').style.getPropertyValue('--nft-highlights-height'));
+    const gallery=await page.locator('.portfolio-nft-gallery').boundingBox(),highlights=await page.locator('.portfolio-nft-highlights-layout > .portfolio-nft-highlights').boundingBox();
+    if(width>=768){
+      assert.ok(highlights.x>=gallery.x+gallery.width,'highlights sit right of the gallery');
+      const tile=await page.locator('.portfolio-nft-tile').boundingBox();
+      assert.ok(Math.abs(highlights.height-(tile.height*2+12))<2,'highlights match two stacked images');
+    }else assert.ok(highlights.y+highlights.height<=gallery.y,'mobile highlights stack above the gallery');
     await page.screenshot({path:'/tmp/tdsp-nft-history-'+width+'.png',fullPage:true});
   }
   assert.deepEqual(errors,[]);

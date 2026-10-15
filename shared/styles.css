@@ -170,7 +170,12 @@ html[data-theme="dark"] .portfolio-dex-label { --portfolio-dex-color: #fb923c; }
 .member-portfolio .portfolio-nft-highlights small { color: #075e4c; font-weight: 700; }
 .member-portfolio .portfolio-nft-strip { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
 .member-portfolio .portfolio-nft-strip > * { width: 100%; aspect-ratio: 1; object-fit: contain; min-width: 0; background: #e7ebeb; border-radius: 4px; }
-@media (max-width: 767px) { .member-portfolio .portfolio-nft-highlights { grid-template-columns: minmax(0, 1fr); } }
+.member-portfolio .portfolio-nft-highlights-layout { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+.member-portfolio .portfolio-nft-gallery { min-width: 0; }
+.member-portfolio .portfolio-nft-highlights-layout > .portfolio-nft-highlights { grid-template-columns: minmax(0, 1fr); grid-template-rows: repeat(2, minmax(0, 1fr)); height: var(--nft-highlights-height, auto); min-width: 0; box-sizing: border-box; margin: 0; overflow-y: auto; }
+.member-portfolio .portfolio-nft-highlights-layout > .portfolio-nft-highlights > div { align-content: center; }
+.member-portfolio .portfolio-nft-highlights-layout > .portfolio-nft-highlights > div + div { border-top: 1px solid #b7c5c1; }
+@media (max-width: 767px) { .member-portfolio .portfolio-nft-highlights, .member-portfolio .portfolio-nft-highlights-layout { grid-template-columns: minmax(0, 1fr); } .member-portfolio .portfolio-nft-highlights-layout > .portfolio-nft-highlights { order: -1; height: auto; grid-template-rows: auto auto; } }
 .member-portfolio .portfolio-nft-tile { position: relative; min-width: 0; aspect-ratio: 1; overflow: hidden; border-radius: 8px; background: #e7ebeb; }
 .member-portfolio .portfolio-nft-tile .portfolio-image-preview-button,
 .member-portfolio .portfolio-nft-placeholder { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
