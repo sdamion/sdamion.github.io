@@ -38,7 +38,7 @@ test('remote checkpoint messages are hidden without disabling persistence',()=>{
   const header=app.slice(app.indexOf('aria-label="Portfolio refresh"'),app.indexOf('<MenuTile title="Transactions"'));
   assert.doesNotMatch(header,/CacheUploadProgress|\{cacheNotice/);
   assert.doesNotMatch(app,/CacheUploadProgress/);
-  assert.match(app,/storageMode\(\)!=='remote'&&cacheNotice/);
+  assert.match(app,/\{text:storageMode\(\)!=='remote'\?cacheNotice:''\}/);
   assert.match(app,/await flushVault\(\)/);
   assert.match(source('ui.tsx'),/createPortal\(children,footer\)/);
 });
@@ -47,9 +47,10 @@ test('CEX metric opens its shared transaction overlay without stale search or pa
   assert.match(app,/<Metric label="CEX Transactions"[^\n]*onOpen=\{\(\)=>\{setQuery\(''\);setFilter\('all'\);setPage\(0\);setSection\('gain-loss'\);\}\}/);
   assert.match(app,/name=\{section==='gain-loss'\?'CEX Transactions':'Transactions'\}/);
   const tile=app.split('\n').find(line=>line.includes('<Metric label="CEX Transactions"'));
-  assert.doesNotMatch(tile,/note=|breakdown=|Bought|Sold/);
-  assert.match(app,/<ComparisonAmount amount=\{comparison\?\.incoming\?\?null\}/);
-  assert.match(app,/<ComparisonAmount amount=\{comparison\?\.outgoing\?\?null\}/);
+  assert.match(tile,/note=\{portfolioPartial\|\|availableCex\.partial/);
+  assert.doesNotMatch(tile,/breakdown=|Bought|Sold/);
+  assert.match(app,/<NativeTransferSummary symbol="ADA" totals=\{adaCexTotals\}/);
+  assert.match(app,/<ComparisonAmount amount=\{comparisonResult\.amount\}/);
   assert.match(app,/Transfer-day prices plus current wallet value/);
   assert.match(app,/<MenuTile title="Transactions"[^\n]*setFilter\('all'\)/);
   assert.match(app,/const Tag=onOpen\?'button':'div'/);
@@ -94,23 +95,23 @@ test('gain loss overlay places its breakdown beside the graph, not in address se
   const section=app.slice(start,app.indexOf('{busy&&<p',start));
   assert.match(section,/className="tdsp-chart-overview portfolio-gain-overview"/);
   assert.ok(section.indexOf('<CexTimeline')<section.indexOf('ADA Gains/Loss breakdown'));
-  assert.match(section,/variant="comparison"/);
-  assert.match(section,/<ComparisonAmount amount=\{comparison\?\.outgoing\?\?null\} value=\{comparison\?\.outFiat\?\?null\}/);
+  assert.match(section,/<NativeTransferSummary symbol="ADA" totals=\{adaCexTotals\}/);
+  assert.match(source('NativeTransferSummary.tsx'),/<Table variant="comparison"/);
   assert.doesNotMatch(section,/In wallets <AdaUsdAmount/);
-  assert.match(section,/<ComparisonAmount amount=\{comparison\?\.incoming\?\?null\} value=\{comparison\?\.inFiat\?\?null\}/);
+  assert.match(section,/<ComparisonAmount amount=\{comparisonResult\.amount\} value=\{comparisonResult\.fiat\}/);
   assert.match(source('CexTimeline.tsx'),/label:crypto\+' IN',data:points.map\(p=>\(\{x:p.time\*1000,y:p.incoming,fiat:p.inFiat/);
   assert.match(source('CexTimeline.tsx'),/label:crypto\+' OUT',[^\n]*data:points.map\(p=>\(\{x:p.time\*1000,y:p.outgoing,fiat:p.outFiat/);
-  assert.doesNotMatch(section,/<details>/);
+  assert.match(section,/<details className="portfolio-gain-explanation">/);
 });
-test('Cardano Wallets uses shared section tiles and nested address overlays',()=>{
+test('Wallets uses shared section tiles and nested address overlays',()=>{
   const app=source('App.tsx');
-  assert.match(app,/<MenuTile title="Cardano Wallets"/);
+  assert.match(app,/<MenuTile title="Wallets"/);
   assert.doesNotMatch(app,/<MenuTile title="(?:Wallet addresses|DEX \/ CEX addresses)"|portfolio-exchanges-overlay/);
   const wallets=app.slice(app.indexOf("{section==='wallets'"),app.indexOf("{section==='holdings'"));
-  assert.match(wallets,/name="Cardano Wallets"/);
+  assert.match(wallets,/name="Wallets"/);
   assert.match(wallets,/<WalletMenu/);
   const menu=source('WalletMenu.tsx');
-  for(const title of ['My Wallets','DEX / CEX','Byron DEX / CEX'])assert.ok(menu.includes(title));
+  for(const title of ['My Wallets','DEX / CEX & Swap','Byron DEX / CEX'])assert.ok(menu.includes(title));
   assert.match(menu,/<MenuTile/);
   assert.match(menu,/<AssetOverlay/);
   assert.match(menu,/onClose=\{\(\)=>setSection\(null\)\}/);
