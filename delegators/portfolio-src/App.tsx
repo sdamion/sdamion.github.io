@@ -103,6 +103,7 @@ async function historicalPrices(signal:AbortSignal):Promise<{prices?:[number,num
 }
 
 const request=createCardanoRequest(portfolioFetch);
+const ADDRESS_INFO_BATCH_SIZE=20;
 
 export default function Home({memberStake,role='delegator',portfolioAccess}:{memberStake:string;role?:'delegator'|'admin';portfolioAccess?:{ethereum:boolean;solana:boolean}}){
   const t=usePortfolioText();
@@ -218,7 +219,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
       const plan=planRefresh(cached,groups,exclusions,fullScan);
       const addresses=[...new Set(Object.values(groups).flat())];
       const refreshAddresses=addresses.filter(address=>!exclusions.has(address));
-      const addressBatches=Array.from({length:Math.ceil(refreshAddresses.length/40)},(_,i)=>refreshAddresses.slice(i*40,(i+1)*40));
+      const addressBatches=Array.from({length:Math.ceil(refreshAddresses.length/ADDRESS_INFO_BATCH_SIZE)},(_,i)=>refreshAddresses.slice(i*ADDRESS_INFO_BATCH_SIZE,(i+1)*ADDRESS_INFO_BATCH_SIZE));
       const loadInfos=async()=>{const all:AddressInfo[]=(cached?.infos||[]).filter(info=>addresses.includes(info.address)&&exclusions.has(info.address));for(const [index,batch] of addressBatches.entries()){
         setStatus(`Checking balances · batch ${index+1} of ${addressBatches.length}`);
         all.push(...await walletRequest<AddressInfo[]>('address_info',{_addresses:batch}));

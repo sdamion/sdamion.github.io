@@ -15,11 +15,12 @@ export function createCardanoRequest(fetcher:(path:string,options:RequestInit)=>
         response=new Response(null,{status:504});
       }
       if(response.ok)return response.json() as Promise<T>;
-      const hashes=(body as {_tx_hashes?:string[]})._tx_hashes;
-      if(path==='tx_info'&&hashes&&hashes.length>1&&[413,502,503,504].includes(response.status)){
-        const middle=Math.ceil(hashes.length/2);
-        const left=await request<unknown[]>(path,{...body,_tx_hashes:hashes.slice(0,middle)},signal);
-        const right=await request<unknown[]>(path,{...body,_tx_hashes:hashes.slice(middle)},signal);
+      const splitKey=path==='tx_info'?'_tx_hashes':path==='address_info'?'_addresses':null;
+      const values=splitKey?(body as Record<string,unknown>)[splitKey] as string[]|undefined:undefined;
+      if(splitKey&&values&&values.length>1&&[413,502,503,504].includes(response.status)){
+        const middle=Math.ceil(values.length/2);
+        const left=await request<unknown[]>(path,{...body,[splitKey]:values.slice(0,middle)},signal);
+        const right=await request<unknown[]>(path,{...body,[splitKey]:values.slice(middle)},signal);
         return [...left,...right] as T;
       }
       if(![429,502,503,504].includes(response.status)||attempt===2)throw new Error(`Cardano ${cardanoRequestContext(path,body,range)} ${timedOut?'timed out after 75 seconds':`returned HTTP ${response.status}`} after ${attempt+1} attempt(s). Your last saved data is still available.`);

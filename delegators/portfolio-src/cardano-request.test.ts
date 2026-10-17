@@ -13,6 +13,17 @@ test('browser timeout splits tx batches sequentially without duplicate results',
   assert.deepEqual(await request('tx_info',{_tx_hashes:['a','b','c']},new AbortController().signal),['a','b','c']);
   assert.deepEqual(calls,[['a','b','c'],['a','b'],['a'],['b'],['c']]);
 });
+test('gateway timeout splits address info batches and preserves every response row',async()=>{
+  const calls:string[][]=[];
+  const request=createCardanoRequest(async(_,options)=>{
+    const addresses=JSON.parse(String(options.body)).body._addresses;
+    calls.push(addresses);
+    return addresses.length>2?new Response(null,{status:504}):Response.json(addresses.map((address:string)=>({address})));
+  },async()=>{});
+  const addresses=['a','b','c','d','e'];
+  assert.deepEqual(await request('address_info',{_addresses:addresses},new AbortController().signal),addresses.map(address=>({address})));
+  assert.deepEqual(calls,[addresses,['a','b','c'],['a','b'],['c'],['d','e']]);
+});
 test('terminal timeout includes the endpoint and page after bounded retries',async()=>{
   let calls=0;
   const request=createCardanoRequest(async()=>{calls++;throw timeout();},async()=>{});
