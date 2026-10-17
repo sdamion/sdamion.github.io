@@ -1291,8 +1291,8 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
     "portfolio_text_7e5adc591bfb"
   ],
   [
-    "Refreshed data time - {time}",
-    "portfolio_text_cf40d2f73e15"
+    "Refreshed {date} · completed in {time}",
+    "portfolio_text_8da8efa1f2d3"
   ],
   [
     "Portfolio refresh",

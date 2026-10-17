@@ -64,8 +64,8 @@ try{
   const assets=page.getByRole('button',{name:'Open Assets',exact:true}),cex=page.getByRole('button',{name:'Open CEX Transactions',exact:true});
   const walletsTile=page.getByRole('button',{name:'Open Wallets',exact:true});
   await walletsTile.waitFor({timeout:10000}).catch(error=>{console.error('Portfolio startup errors:',errors);throw error;});
-  await walletsTile.getByRole('status').filter({hasText:'Refreshed data time -'}).waitFor();
-  assert.match(await walletsTile.innerText(),/Refreshed data time - \d+(?:m \d+)?s/,'completed refresh duration belongs to Wallets');
+  await walletsTile.getByRole('status').filter({hasText:'Refreshed'}).waitFor();
+  assert.match(await walletsTile.innerText(),/Refreshed .+ · completed in \d+(?:m \d+)?s/,'refresh completion date and duration belong to Wallets');
   assert.equal(await page.getByRole('timer').count(),0,'the live refresh timer disappears after completion');
   assert.doesNotMatch(await walletsTile.innerText(),/^(?:Updated|Images:)/m,'obsolete update and image status lines are hidden');
   assert.equal(await page.getByRole('button',{name:'Open Ethereum Wallets',exact:true}).count(),0);

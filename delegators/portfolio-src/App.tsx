@@ -571,7 +571,10 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   const cexUnresolved=Object.values(cexFacts).filter(f=>isCexTransaction(f,cexAddresses)&&!cexAdaTransfer(f,cexAddresses)).length;
   const eta=analysis&&counted!==null?remainingSeconds(analysis.started,clock,analysis.done,analysis.total):null;
   const refreshTiming=refreshStarted&&syncing?`${t('Elapsed: {time}',{time:durationLabel((clock-refreshStarted)/1000)})}${busy?(eta!==null?` · ${t('Estimated analysis remaining: {time}',{time:durationLabel(eta)})}`:` · ${t('Estimating remaining time…')}`):''}`:'';
-  const completedRefreshStatus=refreshStarted&&!syncing&&!error&&snapshot?.complete?t('Refreshed data time - {time}',{time:durationLabel((clock-refreshStarted)/1000)}):status;
+  const completedRefreshStatus=refreshStarted&&!syncing&&!error&&snapshot?.complete?t('Refreshed {date} · completed in {time}',{
+    date:new Date(clock).toLocaleString(holdingsLocale,{dateStyle:'medium',timeStyle:'medium'}),
+    time:durationLabel((clock-refreshStarted)/1000)
+  }):status;
   const cardanoShown=(snapshot?.txs||[]).filter(t=>{const f=classifiedFacts[t.tx_hash],internalSwap=crossChainSwaps.cardano.has(t.tx_hash);return withinTransactionDates(t.block_time,dateFrom,dateTo)&&(section==='gain-loss'?!internalSwap&&matchesGainLossTransfer(f,cexAddresses,filter):(filter==='all'||(filter==='swap'?isSwapTransaction(f,swapAddresses):filter==='cex'?!internalSwap&&isCexTransaction(f,cexAddresses):internalSwap?filter==='internal':f&&kindOf(f)===filter)))&&matchesTransaction(query,t.tx_hash,f,snapshot?.markets||{},displayWallets,cexAddresses);});
   const ethereumShown=ethTransactions.filter(tx=>{
     const internalSwap=crossChainSwaps.ethereum.has(tx.id),transfer=internalSwap?null:ethereumTransfer(tx,ethereum.wallets,ethereum.exchanges),own=new Set(ethereum.wallets.map(w=>w.address));
