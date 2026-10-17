@@ -64,10 +64,10 @@ try{
   const assets=page.getByRole('button',{name:'Open Assets',exact:true}),cex=page.getByRole('button',{name:'Open CEX Transactions',exact:true});
   const walletsTile=page.getByRole('button',{name:'Open Wallets',exact:true});
   await walletsTile.waitFor({timeout:10000}).catch(error=>{console.error('Portfolio startup errors:',errors);throw error;});
-  await walletsTile.getByRole('status').filter({hasText:'Balances updated'}).waitFor();
-  assert.match(await walletsTile.getByRole('timer').innerText(),/Refresh duration:/,'refresh timing belongs to Wallets');
-  assert.equal(await page.getByRole('timer').count(),1,'timing is not duplicated outside the tile');
-  assert.equal(await page.locator('.status-line').filter({hasText:'Balances updated'}).count(),0,'balance updates belong to the Wallet tile, not the global header');
+  await walletsTile.getByRole('status').filter({hasText:'Refreshed data time -'}).waitFor();
+  assert.match(await walletsTile.innerText(),/Refreshed data time - \d+(?:m \d+)?s/,'completed refresh duration belongs to Wallets');
+  assert.equal(await page.getByRole('timer').count(),0,'the live refresh timer disappears after completion');
+  assert.doesNotMatch(await walletsTile.innerText(),/^(?:Updated|Images:)/m,'obsolete update and image status lines are hidden');
   assert.equal(await page.getByRole('button',{name:'Open Ethereum Wallets',exact:true}).count(),0);
   assert.equal(requests.length,0,'a CEX-only setup never scans a shared exchange wallet');
   await cex.click();

@@ -35,7 +35,7 @@ import {TableGroupToggle,useTableGroups} from './TableGroupToggle';
 import {valuationCoverage} from './valuation-coverage';
 import {averageBuy,purchaseAverages} from './average-buy';
 import {assetImageCandidates} from './asset-image';
-import {applyCachedImages,cachedImageProgress,watchImageCache} from './image-cache-status';
+import {applyCachedImages,watchImageCache} from './image-cache-status';
 import {waitForRetry} from './retry-wait';
 import {knownDecimals,tokenDecimals,holdingValue,holdingDecimals,estimatedPurchaseBasis} from './valuation';
 import {mintPayments,paymentBudget} from './mint-payments';
@@ -338,7 +338,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
       }
       setNotice([...new Set(warnings)].join(' '));
       await flushVault().catch(()=>{});signal.throwIfAborted();
-      setStatus(next.complete?`Updated ${new Date(next.updated).toLocaleString()}`:'Some transactions are awaiting analysis. Refresh to retry.');
+      setStatus(next.complete?'':'Some transactions are awaiting analysis. Refresh to retry.');
     }catch(e){if(!signal.aborted){setError(e instanceof Error?e.message:'Could not update this portfolio.');setStatus('Refresh incomplete · showing available data');setTransactionStatus(current=>current?'Transaction refresh incomplete · cached data retained':'');}}
     finally{if(!signal.aborted){setClock(Date.now());setBusy(false);setInitialising(false);setCounting(null);}}
   }
@@ -428,7 +428,6 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
     finally{if(controller.current===control)setBusy(false);}
   }
   const holdings=useMemo(()=>snapshot?combineHoldings(snapshot.infos):[],[snapshot]);
-  const imageProgress=cachedImageProgress([...holdings.map(holding=>holding.id),...(selectedAsset?[selectedAsset]:[])],snapshot?.markets||{});
   const missingImageIds=[...new Set([...holdings.map(h=>h.id),...(selectedAsset?[selectedAsset]:[]),...(section==='holdings'&&holdingsGroup==='Historical NFTs'?historicalImageIds.split('|'):[])])].filter(id=>/^[a-f0-9]{56}(?:[a-f0-9]{2}){0,32}$/.test(id)&&!snapshot?.markets[id]?.registry_logo&&!snapshot?.markets[id]?.cached_image).sort().join('|');
   useEffect(()=>{
     if(!ready||busy||!missingImageIds)return;
@@ -571,7 +570,8 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   const cexPending=snapshot?.txs.filter(tx=>!hasCounterpartyData(snapshot.facts[tx.tx_hash])).length||0;
   const cexUnresolved=Object.values(cexFacts).filter(f=>isCexTransaction(f,cexAddresses)&&!cexAdaTransfer(f,cexAddresses)).length;
   const eta=analysis&&counted!==null?remainingSeconds(analysis.started,clock,analysis.done,analysis.total):null;
-  const refreshTiming=refreshStarted?`${syncing?t('Elapsed: {time}',{time:durationLabel((clock-refreshStarted)/1000)}):`${t('Refresh duration')}: ${durationLabel((clock-refreshStarted)/1000)}`}${busy?(eta!==null?` · ${t('Estimated analysis remaining: {time}',{time:durationLabel(eta)})}`:` · ${t('Estimating remaining time…')}`):''}`:'';
+  const refreshTiming=refreshStarted&&syncing?`${t('Elapsed: {time}',{time:durationLabel((clock-refreshStarted)/1000)})}${busy?(eta!==null?` · ${t('Estimated analysis remaining: {time}',{time:durationLabel(eta)})}`:` · ${t('Estimating remaining time…')}`):''}`:'';
+  const completedRefreshStatus=refreshStarted&&!syncing&&!error&&snapshot?.complete?t('Refreshed data time - {time}',{time:durationLabel((clock-refreshStarted)/1000)}):status;
   const cardanoShown=(snapshot?.txs||[]).filter(t=>{const f=classifiedFacts[t.tx_hash],internalSwap=crossChainSwaps.cardano.has(t.tx_hash);return withinTransactionDates(t.block_time,dateFrom,dateTo)&&(section==='gain-loss'?!internalSwap&&matchesGainLossTransfer(f,cexAddresses,filter):(filter==='all'||(filter==='swap'?isSwapTransaction(f,swapAddresses):filter==='cex'?!internalSwap&&isCexTransaction(f,cexAddresses):internalSwap?filter==='internal':f&&kindOf(f)===filter)))&&matchesTransaction(query,t.tx_hash,f,snapshot?.markets||{},displayWallets,cexAddresses);});
   const ethereumShown=ethTransactions.filter(tx=>{
     const internalSwap=crossChainSwaps.ethereum.has(tx.id),transfer=internalSwap?null:ethereumTransfer(tx,ethereum.wallets,ethereum.exchanges),own=new Set(ethereum.wallets.map(w=>w.address));
@@ -615,14 +615,13 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   </div>
     <section className="portfolio-section"><div className="tdsp-tile-grid">
       <MenuTile title="Wallets" value={refreshCounts?`${num(refreshCounts.active+ethereum.wallets.length+solana.wallets.length,0)} / ${num(refreshCounts.total+ethereum.wallets.length+solana.wallets.length,0)} active`:initialising?'Initialising':'— / — active'} loading={initialising} loadingLabel={status} onOpen={()=>setSection('wallets')}>
-        <WalletSyncStatus cardano={initialising||error?'':busy&&analysis?transactionStatus||status:status} ethereum={ethereum.busy?ethereum.status:undefined} solana={solana.busy?'Checking Solana transactions…':undefined} messages={[
+        <WalletSyncStatus cardano={initialising||error?'':busy&&analysis?transactionStatus||status:completedRefreshStatus} ethereum={ethereum.busy?ethereum.status:undefined} solana={solana.busy?'Checking Solana transactions…':undefined} messages={[
           {text:error,error:true},{text:notice},{text:ethereum.error,error:true},{text:solana.error,error:true},
           {text:storageMode()!=='remote'?cacheNotice:''},
           {text:payments.errors.length?'Some saved payment links cannot be applied to the loaded history. Open the asset image to review its purchase payments.':'',error:true},
           {text:snapshot&&comparisonCrypto==='BTC'?btc.status||'BTC equivalents use transfer-day ADA/USD and BTC/USD prices, not actual Bitcoin purchases.':''},
           {text:comparisonFiat==='EUR'||comparisonFiat==='JPY'?fx.status||'Historical FX rates use the latest available business day; wallet value uses the current rate.':''}
         ]}/>
-        {imageProgress.total>0&&<p translate="no" role="status" className="small muted" title={t('Images available in the cache')}>{t('Images: {done} / {total}',imageProgress)}</p>}
         {refreshTiming&&<p translate="no" className="small muted" role="timer">{refreshTiming}</p>}
       </MenuTile>
       <MenuTile title="Transactions" value={snapshot?num(allTransactionTotal,0):'—'} analysis={snapshot?{done:combinedProgress.downloaded,total:combinedProgress.total,counting:combinedProgress.total===null,busy:busy||ethereum.busy||solana.busy,compact:true}:undefined} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('transactions');}}>
