@@ -331,7 +331,9 @@
     function formatAdaFromLovelace(value, options = {}) {
         const number = Number(value);
         if (!Number.isFinite(number)) return options.fallback || 'N/A';
-        const maximumFractionDigits = Math.abs(number / 1_000_000) >= 1 ? 0 : 2;
+        const maximumFractionDigits = Number.isInteger(options.maximumFractionDigits)
+            ? options.maximumFractionDigits
+            : Math.abs(number / 1_000_000) >= 1 ? 0 : 2;
         return `₳ ${new Intl.NumberFormat('en-US', { maximumFractionDigits }).format(number / 1_000_000)}`;
     }
 

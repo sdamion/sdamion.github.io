@@ -4,8 +4,16 @@ import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 const source=readFileSync(new URL('../shared/runtime.js',import.meta.url),'utf8');
 const context=vm.createContext({Intl});
+vm.runInContext(source.slice(source.indexOf('    function formatAdaFromLovelace('),source.indexOf('    function formatCompactAdaFromLovelace(')),context);
 vm.runInContext(source.slice(source.indexOf('    function formatAdaNumber('),source.indexOf('    function createAdaUsdAmount(')),context);
 const format=(ada,usd)=>JSON.parse(JSON.stringify(context.formatAdaUsdAmount(ada,usd)));
+const formatLovelace=(lovelace,options)=>context.formatAdaFromLovelace(lovelace,options);
+test('lovelace formatting honours explicitly requested precision',()=>{
+  assert.equal(formatLovelace(1234567,{maximumFractionDigits:6}),'₳ 1.234567');
+  assert.equal(formatLovelace(1234567,{maximumFractionDigits:2}),'₳ 1.23');
+  assert.equal(formatLovelace(1234567),'₳ 1');
+  assert.equal(formatLovelace(123456),'₳ 0.12');
+});
 test('shared ADA/USD pairs use absolute values and independent signed colours',()=>{
   assert.deepEqual(format(53811.587507,22791.61),{ada:'₳ 53,812',usd:'≈ $22,791.61',adaTone:'positive',usdTone:'positive'});
   assert.deepEqual(format(-53811.587507,-22791.61),{ada:'₳ 53,812',usd:'≈ $22,791.61',adaTone:'negative',usdTone:'negative'});
