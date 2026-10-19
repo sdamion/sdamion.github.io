@@ -56,3 +56,12 @@ test('one Ask submit button replaces the two chat modes', () => {
     assert.match(source, /input.rows = 4/);
     assert.match(source, /window.TDSPRuntime.resizeTextarea\(input\)/);
 });
+
+test('answer status exposes localized confidence, freshness and fallback labels', () => {
+    assert.match(source, /function formatAgentStatus\(payload\)/);
+    assert.match(source, /High confidence/);
+    assert.match(source, /Hoge betrouwbaarheid/);
+    assert.match(source, /Confianza alta/);
+    assert.match(source, /高い信頼度/);
+    assert.match(source, /payload\?\.fallback/);
+});

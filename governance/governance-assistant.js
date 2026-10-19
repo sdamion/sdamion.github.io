@@ -24,6 +24,20 @@
             return window.TDSPI18n?.getLanguage?.() || 'en';
         }
 
+        function formatAgentStatus(payload) {
+            const language = getAssistantLanguage();
+            const labels = {
+                en: { high: 'High confidence', medium: 'Medium confidence', low: 'Low confidence', stable_reference: 'Stable reference', cached_current: 'Current cached data', stale_cache: 'Stale cached data', refreshing_cache: 'Refreshing cached data', not_time_sensitive: 'General information', fallback: 'Verified fallback' },
+                nl: { high: 'Hoge betrouwbaarheid', medium: 'Gemiddelde betrouwbaarheid', low: 'Lage betrouwbaarheid', stable_reference: 'Vaste bron', cached_current: 'Actuele cachegegevens', stale_cache: 'Verouderde cachegegevens', refreshing_cache: 'Cache wordt vernieuwd', not_time_sensitive: 'Algemene informatie', fallback: 'Geverifieerd noodantwoord' },
+                es: { high: 'Confianza alta', medium: 'Confianza media', low: 'Confianza baja', stable_reference: 'Referencia estable', cached_current: 'Datos actuales en cache', stale_cache: 'Datos obsoletos en cache', refreshing_cache: 'Actualizando la cache', not_time_sensitive: 'Informacion general', fallback: 'Respuesta alternativa verificada' },
+                ja: { high: '高い信頼度', medium: '中程度の信頼度', low: '低い信頼度', stable_reference: '固定リファレンス', cached_current: '最新のキャッシュデータ', stale_cache: '古いキャッシュデータ', refreshing_cache: 'キャッシュ更新中', not_time_sensitive: '一般情報', fallback: '検証済みフォールバック' }
+            };
+            const selected = labels[language] || labels.en;
+            const parts = [selected[payload?.confidence], selected[payload?.freshness]].filter(Boolean);
+            if (payload?.fallback) parts.push(selected.fallback);
+            return parts.join(' | ');
+        }
+
         function formatAskAboutContextTitle(title) {
             const cleanTitle = String(title || '').trim();
             if (!cleanTitle) return 'Ask about available governance, DReps, SPOs, Starch, Treasury, or the Constitution.';
@@ -421,7 +435,10 @@
                     }
                     conversation.push({ role: 'assistant', content: answer });
                     while (conversation.length > 12) conversation.shift();
-                    setAssistantText(status, payload.cached ? 'Answer loaded from saved website data.' : '');
+                    setAssistantText(
+                        status,
+                        formatAgentStatus(payload) || (payload.cached ? 'Answer loaded from saved website data.' : '')
+                    );
                 } catch (error) {
                     if (conversation.at(-1)?.role === 'user') conversation.pop();
                     if (pendingAnswerMessage && !pendingAnswerMessage.body.textContent) {
