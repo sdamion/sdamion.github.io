@@ -1,6 +1,5 @@
 import {tradeOf} from './core.ts';
 import type {Acquisitions,Fact} from './core.ts';
-import {nftCollections} from './nft-collage.ts';
 import type {historicalNfts} from './historical-nfts.ts';
 
 export type NftEvent={id:string;hash:string;time:number;name:string;raw:string;kind:'Buy'|'Sell'|'Mint'|'Burn'|'Received'|'Sent'|'Internal transfer';price:number|null};
@@ -22,21 +21,4 @@ export function nftTransactions(rows:ReturnType<typeof historicalNfts>,facts:Fac
     }
   }
   return events.sort((a,b)=>b.time-a.time||a.hash.localeCompare(b.hash)||a.id.localeCompare(b.id));
-}
-export function nftHighlights(rows:ReturnType<typeof historicalNfts>,events:NftEvent[]){
-  const top=[...nftCollections(rows)].sort((a,b)=>b.count-a.count||a.name.localeCompare(b.name)||a.policy.localeCompare(b.policy))[0]??null;
-  const bought=new Map<string,NftEvent>();
-  let fastest:{name:string;seconds:number;id:string}|null=null;
-  // Only uninterrupted single-unit purchases qualify; unknown transfers cannot establish a flip.
-  for(const event of [...events].sort((a,b)=>a.time-b.time||a.hash.localeCompare(b.hash)||a.id.localeCompare(b.id))){
-    if(event.kind==='Internal transfer')continue;
-    const buy=bought.get(event.id);
-    if(event.kind==='Sell'&&event.raw==='-1'&&buy&&event.time>buy.time){
-      const seconds=event.time-buy.time;
-      if(!fastest||seconds<fastest.seconds)fastest={name:event.name,seconds,id:event.id};
-    }
-    bought.delete(event.id);
-    if(event.kind==='Buy'&&event.raw==='1')bought.set(event.id,event);
-  }
-  return {top,fastest};
 }

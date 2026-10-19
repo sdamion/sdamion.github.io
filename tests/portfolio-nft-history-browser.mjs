@@ -4,7 +4,7 @@ import {readFile} from 'node:fs/promises';
 import path from 'node:path';
 const source=path.resolve('delegators/portfolio-src'),require=createRequire(path.join(source,'package.json'));
 const {build}=require('esbuild'),{chromium}=await import(process.argv[2]);
-const bundle=await build({stdin:{contents:`import {createRoot} from 'react-dom/client';import {HistoricalNftCollage} from './App';import {NftHighlights} from './NftHistory';
+const bundle=await build({stdin:{contents:`import {createRoot} from 'react-dom/client';import {HistoricalNftCollage} from './App';
 const rows=Array.from({length:15},(_,i)=>({id:'a'.repeat(56)+i.toString(16).padStart(2,'0'),name:i===0?'Minted artwork':'Frigid #'+i,raw:'1',firstReceived:1700000000+i}));
 const markets=Object.fromEntries(rows.map(row=>[row.id,{image:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a0V8AAAAASUVORK5CYII='}]));
 const events=rows.map((row,i)=>({id:row.id,name:row.name,hash:(i+1).toString(16).padStart(64,'0'),time:1699999000+i,raw:'1',kind:i===0?'Mint':'Received',price:null}));
@@ -12,30 +12,14 @@ events.unshift({id:rows[1].id,name:rows[1].name,hash:'b'.repeat(64),time:1700000
 createRoot(document.getElementById('app')).render(<HistoricalNftCollage rows={rows} markets={markets} events={events}/>);`,loader:'tsx',resolveDir:source},bundle:true,write:false,format:'esm',jsx:'automatic',alias:{'@/lib/portfolio':path.join(source,'core.ts'),'@/lib/portfolio-cache':path.join(source,'cache.ts'),'@/components/ui/input':path.join(source,'ui.tsx'),'@/components/ui/table':path.join(source,'ui.tsx'),'@/components/ui/pagination':path.join(source,'ui.tsx')},plugins:[{name:'fixture',setup(build){build.onLoad({filter:/\/App\.tsx$/},async args=>({loader:'tsx',contents:(await readFile(args.path,'utf8')).replace('function HistoricalNftCollage(','export function HistoricalNftCollage(')}));}}]});
 const browser=await chromium.launch({channel:'chrome',headless:true});
 try{
-  const contrastPage=await browser.newPage();
-  await contrastPage.setContent('<div class="governance-dialog member-portfolio"><div class="portfolio-nft-highlights"><div><small>15 NFTs</small></div><div><small>0d 0h 5m 0s</small></div></div></div>');
-  await contrastPage.addStyleTag({content:await readFile('shared/styles.css','utf8')});
-  for(const theme of ['light','dark','auto-light','auto-dark']){
-    await contrastPage.emulateMedia({colorScheme:theme.endsWith('dark')?'dark':'light'});
-    await contrastPage.evaluate(theme=>{
-      if(theme.startsWith('auto-'))document.documentElement.removeAttribute('data-theme');
-      else document.documentElement.dataset.theme=theme;
-    },theme);
-    const ratios=await contrastPage.locator('.portfolio-nft-highlights small').evaluateAll(elements=>elements.map(element=>{
-      const luminance=color=>color.match(/[\d.]+/g).slice(0,3).map(Number).map(value=>value/255).map(value=>value<=0.04045?value/12.92:((value+0.055)/1.055)**2.4).reduce((sum,value,index)=>sum+value*[0.2126,0.7152,0.0722][index],0);
-      const foreground=luminance(getComputedStyle(element).color),background=luminance(getComputedStyle(element.closest('.governance-dialog')).backgroundColor);
-      return (Math.max(foreground,background)+0.05)/(Math.min(foreground,background)+0.05);
-    }));
-    assert.ok(ratios.every(ratio=>ratio>=4.5),theme+' NFT counts and flip duration contrast: '+ratios.join(', '));
-  }
-  await contrastPage.close();
   const page=await browser.newPage(),errors=[];
   page.on('pageerror',error=>errors.push(error.message));
   await page.setContent('<div id="app" class="member-portfolio" style="max-width:900px;margin:auto"></div>');
   await page.addStyleTag({content:await readFile('shared/styles.css','utf8')});
   await page.addScriptTag({type:'module',content:bundle.outputFiles[0].text});
-  await page.getByText('Top collection',{exact:true}).waitFor();
-  assert.match(await page.locator('.portfolio-nft-highlights').innerText(),/Minted artwork.*15 NFTs.*Fastest flip.*Frigid #1.*0d 0h 5m 0s/s);
+  await page.getByRole('textbox',{name:'Search historical NFTs'}).waitFor();
+  assert.equal(await page.getByText('Top collection',{exact:true}).count(),0);
+  assert.equal(await page.getByText('Fastest flip',{exact:true}).count(),0);
   for(const width of [1200,390]){
     await page.setViewportSize({width,height:900});
     const search=page.getByRole('textbox',{name:'Search historical NFTs'});
@@ -44,23 +28,24 @@ try{
     assert.match(await page.locator('.portfolio-nft-caption').innerText(),/Mint/);
     assert.doesNotMatch(await page.locator('.portfolio-nft-caption').innerText(),/Buy:/);
     await search.fill('');
-    await page.waitForFunction(count=>document.querySelectorAll('.portfolio-nft-tile').length===count,width>=768?6:1);
+    await page.waitForFunction(count=>document.querySelectorAll('.portfolio-nft-tile').length===count,width>=768?6:3);
     assert.match(await page.locator('.portfolio-nft-caption').first().innerText(),/Frigid #14/);
+    if(width<768){
+      const tiles=await page.locator('.portfolio-nft-tile').evaluateAll(elements=>elements.map(element=>{const box=element.getBoundingClientRect();return{x:box.x,width:box.width,right:box.right};}));
+      assert.equal(tiles.length,3);
+      assert.ok(tiles[0].x<tiles[1].x&&tiles[1].x<tiles[2].x,'mobile NFTs are side by side');
+      assert.ok(tiles.every(tile=>tile.width>0&&tile.right<=width),'mobile NFTs resize inside the viewport');
+    }
     await page.getByRole('button',{name:'Next page',exact:true}).click();
-    assert.match(await page.locator('.portfolio-nft-caption').first().innerText(),width>=768?/Frigid #8/:/Frigid #13/);
+    assert.match(await page.locator('.portfolio-nft-caption').first().innerText(),width>=768?/Frigid #8/:/Frigid #11/);
     await search.fill('Minted artwork');
     await page.waitForFunction(()=>document.querySelectorAll('.portfolio-nft-tile').length===1);
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
     assert.equal(await page.locator('.portfolio-nft-timeline,.portfolio-nft-history-layout').count(),0,'no timeline or sidebar space remains');
-    await page.waitForFunction(()=>document.querySelector('.portfolio-nft-highlights-layout').style.getPropertyValue('--nft-highlights-height'));
-    const gallery=await page.locator('.portfolio-nft-gallery').boundingBox(),highlights=await page.locator('.portfolio-nft-highlights-layout > .portfolio-nft-highlights').boundingBox();
-    if(width>=768){
-      assert.ok(highlights.x>=gallery.x+gallery.width,'highlights sit right of the gallery');
-      const tile=await page.locator('.portfolio-nft-tile').boundingBox();
-      assert.ok(Math.abs(highlights.height-(tile.height*2+12))<2,'highlights match two stacked images');
-    }else assert.ok(highlights.y+highlights.height<=gallery.y,'mobile highlights stack above the gallery');
+    const gallery=await page.locator('.portfolio-nft-gallery').boundingBox();
+    assert.ok(gallery.width>=(width>=768?700:350),'NFT gallery uses the available width');
     await page.screenshot({path:'/tmp/tdsp-nft-history-'+width+'.png',fullPage:true});
   }
   assert.deepEqual(errors,[]);
-  console.log('PASS: highlights, mint captions and date-ordered gallery pagination fit desktop and mobile without a timeline.');
+  console.log('PASS: mint captions and date-ordered gallery pagination fit desktop and mobile without highlights or a timeline.');
 }finally{await browser.close();}
