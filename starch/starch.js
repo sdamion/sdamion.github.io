@@ -437,19 +437,34 @@ function updateStarchDirectoryTiles(payload) {
         const networkOnlineCount = payload?.network_online_miner_count == null
             ? Number.NaN
             : Number(payload.network_online_miner_count);
+        const payloadMinerCount = Number(payload?.miner_count);
         const activeCount = onlineCount;
         const hasMinerStatus = Number.isFinite(registeredCount) && Number.isFinite(onlineCount);
         if (Number.isFinite(networkOnlineCount)) {
             window.TDSPRuntime?.setText?.('starchMinerCount', networkOnlineCount.toLocaleString('en-US'));
             minerCount.classList.add('is-online');
             if (minerStatus) {
-                const statusSignature = JSON.stringify(['network-online', networkOnlineCount, window.TDSPI18n?.getLanguage?.()]);
+                const networkTotal = Number.isFinite(payloadMinerCount)
+                    ? Math.max(payloadMinerCount, networkOnlineCount)
+                    : Number.isFinite(registeredCount)
+                        ? Math.max(registeredCount, networkOnlineCount)
+                        : networkOnlineCount;
+                const networkOfflineCount = Math.max(networkTotal - networkOnlineCount, 0);
+                const statusSignature = JSON.stringify(['network-online', networkOnlineCount, networkOfflineCount, networkTotal, window.TDSPI18n?.getLanguage?.()]);
                 if (minerStatus.dataset.statusSignature !== statusSignature) {
                     minerStatus.dataset.statusSignature = statusSignature;
-                    minerStatus.classList.remove('starch-miner-status-lines', 'is-offline');
-                    minerStatus.setAttribute('data-i18n-auto', '');
-                    minerStatus.setAttribute('data-i18n-auto-original', 'Active Miners');
-                    minerStatus.textContent = window.TDSPI18n?.translateText?.('Active Miners') || 'Active Miners';
+                    minerStatus.textContent = '';
+                    minerStatus.classList.remove('is-offline');
+                    minerStatus.classList.add('starch-miner-status-lines');
+                    minerStatus.removeAttribute('data-i18n-auto');
+                    minerStatus.removeAttribute('data-i18n-auto-original');
+                    const labelText = document.createElement('span');
+                    labelText.setAttribute('data-i18n-auto', '');
+                    labelText.setAttribute('data-i18n-auto-original', 'Active Miners');
+                    labelText.textContent = window.TDSPI18n?.translateText?.('Active Miners') || 'Active Miners';
+                    const statusBar = createStarchMinerStatusBar(networkOnlineCount, networkOfflineCount, networkTotal);
+                    minerStatus.append(labelText);
+                    if (statusBar) minerStatus.appendChild(statusBar);
                 }
             }
         } else if (hasMinerStatus) {

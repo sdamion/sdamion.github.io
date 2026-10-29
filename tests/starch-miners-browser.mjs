@@ -31,7 +31,13 @@ try {
             miners: [{ id: 'A', online: true }, { id: 'B', online: false }, { id: 'C', online: null }] });
     });
     assert.equal(await page.locator('#starchMinerCount').innerText(), '1,140');
-    assert.equal(await page.locator('#starchMinerStatus').innerText(), 'Active Miners');
+    assert.match(await page.locator('#starchMinerStatus').innerText(), /Active Miners/);
+    assert.match(await page.locator('#starchMinerStatus').innerText(), /Online 1,140/);
+    assert.match(await page.locator('#starchMinerStatus').innerText(), /Offline 274/);
+    assert.equal(await page.locator('#starchMinerStatus .starch-miner-status-bar').count(), 1);
+    const networkBarPercentages = await page.locator('#starchMinerStatus .governance-vote-bar-fill').evaluateAll(nodes => nodes.map(node => parseFloat(node.style.flexBasis)));
+    assert.ok(Math.abs(networkBarPercentages[0] - ((1140 / 1414) * 100)) < 0.001);
+    assert.ok(Math.abs(networkBarPercentages[1] - ((274 / 1414) * 100)) < 0.001);
     assert.equal(await page.locator('#starchMinerCount').evaluate(node => node.classList.contains('is-online')), true);
     await page.evaluate(() => updateStarchDirectoryTiles({
         miners: [{ id: 'A', online: true }, { id: 'B', online: false }, { id: 'C', online: null }]
