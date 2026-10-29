@@ -34,12 +34,12 @@ test('portfolio sections use separate shared overlays and the universal tile ren
   assert.doesNotMatch(overlay,/\.css|abort\(|refresh\(/);
 });
 test('remote checkpoint messages are hidden without disabling persistence',()=>{
-  const app=source('App.tsx');
+  const app=source('App.tsx'),refresh=source('cardano-refresh.ts');
   const header=app.slice(app.indexOf('aria-label="Portfolio refresh"'),app.indexOf('<MenuTile title="Transactions"'));
   assert.doesNotMatch(header,/CacheUploadProgress|\{cacheNotice/);
   assert.doesNotMatch(app,/CacheUploadProgress/);
   assert.match(app,/\{text:storageMode\(\)!=='remote'\?cacheNotice:''\}/);
-  assert.match(app,/await flushVault\(\)/);
+  assert.match(refresh,/await flushVault\(\)/);
   assert.match(source('ui.tsx'),/createPortal\(children,footer\)/);
 });
 test('CEX metric opens its shared transaction overlay without stale search or pagination',()=>{

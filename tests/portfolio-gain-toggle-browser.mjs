@@ -14,7 +14,7 @@ const bundle=await build({stdin:{contents:`import {createRoot} from 'react-dom/c
     .replace('useState<Snapshot|null>(null)','useState<Snapshot|null>(window.fixture)')
     .replace('setSnapshot(null);setError','setError')
     .replace('async function refresh(fullScan=false){','async function refresh(fullScan=false){return;')
-    .replace("import {portfolioSettings as localStorage,flushVault,storageMode} from './vault';","import {flushVault,storageMode} from './vault'; const localStorage=window.fixtureStorage;")}));
+    .replace("import {portfolioSettings as localStorage,storageMode} from './vault';","import {storageMode} from './vault'; const localStorage=window.fixtureStorage;")}));
 }}]});
 const browser=await chromium.launch({channel:'chrome',headless:true});
 try{

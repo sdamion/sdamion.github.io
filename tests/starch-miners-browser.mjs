@@ -30,6 +30,12 @@ try {
             inactive_miner_count: 1153, network_online_miner_count: 1140,
             miners: [{ id: 'A', online: true }, { id: 'B', online: false }, { id: 'C', online: null }] });
     });
+    assert.equal(await page.locator('#starchMinerCount').innerText(), '1,140');
+    assert.equal(await page.locator('#starchMinerStatus').innerText(), 'Active Miners');
+    assert.equal(await page.locator('#starchMinerCount').evaluate(node => node.classList.contains('is-online')), true);
+    await page.evaluate(() => updateStarchDirectoryTiles({
+        miners: [{ id: 'A', online: true }, { id: 'B', online: false }, { id: 'C', online: null }]
+    }));
     assert.equal(await page.locator('#starchMinerCount').innerText(), '3');
     assert.match(await page.locator('#starchMinerStatus').innerText(), /Online 1/);
     assert.match(await page.locator('#starchMinerStatus').innerText(), /Offline 1/);

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 
 test('transaction pipeline and completed cache are saved before optional token metadata',()=>{
-  const source=readFileSync(new URL('./App.tsx',import.meta.url),'utf8');
+  const source=readFileSync(new URL('./cardano-refresh.ts',import.meta.url),'utf8');
   const pipeline=source.indexOf('await runPipeline<Tx>');
   const complete=source.indexOf('next.complete=next.txs.every',pipeline);
   const persisted=source.indexOf('await persist()',complete);
