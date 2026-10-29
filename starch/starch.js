@@ -222,7 +222,7 @@ async function openStarchDirectoryOverlay(type, title, returnFocus) {
 }
 
 function starchMinerDirectorySignature(records) {
-    return JSON.stringify([starchDirectory.online_updated_at, starchDirectory.network_online_miner_count, records.map(record =>
+    return JSON.stringify([starchDirectory.online_updated_at, starchDirectory.network_online_miner_count, starchDirectory.miner_count, records.map(record =>
         [record.id, record.name, record.online, record.wallet_address, record.ada_handle])]);
 }
 
@@ -256,6 +256,15 @@ function createStarchMinerDirectoryBody(records, selected = 'all') {
         body.appendChild(networkSummary);
     }
     const groups = getStarchMinerStatusGroups(records);
+    const networkOnline = starchDirectory.network_online_miner_count;
+    const networkTotal = starchDirectory.miner_count;
+    const hasNetworkCounts = Number.isSafeInteger(networkOnline) && networkOnline >= 0
+        && Number.isSafeInteger(networkTotal) && networkTotal >= networkOnline;
+    const displayGroups = hasNetworkCounts
+        ? groups.filter(group => group.key !== 'unknown').map(group => ({
+            ...group, value: group.key === 'online' ? networkOnline : networkTotal - networkOnline
+        }))
+        : groups;
     const panel = document.createElement('section');
     panel.className = 'governance-vote-chart governance-chart-panel';
     const layout = document.createElement('div');
@@ -269,16 +278,16 @@ function createStarchMinerDirectoryBody(records, selected = 'all') {
     const select = group => {
         body.dataset.selected = group?.key || 'all';
         const miners = group ? group.records : records;
-        resultLabel.textContent = `${window.TDSPI18n?.translateText?.(group?.label || 'Miners') || group?.label || 'Miners'}: ${miners.length.toLocaleString('en-US')}`;
+        resultLabel.textContent = `${hasNetworkCounts ? 'Block attendance · ' : ''}${window.TDSPI18n?.translateText?.(group?.label || 'Miners') || group?.label || 'Miners'}: ${miners.length.toLocaleString('en-US')}`;
         buttons.forEach(([button, key]) => button.setAttribute('aria-pressed', String(key === (group?.key || 'all'))));
         results.replaceChildren(createStarchMinerWalletList(miners));
     };
     const chart = window.TDSPPieChart.create({ formatPercentage: value => `${value.toFixed(1)}%` });
-    layout.appendChild(chart.createChart(groups.filter(group => group.value), {
+    layout.appendChild(chart.createChart(displayGroups.filter(group => group.value), {
         onSegmentClick: select,
         labelFormatter: segment => `${window.TDSPI18n?.translateText?.(segment.label) || segment.label} ${segment.value.toLocaleString('en-US')}`
     }));
-    for (const group of [{ key: 'all', label: 'All', value: records.length }, ...groups.filter(group => group.value)]) {
+    for (const group of [{ key: 'all', label: 'All', value: hasNetworkCounts ? networkTotal : records.length }, ...displayGroups.filter(group => group.value)]) {
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'governance-card';
@@ -293,7 +302,9 @@ function createStarchMinerDirectoryBody(records, selected = 'all') {
     layout.appendChild(legend);
     panel.appendChild(layout);
     const note = window.TDSPRuntime.createSmallText('');
-    setStarchAutoTranslatedText(note, 'Block attendance only; these individual miner counts are not the network online total.');
+    setStarchAutoTranslatedText(note, hasNetworkCounts
+        ? 'Chart: network totals. Miner list: individual block attendance; the API does not identify every online network miner.'
+        : 'Block attendance only; these individual miner counts are not the network online total.');
     panel.appendChild(note);
     if (starchDirectory.online_block != null) {
         panel.appendChild(window.TDSPRuntime.createSmallText(`${starchDirectory.online_block} · ${new Date(starchDirectory.online_updated_at).toLocaleString()}`));

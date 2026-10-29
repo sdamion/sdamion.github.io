@@ -62,6 +62,7 @@ try {
     assert.equal(await page.locator('.starch-miner-card').count(), 3);
     await page.evaluate(() => {
         starchDirectory.network_online_miner_count = 1121;
+        starchDirectory.miner_count = 1511;
         starchDirectory.miners = [
             { id: 'A', name: 'Online miner', online: true, wallet_address: 'addr1test', ada_handle: '$owner' },
             { id: 'B', name: 'Offline miner', online: false },
@@ -70,8 +71,14 @@ try {
         refreshOpenStarchMinerDirectory();
     });
     assert.match(await page.locator('.starch-network-summary').innerText(), /1,121/);
-    assert.match(await page.locator('[data-starch-miner-directory]').innerText(), /Block attendance only/);
+    assert.deepEqual(await page.locator('.governance-pie-label').allTextContents(), ['Online 1,121', 'Offline 390']);
+    assert.match(await page.locator('.governance-vote-legend').innerText(), /1121/);
+    assert.match(await page.locator('[data-starch-miner-directory]').innerText(), /Chart: network totals/);
     assert.equal(await page.locator('.starch-miner-card').count(), 3);
+    await page.evaluate(() => {
+        delete starchDirectory.network_online_miner_count;
+        refreshOpenStarchMinerDirectory();
+    });
     assert.deepEqual(await page.locator('.governance-pie-label').allTextContents(), ['Online 1', 'Offline 1', 'Status unavailable 1']);
     await page.locator('.governance-pie-chart-sector').nth(1).focus();
     await page.keyboard.press('Enter');
