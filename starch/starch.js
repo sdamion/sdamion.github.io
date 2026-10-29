@@ -222,7 +222,7 @@ async function openStarchDirectoryOverlay(type, title, returnFocus) {
 }
 
 function starchMinerDirectorySignature(records) {
-    return JSON.stringify([starchDirectory.online_updated_at, starchDirectory.network_online_miner_count, starchDirectory.miner_count, records.map(record =>
+    return JSON.stringify([starchDirectory.online_updated_at, starchDirectory.online_status_source, starchDirectory.network_online_miner_count, starchDirectory.miner_count, records.map(record =>
         [record.id, record.name, record.online, record.wallet_address, record.ada_handle])]);
 }
 
@@ -256,6 +256,7 @@ function createStarchMinerDirectoryBody(records, selected = 'all') {
         body.appendChild(networkSummary);
     }
     const groups = getStarchMinerStatusGroups(records);
+    const hasLiveStatus = starchDirectory.online_status_source === 'pending-and-attendance';
     const networkOnline = starchDirectory.network_online_miner_count;
     const networkTotal = starchDirectory.miner_count;
     const hasNetworkCounts = Number.isSafeInteger(networkOnline) && networkOnline >= 0
@@ -278,7 +279,7 @@ function createStarchMinerDirectoryBody(records, selected = 'all') {
     const select = group => {
         body.dataset.selected = group?.key || 'all';
         const miners = group ? group.records : records;
-        resultLabel.textContent = `${hasNetworkCounts ? 'Block attendance · ' : ''}${window.TDSPI18n?.translateText?.(group?.label || 'Miners') || group?.label || 'Miners'}: ${miners.length.toLocaleString('en-US')}`;
+        resultLabel.textContent = `${hasNetworkCounts && !hasLiveStatus ? 'Block attendance · ' : ''}${window.TDSPI18n?.translateText?.(group?.label || 'Miners') || group?.label || 'Miners'}: ${miners.length.toLocaleString('en-US')}`;
         buttons.forEach(([button, key]) => button.setAttribute('aria-pressed', String(key === (group?.key || 'all'))));
         results.replaceChildren(createStarchMinerWalletList(miners));
     };
@@ -302,7 +303,9 @@ function createStarchMinerDirectoryBody(records, selected = 'all') {
     layout.appendChild(legend);
     panel.appendChild(layout);
     const note = window.TDSPRuntime.createSmallText('');
-    setStarchAutoTranslatedText(note, hasNetworkCounts
+    setStarchAutoTranslatedText(note, hasLiveStatus
+        ? 'Miner status uses live pending work and recent block attendance, with a five-minute grace period between rounds.'
+        : hasNetworkCounts
         ? 'Chart: network totals. Miner list: individual block attendance; the API does not identify every online network miner.'
         : 'Block attendance only; these individual miner counts are not the network online total.');
     panel.appendChild(note);
@@ -1011,7 +1014,7 @@ function initStarchUi() {
         .then(fetchStarchDirectory)
         .then(fetchTdspStarchMinerCount)
         .catch(fetchTdspStarchMinerCount);
-    setInterval(fetchStarchDirectory, 300000);
+    setInterval(fetchStarchDirectory, 60000);
     setInterval(fetchTdspStarchMinerCount, 300000);
 }
 

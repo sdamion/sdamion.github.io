@@ -76,6 +76,12 @@ try {
     assert.match(await page.locator('[data-starch-miner-directory]').innerText(), /Chart: network totals/);
     assert.equal(await page.locator('.starch-miner-card').count(), 3);
     await page.evaluate(() => {
+        starchDirectory.online_status_source = 'pending-and-attendance';
+        refreshOpenStarchMinerDirectory();
+    });
+    assert.match(await page.locator('[data-starch-miner-directory]').innerText(), /live pending work/);
+    assert.doesNotMatch(await page.locator('[data-starch-miner-directory]').innerText(), /Block attendance ·/);
+    await page.evaluate(() => {
         delete starchDirectory.network_online_miner_count;
         refreshOpenStarchMinerDirectory();
     });
