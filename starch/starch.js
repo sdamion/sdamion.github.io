@@ -222,7 +222,7 @@ async function openStarchDirectoryOverlay(type, title, returnFocus) {
 }
 
 function starchMinerDirectorySignature(records) {
-    return JSON.stringify([starchDirectory.online_updated_at, records.map(record =>
+    return JSON.stringify([starchDirectory.online_updated_at, starchDirectory.network_online_miner_count, records.map(record =>
         [record.id, record.name, record.online, record.wallet_address, record.ada_handle])]);
 }
 
@@ -246,6 +246,15 @@ function createStarchMinerDirectoryBody(records, selected = 'all') {
     const body = document.createElement('div');
     body.dataset.starchMinerDirectory = '';
     body.dataset.signature = starchMinerDirectorySignature(records);
+    if (Number.isSafeInteger(starchDirectory.network_online_miner_count) && starchDirectory.network_online_miner_count >= 0) {
+        const networkSummary = document.createElement('section');
+        networkSummary.className = 'starch-network-summary';
+        window.TDSPRuntime.appendUniversalTileContent(networkSummary, {
+            title: 'Active Miners',
+            primaryText: starchDirectory.network_online_miner_count.toLocaleString('en-US')
+        });
+        body.appendChild(networkSummary);
+    }
     const groups = getStarchMinerStatusGroups(records);
     const panel = document.createElement('section');
     panel.className = 'governance-vote-chart governance-chart-panel';
@@ -284,7 +293,7 @@ function createStarchMinerDirectoryBody(records, selected = 'all') {
     layout.appendChild(legend);
     panel.appendChild(layout);
     const note = window.TDSPRuntime.createSmallText('');
-    setStarchAutoTranslatedText(note, 'Registered miners; online status is based on block attendance.');
+    setStarchAutoTranslatedText(note, 'Block attendance only; these individual miner counts are not the network online total.');
     panel.appendChild(note);
     if (starchDirectory.online_block != null) {
         panel.appendChild(window.TDSPRuntime.createSmallText(`${starchDirectory.online_block} · ${new Date(starchDirectory.online_updated_at).toLocaleString()}`));
