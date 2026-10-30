@@ -91,7 +91,6 @@ const num=(n:number,max=6)=>n.toLocaleString('en-US',{maximumFractionDigits:max}
 type Overrides=Record<string,{average?:string;price?:string;decimals?:string;excluded?:boolean}>;
 function parseAmount(s?:string):number|null {if(!s?.trim())return null;const n=Number(s);return Number.isFinite(n)&&n>=0?n:null;}
 
-const request=createCardanoRequest(portfolioFetch);
 
 export default function Home({memberStake,role='delegator',portfolioAccess}:{memberStake:string;role?:'delegator'|'admin';portfolioAccess?:{ethereum:boolean;solana:boolean}}){
   const t=usePortfolioText();
@@ -250,6 +249,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   }
   async function refreshAssetPurchases(id?:string){
     if(busy||!snapshot)return;
+    const request=createCardanoRequest(portfolioFetch);
     controller.current?.abort();const control=new AbortController();controller.current=control;
     const {signal}=control;
     setBusy(true);setError('');setPurchaseProgress(null);setStatus('Refreshing asset purchase data…');

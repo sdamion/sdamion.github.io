@@ -16,7 +16,6 @@ import {portfolioFetch} from './transport';
 import {flushVault} from './vault';
 import {lowActivityWalletAddresses,planWalletDiscovery,pruneUnusedWalletAddresses} from './wallet-discovery';
 
-const request=createCardanoRequest(portfolioFetch);
 const ADDRESS_INFO_BATCH_SIZE=20;
 
 type AnalysisProgress={started:number;done:number;total:number};
@@ -53,6 +52,8 @@ export async function refreshCardanoPortfolio({wallets,key,excludedRefresh,fullS
   isCurrent:()=>boolean;
   callbacks:CardanoRefreshCallbacks;
 }):Promise<void>{
+  // A temporary provider failure must not shrink batches for later refreshes.
+  const request=createCardanoRequest(portfolioFetch);
   const {setSnapshot,setStatus,setNotice,setCacheNotice,setInitialising,setAnalysis,setCounting,setCounted,setTransactionStatus,setLiveQuote}=callbacks;
   const exclusions=fullScan?new Set<string>():new Set(excludedRefresh);
   async function walletRequest<T>(endpoint:string,body:Record<string,unknown>):Promise<T>{

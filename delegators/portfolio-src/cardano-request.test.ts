@@ -1,5 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {createCardanoRequest} from './cardano-request.ts';
 const timeout=()=>Object.assign(new Error('timeout'),{name:'PortfolioTimeoutError'});
 test('browser timeout splits tx batches sequentially without duplicate results',async()=>{
@@ -59,4 +60,36 @@ test('successful 50-transaction batches preserve all transactions with twenty re
   const hashes=Array.from({length:1000},(_,i)=>String(i));
   assert.deepEqual(await request('tx_info',{_tx_hashes:hashes},new AbortController().signal),hashes);
   assert.equal(count,20);
+});
+
+test('a new refresh starts at 50 after the previous refresh learned smaller batches',async()=>{
+  let recovering=false;
+  const sizes:number[]=[];
+  const fetcher=async(_:string,options:RequestInit)=>{
+    const hashes=JSON.parse(String(options.body)).body._tx_hashes;
+    sizes.push(hashes.length);
+    return !recovering&&hashes.length>5?new Response(null,{status:504}):Response.json(hashes);
+  };
+  const hashes=Array.from({length:50},(_,i)=>String(i));
+  const signal=new AbortController().signal;
+  const previous=createCardanoRequest(fetcher);
+  assert.deepEqual(await previous('tx_info',{_tx_hashes:hashes},signal),hashes);
+  recovering=true;sizes.length=0;
+  assert.deepEqual(await previous('tx_info',{_tx_hashes:hashes},signal),hashes);
+  assert.ok(sizes.length>1,'the current refresh retains its learned safe size');
+  sizes.length=0;
+  const next=createCardanoRequest(fetcher);
+  assert.deepEqual(await next('tx_info',{_tx_hashes:hashes},signal),hashes);
+  assert.deepEqual(sizes,[50],'a healthy new refresh uses one full batch');
+});
+
+test('wallet and purchase refreshes own their adaptive request clients',()=>{
+  const wallet=readFileSync(new URL('./cardano-refresh.ts',import.meta.url),'utf8');
+  const purchase=readFileSync(new URL('./App.tsx',import.meta.url),'utf8');
+  for(const [source,entry] of [[wallet,'export async function refreshCardanoPortfolio('],[purchase,'async function refreshAssetPurchases(']]){
+    const start=source.indexOf(entry);
+    assert.ok(start>=0);
+    assert.equal(source.slice(0,start).includes('const request=createCardanoRequest(portfolioFetch);'),false,'no page-scoped adaptive client');
+    assert.ok(source.slice(start).includes('const request=createCardanoRequest(portfolioFetch);'));
+  }
 });
