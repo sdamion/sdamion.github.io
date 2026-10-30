@@ -4,10 +4,15 @@ import type {Wallet} from './core.ts';
 export function refreshExcludedAddresses(wallets:Wallet[]):Set<string>{
   return new Set(wallets.flatMap(wallet=>wallet.excludedRefreshAddresses||[]));
 }
-export function walletRefreshCounts(groups:Record<string,string[]>|undefined,excluded:Set<string>){
+export function walletRefreshCounts(groups:Record<string,string[]>|undefined,excluded:Set<string>,activeGroups=groups,primaryStake?:string){
   if(!groups)return null;
-  const addresses=[...new Set(Object.values(groups).flat())];
-  return {active:addresses.filter(address=>!excluded.has(address)).length,total:addresses.length};
+  const addresses=new Set(Object.values(groups).flat());
+  const active=new Set(Object.values(activeGroups||{}).flat());
+  if(primaryStake){
+    addresses.add(primaryStake);
+    if((groups[primaryStake]||[]).some(address=>active.has(address)&&!excluded.has(address)))active.add(primaryStake);
+  }
+  return {active:[...addresses].filter(address=>active.has(address)&&!excluded.has(address)).length,total:addresses.size};
 }
 function refreshSettings(wallet:unknown){
   const values=(wallet as Wallet|undefined)?.excludedRefreshAddresses;

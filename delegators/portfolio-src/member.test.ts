@@ -4,6 +4,17 @@ assert.deepEqual(walletRefreshCounts({one:['a','b'],two:['b','c']},new Set(['b']
 assert.deepEqual(walletRefreshCounts({one:['a']},new Set(['a'])),{active:0,total:1});
 assert.deepEqual(walletRefreshCounts({},new Set()),{active:0,total:0});
 assert.equal(walletRefreshCounts(undefined,new Set()),null);
+const tenAddresses=Array.from({length:10},(_,i)=>`owned-${i}`);
+const allWalletGroups={member:tenAddresses,overlap:[tenAddresses[0]]};
+const activeGroups={member:tenAddresses.slice(0,6),overlap:[tenAddresses[0]],untracked:['not-owned']};
+assert.deepEqual(walletRefreshCounts(allWalletGroups,new Set(),activeGroups),{active:6,total:10});
+assert.deepEqual(walletRefreshCounts(allWalletGroups,new Set([tenAddresses[0]]),activeGroups),{active:5,total:10});
+assert.deepEqual(walletRefreshCounts(allWalletGroups,new Set(),{}),{active:0,total:10});
+assert.deepEqual(walletRefreshCounts(allWalletGroups,new Set(),activeGroups,'member'),{active:7,total:11});
+assert.deepEqual(walletRefreshCounts(allWalletGroups,new Set(),{},'member'),{active:0,total:11});
+assert.deepEqual(walletRefreshCounts(allWalletGroups,new Set(tenAddresses.slice(0,6)),activeGroups,'member'),{active:0,total:11});
+assert.deepEqual(walletRefreshCounts({member:['member',...tenAddresses]},new Set(),activeGroups,'member'),{active:7,total:11});
+assert.deepEqual(walletRefreshCounts({member:[]},new Set(),{},'member'),{active:0,total:1});
 import {memberWallets,validStakeAddress,resolveWalletGroups,sameTrackedAddresses,walletTransactionCount} from './member.ts';
 import {analyse,liveAdaBasis,tradeOf} from './core.ts';
 import {normalizeCexAddresses,cexDestinations,cexSources,cexAdjustedFact,isCexTransaction,cexAdaTransfer,cexAdaPerformance,cexAdaNetPosition,cexUsdNetPosition,cexTimeline,cexTimelineSeries} from './cex.ts';
