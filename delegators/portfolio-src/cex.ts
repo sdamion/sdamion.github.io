@@ -60,7 +60,9 @@ export function cexAdaTransfer(fact:Fact,entries:CexAddress[]){
   if(net>0n&&sources.length>0&&sources.length===fact.externalInputs?.length&&destinations.length===0)
     return {side:'buy' as const,raw:net};
   const sold=destinations.filter(row=>!isRewardSource(row.address,entries)&&!(row.stakeAddress&&isRewardSource(row.stakeAddress,entries))).reduce((sum,row)=>sum+BigInt(row.lovelace),0n);
-  if(sold>0n&&fact.feeRaw!==null&&sold<=-net)
+  // Known paid fees mean all transaction inputs are owned. Use the actual
+  // exchange outputs: staking withdrawals or deposit refunds can offset the net.
+  if(sold>0n&&fact.feeRaw!==null)
     return {side:'sell' as const,raw:sold};
   return null;
 }
