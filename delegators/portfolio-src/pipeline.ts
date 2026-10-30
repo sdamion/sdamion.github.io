@@ -3,7 +3,7 @@ export async function runPipeline<T>(
   produce:(enqueue:(items:T[])=>void,signal:AbortSignal)=>Promise<void>,
   consume:(items:T[],signal:AbortSignal)=>Promise<void>,
   signal:AbortSignal,
-  batchSize=5
+  batchSize=25
 ):Promise<void> {
   const control=new AbortController();
   const active=AbortSignal.any([signal,control.signal]);

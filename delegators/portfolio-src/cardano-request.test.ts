@@ -36,3 +36,27 @@ test('user cancellation never retries or splits',async()=>{
   await assert.rejects(request('tx_info',{_tx_hashes:['a','b']},control.signal));
   assert.equal(calls,1);
 });
+
+test('learned smaller tx batches avoid repeating oversized provider requests',async()=>{
+  const sizes:number[]=[];
+  const request=createCardanoRequest(async(_,options)=>{
+    const hashes=JSON.parse(String(options.body)).body._tx_hashes;
+    sizes.push(hashes.length);
+    return hashes.length>5?new Response(null,{status:504}):Response.json(hashes);
+  },async()=>{});
+  const hashes=Array.from({length:25},(_,i)=>String(i));
+  assert.deepEqual(await request('tx_info',{_tx_hashes:hashes},new AbortController().signal),hashes);
+  const first=sizes.length;
+  assert.deepEqual(await request('tx_info',{_tx_hashes:hashes},new AbortController().signal),hashes);
+  assert.ok(sizes.slice(first).every(size=>size<=5));
+});
+
+test('successful 25-transaction batches use five times fewer requests than five-transaction batches',async()=>{
+  let count=0;
+  const request=createCardanoRequest(async(_,options)=>{
+    count++;return Response.json(JSON.parse(String(options.body)).body._tx_hashes);
+  });
+  const hashes=Array.from({length:1000},(_,i)=>String(i));
+  assert.deepEqual(await request('tx_info',{_tx_hashes:hashes},new AbortController().signal),hashes);
+  assert.equal(count,40);
+});

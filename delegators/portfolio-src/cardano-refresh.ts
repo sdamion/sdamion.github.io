@@ -9,6 +9,7 @@ import {createHistoryIndex} from './history-index';
 import {resolveWalletGroups} from './member';
 import {refreshMarketBatches} from './market-refresh';
 import {runPipeline} from './pipeline';
+import {createRefreshPublisher} from './refresh-publisher';
 import {analyseAndCache,planRefresh} from './refresh-plan';
 import {resolveSwapGroups} from './swap-wallets';
 import {portfolioFetch} from './transport';
@@ -132,10 +133,15 @@ export async function refreshCardanoPortfolio({wallets,key,excludedRefresh,fullS
   const scheduled=new Set<string>();
   const completedHistory=new Set(plan.historyCompleteAddresses);
   const updateAnalysis=()=>setAnalysis({started:analysisStarted,done:refreshedHashes.size,total:scheduled.size});
+  const publish=createRefreshPublisher(async()=>{
+    signal.throwIfAborted();
+    setSnapshot({...next,facts:{...next.facts}});
+    await persist();
+  });
   setCounting(historyIndex.size);
   updateAnalysis();
   setTransactionStatus('Checking Transactions');
-  await runPipeline<Tx>(async(enqueue,active)=>{
+  try{await runPipeline<Tx>(async(enqueue,active)=>{
     const activeAddresses=new Set(refreshAddresses);
     const legacy=next.txs.filter(transaction=>needsActiveFactRefresh(next.facts[transaction.tx_hash],activeAddresses));
     for(const transaction of legacy)scheduled.add(transaction.tx_hash);
@@ -161,7 +167,7 @@ export async function refreshCardanoPortfolio({wallets,key,excludedRefresh,fullS
       next.txs=historyIndex.rows();
       setCounting(historyIndex.size);
       updateAnalysis();
-      setSnapshot({...next,facts:{...next.facts}});
+      await publish();
       enqueue(pending);
       if(page.length<1000||reachedSavedHistory){
         addressBatch.forEach(address=>completedHistory.add(address));
@@ -180,11 +186,10 @@ export async function refreshCardanoPortfolio({wallets,key,excludedRefresh,fullS
       next.facts[detail.tx_hash]=analyseAndCache(detail,owned);
       refreshedHashes.add(detail.tx_hash);
     }
-    setSnapshot({...next,facts:{...next.facts}});
     updateAnalysis();
-    await persist();
+    await publish();
     active.throwIfAborted();
-  },signal);
+  },signal);}finally{if(!signal.aborted)await publish(true);}
   setTransactionStatus('');
   if([...scheduled].every(hash=>refreshedHashes.has(hash))){
     next.historyCompleteAddresses=[...completedHistory];

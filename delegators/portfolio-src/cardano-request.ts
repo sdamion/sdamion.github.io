@@ -1,7 +1,19 @@
 import {cardanoRequestContext} from './request-context.ts';
 
 export function createCardanoRequest(fetcher:(path:string,options:RequestInit)=>Promise<Response>,wait=(ms:number)=>new Promise<void>(resolve=>setTimeout(resolve,ms))){
+  let detailBatchSize=25;
   return async function request<T>(path:string,body:object,signal:AbortSignal,range?:string):Promise<T>{
+    const hashes=path==='tx_info'?(body as {_tx_hashes?:string[]})._tx_hashes:undefined;
+    if(hashes&&hashes.length>detailBatchSize){
+      const rows:unknown[]=[];
+      for(let offset=0;offset<hashes.length;){
+        signal.throwIfAborted();
+        const batch=hashes.slice(offset,offset+detailBatchSize);
+        rows.push(...await request<unknown[]>(path,{...body,_tx_hashes:batch},signal));
+        offset+=batch.length;
+      }
+      return rows as T;
+    }
     for(let attempt=0;attempt<3;attempt++){
       signal.throwIfAborted();
       let response:Response;
@@ -19,6 +31,7 @@ export function createCardanoRequest(fetcher:(path:string,options:RequestInit)=>
       const values=splitKey?(body as Record<string,unknown>)[splitKey] as string[]|undefined:undefined;
       if(splitKey&&values&&values.length>1&&[413,502,503,504].includes(response.status)){
         const middle=Math.ceil(values.length/2);
+        if(path==='tx_info')detailBatchSize=Math.min(detailBatchSize,middle);
         const left=await request<unknown[]>(path,{...body,[splitKey]:values.slice(0,middle)},signal);
         const right=await request<unknown[]>(path,{...body,[splitKey]:values.slice(middle)},signal);
         return [...left,...right] as T;
