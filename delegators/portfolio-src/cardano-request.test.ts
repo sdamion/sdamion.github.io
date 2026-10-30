@@ -51,12 +51,12 @@ test('learned smaller tx batches avoid repeating oversized provider requests',as
   assert.ok(sizes.slice(first).every(size=>size<=5));
 });
 
-test('successful 25-transaction batches use five times fewer requests than five-transaction batches',async()=>{
+test('successful 50-transaction batches preserve all transactions with twenty requests per thousand',async()=>{
   let count=0;
   const request=createCardanoRequest(async(_,options)=>{
     count++;return Response.json(JSON.parse(String(options.body)).body._tx_hashes);
   });
   const hashes=Array.from({length:1000},(_,i)=>String(i));
   assert.deepEqual(await request('tx_info',{_tx_hashes:hashes},new AbortController().signal),hashes);
-  assert.equal(count,40);
+  assert.equal(count,20);
 });

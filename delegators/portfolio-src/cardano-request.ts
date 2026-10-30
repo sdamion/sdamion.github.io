@@ -1,7 +1,7 @@
 import {cardanoRequestContext} from './request-context.ts';
 
 export function createCardanoRequest(fetcher:(path:string,options:RequestInit)=>Promise<Response>,wait=(ms:number)=>new Promise<void>(resolve=>setTimeout(resolve,ms))){
-  let detailBatchSize=25;
+  let detailBatchSize=50;
   return async function request<T>(path:string,body:object,signal:AbortSignal,range?:string):Promise<T>{
     const hashes=path==='tx_info'?(body as {_tx_hashes?:string[]})._tx_hashes:undefined;
     if(hashes&&hashes.length>detailBatchSize){

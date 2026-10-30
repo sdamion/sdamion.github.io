@@ -2,10 +2,10 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {runPipeline} from './pipeline.ts';
 
-test('default detail batches contain at most 25 transactions',async()=>{
+test('default detail batches contain at most 50 transactions',async()=>{
   const batches:number[][]=[];
   await runPipeline<number>(async enqueue=>enqueue(Array.from({length:62},(_,i)=>i)),async batch=>{batches.push(batch);},new AbortController().signal);
-  assert.deepEqual(batches.map(batch=>batch.length),[25,25,12]);
+  assert.deepEqual(batches.map(batch=>batch.length),[50,12]);
   assert.deepEqual(batches.flat(),Array.from({length:62},(_,i)=>i));
 });
 
