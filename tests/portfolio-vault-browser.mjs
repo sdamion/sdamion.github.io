@@ -133,6 +133,8 @@ try{
     const row=await new Promise(resolve=>{const request=db.transaction('members').objectStore('members').get(stake);request.onsuccess=()=>resolve(request.result);});db.close();return row;
   },stake);
   assert.equal(encrypted.data.encrypted_version,1);
+  assert.equal(encrypted.retention_days,365);
+  assert.ok(Math.abs(encrypted.expires_at-Date.now()-365*24*60*60*1000)<10000,'local expiry is one year after activity');
   assert.ok(!JSON.stringify(encrypted).includes('local-only-label'));
   await start();
   assert.equal(await page.evaluate(()=>window.vault.vaultUnlocked()),false);

@@ -114,7 +114,7 @@ and migrate on their next save. Deploy the checkpoint-capable backend before thi
 Replaced chunks are retained briefly for concurrent readers and cleaned on later writes or hourly pruning;
 expiry/deletion removes the entire member cache, including retained chunks.
 
-The seven-day retention clock starts/resets on an authenticated vault unlock/read or an
+The 365-day retention clock starts/resets on an authenticated vault unlock/read or an
 explicit activity request from trusted user interaction in Portfolio (at most hourly), NOT
 background refresh writes. Expired vaults are inaccessible immediately and pruned on startup
 and hourly. Exclude `data/portfolio-private` from backups, snapshots and request-body logging;

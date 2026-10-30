@@ -3,9 +3,9 @@
     const DEFAULT_LANGUAGE = 'en';
     const LANGUAGE_CONFIG = Object.freeze({
         en: { label: 'English', flag: '🇺🇸' },
-        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20261015-nft-gallery' },
-        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20261015-nft-gallery' },
-        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20261015-nft-gallery' }
+        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20261030-portfolio-year-retention' },
+        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20261030-portfolio-year-retention' },
+        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20261030-portfolio-year-retention' }
     });
     const TRANSLATION_ATTR = 'data-i18n';
     const TRANSLATION_ORIGINAL_ATTR = 'data-i18n-original';
@@ -69,9 +69,9 @@
         ['Remote', 'portfolio_storage_remote_short'],
         ['Local', 'portfolio_storage_local_short'],
         ['Storage details and deletion', 'portfolio_storage_details'],
-        ['Encrypted before upload. Unlock with your wallet on desktop or mobile. Deleted after 7 days of inactivity.', 'portfolio_storage_remote_summary'],
+        ['Encrypted before upload. Unlock with your wallet on desktop or mobile. Deleted after 365 days of inactivity.', 'portfolio_storage_remote_summary'],
         ['Encrypted in this browser only. Unlock with your wallet. Desktop only; clearing browser data can remove it.', 'portfolio_storage_local_summary'],
-        ['Local data is encrypted with AES-256-GCM before saving in this browser. A separate wallet message approval unlocks it; no transaction, fee or cache upload. Use the same wallet app and stake account. There is no recovery without wallet access. Expired data is removed on the next visit after seven days of inactivity.', 'portfolio_local_encryption_details'],
+        ['Local data is encrypted with AES-256-GCM before saving in this browser. A separate wallet message approval unlocks it; no transaction, fee or cache upload. Use the same wallet app and stake account. There is no recovery without wallet access. Expired data is removed on the next visit after 365 days of inactivity.', 'portfolio_local_encryption_details'],
         ['Reconnect your wallet to unlock encrypted local Portfolio storage.', 'portfolio_local_reconnect'],
         ['Portfolio setup', 'portfolio_setup'],
         ['Skip setup', 'portfolio_setup_skip'],

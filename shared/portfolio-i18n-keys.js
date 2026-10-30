@@ -1051,7 +1051,7 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
     "portfolio_text_5aed3b3369fb"
   ],
   [
-    "Local data is encrypted with AES-256-GCM before saving in this browser. A separate wallet message approval unlocks it; no transaction, fee or cache upload. Use the same wallet app and stake account. There is no recovery without wallet access. Expired data is removed on the next visit after seven days of inactivity.",
+    "Local data is encrypted with AES-256-GCM before saving in this browser. A separate wallet message approval unlocks it; no transaction, fee or cache upload. Use the same wallet app and stake account. There is no recovery without wallet access. Expired data is removed on the next visit after 365 days of inactivity.",
     "portfolio_text_0d9496b97e02"
   ],
   [
@@ -1059,7 +1059,7 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
     "portfolio_text_61e7830a5582"
   ],
   [
-    "Inactive remote caches are deleted after seven days. Expired local data is removed on the next visit. Switching storage does not delete the other copy; review the copy and delete options carefully. Both modes still request public blockchain and price data from the backend. Encryption does not protect unlocked data from malicious browser extensions or website code.",
+    "Inactive remote caches are deleted after 365 days. Expired local data is removed on the next visit. Switching storage does not delete the other copy; review the copy and delete options carefully. Both modes still request public blockchain and price data from the backend. Encryption does not protect unlocked data from malicious browser extensions or website code.",
     "portfolio_text_301f1b40b266"
   ],
   [
@@ -1191,7 +1191,7 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
     "portfolio_text_f350e932f9d5"
   ],
   [
-    "Available on desktop, phones and tablets with a compatible wallet. Requires a separate wallet message approval, not a transaction or fee. Your browser encrypts data with AES-256-GCM before upload. The private signature and derived key never go to the backend. Sign in with the same stake account and compatible wallet to unlock it on another device. No admin recovery. The server deletes inactive caches after seven days; background refresh does not extend this.",
+    "Available on desktop, phones and tablets with a compatible wallet. Requires a separate wallet message approval, not a transaction or fee. Your browser encrypts data with AES-256-GCM before upload. The private signature and derived key never go to the backend. Sign in with the same stake account and compatible wallet to unlock it on another device. No admin recovery. The server deletes inactive caches after 365 days; background refresh does not extend this.",
     "portfolio_text_7e78d2eef3dc"
   ],
   [

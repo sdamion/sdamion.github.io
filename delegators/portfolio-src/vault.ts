@@ -9,6 +9,7 @@ import {loadLocal,saveLocal,removeLocal} from './local-store';
 import {compactEthereumSettings} from './ethereum-storage';
 import {compactSolanaSettings} from './solana-storage';
 import {compactBlock,expandBlock} from './compact-storage';
+export const PORTFOLIO_RETENTION_MS=365*24*60*60*1000;
 
 type Data={version:1;settings:Record<string,string>;snapshot:{key:string;data:Snapshot}|null};
 export type StorageMode='local'|'remote';
@@ -29,7 +30,7 @@ window.addEventListener('tdsp:portfolio-session-expired',lockVault);
 async function userActivity(event:Event){
   if(!event.isTrusted||!state||state.blocked||touchPending||Date.now()-lastActivity<3600000||!(event.target instanceof Element)||!event.target.closest('.member-portfolio'))return;
   const current=state;touchPending=true;lastActivity=Date.now();
-  if(current.mode==='local'){current.expiresAt=Date.now()+604800000;changed();touchPending=false;return;}
+  if(current.mode==='local'){current.expiresAt=Date.now()+PORTFOLIO_RETENTION_MS;changed();touchPending=false;return;}
   try{const response=await portfolioFetch('/vault',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'touch'}),signal:current.controller.signal});if(response.ok){const value=await response.json();if(state===current)current.expiresAt=value.expires_at;}else if(response.status===410&&state===current){current.blocked=true;notice('Portfolio cache expired. Sign in and unlock again.');}}
   catch{/* Interaction can retry later; background writes never extend retention. */}
   finally{touchPending=false;}
@@ -68,7 +69,7 @@ export async function openLocalPortfolio(stake:string,wallet:SigningWallet){
   }else data=await importLegacy(stake);
   if(data.version!==1||!data.settings||typeof data.settings!=='object')throw new Error('Unsupported Portfolio cache version.');
   if(attempt!==unlockGeneration)throw new Error('Portfolio opening cancelled.');
-  const current:State={stake,mode:'local',key,data,revision:stored?.revision??null,expiresAt:Date.now()+604800000,dirty:true,generation:0,blocked:false,controller:new AbortController()};
+  const current:State={stake,mode:'local',key,data,revision:stored?.revision??null,expiresAt:Date.now()+PORTFOLIO_RETENTION_MS,dirty:true,generation:0,blocked:false,controller:new AbortController()};
   state=current;
   try{lastActivity=Date.now();await flushVault();rememberStorage(stake,'local');}
   catch(error){if(state===current){clearTimeout(timer);timer=undefined;current.controller.abort();state=null;}throw error;}
