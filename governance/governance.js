@@ -62,7 +62,7 @@ const LOCAL_CIPS_PROXY_PATH = '/__cips_proxy__';
 const LOCAL_CONSTITUTION_CHAT_PROXY_PATH = '/__constitution_chat_proxy__';
 const LOCAL_CONSTITUTION_CHAT_FEEDBACK_PROXY_PATH = '/__constitution_chat_feedback_proxy__';
 const LOCAL_CONSTITUTION_DOCUMENT_PROXY_PATH = '/__constitution_document_proxy__';
-const GOVERNANCE_MESH_CDN_URL = 'https://esm.sh/@meshsdk/core@1.9.1?bundle-deps';
+const GOVERNANCE_MESH_CDN_URL = '../vendor/mesh.js?v=1.9.1-local-20261030';
 const ACTIVE_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const DREP_TOP10_BACKGROUND_REFRESH_MAX_AGE_MS = 60 * 60 * 1000;
 const EPOCH_CHANGE_REFRESH_INTERVAL_MS = 5 * 60 * 1000;

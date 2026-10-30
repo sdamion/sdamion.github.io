@@ -1,0 +1,83 @@
+/*! Bundled license information:
+
+@jspm/core/nodelibs/browser/chunk-DtuTasat.js:
+  (*! ieee754. BSD-3-Clause License. Feross Aboukhadijeh <https://feross.org/opensource> *)
+*/
+/*! Bundled license information:
+
+@jspm/core/nodelibs/browser/chunk-DtuTasat.js:
+  (*! ieee754. BSD-3-Clause License. Feross Aboukhadijeh <https://feross.org/opensource> *)
+
+@jspm/core/nodelibs/browser/chunk-CcCWfKp1.js:
+  (*! safe-buffer. MIT License. Feross Aboukhadijeh <https://feross.org/opensource> *)
+*/
+
+Bundled license information:
+
+safe-buffer/index.js:
+  /*! safe-buffer. MIT License. Feross Aboukhadijeh <https://feross.org/opensource> */
+
+fraction.js/fraction.js:
+  /**
+   * @license Fraction.js v4.0.1 09/09/2015
+   * http://www.xarg.org/2014/03/rational-numbers-in-javascript/
+   *
+   * Copyright (c) 2015, Robert Eisele (robert@xarg.org)
+   * Dual licensed under the MIT or GPL Version 2 licenses.
+   **/
+
+@noble/hashes/utils.js:
+@harmoniclabs/crypto/dist/noble/utils.js:
+@harmoniclabs/crypto/dist/noble/utils.js:
+  /*! noble-hashes - MIT License (c) 2022 Paul Miller (paulmillr.com) */
+
+@harmoniclabs/crypto/dist/noble/abstract/utils.js:
+@harmoniclabs/crypto/dist/noble/abstract/modular.js:
+@harmoniclabs/crypto/dist/noble/abstract/curve.js:
+@harmoniclabs/crypto/dist/noble/abstract/weierstrass.js:
+@harmoniclabs/crypto/dist/noble/bls12_381.js:
+@harmoniclabs/crypto/dist/noble/_shortw_utils.js:
+@harmoniclabs/crypto/dist/noble/secp256k1.js:
+@harmoniclabs/crypto/dist/noble/abstract/utils.js:
+@harmoniclabs/crypto/dist/noble/abstract/modular.js:
+@harmoniclabs/crypto/dist/noble/abstract/curve.js:
+@harmoniclabs/crypto/dist/noble/curves/utils.js:
+@harmoniclabs/crypto/dist/noble/curves/modular.js:
+@harmoniclabs/crypto/dist/noble/curves/curve.js:
+@harmoniclabs/crypto/dist/noble/curves/weierstrass.js:
+@harmoniclabs/crypto/dist/noble/bls12_381.js:
+@harmoniclabs/crypto/dist/noble/_shortw_utils.js:
+@harmoniclabs/crypto/dist/noble/secp256k1.js:
+  /*! noble-curves - MIT License (c) 2022 Paul Miller (paulmillr.com) */
+
+@scure/base/lib/esm/index.js:
+  /*! scure-base - MIT License (c) 2022 Paul Miller (paulmillr.com) */
+
+@meshsdk/core-cst/dist/index.js:
+  /*! Bundled license information:
+  
+  scalus/scalus.js:
+    (*! For license information please see scalus.js.LICENSE.txt *)
+  */
+
+@utxorpc/sdk/lib/browser/index.mjs:
+  /*! Bundled license information:
+  
+  ieee754/index.js:
+    (*! ieee754. BSD-3-Clause License. Feross Aboukhadijeh <https://feross.org/opensource> *)
+  
+  buffer/index.js:
+    (*!
+     * The buffer module from node.js, for the browser.
+     *
+     * @author   Feross Aboukhadijeh <https://feross.org>
+     * @license  MIT
+     *)
+  */
+
+@meshsdk/wallet/dist/index.js:
+  /*! Bundled license information:
+  
+  @scure/base/lib/esm/index.js:
+    (*! scure-base - MIT License (c) 2022 Paul Miller (paulmillr.com) *)
+  */

@@ -1,0 +1,20 @@
+{
+  "name": "tdsp-mesh-browser-bundle",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "@meshsdk/core": "1.9.1"
+  },
+  "overrides": {
+    "ip-address": "10.7.5",
+    "undici": "6.29.1",
+    "@fastify/busboy": "3.2.2"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.12",
+    "esbuild-plugins-node-modules-polyfill": "1.8.3"
+  }
+}

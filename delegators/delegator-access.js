@@ -1,4 +1,4 @@
-const MESH_CDN_URL = 'https://esm.sh/@meshsdk/core@1.9.1?bundle-deps';
+const MESH_CDN_URL = '../vendor/mesh.js?v=1.9.1-local-20261030';
 const ADMIN_ADDRESS = 'addr1qy93p0cfydj548ayt6mh2z572ly4n4s9yaxwzrht2rzc3urjvlyhltxc0287yacjhg8syg4w3dyg3jal6ltksfuc483sel7r8c';
 const ADMIN_STAKE_ADDRESS = 'stake1u9ex0jtl4nv84rlzwuft5rczy2hgkjygewla04mgy7v2nccx4p4yr';
 const ADA_HANDLE_POLICY_ID = 'f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a';
@@ -183,7 +183,10 @@ async function markLostStakeDelegatorsMessaged(delegators, txHash = '') {
 }
 
 function loadMesh() {
-    if (!meshPromise) meshPromise = import(MESH_CDN_URL);
+    if (!meshPromise) meshPromise = import(MESH_CDN_URL).catch(error => {
+        meshPromise = null;
+        throw error;
+    });
     return meshPromise;
 }
 

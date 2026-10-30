@@ -4,7 +4,7 @@ const POOL_ID_HEX = '125af47fdabc52feef680d51c7818b2941805a74e9cb4731e0f78add';
 const TARGET_POOL_IDS = new Set([POOL_ID, POOL_ID_HEX]);
 const TDSP_DREP_ID = 'drep1yg5gkkyxwwr7d6qflf2qqp6drkp9432h6cvtmun0dqthusqlkz8hj';
 const TDSP_DREP_NAME = 'DamionDutch';
-const MESH_CDN_URL = 'https://esm.sh/@meshsdk/core@1.9.1?bundle-deps';
+const MESH_CDN_URL = '../vendor/mesh.js?v=1.9.1-local-20261030';
 const IS_LOCAL_STAKE_PREVIEW = window.TDSPRuntime?.isLocalPreview === true;
 const BECH32_ALPHABET = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l';
 const BECH32_GENERATOR = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3];
@@ -12,7 +12,10 @@ const BECH32_GENERATOR = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a14
 let meshLibPromise = null;
 function loadMeshLib() {
     if (!meshLibPromise) {
-        meshLibPromise = import(MESH_CDN_URL);
+        meshLibPromise = import(MESH_CDN_URL).catch(error => {
+            meshLibPromise = null;
+            throw error;
+        });
     }
     return meshLibPromise;
 }
