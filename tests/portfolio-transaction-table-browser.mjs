@@ -11,6 +11,7 @@ import {useState} from 'react';
 import {PortfolioCurrencyContext} from './portfolio-currency';
 import {TransactionTable,TransactionRow,TransactionAmount,TransactionWallets} from './TransactionTable';
 import {GainLossTransaction} from './GainLossTransaction';
+import {matchesGainLossTransfer} from './gain-loss-filter';
 import {AddressTransactions} from './ByronExchanges';
 const time=1700000000;
 const base={hash:'in',time,adaRaw:'100000000',feeRaw:'0',internal:false,wallets:['owned'],assets:{},decimals:{},swapCandidate:false};
@@ -21,7 +22,16 @@ function ByronFixture(){
  const [rates,setRates]=useState({'2023-11-14':{EUR:0.9,JPY:150}});window.setByronRates=setRates;
  return <PortfolioCurrencyContext.Provider value={{currency,rate:currency==='EUR'?0.8:currency==='JPY'?145:1,adaUsd:0.5,locale:'en',fxHistory:rates}}><AddressTransactions facts={[incoming,outgoing].map(fact=>({...fact,feeRaw:'400000'}))} address="exchange" entries={[{address:'exchange',name:'Bitvavo'}]} count={2} wallets={[{address:'owned',label:'Savings'}]} history={{[new Date(time*1000).toISOString().slice(0,10)]:0.25}}/></PortfolioCurrencyContext.Provider>;
 }
-createRoot(document.getElementById('app')).render(<><TransactionTable>
+const root=createRoot(document.getElementById('app'));
+const mixed={...incoming,externalInputs:[...incoming.externalInputs,{address:'unlisted-input',lovelace:'50000000'}]};
+function MixedFixture(){
+ const [filter,setFilter]=useState('all');
+ return <><select aria-label="CEX test filter" value={filter} onChange={event=>setFilter(event.target.value)}><option value="all">All</option><option value="in">ADA IN</option><option value="out">ADA OUT</option></select><TransactionTable>
+ {matchesGainLossTransfer(mixed,[{address:'exchange',name:'Bitvavo'}],filter)&&<GainLossTransaction tx={{tx_hash:mixed.hash,block_time:time,block_height:1}} fact={mixed} entries={[{address:'exchange',name:'Bitvavo'}]} wallets={[{address:'owned',label:'Savings'}]} history={{}}/>}
+ </TransactionTable></>;
+}
+window.renderMixedCex=()=>root.render(<MixedFixture/>);
+root.render(<><TransactionTable>
  <TransactionRow hash="normal" time={time} amount={<TransactionAmount ada={-100} usd={-25}/>} price={0.25} feeRaw="0" wallets={<TransactionWallets labels={['Savings','DEX contract: CSwap','DEX contract: Minswap V1']} exchanges={[]}/>}/>
  <TransactionRow hash="unknown" time={time} amount="Unavailable" wallets="Unknown"/>
  {[incoming,outgoing].map(fact=><GainLossTransaction key={fact.hash} tx={{tx_hash:fact.hash,block_time:time,block_height:1}} fact={fact} entries={[{address:'exchange',name:'Bitvavo'}]} wallets={[{address:'owned',label:'Savings'}]} history={{[new Date(time*1000).toISOString().slice(0,10)]:0.25}}/>)}
@@ -104,5 +114,19 @@ try{
    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'no page-wide overflow');
  }
  await page.screenshot({path:'/tmp/portfolio-mobile-table.png',fullPage:true});
+ await page.evaluate(()=>window.renderMixedCex());
+ const mixedFilter=page.getByRole('combobox',{name:'CEX test filter'});
+ await mixedFilter.waitFor();
+ for(const filter of ['all','in']){
+   await mixedFilter.selectOption(filter);
+   const row=page.locator('tbody tr');
+   assert.equal(await row.count(),1,'matched mixed-source receipt remains visible');
+   assert.match(await row.innerText(),/ADA IN/);
+   assert.match(await row.innerText(),/Mixed or unassigned sources/);
+   assert.match(await row.innerText(),/Excluded from calculations/);
+   assert.equal(await row.locator('td').first().locator('.portfolio-transfer-amount').count(),0,'an uncertain exchange amount is not invented');
+ }
+ await mixedFilter.selectOption('out');
+ assert.equal(await page.locator('tbody tr').count(),0,'an incoming receipt is not relabelled as outgoing');
  console.log('PASS: shared transaction columns, row alignment, wallet names, missing/zero fees, CEX colors and transaction links.');
 }finally{await browser.close();}

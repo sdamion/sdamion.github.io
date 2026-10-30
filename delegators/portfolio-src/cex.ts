@@ -66,6 +66,16 @@ export function cexAdaTransfer(fact:Fact,entries:CexAddress[]){
     return {side:'sell' as const,raw:sold};
   return null;
 }
+// The table can show a matched receipt even when its CEX share is unverified.
+// Valuation and charts must continue to use cexAdaTransfer exclusively.
+export function cexTableTransfer(fact:Fact,entries:CexAddress[]){
+  const transfer=cexAdaTransfer(fact,entries);
+  if(transfer)return {...transfer,verified:true};
+  const net=BigInt(fact.adaRaw)+BigInt(fact.feeRaw||'0');
+  if(net>0n&&isCexTransaction(fact,entries)&&cexSources(fact,entries.filter(entry=>!entry.miner)).length>0)
+    return {side:'buy' as const,raw:null,verified:false};
+  return null;
+}
 export function isCardanoReward(fact:Fact,entries:CexAddress[]):boolean{
   return !fact.internal&&BigInt(fact.adaRaw)+BigInt(fact.feeRaw||'0')>=0n&&Object.values(fact.assets).every(raw=>BigInt(raw)>=0n)&&isRewardReceipt(fact.externalInputs||[],entries);
 }

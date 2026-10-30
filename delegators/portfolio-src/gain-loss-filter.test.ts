@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {matchesGainLossTransfer} from './gain-loss-filter.ts';
 import type {Fact} from './core';
+import {cexAdaTransfer,cexTableTransfer,cexTimeline,cexUsdNetPosition} from './cex.ts';
 const entries=[{address:'exchange',name:'Exchange'}];
 const base={hash:'tx',time:1,adaRaw:'100',feeRaw:'0',internal:false,wallets:['owned'],assets:{},decimals:{},swapCandidate:false} satisfies Fact;
 const incoming={...base,externalInputs:[{address:'exchange',lovelace:'100'}]};
@@ -15,6 +16,16 @@ for(const filter of ['all','in','out']){
   assert.equal(matchesGainLossTransfer(base,entries,filter),false);
   assert.equal(matchesGainLossTransfer({...incoming,internal:true},entries,filter),false);
   assert.equal(matchesGainLossTransfer(undefined,entries,filter),false);
-  assert.equal(matchesGainLossTransfer({...incoming,externalInputs:[...incoming.externalInputs,{address:'other',lovelace:'100'}]},entries,filter),false);
 }
-console.log('PASS: gain/loss scope retains only verified exchange inflows/outflows across all filters');
+const mixed={...incoming,externalInputs:[...incoming.externalInputs,{address:'other',lovelace:'100'}]};
+assert.equal(matchesGainLossTransfer(mixed,entries,'all'),true);
+assert.equal(matchesGainLossTransfer(mixed,entries,'in'),true);
+assert.equal(matchesGainLossTransfer(mixed,entries,'out'),false);
+assert.deepEqual(cexTableTransfer(mixed,entries),{side:'buy',raw:null,verified:false});
+assert.equal(cexAdaTransfer(mixed,entries),null,'no guessed exchange amount');
+assert.deepEqual(cexTimeline([mixed],entries,{}),[],'mixed-source receipts stay out of financial charts');
+assert.equal(cexUsdNetPosition([mixed],entries,'0',{},1).boughtUsd,0);
+assert.equal(cexTableTransfer({...mixed,internal:true},entries),null);
+assert.equal(cexTableTransfer(mixed,[{...entries[0],miner:true}]),null);
+assert.equal(cexTableTransfer({...base,adaRaw:'100',externalInputs:[{address:'unlisted',lovelace:'100'}]},entries),null);
+console.log('PASS: verified transfers and uncertain matched CEX receipts stay visible without guessing amounts or changing totals');
