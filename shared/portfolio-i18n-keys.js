@@ -967,7 +967,7 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
     "portfolio_text_00597ed883d1"
   ],
   [
-    "Click a wallet name or its linked-address count to see Wallet, Address, ADA and Transactions for each address. Address links open Cardanoscan. Transaction counts reflect the loaded, analysed history.",
+    "Use View in an address's actions menu to inspect linked addresses, balances, transaction counts and refresh exclusions. Use Rename or Remove from the same menu. The copy button copies the full address; the address link opens its blockchain explorer.",
     "portfolio_text_c7ab702881c8"
   ],
   [
@@ -1917,4 +1917,10 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
   , ["Bitcoin transfer", "portfolio_text_btc_transfer"]
   , ["bc1…, 1… or 3…", "portfolio_text_btc_placeholder"]
   , ["Admins can select Bitcoin in My Wallets and in DEX / CEX & Swap. Add your own receiving and change addresses, then known CEX counterparties. Confirmed BTC balances and transactions use encrypted Portfolio storage. CEX IN and OUT use your wallet perspective; change and internal transfers are excluded. Mixed inputs are not attributed without sufficient evidence. Bitcoin history is requested through Blockstream; extended public keys and Lightning are not supported.", "portfolio_text_btc_guide"]
+  , ["Address actions", "portfolio_text_address_actions"]
+  , ["Actions for {name}", "portfolio_text_address_actions_for"]
+  , ["Actions", "portfolio_text_address_actions_column"]
+  , ["Rename", "portfolio_text_address_rename"]
+  , ["No saved addresses.", "portfolio_text_address_none"]
+  , ["Copied.", "portfolio_text_address_copied"]
 ]);

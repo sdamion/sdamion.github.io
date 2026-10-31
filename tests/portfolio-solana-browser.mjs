@@ -70,7 +70,7 @@ try{
  assert.equal(requests.filter(r=>r.signature===receipt).length,4,'temporary failures have two retries before resuming');
  await page.getByRole('button',{name:'Open Wallets',exact:true}).click();
  await page.getByRole('button',{name:'Open My Wallets',exact:true}).click();
- await page.getByRole('heading',{name:'Solana Wallets',exact:true}).waitFor();
+ await page.getByRole('button',{name:'Refresh Solana wallets',exact:true}).waitFor();
  await page.getByRole('button',{name:'Refresh Solana wallets',exact:true}).click();
  await page.waitForFunction(()=>document.querySelector('button')&&true);
  await page.waitForFunction(()=>window.fixtureStorage.keys().some(key=>key.startsWith('tdsp-member-solana-data:')));
@@ -171,8 +171,8 @@ try{
   await page.getByRole('button',{name:'Open Wallets',exact:true}).click();
   await page.getByRole('button',{name:'Open My Wallets',exact:true}).click();
   await page.locator('#portfolio-wallet-menu-wallets .portfolio-section').first().waitFor();
-  assert.equal(await page.getByRole('heading',{name:'Ethereum Wallets',exact:true}).count(),Number(access.ethereum),JSON.stringify(access)+' '+await page.locator('body').innerText());
-  assert.equal(await page.getByRole('heading',{name:'Solana Wallets',exact:true}).count(),Number(access.solana));
+  assert.equal(await page.locator('#portfolio-wallet-network option[value="ethereum"]').count(),Number(access.ethereum));
+  assert.equal(await page.locator('#portfolio-wallet-network option[value="solana"]').count(),Number(access.solana));
   if(access.solana)await page.waitForFunction(()=>[...document.querySelectorAll('button')].some(button=>button.textContent==='Refresh Solana wallets'&&!button.disabled));
   if(access.ethereum)await page.waitForFunction(()=>[...document.querySelectorAll('button')].some(button=>button.textContent==='Refresh Ethereum wallets'&&!button.disabled));
   const calls=requests.slice(start);

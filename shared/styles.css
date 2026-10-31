@@ -133,6 +133,13 @@ html[data-theme="dark"] .portfolio-dex-label { --portfolio-dex-color: #fb923c; }
 .member-portfolio .address { color: var(--accent-strong); }
 .member-portfolio .wallet-form label { display: grid; gap: 8px; min-width: 0; flex: 1 1 220px; }
 .member-portfolio .portfolio-address-form { align-items: flex-end; }
+.portfolio-address-link { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; }
+.portfolio-address-link > a { min-width: 0; overflow-wrap: anywhere; }
+.portfolio-address-link > button { flex-shrink: 0; }
+.portfolio-address-rename { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 6px; }
+.portfolio-address-rename .wallet-form { gap: 6px; }
+.portfolio-address-actions-menu { position: fixed; z-index: 10000; display: grid; gap: 4px; width: 180px; max-width: calc(100vw - 16px); max-height: calc(100vh - 16px); overflow-y: auto; padding: 6px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text); }
+.portfolio-address-actions-menu > button { display: flex; align-items: center; gap: 8px; justify-content: flex-start; min-height: 40px; }
 .member-portfolio .portfolio-address-form :is(input, button[type="submit"]) { min-height: 44px; box-sizing: border-box; }
 .member-portfolio input {
     min-width: 0;

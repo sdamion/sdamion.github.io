@@ -22,7 +22,9 @@ test('CEX directions use owned BTC perspective and exclude change, internal tran
   assert.equal(bitcoinTransfer(outgoing,[...own,...cex],cex),null);
   assert.equal(bitcoinTransfer(tx({inputs:[{address:exchange,raw:'500'},{address:other,raw:'500'}]}),own,cex),null);
   assert.equal(bitcoinTransfer(tx({inputs:[{address:other,raw:'1000'}]}),own,cex),null);
-  assert.equal(bitcoinTransfer(tx(),own,[{...cex[0],miner:true}]),null);
+  assert.deepEqual(bitcoinTransfer(tx(),own,[{...cex[0],miner:true}]),{side:'sell',raw:'900',mined:true});
+  const miningData=emptyBitcoin();miningData.accounts[address]={raw:'900',tip,transactions:[tx()]};
+  assert.equal(bitcoinTransfers(miningData,own,[{...cex[0],miner:true}])[0].performance,false,'mining receipts never become CEX sale proceeds');
 });
 test('deduplication, confirmed holdings, satoshi fees, missing prices and encrypted cache parts',()=>{
   const data=emptyBitcoin(),receipt=tx(),send=tx({hash:'2'.repeat(64),inputs:[{address,raw:'900'}],outputs:[{address:exchange,raw:'600'},{address,raw:'200'}]});

@@ -139,7 +139,7 @@ try{
   await walletsTile.click();await page.getByRole('button',{name:'Open My Wallets',exact:true}).click();
   const own=page.locator('#portfolio-wallet-menu-wallets');
   await own.getByRole('button',{name:'Refresh Ethereum wallets',exact:true}).waitFor();
-  assert.equal(await own.locator('tbody tr').filter({has:page.locator('a[title="'+address+'"]')}).getByRole('textbox',{name:'Wallet name',exact:true}).inputValue(),'ETH Savings');
+  assert.match(await own.locator('tbody tr').filter({has:page.locator('a[title="'+address+'"]')}).innerText(),/ETH Savings/);
   assert.ok(!(await own.innerText()).includes('Ethereum CEX addresses'));
   quoteUnavailable=true;historyUsd=1200;
   await own.getByRole('button',{name:'Refresh Ethereum wallets',exact:true}).click();
@@ -155,9 +155,9 @@ try{
   await own.getByRole('button',{name:'Back',exact:true}).click();
   await page.getByRole('button',{name:'Open DEX / CEX & Swap',exact:true}).click();
   const eth=page.locator('#portfolio-wallet-menu-exchanges');
-  const ethCexSection=eth.locator('section').filter({has:page.getByRole('heading',{name:'Ethereum DEX / CEX addresses',exact:true})}).last();
+  const ethCexSection=eth.locator('tr[data-address-id="ethereum:cex:'+exchange+'"]');
   await eth.getByRole('combobox',{name:'Network',exact:true}).selectOption('ethereum');
-  assert.equal(await ethCexSection.getByRole('textbox',{name:'Exchange name',exact:true}).inputValue(),'Bitvavo');
+  assert.match(await ethCexSection.innerText(),/Bitvavo/);
   const cexForm=eth.locator('form').filter({has:page.locator('#portfolio-exchange-address')});await cexForm.locator('input').nth(0).fill('Not a CEX');await cexForm.locator('input').nth(1).fill(address);await cexForm.getByRole('button',{name:'Add',exact:true}).click();
   assert.match(await eth.innerText(),/Your own wallet cannot/);
   for(const width of [1200,390,320]){
@@ -229,8 +229,9 @@ try{
   assert.equal(await page.locator('#portfolio-gain-loss-overlay').getByText('Mining / services proceeds',{exact:true}).count(),0,'disabled mining source removes the mining line');
   await page.locator('#portfolio-gain-loss-overlay').getByRole('button',{name:'Back',exact:true}).click();
   await walletsTile.click();await page.getByRole('button',{name:'Open DEX / CEX & Swap',exact:true}).click();
-  await page.getByRole('checkbox',{name:'Mining / services source: Mining pool',exact:true}).locator('xpath=ancestor::tr').getByRole('button',{name:'Remove',exact:true}).click();
-  const swaps=page.locator('#portfolio-wallet-menu-exchanges section').filter({has:page.getByRole('heading',{name:'Ethereum Swap wallets',exact:true})}).last();
+  await page.getByRole('checkbox',{name:'Mining / services source: Mining pool',exact:true}).locator('xpath=ancestor::tr').getByRole('button',{name:'Actions for Mining pool',exact:true}).click();
+  await page.getByRole('menuitem',{name:'Remove',exact:true}).click();
+  const swaps=page.locator('#portfolio-wallet-menu-exchanges tr[data-address-id^="ethereum:Swap:"]');
   const exchangeSetup=page.locator('#portfolio-wallet-menu-exchanges');
   await exchangeSetup.getByRole('combobox',{name:'Network',exact:true}).selectOption('ethereum');
   await exchangeSetup.getByRole('combobox',{name:'Address type',exact:true}).selectOption('swap');
@@ -258,12 +259,15 @@ try{
   assert.match(await partialOverlay.locator('.portfolio-eth-comparison').innerText(),/1 ETH[\s\S]*1,200\.00[\s\S]*0 ETH/,'loaded ETH totals survive another wallet missing its cache');
   await page.evaluate(()=>window.reopenPortfolio());
   await walletsTile.click();await page.getByRole('button',{name:'Open DEX / CEX & Swap',exact:true}).click();
-  assert.equal(await swaps.getByRole('textbox',{name:'Swap name',exact:true}).last().inputValue(),'ETH Swap','swap wallets restore in the shared name editor');
-  assert.deepEqual(await swaps.locator('thead th').allTextContents(),['Swap name','Wallet address','Remove'],'ADA and ETH swaps share the same table columns');
-  await swaps.getByRole('textbox',{name:'Swap name',exact:true}).last().fill('ETH Swap renamed');
-  await swaps.getByRole('button',{name:'Save Swap name',exact:true}).click();
+  assert.match(await swaps.innerText(),/ETH Swap/,'swap wallets restore in the shared address list');
+  assert.deepEqual(await page.locator('#portfolio-wallet-menu-exchanges table').first().locator('thead th').allTextContents(),['Network','Exchange','Address','Mining / Services Sources','Actions'],'all saved networks share the same table columns');
+  await swaps.getByRole('button',{name:'Actions for ETH Swap',exact:true}).click();
+  await page.getByRole('menuitem',{name:'Rename',exact:true}).click();
+  await swaps.getByRole('textbox',{name:'Exchange name',exact:true}).fill('ETH Swap renamed');
+  await swaps.getByRole('button',{name:'Save name',exact:true}).click();
   assert.equal(await page.evaluate(({stake,swapAddress})=>JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-wallets:'+stake)).find(w=>w.address===swapAddress).name,{stake,swapAddress}),'ETH Swap renamed','shared editor saves ETH swap names');
-  await swaps.getByRole('button',{name:'Remove',exact:true}).click();
+  await swaps.getByRole('button',{name:'Actions for ETH Swap renamed',exact:true}).click();
+  await page.getByRole('menuitem',{name:'Remove',exact:true}).click();
   assert.equal(await page.evaluate(stake=>JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-wallets:'+stake)).length,stake),1,'removing a swap retains regular wallets');
   await page.evaluate(({stake,address,exchange})=>{
     const swap='stake1u9ex0jtl4nv84rlzwuft5rczy2hgkjygewla04mgy7v2nccx4p4yr';

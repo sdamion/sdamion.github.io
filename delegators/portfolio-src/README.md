@@ -1,5 +1,19 @@
 # Member portfolio
 
+## Shared Address List
+
+`AddressList` renders one cross-network saved-address table per ownership scope:
+My Wallets and DEX / CEX & Swap. Network, name/exchange, address, mining/service
+source and actions share the same implementation. `AddressLink` keeps explorer
+links clickable and copies the complete case-preserved address, including learned
+Swap addresses. `AddressActions` uses an unclipped, viewport-clamped menu with
+keyboard navigation. Rename and remove delegate to existing storage callbacks;
+metadata and ownership remain unchanged. Primary stake removal stays disabled.
+View opens the existing Cardano linked-address and refresh-exclusion overlay.
+Own-wallet and Swap rows do not expose counterparty source switches. Bitcoin
+source switches now classify attributed income as mining/service receipts, not
+CEX buys or sales, using the same separate native-summary convention as SOL.
+
 ## Bitcoin
 
 Admins can select Bitcoin in the shared owned-wallet and CEX address forms.

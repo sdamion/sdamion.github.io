@@ -47,7 +47,7 @@ try{
  await external.getByRole('combobox',{name:'Network',exact:true}).selectOption('bitcoin');
  await external.locator('#portfolio-exchange-name').fill('BTC Exchange');await external.locator('#portfolio-exchange-address').fill(exchange);
  await external.getByRole('button',{name:'Add',exact:true}).click();
- await external.getByRole('heading',{name:'Bitcoin CEX addresses',exact:true}).waitFor();
+ await external.locator('tr[data-address-id="bitcoin:cex:'+exchange+'"]').waitFor();
  assert.equal(requests.length,0,'CEX-only addresses never trigger blockchain scans');
  await external.getByRole('button',{name:'Back',exact:true}).click();await page.getByRole('button',{name:'Open My Wallets',exact:true}).click();
  const own=page.locator('#portfolio-wallet-menu-wallets');
@@ -69,6 +69,13 @@ try{
  await gain.getByRole('button',{name:'BTC IN',exact:true}).click();assert.equal(await gain.locator('.history-table tbody tr').count(),1);
  await gain.getByRole('button',{name:'BTC OUT',exact:true}).click();assert.equal(await gain.locator('.history-table tbody tr').count(),1);
  for(const width of [1200,390,320]){await page.setViewportSize({width,height:900});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await page.screenshot({path:'/tmp/portfolio-bitcoin-'+width+'.png'});}
+ await gain.getByRole('button',{name:'Back',exact:true}).click();await walletTile.click();await page.getByRole('button',{name:'Open DEX / CEX & Swap',exact:true}).click();
+ const mining=page.getByRole('checkbox',{name:'Mining / services source: BTC Exchange',exact:true}),beforeMining=requests.length;await mining.check();
+ assert.equal(await page.evaluate(stake=>JSON.parse(window.fixtureStorage.getItem('tdsp-member-bitcoin-cex:'+stake))[0].miner,stake),true);
+ await external.getByRole('button',{name:'Back',exact:true}).click();await page.locator('#portfolio-wallets-overlay').getByRole('button',{name:'Back',exact:true}).click();await page.getByRole('button',{name:'Open CEX Transactions',exact:true}).click();
+ await gain.getByText('Mining / services proceeds',{exact:true}).waitFor();assert.equal(requests.length,beforeMining,'source flags reclassify cached BTC without another blockchain scan');
+ assert.equal(await gain.locator('.history-table tbody tr').count(),0,'marked sources are not BTC IN or OUT');
+ await gain.getByRole('button',{name:'Back',exact:true}).click();await walletTile.click();await page.getByRole('button',{name:'Open DEX / CEX & Swap',exact:true}).click();await mining.uncheck();
  unavailable=true;await page.evaluate(()=>window.reopen());
  await page.getByRole('alert').filter({hasText:'Bitcoin data unavailable. Saved data is retained.'}).waitFor();
  assert.match(await page.getByRole('button',{name:'Open Assets',exact:true}).innerText(),/59,998/,'cached holdings survive provider failures');

@@ -3,6 +3,9 @@
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {ExternalLink,Trash2,ImageOff} from 'lucide-react';
 import {CryptoAddressForm,type AddressNetwork} from './CryptoAddressForm';
+import {AddressList,type AddressListRow} from './AddressList';
+import {KnownDexAddresses} from './KnownDexAddresses';
+import type {EthereumWallet} from './ethereum';
 import {PortfolioRefresh} from './PortfolioRefresh';
 import {usePortfolioText} from './use-portfolio-text';
 import {DownloadStatus} from './DownloadStatus';
@@ -50,15 +53,12 @@ import {portfolioSettings as localStorage,storageMode} from './vault';
 import {CexTimeline} from './CexTimeline';
 import {useBtcHistory} from './use-btc-history';
 import {useBitcoin} from './use-bitcoin';
-import {BitcoinWallets} from './BitcoinWallets';
 import {BitcoinTransaction} from './BitcoinTransaction';
 import {bitcoinAmount,bitcoinTransactions,bitcoinTransfers,bitcoinTransfer,bitcoinTotals,bitcoinNet} from './bitcoin';
 import {useEthereum} from './use-ethereum';
 import {useSolana} from './use-solana';
-import {SolanaWallets} from './SolanaWallets';
 import {SolanaTransaction} from './SolanaTransaction';
 import {solanaTransactions,solanaTransfers,solanaTotals,solAmount} from './solana';
-import {EthereumWallets} from './EthereumWallets';
 import {EthereumTransaction} from './EthereumTransaction';
 import {ethereumTransactions,ethereumTransfers,ethereumTransfer,ethereumValue,weiToEth} from './ethereum';
 import {matchCrossChainSwaps,groupSwapRows} from './cross-chain-swaps';
@@ -78,7 +78,6 @@ import {transactionAmounts,transactionNetworkFee,portfolioFeeTotal} from './tran
 import {loadPriceSettings} from './price-settings';
 import {NativeTransferSummary} from './NativeTransferSummary';
 import {matchesTransaction,matchesSearchText} from './transaction-search';
-import {CexAddresses} from './CexAddresses';
 import {ByronExchanges} from './ByronExchanges';
 import {SwapWallets} from './SwapWallets';
 import {PortfolioQuickstart} from './PortfolioQuickstart';
@@ -111,6 +110,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   const [paymentLinks,setPaymentLinks]=useState<PaymentLink[]>([]);
   const [missingCostsOnly,setMissingCostsOnly]=useState(false);
   const [selectedAsset,setSelectedAsset]=useState<string|null>(null);
+  const [walletDetails,setWalletDetails]=useState<string|null>(null);
   const [section,setSection]=useState<'wallets'|'holdings'|'transactions'|'gain-loss'|null>(null);
   const isAdmin=role==='admin';
   const canEthereum=isAdmin||portfolioAccess?.ethereum===true,canSolana=isAdmin||portfolioAccess?.solana===true;
@@ -118,7 +118,8 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   const solana=useSolana(memberStake,ready&&canSolana);
   const bitcoin=useBitcoin(memberStake,ready&&isAdmin);
   const btcTransactions=useMemo(()=>bitcoinTransactions(bitcoin.data,bitcoin.wallets),[bitcoin.data,bitcoin.wallets]);
-  const btcTransfers=useMemo(()=>bitcoinTransfers(bitcoin.data,bitcoin.wallets,bitcoin.exchanges),[bitcoin.data,bitcoin.wallets,bitcoin.exchanges]);
+  const rawBtcTransfers=useMemo(()=>bitcoinTransfers(bitcoin.data,bitcoin.wallets,bitcoin.exchanges),[bitcoin.data,bitcoin.wallets,bitcoin.exchanges]);
+  const btcTransfers=useMemo(()=>performanceTransfers(rawBtcTransfers),[rawBtcTransfers]);
   const solTransactions=useMemo(()=>solanaTransactions(solana.data,solana.wallets),[solana.data,solana.wallets]);
   const rawSolTransfers=useMemo(()=>solanaTransfers(solana.data,solana.wallets,solana.exchanges),[solana.data,solana.wallets,solana.exchanges]);
   const ethTransactions=useMemo(()=>ethereumTransactions(ethereum.data,ethereum.wallets),[ethereum.data,ethereum.wallets]);
@@ -347,6 +348,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   const cexFlows=useMemo(()=>[...adaTransfers,...performanceTransfers(ethTransfers),...solTransfers,...btcTransfers],[adaTransfers,ethTransfers,solTransfers,btcTransfers]);
   const btcHistoryReady=bitcoin.wallets.every(w=>!!bitcoin.data.accounts[w.address]);
   const btcCexTotals=bitcoin.wallets.length&&!bitcoin.wallets.some(w=>bitcoin.data.accounts[w.address])?{incoming:null,outgoing:null,inFiat:null,outFiat:null}:nativeTransferTotals(btcTransfers,snapshot?.history||{},fx.history,comparisonFiat);
+  const btcServiceTotals=nativeTransferTotals(rawBtcTransfers.filter(row=>row.performance===false),snapshot?.history||{},fx.history,comparisonFiat);
   const solHistoryReady=solana.wallets.every(w=>!!solana.data.accounts[w.address]);
   const solCexTotals=solana.wallets.length&&!solana.wallets.some(w=>solana.data.accounts[w.address])?{incoming:null,outgoing:null,inFiat:null,outFiat:null}:nativeTransferTotals(solTransfers,snapshot?.history||{},fx.history,comparisonFiat);
   const cardanoReward=useCallback((fact:Fact)=>isCardanoReward(fact,cexAddresses),[cexAddresses]);
@@ -413,7 +415,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
     const quote=currentValuation(id,units(String(raw),decimals),parseAmount(overrides[id]?.price),market,currentAdaUsd);
     return {hash:'service-token:'+id,time:Date.now()/1000,side:'sell' as const,usd:quote.value};
   });
-  const gainFlows=gainTransfers(cexFlows,[...serviceAdaTransfers,...rawEthTransfers.filter(row=>row.performance===false),...rawSolTransfers.filter(row=>row.performance===false),...serviceTokenTransfers]);
+  const gainFlows=gainTransfers(cexFlows,[...serviceAdaTransfers,...rawEthTransfers.filter(row=>row.performance===false),...rawSolTransfers.filter(row=>row.performance===false),...rawBtcTransfers.filter(row=>row.performance===false),...serviceTokenTransfers]);
   const availableCex=availableCexResult(gainFlows,portfolioUsd,holdingsCurrency,currentAdaUsd,snapshot?.history||{},fx.history,Date.now()/1000);
   const tileGain=availableCex.value;
   const tileGainDisplay=(tileGain!==null&&tileGain<0?'− ':'')+formatPortfolioAmount(tileGain===null?null:Math.abs(tileGain),currencyDisplay);
@@ -477,7 +479,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
     return matchesSearchText(query,text);
   });
   const bitcoinShown=btcTransactions.filter(tx=>{
-    const transfer=bitcoinTransfer(tx,bitcoin.wallets,bitcoin.exchanges),net=bitcoinNet(tx,bitcoin.wallets);
+    const classified=bitcoinTransfer(tx,bitcoin.wallets,bitcoin.exchanges),transfer=classified&&'mined' in classified?null:classified,net=bitcoinNet(tx,bitcoin.wallets);
     const own=new Set(bitcoin.wallets.map(w=>w.address));
     const internal=tx.inputs.every(row=>own.has(row.address))&&tx.outputs.every(row=>own.has(row.address)||row.raw==='0');
     const matches=section==='gain-loss'?!!transfer&&(filter==='all'||filter===(transfer.side==='buy'?'btc-in':'btc-out')):filter==='all'||filter==='cex'&&!!transfer||filter==='internal'&&internal||filter==='receive'&&net>0n||filter==='send'&&net<0n&&!internal;
@@ -523,6 +525,30 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   const exchangeForm=<CryptoAddressForm id="portfolio-exchange" counterparty ethereum={canEthereum} solana={canSolana} bitcoin={isAdmin} onAdd={(...args)=>addAddress(true,...args)}/>;
   const swapForm=<SwapWallets inline wallets={wallets} groups={snapshot?.swapGroups} onChange={saveWallets}/>;
   const ethSwapWallets=ethereum.swapWallets,ethOwnWallets=ethereum.wallets;
+  function nativeAddressRows(network:AddressNetwork,rows:EthereumWallet[],change:(rows:EthereumWallet[])=>boolean,owned=false,kind?:string):AddressListRow[]{
+    return rows.map(wallet=>{
+      const symbol=network==='ethereum'?'ETH':network==='solana'?'SOL':'BTC';
+      const amount=network==='ethereum'?ethereum.data.accounts[wallet.address]?.balanceWei:network==='solana'?solana.data.accounts[wallet.address]?.raw:bitcoin.data.accounts[wallet.address]?.raw;
+      const units=amount===undefined?null:network==='ethereum'?weiToEth(amount):network==='solana'?solAmount(amount):bitcoinAmount(amount);
+      const quote=network==='ethereum'?ethereum.data.usd:network==='solana'?solana.data.usd:bitcoin.data.usd;
+      return {id:`${network}:${owned?'own':kind||'cex'}:${wallet.address}`,network,address:wallet.address,name:wallet.name,kind:kind||(!owned?(wallet.dex?'DEX':'CEX'):undefined),linked:wallet.swapAddresses,
+        ...(owned?{note:<><span translate="no">{units===null?'—':num(units,network==='solana'?9:8)} {symbol}</span><div translate="no">{formatPortfolioUsd(units===null||quote===null?null:units*quote,currencyDisplay)}</div></>}:{}),
+        ...(!owned&&kind!=='Swap'?{miner:wallet.miner,onMining:(miner:boolean)=>change(rows.map(row=>row.address===wallet.address?{...row,miner}:row))}:{}),
+        onRename:name=>change(rows.map(row=>row.address===wallet.address?{...row,name}:row)),onRemove:()=>change(rows.filter(row=>row.address!==wallet.address))};
+    });
+  }
+  const ownAddressRows:AddressListRow[]=[...wallets.filter(wallet=>wallet.group!=='swap').map(wallet=>({
+    id:'cardano:own:'+wallet.address,network:'cardano' as const,address:wallet.address,name:wallet.label,
+    note:snapshot?.groups?.[wallet.address]?formatPortfolioAda(snapshot.infos.filter(info=>snapshot.groups[wallet.address].includes(info.address)).reduce((sum,info)=>sum+Number(info.balance)/1e6,0),currencyDisplay):t('Loading balance…'),
+    onRename:(label:string)=>saveWallets(wallets.map(row=>row.address===wallet.address?{...row,label}:row)),onRemove:()=>saveWallets(wallets.filter(row=>row.address!==wallet.address)),removeDisabled:wallet.address===memberStake||busy,
+    ...(snapshot?.groups?.[wallet.address]?{onView:()=>setWalletDetails(wallet.address)}:{})
+  })),...nativeAddressRows('ethereum',ethOwnWallets,next=>ethereum.saveWallets([...next,...ethSwapWallets]),true),...nativeAddressRows('solana',solana.wallets,solana.saveWallets,true),...nativeAddressRows('bitcoin',bitcoin.wallets,bitcoin.saveWallets,true)];
+  const counterpartyRows:AddressListRow[]=[...cexAddresses.map(entry=>({id:'cardano:cex:'+entry.address,network:'cardano' as const,address:entry.address,name:entry.name,kind:validByronAddress(entry.address)?'Byron CEX':'DEX / CEX',miner:entry.miner,
+    onMining:(miner:boolean)=>saveCexAddresses(cexAddresses.map(row=>row.address===entry.address?{...row,miner}:row)),onRename:(name:string)=>saveCexAddresses(cexAddresses.map(row=>row.address===entry.address?{...row,name}:row)),onRemove:()=>saveCexAddresses(cexAddresses.filter(row=>row.address!==entry.address))
+  })),...wallets.filter(wallet=>wallet.group==='swap').map(wallet=>({id:'cardano:swap:'+wallet.address,network:'cardano' as const,address:wallet.address,name:wallet.label,kind:'Swap',linked:wallet.swapAddresses,
+    onRename:(label:string)=>saveWallets(wallets.map(row=>row.address===wallet.address?{...row,label}:row)),onRemove:()=>saveWallets(wallets.filter(row=>row.address!==wallet.address))
+  })),...nativeAddressRows('ethereum',ethereum.exchanges,ethereum.saveExchanges),...nativeAddressRows('ethereum',ethSwapWallets,next=>ethereum.saveWallets([...ethOwnWallets,...next]),false,'Swap'),...nativeAddressRows('solana',solana.exchanges,solana.saveExchanges),...nativeAddressRows('bitcoin',bitcoin.exchanges,bitcoin.saveExchanges)];
+  const detailWallet=wallets.find(wallet=>wallet.address===walletDetails&&wallet.group!=='swap');
   return <PortfolioCurrencyContext.Provider value={currencyDisplay}><main className="member-portfolio"><PortfolioQuickstart stake={memberStake} wallets={walletForm} exchanges={exchangeForm} swap={swapForm}/><div className="portfolio-body"><div className="section-heading" aria-label="Portfolio refresh">
     <PortfolioRefresh onRefresh={()=>{void refresh();void ethereum.refresh();void solana.refresh();void bitcoin.refresh();}} disabled={syncing||!ready} busy={syncing} currencyControl={<select className="governance-vote-secondary" aria-label={t('Comparison currency')} value={holdingsCurrency} onChange={event=>setHoldingsCurrency(event.target.value as 'ADA'|ComparisonFiat)}><option value="ADA">ADA</option><option value="USD">USD ($)</option><option value="EUR">EUR (€)</option><option value="JPY">JPY (¥)</option></select>}/>
   </div>
@@ -558,30 +584,26 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
       <button type="button" className="governance-vote-secondary" disabled={busy||!ready} onClick={()=>void refresh(true)}>Rescan all wallets</button>
       <p className="small muted">Rediscover linked addresses and check full transaction history, including excluded addresses for this scan only. Saved transaction details are reused.</p>
     </div>
-    <WalletMenu counts={{wallets:(refreshCounts?.total??wallets.filter(wallet=>wallet.group!=='swap').length)+ethOwnWallets.length+solana.wallets.length+bitcoin.wallets.length,exchanges:cexAddresses.filter(entry=>!validByronAddress(entry.address)).length+ethereum.exchanges.length+solana.exchanges.length+bitcoin.exchanges.length,byron:cexAddresses.filter(entry=>validByronAddress(entry.address)).length,swap:wallets.filter(wallet=>wallet.group==='swap').length+ethSwapWallets.length}}
+    <WalletMenu counts={{wallets:(refreshCounts?.total??wallets.filter(wallet=>wallet.group!=='swap').length)+ethOwnWallets.length+solana.wallets.length+bitcoin.wallets.length,exchanges:cexAddresses.length+ethereum.exchanges.length+solana.exchanges.length+bitcoin.exchanges.length,byron:cexAddresses.filter(entry=>validByronAddress(entry.address)).length,swap:wallets.filter(wallet=>wallet.group==='swap').length+ethSwapWallets.length}}
     wallets={<section className="portfolio-section"><p className="small muted">Your member stake address includes its linked payment addresses. Add only wallets you own.</p>
-      <div className="history-table"><Table><TableHeader><TableRow><TableHead>Wallet</TableHead><TableHead>Address</TableHead><TableHead>{holdingsCurrency}</TableHead><TableHead>Transactions</TableHead><TableHead>Linked addresses</TableHead><TableHead>Remove</TableHead></TableRow></TableHeader><TableBody>{wallets.filter(wallet=>wallet.group!=='swap').map((w,i)=><WalletCard key={w.address} wallet={w} onRename={label=>saveWallets(wallets.map(wallet=>wallet.address===w.address?{...wallet,label}:wallet))} primary={i===0} snapshot={snapshot} busy={busy} excluded={excludedRefresh} onExclude={setRefreshExcluded} remove={()=>saveWallets(wallets.filter(x=>x.address!==w.address))}/>)}</TableBody></Table></div>
       {walletForm}
+      <AddressList owned rows={ownAddressRows}/>
       <p className="small muted">Wallets, entered prices and history use your selected encrypted storage. Manual prices and average costs are saved per asset for your member account and retained when wallets change.</p>
       {ethereum.exchanges.length>0&&!ethereum.wallets.length&&<p translate="no" role="status" className="message">{t('Add your own Ethereum wallet to scan ETH CEX transfers. CEX addresses are counterparties, not your holdings; shared exchange balances are never counted as yours.')}</p>}
-      {canEthereum&&<><button type="button" className="governance-vote-secondary" disabled={ethereum.busy||!ready||!ethereum.wallets.length} onClick={()=>void ethereum.refresh()}>{t('Refresh Ethereum wallets')}</button>
-      <EthereumWallets showForm={false} wallets={ethOwnWallets} data={ethereum.data} owned={ethSwapWallets} onChange={next=>ethereum.saveWallets([...next,...ethSwapWallets])}/>
-      </>}{canSolana&&<>
-      <button type="button" className="governance-vote-secondary" disabled={solana.busy||!solana.wallets.length} onClick={()=>void solana.refresh()}>{t('Refresh Solana wallets')}</button>
-      <SolanaWallets showForm={false} wallets={solana.wallets} data={solana.data} owned={solana.exchanges} onChange={solana.saveWallets}/></>}
-      {isAdmin&&<><button type="button" className="governance-vote-secondary" disabled={bitcoin.busy||!bitcoin.wallets.length} onClick={()=>void bitcoin.refresh()} translate="no">{t('Refresh Bitcoin wallets')}</button><BitcoinWallets wallets={bitcoin.wallets} data={bitcoin.data} onChange={bitcoin.saveWallets}/></>}
+      <div className="governance-action-buttons">
+        {canEthereum&&<button type="button" className="governance-vote-secondary" disabled={ethereum.busy||!ready||!ethereum.wallets.length} onClick={()=>void ethereum.refresh()}>{t('Refresh Ethereum wallets')}</button>}
+        {canSolana&&<button type="button" className="governance-vote-secondary" disabled={solana.busy||!solana.wallets.length} onClick={()=>void solana.refresh()}>{t('Refresh Solana wallets')}</button>}
+        {isAdmin&&<button type="button" className="governance-vote-secondary" disabled={bitcoin.busy||!bitcoin.wallets.length} onClick={()=>void bitcoin.refresh()} translate="no">{t('Refresh Bitcoin wallets')}</button>}
+      </div>
     </section>}
     exchanges={<section className="portfolio-section">
       {exchangeForm}
-      <CexAddresses showForm={false} entries={cexAddresses} owned={ownedAddresses} onChange={saveCexAddresses} swap={{wallets,groups:snapshot?.swapGroups,onChange:saveWallets}}/>
-      {canEthereum&&<><EthereumWallets showForm={false} wallets={ethereum.exchanges} data={ethereum.data} exchanges owned={ethereum.allWallets} onChange={ethereum.saveExchanges}/>
-      <EthereumWallets showForm={false} wallets={ethSwapWallets} data={ethereum.data} swap owned={ethOwnWallets} onChange={next=>ethereum.saveWallets([...ethOwnWallets,...next])}/>
-      </>}{canSolana&&<>
-      <SolanaWallets showForm={false} wallets={solana.exchanges} data={solana.data} exchanges owned={solana.wallets} onChange={solana.saveExchanges}/></>}
-      {isAdmin&&<BitcoinWallets wallets={bitcoin.exchanges} data={bitcoin.data} exchanges onChange={bitcoin.saveExchanges}/>}
+      <AddressList rows={counterpartyRows}/>
+      <details><summary translate="no">{t('Known DEX contracts')}</summary><KnownDexAddresses/></details>
       {cexAddresses.length>0&&Object.values(snapshot?.facts||{}).some(fact=>!Array.isArray(fact.externalInputs))&&<p className="small muted">Refresh to load sender and recipient stake addresses for older cached transactions.</p>}
     </section>}
     byron={<ByronExchanges facts={cexFacts} entries={cexAddresses} owned={ownedAddresses} wallets={displayWallets} history={snapshot?.history||{}} markets={snapshot?.markets||{}} complete={snapshot?.complete===true} onChange={saveCexAddresses}/>}/>
+    {detailWallet&&<WalletCard key={detailWallet.address} detailsOnly wallet={detailWallet} primary={detailWallet.address===memberStake} snapshot={snapshot} busy={busy} excluded={excludedRefresh} onExclude={setRefreshExcluded} remove={()=>{}} onRename={label=>saveWallets(wallets.map(wallet=>wallet.address===detailWallet.address?{...wallet,label}:wallet))} onClose={()=>setWalletDetails(null)}/>}
     </AssetOverlay>}
     {section==='holdings'&&<AssetOverlay id="portfolio-holdings-overlay" name={holdingsGroup||'Assets'} onClose={()=>holdingsGroup?setHoldingsGroup(null):setSection(null)}>
     <section className="portfolio-section">
@@ -668,7 +690,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
       {snapshot&&<NativeTransferSummary symbol="ADA" totals={adaCexTotals} currency={comparisonFiat} className="portfolio-gain-comparison" proceeds={serviceReceipts.length?{amount:serviceAdaTotals.outgoing,value:serviceAdaTotals.outFiat,details:[...serviceAssets].map(([id,raw])=><div key={id} className="small"><AssetImage id={id} name={snapshot.markets[id]?.name||assetName(id)} market={snapshot.markets[id]} compact/> {units(String(raw),assetDecimals[id])===null?String(raw)+' raw':num(units(String(raw),assetDecimals[id])!,8)}</div>)}:undefined}/>}
       {ethereum.wallets.length>0&&<NativeTransferSummary symbol="ETH" totals={ethCexTotals} currency={comparisonFiat} className="portfolio-eth-comparison" proceeds={ethereum.exchanges.some(w=>w.miner)?{amount:miningTotals.outgoing,value:miningTotals.outFiat}:undefined}/>}
       {solana.wallets.length>0&&<NativeTransferSummary symbol="SOL" totals={solCexTotals} currency={comparisonFiat} className="portfolio-sol-comparison" proceeds={rawSolTransfers.some(row=>row.performance===false)?{amount:solServiceTotals.outgoing,value:solServiceTotals.outFiat}:undefined}/>}
-      {bitcoin.wallets.length>0&&<NativeTransferSummary symbol="BTC" totals={btcCexTotals} currency={comparisonFiat} className="portfolio-btc-comparison"/>}
+      {bitcoin.wallets.length>0&&<NativeTransferSummary symbol="BTC" totals={btcCexTotals} currency={comparisonFiat} className="portfolio-btc-comparison" proceeds={rawBtcTransfers.some(row=>row.performance===false)?{amount:btcServiceTotals.outgoing,value:btcServiceTotals.outFiat}:undefined}/>}
       <div className="portfolio-gain-result">
         <span translate="no" className="governance-card-detail">{t(comparisonResultLabel(comparisonResult.amount,comparisonCrypto),{crypto:comparisonCrypto})}</span>
         <strong className="governance-card-title">{snapshot?<ComparisonAmount amount={comparisonResult.amount} value={comparisonResult.fiat} crypto={comparisonCrypto} currency={comparisonFiat}/>: 'Waiting for wallet balances'}</strong>

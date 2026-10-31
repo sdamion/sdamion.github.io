@@ -58,6 +58,7 @@ export function bitcoinTransfer(tx:BitcoinTransaction,wallets:BitcoinWallet[],ex
   const own=new Set(wallets.map(w=>w.address)),cex=new Set(exchanges.filter(w=>!own.has(w.address)&&!w.miner).map(w=>w.address));
   const net=bitcoinNet(tx,wallets),externalInputs=tx.inputs.filter(row=>!own.has(row.address)&&BigInt(row.raw)>0n);
   const outgoing=tx.outputs.filter(row=>!own.has(row.address)&&cex.has(row.address)).reduce((sum,row)=>sum+BigInt(row.raw),0n);
+  if(net>0n&&externalInputs.length&&externalInputs.every(row=>exchanges.some(source=>source.address===row.address&&source.miner===true))&&outgoing===0n)return {side:'sell' as const,raw:String(net),mined:true as const};
   if(tx.inputs.every(row=>own.has(row.address))&&outgoing>0n)return {side:'sell' as const,raw:String(outgoing)};
   if(net>0n&&externalInputs.length&&externalInputs.every(row=>cex.has(row.address))&&outgoing===0n)return {side:'buy' as const,raw:String(net)};
   return null;
@@ -66,7 +67,7 @@ export function bitcoinTransfers(data:BitcoinData,wallets:BitcoinWallet[],exchan
   return bitcoinTransactions(data,wallets).flatMap(tx=>{
     const transfer=bitcoinTransfer(tx,wallets,exchanges);if(!transfer)return [];
     const amount=bitcoinAmount(transfer.raw),price=data.history[new Date(tx.time*1000).toISOString().slice(0,10)];
-    return [{hash:'btc:'+tx.hash,time:tx.time,side:transfer.side,amount,usd:Number.isFinite(price)&&price>0?amount*price:null}];
+    return [{hash:'btc:'+tx.hash,time:tx.time,side:transfer.side,amount,...('mined' in transfer?{performance:false}:{}),usd:Number.isFinite(price)&&price>0?amount*price:null}];
   });
 }
 export function bitcoinTotals(data:BitcoinData,wallets:BitcoinWallet[]){
