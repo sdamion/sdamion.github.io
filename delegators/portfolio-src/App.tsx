@@ -82,7 +82,7 @@ import {WalletCard} from './WalletAddresses';
 import {refreshExcludedAddresses,walletRefreshCounts} from './member';
 import {validByronAddress} from './byron-address';
 import {exchangeExcludedAddresses,resolveSwapGroups,excludeInternalExchanges,swapOwnershipScope,swapAddressSet,isSwapTransaction} from './swap-wallets';
-import {normalizeCexAddresses,cexAdjustedFact,isCexTransaction,isCardanoReward,cexAdaTransfer,cexUsdNetPosition,cexTimeline,transactionExchangeWallets} from './cex';
+import {normalizeCexAddresses,cexAdjustedFact,isCexTransaction,isCardanoReward,cexAdaTransfer,cexTableTransfer,cexUsdNetPosition,cexTimeline,transactionExchangeWallets} from './cex';
 import type {CexAddress} from './cex';
 import {durationLabel,remainingSeconds} from './progress';
 import {memberWallets,validWalletAddress,walletTransactionCount} from './member';
@@ -723,12 +723,13 @@ function Transaction({tx,fact,markets,wallets,history,cexAddresses,swapAddresses
   const kind=fact?kindOf(fact):null,trade=fact?tradeOf(fact):null;
   const exchangeWallets=transactionExchangeWallets(fact,cexAddresses);
   const cexTrade=fact&&!internalSwap?cexAdaTransfer(fact,cexAddresses):null;
+  const cexTransfer=fact&&!internalSwap?cexTableTransfer(fact,cexAddresses):null;
   const quantity=trade?units(trade.raw,markets[trade.id]?.decimals??fact?.decimals?.[trade.id]):null;
   const amount=transactionAmounts(fact?.adaRaw,fact?.time??tx.block_time,history,fact?.feeRaw);
   return <TransactionRow compact={compact} hash={tx.tx_hash} time={tx.block_time} price={amount.price} feeRaw={transactionNetworkFee(fact)}
     amount={<><TransactionAmount ada={amount.ada} usd={amount.usd} tone={cexTrade?(cexTrade.side==='buy'?'negative':'positive'):undefined}/>{compact&&amount.ada!==null&&<div translate="no" className="small muted">{num(Math.abs(amount.ada),6)} ADA</div>}</>}
-    kind={compact?(amount.ada!==null&&amount.ada>0?'ADA IN':'ADA OUT'):fact&&isCardanoReward(fact,cexAddresses)?'Mining / services receipt':internalSwap?'Internal cross-chain swap':isSwapTransaction(fact,swapAddresses)?'Swap':cexTrade?(cexTrade.side==='buy'?'ADA IN':'ADA OUT'):kind==='internal'?'Internal transfer · fee only':kind?labels[kind]:'Awaiting analysis'}
-    details={fact&&Object.entries(fact.assets).map(([id,raw])=>{const q=units(raw,markets[id]?.decimals??fact.decimals?.[id]);return <div className="small" key={id}>{BigInt(raw)>0n?'+':''}{q===null?raw+' raw':num(q)} <AssetImage id={id} name={markets[id]?.name||markets[id]?.ticker||assetName(id)} market={markets[id]} compact preview/></div>;})}
+    kind={compact?(amount.ada!==null&&amount.ada>0?'ADA IN':'ADA OUT'):fact&&isCardanoReward(fact,cexAddresses)?'Mining / services receipt':internalSwap?'Internal cross-chain swap':isSwapTransaction(fact,swapAddresses)?'Swap':cexTransfer?(cexTransfer.side==='buy'?'ADA IN':'ADA OUT'):kind==='internal'?'Internal transfer · fee only':kind?labels[kind]:'Awaiting analysis'}
+    details={<>{cexTransfer&&!cexTransfer.verified&&<><div className="small muted">Mixed or unassigned sources</div><div className="small muted">Excluded from calculations</div></>}{fact&&Object.entries(fact.assets).map(([id,raw])=>{const q=units(raw,markets[id]?.decimals??fact.decimals?.[id]);return <div className="small" key={id}>{BigInt(raw)>0n?'+':''}{q===null?raw+' raw':num(q)} <AssetImage id={id} name={markets[id]?.name||markets[id]?.ticker||assetName(id)} market={markets[id]} compact preview/></div>;})}</>}
     priceDetails={trade&&<div className="small muted">{quantity?num(trade.ada/quantity,10)+' ₳ / token':num(trade.ada)+' ₳ consideration'}</div>}
     wallets={<TransactionWallets labels={transactionWalletNames(fact,wallets)} exchanges={exchangeWallets}/>}
   />;
