@@ -1770,7 +1770,7 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
   ["Collection", "portfolio_text_collection"],
   ["Ethereum Wallets", "portfolio_text_eth_wallets"],
   ["Open Ethereum Wallets", "portfolio_text_eth_open"],
-  ["Ethereum CEX addresses", "portfolio_text_eth_cex"],
+  ["Ethereum DEX / CEX addresses", "portfolio_text_eth_cex"],
   ["Ethereum address", "portfolio_text_eth_address"],
   ["Enter an Ethereum mainnet address (0x…).", "portfolio_text_eth_invalid"],
   ["This address is already saved.", "portfolio_text_eth_duplicate"],
@@ -1802,7 +1802,7 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
   ["Invalid Ethereum history response.", "portfolio_text_eth_invalid_history"],
   ["Invalid Ethereum balance response.", "portfolio_text_eth_invalid_balance"],
   ["Ethereum mainnet · ETH only. ERC-20 tokens, NFTs and other EVM networks are not included.", "portfolio_text_eth_scope"],
-  ["Only ETH transfers to or from saved CEX addresses contribute to CEX IN/OUT. Own-wallet transfers are excluded.", "portfolio_text_eth_cex_scope"],
+  ["Only ETH transfers to or from saved DEX / CEX addresses contribute to CEX IN/OUT. Own-wallet transfers are excluded.", "portfolio_text_eth_cex_scope"],
   ["Combined Cardano and Ethereum CEX totals. ADA/BTC amounts are transfer-day equivalents, not summed coin quantities.", "portfolio_text_eth_combined"],
   ["Open Wallets, then My Wallets to add Ethereum mainnet wallets you own. Add their Ethereum CEX counterparties under DEX / CEX & Swap. ETH balances are included in Assets; ETH transfers to and from saved CEX addresses are combined with Cardano using daily fiat prices. Internal transfers and failed payments are excluded from CEX IN/OUT. ADA and BTC comparisons are price equivalents, not actual holdings. Ethereum tokens and NFTs are not supported yet. Ethereum data uses the same encrypted Portfolio storage.", "portfolio_text_eth_guide"]
   , ["{wallets} own wallets · {exchanges} CEX addresses", "portfolio_text_eth_address_counts"]
@@ -1843,12 +1843,12 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
   , ["Receipts from this address are mining proceeds with zero purchase cost, not CEX purchases. Own-wallet transfers are excluded.", "portfolio_text_mining_source_help"]
   , ["Mining adds ETH with zero purchase cost. Daily prices estimate known purchases.", "portfolio_text_eth_mining_basis"]
   , ["Solana Wallets", "portfolio_text_sol_wallets"]
-  , ["Solana CEX addresses", "portfolio_text_sol_cex"]
+  , ["Solana DEX / CEX addresses", "portfolio_text_sol_cex"]
   , ["Solana address", "portfolio_text_sol_address"]
   , ["Refresh Solana wallets", "portfolio_text_sol_refresh"]
   , ["Checking Solana transactions…", "portfolio_text_sol_check"]
   , ["Solana transfer", "portfolio_text_sol_transfer"]
-  , ["Solana mainnet · native SOL only. SPL tokens and NFTs are not included. CEX addresses are counterparties, not your holdings.", "portfolio_text_sol_help"]
+  , ["Solana mainnet · native SOL only. SPL tokens and NFTs are not included. DEX / CEX addresses are counterparties, not your holdings.", "portfolio_text_sol_help"]
   , ["Solana requires HELIUS_API_KEY in the backend.", "portfolio_text_sol_key"]
   , ["Solana data unavailable. Saved data is retained.", "portfolio_text_sol_unavailable"]
   , ["Solana prices unavailable.", "portfolio_text_sol_prices"]

@@ -1,6 +1,6 @@
 import {blake2b} from '@noble/hashes/blake2.js';
 import {isRewardSource} from './reward-sources.ts';
-export type EthereumWallet={address:string;name:string;miner?:boolean;group?:'swap';swapAddresses?:string[]};
+export type EthereumWallet={address:string;name:string;miner?:boolean;dex?:boolean;group?:'swap';swapAddresses?:string[]};
 export type EthereumTransaction={id:string;hash:string;kind:'normal'|'internal';block:number;time:number;from:string;to:string;valueWei:string;feeWei:string|null;failed:boolean;transactionIndex?:number;traceIndex?:string};
 export type EthereumProvider='etherscan'|'blockscout';
 export type EthereumAccount={balanceWei:string;block:number;finalizedBlock?:number;transactions:EthereumTransaction[];provider?:EthereumProvider};
@@ -15,7 +15,7 @@ export function ethereumWallets(value:unknown):EthereumWallet[]{
     if(typeof item?.address!=='string'||typeof item?.name!=='string')continue;
     const address=item.address.trim().toLowerCase(),name=item.name.trim().slice(0,60);
     const links=item.group==='swap'&&Array.isArray(item.swapAddresses)?[...new Set<string>(item.swapAddresses.filter((value:unknown)=>typeof value==='string'&&validEthereumAddress(value)).map((value:string)=>value.toLowerCase()).filter((value:string)=>value!==address))].slice(0,200):[];
-    if(validEthereumAddress(address)&&name)rows.set(address,{address,name,...(item.miner===true?{miner:true}:{}),...(item.group==='swap'?{group:'swap' as const}:{}),...(links.length?{swapAddresses:links}:{})});
+    if(validEthereumAddress(address)&&name)rows.set(address,{address,name,...(item.miner===true?{miner:true}:{}),...(item.dex===true?{dex:true}:{}),...(item.group==='swap'?{group:'swap' as const}:{}),...(links.length?{swapAddresses:links}:{})});
     if(rows.size>=20)break;
   }
   return [...rows.values()];

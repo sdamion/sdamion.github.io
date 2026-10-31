@@ -15,30 +15,30 @@ import {rewardSourceTitle} from './reward-sources';
 export function EthereumWallets({wallets,data,exchanges=false,swap=false,owned=[],onChange}:{wallets:EthereumWallet[];data:EthereumData;exchanges?:boolean;swap?:boolean;owned?:EthereumWallet[];onChange:(wallets:EthereumWallet[])=>boolean}){
   const [error,setError]=useState('');
   const t=usePortfolioText(),display=usePortfolioCurrency();
-  function add(name:string,address:string){
+  function add(name:string,address:string,dex=false){
     const normalized=address.trim().toLowerCase();
     if(!validEthereumAddress(normalized)){setError('Enter an Ethereum mainnet address (0x…).');return false;}
     if(wallets.some(w=>w.address===normalized)){setError('This address is already saved.');return false;}
     if(exchanges&&owned.some(w=>w.address===normalized)){setError('Your own wallet cannot be added as a CEX address.');return false;}
     if(!exchanges&&owned.some(w=>w.address===normalized)){setError('This address is already saved.');return false;}
     if(wallets.length>=20){setError('A maximum of 20 Ethereum addresses can be added.');return false;}
-    if(!onChange([...wallets,{address:normalized,name:name.trim(),...(swap?{group:'swap' as const}:{})}]))return false;
+    if(!onChange([...wallets,{address:normalized,name:name.trim(),...(swap?{group:'swap' as const}:{}),...(exchanges&&dex?{dex:true}:{})}]))return false;
     setError('');return true;
   }
   return <section className="portfolio-section">
-    <h3>{t(exchanges?'Ethereum CEX addresses':swap?'Ethereum Swap wallets':'Ethereum Wallets')}</h3>
-    <ServiceAddressForm id={swap?'portfolio-eth-swap':exchanges?'portfolio-eth-cex':'portfolio-eth-wallet'} type={swap?'swap':'exchange'} nameLabel={swap?'Swap name':exchanges?'Exchange name':'Wallet name'} addressLabel={swap?'Wallet address':'Ethereum address'} placeholder="0x…" onAdd={(_,name,address)=>add(name,address)}/>
+    <h3>{t(exchanges?'Ethereum DEX / CEX addresses':swap?'Ethereum Swap wallets':'Ethereum Wallets')}</h3>
+    <ServiceAddressForm id={swap?'portfolio-eth-swap':exchanges?'portfolio-eth-cex':'portfolio-eth-wallet'} type={swap?'swap':'exchange'} allowDex={exchanges} nameLabel={swap?'Swap name':exchanges?'Exchange name':'Wallet name'} addressLabel={swap?'Wallet address':'Ethereum address'} placeholder="0x…" onAdd={(kind,name,address)=>add(name,address,kind==='dex')}/>
     {error&&<p translate="no" role="alert" className="small-text error-text">{t(error)}</p>}
     <Table><TableHeader><TableRow><TableHead>{t(swap?'Swap name':'Wallet')}</TableHead><TableHead>{t(swap?'Wallet address':'Address')}</TableHead>{!exchanges&&!swap&&<TableHead translate="no">ETH</TableHead>}{exchanges&&<TableHead translate="no">{t(rewardSourceTitle)}</TableHead>}<TableHead>{t('Remove')}</TableHead></TableRow></TableHeader><TableBody>
       <NamedTableGroups rows={wallets} nameOf={w=>w.name} columns={swap?3:4} renderRow={wallet=><TableRow key={wallet.address}>
-        <TableCell translate="no">{swap?<SwapNameField name={wallet.name} onSave={name=>{if(!onChange(wallets.map(w=>w.address===wallet.address?{...w,name}:w)))return false;setError('');return true;}} onError={()=>setError('Could not save Swap name.')}/>:wallet.name}</TableCell>
+        <TableCell translate="no">{swap?<SwapNameField name={wallet.name} onSave={name=>{if(!onChange(wallets.map(w=>w.address===wallet.address?{...w,name}:w)))return false;setError('');return true;}} onError={()=>setError('Could not save Swap name.')}/>:wallet.name}{exchanges&&wallet.dex&&<div className="small muted">DEX</div>}</TableCell>
         <TableCell translate="no"><a href={`https://etherscan.io/address/${wallet.address}`} target="_blank" rel="noreferrer" title={wallet.address}>{short(wallet.address)} <ExternalLink size={12}/></a> <button type="button" className="governance-vote-secondary" title={t('Copy address')} aria-label={t('Copy address')} onClick={()=>void navigator.clipboard.writeText(wallet.address).catch(()=>setError('Could not copy address.'))}><Copy size={14}/></button>{swap&&<SwapLinkedAddresses addresses={wallet.swapAddresses} ethereum/>}</TableCell>
         {!exchanges&&!swap&&<TableCell translate="no">{data.accounts[wallet.address]?weiToEth(data.accounts[wallet.address].balanceWei).toLocaleString(undefined,{maximumFractionDigits:6}):'—'}{display&&<div className="small muted">{formatPortfolioUsd(data.accounts[wallet.address]&&data.usd!==null?weiToEth(data.accounts[wallet.address].balanceWei)*data.usd:null,display)}</div>}</TableCell>}
         {exchanges&&<TableCell><RewardSourceCheckbox name={wallet.name} checked={wallet.miner===true} onChange={miner=>onChange(wallets.map(w=>w.address===wallet.address?{...w,miner}:w))}/></TableCell>}
         <TableCell><button type="button" className="governance-vote-secondary" title={t('Remove')} aria-label={t('Remove')} onClick={()=>onChange(wallets.filter(w=>w.address!==wallet.address))}><Trash2 size={14}/></button></TableCell>
       </TableRow>}/>
     </TableBody></Table>
-    <p className="small muted">{t(exchanges?'Only ETH transfers to or from saved CEX addresses contribute to CEX IN/OUT. Own-wallet transfers are excluded.':'Ethereum mainnet · ETH only. ERC-20 tokens, NFTs and other EVM networks are not included.')}</p>
+    <p className="small muted">{t(exchanges?'Only ETH transfers to or from saved DEX / CEX addresses contribute to CEX IN/OUT. Own-wallet transfers are excluded.':'Ethereum mainnet · ETH only. ERC-20 tokens, NFTs and other EVM networks are not included.')}</p>
     {swap&&<p className="small muted">{t('Swap addresses identify counterparties in your wallet transactions. Their balances and unrelated history are not downloaded or included in your Portfolio.')}</p>}
     <p className="small muted"><a href="https://etherscan.io" target="_blank" rel="noreferrer">Powered by Etherscan.io APIs</a></p>
   </section>;
