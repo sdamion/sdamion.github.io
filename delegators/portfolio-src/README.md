@@ -1,5 +1,27 @@
 # Member portfolio
 
+## Bitcoin
+
+Admins can select Bitcoin in the shared owned-wallet and CEX address forms.
+`bitcoin.ts` validates mainnet Base58Check, Bech32 and Bech32m addresses. BTC
+history uses the authenticated backend `/bitcoin` endpoint and Blockstream
+Esplora; no wallet sessions are forwarded to that provider. Only explicitly
+owned addresses are queried. Add all receiving and change addresses; xpubs,
+Lightning, mempool transactions and automatic cross-chain swap pairing are not
+included. CEX IN/OUT uses owned-wallet direction, exact counterparties and
+conservative input attribution. Fees from mixed inputs remain unknown.
+
+`use-bitcoin.ts` anchors all accounts at one confirmed block, reconciles complete
+address histories with provider statistics, and reuses history only while its
+saved anchor remains on the best chain. Reorgs trigger a complete address scan.
+Failed or inconsistent scans retain the previous complete cache. BTC settings
+and chunked transaction history use the member-scoped encrypted vault, including
+its existing inactivity retention. BTC balances, fees and native CEX summaries
+join the existing fiat totals without summing unrelated coin quantities.
+
+Deploy the corresponding koios-proxy Bitcoin handler before using the frontend.
+No provider API key or new package installation is needed.
+
 ## Address Forms
 
 `CryptoAddressForm` shares `ServiceAddressForm` across owned wallets and saved

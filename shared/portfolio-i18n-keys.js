@@ -1804,7 +1804,7 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
   ["Ethereum mainnet · ETH only. ERC-20 tokens, NFTs and other EVM networks are not included.", "portfolio_text_eth_scope"],
   ["Only ETH transfers to or from saved DEX / CEX addresses contribute to CEX IN/OUT. Own-wallet transfers are excluded.", "portfolio_text_eth_cex_scope"],
   ["Combined Cardano and Ethereum CEX totals. ADA/BTC amounts are transfer-day equivalents, not summed coin quantities.", "portfolio_text_eth_combined"],
-  ["Open Wallets, then My Wallets to add Ethereum mainnet wallets you own. Add their Ethereum CEX counterparties under DEX / CEX & Swap. ETH balances are included in Assets; ETH transfers to and from saved CEX addresses are combined with Cardano using daily fiat prices. Internal transfers and failed payments are excluded from CEX IN/OUT. ADA and BTC comparisons are price equivalents, not actual holdings. Ethereum tokens and NFTs are not supported yet. Ethereum data uses the same encrypted Portfolio storage.", "portfolio_text_eth_guide"]
+  ["Open Wallets, then My Wallets to add Ethereum mainnet wallets you own. Add their Ethereum CEX counterparties under DEX / CEX & Swap. ETH balances are included in Assets; ETH transfers to and from saved CEX addresses are combined with Cardano using daily fiat prices. Internal transfers and failed payments are excluded from CEX IN/OUT. Crypto comparisons use price equivalents; saved native wallets supply actual balances. Ethereum tokens and NFTs are not supported yet. Ethereum data uses the same encrypted Portfolio storage.", "portfolio_text_eth_guide"]
   , ["{wallets} own wallets · {exchanges} CEX addresses", "portfolio_text_eth_address_counts"]
   , ["Add your own Ethereum wallet to scan ETH CEX transfers. CEX addresses are counterparties, not your holdings; shared exchange balances are never counted as yours.", "portfolio_text_eth_own_required"]
   , ["Refresh Ethereum wallets", "portfolio_text_eth_refresh_wallets"]
@@ -1900,4 +1900,21 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
   , ["Network", "portfolio_text_address_network"]
   , ["Address type", "portfolio_text_address_type"]
   , ["Save name", "portfolio_text_address_save_name"]
+  , ["Enter a valid Bitcoin mainnet address.", "portfolio_text_btc_address"]
+  , ["Bitcoin data unavailable. Saved data is retained.", "portfolio_text_btc_data"]
+  , ["Bitcoin provider rate limit reached. Retry later.", "portfolio_text_btc_rate"]
+  , ["Bitcoin cache is incomplete. Saved data is retained.", "portfolio_text_btc_cache_parts"]
+  , ["Bitcoin cache could not be opened.", "portfolio_text_btc_cache_open"]
+  , ["Bitcoin history changed during refresh. Retry.", "portfolio_text_btc_changed"]
+  , ["Bitcoin prices unavailable.", "portfolio_text_btc_prices"]
+  , ["Bitcoin settings could not be saved.", "portfolio_text_btc_save"]
+  , ["Checking Bitcoin transactions…", "portfolio_text_btc_checking"]
+  , ["Refresh Bitcoin wallets", "portfolio_text_btc_refresh"]
+  , ["Bitcoin Wallets", "portfolio_text_btc_wallets"]
+  , ["Bitcoin CEX addresses", "portfolio_text_btc_cex"]
+  , ["Bitcoin mainnet · confirmed transactions only. Add every receiving and change address you own. Extended public keys and Lightning are not supported.", "portfolio_text_btc_help"]
+  , ["Saved Bitcoin CEX addresses identify both IN and OUT. Exchange balances are not included.", "portfolio_text_btc_cex_help"]
+  , ["Bitcoin transfer", "portfolio_text_btc_transfer"]
+  , ["bc1…, 1… or 3…", "portfolio_text_btc_placeholder"]
+  , ["Admins can select Bitcoin in My Wallets and in DEX / CEX & Swap. Add your own receiving and change addresses, then known CEX counterparties. Confirmed BTC balances and transactions use encrypted Portfolio storage. CEX IN and OUT use your wallet perspective; change and internal transfers are excluded. Mixed inputs are not attributed without sufficient evidence. Bitcoin history is requested through Blockstream; extended public keys and Lightning are not supported.", "portfolio_text_btc_guide"]
 ]);

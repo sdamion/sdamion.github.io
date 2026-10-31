@@ -7,8 +7,8 @@ import {solanaTransactions,solAmount,type SolanaData,type NativeWallet} from './
 type Leg={id:string;time:number;usd:number;incoming:boolean;chain:'cardano'|'ethereum'|'solana';scope:string[]};
 const SWAP_WINDOW_SECONDS=60*60;
 export type SwapPair={cardano:string;ethereum:string}|{cardano:string;solana:string}|{cardano:string;cardanoReturn:string};
-export function groupSwapRows<T extends {chain:'cardano'|'ethereum'|'solana';tx:{tx_hash?:string;id?:string;hash?:string}}>(rows:T[],pairs:SwapPair[]){
-  const rowId=(row:T)=>row.chain==='cardano'?row.tx.tx_hash:row.chain==='solana'?row.tx.hash:row.tx.id;
+export function groupSwapRows<T extends {chain:'cardano'|'ethereum'|'solana'|'bitcoin';tx:{tx_hash?:string;id?:string;hash?:string}}>(rows:T[],pairs:SwapPair[]){
+  const rowId=(row:T)=>row.chain==='cardano'?row.tx.tx_hash:row.chain==='ethereum'?row.tx.id:row.tx.hash;
   const byId=new Map(rows.map(row=>[rowId(row),row]));
   const partners=new Map<string,string>();
   for(const pair of pairs){const other='ethereum' in pair?pair.ethereum:'solana' in pair?pair.solana:pair.cardanoReturn;partners.set(pair.cardano,other);partners.set(other,pair.cardano);}

@@ -4,9 +4,9 @@ import {formatPortfolioAmount,usePortfolioCurrency} from './portfolio-currency';
 import type {ComparisonCurrency} from './transfer-comparison';
 import {usePortfolioText} from './use-portfolio-text';
 
-export function NativeTransferSummary({symbol,totals,currency,className,proceeds}:{symbol:'ADA'|'ETH'|'SOL';totals:{incoming:number|null;outgoing:number|null;inFiat:number|null;outFiat:number|null};currency:ComparisonCurrency;className?:string;proceeds?:{amount:number|null;value:number|null;details?:ReactNode}}){
+export function NativeTransferSummary({symbol,totals,currency,className,proceeds}:{symbol:'ADA'|'ETH'|'SOL'|'BTC';totals:{incoming:number|null;outgoing:number|null;inFiat:number|null;outFiat:number|null};currency:ComparisonCurrency;className?:string;proceeds?:{amount:number|null;value:number|null;details?:ReactNode}}){
   const display=usePortfolioCurrency(),t=usePortfolioText();
-  const decimals={ADA:6,ETH:8,SOL:9}[symbol];
+  const decimals={ADA:6,ETH:8,SOL:9,BTC:8}[symbol];
   const amount=(value:number|null)=>value===null?'—':value.toLocaleString(display?.locale,{maximumFractionDigits:value!==0&&Math.abs(value)<1?decimals:symbol==='ADA'?2:6});
   const exact=(value:number|null)=>value===null?'—':value.toLocaleString(display?.locale,{maximumFractionDigits:decimals})+' '+symbol;
   return <Table variant="comparison" className={`portfolio-native-summary ${className||''}`}>

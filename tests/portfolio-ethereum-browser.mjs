@@ -139,7 +139,7 @@ try{
   await walletsTile.click();await page.getByRole('button',{name:'Open My Wallets',exact:true}).click();
   const own=page.locator('#portfolio-wallet-menu-wallets');
   await own.getByRole('button',{name:'Refresh Ethereum wallets',exact:true}).waitFor();
-  assert.equal(await own.locator('tbody').getByRole('textbox',{name:'Wallet name',exact:true}).inputValue(),'ETH Savings');
+  assert.equal(await own.locator('tbody tr').filter({has:page.locator('a[title="'+address+'"]')}).getByRole('textbox',{name:'Wallet name',exact:true}).inputValue(),'ETH Savings');
   assert.ok(!(await own.innerText()).includes('Ethereum CEX addresses'));
   quoteUnavailable=true;historyUsd=1200;
   await own.getByRole('button',{name:'Refresh Ethereum wallets',exact:true}).click();
