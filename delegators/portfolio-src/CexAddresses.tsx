@@ -1,6 +1,7 @@
 import {useState} from 'react';
 import {Trash2,ExternalLink} from 'lucide-react';
 import {ServiceAddressForm} from './ServiceAddressForm';
+import {AddressNameField} from './AddressNameField';
 import {SwapWallets} from './SwapWallets';
 import {KnownDexAddresses} from './KnownDexAddresses';
 import {addSwapWallet} from './swap-wallets';
@@ -15,21 +16,21 @@ import {RewardSourceCheckbox} from './RewardSourceCheckbox';
 import {rewardSourceTitle} from './reward-sources';
 import {usePortfolioText} from './use-portfolio-text';
 
-export function CexAddresses({entries,owned,onChange,swap}:{entries:CexAddress[];owned:string[];onChange:(entries:CexAddress[])=>boolean;swap?:{wallets:Wallet[];groups?:Record<string,string[]>;onChange:(wallets:Wallet[])=>void|boolean}}){
+export function CexAddresses({entries,owned,onChange,swap,showForm=true}:{entries:CexAddress[];owned:string[];onChange:(entries:CexAddress[])=>boolean;showForm?:boolean;swap?:{wallets:Wallet[];groups?:Record<string,string[]>;onChange:(wallets:Wallet[])=>void|boolean}}){
   const [error,setError]=useState('');
   const t=usePortfolioText();
   return <section className="portfolio-section">
     <p className="small muted">Saved exchange addresses use your CEX rule: incoming ADA is a buy, outgoing ADA a sell. This does not decode DEX swaps. Saved using your selected Portfolio storage.</p>
-    <ServiceAddressForm id="portfolio-cex" chooseType={!!swap} onAdd={(type,name,address)=>{
+    {showForm&&<ServiceAddressForm id="portfolio-cex" chooseType={!!swap} onAdd={(type,name,address)=>{
       const value=normalizeExchangeAddress(address);setError('');
       if(!validExchangeAddress(value)){setError('Enter a valid mainnet payment, stake or Byron address (addr1…, stake1…, DdzFF… or Ae2…).');return false;}
       if(owned.includes(value)){setError('This address belongs to a wallet in your portfolio.');return false;}
       if(type==='swap'&&swap){try{return swap.onChange(addSwapWallet(swap.wallets,value,name))!==false;}catch(reason){setError(reason instanceof Error?reason.message:'Could not add wallet.');return false;}}
       if(entries.some(entry=>entry.address===value)){setError('This CEX address is already saved.');return false;}
       return onChange([...entries,{address:value,name}]);
-    }}/><p className="negative" role="status">{error}</p>
+    }}/>}<p className="negative" role="status" translate="no">{t(error)}</p>
     <div className="history-table"><Table><TableHeader><TableRow><TableHead>Exchange</TableHead><TableHead>Address</TableHead><TableHead translate="no">{t(rewardSourceTitle)}</TableHead><TableHead>Remove</TableHead></TableRow></TableHeader><TableBody><NamedTableGroups rows={entries.filter(entry=>!validByronAddress(entry.address))} nameOf={entry=>entry.name} columns={4} renderRow={entry=><TableRow key={entry.address}>
-      <TableCell translate="no">{entry.name}</TableCell>
+      <TableCell translate="no"><AddressNameField name={entry.name} label="Exchange name" onSave={name=>{if(!onChange(entries.map(row=>row.address===entry.address?{...row,name}:row)))return false;setError('');return true;}} onError={()=>setError('Could not save the selection.')}/></TableCell>
       <TableCell><a className="address" title={entry.address} href={`https://cardanoscan.io/${validStakeAddress(entry.address)?'stakekey':'address'}/${entry.address}`} target="_blank" rel="noreferrer">{short(entry.address)} <ExternalLink size={12}/></a></TableCell>
       <TableCell><RewardSourceCheckbox name={entry.name} checked={entry.miner===true} onChange={miner=>onChange(entries.map(row=>row.address===entry.address?{...row,miner}:row))}/></TableCell>
       <TableCell><button className="governance-vote-secondary" title={`Remove ${entry.name} address`} aria-label={`Remove ${entry.name} address`} onClick={()=>onChange(entries.filter(item=>item.address!==entry.address))}><Trash2 size={16}/></button></TableCell>

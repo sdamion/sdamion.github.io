@@ -1897,4 +1897,7 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
   , ["Mint", "portfolio_text_nft_mint"]
   , ["Burn", "portfolio_text_nft_burn"]
   , ["Internal transfer", "portfolio_text_nft_internal_transfer"]
+  , ["Network", "portfolio_text_address_network"]
+  , ["Address type", "portfolio_text_address_type"]
+  , ["Save name", "portfolio_text_address_save_name"]
 ]);

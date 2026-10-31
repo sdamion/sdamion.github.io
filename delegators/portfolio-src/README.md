@@ -1,5 +1,14 @@
 # Member portfolio
 
+## Address Forms
+
+`CryptoAddressForm` shares `ServiceAddressForm` across owned wallets and saved
+counterparties. Each section has one address input and an access-gated network
+selector. The same saved counterparty identifies both IN and OUT; it never
+becomes an owned balance. Cardano and Ethereum retain their Swap option, while
+Solana supports native SOL counterparties only. `AddressNameField` provides the
+shared inline name editor; renaming preserves addresses and source metadata.
+
 ## Cross-chain CEX summary
 
 Native Ethereum and Solana wallets default to admin-only. Admins can grant each

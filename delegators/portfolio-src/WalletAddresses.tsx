@@ -5,16 +5,18 @@ import type {Snapshot} from './cache';
 import {short} from './core';
 import {validStakeAddress,walletTransactionCount} from './member';
 import {AssetOverlay} from './AssetOverlay';
-import {Input,Table,TableHeader,TableBody,TableRow,TableHead,TableCell} from './ui';
+import {Table,TableHeader,TableBody,TableRow,TableHead,TableCell} from './ui';
 import {usePortfolioText} from './use-portfolio-text';
+import {AddressNameField} from './AddressNameField';
 import {usePortfolioCurrency,formatPortfolioAda} from './portfolio-currency';
 
 const num=(value:number)=>value.toLocaleString('en-US',{maximumFractionDigits:6});
-export function WalletCard({wallet:w,primary,snapshot,remove,busy,excluded,onExclude,onRename}:{wallet:Wallet;primary:boolean;snapshot:Snapshot|null;remove:()=>void;busy:boolean;excluded:Set<string>;onExclude:(address:string|string[],value:boolean)=>void;onRename?:(name:string)=>void}){
+export function WalletCard({wallet:w,primary,snapshot,remove,busy,excluded,onExclude,onRename}:{wallet:Wallet;primary:boolean;snapshot:Snapshot|null;remove:()=>void;busy:boolean;excluded:Set<string>;onExclude:(address:string|string[],value:boolean)=>void;onRename?:(name:string)=>boolean}){
   const t=usePortfolioText();
   const display=usePortfolioCurrency();
   const amount=(value:number)=>display?formatPortfolioAda(value,display):'₳ '+num(value);
   const [open,setOpen]=useState(false);
+  const [nameError,setNameError]=useState('');
   const [hideExcluded,setHideExcluded]=useState(false);
   const [hideLowActivity,setHideLowActivity]=useState(true);
   const addresses=snapshot?.groups?.[w.address];
@@ -25,7 +27,9 @@ export function WalletCard({wallet:w,primary,snapshot,remove,busy,excluded,onExc
     .filter(address=>!hideLowActivity||walletTransactionCount(facts,[address])>=10);
   const count=(linked:string[])=>walletTransactionCount(facts,linked).toLocaleString('en-US');
   const link=(address:string)=><a className="address" href={`https://cardanoscan.io/${validStakeAddress(address)?'stakekey':'address'}/${address}`} target="_blank" rel="noreferrer" title={address}>{short(address)} <ExternalLink size={12}/></a>;
-  return <><TableRow><TableCell><button translate="no" type="button" className="governance-vote-secondary" disabled={!addresses} onClick={()=>setOpen(true)}>{w.label}</button></TableCell>
+  const nameEditor=onRename?<AddressNameField name={w.label} onSave={name=>{if(!onRename(name))return false;setNameError('');return true;}} onError={()=>setNameError('Could not save the selection.')}/>:null;
+  const nameNotice=nameError?<p className="negative" role="alert" translate="no">{t(nameError)}</p>:null;
+  return <><TableRow><TableCell translate="no">{nameEditor||<button type="button" className="governance-vote-secondary" disabled={!addresses} onClick={()=>setOpen(true)}>{w.label}</button>}{!open&&nameNotice}</TableCell>
     <TableCell>{link(w.address)}</TableCell>
     <TableCell>{addresses?amount(snapshot!.infos.filter(i=>addresses.includes(i.address)).reduce((total,i)=>total+Number(i.balance)/1e6,0)):'Loading balance…'}</TableCell>
     <TableCell>{addresses?count(addresses):'Loading…'}</TableCell>
@@ -33,7 +37,8 @@ export function WalletCard({wallet:w,primary,snapshot,remove,busy,excluded,onExc
     <TableCell><button type="button" className="governance-vote-secondary" disabled={primary||busy} onClick={remove} aria-label={`Remove ${w.label} from portfolio`}><Trash2 size={16}/></button></TableCell>
   </TableRow>
   {open&&<AssetOverlay id="portfolio-wallet-addresses" name={w.label} literalTitle onClose={()=>setOpen(false)}>
-    {onRename&&<label className="small">Wallet name<Input defaultValue={w.label} maxLength={60} onBlur={event=>{const name=event.target.value.trim();if(name&&name!==w.label)onRename(name);else event.target.value=w.label;}}/></label>}
+    {nameEditor}
+    {nameNotice}
     <p className="small muted">Excluded addresses retain their cached balances and transactions. Changes apply to the next refresh. Shared transactions may still update through another wallet address.</p>
     <div className="governance-action-buttons" role="group" aria-label="Exclude from refresh selection">
       <button type="button" className="governance-vote-secondary" title="Exclude all addresses with a cached balance, including hidden addresses" disabled={!excludable.some(address=>!excluded.has(address))} onClick={()=>onExclude(excludable,true)}>Select all</button>

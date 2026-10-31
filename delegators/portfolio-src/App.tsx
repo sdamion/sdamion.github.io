@@ -1,7 +1,8 @@
 "use client";
 
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
-import {ExternalLink,Plus,Trash2,ImageOff} from 'lucide-react';
+import {ExternalLink,Trash2,ImageOff} from 'lucide-react';
+import {CryptoAddressForm,type AddressNetwork} from './CryptoAddressForm';
 import {PortfolioRefresh} from './PortfolioRefresh';
 import {usePortfolioText} from './use-portfolio-text';
 import {DownloadStatus} from './DownloadStatus';
@@ -81,11 +82,11 @@ import {WalletMenu} from './WalletMenu';
 import {WalletCard} from './WalletAddresses';
 import {refreshExcludedAddresses,walletRefreshCounts} from './member';
 import {validByronAddress} from './byron-address';
-import {exchangeExcludedAddresses,resolveSwapGroups,excludeInternalExchanges,swapOwnershipScope,swapAddressSet,isSwapTransaction} from './swap-wallets';
+import {addSwapWallet,exchangeExcludedAddresses,resolveSwapGroups,excludeInternalExchanges,swapOwnershipScope,swapAddressSet,isSwapTransaction} from './swap-wallets';
 import {normalizeCexAddresses,cexAdjustedFact,isCexTransaction,isCardanoReward,cexAdaTransfer,cexTableTransfer,cexUsdNetPosition,cexTimeline,transactionExchangeWallets} from './cex';
 import type {CexAddress} from './cex';
 import {durationLabel,remainingSeconds} from './progress';
-import {memberWallets,validWalletAddress,walletTransactionCount} from './member';
+import {memberWallets,walletTransactionCount} from './member';
 import {historicalPrices,refreshCardanoPortfolio} from './cardano-refresh';
 const num=(n:number,max=6)=>n.toLocaleString('en-US',{maximumFractionDigits:max});
 type Overrides=Record<string,{average?:string;price?:string;decimals?:string;excluded?:boolean}>;
@@ -102,7 +103,6 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   const [initialising,setInitialising]=useState(false);
   const [purchaseProgress,setPurchaseProgress]=useState<{done:number;total:number}|null>(null);
   const [error,setError]=useState(''),[notice,setNotice]=useState(''),[cacheNotice,setCacheNotice]=useState('');
-  const [address,setAddress]=useState(''),[name,setName]=useState(''),[walletError,setWalletError]=useState('');
   const [filter,setFilter]=useState('all'),[query,setQuery]=useState(''),[overrides,setOverrides]=useState<Overrides>({});
   const [paymentLinks,setPaymentLinks]=useState<PaymentLink[]>([]);
   const [missingCostsOnly,setMissingCostsOnly]=useState(false);
@@ -237,7 +237,6 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
     try{localStorage.setItem(CEX_SETTINGS,JSON.stringify(entries));setCexAddresses(entries);return true;}
     catch{setCacheNotice('CEX addresses could not be saved to the selected cache.');return false;}
   }
-  function addWallet(e:React.FormEvent){e.preventDefault();const a=address.trim().toLowerCase();if(!validWalletAddress(a)){setWalletError('Enter a valid mainnet stake address (stake1…) or payment address (addr1…).');return;}if(wallets.some(w=>w.address===a)){setWalletError('This address is already included.');return;}saveWallets([...wallets,{address:a,label:name.trim()||`Wallet ${wallets.length+1}`}]);setAddress('');setName('');setWalletError('');}
   function updateOverride(id:string,field:'average'|'price'|'decimals',value:string){if(value!==''&&(parseAmount(value)===null||(field==='decimals'&&tokenDecimals(Number(value))===null)))return;const next={...overrides,[id]:{...overrides[id],[field]:value}};setOverrides(next);try{localStorage.setItem(overrideKey,JSON.stringify(next));}catch{setCacheNotice('Your price entries could not be saved locally.');}}
   function savePaymentLinks(links:PaymentLink[]){setPaymentLinks(links);try{localStorage.setItem(paymentKey,JSON.stringify(links));}catch{setCacheNotice('Your payment links could not be saved locally.');}}
 
@@ -469,10 +468,31 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   const currentPage=transactionPage(page,shown.length).page;
   useEffect(()=>{if(page!==currentPage)setPage(currentPage);},[page,currentPage]);
 
-  const walletForm=<>
-    <form onSubmit={addWallet} className="wallet-form governance-drep-registration-form"><label>Wallet name<Input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Savings" maxLength={60}/></label><label className="address-field">Stake or payment address<Input value={address} onChange={e=>setAddress(e.target.value)} placeholder="stake1… or addr1…" aria-describedby="wallet-error" required/></label><button className="governance-vote-primary" type="submit"><Plus size={16}/>Add wallet</button></form><p id="wallet-error" role="status" className="negative">{walletError}</p>
-  </>;
-  const exchangeForm=<CexAddresses entries={cexAddresses} owned={ownedAddresses} onChange={saveCexAddresses}/>;
+  function addAddress(counterparty:boolean,network:AddressNetwork,kind:'exchange'|'swap'|'dex',name:string,address:string){
+    if(network==='ethereum'||network==='solana'){
+      if(network==='ethereum'?!canEthereum:!canSolana)return false;
+      const chain=network==='ethereum'?ethereum:solana;
+      if(counterparty&&kind!=='swap'&&chain.wallets.some(row=>row.address===address))throw new Error('Your own wallet cannot be added as a CEX address.');
+      if([...chain.wallets,...chain.exchanges,...(network==='ethereum'?ethereum.swapWallets:[])].some(row=>row.address===address))throw new Error('This address is already saved.');
+      if(network==='ethereum'&&counterparty&&kind==='swap'){
+        if(ethereum.allWallets.length>=20)throw new Error('A maximum of 20 Ethereum addresses can be added.');
+        return ethereum.saveWallets([...ethereum.allWallets,{address,name,group:'swap'}]);
+      }
+      const rows=counterparty?chain.exchanges:network==='ethereum'?ethereum.allWallets:solana.wallets;
+      if(rows.length>=20)throw new Error(network==='ethereum'?'A maximum of 20 Ethereum addresses can be added.':'Invalid Solana request.');
+      const next=[...rows,{address,name,...(counterparty&&kind==='dex'?{dex:true}:{})}];
+      return counterparty?chain.saveExchanges(next):chain.saveWallets(next);
+    }
+    if(counterparty){
+      if(ownedAddresses.includes(address))throw new Error('This address belongs to a wallet in your portfolio.');
+      if(cexAddresses.some(row=>row.address===address)||wallets.some(row=>row.address===address))throw new Error('This address is already saved.');
+      return kind==='swap'?saveWallets(addSwapWallet(wallets,address,name)):saveCexAddresses([...cexAddresses,{address,name}]);
+    }
+    if(wallets.some(row=>row.address===address)||ownedAddresses.includes(address))throw new Error('This address is already included.');
+    return saveWallets([...wallets,{address,label:name}]);
+  }
+  const walletForm=<CryptoAddressForm id="portfolio-wallet" ethereum={canEthereum} solana={canSolana} onAdd={(...args)=>addAddress(false,...args)}/>;
+  const exchangeForm=<CryptoAddressForm id="portfolio-exchange" counterparty ethereum={canEthereum} solana={canSolana} onAdd={(...args)=>addAddress(true,...args)}/>;
   const swapForm=<SwapWallets inline wallets={wallets} groups={snapshot?.swapGroups} onChange={saveWallets}/>;
   const ethSwapWallets=ethereum.swapWallets,ethOwnWallets=ethereum.wallets;
   return <PortfolioCurrencyContext.Provider value={currencyDisplay}><main className="member-portfolio"><PortfolioQuickstart stake={memberStake} wallets={walletForm} exchanges={exchangeForm} swap={swapForm}/><div className="portfolio-body"><div className="section-heading" aria-label="Portfolio refresh">
@@ -516,17 +536,18 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
       <p className="small muted">Wallets, entered prices and history use your selected encrypted storage. Manual prices and average costs are saved per asset for your member account and retained when wallets change.</p>
       {ethereum.exchanges.length>0&&!ethereum.wallets.length&&<p translate="no" role="status" className="message">{t('Add your own Ethereum wallet to scan ETH CEX transfers. CEX addresses are counterparties, not your holdings; shared exchange balances are never counted as yours.')}</p>}
       {canEthereum&&<><button type="button" className="governance-vote-secondary" disabled={ethereum.busy||!ready||!ethereum.wallets.length} onClick={()=>void ethereum.refresh()}>{t('Refresh Ethereum wallets')}</button>
-      <EthereumWallets wallets={ethOwnWallets} data={ethereum.data} owned={ethSwapWallets} onChange={next=>ethereum.saveWallets([...next,...ethSwapWallets])}/>
+      <EthereumWallets showForm={false} wallets={ethOwnWallets} data={ethereum.data} owned={ethSwapWallets} onChange={next=>ethereum.saveWallets([...next,...ethSwapWallets])}/>
       </>}{canSolana&&<>
       <button type="button" className="governance-vote-secondary" disabled={solana.busy||!solana.wallets.length} onClick={()=>void solana.refresh()}>{t('Refresh Solana wallets')}</button>
-      <SolanaWallets wallets={solana.wallets} data={solana.data} owned={solana.exchanges} onChange={solana.saveWallets}/></>}
+      <SolanaWallets showForm={false} wallets={solana.wallets} data={solana.data} owned={solana.exchanges} onChange={solana.saveWallets}/></>}
     </section>}
     exchanges={<section className="portfolio-section">
-      <CexAddresses entries={cexAddresses} owned={ownedAddresses} onChange={saveCexAddresses} swap={{wallets,groups:snapshot?.swapGroups,onChange:saveWallets}}/>
-      {canEthereum&&<><EthereumWallets wallets={ethereum.exchanges} data={ethereum.data} exchanges owned={ethereum.allWallets} onChange={ethereum.saveExchanges}/>
-      <EthereumWallets wallets={ethSwapWallets} data={ethereum.data} swap owned={ethOwnWallets} onChange={next=>ethereum.saveWallets([...ethOwnWallets,...next])}/>
+      {exchangeForm}
+      <CexAddresses showForm={false} entries={cexAddresses} owned={ownedAddresses} onChange={saveCexAddresses} swap={{wallets,groups:snapshot?.swapGroups,onChange:saveWallets}}/>
+      {canEthereum&&<><EthereumWallets showForm={false} wallets={ethereum.exchanges} data={ethereum.data} exchanges owned={ethereum.allWallets} onChange={ethereum.saveExchanges}/>
+      <EthereumWallets showForm={false} wallets={ethSwapWallets} data={ethereum.data} swap owned={ethOwnWallets} onChange={next=>ethereum.saveWallets([...ethOwnWallets,...next])}/>
       </>}{canSolana&&<>
-      <SolanaWallets wallets={solana.exchanges} data={solana.data} exchanges owned={solana.wallets} onChange={solana.saveExchanges}/></>}
+      <SolanaWallets showForm={false} wallets={solana.exchanges} data={solana.data} exchanges owned={solana.wallets} onChange={solana.saveExchanges}/></>}
       {cexAddresses.length>0&&Object.values(snapshot?.facts||{}).some(fact=>!Array.isArray(fact.externalInputs))&&<p className="small muted">Refresh to load sender and recipient stake addresses for older cached transactions.</p>}
     </section>}
     byron={<ByronExchanges facts={cexFacts} entries={cexAddresses} owned={ownedAddresses} wallets={displayWallets} history={snapshot?.history||{}} markets={snapshot?.markets||{}} complete={snapshot?.complete===true} onChange={saveCexAddresses}/>}/>

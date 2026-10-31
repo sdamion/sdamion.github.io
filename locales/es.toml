@@ -1,4 +1,7 @@
 [strings]
+portfolio_text_address_network = "Red"
+portfolio_text_address_type = "Tipo de dirección"
+portfolio_text_address_save_name = "Guardar nombre"
 portfolio_text_crypto_result_unknown = "Ganancia/Pérdida de {crypto}"
 portfolio_text_crypto_result_gain = "Ganancia de {crypto}"
 portfolio_text_crypto_result_loss = "Pérdida de {crypto}"

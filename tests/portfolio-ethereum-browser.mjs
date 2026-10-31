@@ -78,7 +78,9 @@ try{
   const setup=page.locator('#portfolio-wallet-menu-wallets');
   await setup.locator('form').first().waitFor();
   assert.match(await setup.innerText(),/Add your own Ethereum wallet/);
-  const ownForm=setup.locator('form').filter({has:page.locator('#portfolio-eth-wallet-address')});
+  assert.equal(await setup.locator('input[name="service_address"]').count(),1,'all owned chains share one address field');
+  await setup.getByRole('combobox',{name:'Network',exact:true}).selectOption('ethereum');
+  const ownForm=setup.locator('form').filter({has:page.locator('#portfolio-wallet-address')});
   await ownForm.locator('input').nth(0).fill('ETH Savings');await ownForm.locator('input').nth(1).fill(address);
   await ownForm.getByRole('button',{name:'Add',exact:true}).click();
   await setup.getByRole('button',{name:'Back',exact:true}).click();
@@ -137,7 +139,7 @@ try{
   await walletsTile.click();await page.getByRole('button',{name:'Open My Wallets',exact:true}).click();
   const own=page.locator('#portfolio-wallet-menu-wallets');
   await own.getByRole('button',{name:'Refresh Ethereum wallets',exact:true}).waitFor();
-  assert.match(await own.innerText(),/ETH Savings/);
+  assert.equal(await own.locator('tbody').getByRole('textbox',{name:'Wallet name',exact:true}).inputValue(),'ETH Savings');
   assert.ok(!(await own.innerText()).includes('Ethereum CEX addresses'));
   quoteUnavailable=true;historyUsd=1200;
   await own.getByRole('button',{name:'Refresh Ethereum wallets',exact:true}).click();
@@ -153,10 +155,10 @@ try{
   await own.getByRole('button',{name:'Back',exact:true}).click();
   await page.getByRole('button',{name:'Open DEX / CEX & Swap',exact:true}).click();
   const eth=page.locator('#portfolio-wallet-menu-exchanges');
-  const ethCexSection=eth.locator('section').filter({has:page.getByRole('heading',{name:'Ethereum CEX addresses',exact:true})}).last();
-  await ethCexSection.locator('form').waitFor();
-  assert.match(await eth.innerText(),/Bitvavo/);
-  const cexForm=ethCexSection.locator('form');await cexForm.locator('input').nth(0).fill('Not a CEX');await cexForm.locator('input').nth(1).fill(address);await cexForm.getByRole('button',{name:'Add',exact:true}).click();
+  const ethCexSection=eth.locator('section').filter({has:page.getByRole('heading',{name:'Ethereum DEX / CEX addresses',exact:true})}).last();
+  await eth.getByRole('combobox',{name:'Network',exact:true}).selectOption('ethereum');
+  assert.equal(await ethCexSection.getByRole('textbox',{name:'Exchange name',exact:true}).inputValue(),'Bitvavo');
+  const cexForm=eth.locator('form').filter({has:page.locator('#portfolio-exchange-address')});await cexForm.locator('input').nth(0).fill('Not a CEX');await cexForm.locator('input').nth(1).fill(address);await cexForm.getByRole('button',{name:'Add',exact:true}).click();
   assert.match(await eth.innerText(),/Your own wallet cannot/);
   for(const width of [1200,390,320]){
     await page.setViewportSize({width,height:900});
@@ -229,9 +231,12 @@ try{
   await walletsTile.click();await page.getByRole('button',{name:'Open DEX / CEX & Swap',exact:true}).click();
   await page.getByRole('checkbox',{name:'Mining / services source: Mining pool',exact:true}).locator('xpath=ancestor::tr').getByRole('button',{name:'Remove',exact:true}).click();
   const swaps=page.locator('#portfolio-wallet-menu-exchanges section').filter({has:page.getByRole('heading',{name:'Ethereum Swap wallets',exact:true})}).last();
-  const swapForm=swaps.locator('form'),swapAddress='0x'+'e'.repeat(40);
+  const exchangeSetup=page.locator('#portfolio-wallet-menu-exchanges');
+  await exchangeSetup.getByRole('combobox',{name:'Network',exact:true}).selectOption('ethereum');
+  await exchangeSetup.getByRole('combobox',{name:'Address type',exact:true}).selectOption('swap');
+  const swapForm=exchangeSetup.locator('form').filter({has:page.locator('#portfolio-exchange-address')}),swapAddress='0x'+'e'.repeat(40);
   await swapForm.locator('input').nth(0).fill('ETH Swap');await swapForm.locator('input').nth(1).fill(address);await swapForm.getByRole('button',{name:'Add',exact:true}).click();
-  assert.match(await swaps.innerText(),/This address is already saved/,'own wallets cannot be duplicated as swap wallets');
+  assert.match(await exchangeSetup.innerText(),/This address is already saved/,'own wallets cannot be duplicated as swap wallets');
   await swapForm.locator('input').nth(1).fill(swapAddress);await swapForm.getByRole('button',{name:'Add',exact:true}).click();
   const savedWallets=await page.evaluate(stake=>JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-wallets:'+stake)),stake);
   assert.equal(savedWallets.length,2);assert.deepEqual(savedWallets.find(w=>w.address===swapAddress),{address:swapAddress,name:'ETH Swap',group:'swap'});
@@ -426,6 +431,7 @@ try{
   durableMode='';finalizedBlock=180;
   await page.evaluate(()=>window.reopenPortfolio());
   await page.waitForFunction(stake=>Object.values(JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)).accounts)[0].finalizedBlock===180,stake);
+  await walletsTile.getByRole('status').filter({hasText:'Refreshed'}).waitFor();
   const finalizedStart=requests.length;
   await page.evaluate(stake=>{window.previousEthereumUpdate=JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)).updated;window.reopenPortfolio();},stake);
   await page.waitForFunction(stake=>JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)).updated!==window.previousEthereumUpdate,stake);

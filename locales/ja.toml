@@ -1,4 +1,7 @@
 [strings]
+portfolio_text_address_network = "ネットワーク"
+portfolio_text_address_type = "アドレスの種類"
+portfolio_text_address_save_name = "名前を保存"
 portfolio_text_crypto_result_unknown = "{crypto}損益"
 portfolio_text_crypto_result_gain = "{crypto}利益"
 portfolio_text_crypto_result_loss = "{crypto}損失"

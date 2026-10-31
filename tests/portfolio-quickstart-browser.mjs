@@ -56,12 +56,13 @@ try{
  const stake='stake1uxythldc4nmx45tvnwsqu4h5pyjd94udytm6f0tgnr44vecjd8vel';
  await guide.getByLabel('Payment, stake or Byron address',{exact:true}).fill(stake);
  await guide.getByRole('button',{name:'Add',exact:true}).click();
- await guide.getByRole('cell',{name:'Test exchange',exact:true}).waitFor();
+ await guide.locator('tbody input[name="address_name"]').waitFor();
+ assert.equal(await guide.locator('tbody input[name="address_name"]').inputValue(),'Test exchange');
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
  await guide.getByRole('button',{name:'Next',exact:true}).click();
  await guide.getByRole('heading',{name:'Add Swap addresses'}).waitFor();
  await guide.getByLabel('Swap name',{exact:true}).fill('Internal swap');
- await guide.getByLabel('Payment, stake or Byron address',{exact:true}).fill(stake);
+ await guide.getByLabel('Wallet address',{exact:true}).fill(stake);
  await guide.getByRole('button',{name:'Add',exact:true}).click();
  await guide.getByRole('link').waitFor();
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
@@ -73,10 +74,10 @@ try{
  await combined.locator('form.governance-drep-registration-form').waitFor();
  assert.equal(await combined.locator('form.governance-drep-registration-form').count(),1);
  await combined.getByRole('heading',{name:'Swap',exact:true}).waitFor();
- await combined.getByRole('cell',{name:'Test exchange',exact:true}).waitFor();
+ assert.equal(await combined.locator('tbody input[name="address_name"]').inputValue(),'Test exchange');
  await combined.getByRole('combobox',{name:/Address type/}).selectOption('swap');
  await combined.locator('#portfolio-cex-name').fill('Named swap');
- await combined.getByLabel('Payment, stake or Byron address',{exact:true}).fill('stake1u9ex0jtl4nv84rlzwuft5rczy2hgkjygewla04mgy7v2nccx4p4yr');
+ await combined.getByLabel('Wallet address',{exact:true}).fill('stake1u9ex0jtl4nv84rlzwuft5rczy2hgkjygewla04mgy7v2nccx4p4yr');
  await combined.getByRole('button',{name:'Add',exact:true}).click();
  await page.waitForFunction(()=>Array.from(document.querySelectorAll('#portfolio-wallet-menu-exchanges input[name="swap_name"]')).some(input=>input.value==='Named swap'));
  const rename=combined.locator('input[name="swap_name"]').last();
