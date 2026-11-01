@@ -402,6 +402,7 @@ document.addEventListener("DOMContentLoaded", () => {
     initResponsiveIdentifiers();
     initPoolCopyButtons();
     initPoolMenuCards();
+    document.getElementById('delegators-dashboard-link')?.addEventListener('click', openDelegatorsDashboardOverlay);
     initPriceHistoryTiles();
     initCryptoNewsTicker();
 
@@ -697,16 +698,6 @@ async function openPoolDelegatorsOverlay() {
         console.warn('Pool delegator live stake refresh failed before opening overlay', error);
     }
     const { poolDelegators = [] } = window.TDSPPoolStatus?.getState?.() || {};
-    const delegatorsPageButton = document.createElement('button');
-    delegatorsPageButton.type = 'button';
-    delegatorsPageButton.className = 'governance-overlay-action-button';
-    delegatorsPageButton.setAttribute('data-i18n-auto', '');
-    delegatorsPageButton.setAttribute('data-i18n-auto-original', 'Delegators Dashboard');
-    delegatorsPageButton.textContent = translateUiText('Delegators Dashboard');
-    delegatorsPageButton.setAttribute('data-i18n-aria-label-original', 'Open delegators dashboard');
-    delegatorsPageButton.setAttribute('aria-label', translateUiText('Open delegators dashboard'));
-    delegatorsPageButton.addEventListener('click', openDelegatorsDashboardOverlay);
-
     createPoolMenuOverlay({
         id: 'pool-delegators-overlay',
         titleId: 'pool-delegators-title',
@@ -718,7 +709,6 @@ async function openPoolDelegatorsOverlay() {
         closeOverlay: closePoolDelegatorsOverlay,
         returnFocus: document.getElementById('pool-delegators-card'),
         rootTitle: 'Delegators',
-        extraActions: [delegatorsPageButton],
         bodyNode: window.TDSPPoolDelegatorsList?.create?.(poolDelegators) || window.TDSPRuntime.createSmallText('Delegator details are not available yet.')
     });
 }
@@ -733,7 +723,7 @@ function getDelegatorDashboardTemplates() {
 
 function loadDelegatorAccessModule() {
     if (window.TDSPDelegatorAccess?.initOverlay) return Promise.resolve(window.TDSPDelegatorAccess);
-    return window.TDSPRuntime.loadScript('delegators/delegator-access.js?v=20261031-portfolio-address-list', {
+    return window.TDSPRuntime.loadScript('delegators/delegator-access.js?v=20261101-header-dashboard', {
         datasetName: 'delegatorAccess',
         selector: 'script[data-delegator-access]',
         ready: () => window.TDSPDelegatorAccess?.initOverlay ? window.TDSPDelegatorAccess : null

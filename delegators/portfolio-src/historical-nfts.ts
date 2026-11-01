@@ -1,6 +1,7 @@
 import type {Fact,Holding,Market} from './core';
+export type HistoricalNftRow={id:string;name:string;raw:string;firstReceived:number|null;ordinal?:{id:string;number:number|null;contentType:string|null;collection:string|null;ownedWallets:string[]}};
 
-export function historicalNfts(facts:Fact[],holdings:Holding[],markets:Record<string,Market>){
+export function historicalNfts(facts:Fact[],holdings:Holding[],markets:Record<string,Market>):HistoricalNftRow[]{
   const balances=new Map(holdings.map(row=>[row.id,row.raw]));
   const ids=new Set(holdings.map(row=>row.id));
   const received=new Map<string,number>();

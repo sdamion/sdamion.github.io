@@ -45,11 +45,12 @@ export function historicalNftPrices(facts:Fact[],acquisitions:Acquisitions={}):N
 }
 export function nftCollections(rows:ReturnType<typeof historicalNfts>){
   const groups=new Map<string,typeof rows>();
-  for(const row of rows){const policy=row.id.slice(0,56);const assets=groups.get(policy)||[];assets.push(row);groups.set(policy,assets);}
-  return [...groups].map(([policy,assets])=>({policy,count:assets.length,name:collectionNames[policy]||assets.map(asset=>collectionNameHints.get(collectionName(asset.name).trim().toLowerCase())).find(Boolean)||collectionRepresentative(assets)?.name||short(policy)})).sort((a,b)=>a.name.localeCompare(b.name)||a.policy.localeCompare(b.policy));
+  for(const row of rows){const policy=nftCollectionKey(row);const assets=groups.get(policy)||[];assets.push(row);groups.set(policy,assets);}
+  return [...groups].map(([policy,assets])=>({policy,count:assets.length,name:assets[0].ordinal?'Bitcoin Ordinals'+(assets[0].ordinal.collection?' · '+assets[0].ordinal.collection:''):collectionNames[policy]||assets.map(asset=>collectionNameHints.get(collectionName(asset.name).trim().toLowerCase())).find(Boolean)||collectionRepresentative(assets)?.name||short(policy)})).sort((a,b)=>a.name.localeCompare(b.name)||a.policy.localeCompare(b.policy));
 }
+export const nftCollectionKey=(row:ReturnType<typeof historicalNfts>[number])=>row.ordinal?'bitcoin:ordinals:'+(row.ordinal.collection||'unclassified'):row.id.slice(0,56);
 export function filterNftCollage(rows:ReturnType<typeof historicalNfts>,prices:NftPrices,wallets:Record<string,string[]>,query:string,collection:string,sort:NftSort){
-  return rows.filter(row=>(!collection||row.id.slice(0,56)===collection)&&matchesSearchText(query,[row.name,row.id,...wallets[row.id]||[]])).sort((a,b)=>{
+  return rows.filter(row=>(!collection||nftCollectionKey(row)===collection)&&matchesSearchText(query,[row.name,row.id,...wallets[row.id]||[]])).sort((a,b)=>{
     const tie=(b.firstReceived??0)-(a.firstReceived??0)||a.name.localeCompare(b.name)||a.id.localeCompare(b.id);
     if(sort==='date')return tie;
     const side=sort.startsWith('buy')?'buy':'sell',left=prices[a.id]?.[side]??null,right=prices[b.id]?.[side]??null;

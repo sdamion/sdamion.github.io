@@ -47,6 +47,9 @@ import {historicalNfts} from './historical-nfts';
 import {historicalNftPrices,nftCollections,filterNftCollage,type NftPrices,type NftSort} from './nft-collage';
 import {nftTransactions,type NftEvent} from './nft-history';
 import {NftPreview} from './NftHistory';
+import {useOrdinals} from './use-ordinals';
+import {ordinalHistory} from './ordinals';
+import {OrdinalNftTile} from './OrdinalNftTile';
 import {MenuTile,AdaUsdAmount} from './ui';
 import {WalletSyncStatus} from './WalletSyncStatus';
 import {portfolioSettings as localStorage,storageMode} from './vault';
@@ -126,6 +129,8 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   const rawEthTransfers=useMemo(()=>ethereumTransfers(ethereum.data,ethereum.wallets,ethereum.exchanges),[ethereum.data,ethereum.wallets,ethereum.exchanges]);
   const [holdingsGroup,setHoldingsGroup]=useState<'FTs'|'NFTs'|'Historical NFTs'|null>(null);
   const [historicalImageIds,setHistoricalImageIds]=useState('');
+  const ordinals=useOrdinals(memberStake,ready&&isAdmin,bitcoin.wallets,bitcoin.data,section==='holdings'&&holdingsGroup==='Historical NFTs',historicalImageIds);
+  const ordinalNfts=useMemo(()=>ordinalHistory(ordinals.data,bitcoin.data,bitcoin.wallets),[ordinals.data,bitcoin.data,bitcoin.wallets]);
   const {expanded:expandedPolicies,toggle:togglePolicy,reset:resetPolicies}=useTableGroups();
   const btc=useBtcHistory(section==='gain-loss');
   const btcHistory=useMemo(()=>({...bitcoin.data.history,...btc.history}),[bitcoin.data.history,btc.history]);
@@ -380,7 +385,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
     return {...h,name:m?.name||m?.ticker||assetName(h.id),qty,price,value,cost,pnl,buyAverage,estimatedPurchaseCost:!!estimated,manualPrice,quote,automaticDecimals,automatic:avg===null&&cost!==null};
   }).sort((a,b)=>a.id==='lovelace'?-1:b.id==='lovelace'?1:(b.value??-1)-(a.value??-1));
   const included=includedAssets(rows,overrides),excludedCount=rows.length-included.length;
-  const nftHistory=useMemo(()=>historicalNfts(Object.values(classifiedFacts),holdings,snapshot?.markets||{}),[classifiedFacts,holdings,snapshot?.markets]);
+  const nftHistory=useMemo(()=>[...historicalNfts(Object.values(classifiedFacts),holdings,snapshot?.markets||{}),...ordinalNfts.rows].sort((a,b)=>(b.firstReceived??0)-(a.firstReceived??0)||a.id.localeCompare(b.id)),[classifiedFacts,holdings,snapshot?.markets,ordinalNfts.rows]);
   const nftEvents=useMemo(()=>nftTransactions(nftHistory,Object.values(classifiedFacts),payments.acquisitions),[nftHistory,classifiedFacts,payments.acquisitions]);
   const nftPrices=useMemo(()=>historicalNftPrices(Object.values(classifiedFacts),payments.acquisitions),[classifiedFacts,payments.acquisitions]);
   const assetGroup=(id:string)=>id!=='lovelace'&&snapshot?.markets[id]?.is_nft===true?'NFTs':'FTs';
@@ -617,7 +622,9 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
       })}<MenuTile title="Historical NFTs" value={num(nftHistory.length,0)} onOpen={()=>setHoldingsGroup('Historical NFTs')}><NftPreview rows={nftHistory} markets={snapshot?.markets||{}}/></MenuTile></div>}
       {holdingsGroup==='Historical NFTs'&&<>
         {!snapshot?.complete&&<p className="small muted" translate="no">{t('Partial history')}</p>}
-        {nftHistory.length?<HistoricalNftCollage rows={nftHistory} markets={snapshot?.markets||{}} wallets={assetWallets} prices={nftPrices} events={nftEvents} onVisibleAssets={setHistoricalImageIds}/>:<p className="empty" translate="no">{t('No NFTs found in loaded wallet history.')}</p>}
+        {isAdmin&&bitcoin.wallets.length>0&&<div className="section-heading"><button type="button" className="governance-vote-secondary" disabled={ordinals.busy||bitcoin.busy} onClick={()=>void ordinals.refresh(true)} translate="no">{t('Refresh Bitcoin Ordinals')}</button>{ordinals.busy&&<span role="status" translate="no">{t('Checking Bitcoin Ordinals…')} {t('Ordinals: {count} records checked',{count:ordinals.checked})}</span>}</div>}
+        {ordinals.error&&<p role="alert" className="small-text error-text" translate="no">{t(ordinals.error)}</p>}
+        {nftHistory.length?<HistoricalNftCollage rows={nftHistory} markets={snapshot?.markets||{}} wallets={{...assetWallets,...ordinalNfts.wallets}} prices={nftPrices} events={nftEvents} onVisibleAssets={setHistoricalImageIds}/>:<p className="empty" translate="no">{t(ordinals.busy?'Loading historical NFTs…':'No NFTs found in loaded wallet history.')}</p>}
       </>}
       {holdingsGroup&&holdingsGroup!=='Historical NFTs'&&<>
       <button type="button" className="governance-vote-secondary" disabled={busy||!snapshot} onClick={()=>void refreshAssetPurchases()}>Refresh all purchase data</button>
@@ -760,7 +767,7 @@ function HistoricalNftCollage({rows,markets,wallets={},prices={},events=[],onVis
     <label translate="no">{t('Sort images')}<select aria-label={t('Sort images')} value={sort} onChange={event=>{setSort(event.target.value as NftSort);setPage(0);}}>{Object.entries({date:'Newest received first','buy-high':'Buy price: high to low','buy-low':'Buy price: low to high','sell-high':'Sell price: high to low','sell-low':'Sell price: low to high'}).map(([value,label])=><option key={value} value={value}>{t(label)}</option>)}</select></label></div>
     </TransactionFilters>
     <div className="portfolio-nft-gallery">
-    {filtered.length?<div className="portfolio-nft-collage">{visible.map(row=><AssetImage key={row.id} id={row.id} name={row.name} market={markets[row.id]} preview collage={{firstReceived:row.firstReceived,prices:prices[row.id],minted:mintedIds.has(row.id),ownedWallets:/^\d+$/.test(row.raw)&&BigInt(row.raw)>0n?wallets[row.id]||[]:undefined}}/>)}</div>:<p className="empty" translate="no">{t('No matching NFTs.')}</p>}
+    {filtered.length?<div className="portfolio-nft-collage">{visible.map(row=>row.ordinal?<OrdinalNftTile key={row.id} row={row} caption={<NftCaption name={row.name} firstReceived={row.firstReceived}/>}/>:<AssetImage key={row.id} id={row.id} name={row.name} market={markets[row.id]} preview collage={{firstReceived:row.firstReceived,prices:prices[row.id],minted:mintedIds.has(row.id),ownedWallets:/^\d+$/.test(row.raw)&&BigInt(row.raw)>0n?wallets[row.id]||[]:undefined}}/>)}</div>:<p className="empty" translate="no">{t('No matching NFTs.')}</p>}
     {filtered.length>pageSize&&<TransactionPagination position="bottom" page={current.page} count={filtered.length} pageSize={pageSize} onPage={setPage} ariaLabel="Historical NFT pages"/>}
     </div>
   </>;

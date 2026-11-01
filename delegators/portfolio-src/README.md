@@ -1,5 +1,30 @@
 # Member portfolio
 
+## Bitcoin Ordinals
+
+Historical NFTs merges Cardano NFTs with Ordinals discovered for owned BTC
+addresses. `use-ordinals.ts` loads only when that gallery is opened. It reuses a
+complete per-address scan for 24 hours while its BTC checkpoint is unchanged;
+manual Refresh Bitcoin Ordinals bypasses that cache. Visible historical records
+load missing metadata in batches of at most six. Provider failures keep saved
+history, and page-limit exhaustion is reported rather than marked complete.
+
+`ordinals.ts` matches confirmed activity and owner outputs against saved BTC
+transactions. Creation time is not treated as a purchase/receipt time; stale
+Ordinals checkpoints do not assert current ownership. Sent inscriptions remain
+visible. Collections and IDs use a Bitcoin namespace so they cannot collide
+with Cardano assets. Ordinal artwork has no estimated buy/sell price or NFT
+valuation and never changes native BTC balances or financial totals.
+
+`OrdinalNftTile` previews only PNG/JPEG/GIF/WebP/AVIF through fixed Ordiscan
+content URLs. It never embeds HTML, SVG, scripts, iframes or arbitrary metadata
+URLs; those inscription types have an external no-opener Ordiscan link instead.
+History and metadata use chunked, member-scoped encrypted vault settings.
+
+Deploy the matching backend with ORDISCAN_API_KEY configured. The key stays on
+the backend; the existing Bitcoin admin-only access policy remains in force.
+See koios-proxy/member-portfolio/README-ordinals.md for provider budget settings.
+
 ## Shared Address List
 
 `AddressList` renders one cross-network saved-address table per ownership scope:

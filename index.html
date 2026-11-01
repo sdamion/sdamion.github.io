@@ -48,13 +48,13 @@
 
     <!-- Preload Logo -->
     <link rel="preload" href="tdsp_logo.webp?v=20260727-smooth-lines" as="image" type="image/webp">
-    <link rel="stylesheet" href="shared/styles.css?v=20261031-portfolio-address-list">
+    <link rel="stylesheet" href="shared/styles.css?v=20261101-header-dashboard">
     <link rel="stylesheet" href="delegators/raffle.css?v=20261009-portfolio-access">
 
     <script src="shared/runtime.js?v=20261006-gain-tile-currency" defer></script>
-    <script src="shared/portfolio-i18n-keys.js?v=20261031-portfolio-address-list" defer></script>
+    <script src="shared/portfolio-i18n-keys.js?v=20261031-portfolio-ordinals" defer></script>
     <script src="shared/portfolio-i18n.js?v=20261006-portfolio-crypto-amount-logos" defer></script>
-    <script src="shared/i18n.js?v=20261031-portfolio-address-list" defer></script>
+    <script src="shared/i18n.js?v=20261031-portfolio-ordinals" defer></script>
     <script src="shared/site-controls.js?v=20260918-ask-full-width" defer></script>
     <script src="shared/database-status.js?v=20260819-database-status-module" defer></script>
     <script src="vendor/chart-loader.js?v=20260817-section-folders" defer></script>
@@ -65,7 +65,7 @@
     <script src="home/news-overlay.js?v=20260818-news-overlay-module" defer></script>
     <script src="home/cardano-events.js?v=20260819-language-flags" defer></script>
     <script src="home/prices.js?v=20260918-ask-full-width" defer></script>
-    <script src="home/index.js?v=20261031-portfolio-address-list" defer></script>
+    <script src="home/index.js?v=20261101-header-dashboard" defer></script>
     <script src="starch/company-alerts.js?v=20260928-multiple-company-alerts" defer></script>
 </head>
 <body>
@@ -120,6 +120,7 @@
                             <button class="language-toggle" type="button" data-language-option="es" aria-label="Cambiar el sitio a español">🇪🇸</button>
                             <button class="language-toggle" type="button" data-language-option="ja" aria-label="サイトを日本語に切り替える">🇯🇵</button>
                         </div>
+                        <div class="header-account-controls">
                         <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch to dark mode">
                             <span class="theme-toggle-icon theme-toggle-icon--moon" aria-hidden="true">
                                 <svg viewBox="0 0 24 24" focusable="false">
@@ -133,6 +134,13 @@
                                 </svg>
                             </span>
                         </button>
+                        <a class="dashboard-link" id="delegators-dashboard-link" href="#delegators-dashboard-overlay" aria-label="Open delegators dashboard" data-i18n-aria-label-original="Open delegators dashboard" title="Delegators Dashboard" data-i18n-title-original="Delegators Dashboard" aria-haspopup="dialog">
+                            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                <circle cx="12" cy="8" r="4"></circle>
+                                <path d="M20 21v-2a6 6 0 0 0-6-6h-4a6 6 0 0 0-6 6v2"></path>
+                            </svg>
+                        </a>
+                        </div>
                     </div>
                 </div>
             </div>
