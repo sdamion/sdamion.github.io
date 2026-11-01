@@ -1,5 +1,22 @@
 // Generated from the shared Portfolio translation catalog.
 window.TDSPPortfolioTranslationKeys = Object.freeze([
+  ["Wallet apps", "portfolio_text_wallet_apps"],
+  ["Link another wallet app", "portfolio_text_wallet_link"],
+  ["Link another wallet app for the same stake account after unlocking. Each app approves its own private unlock message. Linking keeps encryption in your browser and applies only to the storage location currently open.", "portfolio_text_wallet_link_help"],
+  ["{count} linked wallet approvals", "portfolio_text_wallet_link_count"],
+  ["Wallet app linked. It can now unlock this saved Portfolio.", "portfolio_text_wallet_link_success"],
+  ["This wallet app can already unlock this Portfolio.", "portfolio_text_wallet_link_exists"],
+  ["Wallet app linking is already in progress.", "portfolio_text_wallet_link_busy"],
+  ["Portfolio linking cancelled. Unlock Portfolio again.", "portfolio_text_wallet_link_cancelled"],
+  ["Update the backend before linking another wallet app.", "portfolio_text_wallet_link_backend"],
+  ["Wallet app link could not be confirmed. Keep this page open and retry saving.", "portfolio_text_wallet_link_retry"],
+  ["This wallet app could not unlock the saved Portfolio. Use a linked wallet app and the same stake account. The cache has not been changed.", "portfolio_text_wallet_link_unlock_error"],
+  ["This Portfolio already has the maximum of 16 linked wallet approvals.", "portfolio_text_wallet_link_max"],
+  ["Invalid linked Portfolio key.", "portfolio_text_wallet_link_key"],
+  ["Wallet connection cancelled.", "portfolio_text_wallet_connection_cancelled"],
+  ["Local cache read was cancelled.", "portfolio_text_local_read_cancelled"],
+  ["Local cache save was cancelled.", "portfolio_text_local_save_cancelled"],
+  ["Local cache deletion was cancelled.", "portfolio_text_local_delete_cancelled"],
   ["Search owned assets", "portfolio_text_owned_search"],
   ["Asset name, ID or wallet name", "portfolio_text_owned_search_hint"],
   ["All networks", "portfolio_text_owned_networks"],
@@ -1071,7 +1088,7 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
     "portfolio_text_5aed3b3369fb"
   ],
   [
-    "Local data is encrypted with AES-256-GCM before saving in this browser. A separate wallet message approval unlocks it; no transaction, fee or cache upload. Use the same wallet app and stake account. There is no recovery without wallet access. Expired data is removed on the next visit after 365 days of inactivity.",
+    "Local data is encrypted with AES-256-GCM before saving in this browser. A separate wallet message approval unlocks it; no transaction, fee or cache upload. Use the original wallet app or an app linked to this storage location, with the same stake account. There is no recovery without wallet access. Expired data is removed on the next visit after 365 days of inactivity.",
     "portfolio_text_0d9496b97e02"
   ],
   [

@@ -17,6 +17,9 @@ const bundle=await build({entryPoints:[path.resolve('delegators/portfolio-src/en
     export const vaultUnlocked=()=>mode!==null;
     export const flushVault=async()=>{};
     export const unlockPortfolio=async()=>{};
+    export const linkedWalletCount=()=>1;
+    export const walletLinkGeneration=()=>1;
+    export const linkPortfolioWallet=async()=>true;
     export const deleteStoredCache=async()=>{mode=null;};
     export async function switchStorage(next,stake,wallet){if(!wallet)throw new Error(next==='remote'?'Reconnect your wallet in the members area to enable encrypted remote storage.':'Reconnect your wallet to unlock encrypted local Portfolio storage.');window.approvals=(window.approvals||0)+1;await new Promise((resolve,reject)=>window.approve=ok=>ok?resolve():reject(new Error('Wallet approval declined')));mode=next;localStorage.setItem('storage',next);}
   `}));

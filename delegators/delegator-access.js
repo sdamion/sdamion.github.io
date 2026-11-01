@@ -652,10 +652,10 @@ async function openMemberPortfolio() {
     closePortfolio = close;
     container.textContent = t('Loading member portfolio…');
     try {
-        const module = await import('./portfolio/app.js?v=20261101-owned-assets');
+        const module = await import('./portfolio/app.js?v=20261101-wallet-app-links');
         if (closed) return;
         container.replaceChildren();
-        dispose = module.mountPortfolio(container, { role: ROLE, getWallet: (reconnect, stake) => reconnect && !portfolioUnlockWallet ? reconnectPortfolioWallet(stake) : portfolioUnlockWallet });
+        dispose = module.mountPortfolio(container, { role: ROLE, getWallet: (reconnect, stake, linkAnother) => linkAnother ? reconnectPortfolioWallet(stake, true) : reconnect && !portfolioUnlockWallet ? reconnectPortfolioWallet(stake) : portfolioUnlockWallet });
     } catch (error) {
         if (!closed) container.textContent = t(error.message || 'Portfolio could not be loaded. Close and try again.');
     }
@@ -1119,7 +1119,7 @@ async function loadLostStake() {
     return payload;
 }
 
-async function reconnectPortfolioWallet(stake) {
+async function reconnectPortfolioWallet(stake, linkAnother = false) {
     const { BrowserWallet } = await loadMesh();
     const wallets = BrowserWallet.getInstalledWallets();
     if (!wallets.length) throw new Error(t('No CIP-30 Cardano wallet extension was detected.'));
@@ -1136,7 +1136,7 @@ async function reconnectPortfolioWallet(stake) {
             window.syncGovernanceMenuOverlayAccessibility?.();
         };
         const elements = window.createUniversalOverlay({
-            id: 'portfolio-reconnect-overlay', titleId: 'portfolio-reconnect-title', titleText: 'Unlock Portfolio',
+            id: 'portfolio-reconnect-overlay', titleId: 'portfolio-reconnect-title', titleText: linkAnother ? 'Link another wallet app' : 'Unlock Portfolio',
             bodyNodes: [box], enableSearch: false, showBack: true, closeOnBackdrop: false,
             closeOverlay: () => { close(); reject(new Error('Wallet connection cancelled.')); }
         });
@@ -1164,7 +1164,7 @@ async function reconnectPortfolioWallet(stake) {
                     const rewards = await getWalletAddresses(wallet, 'getRewardAddresses');
                     if (!rewards.includes(stake)) throw new Error('Select the wallet account used to sign in to this dashboard.');
                     if (settled) return;
-                    portfolioUnlockWallet = wallet;
+                    if (!linkAnother) portfolioUnlockWallet = wallet;
                     close();
                     resolve(wallet);
                 } catch (error) {

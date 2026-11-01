@@ -187,8 +187,8 @@ Phones and tablets may open Portfolio using encrypted remote storage with a comp
 wallet. The chooser defaults to remote and disables local storage on mobile devices.
 Local opening is also guarded in the storage module. Desktop window width is not used.
 
-Local storage uses member-scoped IndexedDB, does not upload a Portfolio cache, and does not
-require another wallet approval. It is NOT wallet-encrypted: browser access can expose it.
+Local storage uses member-scoped IndexedDB and AES-256-GCM encryption before saving.
+It requires the private Portfolio wallet approval but does not upload a Portfolio cache.
 The browser can remove expired local data only when the site next runs. Local cache settings
 are not available across devices. Both modes still use backend public-data API requests.
 
@@ -226,8 +226,24 @@ the application cannot erase external backup copies. Backend cache reads are not
 decryption succeeded. They establish authenticated activity only.
 
 Wallet signature reproducibility must be tested with each supported wallet. Switching wallet
-implementations may change signed COSE headers and therefore the derived key. If decryption
-fails, no cache is overwritten; use the original signing wallet/account. No wallet/key recovery
+implementations may change signed COSE headers and therefore the derived wrapping key.
+An older cache must first be unlocked with the original app. In Portfolio storage > Wallet apps,
+Link another wallet app selects a compatible installed app for the same stake account and
+verifies its private unlock signature locally. The first link migrates to a random AES-256-GCM
+data key, re-encrypting every checkpoint chunk; wrapped copies preserve both apps' access.
+Later links reuse the data key and encrypted chunks. Wrapped keys use random slot IDs/nonces
+and stake/slot-bound authenticated encryption. All imported keys remain nonextractable;
+temporary raw data-key buffers are zeroed. Only opaque encrypted wrappers reach the backend,
+not signatures, unwrapped keys, app names or plaintext. Each cache location is linked separately.
+At most 16 different wallet approvals can be linked. Compatible apps reproducing an existing
+approval already work and do not create a duplicate slot. There is no unlink/revocation UI;
+true revocation would require rotating the data key and re-encrypting every chunk.
+The capability-advertising backend must be deployed first. Revision checks and atomic publication
+preserve existing caches on conflicts. Unconfirmed uploads retain the pending checkpoint for
+idempotent retry; only an acknowledged save updates the displayed linked-approval count.
+Logout or a changed unlock generation cancels pending linking. Local IndexedDB aborts reject
+instead of leaving migrations pending. If decryption fails, no cache is overwritten; use an
+already linked app/account, or the original signing app for an unmigrated cache. No wallet/key recovery
 means no recovery of the encrypted cache. Public blockchain data can still be fetched again.
 Script/hardware stake accounts that cannot sign this message are not supported by this flow.
 
