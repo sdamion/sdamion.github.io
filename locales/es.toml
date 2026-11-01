@@ -1,5 +1,5 @@
 [strings]
-portfolio_text_ord_guide = "Para Bitcoin Ordinals, añade tus direcciones propias de Bitcoin y abre NFT históricos. Configura ORDISCAN_API_KEY en el backend. Se indexan las inscripciones recibidas y enviadas sin asignar precios de compra ni valoraciones. Solo las imágenes ráster se muestran dentro de la aplicación; los demás tipos se abren en Ordiscan. El historial guardado sigue disponible si falla el proveedor. La indexación puede retrasarse; usa Actualizar Bitcoin Ordinals para reintentar."
+portfolio_text_ord_guide = "Para Bitcoin Ordinals, añade tus direcciones propias de Bitcoin y abre NFT históricos. Configura ORDISCAN_API_KEY en el backend. Se indexan las inscripciones recibidas y enviadas sin asignar precios de compra ni valoraciones. Las imágenes y las obras HTML recursivas tienen vistas previas aisladas; los demás tipos se abren en Ordiscan. El historial guardado sigue disponible si falla el proveedor. La indexación puede retrasarse; usa Actualizar Bitcoin Ordinals para reintentar."
 portfolio_text_ord_key = "Configura ORDISCAN_API_KEY en el backend para cargar Bitcoin Ordinals."
 portfolio_text_ord_budget = "Se alcanzó el presupuesto de solicitudes de Ordiscan. Se conserva el historial guardado."
 portfolio_text_ord_budget_unavailable = "El presupuesto de solicitudes de Ordiscan no está disponible."

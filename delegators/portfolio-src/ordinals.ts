@@ -26,6 +26,9 @@ export function ordinalsData(value:unknown):OrdinalsData{
 export function ordinalImage(id:string,contentType:string|null){
   return ordinalId(id)&&['image/png','image/jpeg','image/gif','image/webp','image/avif'].includes(contentType||'')?`https://ordiscan.com/content/${id}`:null;
 }
+export function ordinalFrame(id:string,contentType:string|null){
+  return ordinalId(id)&&contentType==='text/html'?`https://ordiscan.com/content/${id}`:null;
+}
 export function ordinalHistory(data:OrdinalsData,bitcoin:BitcoinData,wallets:BitcoinWallet[]){
   const records=new Map<string,{firstReceived:number|null;wallets:Set<string>;owned:Set<string>}>();
   function record(id:string){let row=records.get(id);if(!row){row={firstReceived:null,wallets:new Set(),owned:new Set()};records.set(id,row);}return row;}

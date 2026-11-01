@@ -16,9 +16,13 @@ visible. Collections and IDs use a Bitcoin namespace so they cannot collide
 with Cardano assets. Ordinal artwork has no estimated buy/sell price or NFT
 valuation and never changes native BTC balances or financial totals.
 
-`OrdinalNftTile` previews only PNG/JPEG/GIF/WebP/AVIF through fixed Ordiscan
-content URLs. It never embeds HTML, SVG, scripts, iframes or arbitrary metadata
-URLs; those inscription types have an external no-opener Ordiscan link instead.
+`OrdinalNftTile` previews PNG/JPEG/GIF/WebP/AVIF through fixed Ordiscan content
+URLs. Recursive HTML artwork uses a cross-origin iframe with only `allow-scripts`:
+no same-origin access, parent navigation, popups, forms or device permissions.
+Relative inscription dependencies resolve on Ordiscan, never on this site.
+Tile frames are lazy-loaded and cannot intercept clicks or keyboard focus.
+Unsupported types retain an external no-opener Ordiscan link. Metadata cannot
+choose arbitrary frame URLs, and the parent CSP permits only Ordiscan's content path.
 History and metadata use chunked, member-scoped encrypted vault settings.
 
 Deploy the matching backend with ORDISCAN_API_KEY configured. The key stays on

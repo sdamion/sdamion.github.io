@@ -1939,5 +1939,5 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
   , ["Ordinals: {count} records checked", "portfolio_text_ord_progress"]
   , ["Loading historical NFTs…", "portfolio_text_ord_loading"]
   , ["Invalid Ordinals request.", "portfolio_text_ord_invalid"]
-  , ["For Bitcoin Ordinals, add your owned Bitcoin addresses and open Historical NFTs. Configure ORDISCAN_API_KEY on the backend. Received and sent inscriptions are indexed without assigning purchase prices or valuations. Only raster artwork is previewed inline; other inscription types open on Ordiscan. Cached history remains available when the provider fails. Indexing can lag; use Refresh Bitcoin Ordinals to retry.", "portfolio_text_ord_guide"]
+  , ["For Bitcoin Ordinals, add your owned Bitcoin addresses and open Historical NFTs. Configure ORDISCAN_API_KEY on the backend. Received and sent inscriptions are indexed without assigning purchase prices or valuations. Images and recursive HTML artwork have isolated previews; other inscription types open on Ordiscan. Cached history remains available when the provider fails. Indexing can lag; use Refresh Bitcoin Ordinals to retry.", "portfolio_text_ord_guide"]
 ]);

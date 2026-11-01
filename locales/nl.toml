@@ -1,5 +1,5 @@
 [strings]
-portfolio_text_ord_guide = "Voeg voor Bitcoin Ordinals je eigen Bitcoin-adressen toe en open Historische NFTs. Configureer ORDISCAN_API_KEY in de backend. Ontvangen en verzonden inscripties worden geïndexeerd zonder aankoopprijzen of waarderingen toe te kennen. Alleen rasterafbeeldingen krijgen een ingebouwd voorbeeld; andere inscriptietypen openen in Ordiscan. Opgeslagen geschiedenis blijft beschikbaar bij providerproblemen. Indexering kan achterlopen; kies Bitcoin Ordinals vernieuwen om opnieuw te proberen."
+portfolio_text_ord_guide = "Voeg voor Bitcoin Ordinals je eigen Bitcoin-adressen toe en open Historische NFTs. Configureer ORDISCAN_API_KEY in de backend. Ontvangen en verzonden inscripties worden geïndexeerd zonder aankoopprijzen of waarderingen toe te kennen. Afbeeldingen en recursieve HTML-kunstwerken krijgen een geïsoleerd voorbeeld; andere inscriptietypen openen in Ordiscan. Opgeslagen geschiedenis blijft beschikbaar bij providerproblemen. Indexering kan achterlopen; kies Bitcoin Ordinals vernieuwen om opnieuw te proberen."
 portfolio_text_ord_key = "Configureer ORDISCAN_API_KEY in de backend om Bitcoin Ordinals te laden."
 portfolio_text_ord_budget = "Ordiscan-aanvraagbudget bereikt. Opgeslagen geschiedenis blijft behouden."
 portfolio_text_ord_budget_unavailable = "Het Ordiscan-aanvraagbudget is niet beschikbaar."

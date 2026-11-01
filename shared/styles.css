@@ -191,6 +191,8 @@ html[data-theme="dark"] .portfolio-dex-label { --portfolio-dex-color: #fb923c; }
 .member-portfolio .portfolio-image-preview-button { padding: 0; border: 0; background: transparent; cursor: zoom-in; flex-shrink: 0; }
 .member-portfolio .portfolio-image-preview-button:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
 .member-portfolio .portfolio-image-preview { display: block; width: min(100%, 720px); height: auto; max-height: 75vh; object-fit: contain; margin: 0 auto; }
+.member-portfolio .portfolio-ordinal-frame { display: block; width: 100%; height: 100%; border: 0; pointer-events: none; }
+.member-portfolio .portfolio-ordinal-preview { display: block; width: min(100%, 720px); aspect-ratio: 1; max-height: 75vh; border: 0; margin: 0 auto; }
 .portfolio-asset-button { flex-direction: column; align-items: flex-start; }
 .portfolio-asset-name { display: block; overflow-wrap: anywhere; white-space: normal; }
 .member-portfolio .portfolio-asset-address-row { display: flex; align-items: center; gap: 8px; margin-block: 8px; }
