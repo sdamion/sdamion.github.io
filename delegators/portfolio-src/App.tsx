@@ -47,6 +47,9 @@ import {historicalNfts} from './historical-nfts';
 import {historicalNftPrices,nftCollections,filterNftCollage,type NftPrices,type NftSort} from './nft-collage';
 import {nftTransactions,type NftEvent} from './nft-history';
 import {NftPreview} from './NftHistory';
+import {OwnedAssetsGallery,type OwnedAssetRow} from './OwnedAssetsGallery';
+import {useOwnedAssets} from './use-owned-assets';
+import {mergeOwnedAssets,type AssetWallet} from './owned-assets';
 import {useOrdinals} from './use-ordinals';
 import {ordinalHistory} from './ordinals';
 import {OrdinalNftTile} from './OrdinalNftTile';
@@ -129,7 +132,9 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   const rawEthTransfers=useMemo(()=>ethereumTransfers(ethereum.data,ethereum.wallets,ethereum.exchanges),[ethereum.data,ethereum.wallets,ethereum.exchanges]);
   const [holdingsGroup,setHoldingsGroup]=useState<'FTs'|'NFTs'|'Historical NFTs'|null>(null);
   const [historicalImageIds,setHistoricalImageIds]=useState('');
-  const ordinals=useOrdinals(memberStake,ready&&isAdmin,bitcoin.wallets,bitcoin.data,section==='holdings'&&holdingsGroup==='Historical NFTs',historicalImageIds);
+  const ordinals=useOrdinals(memberStake,ready&&isAdmin,bitcoin.wallets,bitcoin.data,section==='holdings'&&(holdingsGroup==='Historical NFTs'||holdingsGroup==='NFTs'),historicalImageIds,holdingsGroup==='NFTs');
+  const assetWalletTargets:AssetWallet[]=[...ethereum.wallets.filter(wallet=>wallet.group!=='swap').map(wallet=>({...wallet,chain:'ethereum' as const})),...solana.wallets.map(wallet=>({...wallet,chain:'solana' as const})),...bitcoin.wallets.map(wallet=>({...wallet,chain:'bitcoin' as const}))];
+  const ownedAssetInventory=useOwnedAssets(memberStake,ready,section==='holdings'&&holdingsGroup==='NFTs',assetWalletTargets);
   const ordinalNfts=useMemo(()=>ordinalHistory(ordinals.data,bitcoin.data,bitcoin.wallets),[ordinals.data,bitcoin.data,bitcoin.wallets]);
   const {expanded:expandedPolicies,toggle:togglePolicy,reset:resetPolicies}=useTableGroups();
   const btc=useBtcHistory(section==='gain-loss');
@@ -389,6 +394,24 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   const nftEvents=useMemo(()=>nftTransactions(nftHistory,Object.values(classifiedFacts),payments.acquisitions),[nftHistory,classifiedFacts,payments.acquisitions]);
   const nftPrices=useMemo(()=>historicalNftPrices(Object.values(classifiedFacts),payments.acquisitions),[classifiedFacts,payments.acquisitions]);
   const assetGroup=(id:string)=>id!=='lovelace'&&snapshot?.markets[id]?.is_nft===true?'NFTs':'FTs';
+  const ownedAssetRows:OwnedAssetRow[]=rows.filter(row=>BigInt(row.raw)>0n).map(row=>({id:'cardano:'+row.id,chain:'cardano',standard:row.id==='lovelace'?'Native':assetGroup(row.id)==='NFTs'?'NFT':'FT',name:row.name,symbol:snapshot?.markets[row.id]?.ticker|| (row.id==='lovelace'?'ADA':''),raw:row.raw,decimals:row.id==='lovelace'?6:tokenDecimals(parseAmount(overrides[row.id]?.decimals))??row.automaticDecimals??null,image:assetImageCandidates(row.id,[snapshot?.markets[row.id]?.registry_logo,snapshot?.markets[row.id]?.cached_image,snapshot?.markets[row.id]?.wayup_image,snapshot?.markets[row.id]?.image])[0]||null,explorer:row.id==='lovelace'?null:'https://cardanoscan.io/token/'+row.id,wallets:assetWallets[row.id]||[]}));
+  ownedAssetRows.push(...mergeOwnedAssets(ownedAssetInventory.data,assetWalletTargets));
+  for(const native of [
+    {chain:'ethereum' as const,name:'Ethereum',symbol:'ETH',decimals:18,wallets:ethereum.wallets.filter(wallet=>wallet.group!=='swap'),balance:(address:string)=>ethereum.data.accounts[address]?.balanceWei},
+    {chain:'solana' as const,name:'Solana',symbol:'SOL',decimals:9,wallets:solana.wallets,balance:(address:string)=>solana.data.accounts[address]?.raw},
+    {chain:'bitcoin' as const,name:'Bitcoin',symbol:'BTC',decimals:8,wallets:bitcoin.wallets,balance:(address:string)=>bitcoin.data.accounts[address]?.raw}
+  ]){
+    const wallets=native.wallets.filter(wallet=>native.balance(wallet.address)!==undefined&&BigInt(native.balance(wallet.address)!)>0n);
+    if(wallets.length)ownedAssetRows.push({id:native.chain+':native',chain:native.chain,standard:'Native',name:native.name,symbol:native.symbol,raw:String(wallets.reduce((sum,wallet)=>sum+BigInt(native.balance(wallet.address)!),0n)),decimals:native.decimals,image:null,explorer:null,wallets:wallets.map(wallet=>wallet.name)});
+  }
+  const ownedOrdinalRows=new Map<string,OwnedAssetRow>();
+  for(const wallet of bitcoin.wallets)for(const metadata of ordinals.data.accounts[wallet.address]?.owned||[]){
+    if(metadata.owner!==wallet.address)continue;
+    const previous=ownedOrdinalRows.get(metadata.id);if(previous){previous.wallets.push(wallet.name);continue;}
+    const ordinal={id:'bitcoin:ordinal:'+metadata.id,name:metadata.name,raw:'1',firstReceived:null,ordinal:{id:metadata.id,number:metadata.number,contentType:metadata.contentType,collection:metadata.collection,ownedWallets:[wallet.name]}};
+    ownedOrdinalRows.set(metadata.id,{id:ordinal.id,chain:'bitcoin',standard:'Ordinal',name:metadata.name,symbol:'',raw:'1',decimals:0,image:null,explorer:'https://ordiscan.com/inscription/'+metadata.id,wallets:[wallet.name],ordinal});
+  }
+  ownedAssetRows.push(...ownedOrdinalRows.values());
   const groupRows=holdingsGroup?rows.filter(row=>assetGroup(row.id)===holdingsGroup):rows;
   const holdingEntries=policyTableRows(groupRows,expandedPolicies,r=>!missingCostsOnly||(r.cost===null&&(r.id==='lovelace'||overrides[r.id]?.excluded!==true)));
   const groupIncluded=includedAssets(groupRows,overrides);
@@ -618,6 +641,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
         const ethCount=group==='FTs'&&ethereum.wallets.length?1:0;
         const solCount=group==='FTs'&&solana.wallets.length?1:0;
         const btcCount=group==='FTs'&&bitcoin.wallets.length?1:0;
+        if(group==='NFTs')return <MenuTile key={group} title={group} value={num(ownedAssetRows.length,0)} onOpen={()=>setHoldingsGroup(group)}><p className="small muted" translate="no">{t('All owned FTs, NFTs and Ordinals')}</p></MenuTile>;
         return <MenuTile key={group} title={group} value={formatPortfolioUsd(total,currencyDisplay)} onOpen={()=>setHoldingsGroup(group)}><p className="small muted">{t('{done} / {total} assets valued',{done:priced.length+(ethCount&&!ethExcluded&&ethValue!==null?1:0)+(solCount&&!solExcluded&&solAvailable.value!==null?1:0)+(btcCount&&!btcExcluded&&btcAvailable.value!==null?1:0),total:active.length+(ethCount&&!ethExcluded?1:0)+(solCount&&!solExcluded?1:0)+(btcCount&&!btcExcluded?1:0)})}{assets.length-active.length+(ethCount&&ethExcluded?1:0)+(solCount&&solExcluded?1:0)+(btcCount&&btcExcluded?1:0)?' · '+t('{count} excluded',{count:assets.length-active.length+(ethCount&&ethExcluded?1:0)+(solCount&&solExcluded?1:0)+(btcCount&&btcExcluded?1:0)}):''}</p></MenuTile>;
       })}<MenuTile title="Historical NFTs" value={num(nftHistory.length,0)} onOpen={()=>setHoldingsGroup('Historical NFTs')}><NftPreview rows={nftHistory} markets={snapshot?.markets||{}}/></MenuTile></div>}
       {holdingsGroup==='Historical NFTs'&&<>
@@ -626,7 +650,8 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
         {ordinals.error&&<p role="alert" className="small-text error-text" translate="no">{t(ordinals.error)}</p>}
         {nftHistory.length?<HistoricalNftCollage rows={nftHistory} markets={snapshot?.markets||{}} wallets={{...assetWallets,...ordinalNfts.wallets}} prices={nftPrices} events={nftEvents} onVisibleAssets={setHistoricalImageIds}/>:<p className="empty" translate="no">{t(ordinals.busy?'Loading historical NFTs…':'No NFTs found in loaded wallet history.')}</p>}
       </>}
-      {holdingsGroup&&holdingsGroup!=='Historical NFTs'&&<>
+      {holdingsGroup==='NFTs'&&<OwnedAssetsGallery rows={ownedAssetRows} busy={ownedAssetInventory.busy||ordinals.busy} partial={!snapshot?.complete||ownedAssetInventory.incomplete||bitcoin.wallets.some(wallet=>!ordinals.data.accounts[wallet.address])||assetWalletTargets.some(wallet=>wallet.chain==='ethereum'?!ethereum.data.accounts[wallet.address]:wallet.chain==='solana'?!solana.data.accounts[wallet.address]:!bitcoin.data.accounts[wallet.address])} errors={[...ownedAssetInventory.errors,...(ordinals.error?[{wallet:'Bitcoin Ordinals',message:ordinals.error}]:[])]} onRefresh={()=>{void ownedAssetInventory.refresh(true).catch(()=>{});void ordinals.refresh(true);}}/>}
+      {holdingsGroup==='FTs'&&<>
       <button type="button" className="governance-vote-secondary" disabled={busy||!snapshot} onClick={()=>void refreshAssetPurchases()}>Refresh all purchase data</button>
       {purchaseProgress&&<div aria-live="polite"><div className="section-heading"><span className="governance-vote-bar-track" style={{flex:1}} role="progressbar" aria-label="Purchase transactions checked" aria-valuemin={0} aria-valuemax={purchaseProgress.total} aria-valuenow={purchaseProgress.done}><span className="governance-vote-bar-fill governance-vote-bar-fill--yes" style={{flexBasis:`${purchaseProgress.done/purchaseProgress.total*100}%`}}/></span><span className="tdsp-bar-legend">{purchaseProgress.done} / {purchaseProgress.total}</span></div></div>}
       <label className="small"><input type="checkbox" checked={missingCostsOnly} onChange={e=>setMissingCostsOnly(e.target.checked)}/> Show holdings with missing purchase cost ({valuationCoverage(groupIncluded).missingCost})</label>

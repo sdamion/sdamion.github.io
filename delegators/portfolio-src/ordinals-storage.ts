@@ -21,6 +21,6 @@ export function readOrdinalsSettings(key:string,get:(key:string)=>string|null):O
       const values=expandBlock(JSON.parse(raw));if(!Array.isArray(values)||values.length>CACHE_RECORDS_PER_PART)throw new Error('Ordinals cache is incomplete. Saved history is retained.');for(const row of values)result.push(row);
     }return result;
   }
-  const accounts=Object.fromEntries(Object.entries(value.accounts).map(([address,row]:[string,any])=>[address,{tip:row.tip,checkedAt:row.checkedAt,events:rows(address+':events',row.eventParts),owned:rows(address+':owned',row.ownedParts)}]));
+  const accounts=Object.fromEntries(Object.entries(value.accounts).map(([address,row]:[string,any])=>[address,{tip:row.tip,checkedAt:row.checkedAt,...(row.historyComplete===undefined?{}:{historyComplete:row.historyComplete}),events:rows(address+':events',row.eventParts),owned:rows(address+':owned',row.ownedParts)}]));
   return ordinalsData({accounts,metadata:Object.fromEntries(rows('metadata',value.metadataParts).map((row:any)=>[row.id,row]))});
 }

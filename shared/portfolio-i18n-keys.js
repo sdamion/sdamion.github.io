@@ -1,5 +1,25 @@
 // Generated from the shared Portfolio translation catalog.
 window.TDSPPortfolioTranslationKeys = Object.freeze([
+  ["Search owned assets", "portfolio_text_owned_search"],
+  ["Asset name, ID or wallet name", "portfolio_text_owned_search_hint"],
+  ["All networks", "portfolio_text_owned_networks"],
+  ["Asset type", "portfolio_text_owned_type"],
+  ["All assets", "portfolio_text_owned_all"],
+  ["NFTs / Ordinals", "portfolio_text_owned_nfts"],
+  ["Refresh owned assets", "portfolio_text_owned_refresh"],
+  ["Checking owned assets…", "portfolio_text_owned_checking"],
+  ["Partial asset coverage. Refresh to check every saved wallet.", "portfolio_text_owned_partial"],
+  ["No matching owned assets.", "portfolio_text_owned_empty"],
+  ["raw units", "portfolio_text_owned_raw"],
+  ["Open in explorer", "portfolio_text_owned_explorer"],
+  ["Owned asset pages", "portfolio_text_owned_pages"],
+  ["All owned FTs, NFTs and Ordinals", "portfolio_text_owned_subtitle"],
+  ["Owned assets unavailable. Saved data is retained.", "portfolio_text_owned_error"],
+  ["Owned asset cache is incomplete. Saved data is retained.", "portfolio_text_owned_cache"],
+  ["Owned asset scan is incomplete. Saved data is retained.", "portfolio_text_owned_scan"],
+  ["Ethereum token discovery requires BLOCKSCOUT_API_KEY in the backend.", "portfolio_text_owned_eth_key"],
+  ["Native", "portfolio_text_owned_native"],
+  ["Compressed NFT", "portfolio_text_owned_compressed"],
   ["Assets", "portfolio_text_assets_title"],
   ["CEX Transactions", "portfolio_text_cex_transactions_title"],
   [
@@ -1804,7 +1824,7 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
   ["Ethereum mainnet · ETH only. ERC-20 tokens, NFTs and other EVM networks are not included.", "portfolio_text_eth_scope"],
   ["Only ETH transfers to or from saved DEX / CEX addresses contribute to CEX IN/OUT. Own-wallet transfers are excluded.", "portfolio_text_eth_cex_scope"],
   ["Combined Cardano and Ethereum CEX totals. ADA/BTC amounts are transfer-day equivalents, not summed coin quantities.", "portfolio_text_eth_combined"],
-  ["Open Wallets, then My Wallets to add Ethereum mainnet wallets you own. Add their Ethereum CEX counterparties under DEX / CEX & Swap. ETH balances are included in Assets; ETH transfers to and from saved CEX addresses are combined with Cardano using daily fiat prices. Internal transfers and failed payments are excluded from CEX IN/OUT. Crypto comparisons use price equivalents; saved native wallets supply actual balances. Ethereum tokens and NFTs are not supported yet. Ethereum data uses the same encrypted Portfolio storage.", "portfolio_text_eth_guide"]
+  ["Open Wallets, then My Wallets to add Ethereum mainnet wallets you own. Add their Ethereum CEX counterparties under DEX / CEX & Swap. ETH balances are included in Assets; ETH transfers to and from saved CEX addresses are combined with Cardano using daily fiat prices. Internal transfers and failed payments are excluded from CEX IN/OUT. Crypto comparisons use price equivalents; saved native wallets supply actual balances. Ethereum token and NFT inventory appears under NFTs. Ethereum data uses the same encrypted Portfolio storage.", "portfolio_text_eth_guide"]
   , ["{wallets} own wallets · {exchanges} CEX addresses", "portfolio_text_eth_address_counts"]
   , ["Add your own Ethereum wallet to scan ETH CEX transfers. CEX addresses are counterparties, not your holdings; shared exchange balances are never counted as yours.", "portfolio_text_eth_own_required"]
   , ["Refresh Ethereum wallets", "portfolio_text_eth_refresh_wallets"]

@@ -3,7 +3,7 @@ import type {HistoricalNftRow} from './historical-nfts.ts';
 
 export type OrdinalMetadata={id:string;number:number;contentType:string;owner:string;ownerOutput:string;created:number;genesisAddress:string;name:string;collection:string|null};
 export type OrdinalActivity={id:string;hash:string;side:'receive'|'send';confirmed:boolean;time:number|null};
-export type OrdinalAccount={tip:string;checkedAt:number;owned:OrdinalMetadata[];events:OrdinalActivity[]};
+export type OrdinalAccount={tip:string;checkedAt:number;owned:OrdinalMetadata[];events:OrdinalActivity[];historyComplete?:boolean};
 export type OrdinalsData={accounts:Record<string,OrdinalAccount>;metadata:Record<string,OrdinalMetadata>};
 export const emptyOrdinals=():OrdinalsData=>({accounts:{},metadata:{}});
 export const ordinalId=(value:unknown):value is string=>typeof value==='string'&&/^[a-f0-9]{64}i(?:0|[1-9][0-9]{0,9})$/.test(value);
@@ -21,6 +21,7 @@ export function ordinalsData(value:unknown):OrdinalsData{
   if(!data||!data.accounts||!data.metadata||typeof data.accounts!=='object'||typeof data.metadata!=='object')throw new Error('Ordinals cache is incomplete. Saved history is retained.');
   for(const [address,account] of Object.entries(data.accounts))if(!validBitcoinAddress(address)||!account||!bitcoinHash(account.tip)||!Number.isSafeInteger(account.checkedAt)||account.checkedAt<=0||!Array.isArray(account.owned)||!account.owned.every(validOrdinalMetadata)||!Array.isArray(account.events)||!account.events.every(validOrdinalActivity))throw new Error('Ordinals cache is incomplete. Saved history is retained.');
   for(const [id,metadata] of Object.entries(data.metadata))if(!validOrdinalMetadata(metadata)||id!==metadata.id)throw new Error('Ordinals cache is incomplete. Saved history is retained.');
+  for(const account of Object.values(data.accounts))if(account.historyComplete!==undefined&&typeof account.historyComplete!=='boolean')throw new Error('Ordinals cache is incomplete. Saved history is retained.');
   return data;
 }
 export function ordinalImage(id:string,contentType:string|null){

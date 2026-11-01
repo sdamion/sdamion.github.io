@@ -1,5 +1,35 @@
 # Member portfolio
 
+## Combined owned assets
+
+Assets > NFTs is the combined current-owned inventory: Cardano FTs/NFTs and ADA,
+Ethereum ERC-20/721/1155/404 and ETH, Solana SPL/Token-2022 tokens, standard and
+compressed NFTs and SOL, and Bitcoin BTC, Ordinals, Runes and BRC-20 balances.
+Only explicitly owned wallets are scanned; CEX and Swap addresses are not holdings.
+The existing FTs valuation view and Historical NFTs history remain separate.
+
+`use-owned-assets.ts` loads on demand and replaces an address snapshot only after
+all its inventory pages succeed. Provider failures retain prior snapshots and are
+shown per wallet; missing address scans are labelled partial. A ten-minute cache
+avoids repeating provider calls; Refresh owned assets bypasses it. Member vault
+settings use chunked `tdsp-member-owned-assets:` records with strict validation.
+IDs include the chain, contract/mint and NFT instance; fungible balances are summed
+with exact integer arithmetic across unique owned addresses. Names and amounts
+remain literal across language changes.
+
+Ethereum discovery uses the existing Blockscout queue/budget and requires
+BLOCKSCOUT_API_KEY. Solana DAS uses HELIUS_API_KEY, ten credits per page and a
+conservative two-per-second pace. Bitcoin token protocols share ORDISCAN_API_KEY
+and its budget. Current Ordinals can load independently of BTC transaction history;
+owned-only snapshots never claim that historical inscription activity is complete.
+Unknown Rune divisibility is labelled raw units, never guessed. Unpriced token
+inventory does not alter portfolio fiat values, trade basis, native balances or P/L.
+
+The inventory covers assets indexed by those providers on the four supported
+mainnets. Untracked wallets, staking/DeFi positions, bridges, other EVM networks
+and other Bitcoin token protocols are not implicitly scanned. Provider indexing
+may lag; this is not a promise that every possible asset protocol is covered.
+
 ## Bitcoin Ordinals
 
 Historical NFTs merges Cardano NFTs with Ordinals discovered for owned BTC
@@ -261,14 +291,15 @@ Run `node --test tests/portfolio-language-catalog.test.mjs tests/portfolio-metri
 My Wallets opens the shared overlay from the wallet name or linked-address count. Each linked address has a compact Wallet / Address / ADA / Transactions row and an Exclude from refresh checkbox. Exclusions are saved in the existing wallet settings through the selected local or encrypted remote vault. They skip address balance/history requests on subsequent refreshes, but retain ownership, cached balances and cached transactions. Shared transactions discovered through another active address can still update. Controls remain usable during refresh and apply to the next run. An address needs its first cached balance before exclusion; re-enabling is always allowed. Re-enabling scans skipped history and preserves that pending scan across interrupted refreshes.
 # Admin Native Chains
 
-ETH and native SOL are available only to admins. The authenticated backend
-also rejects delegator requests to their history, quote and RPC endpoints.
+ETH and native SOL require admin access or the existing per-member chain grant.
+The authenticated backend also enforces those grants on inventory endpoints.
 Solana uses Helius Free mainnet RPC through the backend HELIUS_API_KEY;
 credentials never enter the frontend. Configure the backend container key
 before using it. Native SOL CEX transfers use daily prices and join the
 existing fiat/equivalent totals and chart; native coin quantities are never
-added together. Fees appear on a separate SOL line. SPL tokens/NFTs and SOL
-cost-basis estimates are not included. Missing SOL purchase cost is unknown,
+added together. Fees appear on a separate SOL line. SPL tokens/NFTs appear in
+the combined NFT inventory, but SOL token cost-basis estimates are not included.
+Missing SOL purchase cost is unknown,
 not zero. SOL settings and transactions use the existing member vault.
 Interrupted SOL scans retain validated receipt batches in the same vault and
 reuse them on the next refresh. Pending receipts do not enter balances, fees
