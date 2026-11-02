@@ -55,6 +55,13 @@ try{
  }
  const unnamed=btc.locator('a').last();assert.notEqual(await unnamed.innerText(),'');assert.notEqual(await unnamed.innerText(),await unnamed.getAttribute('title'),'unnamed addresses remain shortened');
  const copy=btc.getByRole('button',{name:'Copy address',exact:true}).first();
+ for(const hovered of [false,true]){
+  if(hovered)await copy.hover();
+  const style=await copy.evaluate(button=>{const css=getComputedStyle(button);return {border:css.borderTopWidth,background:css.backgroundColor,shadow:css.boxShadow};});
+  assert.deepEqual(style,{border:'0px',background:'rgba(0, 0, 0, 0)',shadow:'none'},'copy icon has no frame or filled background, including on hover');
+ }
+ await btc.locator('a').first().focus();await page.keyboard.press('Tab');
+ assert.ok(await copy.evaluate(button=>button===document.activeElement&&getComputedStyle(button).outlineStyle!=='none'),'keyboard focus remains visible');
  await page.evaluate(()=>{window.failCopy=true;});await copy.click();await btc.getByRole('alert').filter({hasText:'Could not copy address.'}).waitFor();
  await page.evaluate(()=>{window.failCopy=false;});await copy.click();assert.equal(await btc.getByRole('alert').count(),0);
  assert.deepEqual(errors,[]);

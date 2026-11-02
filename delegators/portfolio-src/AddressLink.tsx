@@ -14,7 +14,7 @@ export function AddressLink({network,address,name,onError}:{network:AddressNetwo
   useEffect(()=>{if(!copied)return;const timer=setTimeout(()=>setCopied(false),2000);return()=>clearTimeout(timer);},[copied]);
   return <span className="portfolio-address-link" translate="no">
     <a className="address" title={address} href={addressExplorer(network,address)} target="_blank" rel="noreferrer">{name?.trim()?name:short(address)}</a>
-    <button type="button" className="governance-vote-secondary" title={t(copied?'Copied.':'Copy address')} aria-label={t('Copy address')} onClick={()=>{
+    <button type="button" className="portfolio-address-copy" title={t(copied?'Copied.':'Copy address')} aria-label={t('Copy address')} onClick={()=>{
       void (async()=>{try{await navigator.clipboard.writeText(address);setCopied(true);onError('');}catch{onError('Could not copy address.');}})();
     }}>{copied?<Check size={14}/>:<Copy size={14}/>}</button>
   </span>;
