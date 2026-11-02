@@ -6,6 +6,7 @@ import {TransactionPagination} from './TransactionPagination';
 import {usePortfolioText} from './use-portfolio-text';
 import {assetQuantity,assetIsFt,type OwnedAsset} from './owned-assets';
 import type {HistoricalNftRow} from './historical-nfts';
+import {useArtworkLoading} from './use-artwork-loading';
 
 export type OwnedAssetRow=OwnedAsset&{wallets:string[];ordinal?:HistoricalNftRow};
 export function OwnedAssetsGallery({rows,busy,partial,errors,onRefresh}:{rows:OwnedAssetRow[];busy:boolean;partial:boolean;errors:{wallet:string;message:string}[];onRefresh:()=>void}){
@@ -29,8 +30,9 @@ export function OwnedAssetsGallery({rows,busy,partial,errors,onRefresh}:{rows:Ow
 }
 function OwnedAssetCard({row,caption}:{row:OwnedAssetRow;caption:React.ReactNode}){
   const t=usePortfolioText(),[open,setOpen]=useState(false),[failed,setFailed]=useState(false);
-  const image=row.image&&!failed?<img className="portfolio-asset-image" src={row.image} alt={row.name} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={()=>setFailed(true)}/>:<span className="portfolio-nft-placeholder"><ImageOff size={32} aria-hidden="true"/></span>;
-  return <><div className="portfolio-nft-tile" data-owned-asset={row.id}>
+  const artwork=useArtworkLoading();
+  const image=artwork.load&&row.image&&!failed?<img className="portfolio-asset-image" src={row.image} alt={row.name} loading="eager" decoding="async" referrerPolicy="no-referrer" onError={()=>setFailed(true)}/>:<span className="portfolio-nft-placeholder"><ImageOff size={32} aria-hidden="true"/></span>;
+  return <><div ref={artwork.ref} className="portfolio-nft-tile" data-owned-asset={row.id}>
     <button type="button" className="portfolio-image-preview-button" aria-label={t('View {name} details',{name:row.name})} onClick={()=>setOpen(true)}>{image}{caption}</button>
   </div>{open&&<AssetOverlay id="portfolio-owned-asset-overlay" name={row.name} literalTitle onClose={()=>setOpen(false)}>
     <p translate="no">{row.chain} · {t(row.standard)}</p>
