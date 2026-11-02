@@ -1,4 +1,13 @@
 [strings]
+portfolio_text_out_address = "Dirección OUT"
+portfolio_text_out_address_for = "Dirección OUT: {name}"
+portfolio_text_out_address_help = "Tú eliges qué direcciones guardadas son OUT. Solo cambia la clasificación; nunca se editan importes, direcciones, fechas ni comisiones de la blockchain. Los valores EUR/USD son estimaciones, no conversiones fiat confirmadas."
+portfolio_text_cex_watch = "Seguir depósitos en esta dirección"
+portfolio_text_cex_unwatch = "Dejar de seguir depósitos"
+portfolio_text_cex_watch_note = "Depósitos CEX personales · saldo y barridos excluidos"
+portfolio_text_cex_direct = "Depósito CEX directo"
+portfolio_text_cex_external = "Recepción externa · no es una transferencia de tu wallet"
+portfolio_text_cex_watch_help = "Para una dirección personal de depósito ETH en CEX, elige Seguir depósitos en esta dirección en su menú. Se consultan los depósitos entrantes; saldos y barridos del exchange quedan excluidos."
 portfolio_text_wallet_apps = "Apps de wallet"
 portfolio_text_local_read_cancelled = "Se canceló la lectura de la caché local."
 portfolio_text_local_save_cancelled = "Se canceló el guardado de la caché local."

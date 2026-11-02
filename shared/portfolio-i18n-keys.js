@@ -1978,4 +1978,13 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
   , ["Invalid Ordinals request.", "portfolio_text_ord_invalid"]
   , ["For Bitcoin Ordinals, add your owned Bitcoin addresses and open Historical NFTs. Configure ORDISCAN_API_KEY on the backend. Received and sent inscriptions are indexed without assigning purchase prices or valuations. Images and recursive HTML artwork have isolated previews; other inscription types open on Ordiscan. Cached history remains available when the provider fails. Indexing can lag; use Refresh Bitcoin Ordinals to retry.", "portfolio_text_ord_guide"]
   , ["Mint: {price} ADA", "portfolio_text_nft_mint_price"]
+  , ["OUT address", "portfolio_text_out_address"]
+  , ["OUT address: {name}", "portfolio_text_out_address_for"]
+  , ["You choose which saved addresses are OUT addresses. This changes classification only; blockchain amounts, addresses, dates and fees are never edited. EUR/USD values are estimates, not confirmed fiat conversions.", "portfolio_text_out_address_help"]
+  , ["Track deposits to this address", "portfolio_text_cex_watch"]
+  , ["Stop tracking deposits", "portfolio_text_cex_unwatch"]
+  , ["Personal CEX deposits · balance and exchange sweeps excluded", "portfolio_text_cex_watch_note"]
+  , ["Direct CEX deposit", "portfolio_text_cex_direct"]
+  , ["External receipt · not an owned-wallet transfer", "portfolio_text_cex_external"]
+  , ["For a personal ETH CEX deposit address, choose Track deposits to this address in its action menu. Incoming deposits are scanned; exchange balances and automatic sweeps are excluded.", "portfolio_text_cex_watch_help"]
 ]);

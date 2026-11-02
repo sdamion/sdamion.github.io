@@ -3,20 +3,21 @@ import {adaReceiptBasis} from './core.ts';
 import type {Fact,Counterparty} from './core.ts';
 import {transactionAmounts,historicalAdaPrice,adaUsdValue,lovelaceToAda} from './transaction-amounts.ts';
 import {isRewardReceipt,isRewardSource} from './reward-sources.ts';
-export type CexAddress={address:string;name:string;miner?:boolean};
+import {isOutAddress} from './out-address.ts';
+export type CexAddress={address:string;name:string;miner?:boolean;out?:boolean};
 export function normalizeCexAddresses(value:unknown):CexAddress[]{
   if(!Array.isArray(value))return [];
   const entries=new Map<string,CexAddress>();
   for(const item of value){
     if(typeof item?.address!=='string'||typeof item?.name!=='string')continue;
     const address=normalizeExchangeAddress(item.address),name=item.name.trim().slice(0,60);
-    if(validExchangeAddress(address)&&name)entries.set(address,{address,name,...(item.miner===true?{miner:true}:{})});
+    if(validExchangeAddress(address)&&name)entries.set(address,{address,name,...(item.miner===true?{miner:true}:{}),...(typeof item.out==='boolean'?{out:item.out}:{})});
   }
   return [...entries.values()];
 }
 export function cexDestinations(fact:Fact,entries:CexAddress[]){
   if(fact.internal)return [];
-  return matchCounterparties(fact.externalOutputs||[],entries);
+  return matchCounterparties(fact.externalOutputs||[],entries.filter(isOutAddress));
 }
 function matchCounterparties(rows:Counterparty[],entries:CexAddress[]){
   return rows.flatMap(output=>{
@@ -25,12 +26,12 @@ function matchCounterparties(rows:Counterparty[],entries:CexAddress[]){
   });
 }
 export function cexSources(fact:Fact,entries:CexAddress[]){
-  return fact.internal?[]:matchCounterparties(fact.externalInputs||[],entries);
+  return fact.internal?[]:matchCounterparties(fact.externalInputs||[],entries.filter(isOutAddress));
 }
 export function transactionExchangeWallets(fact:Fact|undefined,entries:CexAddress[]){
-  if(!fact)return [];
+  if(!fact||fact.internal)return [];
   const rows=new Map<string,{address:string;name:string;direction:'From'|'To'}>();
-  for(const [direction,matches] of [['From',cexSources(fact,entries)],['To',cexDestinations(fact,entries)]] as const){
+  for(const [direction,matches] of [['From',matchCounterparties(fact.externalInputs||[],entries)],['To',matchCounterparties(fact.externalOutputs||[],entries)]] as const){
     for(const row of matches)rows.set(`${direction}:${row.address}`,{address:row.address,name:row.name,direction});
   }
   return [...rows.values()];

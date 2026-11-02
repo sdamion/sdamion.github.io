@@ -26,6 +26,8 @@ export function PortfolioGuide({onClose}:{onClose:()=>void}){
       <p>ADA Gains/Loss is ADA OUT plus current Assets Across Wallets minus ADA IN. Wallet ADA and assets use current values, not purchase costs. USD transfers use transfer-day prices; the ADA equivalent of assets uses the current ADA price. Unpriced assets are excluded, so the result can be partial. This is not a tax calculation.</p>
       <h2>DEX / CEX, Byron and Swap</h2>
       <p>DEX / CEX labels identify exchange counterparties in both directions. They are your labels, not verified exchange ownership, and do not add those address balances to your portfolio.</p>
+      <p>You choose which saved addresses are OUT addresses. This changes classification only; blockchain amounts, addresses, dates and fees are never edited. EUR/USD values are estimates, not confirmed fiat conversions.</p>
+      <p>For a personal ETH CEX deposit address, choose Track deposits to this address in its action menu. Incoming deposits are scanned; exchange balances and automatic sweeps are excluded.</p>
       <p>Review the discovered addresses in Byron DEX / CEX. Deselect addresses that are not exchanges. Shared transactions are counted once; View shows the underlying transactions and addresses.</p>
       <p>Swap identifies internal/service addresses that must be excluded from CEX classification. A Swap label does not establish ownership of the whole service wallet. Amounts are matched to your tracked wallet addresses so unrelated recipients are not counted as yours.</p>
       <h2>Transactions and assets</h2>

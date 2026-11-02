@@ -1,7 +1,7 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {portfolioFetch} from './transport';
 import {portfolioSettings,flushVault} from './vault';
-import {emptyEthereum,ethereumWallets,type EthereumData,type EthereumTransaction,type EthereumWallet,type EthereumProvider} from './ethereum';
+import {emptyEthereum,ethereumWallets,ethereumScanWallets,type EthereumData,type EthereumTransaction,type EthereumWallet,type EthereumProvider} from './ethereum';
 import {ethereumHistory,type EthereumHistoryCheckpoints} from './ethereum-history';
 import {ethereumRequest} from './ethereum-request';
 import {encodeEthereumSettings,readEthereumSettings} from './ethereum-storage';
@@ -15,7 +15,8 @@ export function useEthereum(stake:string,ready:boolean){
   const [wallets,setWallets]=useState<EthereumWallet[]>([]),[exchanges,setExchanges]=useState<EthereumWallet[]>([]),[data,setData]=useState<EthereumData>(emptyEthereum);
   const [loadedStake,setLoadedStake]=useState<string|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[status,setStatus]=useState('');
   const loaded=loadedStake===stake;
-  const ownedWallets=wallets.filter(wallet=>wallet.group!=='swap');
+  const trackedWallets=ethereumScanWallets(wallets,exchanges);
+  const relevant=(wallet:EthereumWallet,rows:EthereumTransaction[])=>wallet.deposit?rows.filter(tx=>!tx.failed&&tx.to===wallet.address&&BigInt(tx.valueWei)>0n):rows;
   const [downloadProgress,setDownloadProgress]=useState<DownloadProgress>(emptyDownloadProgress);
   function saveData(value:EthereumData){
     const settings=encodeEthereumSettings(dataKey,value);
@@ -31,28 +32,29 @@ export function useEthereum(stake:string,ready:boolean){
     try{
       const savedWallets=ethereumWallets(JSON.parse(portfolioSettings.getItem(walletKey)||'[]'));
       setWallets(savedWallets);
-      setExchanges(ethereumWallets(JSON.parse(portfolioSettings.getItem(cexKey)||'[]')));
-      const saved=readEthereumSettings(dataKey,key=>portfolioSettings.getItem(key),new Set(savedWallets.filter(wallet=>wallet.group!=='swap').map(wallet=>wallet.address)));current.current=saved;setData(saved);setLoadedStake(stake);
+      const savedExchanges=ethereumWallets(JSON.parse(portfolioSettings.getItem(cexKey)||'[]'));setExchanges(savedExchanges);
+      const saved=readEthereumSettings(dataKey,key=>portfolioSettings.getItem(key),new Set(ethereumScanWallets(savedWallets,savedExchanges).map(wallet=>wallet.address)));current.current=saved;setData(saved);setLoadedStake(stake);
     }catch{setError('Ethereum cache could not be opened.');}
     return()=>controller.current?.abort();
   },[ready,stake]);
-  const scope=ownedWallets.map(w=>w.address).sort().join('|');
+  const scope=trackedWallets.map(w=>w.address+':'+(w.deposit?'deposit':'owned')).sort().join('|');
   function savedTransactions(){
-    const addresses=new Set(ownedWallets.map(wallet=>wallet.address));
-    const rows=ownedWallets.flatMap(wallet=>current.current.accounts[wallet.address]?.transactions||[]);
+    const addresses=new Set(trackedWallets.map(wallet=>wallet.address));
+    const rows=trackedWallets.flatMap(wallet=>relevant(wallet,current.current.accounts[wallet.address]?.transactions||[]));
     for(const [scope,ranges] of historyCheckpoints.current){
       if(!addresses.has(scope.split(':')[0]))continue;
-      for(const range of ranges.values())for(const tx of range.transactions)rows.push(tx);
+      const wallet=trackedWallets.find(wallet=>wallet.address===scope.split(':')[0])!;
+      for(const range of ranges.values())for(const tx of relevant(wallet,range.transactions))rows.push(tx);
     }
     return rows;
   }
   useEffect(()=>{
     historyCheckpoints.current.clear();
     if(ready)try{historyCheckpoints.current=readEthereumScanCheckpoints(scanKey,portfolioSettings.keys(),key=>portfolioSettings.getItem(key));}catch{setError('Ethereum scan checkpoint could not be opened. Saved data is retained.');}
-    setDownloadProgress(ready&&loaded&&ownedWallets.length?cachedTransactionProgress(savedTransactions(),tx=>tx.id):emptyDownloadProgress());
+    setDownloadProgress(ready&&loaded&&trackedWallets.length?cachedTransactionProgress(savedTransactions(),tx=>tx.id):emptyDownloadProgress());
   },[ready,loaded,stake,scope]);
   const refresh=useCallback(async()=>{
-    if(!ready||!loaded||!ownedWallets.length)return;
+    if(!ready||!loaded||!trackedWallets.length)return;
     controller.current?.abort();const control=new AbortController();controller.current=control;
     const signal=control.signal;
     const saved=savedTransactions();
@@ -76,8 +78,8 @@ export function useEthereum(stake:string,ready:boolean){
     async function scan(){
       const {block,finalizedBlock}=await request<{block:number;finalizedBlock?:number|null}>({action:'head',finality:true});
       ethereumScanStart(undefined,block,finalizedBlock);
-      const next: EthereumData={...current.current,accounts:Object.fromEntries(ownedWallets.flatMap(wallet=>current.current.accounts[wallet.address]?[[wallet.address,current.current.accounts[wallet.address]]]:[])),history:{...current.current.history}};
-      const changingProvider=ownedWallets.some(w=>{
+      const next: EthereumData={...current.current,accounts:Object.fromEntries(trackedWallets.flatMap(wallet=>current.current.accounts[wallet.address]?[[wallet.address,current.current.accounts[wallet.address]]]:[])),history:{...current.current.history}};
+      const changingProvider=trackedWallets.some(w=>{
         const account=current.current.accounts[w.address];
         return account&&(account.provider||'etherscan')!==(provider||'etherscan');
       });
@@ -87,7 +89,7 @@ export function useEthereum(stake:string,ready:boolean){
         saveData(saved);current.current=saved;setData(saved);
         await flushVault();signal.throwIfAborted();
       }
-      for(const [index,wallet] of ownedWallets.entries()){
+      for(const [index,wallet] of trackedWallets.entries()){
         setStatus('Checking Ethereum transactions…');
         const cached=current.current.accounts[wallet.address];
         // Complete older block ranges remain valid when the provider changes.
@@ -108,7 +110,7 @@ export function useEthereum(stake:string,ready:boolean){
             checkpoints.delete(key);
             if(range.startBlock<=safeBlock)checkpoints.set(`${range.startBlock}:${safeBlock}`,{...range,endBlock:safeBlock,transactions:range.transactions.filter(tx=>tx.block<=safeBlock)});
           }
-          const fetched=await ethereumHistory({startBlock,endBlock:block},range=>request({action:'history',address:wallet.address,kind,...range}),checkpoints,Infinity,Infinity,countTransactions,async range=>{
+          const fetched=await ethereumHistory({startBlock,endBlock:block},range=>request({action:'history',address:wallet.address,kind,...range}),checkpoints,Infinity,Infinity,rows=>countTransactions(relevant(wallet,rows)),async range=>{
             signal.throwIfAborted();
             // Only finalized ranges can be reused after a restart.
             const endBlock=Math.min(range.endBlock,safeBlock);
@@ -124,8 +126,8 @@ export function useEthereum(stake:string,ready:boolean){
         const {balanceWei}=await request<{balanceWei:string}>({action:'balance',address:wallet.address});
         if(typeof balanceWei!=='string'||!/^\d{1,80}$/.test(balanceWei))throw new Error('Invalid Ethereum balance response.');
         next.accounts[wallet.address]={balanceWei,block,finalizedBlock:finalizedBlock??previous?.finalizedBlock,transactions:[...transactions.values()],provider:provider||'etherscan'};
-        if(index===ownedWallets.length-1){
-          setDownloadProgress(progress.complete(Object.values(next.accounts).flatMap(account=>account.transactions)));
+        if(index===trackedWallets.length-1){
+          setDownloadProgress(progress.complete(trackedWallets.flatMap(wallet=>relevant(wallet,next.accounts[wallet.address]?.transactions||[]))));
         }
         // Publish provider changes only after every wallet range is complete.
         if(!changingProvider){
@@ -133,9 +135,9 @@ export function useEthereum(stake:string,ready:boolean){
           portfolioSettings.setItems({},portfolioSettings.keys().filter(key=>key.startsWith(scanKey+'::'+wallet.address+':')));
           for(const key of historyCheckpoints.current.keys())if(key.startsWith(wallet.address+':'))historyCheckpoints.current.delete(key);
         }
-        setStatus(`${index+1} / ${ownedWallets.length}`);
+        setStatus(`${index+1} / ${trackedWallets.length}`);
       }
-      if(changingProvider){await persist(next);portfolioSettings.setItems({},portfolioSettings.keys().filter(key=>ownedWallets.some(wallet=>key.startsWith(scanKey+'::'+wallet.address+':'))));historyCheckpoints.current.clear();}
+      if(changingProvider){await persist(next);portfolioSettings.setItems({},portfolioSettings.keys().filter(key=>trackedWallets.some(wallet=>key.startsWith(scanKey+'::'+wallet.address+':'))));historyCheckpoints.current.clear();}
       const history=await portfolioFetch('/historical-eth-prices',{signal});
       if(!history.ok)throw new Error('Historical Ethereum prices unavailable.');
       const rates=await history.json();
@@ -171,7 +173,7 @@ export function useEthereum(stake:string,ready:boolean){
   },[ready,loaded,scope,stake]);
   useEffect(()=>{void refresh();return()=>controller.current?.abort();},[refresh]);
   useEffect(()=>{
-    if(!ready||!loaded||!ownedWallets.length)return;
+    if(!ready||!loaded||!trackedWallets.length)return;
     const control=new AbortController();let pending=false;
     const updateQuote=async()=>{
       if(pending)return;pending=true;
@@ -201,5 +203,5 @@ export function useEthereum(stake:string,ready:boolean){
     try{const normalized=ethereumWallets(next);portfolioSettings.setItem(cexKey,JSON.stringify(normalized));setExchanges(normalized);return true;}
     catch{setError('Ethereum wallet settings could not be saved.');return false;}
   }
-  return {wallets:ready?ownedWallets:[],allWallets:ready?wallets:[],swapWallets:ready?wallets.filter(wallet=>wallet.group==='swap'):[],exchanges:ready?exchanges.filter(e=>!wallets.some(w=>w.address===e.address)):[],data:ready?data:emptyEthereum(),loaded:ready&&loaded,busy:ready&&busy,error:ready?error:'',status:ready?status:'',downloadProgress:ready?downloadProgress:emptyDownloadProgress(),refresh,saveWallets,saveExchanges};
+  return {wallets:ready?wallets.filter(wallet=>wallet.group!=='swap'):[],allWallets:ready?wallets:[],swapWallets:ready?wallets.filter(wallet=>wallet.group==='swap'):[],exchanges:ready?exchanges.filter(e=>!wallets.some(w=>w.address===e.address)):[],data:ready?data:emptyEthereum(),loaded:ready&&loaded,busy:ready&&busy,error:ready?error:'',status:ready?status:'',downloadProgress:ready?downloadProgress:emptyDownloadProgress(),refresh,saveWallets,saveExchanges};
 }

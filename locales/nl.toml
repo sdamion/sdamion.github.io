@@ -1,4 +1,13 @@
 [strings]
+portfolio_text_out_address = "OUT-adres"
+portfolio_text_out_address_for = "OUT-adres: {name}"
+portfolio_text_out_address_help = "Jij kiest welke opgeslagen adressen OUT-adressen zijn. Dit wijzigt alleen de classificatie; blockchainbedragen, adressen, datums en fees worden nooit aangepast. EUR/USD-waarden zijn schattingen, geen bevestigde fiat-omzettingen."
+portfolio_text_cex_watch = "Stortingen op dit adres volgen"
+portfolio_text_cex_unwatch = "Stortingen niet meer volgen"
+portfolio_text_cex_watch_note = "Persoonlijke CEX-stortingen · saldo en automatische doorboekingen uitgesloten"
+portfolio_text_cex_direct = "Rechtstreekse CEX-storting"
+portfolio_text_cex_external = "Externe ontvangst · geen transfer vanuit een eigen wallet"
+portfolio_text_cex_watch_help = "Kies bij je persoonlijke ETH-CEX-stortingsadres in het actiemenu voor Stortingen op dit adres volgen. Inkomende stortingen worden opgehaald; exchangesaldi en automatische doorboekingen worden uitgesloten."
 portfolio_text_wallet_apps = "Walletapps"
 portfolio_text_local_read_cancelled = "Het lezen van de lokale cache is geannuleerd."
 portfolio_text_local_save_cancelled = "Het opslaan van de lokale cache is geannuleerd."

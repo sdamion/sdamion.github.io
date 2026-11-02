@@ -3,6 +3,7 @@ import {sha256} from '@noble/hashes/sha2.js';
 import type {FiatTransfer} from './ethereum.ts';
 import type {NativeWallet} from './solana.ts';
 import {availableTotal} from './portfolio-totals.ts';
+import {isOutAddress} from './out-address.ts';
 
 export type BitcoinWallet=NativeWallet;
 export type BitcoinTransaction={hash:string;height:number;time:number;feeRaw:string;inputs:{address:string;raw:string}[];outputs:{address:string;raw:string}[]};
@@ -31,7 +32,7 @@ export function validBitcoinAddress(value:unknown):value is string{
 export function bitcoinWallets(value:unknown):BitcoinWallet[]{
   if(!Array.isArray(value))return [];
   return [...new Map(value.filter(row=>row&&validBitcoinAddress(row.address)&&typeof row.name==='string'&&row.name.trim()).map(row=>{
-    const address=normalizeBitcoinAddress(row.address);return [address,{address,name:row.name.trim().slice(0,60),...(row.miner===true?{miner:true}:{}),...(row.dex===true?{dex:true}:{})}];
+    const address=normalizeBitcoinAddress(row.address);return [address,{address,name:row.name.trim().slice(0,60),...(row.miner===true?{miner:true}:{}),...(row.dex===true?{dex:true}:{}),...(typeof row.out==='boolean'?{out:row.out}:{})}];
   })).values()] as BitcoinWallet[];
 }
 export function validBitcoinTransaction(value:unknown):value is BitcoinTransaction{
@@ -55,7 +56,7 @@ export function bitcoinNet(tx:BitcoinTransaction,wallets:BitcoinWallet[]){
   return tx.outputs.reduce((sum,row)=>sum+(own.has(row.address)?BigInt(row.raw):0n),0n)-tx.inputs.reduce((sum,row)=>sum+(own.has(row.address)?BigInt(row.raw):0n),0n);
 }
 export function bitcoinTransfer(tx:BitcoinTransaction,wallets:BitcoinWallet[],exchanges:BitcoinWallet[]){
-  const own=new Set(wallets.map(w=>w.address)),cex=new Set(exchanges.filter(w=>!own.has(w.address)&&!w.miner).map(w=>w.address));
+  const own=new Set(wallets.map(w=>w.address)),cex=new Set(exchanges.filter(w=>!own.has(w.address)&&isOutAddress(w)).map(w=>w.address));
   const net=bitcoinNet(tx,wallets),externalInputs=tx.inputs.filter(row=>!own.has(row.address)&&BigInt(row.raw)>0n);
   const outgoing=tx.outputs.filter(row=>!own.has(row.address)&&cex.has(row.address)).reduce((sum,row)=>sum+BigInt(row.raw),0n);
   if(net>0n&&externalInputs.length&&externalInputs.every(row=>exchanges.some(source=>source.address===row.address&&source.miner===true))&&outgoing===0n)return {side:'sell' as const,raw:String(net),mined:true as const};

@@ -37,7 +37,7 @@ try{
   await page.addScriptTag({type:'module',content:bundle.outputFiles[0].text});await page.locator('tbody tr').first().waitFor();
  };
  await mount();assert.equal(await page.locator('table').count(),1);
- assert.deepEqual(await page.locator('thead th').allTextContents(),['Network','Exchange','Address','Mining / Services Sources','Actions']);
+ assert.deepEqual(await page.locator('thead th').allTextContents(),['Network','Exchange','Address','OUT','Mining / Services Sources','Actions']);
  assert.equal(await page.getByRole('checkbox').count(),4,'Swap rows are not mining counterparties');
  for(const item of items){
   const row=page.locator('tr[data-address-id="'+item.network+':'+item.address+'"]');

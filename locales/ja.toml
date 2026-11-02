@@ -1,4 +1,13 @@
 [strings]
+portfolio_text_out_address = "OUTアドレス"
+portfolio_text_out_address_for = "OUTアドレス: {name}"
+portfolio_text_out_address_help = "保存したアドレスのどれをOUTにするかは自分で選択します。変更するのは分類のみで、ブロックチェーンの金額、アドレス、日時、手数料は編集しません。EUR/USD値は推定であり、換金の確認ではありません。"
+portfolio_text_cex_watch = "このアドレスへの入金を追跡"
+portfolio_text_cex_unwatch = "入金の追跡を停止"
+portfolio_text_cex_watch_note = "個人CEX入金 · 残高と取引所の自動移動は対象外"
+portfolio_text_cex_direct = "CEXへの直接入金"
+portfolio_text_cex_external = "外部からの入金 · 自分のウォレットからの送金ではありません。"
+portfolio_text_cex_watch_help = "個人のETH CEX入金アドレスのメニューで「このアドレスへの入金を追跡」を選択してください。入金を表示し、取引所残高と自動移動はPortfolioの集計から除外します。"
 portfolio_text_wallet_apps = "ウォレットアプリ"
 portfolio_text_local_read_cancelled = "ローカルキャッシュの読み込みをキャンセルしました。"
 portfolio_text_local_save_cancelled = "ローカルキャッシュの保存をキャンセルしました。"

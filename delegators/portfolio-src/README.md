@@ -326,3 +326,23 @@ Native SOL transfers can pair with a saved Cardano Swap leg using the shared
 external counterparty and direction; mixed flows, failed receipts, missing
 daily prices and ambiguous candidates stay separate. Matched ADA/SOL legs
 share one table row and are excluded from CEX totals/charts; fees are retained.
+
+## User-Selected OUT Addresses
+
+The shared counterparty address list exposes an OUT checkbox for ADA, ETH, SOL
+and BTC. The persisted boolean is classification metadata, independent of the
+address's name or exchange brand. Previously saved counterparties retain their
+existing role until the user changes it. Disabled OUT addresses remain saved
+and searchable but are excluded from CEX boundary transfer calculations.
+Mining/service sources remain distinct from OUT destinations. Changing either
+role never edits provider transaction amounts, addresses, dates, fees, hashes or
+balances. Existing EUR/USD valuations remain market-price estimates, never proof
+of a fiat conversion. There are no new manual fiat-value or cost-basis fields.
+
+Personal ETH deposit addresses can additionally opt into history tracking from
+their action menu. Their public provider balance and full validated history are
+retained unchanged, but their balances do not enter owned-wallet holdings.
+Successful external deposits can be viewed without scanning a miningpool's
+entire sending wallet. Exchange sweeps are hidden, overlapping transfers are
+deduplicated, and own-wallet transfer performance is not increased by unrelated
+external deposits. Exact ETH transfer amounts and fees are shown from raw wei.
