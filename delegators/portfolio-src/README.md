@@ -1,5 +1,20 @@
 # Member portfolio
 
+## Bitcoin CEX Connections
+
+Saved My Wallets and DEX / CEX addresses use the shared address-list, OUT-role
+and transaction-address modules. Bitcoin retains a UTXO-specific amount adapter:
+`bitcoinTableTransfer` matches both wallet-to-CEX and CEX-to-wallet connections
+for table filtering and row labels, including transactions with additional inputs.
+Owned destinations, disabled OUT entries and mining/service sources do not become
+CEX destinations. Ambiguous two-way connections are not assigned a direction.
+
+As in Cardano's table adapter, mixed sources remain visible but have an unknown
+CEX-attributed amount and are excluded from calculations. `bitcoinTransfer` remains
+the strict financial classifier; balances, verified CEX totals, P/L and paid-fee
+attribution are unchanged. The regular Transactions view retains the original
+owned-wallet net, and no blockchain inputs, outputs or fees are rewritten.
+
 ## Combined owned assets
 
 Assets > NFTs is the combined current-owned inventory: Cardano FTs/NFTs and ADA,

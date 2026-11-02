@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {bech32,bech32m} from '@scure/base';
-import {validBitcoinAddress,normalizeBitcoinAddress,bitcoinWallets,bitcoinTransfer,bitcoinTransactions,bitcoinTotals,bitcoinTransfers,bitcoinFee,bitcoinAmountText,emptyBitcoin,type BitcoinTransaction} from './bitcoin.ts';
+import {validBitcoinAddress,normalizeBitcoinAddress,bitcoinWallets,bitcoinTransfer,bitcoinTableTransfer,bitcoinTransactions,bitcoinTotals,bitcoinTransfers,bitcoinFee,bitcoinAmountText,emptyBitcoin,type BitcoinTransaction} from './bitcoin.ts';
 import {encodeBitcoinSettings,readBitcoinSettings} from './bitcoin-storage.ts';
 import {portfolioTransactionCounts} from './transaction-counts.ts';
 const address='1BoatSLRHtKNngkdXEeobR76b53LETtpyT',exchange='1BitcoinEaterAddressDontSendf59kuE',other='1CounterpartyXXXXXXXXXXXXXXXUWLpVr';
@@ -39,6 +39,29 @@ test('deduplication, confirmed holdings, satoshi fees, missing prices and encryp
   settings['tdsp-member-bitcoin-wallets:member']=JSON.stringify(own);
   assert.equal(portfolioTransactionCounts({settings,snapshot:null},'member').saved,2);
   delete settings[key+'::'+address+':0'];assert.throws(()=>readBitcoinSettings(key,name=>settings[name]??null));
+});
+test('saved BTC wallet/CEX connections remain visible with mixed inputs, without inventing financial attribution',()=>{
+  const sender='3NRqmZ6pRPGUUsp2XK4dwo68G1UoR21Jky',destination='1N5D2vfM7wSagfzbdCbEuDXUsyGJMrLUxK',coSender='34J9crSscqrEAgQ7MtXexQHpgaa3f9Za1r';
+  const wallets=[{address:sender,name:'My BTC wallet'}],exchanges=[{address:destination,name:'My CEX',out:true}];
+  const send=tx({hash:'c4ce313f2b4ba8eff8cf1c77fde090e9ab11d9595eccebc5fd512938566c8e64',time:1604445086,feeRaw:'66752',inputs:[{address:sender,raw:'10104651'},{address:coSender,raw:'111205'}],outputs:[{address:destination,raw:'10149104'}]});
+  const before=JSON.stringify(send);
+  assert.equal(bitcoinTransfer(send,wallets,exchanges),null,'an additional input prevents assigning the full CEX output');
+  assert.deepEqual(bitcoinTableTransfer(send,wallets,exchanges),{side:'sell',raw:null,verified:false});
+  assert.equal(bitcoinTableTransfer(send,wallets,[{...exchanges[0],out:false}]),null);
+  assert.equal(bitcoinTableTransfer(send,wallets,[{...exchanges[0],miner:true}]),null);
+  assert.equal(bitcoinTableTransfer(send,wallets,[]),null);
+  assert.equal(bitcoinTableTransfer(send,[],exchanges),null);
+  assert.equal(bitcoinTableTransfer(send,[...wallets,...exchanges],exchanges),null,'owned destinations are never CEX');
+  assert.deepEqual(bitcoinTableTransfer(send,[...wallets,{address:coSender,name:'Second owned wallet'}],exchanges),{side:'sell',raw:'10149104',verified:true});
+  const receipt=tx({inputs:[{address:exchange,raw:'500'},{address:other,raw:'500'}]});
+  assert.deepEqual(bitcoinTableTransfer(receipt,own,cex),{side:'buy',raw:null,verified:false});
+  assert.deepEqual(bitcoinTableTransfer(tx(),own,cex),{side:'buy',raw:'900',verified:true});
+  const both=tx({inputs:[{address,raw:'1000'},{address:exchange,raw:'500'},{address:other,raw:'500'}],outputs:[{address,raw:'900'},{address:exchange,raw:'1000'}]});
+  assert.equal(bitcoinTableTransfer(both,own,cex),null,'do not guess a direction when both CEX boundaries match');
+  const zero=tx({inputs:[{address:sender,raw:'0'},{address:other,raw:'1000'}],outputs:[{address:destination,raw:'900'}]});
+  assert.equal(bitcoinTableTransfer(zero,wallets,exchanges),null);
+  const data=emptyBitcoin();data.accounts[sender]={raw:'0',tip,transactions:[send]};assert.deepEqual(bitcoinTransfers(data,wallets,exchanges),[]);
+  assert.equal(bitcoinFee(send,wallets).paidRaw,null);assert.equal(JSON.stringify(send),before);
 });
 test('total on-chain fees stay visible on incoming and mixed transactions without claiming wallet ownership',()=>{
   const receipt=tx({feeRaw:'1'}),outgoing=tx({hash:'2'.repeat(64),feeRaw:'123456',inputs:[{address,raw:'200000'}],outputs:[{address:exchange,raw:'76544'}]}),mixed=tx({hash:'3'.repeat(64),feeRaw:'1000',inputs:[{address,raw:'1000'},{address:other,raw:'1000'}],outputs:[{address:exchange,raw:'1000'}]});

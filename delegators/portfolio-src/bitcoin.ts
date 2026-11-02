@@ -70,6 +70,20 @@ export function bitcoinTransfer(tx:BitcoinTransaction,wallets:BitcoinWallet[],ex
   if(net>0n&&externalInputs.length&&externalInputs.every(row=>cex.has(row.address))&&outgoing===0n)return {side:'buy' as const,raw:String(net)};
   return null;
 }
+// Match saved address connections for display, without assigning shared UTXO
+// amounts to a wallet. Financial totals continue to use bitcoinTransfer only.
+export function bitcoinTableTransfer(tx:BitcoinTransaction,wallets:BitcoinWallet[],exchanges:BitcoinWallet[]){
+  const verified=bitcoinTransfer(tx,wallets,exchanges);
+  if(verified)return {...verified,verified:true};
+  const own=new Set(wallets.map(wallet=>wallet.address));
+  const cex=new Set(exchanges.filter(wallet=>!own.has(wallet.address)&&isOutAddress(wallet)).map(wallet=>wallet.address));
+  const positive=(rows:BitcoinTransaction['inputs'],addresses:Set<string>)=>rows.some(row=>addresses.has(row.address)&&BigInt(row.raw)>0n);
+  const outgoing=positive(tx.inputs,own)&&positive(tx.outputs,cex);
+  const incoming=positive(tx.inputs,cex)&&positive(tx.outputs,own);
+  if(outgoing&&!incoming)return {side:'sell' as const,raw:null,verified:false};
+  if(incoming&&!outgoing)return {side:'buy' as const,raw:null,verified:false};
+  return null;
+}
 export function bitcoinTransfers(data:BitcoinData,wallets:BitcoinWallet[],exchanges:BitcoinWallet[]):(FiatTransfer&{amount:number})[]{
   return bitcoinTransactions(data,wallets).flatMap(tx=>{
     const transfer=bitcoinTransfer(tx,wallets,exchanges);if(!transfer)return [];
