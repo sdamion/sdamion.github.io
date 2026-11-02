@@ -5,7 +5,7 @@ import path from 'node:path';
 const source=path.resolve('delegators/portfolio-src'),require=createRequire(path.join(source,'package.json'));
 const {build}=require('esbuild'),{chromium}=await import(process.argv[2]);
 const stake='stake1uxythldc4nmx45tvnwsqu4h5pyjd94udytm6f0tgnr44vecjd8vel',eth='0x'+'1'.repeat(40),eth2='0x'+'2'.repeat(40),swap='0x'+'9'.repeat(40),sol='11111111111111111111111111111111',btc='1BoatSLRHtKNngkdXEeobR76b53LETtpyT',ordinal='a'.repeat(64)+'i0';
-const bundle=await build({stdin:{resolveDir:source,loader:'tsx',contents:`import {createRoot} from 'react-dom/client';import Home from './App';const root=createRoot(document.getElementById('app'));let version=0;window.reopen=(role='admin')=>root.render(<Home key={++version} memberStake="${stake}" role={role}/>);window.reopen();`},bundle:true,write:false,format:'esm',jsx:'automatic',alias:{'@/lib/portfolio':path.join(source,'core.ts'),'@/lib/portfolio-cache':path.join(source,'cache.ts'),'@/components/ui/input':path.join(source,'ui.tsx'),'@/components/ui/table':path.join(source,'ui.tsx'),'@/components/ui/pagination':path.join(source,'ui.tsx')},plugins:[{name:'fixture',setup(build){
+const bundle=await build({stdin:{resolveDir:source,loader:'tsx',contents:`import {createRoot} from 'react-dom/client';import Home from './App';import {readOwnedAssets} from './owned-assets';window.readInventory=()=>readOwnedAssets('tdsp-member-owned-assets:${stake}',key=>window.fixtureStorage.getItem(key));const root=createRoot(document.getElementById('app'));let version=0;window.reopen=(role='admin')=>root.render(<Home key={++version} memberStake="${stake}" role={role}/>);window.reopen();`},bundle:true,write:false,format:'esm',jsx:'automatic',alias:{'@/lib/portfolio':path.join(source,'core.ts'),'@/lib/portfolio-cache':path.join(source,'cache.ts'),'@/components/ui/input':path.join(source,'ui.tsx'),'@/components/ui/table':path.join(source,'ui.tsx'),'@/components/ui/pagination':path.join(source,'ui.tsx')},plugins:[{name:'fixture',setup(build){
  build.onLoad({filter:/\/PortfolioQuickstart\.tsx$/},()=>({loader:'tsx',contents:'export function PortfolioQuickstart(){return null;}'}));
  build.onLoad({filter:/\/vault\.ts$/},()=>({loader:'ts',contents:'export const portfolioSettings=window.fixtureStorage;export const flushVault=async()=>{};export const storageMode=()=>"local";export const cachedSnapshot=()=>window.fixture;export const latestMemberSnapshot=()=>window.fixture;export const cacheSnapshot=async()=>{};'}));
  for(const [chain,enabled,wallets]of [['ethereum','ready',`[{address:'${eth}',name:'ETH One'},{address:'${eth2}',name:'ETH Two'}]`],['solana','enabled',`[{address:'${sol}',name:'SOL Wallet'}]`],['bitcoin','enabled',`[{address:'${btc}',name:'BTC Wallet'}]`]]){
@@ -15,9 +15,9 @@ const bundle=await build({stdin:{resolveDir:source,loader:'tsx',contents:`import
 }}]});
 const browser=await chromium.launch({channel:'chrome',headless:true});
 try{
- const page=await browser.newPage({viewport:{width:1200,height:1000}}),requests=[],errors=[];let unavailable=false;
+ const page=await browser.newPage({viewport:{width:1200,height:1000}}),requests=[],errors=[];let unavailable=false,malformed=false;
  page.setDefaultTimeout(15000);page.on('pageerror',error=>errors.push(error.message));
- const token=(chain,id,standard,name,raw,decimals)=>({chain,id,standard,name,raw,decimals,symbol:'',image:null,explorer:null});
+ const token=(chain,id,standard,name,raw,decimals)=>({chain,id,standard,name,raw,decimals,symbol:'',image:chain==='ethereum'?'https://ipfs.io/ipfs/QmExample/eth.png':chain==='solana'?'https://dweb.link/ipfs/QmExample/sol.png':null,explorer:null});
  await page.route('**/*',async route=>{
   const url=new URL(route.request().url()),operation=url.pathname.split('/').pop();
   if(url.hostname==='fonts.googleapis.com')return route.fulfill({contentType:'text/css',body:''});
@@ -30,6 +30,7 @@ try{
    else if(operation==='solana')result={address:sol,assets:[token('solana','solana:mainnet:ft','SPL','SOL FT','5000',3),token('solana','solana:mainnet:nft','Compressed NFT','SOL Artwork','1',0)],more:false};
    else if(body.action==='owned')result={address:btc,rows:[{id:ordinal,number:123,contentType:'image/png',owner:btc,ownerOutput:'b'.repeat(64)+':0',created:1600000000,genesisAddress:btc,name:'Owned Ordinal',collection:null}],more:false};
    else result={address:btc,assets:[token('bitcoin','bitcoin:'+body.action+':TOKEN',body.action==='runes'?'Rune':'BRC-20',body.action==='runes'?'BTC Rune':'BTC BRC20','100',body.action==='runes'?null:0)],more:false};
+   if(malformed&&operation==='ethereum'&&body.address===eth&&body.kind==='tokens')result.assets[0].raw='1.5';
    return route.fulfill({contentType:'application/json',body:JSON.stringify(result)});
   }
   if(operation==='price')return route.fulfill({contentType:'application/json',body:'{"cardano":{"usd":1}}'});
@@ -51,6 +52,9 @@ try{
  await gallery.getByRole('button',{name:'Refresh owned assets',exact:true}).waitFor({state:'visible'});await page.waitForFunction(()=>!document.querySelector('button[aria-label="Refresh owned assets"]').disabled);
  for(const name of ['Cardano FT','Cardano NFT','Shared ETH Token','ETH Art One','ETH Art Two','SOL FT','SOL Artwork','BTC Rune','BTC BRC20'])assert.equal(await gallery.getByText(name,{exact:true}).count(),1,name+' is present once');
  const ft=gallery.locator('[data-owned-asset="ethereum:1:0x'+'3'.repeat(40)+'"]');assert.match(await ft.innerText(),/2\.23/);assert.match(await ft.innerText(),/ETH One.*ETH Two/);
+ const saved=await page.evaluate(({eth,sol})=>({eth:window.readInventory()['ethereum:'+eth],sol:window.readInventory()['solana:'+sol]}),{eth,sol});
+ assert.equal(saved.eth.assets[0].image,'https://gateway.pinata.cloud/ipfs/QmExample/eth.png');assert.equal(saved.eth.assets[0].raw,'1230000');assert.equal(saved.sol.assets[0].image,'https://gateway.pinata.cloud/ipfs/QmExample/sol.png');
+ assert.equal(await gallery.getByRole('alert').count(),0,'valid provider gateway artwork cannot reject ETH or SOL inventory');
  assert.ok(!requests.some(row=>row.action==='activity'),'owned Ordinals do not require a historical transaction scan');
  for(const width of [1200,390,320]){await page.setViewportSize({width,height:1000});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await gallery.screenshot({path:'/tmp/portfolio-owned-assets-'+width+'.png'});}
  await gallery.getByLabel('Network',{exact:true}).selectOption('solana');assert.equal(await gallery.locator('.portfolio-nft-tile').count(),3);
@@ -62,7 +66,9 @@ try{
   await page.evaluate(language=>window.TDSPI18n.setLanguage(language),language);
   const label=await page.evaluate(()=>window.TDSPI18n.translateText('Search owned assets'));await gallery.getByLabel(label,{exact:true}).waitFor();assert.match(await ft.innerText(),/2\.23/);assert.equal(await gallery.getByText('Shared ETH Token',{exact:true}).count(),1);
  }
+ malformed=true;await gallery.getByRole('button',{name:'Refresh owned assets',exact:true}).click();await gallery.getByRole('alert').first().waitFor();await page.waitForFunction(()=>!document.querySelector('button[aria-label="Refresh owned assets"]').disabled);
+ assert.deepEqual(await page.evaluate(eth=>window.readInventory()['ethereum:'+eth],eth),saved.eth,'malformed financial fields do not overwrite the last complete wallet inventory');assert.match(await ft.innerText(),/2\.23/);malformed=false;
  unavailable=true;await gallery.getByRole('button',{name:'Refresh owned assets',exact:true}).click();await gallery.getByRole('alert').first().waitFor();assert.equal(await gallery.getByText('BTC BRC20',{exact:true}).count(),1,'provider failure retains complete saved holdings');
  const final=requests.length;await page.waitForFunction(()=>!document.querySelector('button[aria-label="Refresh owned assets"]').disabled);await page.evaluate(()=>window.reopen('delegator'));await open();assert.equal(await gallery.getByText('Shared ETH Token',{exact:true}).count(),0);assert.equal(requests.length,final,'revoked chain rights hide cached holdings and prevent requests');
- assert.deepEqual(errors,[]);console.log('PASS: combined current holdings across four chains, native/FT/NFT/Ordinal coverage, exact aggregation, no history prerequisite, filters, member cache, failures, languages, access isolation and desktop/mobile layout.');
+ assert.deepEqual(errors,[]);console.log('PASS: four-chain inventory, ETH/SOL provider IPFS artwork normalization, exact balances, strict malformed-data rejection, cache retention, filters, languages, access isolation and desktop/mobile layout.');
 }finally{await browser.close();}

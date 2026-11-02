@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {assetQuantity,mergeOwnedAssets,validOwnedAsset,encodeOwnedAssets,readOwnedAssets,accountKey,type OwnedAsset,type AssetWallet} from './owned-assets.ts';
+import {assetQuantity,mergeOwnedAssets,validOwnedAsset,normalizeOwnedAsset,encodeOwnedAssets,readOwnedAssets,accountKey,type OwnedAsset,type AssetWallet} from './owned-assets.ts';
 import {encodeOrdinalsSettings,readOrdinalsSettings} from './ordinals-storage.ts';
 const wallet:AssetWallet={chain:'ethereum',address:'0x'+'1'.repeat(40),name:'ETH wallet'},second={...wallet,address:'0x'+'2'.repeat(40),name:'Second'};
 const asset:OwnedAsset={id:'ethereum:1:0x'+'3'.repeat(40),chain:'ethereum',standard:'ERC-20',name:'Token',symbol:'TOK',raw:'123456789012345678901234567890',decimals:18,image:null,explorer:null};
@@ -29,4 +29,19 @@ test('an owned-only Ordinal cache retains its incomplete-history marker across e
  const address='1BoatSLRHtKNngkdXEeobR76b53LETtpyT',key='tdsp-member-bitcoin-ordinals:member';
  const data={accounts:{[address]:{tip:'0'.repeat(64),checkedAt:123,owned:[],events:[],historyComplete:false}},metadata:{}};
  const settings=encodeOrdinalsSettings(key,data);assert.deepEqual(readOrdinalsSettings(key,name=>settings[name]??null),data);
+});
+test('ETH and SOL provider artwork is normalized without rejecting ownership or changing exact quantities',()=>{
+  for(const chain of ['ethereum','solana'] as const)for(const gateway of ['ipfs.io','dweb.link']){
+    const row={...asset,chain,id:chain+':fixture',image:`https://${gateway}/ipfs/QmExample/art.png`},before=JSON.stringify(row);
+    assert.equal(validOwnedAsset(row),false,'the strict cache validator expects canonical artwork');
+    const normalized=normalizeOwnedAsset(row)!;assert.equal(normalized.image,'https://gateway.pinata.cloud/ipfs/QmExample/art.png');assert.equal(validOwnedAsset(normalized),true);
+    assert.deepEqual({...normalized,image:row.image},row);assert.equal(normalized.raw,asset.raw);assert.equal(JSON.stringify(row),before);
+    const wallet:AssetWallet={chain,address:chain==='ethereum'?'0x'+'1'.repeat(40):'11111111111111111111111111111111',name:'Wallet'},data={[accountKey(wallet)]:{chain,address:wallet.address,checkedAt:1,assets:[normalized]}},key='tdsp-member-owned-assets:test';
+    const settings=encodeOwnedAssets(key,data);assert.deepEqual(readOwnedAssets(key,name=>settings[name]??null),data);
+  }
+});
+test('optional unsafe artwork cannot break an inventory; malformed balances, IDs and explorer targets still fail closed',()=>{
+  for(const image of ['javascript:alert(1)','http://example.com/art.png','https://user:secret@example.com/art.png'])assert.equal(normalizeOwnedAsset({...asset,image})?.image,null);
+  for(const patch of [{raw:'1.5'},{raw:123},{chain:'unknown'},{id:'wrong-network:asset'},{explorer:'https://evil.example/'},{decimals:999}])assert.equal(normalizeOwnedAsset({...asset,...patch}),null);
+  assert.equal(normalizeOwnedAsset(null),null);
 });

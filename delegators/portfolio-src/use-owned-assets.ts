@@ -1,7 +1,7 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {portfolioFetch} from './transport';
 import {portfolioSettings,flushVault} from './vault';
-import {accountKey,encodeOwnedAssets,readOwnedAssets,validOwnedAsset,validAssetWallet,type AssetWallet,type OwnedAsset,type OwnedAssetsData} from './owned-assets';
+import {accountKey,encodeOwnedAssets,readOwnedAssets,normalizeOwnedAsset,validAssetWallet,type AssetWallet,type OwnedAsset,type OwnedAssetsData} from './owned-assets';
 
 export function useOwnedAssets(stake:string,enabled:boolean,active:boolean,wallets:AssetWallet[]){
   const key='tdsp-member-owned-assets:'+stake;
@@ -33,8 +33,12 @@ export function useOwnedAssets(stake:string,enabled:boolean,active:boolean,walle
               signal.throwIfAborted();
               const response=await portfolioFetch('/'+(wallet.chain==='bitcoin'?'bitcoin-ordinals':wallet.chain),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:wallet.chain==='bitcoin'?kind:'assets',address:wallet.address,...(wallet.chain==='ethereum'?{kind,cursor}:{page})}),signal});
               const result=await response.json();if(!response.ok)throw new Error(result.error||'Owned assets unavailable. Saved data is retained.');
-              if(result.address!==wallet.address||!Array.isArray(result.assets)||result.assets.some((row:unknown)=>!validOwnedAsset(row)||(row as OwnedAsset).chain!==wallet.chain))throw new Error('Owned assets unavailable. Saved data is retained.');
-              for(const row of result.assets){if(seen.has(row.id))throw new Error('Owned asset scan is incomplete. Saved data is retained.');seen.add(row.id);assets.push(row);}
+              if(result.address!==wallet.address||!Array.isArray(result.assets))throw new Error('Owned assets unavailable. Saved data is retained.');
+              for(const value of result.assets){
+                const row=normalizeOwnedAsset(value);
+                if(!row||row.chain!==wallet.chain)throw new Error('Owned assets unavailable. Saved data is retained.');
+                if(seen.has(row.id))throw new Error('Owned asset scan is incomplete. Saved data is retained.');seen.add(row.id);assets.push(row);
+              }
               if(wallet.chain==='ethereum'){
                 if(result.cursor===null)break;
                 if(!result.cursor||typeof result.cursor!=='object')throw new Error('Owned asset scan is incomplete. Saved data is retained.');

@@ -19,6 +19,11 @@ export function validOwnedAsset(value:unknown):value is OwnedAsset{
   try{if(row.explorer!==null){const url=new URL(row.explorer);if(url.protocol!=='https:'||url.username||url.password||!['eth.blockscout.com','solscan.io','ordiscan.com'].includes(url.hostname))return false;}}catch{return false;}
   return true;
 }
+export function normalizeOwnedAsset(value:unknown):OwnedAsset|null{
+  if(!value||typeof value!=='object'||Array.isArray(value))return null;
+  const row={...value,image:assetImageUrl((value as {image?:unknown}).image)};
+  return validOwnedAsset(row)?row:null;
+}
 export function assetQuantity(row:Pick<OwnedAsset,'raw'|'decimals'>){
   if(row.decimals===null)return row.raw;
   const value=BigInt(row.raw).toString().padStart(row.decimals+1,'0');

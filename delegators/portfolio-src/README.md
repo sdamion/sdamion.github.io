@@ -396,6 +396,15 @@ legacy facts without source details do not invent address roles. Transaction
 fee columns show wallet-paid fees only; unknown shares remain unknown. This
 presentation layer does not rewrite transaction or cache data.
 
+Owned-asset responses normalize optional artwork through assetImageUrl before
+the strict inventory validator. Provider ipfs.io/dweb.link URLs use the same
+canonical gateway as other artwork; unsafe optional images become null rather
+than rejecting an otherwise valid wallet inventory. Asset IDs, exact raw
+balances, decimals, names, chain and explorer targets are still validated
+without financial coercion. Invalid financial/ownership data or incomplete
+pages retain the previous complete per-wallet cache. Stored inventory remains
+strictly canonical and uses the existing encrypted settings/chunk format.
+
 Personal ETH deposit addresses can additionally opt into history tracking from
 their action menu. Their public provider balance and full validated history are
 retained unchanged, but their balances do not enter owned-wallet holdings.
