@@ -1,9 +1,11 @@
 import {useLayoutEffect,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
-import {Ellipsis,Eye,Pencil,Trash2} from 'lucide-react';
+import {Check,Ellipsis,Eye,Pencil,Trash2} from 'lucide-react';
 import {usePortfolioText} from './use-portfolio-text';
+import {addressTypes,type AddressType} from './address-types';
+import {rewardSourceHelp} from './reward-sources';
 
-export function AddressActions({id,name,onRename,onRemove,onView,removeDisabled=false,extra=[]}:{id:string;name:string;onRename:()=>void;onRemove:()=>void;onView?:()=>void;removeDisabled?:boolean;extra?:{label:string;onSelect:()=>void}[]}){
+export function AddressActions({id,name,onRename,onRemove,onView,addressType,onType,removeDisabled=false,extra=[]}:{id:string;name:string;onRename:()=>void;onRemove:()=>void;onView?:()=>void;addressType?:AddressType;onType?:(type:AddressType)=>void;removeDisabled?:boolean;extra?:{label:string;onSelect:()=>void}[]}){
   const [open,setOpen]=useState(false),[position,setPosition]=useState({left:0,top:0}),button=useRef<HTMLButtonElement>(null),menu=useRef<HTMLDivElement>(null),t=usePortfolioText();
   const hasView=!!onView;
   useLayoutEffect(()=>{
@@ -34,6 +36,7 @@ export function AddressActions({id,name,onRename,onRemove,onView,removeDisabled=
   return <><button ref={button} type="button" className="governance-vote-secondary" title={t('Address actions')} aria-label={t('Actions for {name}',{name})} aria-haspopup="menu" aria-expanded={open} aria-controls={open?id:undefined} onClick={()=>setOpen(value=>!value)} onKeyDown={event=>{if(event.key==='ArrowDown'){event.preventDefault();setOpen(true);}}}><Ellipsis size={16}/></button>
     {open&&createPortal(<div ref={menu} id={id} role="menu" aria-label={t('Actions for {name}',{name})} className="portfolio-address-actions-menu" style={position} translate="no">
       {onView&&<button type="button" role="menuitem" className="governance-vote-secondary" onClick={()=>run(onView)}><Eye size={16}/>{t('View')}</button>}
+      {onType&&<div role="group" aria-label={t('Address type')}>{addressTypes.map(type=><button key={type.value} type="button" role="menuitemradio" aria-checked={addressType===type.value} title={type.value==='min'||type.value==='svc'?t(rewardSourceHelp):undefined} className="governance-vote-secondary" onClick={()=>run(()=>onType(type.value))}><Check size={16} aria-hidden="true" style={{visibility:addressType===type.value?'visible':'hidden'}}/>{t(type.label)}</button>)}</div>}
       {extra.map(action=><button key={action.label} type="button" role="menuitem" className="governance-vote-secondary" onClick={()=>run(action.onSelect)}><Eye size={16}/>{t(action.label)}</button>)}
       <button type="button" role="menuitem" className="governance-vote-secondary" onClick={()=>run(onRename)}><Pencil size={16}/>{t('Rename')}</button>
       <button type="button" role="menuitem" className="governance-vote-secondary" disabled={removeDisabled} onClick={()=>run(onRemove)}><Trash2 size={16}/>{t('Remove')}</button>

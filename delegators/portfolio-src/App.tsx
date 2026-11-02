@@ -5,7 +5,8 @@ import {ExternalLink,Trash2,ImageOff} from 'lucide-react';
 import {CryptoAddressForm,type AddressNetwork} from './CryptoAddressForm';
 import {AddressList,type AddressListRow} from './AddressList';
 import {KnownDexAddresses} from './KnownDexAddresses';
-import type {EthereumWallet} from './ethereum';
+import {addNativeAddress,nativeAddressRows,type NativeAddressBook} from './native-addresses';
+import {cardanoAddressRows,type CardanoAddressBook} from './cardano-addresses';
 import {PortfolioRefresh} from './PortfolioRefresh';
 import {usePortfolioText} from './use-portfolio-text';
 import {DownloadStatus} from './DownloadStatus';
@@ -68,7 +69,6 @@ import {SolanaTransaction} from './SolanaTransaction';
 import {solanaTransactions,solanaTransfers,solanaTotals,solAmount} from './solana';
 import {EthereumTransaction} from './EthereumTransaction';
 import {visibleEthereumTransactions,directEthereumDeposit,ethereumTransfers,ethereumTransfer,ethereumValue,weiToEth} from './ethereum';
-import {isOutAddress} from './out-address';
 import {matchCrossChainSwaps,groupSwapRows} from './cross-chain-swaps';
 import {learnMatchedSwapAddresses} from './matched-swap-addresses';
 import {availableTotal,ethereumAvailableTotals,availableCexResult,networkFeeNotes} from './portfolio-totals';
@@ -87,7 +87,6 @@ import {loadPriceSettings} from './price-settings';
 import {NativeTransferSummary} from './NativeTransferSummary';
 import {matchesTransaction,matchesSearchText} from './transaction-search';
 import {ByronExchanges} from './ByronExchanges';
-import {SwapWallets} from './SwapWallets';
 import {PortfolioQuickstart} from './PortfolioQuickstart';
 import {WalletMenu} from './WalletMenu';
 import {WalletCard} from './WalletAddresses';
@@ -526,64 +525,28 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   const currentPage=transactionPage(page,shown.length).page;
   useEffect(()=>{if(page!==currentPage)setPage(currentPage);},[page,currentPage]);
 
+  const nativeAddressBooks:NativeAddressBook[]=[
+    {network:'ethereum',enabled:canEthereum,wallets:ethereum.allWallets,exchanges:ethereum.exchanges,saveWallets:ethereum.saveWallets,saveExchanges:ethereum.saveExchanges,balance:address=>ethereum.data.accounts[address]?.balanceWei,usd:ethereum.data.usd},
+    {network:'solana',enabled:canSolana,wallets:solana.wallets,exchanges:solana.exchanges,saveWallets:solana.saveWallets,saveExchanges:solana.saveExchanges,balance:address=>solana.data.accounts[address]?.raw,usd:solana.data.usd},
+    {network:'bitcoin',enabled:isAdmin,wallets:bitcoin.wallets,exchanges:bitcoin.exchanges,saveWallets:bitcoin.saveWallets,saveExchanges:bitcoin.saveExchanges,balance:address=>bitcoin.data.accounts[address]?.raw,usd:bitcoin.data.usd}
+  ];
   function addAddress(counterparty:boolean,network:AddressNetwork,kind:'exchange'|'swap'|'dex',name:string,address:string){
-    if(network==='bitcoin'){
-      if(!isAdmin)return false;
-      if([...bitcoin.wallets,...bitcoin.exchanges].some(row=>row.address===address))throw new Error('This address is already saved.');
-      return counterparty?bitcoin.saveExchanges([...bitcoin.exchanges,{address,name}]):bitcoin.saveWallets([...bitcoin.wallets,{address,name}]);
-    }
-    if(network==='ethereum'||network==='solana'){
-      if(network==='ethereum'?!canEthereum:!canSolana)return false;
-      const chain=network==='ethereum'?ethereum:solana;
-      if(counterparty&&kind!=='swap'&&chain.wallets.some(row=>row.address===address))throw new Error('Your own wallet cannot be added as a CEX address.');
-      if([...chain.wallets,...chain.exchanges,...(network==='ethereum'?ethereum.swapWallets:[])].some(row=>row.address===address))throw new Error('This address is already saved.');
-      if(network==='ethereum'&&counterparty&&kind==='swap'){
-        if(ethereum.allWallets.length>=20)throw new Error('A maximum of 20 Ethereum addresses can be added.');
-        return ethereum.saveWallets([...ethereum.allWallets,{address,name,group:'swap'}]);
-      }
-      const rows=counterparty?chain.exchanges:network==='ethereum'?ethereum.allWallets:solana.wallets;
-      if(rows.length>=20)throw new Error(network==='ethereum'?'A maximum of 20 Ethereum addresses can be added.':'Invalid Solana request.');
-      const next=[...rows,{address,name,...(counterparty&&kind==='dex'?{dex:true}:{})}];
-      return counterparty?chain.saveExchanges(next):chain.saveWallets(next);
-    }
+    if(network!=='cardano')return addNativeAddress(nativeAddressBooks.find(book=>book.network===network)!,counterparty,kind,name,address);
     if(counterparty){
       if(ownedAddresses.includes(address))throw new Error('This address belongs to a wallet in your portfolio.');
       if(cexAddresses.some(row=>row.address===address)||wallets.some(row=>row.address===address))throw new Error('This address is already saved.');
-      return kind==='swap'?saveWallets(addSwapWallet(wallets,address,name)):saveCexAddresses([...cexAddresses,{address,name}]);
+      return kind==='swap'?saveWallets(addSwapWallet(wallets,address,name)):saveCexAddresses([...cexAddresses,{address,name,dex:kind==='dex'}]);
     }
     if(wallets.some(row=>row.address===address)||ownedAddresses.includes(address))throw new Error('This address is already included.');
     return saveWallets([...wallets,{address,label:name}]);
   }
   const walletForm=<CryptoAddressForm id="portfolio-wallet" ethereum={canEthereum} solana={canSolana} bitcoin={isAdmin} onAdd={(...args)=>addAddress(false,...args)}/>;
   const exchangeForm=<CryptoAddressForm id="portfolio-exchange" counterparty ethereum={canEthereum} solana={canSolana} bitcoin={isAdmin} onAdd={(...args)=>addAddress(true,...args)}/>;
-  const swapForm=<SwapWallets inline wallets={wallets} groups={snapshot?.swapGroups} onChange={saveWallets}/>;
   const ethSwapWallets=ethereum.swapWallets,ethOwnWallets=ethereum.wallets;
-  function nativeAddressRows(network:AddressNetwork,rows:EthereumWallet[],change:(rows:EthereumWallet[])=>boolean,owned=false,kind?:string):AddressListRow[]{
-    return rows.map(wallet=>{
-      const symbol=network==='ethereum'?'ETH':network==='solana'?'SOL':'BTC';
-      const amount=network==='ethereum'?ethereum.data.accounts[wallet.address]?.balanceWei:network==='solana'?solana.data.accounts[wallet.address]?.raw:bitcoin.data.accounts[wallet.address]?.raw;
-      const units=amount===undefined?null:network==='ethereum'?weiToEth(amount):network==='solana'?solAmount(amount):bitcoinAmount(amount);
-      const quote=network==='ethereum'?ethereum.data.usd:network==='solana'?solana.data.usd:bitcoin.data.usd;
-      return {id:`${network}:${owned?'own':kind||'cex'}:${wallet.address}`,network,address:wallet.address,name:wallet.name,kind:kind||(!owned?(wallet.dex?'DEX':'CEX'):undefined),linked:wallet.swapAddresses,
-        ...(owned?{note:<><span translate="no">{units===null?'—':num(units,network==='solana'?9:8)} {symbol}</span><div translate="no">{formatPortfolioUsd(units===null||quote===null?null:units*quote,currencyDisplay)}</div></>}:{}),
-        ...(!owned&&kind!=='Swap'?{out:isOutAddress(wallet),onOut:(out:boolean)=>change(rows.map(row=>row.address===wallet.address?{...row,out,miner:out?false:row.miner}:row))}:{}),
-        ...(!owned&&kind!=='Swap'&&!wallet.deposit?{miner:wallet.miner,onMining:(miner:boolean)=>change(rows.map(row=>row.address===wallet.address?{...row,miner,...(miner?{out:false}:{})}:row))}:{}),
-        ...(!owned&&kind!=='Swap'&&network==='ethereum'?{deposit:wallet.deposit,note:wallet.deposit?t('Personal CEX deposits · balance and exchange sweeps excluded'):undefined,onDeposit:(deposit:boolean)=>change(rows.map(row=>row.address===wallet.address?{...row,deposit,miner:deposit?false:row.miner}:row))}:{}),
-        onRename:name=>change(rows.map(row=>row.address===wallet.address?{...row,name}:row)),onRemove:()=>change(rows.filter(row=>row.address!==wallet.address))};
-    });
-  }
-  const ownAddressRows:AddressListRow[]=[...wallets.filter(wallet=>wallet.group!=='swap').map(wallet=>({
-    id:'cardano:own:'+wallet.address,network:'cardano' as const,address:wallet.address,name:wallet.label,
-    note:snapshot?.groups?.[wallet.address]?formatPortfolioAda(snapshot.infos.filter(info=>snapshot.groups[wallet.address].includes(info.address)).reduce((sum,info)=>sum+Number(info.balance)/1e6,0),currencyDisplay):t('Loading balance…'),
-    onRename:(label:string)=>saveWallets(wallets.map(row=>row.address===wallet.address?{...row,label}:row)),onRemove:()=>saveWallets(wallets.filter(row=>row.address!==wallet.address)),removeDisabled:wallet.address===memberStake||busy,
-    ...(snapshot?.groups?.[wallet.address]?{onView:()=>setWalletDetails(wallet.address)}:{})
-  })),...nativeAddressRows('ethereum',ethOwnWallets,next=>ethereum.saveWallets([...next,...ethSwapWallets]),true),...nativeAddressRows('solana',solana.wallets,solana.saveWallets,true),...nativeAddressRows('bitcoin',bitcoin.wallets,bitcoin.saveWallets,true)];
-  const counterpartyRows:AddressListRow[]=[...cexAddresses.map(entry=>({id:'cardano:cex:'+entry.address,network:'cardano' as const,address:entry.address,name:entry.name,kind:validByronAddress(entry.address)?'Byron CEX':'DEX / CEX',miner:entry.miner,
-    out:isOutAddress(entry),onOut:(out:boolean)=>saveCexAddresses(cexAddresses.map(row=>row.address===entry.address?{...row,out,miner:out?false:row.miner}:row)),
-    onMining:(miner:boolean)=>saveCexAddresses(cexAddresses.map(row=>row.address===entry.address?{...row,miner,...(miner?{out:false}:{})}:row)),onRename:(name:string)=>saveCexAddresses(cexAddresses.map(row=>row.address===entry.address?{...row,name}:row)),onRemove:()=>saveCexAddresses(cexAddresses.filter(row=>row.address!==entry.address))
-  })),...wallets.filter(wallet=>wallet.group==='swap').map(wallet=>({id:'cardano:swap:'+wallet.address,network:'cardano' as const,address:wallet.address,name:wallet.label,kind:'Swap',linked:wallet.swapAddresses,
-    onRename:(label:string)=>saveWallets(wallets.map(row=>row.address===wallet.address?{...row,label}:row)),onRemove:()=>saveWallets(wallets.filter(row=>row.address!==wallet.address))
-  })),...nativeAddressRows('ethereum',ethereum.exchanges,ethereum.saveExchanges),...nativeAddressRows('ethereum',ethSwapWallets,next=>ethereum.saveWallets([...ethOwnWallets,...next]),false,'Swap'),...nativeAddressRows('solana',solana.exchanges,solana.saveExchanges),...nativeAddressRows('bitcoin',bitcoin.exchanges,bitcoin.saveExchanges)];
+  const cardanoAddressBook:CardanoAddressBook={wallets,exchanges:cexAddresses,snapshot,memberStake,busy,usd:currentAdaUsd,saveWallets,saveExchanges:saveCexAddresses,onView:setWalletDetails};
+  const ownAddressRows:AddressListRow[]=[...cardanoAddressRows(cardanoAddressBook,true),...nativeAddressBooks.flatMap(book=>nativeAddressRows(book,true))];
+  const counterpartyRows:AddressListRow[]=[...cardanoAddressRows(cardanoAddressBook),...nativeAddressBooks.flatMap(book=>nativeAddressRows(book))];
+  const swapForm=<><CryptoAddressForm id="portfolio-swap" counterparty ethereum={canEthereum} initialKind="swap" onAdd={(...args)=>addAddress(true,...args)}/><AddressList rows={counterpartyRows.filter(row=>row.kind==='Swap')}/></>;
   const detailWallet=wallets.find(wallet=>wallet.address===walletDetails&&wallet.group!=='swap');
   return <PortfolioCurrencyContext.Provider value={currencyDisplay}><main className="member-portfolio"><PortfolioQuickstart stake={memberStake} wallets={walletForm} exchanges={exchangeForm} swap={swapForm}/><div className="portfolio-body"><div className="section-heading" aria-label="Portfolio refresh">
     <PortfolioRefresh onRefresh={()=>{void refresh();void ethereum.refresh();void solana.refresh();void bitcoin.refresh();}} disabled={syncing||!ready} busy={syncing} currencyControl={<select className="governance-vote-secondary" aria-label={t('Comparison currency')} value={holdingsCurrency} onChange={event=>setHoldingsCurrency(event.target.value as 'ADA'|ComparisonFiat)}><option value="ADA">ADA</option><option value="USD">USD ($)</option><option value="EUR">EUR (€)</option><option value="JPY">JPY (¥)</option></select>}/>

@@ -142,6 +142,8 @@ html[data-theme="dark"] .portfolio-dex-label { --portfolio-dex-color: #fb923c; }
 .portfolio-address-rename .wallet-form { gap: 6px; }
 .portfolio-address-actions-menu { position: fixed; z-index: 10000; display: grid; gap: 4px; width: 180px; max-width: calc(100vw - 16px); max-height: calc(100vh - 16px); overflow-y: auto; padding: 6px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text); }
 .portfolio-address-actions-menu > button { display: flex; align-items: center; gap: 8px; justify-content: flex-start; min-height: 40px; }
+.portfolio-address-actions-menu > [role="group"] { display: grid; gap: 4px; }
+.portfolio-address-actions-menu > [role="group"] > button { display: flex; align-items: center; gap: 8px; justify-content: flex-start; min-height: 40px; }
 .member-portfolio .portfolio-address-form :is(input, button[type="submit"]) { min-height: 44px; box-sizing: border-box; }
 .member-portfolio input {
     min-width: 0;

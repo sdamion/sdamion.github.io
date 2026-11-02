@@ -3,7 +3,7 @@ import {Check,Copy} from 'lucide-react';
 import {short} from './core';
 import {validStakeAddress} from './member';
 import {usePortfolioText} from './use-portfolio-text';
-import type {AddressNetwork} from './CryptoAddressForm';
+import type {AddressNetwork} from './address-networks';
 
 export function addressExplorer(network:AddressNetwork,address:string){
   const value=encodeURIComponent(address);

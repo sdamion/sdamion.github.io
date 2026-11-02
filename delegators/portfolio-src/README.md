@@ -329,6 +329,30 @@ share one table row and are excluded from CEX totals/charts; fees are retained.
 
 ## User-Selected OUT Addresses
 
+Live address management uses one CryptoAddressForm and AddressList across
+ADA/ETH/SOL/BTC, also in the setup guide. address-networks.ts defines shared
+network labels, display units and supported capabilities. native-addresses.ts
+owns ETH/SOL/BTC add, row and mutation logic; cardano-addresses.ts adapts stake
+groups, protected member wallets and linked-address details to the same row
+model. AddressList owns balance display, names, links/copy, actions, OUT and
+mining-source controls. App.tsx only connects these adapters to existing stores.
+BTC offers the same DEX/CEX selector and retains DEX metadata on save/reopen.
+Cardano retains explicit DEX/CEX metadata too; unlabeled legacy entries keep
+their old combined label. These are user labels, not on-chain DEX decoding.
+Permissions, storage keys, ownership boundaries, validation and existing
+ETH/SOL capacity limits remain unchanged. BTC does not gain an artificial
+address cap or unsupported Swap/deposit scanning capabilities.
+
+Counterparty action menus expose DEX, CEX, MIN (mining) and SVC (services) as
+checked type choices through address-types.ts. MIN and SVC both use the existing
+mining/service-receipt treatment but retain their distinct sourceType metadata
+through all four settings normalizers. Legacy miner flags still behave as
+before. Type changes retain names and exact addresses; owned and Swap entries
+cannot be converted through this menu. Source selection disables OUT; choosing
+DEX/CEX again does not automatically enable it. Source selection also stops
+incompatible opt-in ETH deposit scanning, without deleting its cached data.
+Existing mining and OUT controls keep the selected type synchronized.
+
 The shared counterparty address list exposes an OUT checkbox for ADA, ETH, SOL
 and BTC. The persisted boolean is classification metadata, independent of the
 address's name or exchange brand. Previously saved counterparties retain their

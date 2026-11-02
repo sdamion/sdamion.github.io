@@ -4,6 +4,7 @@ import type {FiatTransfer} from './ethereum.ts';
 import type {NativeWallet} from './solana.ts';
 import {availableTotal} from './portfolio-totals.ts';
 import {isOutAddress} from './out-address.ts';
+import {sourceTypeFields} from './address-types.ts';
 
 export type BitcoinWallet=NativeWallet;
 export type BitcoinTransaction={hash:string;height:number;time:number;feeRaw:string;inputs:{address:string;raw:string}[];outputs:{address:string;raw:string}[]};
@@ -37,7 +38,7 @@ export function validBitcoinAddress(value:unknown):value is string{
 export function bitcoinWallets(value:unknown):BitcoinWallet[]{
   if(!Array.isArray(value))return [];
   return [...new Map(value.filter(row=>row&&validBitcoinAddress(row.address)&&typeof row.name==='string'&&row.name.trim()).map(row=>{
-    const address=normalizeBitcoinAddress(row.address);return [address,{address,name:row.name.trim().slice(0,60),...(row.miner===true?{miner:true}:{}),...(row.dex===true?{dex:true}:{}),...(typeof row.out==='boolean'?{out:row.out}:{})}];
+    const address=normalizeBitcoinAddress(row.address);return [address,{address,name:row.name.trim().slice(0,60),...(row.miner===true?{miner:true}:{}),...(row.dex===true?{dex:true}:{}),...sourceTypeFields(row),...(typeof row.out==='boolean'?{out:row.out}:{})}];
   })).values()] as BitcoinWallet[];
 }
 export function validBitcoinTransaction(value:unknown):value is BitcoinTransaction{

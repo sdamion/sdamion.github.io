@@ -1,4 +1,6 @@
 [strings]
+portfolio_text_address_min = "MIN · Mining"
+portfolio_text_address_svc = "SVC · Diensten"
 portfolio_text_address_count = "{count} adressen"
 portfolio_text_btc_fee_own = "Betaald door jouw wallets"
 portfolio_text_btc_fee_sender = "Betaald door de afzender"

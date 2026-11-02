@@ -1,6 +1,6 @@
 import {useState} from 'react';
 import {AddressLink} from './AddressLink';
-import type {AddressNetwork} from './CryptoAddressForm';
+import type {AddressNetwork} from './address-networks';
 import {uniqueTransactionAddresses,type TransactionAddress} from './transaction-addresses';
 import {usePortfolioText} from './use-portfolio-text';
 

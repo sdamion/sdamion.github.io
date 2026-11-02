@@ -1,4 +1,6 @@
 [strings]
+portfolio_text_address_min = "MIN · マイニング"
+portfolio_text_address_svc = "SVC · サービス"
 portfolio_text_address_count = "{count}件のアドレス"
 portfolio_text_btc_fee_own = "自分のウォレットが支払った手数料"
 portfolio_text_btc_fee_sender = "送信者が支払った手数料"
