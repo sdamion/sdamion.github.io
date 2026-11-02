@@ -1,5 +1,28 @@
 # Member portfolio
 
+## Shared CEX Deposit Tracking
+
+All four supported networks expose Actions > Track deposits to this address on
+saved CEX/DEX counterparties. This is an explicit opt-in for a personal deposit
+address, not for an exchange's shared hot wallet. An OUT label alone does not
+enable scanning. No additional owned wallet is required. Stop tracking deposits
+hides external receipts and stops their address scans; settings remain member-scoped.
+
+`deposit-tracking.ts` selects watched addresses and projects external receipts;
+`DepositTransaction` renders their exact native amounts, shared address links,
+sender-paid fees and external-receipt label consistently across chains. BTC/SOL
+reuse their existing paginated, cancellable history and cache loaders, as ETH does.
+Cardano uses a separate chunked encrypted `tdsp-member-cardano-deposits:` cache,
+resolves stake aliases and only publishes complete scans. Automatic Cardano scans
+reuse a complete result for ten minutes; Portfolio Refresh forces a new scan.
+
+Shared senders can fund a watched deposit address without being saved themselves.
+Transfers already represented by owned-wallet history are deduplicated. Exchange
+sweeps/self-transfers and transfers between watched deposit addresses are hidden.
+Balances, own-wallet counts, owned assets, paid fees, CEX valuations and P/L still
+use owned wallets only. An external deposit has no verified owned-wallet cost
+basis and never fabricates fiat proceeds or source ownership.
+
 ## Bitcoin CEX Connections
 
 Saved My Wallets and DEX / CEX addresses use the shared address-list, OUT-role
@@ -75,6 +98,14 @@ the backend; the existing Bitcoin admin-only access policy remains in force.
 See koios-proxy/member-portfolio/README-ordinals.md for provider budget settings.
 
 ## Shared Address List
+
+The shared DEX / CEX add form includes an explicit OUT address checkbox for all
+four networks. A standalone OUT counterparty needs no owned wallet to be saved;
+it stays in the CEX list, outside owned balances and automatic holdings scans.
+The saved OUT flag can also be changed in that list. Swap and My Wallets forms
+do not expose or inherit this counterparty setting. Classifying transfers still
+requires tracked own-wallet history; adding an OUT address alone does not scan
+an exchange's full transaction history or assert ownership of its funds.
 
 `AddressList` renders one cross-network saved-address table per ownership scope:
 My Wallets and DEX / CEX & Swap. Network, name/exchange, address, mining/service
@@ -356,16 +387,17 @@ Cardano retains explicit DEX/CEX metadata too; unlabeled legacy entries keep
 their old combined label. These are user labels, not on-chain DEX decoding.
 Permissions, storage keys, ownership boundaries, validation and existing
 ETH/SOL capacity limits remain unchanged. BTC does not gain an artificial
-address cap or unsupported Swap/deposit scanning capabilities.
+address cap or unsupported Swap capabilities. Personal deposit tracking is
+supported on all four networks through the shared opt-in control.
 
-Counterparty action menus expose DEX, CEX, MIN (mining) and SVC (services) as
-checked type choices through address-types.ts. MIN and SVC both use the existing
+Counterparty action menus contain one Address type dropdown with DEX, CEX,
+Mining and Service through address-types.ts. Mining and Service both use the existing
 mining/service-receipt treatment but retain their distinct sourceType metadata
-through all four settings normalizers. Legacy miner flags still behave as
+(`min` and `svc`) through all four settings normalizers. Legacy miner flags still behave as
 before. Type changes retain names and exact addresses; owned and Swap entries
 cannot be converted through this menu. Source selection disables OUT; choosing
 DEX/CEX again does not automatically enable it. Source selection also stops
-incompatible opt-in ETH deposit scanning, without deleting its cached data.
+incompatible opt-in deposit scanning, without deleting its cached data.
 Existing mining and OUT controls keep the selected type synchronized.
 
 Transaction search accepts full or partial wallet addresses as well as names,

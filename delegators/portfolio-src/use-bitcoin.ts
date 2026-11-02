@@ -4,23 +4,25 @@ import {portfolioSettings,flushVault} from './vault';
 import {bitcoinWallets,bitcoinHash,bitcoinNet,bitcoinTransactions,validBitcoinTransaction,emptyBitcoin,type BitcoinData,type BitcoinWallet,type BitcoinTransaction} from './bitcoin';
 import {encodeBitcoinSettings,readBitcoinSettings} from './bitcoin-storage';
 import {cachedTransactionProgress,emptyDownloadProgress,type DownloadProgress} from './download-progress';
+import {depositScanWallets} from './deposit-tracking';
 
 export function useBitcoin(stake:string,enabled:boolean){
   const walletKey='tdsp-member-bitcoin-wallets:'+stake,cexKey='tdsp-member-bitcoin-cex:'+stake,dataKey='tdsp-member-bitcoin-data:'+stake;
-  const [wallets,setWallets]=useState<BitcoinWallet[]>([]),[exchanges,setExchanges]=useState<BitcoinWallet[]>([]),[data,setData]=useState(emptyBitcoin),[loaded,setLoaded]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');
+  const [wallets,setWallets]=useState<BitcoinWallet[]>([]),[exchanges,setExchanges]=useState<BitcoinWallet[]>([]),[data,setData]=useState(emptyBitcoin),[loadedStake,setLoadedStake]=useState<string|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState('');
   const [downloadProgress,setDownloadProgress]=useState<DownloadProgress>(emptyDownloadProgress),current=useRef(data),controller=useRef<AbortController|null>(null);
-  const scope=wallets.map(w=>w.address).sort().join('|');
+  const loaded=loadedStake===stake;
+  const scanWallets=depositScanWallets(wallets,exchanges),scope=scanWallets.map(w=>w.address+':'+(w.deposit?'deposit':'own')).sort().join('|');
   useEffect(()=>{
-    controller.current?.abort();setLoaded(false);setBusy(false);setError('');setDownloadProgress(emptyDownloadProgress());
+    controller.current?.abort();setLoadedStake(null);setBusy(false);setError('');setDownloadProgress(emptyDownloadProgress());
     if(!enabled){setWallets([]);setExchanges([]);current.current=emptyBitcoin();setData(current.current);return;}
     try{
       setWallets(bitcoinWallets(JSON.parse(portfolioSettings.getItem(walletKey)||'[]')));setExchanges(bitcoinWallets(JSON.parse(portfolioSettings.getItem(cexKey)||'[]')));
-      current.current=readBitcoinSettings(dataKey,key=>portfolioSettings.getItem(key));setData(current.current);setLoaded(true);
+      current.current=readBitcoinSettings(dataKey,key=>portfolioSettings.getItem(key));setData(current.current);setLoadedStake(stake);
     }catch{setError('Bitcoin cache could not be opened.');}
     return()=>controller.current?.abort();
   },[enabled,stake]);
   const refresh=useCallback(async()=>{
-    if(!enabled||!loaded||!wallets.length)return;
+    if(!enabled||!loaded||!scanWallets.length)return;
     controller.current?.abort();const control=new AbortController();controller.current=control;const signal=control.signal;
     setBusy(true);setError('');
     async function request(body:object){
@@ -32,8 +34,8 @@ export function useBitcoin(stake:string,enabled:boolean){
       if(!bitcoinHash(tip)||!Number.isSafeInteger(head.height)||head.height<0)throw new Error('Bitcoin data unavailable. Saved data is retained.');
       const next:BitcoinData={...current.current,accounts:{}};
       const reusable=new Map<string,boolean>(),downloaded=new Map<string,BitcoinTransaction>();
-      setDownloadProgress(cachedTransactionProgress(bitcoinTransactions(current.current,wallets),tx=>tx.hash));
-      for(const wallet of wallets){
+      setDownloadProgress(cachedTransactionProgress(bitcoinTransactions(current.current,scanWallets),tx=>tx.hash));
+      for(const wallet of scanWallets){
         const stats=await request({action:'address',address:wallet.address});
         if(stats.address!==wallet.address||!Number.isSafeInteger(stats.count)||stats.count<0||typeof stats.raw!=='string'||!/^\d{1,16}$/.test(stats.raw))throw new Error('Bitcoin data unavailable. Saved data is retained.');
         const saved=current.current.accounts[wallet.address];
@@ -68,27 +70,27 @@ export function useBitcoin(stake:string,enabled:boolean){
         next.accounts[wallet.address]={raw:String(anchored.reduce((sum,tx)=>sum+bitcoinNet(tx,[wallet]),0n)),tip,transactions:anchored};
       }
       if((await request({action:'block-status',hash:tip})).inBestChain!==true)throw new Error('Bitcoin history changed during refresh. Retry.');
-      // Commit all owned addresses together, so shared transactions and balances stay coherent.
+      // Commit all scanned addresses together, so shared transactions and balances stay coherent.
       const persist=async()=>{
         signal.throwIfAborted();const settings=encodeBitcoinSettings(dataKey,next);
         portfolioSettings.setItems(settings,portfolioSettings.keys().filter(key=>key.startsWith(dataKey+'::')&&!Object.hasOwn(settings,key)));
         await flushVault();signal.throwIfAborted();current.current=next;setData({...next});
       };
-      await persist();setDownloadProgress(cachedTransactionProgress(bitcoinTransactions(next,wallets),tx=>tx.hash));
+      await persist();setDownloadProgress(cachedTransactionProgress(bitcoinTransactions(next,scanWallets),tx=>tx.hash));
       const rates=await portfolioFetch('/historical-btc-prices',{signal});if(!rates.ok)throw new Error('Bitcoin prices unavailable.');
       const history=await rates.json();if(!Array.isArray(history.prices)||!history.prices.length)throw new Error('Bitcoin prices unavailable.');
       next.history={...next.history};
       for(const [time,price] of history.prices)if(Number.isFinite(time)&&Math.abs(time)<8640000000000000&&Number.isFinite(price)&&price>0)next.history[new Date(time).toISOString().slice(0,10)]=price;
       const quote=await portfolioFetch('/bitcoin-price',{signal});if(!quote.ok){await persist();throw new Error('Bitcoin prices unavailable.');}
       const {usd}=await quote.json();if(!Number.isFinite(usd)||usd<=0)throw new Error('Bitcoin prices unavailable.');next.usd=usd;await persist();
-    }catch(reason){if(!signal.aborted){setError(reason instanceof Error?reason.message:'Bitcoin data unavailable. Saved data is retained.');setDownloadProgress(cachedTransactionProgress(bitcoinTransactions(current.current,wallets),tx=>tx.hash));}}
+    }catch(reason){if(!signal.aborted){setError(reason instanceof Error?reason.message:'Bitcoin data unavailable. Saved data is retained.');setDownloadProgress(cachedTransactionProgress(bitcoinTransactions(current.current,scanWallets),tx=>tx.hash));}}
     finally{if(controller.current===control)setBusy(false);}
   },[enabled,loaded,scope,stake]);
   useEffect(()=>{void refresh();return()=>controller.current?.abort();},[refresh]);
   function save(next:BitcoinWallet[],counterparty=false){
-    if(!enabled)return false;const normalized=bitcoinWallets(next);
+    if(!enabled||!loaded)return false;const normalized=bitcoinWallets(next);
     if(normalized.length!==next.length){setError('Enter a valid Bitcoin mainnet address.');return false;}
     try{portfolioSettings.setItem(counterparty?cexKey:walletKey,JSON.stringify(normalized));(counterparty?setExchanges:setWallets)(normalized);return true;}catch{setError('Bitcoin settings could not be saved.');return false;}
   }
-  return {wallets,exchanges:exchanges.filter(row=>!wallets.some(w=>w.address===row.address)),data,busy,error,downloadProgress,refresh,saveWallets:(next:BitcoinWallet[])=>save(next),saveExchanges:(next:BitcoinWallet[])=>save(next,true)};
+  return {wallets:enabled&&loaded?wallets:[],exchanges:enabled&&loaded?exchanges.filter(row=>!wallets.some(w=>w.address===row.address)):[],data:enabled&&loaded?data:emptyBitcoin(),busy:enabled&&loaded&&busy,error:enabled?error:'',downloadProgress:enabled&&loaded?downloadProgress:emptyDownloadProgress(),refresh,saveWallets:(next:BitcoinWallet[])=>save(next),saveExchanges:(next:BitcoinWallet[])=>save(next,true)};
 }

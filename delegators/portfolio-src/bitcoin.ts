@@ -5,6 +5,7 @@ import type {NativeWallet} from './solana.ts';
 import {availableTotal} from './portfolio-totals.ts';
 import {isOutAddress} from './out-address.ts';
 import {sourceTypeFields} from './address-types.ts';
+import {depositScanWallets,depositReceipt} from './deposit-tracking.ts';
 
 export type BitcoinWallet=NativeWallet;
 export type BitcoinTransaction={hash:string;height:number;time:number;feeRaw:string;inputs:{address:string;raw:string}[];outputs:{address:string;raw:string}[]};
@@ -38,7 +39,7 @@ export function validBitcoinAddress(value:unknown):value is string{
 export function bitcoinWallets(value:unknown):BitcoinWallet[]{
   if(!Array.isArray(value))return [];
   return [...new Map(value.filter(row=>row&&validBitcoinAddress(row.address)&&typeof row.name==='string'&&row.name.trim()).map(row=>{
-    const address=normalizeBitcoinAddress(row.address);return [address,{address,name:row.name.trim().slice(0,60),...(row.miner===true?{miner:true}:{}),...(row.dex===true?{dex:true}:{}),...sourceTypeFields(row),...(typeof row.out==='boolean'?{out:row.out}:{})}];
+    const address=normalizeBitcoinAddress(row.address);return [address,{address,name:row.name.trim().slice(0,60),...(row.miner===true?{miner:true}:{}),...(row.dex===true?{dex:true}:{}),...sourceTypeFields(row),...(row.deposit===true?{deposit:true}:{}),...(typeof row.out==='boolean'?{out:row.out}:{})}];
   })).values()] as BitcoinWallet[];
 }
 export function validBitcoinTransaction(value:unknown):value is BitcoinTransaction{
@@ -60,6 +61,13 @@ export function bitcoinTransactions(data:BitcoinData,wallets:BitcoinWallet[]){
 export function bitcoinNet(tx:BitcoinTransaction,wallets:BitcoinWallet[]){
   const own=new Set(wallets.map(w=>w.address));
   return tx.outputs.reduce((sum,row)=>sum+(own.has(row.address)?BigInt(row.raw):0n),0n)-tx.inputs.reduce((sum,row)=>sum+(own.has(row.address)?BigInt(row.raw):0n),0n);
+}
+export function bitcoinDeposit(tx:BitcoinTransaction,wallets:BitcoinWallet[],exchanges:BitcoinWallet[]){
+  return depositReceipt('bitcoin',tx.hash,tx.time,tx.inputs,tx.outputs,wallets,exchanges);
+}
+export function visibleBitcoinTransactions(data:BitcoinData,wallets:BitcoinWallet[],exchanges:BitcoinWallet[]){
+  const owned=new Set(bitcoinTransactions(data,wallets).map(tx=>tx.hash));
+  return bitcoinTransactions(data,depositScanWallets(wallets,exchanges)).filter(tx=>owned.has(tx.hash)||bitcoinDeposit(tx,wallets,exchanges));
 }
 export function bitcoinTransfer(tx:BitcoinTransaction,wallets:BitcoinWallet[],exchanges:BitcoinWallet[]){
   const own=new Set(wallets.map(w=>w.address)),cex=new Set(exchanges.filter(w=>!own.has(w.address)&&isOutAddress(w)).map(w=>w.address));

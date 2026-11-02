@@ -1,6 +1,6 @@
 import {useLayoutEffect,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
-import {Check,Ellipsis,Eye,Pencil,Trash2} from 'lucide-react';
+import {Ellipsis,Eye,Pencil,Trash2} from 'lucide-react';
 import {usePortfolioText} from './use-portfolio-text';
 import {addressTypes,type AddressType} from './address-types';
 import {rewardSourceHelp} from './reward-sources';
@@ -17,26 +17,26 @@ export function AddressActions({id,name,onRename,onRemove,onView,addressType,onT
       setPosition(previous=>previous.left===left&&previous.top===top?previous:{left,top});
     };
     place();
-    menu.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();
+    menu.current?.querySelector<HTMLButtonElement|HTMLSelectElement>('button:not(:disabled), select:not(:disabled)')?.focus();
     const close=()=>setOpen(false);
     const outside=(event:PointerEvent)=>{if(event.target instanceof Node&&!menu.current?.contains(event.target)&&!trigger.contains(event.target))close();};
     const key=(event:KeyboardEvent)=>{
       if(event.key==='Escape'){event.preventDefault();event.stopPropagation();close();trigger.focus();}
-      if(event.key==='Tab')close();
-      if(['ArrowDown','ArrowUp','Home','End'].includes(event.key)&&menu.current?.contains(document.activeElement)){
-        event.preventDefault();const items=[...menu.current.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')],index=items.indexOf(document.activeElement as HTMLButtonElement);
+      if(['ArrowDown','ArrowUp','Home','End'].includes(event.key)&&menu.current?.contains(document.activeElement)&&!(document.activeElement instanceof HTMLSelectElement)){
+        event.preventDefault();const items=[...menu.current.querySelectorAll<HTMLButtonElement|HTMLSelectElement>('button:not(:disabled), select:not(:disabled)')],index=items.indexOf(document.activeElement as HTMLButtonElement);
         items[event.key==='Home'?0:event.key==='End'?items.length-1:(index+(event.key==='ArrowDown'?1:-1)+items.length)%items.length]?.focus();
       }
     };
+    const focusOutside=(event:FocusEvent)=>{if(event.target instanceof Node&&!menu.current?.contains(event.target)&&!trigger.contains(event.target))close();};
     const scroll=(event:Event)=>{if(!(event.target instanceof Node)||!menu.current?.contains(event.target))place();};
-    document.addEventListener('pointerdown',outside);document.addEventListener('keydown',key,true);window.addEventListener('resize',place);document.addEventListener('scroll',scroll,true);
-    return()=>{document.removeEventListener('pointerdown',outside);document.removeEventListener('keydown',key,true);window.removeEventListener('resize',place);document.removeEventListener('scroll',scroll,true);};
+    document.addEventListener('pointerdown',outside);document.addEventListener('focusin',focusOutside);document.addEventListener('keydown',key,true);window.addEventListener('resize',place);document.addEventListener('scroll',scroll,true);
+    return()=>{document.removeEventListener('pointerdown',outside);document.removeEventListener('focusin',focusOutside);document.removeEventListener('keydown',key,true);window.removeEventListener('resize',place);document.removeEventListener('scroll',scroll,true);};
   },[open,hasView]);
   function run(action:()=>void){setOpen(false);button.current?.focus();action();}
   return <><button ref={button} type="button" className="governance-vote-secondary" title={t('Address actions')} aria-label={t('Actions for {name}',{name})} aria-haspopup="menu" aria-expanded={open} aria-controls={open?id:undefined} onClick={()=>setOpen(value=>!value)} onKeyDown={event=>{if(event.key==='ArrowDown'){event.preventDefault();setOpen(true);}}}><Ellipsis size={16}/></button>
     {open&&createPortal(<div ref={menu} id={id} role="menu" aria-label={t('Actions for {name}',{name})} className="portfolio-address-actions-menu" style={position} translate="no">
       {onView&&<button type="button" role="menuitem" className="governance-vote-secondary" onClick={()=>run(onView)}><Eye size={16}/>{t('View')}</button>}
-      {onType&&<div role="group" aria-label={t('Address type')}>{addressTypes.map(type=><button key={type.value} type="button" role="menuitemradio" aria-checked={addressType===type.value} title={type.value==='min'||type.value==='svc'?t(rewardSourceHelp):undefined} className="governance-vote-secondary" onClick={()=>run(()=>onType(type.value))}><Check size={16} aria-hidden="true" style={{visibility:addressType===type.value?'visible':'hidden'}}/>{t(type.label)}</button>)}</div>}
+      {onType&&<label htmlFor={id+'-type'}>{t('Address type')}<select id={id+'-type'} className="governance-vote-secondary" value={addressType} title={addressType==='min'||addressType==='svc'?t(rewardSourceHelp):undefined} onChange={event=>onType(event.target.value as AddressType)}>{addressTypes.map(type=><option key={type.value} value={type.value}>{t(type.label)}</option>)}</select></label>}
       {extra.map(action=><button key={action.label} type="button" role="menuitem" className="governance-vote-secondary" onClick={()=>run(action.onSelect)}><Eye size={16}/>{t(action.label)}</button>)}
       <button type="button" role="menuitem" className="governance-vote-secondary" onClick={()=>run(onRename)}><Pencil size={16}/>{t('Rename')}</button>
       <button type="button" role="menuitem" className="governance-vote-secondary" disabled={removeDisabled} onClick={()=>run(onRemove)}><Trash2 size={16}/>{t('Remove')}</button>

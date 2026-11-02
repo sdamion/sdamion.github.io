@@ -6,6 +6,8 @@ import {usePortfolioText} from './use-portfolio-text';
 import {TransactionAddresses} from './TransactionAddresses';
 import {isOutAddress} from './out-address';
 import {walletFlowAddresses} from './transaction-addresses';
+import {bitcoinDeposit} from './bitcoin';
+import {DepositTransaction} from './DepositTransaction';
 
 export function BitcoinTransaction({tx,wallets,exchanges,history,adaHistory,cexOnly=false}:{tx:BtcTransaction;wallets:BitcoinWallet[];exchanges:BitcoinWallet[];history:Record<string,number>;adaHistory:Record<string,number>;cexOnly?:boolean}){
   const t=usePortfolioText(),date=new Date(tx.time*1000).toISOString().slice(0,10),display=transactionCurrency(usePortfolioCurrency(),tx.time,adaHistory[date]??null),price=history[date]??null;
@@ -15,6 +17,8 @@ export function BitcoinTransaction({tx,wallets,exchanges,history,adaHistory,cexO
   const format=(amount:number|null)=>display?formatPortfolioUsd(amount===null||price===null?null:amount*price,display):'—';
   const addresses=(rows:BtcTransaction['inputs'])=>rows.map(({address})=>({address,name:[...wallets,...exchanges].find(wallet=>wallet.address===address)?.name,out:exchanges.some(wallet=>wallet.address===address&&isOutAddress(wallet))}));
   const flow=walletFlowAddresses(addresses(tx.inputs),addresses(tx.outputs),row=>wallets.some(wallet=>wallet.address===row.address),bitcoinNet(tx,wallets)>0n);
+  const deposit=bitcoinDeposit(tx,wallets,exchanges);
+  if(deposit)return <DepositTransaction receipt={deposit} addresses={[...wallets,...exchanges]} history={history} adaHistory={adaHistory}/>;
   return <TransactionLayout cells={[
     <><strong translate="no">{format(amount===null?null:Math.abs(amount))}</strong><div translate="no" className="small muted">{amount===null?'—':(transfer?.side==='sell'&&!reward&&transfer.raw!==null?-amount:amount).toLocaleString(undefined,{maximumFractionDigits:8})} BTC</div><div translate="no" className="small muted">{t(reward?'Mining / services receipt':transfer?transfer.side==='buy'?'BTC IN':'BTC OUT':'Bitcoin transfer')}</div><a translate="no" href={`https://blockstream.info/tx/${tx.hash}`} target="_blank" rel="noreferrer">{short(tx.hash)}</a>{transfer&&!transfer.verified&&<><div className="small muted" translate="no">{t('Mixed or unassigned sources')}</div><div className="small muted" translate="no">{t('Excluded from calculations')}</div></>}</>,
     <span translate="no">{display?formatPortfolioUsd(price,display,6):'—'}<div className="small muted">BTC</div></span>,

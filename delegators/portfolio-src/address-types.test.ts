@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {addressType,addressTypeChange,sourceTypeFields} from './address-types.ts';
+import {addressType,addressTypeLabel,addressTypeChange,sourceTypeFields} from './address-types.ts';
 import {nativeAddressRows,type NativeAddressBook} from './native-addresses.ts';
 import {cardanoAddressRows,type CardanoAddressBook} from './cardano-addresses.ts';
 import {bitcoinWallets} from './bitcoin.ts';
@@ -25,7 +25,7 @@ for(const [network,address,normalize]of [
   test(`${network} type actions persist and restore all four roles without changing identity`,()=>{
     const book={network,enabled:true,exchanges:[{address,name:'Saved name',dex:true,out:true}],wallets:[],balance:()=>undefined,usd:null,snapshot:null,memberStake:'primary',busy:false,onView:()=>{},saveWallets:()=>true,saveExchanges:next=>{book.exchanges=normalize(JSON.parse(JSON.stringify(next)));return true;}} as unknown as NativeAddressBook&CardanoAddressBook;
     const rows=()=>network==='cardano'?cardanoAddressRows(book):nativeAddressRows(book);
-    for(const type of ['min','svc','dex','cex'] as const){assert.equal(rows()[0].onType!(type),true);const restored=rows()[0];assert.equal(restored.addressType,type);assert.equal(restored.kind,type.toUpperCase());assert.equal(restored.address,address);assert.equal(restored.name,'Saved name');assert.equal(book.exchanges[0].out,false);}
+    for(const type of ['min','svc','dex','cex'] as const){assert.equal(rows()[0].onType!(type),true);const restored=rows()[0];assert.equal(restored.addressType,type);assert.equal(restored.kind,addressTypeLabel(book.exchanges[0]));assert.equal(restored.kind,{min:'Mining',svc:'Service',dex:'DEX',cex:'CEX'}[type]);assert.equal(restored.address,address);assert.equal(restored.name,'Saved name');assert.equal(book.exchanges[0].out,false);}
     const before=JSON.stringify(book.exchanges);book.saveExchanges=()=>false;assert.equal(rows()[0].onType!('svc'),false);assert.equal(JSON.stringify(book.exchanges),before);
   });
 }

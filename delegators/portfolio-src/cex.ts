@@ -5,14 +5,14 @@ import {transactionAmounts,historicalAdaPrice,adaUsdValue,lovelaceToAda} from '.
 import {isRewardReceipt,isRewardSource} from './reward-sources.ts';
 import {isOutAddress} from './out-address.ts';
 import {sourceTypeFields,type SourceType} from './address-types.ts';
-export type CexAddress={address:string;name:string;miner?:boolean;out?:boolean;dex?:boolean;sourceType?:SourceType};
+export type CexAddress={address:string;name:string;miner?:boolean;out?:boolean;dex?:boolean;sourceType?:SourceType;deposit?:boolean};
 export function normalizeCexAddresses(value:unknown):CexAddress[]{
   if(!Array.isArray(value))return [];
   const entries=new Map<string,CexAddress>();
   for(const item of value){
     if(typeof item?.address!=='string'||typeof item?.name!=='string')continue;
     const address=normalizeExchangeAddress(item.address),name=item.name.trim().slice(0,60);
-    if(validExchangeAddress(address)&&name)entries.set(address,{address,name,...(item.miner===true?{miner:true}:{}),...(typeof item.out==='boolean'?{out:item.out}:{}),...(typeof item.dex==='boolean'?{dex:item.dex}:{}),...sourceTypeFields(item)});
+    if(validExchangeAddress(address)&&name)entries.set(address,{address,name,...(item.miner===true?{miner:true}:{}),...(typeof item.out==='boolean'?{out:item.out}:{}),...(typeof item.dex==='boolean'?{dex:item.dex}:{}),...sourceTypeFields(item),...(item.deposit===true?{deposit:true}:{})});
   }
   return [...entries.values()];
 }

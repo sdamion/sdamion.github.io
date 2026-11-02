@@ -2,6 +2,7 @@ import {blake2b} from '@noble/hashes/blake2.js';
 import {isRewardSource} from './reward-sources.ts';
 import {isOutAddress} from './out-address.ts';
 import {sourceTypeFields,type SourceType} from './address-types.ts';
+import {depositScanWallets,depositReceipt} from './deposit-tracking.ts';
 export type EthereumWallet={address:string;name:string;miner?:boolean;dex?:boolean;sourceType?:SourceType;deposit?:boolean;out?:boolean;group?:'swap';swapAddresses?:string[]};
 export type EthereumTransaction={id:string;hash:string;kind:'normal'|'internal';block:number;time:number;from:string;to:string;valueWei:string;feeWei:string|null;failed:boolean;transactionIndex?:number;traceIndex?:string};
 export type EthereumProvider='etherscan'|'blockscout';
@@ -75,12 +76,13 @@ export function ethereumTransactionCount(data:EthereumData,wallets:EthereumWalle
   return new Set(wallets.flatMap(wallet=>data.accounts[wallet.address]?.transactions.map(tx=>tx.hash)||[])).size;
 }
 export function ethereumScanWallets(wallets:EthereumWallet[],exchanges:EthereumWallet[]){
-  const owned=ownedEthereumWallets(wallets).map(wallet=>({...wallet,deposit:false}));
-  const saved=new Set(wallets.map(wallet=>wallet.address));
-  return [...owned,...exchanges.filter(wallet=>wallet.deposit&&!saved.has(wallet.address))];
+  return depositScanWallets(wallets,exchanges);
 }
 export function directEthereumDeposit(tx:EthereumTransaction,wallets:EthereumWallet[],exchanges:EthereumWallet[]){
-  return !tx.failed&&BigInt(tx.valueWei)>0n&&!wallets.some(wallet=>wallet.address===tx.from||wallet.address===tx.to)&&exchanges.some(wallet=>wallet.deposit&&wallet.address===tx.to);
+  return !!ethereumDeposit(tx,wallets,exchanges);
+}
+export function ethereumDeposit(tx:EthereumTransaction,wallets:EthereumWallet[],exchanges:EthereumWallet[]){
+  return tx.failed?null:depositReceipt('ethereum',tx.hash,tx.time,[{address:tx.from,raw:tx.valueWei}],[{address:tx.to,raw:tx.valueWei}],wallets,exchanges);
 }
 export function visibleEthereumTransactions(data:EthereumData,wallets:EthereumWallet[],exchanges:EthereumWallet[]){
   const transactions=ethereumTransactions(data,ethereumScanWallets(wallets,exchanges));

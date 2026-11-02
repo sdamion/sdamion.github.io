@@ -38,15 +38,30 @@ for(const network of ['ethereum','solana','bitcoin'] as const){
     assert.equal(nativeAddressRows(book)[0].onRename('Rejected'),false);assert.equal(JSON.stringify(book.exchanges),before);
     assert.equal(addNativeAddress(book,true,'dex','Rejected','new'),false);assert.equal(JSON.stringify(book.exchanges),before);
   });
+  test(`${network} adds standalone OUT counterparties without creating an owned wallet`,()=>{
+    const book=fixture(network);
+    assert.equal(addNativeAddress(book,true,'exchange','OUT only','destination',true),true);
+    assert.deepEqual(book.exchanges,[{address:'destination',name:'OUT only',out:true}]);
+    assert.deepEqual(book.wallets,[]);assert.equal(nativeAddressRows(book)[0].out,true);
+    assert.equal(nativeAddressRows(book)[0].balance,undefined);
+    assert.equal(addNativeAddress(book,true,'exchange','Not OUT','other',false),true);
+    assert.equal(book.exchanges[1].out,false);
+    assert.equal(addNativeAddress(book,false,'exchange','Owned','own',true),true);
+    assert.equal(book.wallets[0].out,undefined,'own wallets never inherit the counterparty flag');
+    if(network==='ethereum'){
+      assert.equal(addNativeAddress(book,true,'swap','Swap','swap',true),true);
+      assert.equal(book.wallets[1].out,undefined,'Swap wallets never inherit the counterparty flag');
+    }
+  });
 }
-test('ETH Swap and deposit metadata stay supported without exposing unsupported BTC/SOL capabilities',()=>{
+test('all native chains support deposit tracking while Swap remains ETH-only',()=>{
   const eth=fixture('ethereum');addNativeAddress(eth,false,'exchange','Own','own');
   addNativeAddress(eth,true,'swap','Swap','swap');addNativeAddress(eth,true,'exchange','Deposit','deposit');
   const swap=nativeAddressRows(eth).find(row=>row.kind==='Swap')!;assert.equal(swap.onMining,undefined);assert.equal(swap.onOut,undefined);
   swap.onRename('Renamed Swap');assert.equal(eth.wallets[0].address,'own');assert.equal(eth.wallets[1].group,'swap');
   nativeAddressRows(eth).find(row=>row.address==='deposit')!.onDeposit!(true);
   assert.equal(eth.exchanges[0].deposit,true);assert.equal(nativeAddressRows(eth).find(row=>row.address==='deposit')!.onMining,undefined);
-  for(const network of ['bitcoin','solana'] as const){const book=fixture(network);assert.equal(addNativeAddress(book,true,'swap','Unsupported','swap'),false);assert.deepEqual(book.wallets,[]);addNativeAddress(book,true,'exchange','External','external');assert.equal(nativeAddressRows(book)[0].onDeposit,undefined);}
+  for(const network of ['bitcoin','solana'] as const){const book=fixture(network);assert.equal(addNativeAddress(book,true,'swap','Unsupported','swap'),false);assert.deepEqual(book.wallets,[]);addNativeAddress(book,true,'exchange','External','external');assert.equal(nativeAddressRows(book)[0].onDeposit!(true),true);assert.equal(book.exchanges[0].deposit,true);assert.equal(nativeAddressRows(book)[0].onMining,undefined);assert.deepEqual(book.wallets,[]);}
 });
 test('shared limits preserve existing ETH/SOL limits and do not impose one on BTC',()=>{
   for(const network of ['ethereum','solana','bitcoin'] as const){const book=fixture(network);book.wallets=Array.from({length:20},(_,i)=>({address:String(i),name:String(i)}));if(network==='bitcoin')assert.equal(addNativeAddress(book,false,'exchange','More','more'),true);else assert.throws(()=>addNativeAddress(book,false,'exchange','More','more'));}

@@ -4,10 +4,11 @@ import {portfolioSettings,flushVault} from './vault';
 import {emptySolana,nativeWallets,validSolana,validSolanaTransaction,type SolanaData,type SolanaTransaction,type NativeWallet} from './solana';
 import {encodeSolanaSettings,readSolanaSettings} from './solana-storage';
 import {cachedTransactionProgress,createTransactionProgress,emptyDownloadProgress,type DownloadProgress} from './download-progress';
+import {depositScanWallets} from './deposit-tracking';
 
 export function useSolana(stake:string,enabled:boolean){
   const walletKey='tdsp-member-solana-wallets:'+stake,cexKey='tdsp-member-solana-cex:'+stake,dataKey='tdsp-member-solana-data:'+stake;
-  const [wallets,setWallets]=useState<NativeWallet[]>([]),[exchanges,setExchanges]=useState<NativeWallet[]>([]),[data,setData]=useState(emptySolana),[loaded,setLoaded]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');
+  const [wallets,setWallets]=useState<NativeWallet[]>([]),[exchanges,setExchanges]=useState<NativeWallet[]>([]),[data,setData]=useState(emptySolana),[loadedStake,setLoadedStake]=useState<string|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState('');
   const current=useRef(data),controller=useRef<AbortController|null>(null);
   const [downloadProgress,setDownloadProgress]=useState<DownloadProgress>(emptyDownloadProgress);
   function saveData(value:SolanaData){
@@ -16,19 +17,20 @@ export function useSolana(stake:string,enabled:boolean){
     portfolioSettings.setItems(settings,portfolioSettings.keys().filter(key=>key.startsWith(dataKey+'::')&&!Object.hasOwn(settings,key)));
   }
   useEffect(()=>{
-    setLoaded(false);controller.current?.abort();setError('');setBusy(false);
+    setLoadedStake(null);controller.current?.abort();setError('');setBusy(false);
     if(!enabled){setWallets([]);setExchanges([]);const empty=emptySolana();current.current=empty;setData(empty);return;}
-    try{setWallets(nativeWallets(JSON.parse(portfolioSettings.getItem(walletKey)||'[]')));setExchanges(nativeWallets(JSON.parse(portfolioSettings.getItem(cexKey)||'[]')));const saved=readSolanaSettings(dataKey,key=>portfolioSettings.getItem(key));current.current=saved;setData(saved);setLoaded(true);}catch{setError('Solana cache could not be opened.');}
+    try{setWallets(nativeWallets(JSON.parse(portfolioSettings.getItem(walletKey)||'[]')));setExchanges(nativeWallets(JSON.parse(portfolioSettings.getItem(cexKey)||'[]')));const saved=readSolanaSettings(dataKey,key=>portfolioSettings.getItem(key));current.current=saved;setData(saved);setLoadedStake(stake);}catch{setError('Solana cache could not be opened.');}
     return()=>controller.current?.abort();
   },[enabled,stake]);
-  const scope=wallets.map(w=>w.address).sort().join('|');
+  const loaded=loadedStake===stake;
+  const scanWallets=depositScanWallets(wallets,exchanges),scope=scanWallets.map(w=>w.address+':'+(w.deposit?'deposit':'own')).sort().join('|');
   useEffect(()=>{
-    const accounts=wallets.map(wallet=>current.current.accounts[wallet.address]);
+    const accounts=scanWallets.map(wallet=>current.current.accounts[wallet.address]);
     const rows=accounts.flatMap(account=>account?.transactions||[]);
     setDownloadProgress(enabled&&loaded&&accounts.length?cachedTransactionProgress([...rows,...(current.current.pending||[])],tx=>tx.hash):emptyDownloadProgress());
   },[enabled,loaded,stake,scope]);
   const refresh=useCallback(async()=>{
-    if(!enabled||!loaded||!wallets.length)return;
+    if(!enabled||!loaded||!scanWallets.length)return;
     controller.current?.abort();const control=new AbortController();controller.current=control;const signal=control.signal;
     setBusy(true);setError('');
     async function request(body:object){
@@ -50,8 +52,8 @@ export function useSolana(stake:string,enabled:boolean){
     }
     async function persist(next:SolanaData,quote=false){signal.throwIfAborted();const saved={...next,usd:quote?next.usd:current.current.usd};saveData(saved);current.current=saved;setData(saved);await flushVault();signal.throwIfAborted();}
     const known=new Map([...solanaTransactionsForCache(current.current),...(current.current.pending||[])].map(tx=>[tx.hash,tx]));
-    const progress=createTransactionProgress([...wallets.flatMap(wallet=>current.current.accounts[wallet.address]?.transactions||[]),...(current.current.pending||[])],tx=>tx.hash);
-    setDownloadProgress(cachedTransactionProgress([...wallets.flatMap(wallet=>current.current.accounts[wallet.address]?.transactions||[]),...(current.current.pending||[])],tx=>tx.hash));
+    const progress=createTransactionProgress([...scanWallets.flatMap(wallet=>current.current.accounts[wallet.address]?.transactions||[]),...(current.current.pending||[])],tx=>tx.hash);
+    setDownloadProgress(cachedTransactionProgress([...scanWallets.flatMap(wallet=>current.current.accounts[wallet.address]?.transactions||[]),...(current.current.pending||[])],tx=>tx.hash));
     let downloaded=0;
     // Pending receipts are reusable after interruption, but never enter totals until history is complete.
     async function savePending(){
@@ -59,8 +61,8 @@ export function useSolana(stake:string,enabled:boolean){
       await persist({...current.current,pending:[...known.values()].filter(tx=>!completed.has(tx.hash))});
     }
     try{
-      const next:SolanaData={...current.current,accounts:Object.fromEntries(wallets.flatMap(w=>current.current.accounts[w.address]?[[w.address,current.current.accounts[w.address]]]:[])),history:{...current.current.history}};
-      for(const wallet of wallets){
+      const next:SolanaData={...current.current,accounts:Object.fromEntries(scanWallets.flatMap(w=>current.current.accounts[w.address]?[[w.address,current.current.accounts[w.address]]]:[])),history:{...current.current.history}};
+      for(const wallet of scanWallets){
         const saved=current.current.accounts[wallet.address],rows=new Map((saved?.transactions||[]).map(tx=>[tx.hash,tx]));
         let before:string|undefined,checkpoint=saved?.checkpoint||null,complete=false;
         const seen=new Set<string>();
@@ -82,7 +84,7 @@ export function useSolana(stake:string,enabled:boolean){
         const balance=await request({action:'balance',address:wallet.address});
         if(typeof balance.raw!=='string'||!/^\d{1,30}$/.test(balance.raw)||!Number.isSafeInteger(balance.slot)||balance.slot<0)throw new Error('Solana data unavailable. Saved data is retained.');
         next.accounts[wallet.address]={raw:balance.raw,slot:balance.slot,checkpoint,transactions:[...rows.values()]};
-        if(wallet===wallets.at(-1))setDownloadProgress(progress.complete(Object.values(next.accounts).flatMap(account=>account.transactions)));
+        if(wallet===scanWallets.at(-1))setDownloadProgress(progress.complete(Object.values(next.accounts).flatMap(account=>account.transactions)));
         await persist({...next,accounts:{...next.accounts},pending:current.current.pending});
         await savePending();next.pending=current.current.pending;
       }
@@ -97,7 +99,7 @@ export function useSolana(stake:string,enabled:boolean){
   },[enabled,loaded,scope,stake]);
   useEffect(()=>{void refresh();return()=>controller.current?.abort();},[refresh]);
   useEffect(()=>{
-    if(!enabled||!loaded||!wallets.length)return;
+    if(!enabled||!loaded||!scanWallets.length)return;
     const control=new AbortController();let pending=false;
     const timer=setInterval(async()=>{
       if(pending)return;pending=true;
@@ -106,10 +108,10 @@ export function useSolana(stake:string,enabled:boolean){
     return()=>{clearInterval(timer);control.abort();};
   },[enabled,loaded,scope,stake]);
   function save(next:NativeWallet[],exchangesOnly=false){
-    if(!enabled)return false;
+    if(!enabled||!loaded)return false;
     const normalized=nativeWallets(next);if(normalized.length!==next.length){setError('Invalid Solana request.');return false;}
     try{portfolioSettings.setItem(exchangesOnly?cexKey:walletKey,JSON.stringify(normalized));(exchangesOnly?setExchanges:setWallets)(normalized);return true;}catch{setError('Solana settings could not be saved.');return false;}
   }
-  return {wallets:enabled?wallets:[],exchanges:enabled?exchanges.filter(e=>!wallets.some(w=>w.address===e.address)):[],data:enabled?data:emptySolana(),busy:enabled&&busy,error:enabled?error:'',downloadProgress:enabled?downloadProgress:emptyDownloadProgress(),refresh,saveWallets:(next:NativeWallet[])=>save(next),saveExchanges:(next:NativeWallet[])=>save(next,true)};
+  return {wallets:enabled&&loaded?wallets:[],exchanges:enabled&&loaded?exchanges.filter(e=>!wallets.some(w=>w.address===e.address)):[],data:enabled&&loaded?data:emptySolana(),busy:enabled&&loaded&&busy,error:enabled?error:'',downloadProgress:enabled&&loaded?downloadProgress:emptyDownloadProgress(),refresh,saveWallets:(next:NativeWallet[])=>save(next),saveExchanges:(next:NativeWallet[])=>save(next,true)};
 }
 function solanaTransactionsForCache(data:SolanaData){return Object.values(data.accounts).flatMap(account=>account.transactions);}

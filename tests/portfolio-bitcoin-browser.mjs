@@ -47,10 +47,14 @@ try{
  await external.getByRole('combobox',{name:'Network',exact:true}).selectOption('bitcoin');
  assert.deepEqual(await external.locator('#portfolio-exchange-type option').evaluateAll(options=>options.map(option=>option.value)),['exchange','dex'],'BTC uses the same CEX/DEX selector as the other native networks');
  await external.locator('#portfolio-exchange-type').selectOption('dex');
+ assert.equal(await external.getByRole('checkbox',{name:'OUT address',exact:true}).isChecked(),true);
+ await external.getByRole('checkbox',{name:'OUT address',exact:true}).uncheck();
  await external.locator('#portfolio-exchange-name').fill('BTC Exchange');await external.locator('#portfolio-exchange-address').fill(exchange);
  await external.getByRole('button',{name:'Add',exact:true}).click();
  await external.locator('tr[data-address-id="bitcoin:cex:'+exchange+'"]').waitFor();
  assert.equal(await page.evaluate(stake=>JSON.parse(window.fixtureStorage.getItem('tdsp-member-bitcoin-cex:'+stake))[0].dex,stake),true,'BTC DEX metadata is stored instead of silently discarded');
+ assert.equal(await page.evaluate(stake=>JSON.parse(window.fixtureStorage.getItem('tdsp-member-bitcoin-cex:'+stake))[0].out,stake),false,'the add form persists an explicit OUT selection');
+ await external.getByRole('checkbox',{name:'OUT address: BTC Exchange',exact:true}).check();
  assert.match(await external.locator('tr[data-address-id="bitcoin:cex:'+exchange+'"]').innerText(),/DEX/);
  assert.equal(requests.length,0,'CEX-only addresses never trigger blockchain scans');
  await external.getByRole('button',{name:'Back',exact:true}).click();await page.getByRole('button',{name:'Open My Wallets',exact:true}).click();

@@ -4,9 +4,10 @@ type Classification={dex?:boolean;miner?:boolean;sourceType?:SourceType};
 export const addressTypes=[
   {value:'dex',label:'DEX'},
   {value:'cex',label:'CEX'},
-  {value:'min',label:'MIN · Mining'},
-  {value:'svc',label:'SVC · Services'}
+  {value:'min',label:'Mining'},
+  {value:'svc',label:'Service'}
 ] as const;
+export const addressTypeLabel=(row:Classification)=>addressTypes.find(type=>type.value===addressType(row))!.label;
 export function addressType(row:Classification):AddressType{
   return row.miner?row.sourceType==='svc'?'svc':'min':row.dex?'dex':'cex';
 }

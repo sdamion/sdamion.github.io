@@ -20,12 +20,12 @@ export function cryptoAddress(network:AddressNetwork,input:string,counterparty:b
   return address;
 }
 
-export function CryptoAddressForm({id,counterparty=false,ethereum=false,solana=false,bitcoin=false,initialKind='exchange',onAdd}:{id:string;counterparty?:boolean;ethereum?:boolean;solana?:boolean;bitcoin?:boolean;initialKind?:'exchange'|'swap'|'dex';onAdd:(network:AddressNetwork,kind:'exchange'|'swap'|'dex',name:string,address:string)=>boolean}){
+export function CryptoAddressForm({id,counterparty=false,ethereum=false,solana=false,bitcoin=false,initialKind='exchange',onAdd}:{id:string;counterparty?:boolean;ethereum?:boolean;solana?:boolean;bitcoin?:boolean;initialKind?:'exchange'|'swap'|'dex';onAdd:(network:AddressNetwork,kind:'exchange'|'swap'|'dex',name:string,address:string,out?:boolean)=>boolean}){
   const [network,setNetwork]=useState<AddressNetwork>('cardano'),[error,setError]=useState(''),t=usePortfolioText();
   const selected=network==='ethereum'&&!ethereum||network==='solana'&&!solana||network==='bitcoin'&&!bitcoin?'cardano':network;
   return <div>
-    <ServiceAddressForm key={selected} id={id} type={initialKind==='swap'&&!addressNetworks[selected].swap?'exchange':initialKind} allowDex={counterparty} chooseType={counterparty&&addressNetworks[selected].swap} nameLabel={counterparty?undefined:'Wallet name'} addressLabel="Wallet address" placeholder={selected==='cardano'&&!counterparty?'stake1… or addr1…':addressNetworks[selected].placeholder} onAdd={(kind,name,input)=>{
-      try{const address=cryptoAddress(selected,input,counterparty);if(!onAdd(selected,kind,name,address)){setError('Could not save the selection.');return false;}setError('');return true;}
+    <ServiceAddressForm key={selected} id={id} type={initialKind==='swap'&&!addressNetworks[selected].swap?'exchange':initialKind} allowDex={counterparty} allowOut={counterparty} chooseType={counterparty&&addressNetworks[selected].swap} nameLabel={counterparty?undefined:'Wallet name'} addressLabel="Wallet address" placeholder={selected==='cardano'&&!counterparty?'stake1… or addr1…':addressNetworks[selected].placeholder} onAdd={(kind,name,input,out)=>{
+      try{const address=cryptoAddress(selected,input,counterparty);if(!onAdd(selected,kind,name,address,out)){setError('Could not save the selection.');return false;}setError('');return true;}
       catch(reason){setError(reason instanceof Error?reason.message:'Could not save the selection.');return false;}
     }}>
       <label htmlFor={`${id}-network`} translate="no">{t('Network')}<select id={`${id}-network`} value={selected} onChange={event=>{setNetwork(event.target.value as AddressNetwork);setError('');}}>{(Object.keys(addressNetworks) as AddressNetwork[]).filter(network=>network==='cardano'||network==='ethereum'&&ethereum||network==='solana'&&solana||network==='bitcoin'&&bitcoin).map(network=><option key={network} value={network}>{addressNetworks[network].name}</option>)}</select></label>

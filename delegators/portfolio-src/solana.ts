@@ -4,8 +4,9 @@ import {availableTotal} from './portfolio-totals.ts';
 import {isRewardSource} from './reward-sources.ts';
 import {isOutAddress} from './out-address.ts';
 import {sourceTypeFields,type SourceType} from './address-types.ts';
+import {depositScanWallets,depositReceipt} from './deposit-tracking.ts';
 
-export type NativeWallet={address:string;name:string;miner?:boolean;dex?:boolean;sourceType?:SourceType;out?:boolean};
+export type NativeWallet={address:string;name:string;miner?:boolean;dex?:boolean;sourceType?:SourceType;out?:boolean;deposit?:boolean};
 export type SolanaTransaction={hash:string;slot:number;time:number;payer:string;feeRaw:string;failed:boolean;transfers:{from:string;to:string;raw:string}[]};
 export type SolanaData={accounts:Record<string,{raw:string;slot:number;checkpoint:string|null;transactions:SolanaTransaction[]}>;pending?:SolanaTransaction[];history:Record<string,number>;usd:number|null};
 export const emptySolana=():SolanaData=>({accounts:{},history:{},usd:null});
@@ -17,7 +18,7 @@ export const solAmount=(raw:string)=>Number(BigInt(raw))/1e9;
 const raw=(value:unknown)=>typeof value==='string'&&/^\d{1,30}$/.test(value);
 export function nativeWallets(value:unknown):NativeWallet[]{
   if(!Array.isArray(value))return [];
-  return [...new Map(value.filter(row=>row&&validSolana(row.address)&&typeof row.name==='string'&&row.name.trim()).slice(0,20).map(row=>[row.address,{address:row.address,name:row.name.trim().slice(0,60),...(row.miner===true?{miner:true}:{}),...(row.dex===true?{dex:true}:{}),...sourceTypeFields(row),...(typeof row.out==='boolean'?{out:row.out}:{})}])).values()];
+  return [...new Map(value.filter(row=>row&&validSolana(row.address)&&typeof row.name==='string'&&row.name.trim()).slice(0,20).map(row=>[row.address,{address:row.address,name:row.name.trim().slice(0,60),...(row.miner===true?{miner:true}:{}),...(row.dex===true?{dex:true}:{}),...sourceTypeFields(row),...(row.deposit===true?{deposit:true}:{}),...(typeof row.out==='boolean'?{out:row.out}:{})}])).values()];
 }
 export function validSolanaTransaction(value:unknown):value is SolanaTransaction{
   const row=value as SolanaTransaction;
@@ -33,6 +34,13 @@ export function solanaData(value:unknown):SolanaData{
 }
 export function solanaTransactions(data:SolanaData,wallets:NativeWallet[]){
   return [...new Map(wallets.flatMap(w=>data.accounts[w.address]?.transactions||[]).map(tx=>[tx.hash,tx])).values()].sort((a,b)=>b.slot-a.slot||a.hash.localeCompare(b.hash));
+}
+export function solanaDeposit(tx:SolanaTransaction,wallets:NativeWallet[],exchanges:NativeWallet[]){
+  return tx.failed?null:depositReceipt('solana',tx.hash,tx.time,tx.transfers.map(row=>({address:row.from,raw:row.raw})),tx.transfers.map(row=>({address:row.to,raw:row.raw})),wallets,exchanges);
+}
+export function visibleSolanaTransactions(data:SolanaData,wallets:NativeWallet[],exchanges:NativeWallet[]){
+  const owned=new Set(solanaTransactions(data,wallets).map(tx=>tx.hash));
+  return solanaTransactions(data,depositScanWallets(wallets,exchanges)).filter(tx=>owned.has(tx.hash)||solanaDeposit(tx,wallets,exchanges));
 }
 export function solanaTransfers(data:SolanaData,wallets:NativeWallet[],exchanges:NativeWallet[]):(FiatTransfer&{amount:number})[]{
     const own=new Set(wallets.map(w=>w.address)),cex=new Set(exchanges.filter(isOutAddress).map(w=>w.address));
