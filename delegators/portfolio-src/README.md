@@ -350,7 +350,11 @@ TransactionAddresses is the shared ADA/ETH/SOL/BTC From/To renderer, using
 AddressLink for explorer links and clipboard controls. Named wallets show only
 their literal name; unnamed addresses stay shortened. The copy icon always
 copies the full original address, also available in the link tooltip. Rows
-deduplicate within each direction. UTXO incoming flows show external
+deduplicate within each direction. Each direction occupies one visible row;
+multiple genuine addresses are collapsed behind an expandable address count.
+All original explorer links and full-address copy controls remain in those
+details. The same grouping applies to every chain, including BTC multi-input
+transactions. UTXO incoming flows show external
 inputs to owned outputs; outgoing flows show owned inputs to external outputs,
 hiding change and co-inputs on the owned side. Self-transfers retain both owned
 roles. Multiple genuine counterparties are not reduced to a guessed single

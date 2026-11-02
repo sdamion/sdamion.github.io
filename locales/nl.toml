@@ -1,4 +1,5 @@
 [strings]
+portfolio_text_address_count = "{count} adressen"
 portfolio_text_btc_fee_own = "Betaald door jouw wallets"
 portfolio_text_btc_fee_sender = "Betaald door de afzender"
 portfolio_text_btc_fee_unknown = "Aandeel van jouw wallet onbekend"

@@ -10,14 +10,17 @@ import {BitcoinTransaction} from './BitcoinTransaction';
 import {EthereumTransaction} from './EthereumTransaction';
 import {SolanaTransaction} from './SolanaTransaction';
 import {TransactionWallets} from './TransactionTable';
+import {TransactionAddresses} from './TransactionAddresses';
 const btc='1BoatSLRHtKNngkdXEeobR76b53LETtpyT',other='1BitcoinEaterAddressDontSendf59kuE',eth='0x'+'1'.repeat(40),target='0x'+'2'.repeat(40),sol='A'.repeat(44),recipient='B'.repeat(44),payer='C'.repeat(44),ada='addr1'+'x'.repeat(95),receiver='addr1'+'y'.repeat(95);
 const common={history:{},adaHistory:{}};
-createRoot(document.getElementById('app')).render(<table><tbody>
+createRoot(document.getElementById('app')).render(<><table id="single"><tbody>
 <BitcoinTransaction {...common} tx={{hash:'1'.repeat(64),height:1,time:1700000000,feeRaw:'1000',inputs:[{address:btc,raw:'10000'},{address:other,raw:'10000'},{address:btc,raw:'2000'}],outputs:[{address:other,raw:'20000'},{address:btc,raw:'1000'}]}} wallets={[{address:btc,name:'BTC Wallet'}]} exchanges={[]}/>
 <EthereumTransaction {...common} tx={{id:'eth',hash:'0x'+'3'.repeat(64),kind:'normal',from:eth,to:eth,time:1700000000,valueWei:'10000',feeWei:'1000',failed:false}} wallets={[{address:eth,name:'ETH Wallet'}]} exchanges={[]}/>
 <SolanaTransaction {...common} tx={{hash:'4'.repeat(88),slot:1,time:1700000000,feeRaw:'5000',payer,failed:false,transfers:[{from:sol,to:recipient,raw:'1000'},{from:sol,to:recipient,raw:'2000'},{from:payer,to:'D'.repeat(44),raw:'9999'}]}} wallets={[{address:sol,name:'SOL Wallet'}]} exchanges={[{address:recipient,name:'SOL Exchange',out:true}]}/>
 <tr><td><TransactionWallets labels={['ADA Wallet']} wallets={[{address:ada,label:'ADA Wallet'}]} exchanges={[]} fact={{source:{inputs:[{payment_addr:{bech32:ada},value:'1000'}],outputs:[{payment_addr:{bech32:receiver},value:'900'},{payment_addr:{bech32:ada},value:'50'}]}}}/></td></tr>
-</tbody></table>);
+</tbody></table>
+<section id="groups">{['cardano','bitcoin','ethereum','solana'].map(network=><div data-network={network} key={network}><TransactionAddresses network={network} from={[{address:'sender-one',name:'Sender'},{address:'sender-two',name:'Sender'},{address:'sender-one',name:'Sender'}]} to={[{address:'own-one',name:'My wallet'},{address:'own-two',name:'My wallet'}]}/></div>)}</section>
+<table id="multi-bitcoin"><tbody><BitcoinTransaction {...common} tx={{hash:'2'.repeat(64),height:1,time:1700000000,feeRaw:'1000',inputs:[{address:other,raw:'10000'},{address:'3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy',raw:'10000'}],outputs:[{address:btc,raw:'10000'},{address:other,raw:'9000'}]}} wallets={[{address:btc,name:'BTC Wallet'}]} exchanges={[]}/></tbody></table></>);
 `},bundle:true,write:false,format:'esm',jsx:'automatic',alias:{'@/lib/portfolio':path.join(source,'core.ts'),'@/components/ui/input':path.join(source,'ui.tsx'),'@/components/ui/table':path.join(source,'ui.tsx'),'@/components/ui/pagination':path.join(source,'ui.tsx')}});
 const browser=await chromium.launch({channel:'chrome',headless:true});
 try{
@@ -29,7 +32,7 @@ try{
  await page.addStyleTag({content:await readFile('shared/styles.css','utf8')});
  await page.addScriptTag({type:'module',content:bundle.outputFiles[0].text});
  await page.getByText('SOL Wallet',{exact:false}).first().waitFor();
- const rows=page.locator('tbody > tr');assert.equal(await rows.count(),4);
+ const rows=page.locator('#single tbody > tr');assert.equal(await rows.count(),4);
  const btc=rows.nth(0).locator('td').nth(3),eth=rows.nth(1).locator('td').nth(3),sol=rows.nth(2).locator('td').nth(3),ada=rows.nth(3);
  assert.equal(await btc.locator('a').count(),2,'only owned inputs and external recipients appear for OUT');
  assert.match(await btc.innerText(),/From:\s*BTC Wallet[\s\S]*To:/);
@@ -64,6 +67,20 @@ try{
  assert.ok(await copy.evaluate(button=>button===document.activeElement&&getComputedStyle(button).outlineStyle!=='none'),'keyboard focus remains visible');
  await page.evaluate(()=>{window.failCopy=true;});await copy.click();await btc.getByRole('alert').filter({hasText:'Could not copy address.'}).waitFor();
  await page.evaluate(()=>{window.failCopy=false;});await copy.click();assert.equal(await btc.getByRole('alert').count(),0);
+ for(const network of ['cardano','bitcoin','ethereum','solana']){
+  const group=page.locator('#groups [data-network="'+network+'"]');
+  assert.equal(await group.locator('summary').count(),2,'one From and one To line for every network');
+  assert.equal(await group.locator('a:visible').count(),0,'multiple addresses are not printed in collapsed rows');
+  assert.match(await group.innerText(),/From: Sender · 2 addresses[\s\S]*To: My wallet · 2 addresses/);
+  await group.locator('summary').first().click();assert.equal(await group.locator('a:visible').count(),2,'details retain all distinct original addresses');
+  await group.getByRole('button',{name:'Copy address',exact:true}).first().click();assert.equal(await page.evaluate(()=>window.copied),'sender-one');
+  await group.locator('summary').first().click();
+ }
+ const multi=page.locator('#multi-bitcoin td').nth(3);
+ assert.equal(await multi.locator('summary').count(),1);assert.equal(await multi.locator('a:visible').count(),1,'real multi-input BTC shows only the owned endpoint until sender details are opened');
+ assert.match(await multi.innerText(),/From: 2 addresses[\s\S]*To:\s*BTC Wallet/);
+ await multi.locator('summary').click();assert.equal(await multi.locator('a:visible').count(),3);
+ await multi.locator('summary').click();
  assert.deepEqual(errors,[]);
- console.log('PASS: wallet-focused From/To across ADA, BTC, ETH and SOL; name-only explorer links, full-address copy, clipboard failure recovery, address filtering and paid fees.');
+ console.log('PASS: shared compact From/To across ADA, BTC, ETH and SOL, including real multi-input BTC; grouped addresses, names, explorer links, full-address copy and paid fees.');
 }finally{await browser.close();}
