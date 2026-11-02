@@ -4,7 +4,7 @@ import {collectionName,collectionRepresentative} from './holding-groups.ts';
 import {matchesSearchText} from './transaction-search.ts';
 import type {historicalNfts} from './historical-nfts';
 
-export type NftPrices=Record<string,{buy:number|null;sell:number|null}>;
+export type NftPrices=Record<string,{buy:number|null;sell:number|null;acquisition?:'Buy'|'Mint'}>;
 export type NftSort='date'|'buy-high'|'buy-low'|'sell-high'|'sell-low';
 const collectionNames:Record<string,string>={
   f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a:'ADA Handle',

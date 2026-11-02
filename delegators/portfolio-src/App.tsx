@@ -44,7 +44,8 @@ import type {PaymentLink} from './mint-payments';
 import {PaymentLinks} from './PaymentLinks';
 import {AssetOverlay} from './AssetOverlay';
 import {historicalNfts} from './historical-nfts';
-import {historicalNftPrices,nftCollections,filterNftCollage,type NftPrices,type NftSort} from './nft-collage';
+import {nftCollections,filterNftCollage,type NftPrices,type NftSort} from './nft-collage';
+import {nftTradePairs,nftCyclePrices,groupNftRows} from './nft-pairs';
 import {nftTransactions,type NftEvent} from './nft-history';
 import {NftPreview} from './NftHistory';
 import {OwnedAssetsGallery,type OwnedAssetRow} from './OwnedAssetsGallery';
@@ -392,7 +393,8 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   const included=includedAssets(rows,overrides),excludedCount=rows.length-included.length;
   const nftHistory=useMemo(()=>[...historicalNfts(Object.values(classifiedFacts),holdings,snapshot?.markets||{}),...ordinalNfts.rows].sort((a,b)=>(b.firstReceived??0)-(a.firstReceived??0)||a.id.localeCompare(b.id)),[classifiedFacts,holdings,snapshot?.markets,ordinalNfts.rows]);
   const nftEvents=useMemo(()=>nftTransactions(nftHistory,Object.values(classifiedFacts),payments.acquisitions),[nftHistory,classifiedFacts,payments.acquisitions]);
-  const nftPrices=useMemo(()=>historicalNftPrices(Object.values(classifiedFacts),payments.acquisitions),[classifiedFacts,payments.acquisitions]);
+  const nftPairs=useMemo(()=>nftTradePairs(nftEvents),[nftEvents]);
+  const nftPrices=useMemo(()=>nftCyclePrices(nftEvents),[nftEvents]);
   const assetGroup=(id:string)=>id!=='lovelace'&&snapshot?.markets[id]?.is_nft===true?'NFTs':'FTs';
   const ownedAssetRows:OwnedAssetRow[]=rows.filter(row=>BigInt(row.raw)>0n).map(row=>({id:'cardano:'+row.id,chain:'cardano',standard:row.id==='lovelace'?'Native':assetGroup(row.id)==='NFTs'?'NFT':'FT',name:row.name,symbol:snapshot?.markets[row.id]?.ticker|| (row.id==='lovelace'?'ADA':''),raw:row.raw,decimals:row.id==='lovelace'?6:tokenDecimals(parseAmount(overrides[row.id]?.decimals))??row.automaticDecimals??null,image:assetImageCandidates(row.id,[snapshot?.markets[row.id]?.registry_logo,snapshot?.markets[row.id]?.cached_image,snapshot?.markets[row.id]?.wayup_image,snapshot?.markets[row.id]?.image])[0]||null,explorer:row.id==='lovelace'?null:'https://cardanoscan.io/token/'+row.id,wallets:assetWallets[row.id]||[]}));
   ownedAssetRows.push(...mergeOwnedAssets(ownedAssetInventory.data,assetWalletTargets));
@@ -514,7 +516,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
     const addresses=new Set([...tx.inputs,...tx.outputs].map(row=>row.address));
     return matches&&withinTransactionDates(tx.time,dateFrom,dateTo)&&matchesSearchText(query,[tx.hash,'BTC',...addresses,...[...bitcoin.wallets,...bitcoin.exchanges].filter(w=>addresses.has(w.address)).map(w=>w.name)]);
   });
-  const shown=groupSwapRows([...cardanoShown.map(tx=>({chain:'cardano' as const,time:tx.block_time,tx})),...ethereumShown.map(tx=>({chain:'ethereum' as const,time:tx.time,tx})),...solShown.map(tx=>({chain:'solana' as const,time:tx.time,tx})),...bitcoinShown.map(tx=>({chain:'bitcoin' as const,time:tx.time,tx}))].sort((a,b)=>b.time-a.time),crossChainSwaps.pairs);
+  const shown=groupNftRows(groupSwapRows([...cardanoShown.map(tx=>({chain:'cardano' as const,time:tx.block_time,tx})),...ethereumShown.map(tx=>({chain:'ethereum' as const,time:tx.time,tx})),...solShown.map(tx=>({chain:'solana' as const,time:tx.time,tx})),...bitcoinShown.map(tx=>({chain:'bitcoin' as const,time:tx.time,tx}))].sort((a,b)=>b.time-a.time),crossChainSwaps.pairs),section==='transactions'?nftPairs:[]);
   const visibleEthIds=new Set(ethereumShown.map(tx=>tx.id));
   const visibleSolIds=new Set(solShown.map(tx=>tx.hash));
   const visibleBtcIds=new Set(bitcoinShown.map(tx=>tx.hash));
@@ -734,9 +736,13 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
     </section></div></>}
     <TransactionFilters id={section} options={section==='gain-loss'?{all:'All',in:'ADA IN',out:'ADA OUT',...(ethereum.wallets.length?{'eth-in':'ETH IN','eth-out':'ETH OUT'}:{}),...(solana.wallets.length?{'sol-in':'SOL IN','sol-out':'SOL OUT'}:{}),...(bitcoin.wallets.length?{'btc-in':'BTC IN','btc-out':'BTC OUT'}:{})}:undefined} query={query} onQuery={value=>{setQuery(value);setFilter('all');}} filter={filter} onFilter={setFilter} dateFrom={dateFrom} dateTo={dateTo} onDates={(from,to)=>{setDateFrom(from);setDateTo(to);}} pagination={<TransactionPagination position="top" page={currentPage} count={shown.length} onPage={setPage}/>}/>
     <section className="portfolio-section">
-      <TransactionTable multiAsset={nativeCount>0}>{shown.slice(currentPage*100,(currentPage+1)*100).map(group=>{
+      <TransactionTable multiAsset={nativeCount>0}>{shown.slice(currentPage*100,(currentPage+1)*100).map(({rows:group,nft})=>{
         const compact=group.length===2;
-        const children=group.map(row=>row.chain==='bitcoin'?<BitcoinTransaction key={row.tx.hash} tx={row.tx} wallets={bitcoin.wallets} exchanges={bitcoin.exchanges} history={bitcoin.data.history} adaHistory={snapshot?.history||{}}/>:row.chain==='solana'?<SolanaTransaction key={row.tx.hash} compact={compact} internalSwap={crossChainSwaps.solana.has(row.tx.hash)} tx={row.tx} wallets={solana.wallets} exchanges={solana.exchanges} history={solana.data.history} adaHistory={snapshot?.history||{}}/>:row.chain==='ethereum'?<EthereumTransaction key={row.tx.id} compact={compact} tx={row.tx} internalSwap={crossChainSwaps.ethereum.has(row.tx.id)} wallets={ethereum.allWallets} exchanges={ethereum.exchanges} history={ethereum.data.history} adaHistory={snapshot?.history||{}}/>:section==='gain-loss'?<GainLossTransaction key={row.tx.tx_hash} tx={row.tx} fact={classifiedFacts[row.tx.tx_hash]} wallets={displayWallets} entries={cexAddresses} history={snapshot?.history||{}}/>:<Transaction key={row.tx.tx_hash} compact={compact} tx={row.tx} internalSwap={crossChainSwaps.cardano.has(row.tx.tx_hash)} fact={classifiedFacts[row.tx.tx_hash]} wallets={displayWallets} markets={snapshot?.markets||{}} history={snapshot?.history||{}} cexAddresses={cexAddresses} swapAddresses={swapAddresses}/>);
+        const children=group.map(row=>row.chain==='bitcoin'?<BitcoinTransaction key={row.tx.hash} tx={row.tx} wallets={bitcoin.wallets} exchanges={bitcoin.exchanges} history={bitcoin.data.history} adaHistory={snapshot?.history||{}}/>:row.chain==='solana'?<SolanaTransaction key={row.tx.hash} compact={compact} internalSwap={crossChainSwaps.solana.has(row.tx.hash)} tx={row.tx} wallets={solana.wallets} exchanges={solana.exchanges} history={solana.data.history} adaHistory={snapshot?.history||{}}/>:row.chain==='ethereum'?<EthereumTransaction key={row.tx.id} compact={compact} tx={row.tx} internalSwap={crossChainSwaps.ethereum.has(row.tx.id)} wallets={ethereum.allWallets} exchanges={ethereum.exchanges} history={ethereum.data.history} adaHistory={snapshot?.history||{}}/>:section==='gain-loss'?<GainLossTransaction key={row.tx.tx_hash} tx={row.tx} fact={classifiedFacts[row.tx.tx_hash]} wallets={displayWallets} entries={cexAddresses} history={snapshot?.history||{}}/>:<Transaction key={row.tx.tx_hash} compact={compact} tx={row.tx} internalSwap={crossChainSwaps.cardano.has(row.tx.tx_hash)} fact={classifiedFacts[row.tx.tx_hash]} wallets={displayWallets} markets={snapshot?.markets||{}} history={snapshot?.history||{}} cexAddresses={cexAddresses} swapAddresses={swapAddresses} hiddenAsset={nft?.id} nftEvent={nft&&(row.tx.tx_hash===nft.acquisition.hash?nft.acquisition:nft.sale)}/>);
+        if(nft){
+          const prices={buy:nft.acquisition.price,sell:nft.sale.price,acquisition:nft.acquisition.kind as 'Buy'|'Mint'};
+          return <TransactionPair key={'nft:'+nft.id+':'+nft.acquisition.hash} heading={<div className="section-heading" data-nft-pair={nft.id}><AssetImage id={nft.id} name={nft.acquisition.name} market={snapshot?.markets[nft.id]} compact hideIdentifier preview tradePrices={prices}/><div translate="no" className="portfolio-nft-trade-labels"><strong>{t(nft.acquisition.kind)} / {t('Sell')}</strong><NftPriceLabels prices={prices}/></div></div>}>{children}</TransactionPair>;
+        }
         return compact?<TransactionPair crossChain={group.some(row=>row.chain!=='cardano')} symbols={group.some(row=>row.chain==='solana')?'ADA / SOL':'ADA / ETH'} key={group[0].chain==='cardano'?group[0].tx.tx_hash:group[0].chain==='ethereum'?group[0].tx.id:group[0].tx.hash}>{children}</TransactionPair>:children;
       })}</TransactionTable>{!shown.length&&<p className="empty">{busy?'Loading transactions…':'No matching transactions.'}</p>}
       <TransactionPagination position="bottom" page={currentPage} count={shown.length} onPage={setPage}/>
@@ -797,7 +803,11 @@ function HistoricalNftCollage({rows,markets,wallets={},prices={},events=[],onVis
     </div>
   </>;
 }
-function NftCaption({name,firstReceived,prices,minted=false}:{name:string;firstReceived:number|null;prices?:{buy:number|null;sell:number|null};minted?:boolean}){
+function NftPriceLabels({prices,minted=false}:{prices?:NftPrices[string];minted?:boolean}){
+  const t=usePortfolioText(),kind=prices?.acquisition||(minted?'Mint':'Buy');
+  return <>{prices?.buy!=null?<span>{t(kind==='Mint'?'Mint: {price} ADA':'Buy: {price} ADA',{price:num(prices.buy,6)})}</span>:kind==='Mint'&&<span>{t('Mint')}</span>}{prices?.sell!=null&&<span>{t('Sell: {price} ADA',{price:num(prices.sell,6)})}</span>}</>;
+}
+function NftCaption({name,firstReceived,prices,minted=false}:{name:string;firstReceived:number|null;prices?:NftPrices[string];minted?:boolean}){
   const t=usePortfolioText(),ref=useRef<HTMLSpanElement>(null);
   const date=firstReceived!==null?t('First received: {date}',{date:new Date(firstReceived*1000).toISOString().slice(0,10)}):t('First received: unknown');
   useEffect(()=>{
@@ -812,9 +822,9 @@ function NftCaption({name,firstReceived,prices,minted=false}:{name:string;firstR
     fit();const observer=new ResizeObserver(fit);observer.observe(caption.parentElement!);
     return()=>observer.disconnect();
   },[name,date,prices?.buy,prices?.sell,minted]);
-  return <span ref={ref} className="portfolio-nft-caption" translate="no"><strong title={name}>{name}</strong><span title={date}>{date}</span>{prices?.buy!=null?<span>{t('Buy: {price} ADA',{price:num(prices.buy,6)})}</span>:minted&&<span>{t('Mint')}</span>}{prices?.sell!=null&&<span>{t('Sell: {price} ADA',{price:num(prices.sell,6)})}</span>}</span>;
+  return <span ref={ref} className="portfolio-nft-caption" translate="no"><strong title={name}>{name}</strong><span title={date}>{date}</span><NftPriceLabels prices={prices} minted={minted}/></span>;
 }
-function AssetImage({id,name,market,onOpen,compact=false,hideIdentifier=false,preview=false,collage}:{id:string;name:string;market?:Market;onOpen?:()=>void;compact?:boolean;hideIdentifier?:boolean;preview?:boolean;collage?:{firstReceived:number|null;ownedWallets?:string[];minted?:boolean;prices?:{buy:number|null;sell:number|null}}}){
+function AssetImage({id,name,market,onOpen,compact=false,hideIdentifier=false,preview=false,collage,tradePrices}:{id:string;name:string;market?:Market;onOpen?:()=>void;compact?:boolean;hideIdentifier?:boolean;preview?:boolean;collage?:{firstReceived:number|null;ownedWallets?:string[];minted?:boolean;prices?:NftPrices[string]};tradePrices?:NftPrices[string]}){
   const [failed,setFailed]=useState<string[]>([]);
   const [previewSource,setPreviewSource]=useState<string|null>(null);
   const t=usePortfolioText();
@@ -825,7 +835,7 @@ function AssetImage({id,name,market,onOpen,compact=false,hideIdentifier=false,pr
   const content=<>{thumbnail}<span className="portfolio-asset-name" title={hideIdentifier?name:id}>{name}</span></>;
   const ownership=collage?.ownedWallets!==undefined?<span className="portfolio-nft-owned" translate="no"><strong>{t('Owned')}</strong>{collage.ownedWallets.length>0&&<span title={collage.ownedWallets.join(', ')}>{collage.ownedWallets.join(', ')}</span>}</span>:null;
   return <>{onOpen?<button type="button" className="governance-vote-secondary portfolio-asset-button" onClick={onOpen} aria-label={`View ${name} details`}>{content}</button>:<div className={collage?'portfolio-nft-tile':compact?'portfolio-token-inline':undefined}>{collage?<>{thumbnail}{ownership}</>:content}</div>}
-    {previewSource&&<AssetOverlay id="portfolio-image-preview-overlay" name={name} literalTitle onClose={()=>setPreviewSource(null)}><img className="portfolio-image-preview" src={previewSource} alt={name} translate="no" decoding="async" referrerPolicy="no-referrer"/></AssetOverlay>}
+    {previewSource&&<AssetOverlay id="portfolio-image-preview-overlay" name={name} literalTitle onClose={()=>setPreviewSource(null)}><img className="portfolio-image-preview" src={previewSource} alt={name} translate="no" decoding="async" referrerPolicy="no-referrer"/>{(tradePrices||collage?.prices)&&<div className="portfolio-nft-trade-labels" translate="no"><NftPriceLabels prices={tradePrices||collage?.prices} minted={collage?.minted}/></div>}</AssetOverlay>}
   </>;
 }
 
@@ -834,7 +844,8 @@ function Metric({label,value,amount,note,tone='',onOpen,openLabel=label,children
   const Tag=onOpen?'button':'div';
   return <Tag type={onOpen?'button':undefined} onClick={onOpen} aria-label={onOpen?`Open ${openLabel}`:undefined} className="governance-menu-card"><strong translate="no" className={`governance-card-title ${tone}`}>{amount?<PortfolioCurrencyContext.Provider value={null}><AdaUsdAmount {...amount}/></PortfolioCurrencyContext.Provider>:t(value)}</strong><span className="governance-card-detail" data-i18n-auto-original={label}>{label}</span>{children}{note&&<span className="small muted">{typeof note==='string'?t(note):note}</span>}</Tag>;
 }
-function Transaction({tx,fact,markets,wallets,history,cexAddresses,swapAddresses,internalSwap=false,compact=false}:{tx:Tx;fact?:Fact;markets:Record<string,Market>;wallets:Wallet[];history:Record<string,number>;cexAddresses:CexAddress[];swapAddresses:Set<string>;internalSwap?:boolean;compact?:boolean}){
+function Transaction({tx,fact,markets,wallets,history,cexAddresses,swapAddresses,internalSwap=false,compact=false,hiddenAsset,nftEvent}:{tx:Tx;fact?:Fact;markets:Record<string,Market>;wallets:Wallet[];history:Record<string,number>;cexAddresses:CexAddress[];swapAddresses:Set<string>;internalSwap?:boolean;compact?:boolean;hiddenAsset?:string;nftEvent?:NftEvent}){
+  const t=usePortfolioText();
   const kind=fact?kindOf(fact):null,trade=fact?tradeOf(fact):null;
   const exchangeWallets=transactionExchangeWallets(fact,cexAddresses);
   const cexTrade=fact&&!internalSwap?cexAdaTransfer(fact,cexAddresses):null;
@@ -843,8 +854,8 @@ function Transaction({tx,fact,markets,wallets,history,cexAddresses,swapAddresses
   const amount=transactionAmounts(fact?.adaRaw,fact?.time??tx.block_time,history,fact?.feeRaw);
   return <TransactionRow compact={compact} hash={tx.tx_hash} time={tx.block_time} price={amount.price} feeRaw={transactionNetworkFee(fact)}
     amount={<><TransactionAmount ada={amount.ada} usd={amount.usd} tone={cexTrade?(cexTrade.side==='buy'?'negative':'positive'):undefined}/>{compact&&amount.ada!==null&&<div translate="no" className="small muted">{num(Math.abs(amount.ada),6)} ADA</div>}</>}
-    kind={compact?(amount.ada!==null&&amount.ada>0?'ADA IN':'ADA OUT'):fact&&isCardanoReward(fact,cexAddresses)?'Mining / services receipt':internalSwap?'Internal cross-chain swap':isSwapTransaction(fact,swapAddresses)?'Swap':cexTransfer?(cexTransfer.side==='buy'?'ADA IN':'ADA OUT'):kind==='internal'?'Internal transfer · fee only':kind?labels[kind]:'Awaiting analysis'}
-    details={<>{cexTransfer&&!cexTransfer.verified&&<><div className="small muted">Mixed or unassigned sources</div><div className="small muted">Excluded from calculations</div></>}{fact&&Object.entries(fact.assets).map(([id,raw])=>{const q=units(raw,markets[id]?.decimals??fact.decimals?.[id]);return <div className="small" key={id}>{BigInt(raw)>0n?'+':''}{q===null?raw+' raw':num(q)} <AssetImage id={id} name={markets[id]?.name||markets[id]?.ticker||assetName(id)} market={markets[id]} compact preview/></div>;})}</>}
+    kind={nftEvent?t(nftEvent.kind):compact?(amount.ada!==null&&amount.ada>0?'ADA IN':'ADA OUT'):fact&&isCardanoReward(fact,cexAddresses)?'Mining / services receipt':internalSwap?'Internal cross-chain swap':isSwapTransaction(fact,swapAddresses)?'Swap':cexTransfer?(cexTransfer.side==='buy'?'ADA IN':'ADA OUT'):kind==='internal'?'Internal transfer · fee only':kind?labels[kind]:'Awaiting analysis'}
+    details={<>{cexTransfer&&!cexTransfer.verified&&<><div className="small muted">Mixed or unassigned sources</div><div className="small muted">Excluded from calculations</div></>}{fact&&Object.entries(fact.assets).filter(([id])=>id!==hiddenAsset).map(([id,raw])=>{const q=units(raw,markets[id]?.decimals??fact.decimals?.[id]);return <div className="small" key={id}>{BigInt(raw)>0n?'+':''}{q===null?raw+' raw':num(q)} <AssetImage id={id} name={markets[id]?.name||markets[id]?.ticker||assetName(id)} market={markets[id]} compact preview/></div>;})}</>}
     priceDetails={trade&&<div className="small muted">{quantity?num(trade.ada/quantity,10)+' ₳ / token':num(trade.ada)+' ₳ consideration'}</div>}
     wallets={<TransactionWallets labels={transactionWalletNames(fact,wallets)} exchanges={exchangeWallets}/>}
   />;
