@@ -68,9 +68,9 @@ try{
  assert.match(await receiptRow.locator('td').nth(2).innerText(),/0 BTC[\s\S]*0 sats/,'sender-paid fees do not appear as wallet-paid fees');
  const sendRow=transactions.locator('tbody tr').filter({has:page.locator('a[href="https://blockstream.info/tx/'+send.hash+'"]')});assert.match(await sendRow.locator('td').nth(2).innerText(),/0\.00001 BTC[\s\S]*1[.,]000 sats/);
  const receiptAddresses=receiptRow.locator('td').nth(3),sendAddresses=sendRow.locator('td').nth(3);
- assert.match(await receiptAddresses.innerText(),/From: BTC Exchange[\s\S]*To: BTC Savings/);
+ assert.match(await receiptAddresses.innerText(),/From:\s*BTC Exchange[\s\S]*To:\s*BTC Savings/);
  assert.equal(await receiptAddresses.locator(`a[href="https://blockstream.info/address/${exchange}"]`).getAttribute('title'),exchange);
- assert.match(await sendAddresses.innerText(),/From: BTC Savings[\s\S]*To: BTC Exchange/);
+ assert.match(await sendAddresses.innerText(),/From:\s*BTC Savings[\s\S]*To:\s*BTC Exchange/);
  assert.equal(await sendAddresses.locator(`a[href="https://blockstream.info/address/${address}"]`).count(),1,'change outputs are hidden from the outgoing flow');
  await transactions.getByRole('button',{name:'Back',exact:true}).click();await page.getByRole('button',{name:'Open CEX Transactions',exact:true}).click();
  const gain=page.locator('#portfolio-gain-loss-overlay');
@@ -101,7 +101,7 @@ try{
  await page.getByRole('button',{name:'Open Transactions',exact:true}).click();const mixed=transactions.locator('tbody tr').filter({has:page.locator('a[href="https://blockstream.info/tx/'+'4'.repeat(64)+'"]')});
  await mixed.waitFor();assert.match(await mixed.locator('td').nth(2).innerText(),/— BTC[\s\S]*Wallet share unknown/,'mixed fees are not attributed speculatively');
  assert.doesNotMatch(await mixed.locator('td').nth(2).innerText(),/7000|7[.,]000/);
- assert.match(await mixed.locator('td').nth(3).innerText(),/From: BTC Exchange[\s\S]*To: BTC Savings/,'incoming flow omits own co-inputs');
+ assert.match(await mixed.locator('td').nth(3).innerText(),/From:\s*BTC Exchange[\s\S]*To:\s*BTC Savings/,'incoming flow omits own co-inputs');
  assert.equal(await page.evaluate(({stake,address})=>JSON.parse(window.fixtureStorage.getItem('tdsp-member-bitcoin-data:'+stake)).accounts[address].transactions.find(tx=>tx.hash==='4'.repeat(64)).feeRaw,{stake,address}),'7000');
  const count=requests.length;await page.evaluate(()=>window.reopen('delegator'));await walletTile.click();await page.getByRole('button',{name:'Open My Wallets',exact:true}).click();
  assert.equal(await page.locator('#portfolio-wallet-network option[value="bitcoin"]').count(),0,'Bitcoin remains admin-only');

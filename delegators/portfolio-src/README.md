@@ -346,9 +346,11 @@ that known subtotal when another wallet is missing or mixed-input fees cannot
 be attributed, marks it as partial, and never treats unknown fee shares as paid
 zeros. No fee is apportioned speculatively or written back into chain data.
 
-TransactionAddresses is the shared ADA/ETH/SOL/BTC From/To renderer, using the
-shared addressExplorer URL builder. It displays literal wallet names and address
-links and deduplicates within each direction. UTXO incoming flows show external
+TransactionAddresses is the shared ADA/ETH/SOL/BTC From/To renderer, using
+AddressLink for explorer links and clipboard controls. Named wallets show only
+their literal name; unnamed addresses stay shortened. The copy icon always
+copies the full original address, also available in the link tooltip. Rows
+deduplicate within each direction. UTXO incoming flows show external
 inputs to owned outputs; outgoing flows show owned inputs to external outputs,
 hiding change and co-inputs on the owned side. Self-transfers retain both owned
 roles. Multiple genuine counterparties are not reduced to a guessed single
