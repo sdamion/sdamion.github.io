@@ -9,11 +9,11 @@ export function GainLossTransaction({tx,fact,wallets,entries,history}:{tx:Tx;fac
   if(!transfer)return null;
   const incoming=transfer.side==='buy';
   const amount=transactionAmounts(transfer.raw,fact.time,history,fact.feeRaw);
-  const exchanges=transactionExchangeWallets(fact,entries).filter(wallet=>wallet.direction===(incoming?'From':'To'));
+  const exchanges=transactionExchangeWallets(fact,entries);
   return <TransactionRow hash={tx.tx_hash} time={tx.block_time} price={amount.price} feeRaw={transactionNetworkFee(fact)}
     kind={incoming?'ADA IN':'ADA OUT'}
     details={!transfer.verified&&<><div className="small muted">Mixed or unassigned sources</div><div className="small muted">Excluded from calculations</div></>}
     amount={<TransactionAmount ada={amount.ada} usd={amount.usd} tone={incoming?'':'positive'}/>}
-    wallets={<TransactionWallets labels={transactionWalletNames(fact,wallets)} exchanges={exchanges}/>}
+    wallets={<TransactionWallets labels={transactionWalletNames(fact,wallets)} exchanges={exchanges} fact={fact} wallets={wallets}/>}
   />;
 }

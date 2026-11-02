@@ -3,7 +3,9 @@ import {ExternalLink} from 'lucide-react';
 import {short} from './core';
 import {lovelaceToAda} from './transaction-amounts';
 import {Table,TableHeader,TableBody,TableRow,TableHead,TableCell,AdaUsdAmount} from './ui';
-import {AssetWalletAddresses} from './AssetWalletAddresses';
+import {TransactionAddresses} from './TransactionAddresses';
+import {cardanoTransactionAddresses} from './transaction-addresses';
+import type {Fact,Wallet} from './core';
 import {PortfolioCurrencyContext,usePortfolioCurrency,transactionCurrency,formatPortfolioUsd,formatPortfolioAda,formatAdaNumber} from './portfolio-currency';
 import {usePortfolioText} from './use-portfolio-text';
 
@@ -13,9 +15,10 @@ export function TransactionAmount({ada,usd,tone,time}:{ada:number|null;usd:numbe
   return ada===null?<>—</>:<strong translate="no" className={`portfolio-transfer-amount ${tone??(ada>=0?'positive':'negative')}`}>{display?display.currency==='ADA'?formatPortfolioAda(Math.abs(ada),display):formatPortfolioUsd(usd===null?null:Math.abs(usd),display):<AdaUsdAmount ada={ada} usd={usd}/>}</strong>;
 }
 
-export function TransactionWallets({labels,exchanges}:{labels:string[];exchanges:{name:string;address:string}[]}){
+export function TransactionWallets({labels,exchanges,fact,wallets}:{labels:string[];exchanges:{name:string;address:string;direction:'From'|'To'}[];fact?:Fact;wallets:Wallet[]}){
   const names=[...new Set(exchanges.map(exchange=>exchange.name))];
-  return <>{names.length>0&&<strong translate="no">{names.join(' · ')}</strong>}<div className="small muted"><TransactionWalletLabels labels={labels}/></div>{exchanges.length>0&&<AssetWalletAddresses compact addresses={[...new Set(exchanges.map(exchange=>exchange.address))]} names={names}/>}</>;
+  const addresses=cardanoTransactionAddresses(fact,wallets,exchanges);
+  return <>{names.length>0&&<strong translate="no">{names.join(' · ')}</strong>}<div className="small muted"><TransactionWalletLabels labels={labels}/></div><TransactionAddresses network="cardano" {...addresses}/></>;
 }
 
 export function TransactionLink({hash}:{hash:string}){

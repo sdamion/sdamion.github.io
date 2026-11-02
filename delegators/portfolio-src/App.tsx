@@ -61,7 +61,7 @@ import {CexTimeline} from './CexTimeline';
 import {useBtcHistory} from './use-btc-history';
 import {useBitcoin} from './use-bitcoin';
 import {BitcoinTransaction} from './BitcoinTransaction';
-import {bitcoinAmount,bitcoinTransactions,bitcoinTransfers,bitcoinTransfer,bitcoinTotals,bitcoinNet} from './bitcoin';
+import {bitcoinAmount,bitcoinAmountText,bitcoinTransactions,bitcoinTransfers,bitcoinTransfer,bitcoinTotals,bitcoinNet} from './bitcoin';
 import {useEthereum} from './use-ethereum';
 import {useSolana} from './use-solana';
 import {SolanaTransaction} from './SolanaTransaction';
@@ -610,7 +610,8 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
       <Metric label="Network fees paid" value={loadedFacts||snapshot?.complete?nativeCount?formatPortfolioUsd(feeUsd,currencyDisplay):formatPortfolioAda(fees,currencyDisplay):'Waiting for transaction details'}>
         {ethereum.wallets.length>0&&<><span translate="no" className="small">ADA: {loadedFacts||snapshot?.complete?formatPortfolioAda(fees,currencyDisplay):'—'}</span><span translate="no" className="small">ETH: {ethFees===null?'—':`${ethFees.toLocaleString(undefined,{maximumFractionDigits:8})} ETH`} · {formatPortfolioUsd(ethAvailable.feeUsd,currencyDisplay)}</span></>}
         {solana.wallets.length>0&&<span translate="no" className="small">SOL: {solAvailable.fees===null?'—':`${solAvailable.fees.toLocaleString(undefined,{maximumFractionDigits:9})} SOL`} · {formatPortfolioUsd(solAvailable.feeUsd,currencyDisplay)}</span>}
-        {bitcoin.wallets.length>0&&<span translate="no" className="small">BTC: {btcAvailable.fees===null?'—':`${btcAvailable.fees.toLocaleString(undefined,{maximumFractionDigits:8})} BTC`} · {formatPortfolioUsd(btcAvailable.feeUsd,currencyDisplay)}</span>}
+        {bitcoin.wallets.length>0&&<span translate="no" className="small">BTC: {btcAvailable.feesRaw===null?'—':`${btcAvailable.feesPartial?'≥ ':''}${bitcoinAmountText(btcAvailable.feesRaw)} BTC`} · {formatPortfolioUsd(btcAvailable.feeUsd,currencyDisplay)}</span>}
+        {btcAvailable.unattributedFees>0&&<span translate="no" className="small muted" role="status">{t('Partial · BTC: fee ownership unknown for {count} transactions',{count:btcAvailable.unattributedFees})}</span>}
         {feeNotes.map(note=><span key={note} translate="no" className="small muted" role="status">{t(note)}</span>)}
       </Metric>
       {(cexAddresses.length>0||ethereum.exchanges.length>0||solana.exchanges.length>0||bitcoin.exchanges.length>0)&&<Metric label="CEX Transactions" openLabel="CEX Transactions" note={portfolioPartial||availableCex.partial||!ethHistoryReady||!solHistoryReady||!btcHistoryReady?partialNote:undefined} value={snapshot?tileGainDisplay:'Waiting for wallet balances'} tone={tileGain===null?'':tileGain<0?'negative':'positive'} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('gain-loss');}}/>}
@@ -864,6 +865,6 @@ function Transaction({tx,fact,markets,wallets,history,cexAddresses,swapAddresses
     kind={nftEvent?t(nftEvent.kind):compact?(amount.ada!==null&&amount.ada>0?'ADA IN':'ADA OUT'):fact&&isCardanoReward(fact,cexAddresses)?'Mining / services receipt':internalSwap?'Internal cross-chain swap':isSwapTransaction(fact,swapAddresses)?'Swap':cexTransfer?(cexTransfer.side==='buy'?'ADA IN':'ADA OUT'):kind==='internal'?'Internal transfer · fee only':kind?labels[kind]:'Awaiting analysis'}
     details={<>{cexTransfer&&!cexTransfer.verified&&<><div className="small muted">Mixed or unassigned sources</div><div className="small muted">Excluded from calculations</div></>}{fact&&Object.entries(fact.assets).filter(([id])=>id!==hiddenAsset).map(([id,raw])=>{const q=units(raw,markets[id]?.decimals??fact.decimals?.[id]);return <div className="small" key={id}>{BigInt(raw)>0n?'+':''}{q===null?raw+' raw':num(q)} <AssetImage id={id} name={markets[id]?.name||markets[id]?.ticker||assetName(id)} market={markets[id]} compact preview/></div>;})}</>}
     priceDetails={trade&&<div className="small muted">{quantity?num(trade.ada/quantity,10)+' ₳ / token':num(trade.ada)+' ₳ consideration'}</div>}
-    wallets={<TransactionWallets labels={transactionWalletNames(fact,wallets)} exchanges={exchangeWallets}/>}
+    wallets={<TransactionWallets labels={transactionWalletNames(fact,wallets)} exchanges={exchangeWallets} fact={fact} wallets={wallets}/>}
   />;
 }

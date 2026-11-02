@@ -1,4 +1,8 @@
 [strings]
+portfolio_text_btc_fee_own = "Pagada por tus wallets"
+portfolio_text_btc_fee_sender = "Pagada por el remitente"
+portfolio_text_btc_fee_unknown = "Parte de tu wallet desconocida"
+portfolio_text_btc_fee_partial = "Parcial · BTC: se desconoce quién pagó la comisión de {count} transacciones"
 portfolio_text_out_address = "Dirección OUT"
 portfolio_text_out_address_for = "Dirección OUT: {name}"
 portfolio_text_out_address_help = "Tú eliges qué direcciones guardadas son OUT. Solo cambia la clasificación; nunca se editan importes, direcciones, fechas ni comisiones de la blockchain. Los valores EUR/USD son estimaciones, no conversiones fiat confirmadas."

@@ -1,4 +1,8 @@
 [strings]
+portfolio_text_btc_fee_own = "自分のウォレットが支払った手数料"
+portfolio_text_btc_fee_sender = "送信者が支払った手数料"
+portfolio_text_btc_fee_unknown = "自分のウォレットの負担分は不明"
+portfolio_text_btc_fee_partial = "一部のみ · BTC: {count}件の手数料負担分が不明"
 portfolio_text_out_address = "OUTアドレス"
 portfolio_text_out_address_for = "OUTアドレス: {name}"
 portfolio_text_out_address_help = "保存したアドレスのどれをOUTにするかは自分で選択します。変更するのは分類のみで、ブロックチェーンの金額、アドレス、日時、手数料は編集しません。EUR/USD値は推定であり、換金の確認ではありません。"

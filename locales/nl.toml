@@ -1,4 +1,8 @@
 [strings]
+portfolio_text_btc_fee_own = "Betaald door jouw wallets"
+portfolio_text_btc_fee_sender = "Betaald door de afzender"
+portfolio_text_btc_fee_unknown = "Aandeel van jouw wallet onbekend"
+portfolio_text_btc_fee_partial = "Gedeeltelijk · BTC: fee-toerekening onbekend voor {count} transacties"
 portfolio_text_out_address = "OUT-adres"
 portfolio_text_out_address_for = "OUT-adres: {name}"
 portfolio_text_out_address_help = "Jij kiest welke opgeslagen adressen OUT-adressen zijn. Dit wijzigt alleen de classificatie; blockchainbedragen, adressen, datums en fees worden nooit aangepast. EUR/USD-waarden zijn schattingen, geen bevestigde fiat-omzettingen."

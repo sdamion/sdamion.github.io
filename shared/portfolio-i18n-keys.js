@@ -1987,4 +1987,8 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
   , ["Direct CEX deposit", "portfolio_text_cex_direct"]
   , ["External receipt · not an owned-wallet transfer", "portfolio_text_cex_external"]
   , ["For a personal ETH CEX deposit address, choose Track deposits to this address in its action menu. Incoming deposits are scanned; exchange balances and automatic sweeps are excluded.", "portfolio_text_cex_watch_help"]
+  , ["Paid by your wallets", "portfolio_text_btc_fee_own"]
+  , ["Paid by sender", "portfolio_text_btc_fee_sender"]
+  , ["Wallet share unknown", "portfolio_text_btc_fee_unknown"]
+  , ["Partial · BTC: fee ownership unknown for {count} transactions", "portfolio_text_btc_fee_partial"]
 ]);

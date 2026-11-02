@@ -11,6 +11,11 @@ export type BitcoinAccount={raw:string;tip:string;transactions:BitcoinTransactio
 export type BitcoinData={accounts:Record<string,BitcoinAccount>;history:Record<string,number>;usd:number|null};
 export const emptyBitcoin=():BitcoinData=>({accounts:{},history:{},usd:null});
 export const bitcoinAmount=(raw:string)=>Number(BigInt(raw))/1e8;
+export function bitcoinAmountText(value:string){const raw=BigInt(value).toString().padStart(9,'0'),fraction=raw.slice(-8).replace(/0+$/,'');return raw.slice(0,-8)+(fraction?'.'+fraction:'');}
+export function bitcoinFee(tx:BitcoinTransaction,wallets:BitcoinWallet[]){
+  const owned=new Set(wallets.map(wallet=>wallet.address)),all=tx.inputs.every(row=>owned.has(row.address)),some=tx.inputs.some(row=>owned.has(row.address));
+  return {totalRaw:tx.feeRaw,paidRaw:all?tx.feeRaw:some?null:'0',payer:all?'own' as const:some?'mixed' as const:'external' as const};
+}
 export const bitcoinHash=(value:unknown):value is string=>typeof value==='string'&&/^[a-f0-9]{64}$/.test(value);
 const raw=(value:unknown):value is string=>typeof value==='string'&&/^\d{1,16}$/.test(value)&&BigInt(value)<=2100000000000000n;
 export function normalizeBitcoinAddress(value:string){return /^bc1/i.test(value.trim())?value.trim().toLowerCase():value.trim();}
@@ -72,9 +77,10 @@ export function bitcoinTransfers(data:BitcoinData,wallets:BitcoinWallet[],exchan
   });
 }
 export function bitcoinTotals(data:BitcoinData,wallets:BitcoinWallet[]){
-  const own=new Set(wallets.map(w=>w.address)),txs=bitcoinTransactions(data,wallets);
+  const txs=bitcoinTransactions(data,wallets);
   const value=availableTotal(wallets.map(w=>{const row=data.accounts[w.address];return row?row.raw==='0'?0:data.usd===null?null:bitcoinAmount(row.raw)*data.usd:null;}));
-  const mixed=txs.some(tx=>tx.inputs.some(row=>own.has(row.address))&&!tx.inputs.every(row=>own.has(row.address)));
-  const fees=wallets.some(w=>!data.accounts[w.address])||mixed?null:bitcoinAmount(String(txs.reduce((sum,tx)=>sum+(tx.inputs.every(row=>own.has(row.address))?BigInt(tx.feeRaw):0n),0n)));
-  return {...value,fees,feesPartial:fees===null,feeUsd:fees===0?0:fees!==null&&data.usd!==null?fees*data.usd:null};
+  const attributed=txs.map(tx=>bitcoinFee(tx,wallets)),unattributedFees=attributed.filter(fee=>fee.paidRaw===null).length;
+  const feesRaw=wallets.length&&wallets.every(wallet=>!data.accounts[wallet.address])?null:String(attributed.reduce((sum,fee)=>sum+BigInt(fee.paidRaw||'0'),0n));
+  const fees=feesRaw===null?null:bitcoinAmount(feesRaw);
+  return {...value,fees,feesRaw,unattributedFees,feesPartial:wallets.some(wallet=>!data.accounts[wallet.address])||unattributedFees>0,feeUsd:fees===0?0:fees!==null&&data.usd!==null?fees*data.usd:null};
 }

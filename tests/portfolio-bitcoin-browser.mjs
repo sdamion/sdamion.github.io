@@ -16,7 +16,7 @@ const bundle=await build({stdin:{resolveDir:source,loader:'tsx',contents:`import
 const browser=await chromium.launch({channel:'chrome',headless:true});
 try{
  const page=await browser.newPage({viewport:{width:1200,height:900}}),errors=[],requests=[];
- let unavailable=false,reorg=false,changedTip=false;
+ let unavailable=false,reorg=false,changedTip=false,noQuote=false;
  page.on('pageerror',error=>errors.push(error.message));
  await page.route('**/*',async route=>{
   const operation=new URL(route.request().url()).pathname.split('/').pop();let result;
@@ -24,7 +24,7 @@ try{
    const body=route.request().postDataJSON();requests.push(body);
    if(unavailable)return route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'Bitcoin data unavailable. Saved data is retained.'})});
    result=body.action==='tip'?{hash:changedTip?'b'.repeat(64):tip,height:2}:body.action==='block-status'?{inBestChain:body.hash==='b'.repeat(64)||!reorg}:body.action==='address'?{address:body.address,count:3,raw:'59999000'}:{transactions:[future,send,receipt],more:false};
-  }else if(operation==='bitcoin-price')result={usd:100000};
+  }else if(operation==='bitcoin-price'){if(noQuote)return route.fulfill({status:503,json:{error:'Synthetic quote unavailable'}});result={usd:100000};}
   else if(operation==='historical-btc-prices')result={prices:[[1700000000000,100000]]};
   else if(operation==='price')result={cardano:{usd:1}};
   if(result)return route.fulfill({contentType:'application/json',body:JSON.stringify(result)});
@@ -56,6 +56,7 @@ try{
  await own.getByRole('alert').filter({hasText:'Enter a valid Bitcoin mainnet address.'}).waitFor();
  await own.locator('#portfolio-wallet-address').fill(address);await own.getByRole('button',{name:'Add',exact:true}).click();
  await own.getByText('$59,998.00',{exact:true}).waitFor();
+ const feeTile=page.locator('main .governance-menu-card').filter({hasText:'Network fees paid'});assert.match(await feeTile.innerText(),/BTC: 0\.00001 BTC/,'paid BTC fees remain visible separately');
  for(const width of [1200,390,320]){await page.setViewportSize({width,height:900});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));}
  assert.ok(requests.filter(row=>row.address).every(row=>row.address===address));
  await own.getByRole('button',{name:'Back',exact:true}).click();await page.locator('#portfolio-wallets-overlay').getByRole('button',{name:'Back',exact:true}).click();
@@ -63,6 +64,14 @@ try{
  const transactions=page.locator('#portfolio-transactions-overlay');
  await transactions.locator('a[href="https://blockstream.info/tx/'+receipt.hash+'"]').waitFor();
  assert.equal(await transactions.locator('tbody tr').count(),2,'transactions confirmed above the shared anchor wait for the next refresh');
+ const receiptRow=transactions.locator('tbody tr').filter({has:page.locator('a[href="https://blockstream.info/tx/'+receipt.hash+'"]')});
+ assert.match(await receiptRow.locator('td').nth(2).innerText(),/0\.00001 BTC[\s\S]*1[.,]000 sats[\s\S]*Paid by sender/,'incoming rows show the real network fee, not a fabricated zero');
+ const sendRow=transactions.locator('tbody tr').filter({has:page.locator('a[href="https://blockstream.info/tx/'+send.hash+'"]')});assert.match(await sendRow.locator('td').nth(2).innerText(),/0\.00001 BTC[\s\S]*Paid by your wallets/);
+ const receiptAddresses=receiptRow.locator('td').nth(3),sendAddresses=sendRow.locator('td').nth(3);
+ assert.match(await receiptAddresses.innerText(),/From: BTC Exchange[\s\S]*To: BTC Savings/);
+ assert.equal(await receiptAddresses.locator(`a[href="https://blockstream.info/address/${exchange}"]`).getAttribute('title'),exchange);
+ assert.match(await sendAddresses.innerText(),/From: BTC Savings[\s\S]*To: BTC Exchange[\s\S]*To: BTC Savings/,'change outputs remain visible separately from the sender');
+ assert.equal(await sendAddresses.locator(`a[href="https://blockstream.info/address/${address}"]`).count(),2,'the same address can be both an input and a change output');
  await transactions.getByRole('button',{name:'Back',exact:true}).click();await page.getByRole('button',{name:'Open CEX Transactions',exact:true}).click();
  const gain=page.locator('#portfolio-gain-loss-overlay');
  await gain.locator('.portfolio-btc-comparison').waitFor();assert.match(await gain.locator('.portfolio-btc-comparison').innerText(),/0.99999 BTC[\s\S]*0.4 BTC/);
@@ -82,6 +91,17 @@ try{
  unavailable=false;reorg=true;changedTip=true;const start=requests.length;await page.evaluate(()=>window.reopen());
  await page.waitForFunction(stake=>JSON.parse(window.fixtureStorage.getItem('tdsp-member-bitcoin-data:'+stake)).accounts['1BoatSLRHtKNngkdXEeobR76b53LETtpyT'].tip==='b'.repeat(64),stake);
  assert.ok(requests.slice(start).some(row=>row.action==='history'),'orphaned saved tips cause a fresh scan');
+ unavailable=true;noQuote=true;await page.evaluate(({stake,address,exchange,receipt,send})=>{
+  const key='tdsp-member-bitcoin-data:'+stake,value=JSON.parse(window.fixtureStorage.getItem(key));value.usd=null;value.history={};
+  delete value.storageVersion;value.accounts[address].transactions=[receipt,send,{hash:'4'.repeat(64),height:2,time:1700000015,feeRaw:'7000',inputs:[{address,raw:'10000'},{address:exchange,raw:'10000'}],outputs:[{address,raw:'13000'}]}];
+  window.fixtureStorage.setItem(key,JSON.stringify(value));window.reopen();
+ },{stake,address,exchange,receipt,send});
+ await page.getByRole('alert').filter({hasText:'Bitcoin data unavailable. Saved data is retained.'}).waitFor();
+ assert.match(await feeTile.innerText(),/BTC: ≥ 0\.00001 BTC/,'mixed inputs retain the confirmed paid subtotal');assert.match(await feeTile.innerText(),/fee ownership unknown for 1 transactions/);
+ await page.getByRole('button',{name:'Open Transactions',exact:true}).click();const mixed=transactions.locator('tbody tr').filter({has:page.locator('a[href="https://blockstream.info/tx/'+'4'.repeat(64)+'"]')});
+ await mixed.waitFor();assert.match(await mixed.locator('td').nth(2).innerText(),/0\.00007 BTC[\s\S]*7[.,]000 sats[\s\S]*Wallet share unknown/,'mixed total remains visible without attributing it or requiring a fiat quote');
+ assert.match(await mixed.locator('td').nth(3).innerText(),/From: BTC Savings[\s\S]*From: BTC Exchange[\s\S]*To: BTC Savings/,'all input addresses remain visible in a mixed transaction');
+ assert.equal(await page.evaluate(({stake,address})=>JSON.parse(window.fixtureStorage.getItem('tdsp-member-bitcoin-data:'+stake)).accounts[address].transactions.find(tx=>tx.hash==='4'.repeat(64)).feeRaw,{stake,address}),'7000');
  const count=requests.length;await page.evaluate(()=>window.reopen('delegator'));await walletTile.click();await page.getByRole('button',{name:'Open My Wallets',exact:true}).click();
  assert.equal(await page.locator('#portfolio-wallet-network option[value="bitcoin"]').count(),0,'Bitcoin remains admin-only');
  assert.equal(requests.length,count);

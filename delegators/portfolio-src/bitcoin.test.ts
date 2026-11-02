@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {bech32,bech32m} from '@scure/base';
-import {validBitcoinAddress,normalizeBitcoinAddress,bitcoinWallets,bitcoinTransfer,bitcoinTransactions,bitcoinTotals,bitcoinTransfers,emptyBitcoin,type BitcoinTransaction} from './bitcoin.ts';
+import {validBitcoinAddress,normalizeBitcoinAddress,bitcoinWallets,bitcoinTransfer,bitcoinTransactions,bitcoinTotals,bitcoinTransfers,bitcoinFee,bitcoinAmountText,emptyBitcoin,type BitcoinTransaction} from './bitcoin.ts';
 import {encodeBitcoinSettings,readBitcoinSettings} from './bitcoin-storage.ts';
 import {portfolioTransactionCounts} from './transaction-counts.ts';
 const address='1BoatSLRHtKNngkdXEeobR76b53LETtpyT',exchange='1BitcoinEaterAddressDontSendf59kuE',other='1CounterpartyXXXXXXXXXXXXXXXUWLpVr';
@@ -39,4 +39,17 @@ test('deduplication, confirmed holdings, satoshi fees, missing prices and encryp
   settings['tdsp-member-bitcoin-wallets:member']=JSON.stringify(own);
   assert.equal(portfolioTransactionCounts({settings,snapshot:null},'member').saved,2);
   delete settings[key+'::'+address+':0'];assert.throws(()=>readBitcoinSettings(key,name=>settings[name]??null));
+});
+test('total on-chain fees stay visible on incoming and mixed transactions without claiming wallet ownership',()=>{
+  const receipt=tx({feeRaw:'1'}),outgoing=tx({hash:'2'.repeat(64),feeRaw:'123456',inputs:[{address,raw:'200000'}],outputs:[{address:exchange,raw:'76544'}]}),mixed=tx({hash:'3'.repeat(64),feeRaw:'1000',inputs:[{address,raw:'1000'},{address:other,raw:'1000'}],outputs:[{address:exchange,raw:'1000'}]});
+  const before=JSON.stringify([receipt,outgoing,mixed]);
+  assert.deepEqual(bitcoinFee(receipt,own),{totalRaw:'1',paidRaw:'0',payer:'external'});
+  assert.deepEqual(bitcoinFee(outgoing,own),{totalRaw:'123456',paidRaw:'123456',payer:'own'});
+  assert.deepEqual(bitcoinFee(mixed,own),{totalRaw:'1000',paidRaw:null,payer:'mixed'});
+  assert.equal(bitcoinAmountText('1'),'0.00000001');assert.equal(bitcoinAmountText('123456'),'0.00123456');
+  const data=emptyBitcoin();data.accounts[address]={raw:'0',tip,transactions:[receipt,outgoing,mixed,outgoing]};
+  const totals=bitcoinTotals(data,own);assert.equal(totals.feesRaw,'123456');assert.equal(totals.feesPartial,true);assert.equal(totals.unattributedFees,1);assert.equal(totals.feeUsd,null);
+  const missing=bitcoinTotals(data,[...own,{address:other,name:'Not loaded'}]);assert.equal(missing.feesPartial,true);assert.notEqual(missing.feesRaw,null,'known paid fees survive a missing wallet');
+  assert.equal(bitcoinTotals(emptyBitcoin(),own).feesRaw,null,'no downloaded history is not zero fees');
+  assert.equal(JSON.stringify([receipt,outgoing,mixed]),before);
 });
