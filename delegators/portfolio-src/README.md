@@ -339,9 +339,8 @@ role never edits provider transaction amounts, addresses, dates, fees, hashes or
 balances. Existing EUR/USD valuations remain market-price estimates, never proof
 of a fiat conversion. There are no new manual fiat-value or cost-basis fields.
 
-Bitcoin transaction rows show the provider's exact total fee in BTC and sats,
-including incoming transactions where the sender paid. A separate attribution
-label identifies owned-input, external-input or mixed-input fees. The paid-fee
+Bitcoin transaction rows show only wallet-paid fees in BTC and sats, not fees
+paid by external senders. Mixed-input fee shares remain unknown. The paid-fee
 tile includes only fees whose inputs all belong to tracked wallets. It retains
 that known subtotal when another wallet is missing or mixed-input fees cannot
 be attributed, marks it as partial, and never treats unknown fee shares as paid
@@ -349,11 +348,15 @@ zeros. No fee is apportioned speculatively or written back into chain data.
 
 TransactionAddresses is the shared ADA/ETH/SOL/BTC From/To renderer, using the
 shared addressExplorer URL builder. It displays literal wallet names and address
-links, deduplicates within each direction, and keeps self-transfers and change
-outputs visible in both roles. Fee payers are not added to the transfer address
-list. Cardano uses cached source inputs/outputs; legacy facts without
-source details show only recorded external directions, never inferred owned
-directions. This presentation layer does not rewrite transaction or cache data.
+links and deduplicates within each direction. UTXO incoming flows show external
+inputs to owned outputs; outgoing flows show owned inputs to external outputs,
+hiding change and co-inputs on the owned side. Self-transfers retain both owned
+roles. Multiple genuine counterparties are not reduced to a guessed single
+address. SOL includes only transfer edges touching owned wallets. Fee payers
+are not added to the address list. Cardano uses cached source inputs/outputs;
+legacy facts without source details do not invent address roles. Transaction
+fee columns show wallet-paid fees only; unknown shares remain unknown. This
+presentation layer does not rewrite transaction or cache data.
 
 Personal ETH deposit addresses can additionally opt into history tracking from
 their action menu. Their public provider balance and full validated history are

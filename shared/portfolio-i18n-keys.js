@@ -728,7 +728,7 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
     "portfolio_text_3204df23f56b"
   ],
   [
-    "USD amounts use daily UTC transfer-date prices. The Fee column shows the total on-chain fee; paid-fee totals include only fees attributable to your wallet.",
+    "USD amounts use daily UTC transfer-date prices. The Fee column shows only fees paid by your wallets. Unknown fee shares are not estimated.",
     "portfolio_text_5048bdcbf326"
   ],
   [
@@ -740,7 +740,7 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
     "portfolio_text_d299409b30cf"
   ],
   [
-    "Total on-chain transaction fee; not necessarily paid by your wallet",
+    "Fee paid by your wallets",
     "portfolio_text_f2d8a2831a7b"
   ],
   [

@@ -2,7 +2,7 @@ import {TransactionRow,TransactionAmount,TransactionWallets} from './Transaction
 import {cexTableTransfer,transactionExchangeWallets,type CexAddress} from './cex';
 import {type Fact,type Tx,type Wallet} from './core';
 import {transactionWalletNames} from './transaction-wallet-names';
-import {transactionAmounts,transactionNetworkFee} from './transaction-amounts';
+import {transactionAmounts,displayedPaidFee} from './transaction-amounts';
 
 export function GainLossTransaction({tx,fact,wallets,entries,history}:{tx:Tx;fact:Fact;wallets:Wallet[];entries:CexAddress[];history:Record<string,number>}){
   const transfer=cexTableTransfer(fact,entries);
@@ -10,7 +10,7 @@ export function GainLossTransaction({tx,fact,wallets,entries,history}:{tx:Tx;fac
   const incoming=transfer.side==='buy';
   const amount=transactionAmounts(transfer.raw,fact.time,history,fact.feeRaw);
   const exchanges=transactionExchangeWallets(fact,entries);
-  return <TransactionRow hash={tx.tx_hash} time={tx.block_time} price={amount.price} feeRaw={transactionNetworkFee(fact)}
+  return <TransactionRow hash={tx.tx_hash} time={tx.block_time} price={amount.price} feeRaw={displayedPaidFee(fact,wallets)}
     kind={incoming?'ADA IN':'ADA OUT'}
     details={!transfer.verified&&<><div className="small muted">Mixed or unassigned sources</div><div className="small muted">Excluded from calculations</div></>}
     amount={<TransactionAmount ada={amount.ada} usd={amount.usd} tone={incoming?'':'positive'}/>}

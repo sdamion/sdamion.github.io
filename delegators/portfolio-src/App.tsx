@@ -82,7 +82,7 @@ import {PortfolioCurrencyContext,formatPortfolioUsd,formatPortfolioAda,formatPor
 import {matchesGainLossTransfer} from './gain-loss-filter';
 import {GainLossTransaction} from './GainLossTransaction';
 import {TransactionTable,TransactionRow,TransactionAmount,TransactionWallets,TransactionPair} from './TransactionTable';
-import {transactionAmounts,transactionNetworkFee,portfolioFeeTotal} from './transaction-amounts';
+import {transactionAmounts,displayedPaidFee,portfolioFeeTotal} from './transaction-amounts';
 import {loadPriceSettings} from './price-settings';
 import {NativeTransferSummary} from './NativeTransferSummary';
 import {matchesTransaction,matchesSearchText} from './transaction-search';
@@ -754,7 +754,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
         return compact?<TransactionPair crossChain={group.some(row=>row.chain!=='cardano')} symbols={group.some(row=>row.chain==='solana')?'ADA / SOL':'ADA / ETH'} key={group[0].chain==='cardano'?group[0].tx.tx_hash:group[0].chain==='ethereum'?group[0].tx.id:group[0].tx.hash}>{children}</TransactionPair>:children;
       })}</TransactionTable>{!shown.length&&<p className="empty">{busy?'Loading transactions…':'No matching transactions.'}</p>}
       <TransactionPagination position="bottom" page={currentPage} count={shown.length} onPage={setPage}/>
-      {section==='gain-loss'?<p className="small muted table-note">USD amounts use daily UTC transfer-date prices. The Fee column shows the total on-chain fee; paid-fee totals include only fees attributable to your wallet.</p>:<p className="small muted table-note">Internal transfers require all inputs and outputs to belong to tracked addresses. Their net change is only the fee. Mixed transactions remain separate. Buy/sell labels are inferred from opposing ADA and token changes; multi-step DEX orders may need further reconciliation.</p>}
+      {section==='gain-loss'?<p className="small muted table-note">USD amounts use daily UTC transfer-date prices. The Fee column shows only fees paid by your wallets. Unknown fee shares are not estimated.</p>:<p className="small muted table-note">Internal transfers require all inputs and outputs to belong to tracked addresses. Their net change is only the fee. Mixed transactions remain separate. Buy/sell labels are inferred from opposing ADA and token changes; multi-step DEX orders may need further reconciliation.</p>}
     </section></AssetOverlay></PortfolioCurrencyContext.Provider>}
     </div>
     {selectedAsset&&rows.filter(r=>r.id===selectedAsset).map(r=><AssetOverlay key={r.id} name={r.name} literalTitle onClose={()=>setSelectedAsset(null)}>
@@ -860,7 +860,7 @@ function Transaction({tx,fact,markets,wallets,history,cexAddresses,swapAddresses
   const cexTransfer=fact&&!internalSwap?cexTableTransfer(fact,cexAddresses):null;
   const quantity=trade?units(trade.raw,markets[trade.id]?.decimals??fact?.decimals?.[trade.id]):null;
   const amount=transactionAmounts(fact?.adaRaw,fact?.time??tx.block_time,history,fact?.feeRaw);
-  return <TransactionRow compact={compact} hash={tx.tx_hash} time={tx.block_time} price={amount.price} feeRaw={transactionNetworkFee(fact)}
+  return <TransactionRow compact={compact} hash={tx.tx_hash} time={tx.block_time} price={amount.price} feeRaw={displayedPaidFee(fact,wallets)}
     amount={<><TransactionAmount ada={amount.ada} usd={amount.usd} tone={cexTrade?(cexTrade.side==='buy'?'negative':'positive'):undefined}/>{compact&&amount.ada!==null&&<div translate="no" className="small muted">{num(Math.abs(amount.ada),6)} ADA</div>}</>}
     kind={nftEvent?t(nftEvent.kind):compact?(amount.ada!==null&&amount.ada>0?'ADA IN':'ADA OUT'):fact&&isCardanoReward(fact,cexAddresses)?'Mining / services receipt':internalSwap?'Internal cross-chain swap':isSwapTransaction(fact,swapAddresses)?'Swap':cexTransfer?(cexTransfer.side==='buy'?'ADA IN':'ADA OUT'):kind==='internal'?'Internal transfer · fee only':kind?labels[kind]:'Awaiting analysis'}
     details={<>{cexTransfer&&!cexTransfer.verified&&<><div className="small muted">Mixed or unassigned sources</div><div className="small muted">Excluded from calculations</div></>}{fact&&Object.entries(fact.assets).filter(([id])=>id!==hiddenAsset).map(([id,raw])=>{const q=units(raw,markets[id]?.decimals??fact.decimals?.[id]);return <div className="small" key={id}>{BigInt(raw)>0n?'+':''}{q===null?raw+' raw':num(q)} <AssetImage id={id} name={markets[id]?.name||markets[id]?.ticker||assetName(id)} market={markets[id]} compact preview/></div>;})}</>}

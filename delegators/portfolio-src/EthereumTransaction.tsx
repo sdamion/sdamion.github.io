@@ -13,7 +13,7 @@ export function EthereumTransaction({tx,wallets,exchanges,history,adaHistory,int
   const price=history[date]??null,transfer=internalSwap?null:ethereumTransfer(tx,wallets,exchanges);
   const own=wallets.filter(w=>w.address===tx.from||w.address===tx.to),cex=exchanges.filter(w=>w.address===tx.from||w.address===tx.to);
   const addressRow=(address:string)=>({address,name:[...own,...cex].find(wallet=>wallet.address===address)?.name,out:cex.some(entry=>entry.address===address&&isOutAddress(entry))});
-  const amount=weiToEth(tx.valueWei),fee=tx.feeWei===null?null:weiToEth(tx.feeWei);
+  const amount=weiToEth(tx.valueWei),paidFee=tx.kind==='internal'?'0':wallets.some(wallet=>wallet.address===tx.from)?tx.feeWei:'0',fee=paidFee===null?null:weiToEth(paidFee);
   const format=(eth:number|null)=>display?formatPortfolioUsd(eth!==null&&price!==null?eth*price:null,display):'—';
   const incoming=ethereumSwapDirection(tx,wallets)??wallets.some(w=>w.address===tx.to);
   const deposit=directEthereumDeposit(tx,wallets,exchanges);
@@ -21,7 +21,7 @@ export function EthereumTransaction({tx,wallets,exchanges,history,adaHistory,int
   return <TransactionLayout compact={compact} cells={[
     <><strong translate="no" className={transfer?.side==='sell'?'positive':''}>{format(amount)}</strong><div translate="no" className="small muted">{weiToEthText(tx.valueWei)} ETH</div><div className="small muted">{label}</div>{transfer&&'mined' in transfer&&<div className="small muted">{t('Mining / services receipt')}</div>}<a translate="no" href={`https://etherscan.io/tx/${tx.hash}`} target="_blank" rel="noreferrer">{short(tx.hash)} <ExternalLink size={12}/></a></>,
     <span translate="no">{price!==null&&display?formatPortfolioUsd(price,display,6):'—'}<div className="small muted">ETH</div></span>,
-    <span translate="no">{tx.kind==='internal'?t('Fee belongs to parent transaction'):format(fee)}{tx.feeWei!==null&&<div className="small muted">{weiToEthText(tx.feeWei)} ETH</div>}</span>,
+    <span translate="no">{tx.kind==='internal'?t('Fee belongs to parent transaction'):format(fee)}{paidFee!==null&&<div className="small muted">{weiToEthText(paidFee)} ETH</div>}</span>,
     <><TransactionAddresses network="ethereum" from={[addressRow(tx.from)]} to={[addressRow(tx.to)]}/>{deposit&&<div className="small muted">{t('External receipt · not an owned-wallet transfer')}</div>}</>,
     <TransactionDate time={tx.time}/>
   ]}/>;

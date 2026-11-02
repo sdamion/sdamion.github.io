@@ -1,4 +1,14 @@
-import type {Fact,Io} from './core';
+import type {Fact,Io,Wallet} from './core';
+
+export function displayedPaidFee(fact:Fact|undefined,wallets:Wallet[]):string|null{
+  if(!fact)return null;
+  if(fact.feeRaw!=null)return fact.feeRaw;
+  if(!fact.source?.inputs.length)return null;
+  const owned=new Set(wallets.filter(wallet=>wallet.group!=='swap').map(wallet=>wallet.address));
+  const matches=(row:Io)=>owned.has(row.payment_addr?.bech32||'')||owned.has(row.stake_addr||'');
+  if(!fact.source.inputs.some(matches))return '0';
+  return fact.source.inputs.every(matches)?transactionNetworkFee(fact):null;
+}
 
 // The on-chain fee is distinct from the fee attributable to the tracked wallet.
 export function transactionNetworkFee(fact:Fact|undefined):string|null{

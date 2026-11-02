@@ -55,7 +55,7 @@ export function TransactionRow({hash,time,amount,kind,price,feeRaw,wallets,detai
   return <PortfolioCurrencyContext.Provider value={display}><TransactionLayout compact={compact} cells={[
     <>{amount}{kind&&<div className="small muted">{kind}</div>}<div className="small"><TransactionLink hash={hash}/></div>{details}</>,
     <>{price!=null&&price>0?display?'≈ '+formatPortfolioUsd(price,display,6):'≈ $'+price.toLocaleString('en-US',{maximumFractionDigits:6}):'Unavailable'}{priceDetails}</>,
-    <span title="Total on-chain transaction fee; not necessarily paid by your wallet">{feeRaw!=null?display?formatPortfolioAda(lovelaceToAda(feeRaw),display,price??null):'₳ '+formatAdaNumber(lovelaceToAda(feeRaw)!):'Unavailable'}</span>,
+    <span title="Fee paid by your wallets">{feeRaw!=null?display?formatPortfolioAda(lovelaceToAda(feeRaw),display,price??null):'₳ '+formatAdaNumber(lovelaceToAda(feeRaw)!):'Unavailable'}</span>,
     wallets,<TransactionDate time={time}/>
   ]}/></PortfolioCurrencyContext.Provider>;
 }
