@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import {matchesTransaction,matchesSearchText} from './transaction-search.ts';
+import {matchesTransaction,matchesSearchText,transactionSearchAddresses} from './transaction-search.ts';
+import {test} from 'node:test';
 import type {Fact} from './core.ts';
 const id='a'.repeat(56)+Buffer.from('MallardOrder1176').toString('hex');
 const fact:Fact={hash:'abcdef',time:1,adaRaw:'0',assets:{[id]:'1'},decimals:{},feeRaw:null,internal:false,wallets:['own'],swapCandidate:true};
@@ -32,3 +33,11 @@ for(const name of ['ETH Savings','SOL Savings']){
 }
 assert.equal(matchesSearchText('Other Wallet',['SOL Savings']),false);
 assert.equal(matchesTransaction('my swap',fact.hash,{...fact,source:{tx_hash:fact.hash,tx_timestamp:1,fee:'0',inputs:[{payment_addr:{bech32:'service'},value:'1000000'}],outputs:[]}}, {},swapWallets),true);
+test('transaction search matches full and partial owned, sender, recipient and stake addresses, independent of display groups',()=>{
+  const detailed:Fact={...fact,wallets:['owned-payment'],externalInputs:[{address:'legacy-sender',stakeAddress:'legacy-stake',lovelace:'1'}],externalOutputs:[{address:'legacy-recipient',lovelace:'1'}],source:{tx_hash:fact.hash,tx_timestamp:1,fee:'123',inputs:[{payment_addr:{bech32:'addr1_sender_payment'},stake_addr:'stake1_sender',value:'1000'}],outputs:[{payment_addr:{bech32:'addr1_owned_payment'},stake_addr:'stake1_owned',value:'500'},{payment_addr:{bech32:'addr1_other_recipient'},value:'377'}]}};
+  const before=JSON.stringify(detailed);
+  for(const query of ['owned-payment','addr1_sender_payment','sender_payment','stake1_sender',' addr1_owned_payment ','STAKE1_OWNED','addr1_other_recipient','legacy-sender','legacy-stake','legacy-recipient'])assert.equal(matchesTransaction(query,detailed.hash,detailed,{},[]),true,query);
+  assert.equal(matchesTransaction('not-in-this-transaction',detailed.hash,detailed,{},[{address:'not-in-this-transaction',label:'Unrelated wallet'}]),false,'unrelated saved addresses never make every transaction match');
+  assert.deepEqual(transactionSearchAddresses(undefined),[]);assert.equal(matchesTransaction('addr1_unknown',fact.hash,undefined,{},[]),false);
+  assert.equal(JSON.stringify(detailed),before,'search never rewrites chain data or settings');
+});

@@ -3,7 +3,7 @@ import type {ReactNode} from 'react';
 
 export const transactionFilters:Record<string,string>={all:'All',cex:'CEX',swap:'Swap',trade:'Trades',send:'Sends',receive:'Receives'};
 
-export function TransactionFilters({id,query,onQuery,filter,onFilter,dateFrom,dateTo,onDates,options=transactionFilters,placeholder='Asset name, transaction hash or wallet name',pagination,showDates=true,children,ariaLabel='Transaction search options',searchLabel}:{
+export function TransactionFilters({id,query,onQuery,filter,onFilter,dateFrom,dateTo,onDates,options=transactionFilters,placeholder='Asset name, transaction hash, wallet name or address',pagination,showDates=true,children,ariaLabel='Transaction search options',searchLabel}:{
   id:string;query:string;onQuery:(value:string)=>void;filter:string;onFilter:(value:string)=>void;
   dateFrom:string;dateTo:string;onDates:(from:string,to:string)=>void;placeholder?:string;options?:Record<string,string>;pagination?:ReactNode;showDates?:boolean;children?:ReactNode;ariaLabel?:string;searchLabel?:string;
 }){

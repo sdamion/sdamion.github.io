@@ -11,10 +11,18 @@ export function matchesSearchText(query:string,values:string[]):boolean{
   return !term||values.some(value=>normalize(value).includes(term)||!!compactTerm&&compact(value).includes(compactTerm));
 }
 
+export function transactionSearchAddresses(fact:Fact|undefined):string[]{
+  const addresses=[...(fact?.wallets||[]),
+    ...[...fact?.source?.inputs||[],...fact?.source?.outputs||[]].flatMap(row=>[row.payment_addr?.bech32,row.stake_addr]),
+    ...[...fact?.externalInputs||[],...fact?.externalOutputs||[]].flatMap(row=>[row.address,row.stakeAddress])];
+  return [...new Set(addresses.filter((address):address is string=>typeof address==='string'&&address.length>0))];
+}
+
 export function matchesTransaction(query:string,hash:string,fact:Fact|undefined,markets:Record<string,Market>,wallets:Wallet[],exchanges:CexAddress[]=[]):boolean{
   const term=normalize(query);
   if(!term)return true;
   if(normalize(hash).includes(term))return true;
+  if(matchesSearchText(query,transactionSearchAddresses(fact)))return true;
   if(knownTransactionDexNames(fact).some(name=>normalize(name).includes(term)))return true;
   const names=[...transactionWalletNames(fact,wallets),...wallets.filter(wallet=>wallet.group!=='swap'&&fact?.wallets.includes(wallet.address)).map(wallet=>wallet.label),...transactionExchangeWallets(fact,exchanges).map(wallet=>wallet.name)];
   if(matchesSearchText(query,names))return true;

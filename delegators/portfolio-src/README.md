@@ -353,6 +353,14 @@ DEX/CEX again does not automatically enable it. Source selection also stops
 incompatible opt-in ETH deposit scanning, without deleting its cached data.
 Existing mining and OUT controls keep the selected type synchronized.
 
+Transaction search accepts full or partial wallet addresses as well as names,
+assets and transaction hashes. Cardano searches recorded owned addresses,
+source payment/stake addresses and legacy external counterparties. Hidden or
+collapsed address groups remain searchable; unrelated saved wallets do not
+match transactions they never touched. ETH/SOL/BTC search their recorded
+transaction addresses too. Both Transactions and CEX Transactions use this
+search, retaining their date/type filters without editing blockchain data.
+
 The shared counterparty address list exposes an OUT checkbox for ADA, ETH, SOL
 and BTC. The persisted boolean is classification metadata, independent of the
 address's name or exchange brand. Previously saved counterparties retain their

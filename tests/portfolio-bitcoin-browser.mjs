@@ -68,6 +68,11 @@ try{
  const transactions=page.locator('#portfolio-transactions-overlay');
  await transactions.locator('a[href="https://blockstream.info/tx/'+receipt.hash+'"]').waitFor();
  assert.equal(await transactions.locator('tbody tr').count(),2,'transactions confirmed above the shared anchor wait for the next refresh');
+ const search=transactions.locator('input[name="transactions-search"]');
+ assert.match(await search.getAttribute('placeholder'),/address/);
+ for(const query of [address,address.slice(0,16),exchange]){await search.fill(query);assert.equal(await transactions.locator('tbody tr').count(),2,'BTC searches original addresses, not only visible wallet names');}
+ await search.fill('not-an-address-in-these-transactions');assert.equal(await transactions.locator('tbody tr').count(),0);
+ await search.fill('');assert.equal(await transactions.locator('tbody tr').count(),2);
  const receiptRow=transactions.locator('tbody tr').filter({has:page.locator('a[href="https://blockstream.info/tx/'+receipt.hash+'"]')});
  assert.match(await receiptRow.locator('td').nth(2).innerText(),/0 BTC[\s\S]*0 sats/,'sender-paid fees do not appear as wallet-paid fees');
  const sendRow=transactions.locator('tbody tr').filter({has:page.locator('a[href="https://blockstream.info/tx/'+send.hash+'"]')});assert.match(await sendRow.locator('td').nth(2).innerText(),/0\.00001 BTC[\s\S]*1[.,]000 sats/);
