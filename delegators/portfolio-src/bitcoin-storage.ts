@@ -8,7 +8,9 @@ export function encodeBitcoinSettings(key:string,data:BitcoinData){
     for(let part=0;part<parts;part++)settings[`${key}::${address}:${part}`]=JSON.stringify(compactBlock(transactions.slice(part*CACHE_RECORDS_PER_PART,(part+1)*CACHE_RECORDS_PER_PART)));
     accounts[address]={...header,parts};
   }
-  settings[key]=JSON.stringify({...data,accounts,storageVersion:1});return settings;
+  const pending=data.pending||[],pendingParts=Math.ceil(pending.length/CACHE_RECORDS_PER_PART);
+  for(let part=0;part<pendingParts;part++)settings[`${key}::pending:${part}`]=JSON.stringify(compactBlock(pending.slice(part*CACHE_RECORDS_PER_PART,(part+1)*CACHE_RECORDS_PER_PART)));
+  settings[key]=JSON.stringify({...data,accounts,pending:undefined,...(pendingParts?{pendingParts}:{}),storageVersion:1});return settings;
 }
 export function readBitcoinSettings(key:string,get:(key:string)=>string|null):BitcoinData{
   const value=JSON.parse(get(key)||'null');if(value?.storageVersion!==1)return bitcoinData(value);
@@ -21,5 +23,15 @@ export function readBitcoinSettings(key:string,get:(key:string)=>string|null):Bi
       for(const tx of rows)transactions.push(tx);
     }
     const {parts,...header}=row;return [address,{...header,transactions}];
-  }));return bitcoinData({...value,accounts});
+  }));
+  const pending:unknown[]=[];
+  if(value.pendingParts!==undefined){
+    if(!Number.isSafeInteger(value.pendingParts)||value.pendingParts<0)throw new Error('Bitcoin cache is incomplete. Saved data is retained.');
+    for(let part=0;part<value.pendingParts;part++){
+      const raw=get(`${key}::pending:${part}`);if(raw===null)throw new Error('Bitcoin cache is incomplete. Saved data is retained.');
+      const rows=expandBlock(JSON.parse(raw));if(!Array.isArray(rows)||rows.length>CACHE_RECORDS_PER_PART)throw new Error('Bitcoin cache is incomplete. Saved data is retained.');
+      pending.push(...rows);
+    }
+  }
+  return bitcoinData({...value,accounts,pending:value.pendingParts===undefined?value.pending:pending});
 }

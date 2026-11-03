@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {base58} from '@scure/base';
-import {emptySolana,nativeWallets,solanaData,solanaTransactions,solanaTransfers,solanaTotals,validSolana,validSolanaTransaction} from './solana.ts';
+import {emptySolana,nativeWallets,solanaData,solanaTransactions,solanaTransactionTransfers,solanaTransfers,solanaTotals,validSolana,validSolanaTransaction} from './solana.ts';
 const own=base58.encode(new Uint8Array(32).fill(1)),other=base58.encode(new Uint8Array(32).fill(2)),cex=base58.encode(new Uint8Array(32).fill(3)),hash=base58.encode(new Uint8Array(64).fill(4));
 const wallets=[{address:own,name:'Own'},{address:other,name:'Other'}],exchanges=[{address:cex,name:'CEX'}];
 const tx={hash,slot:1,time:1672963200,payer:own,feeRaw:'5000',failed:false,transfers:[{from:cex,to:own,raw:'2000000000'},{from:own,to:other,raw:'1000000000'},{from:other,to:cex,raw:'500000000'}]};
@@ -25,6 +25,7 @@ test('SOL exchange legs exclude own transfers, fees count once across wallets',(
  const data={...emptySolana(),usd:100,history:{'2023-01-06':20},accounts:Object.fromEntries(wallets.map(w=>[w.address,{raw:'1000000000',slot:2,checkpoint:hash,transactions:[tx]}]))};
  assert.equal(solanaTransactions(data,wallets).length,1);
  const transfers=solanaTransfers(data,wallets,exchanges);assert.equal(transfers.length,2);
+ assert.deepEqual(solanaTransactionTransfers(tx,wallets,exchanges,data.history),transfers,'the CEX table and financial totals share one per-transaction adapter');
  assert.deepEqual(transfers.map(row=>[row.side,row.amount,row.usd]),[['buy',2,40],['sell',0.5,10]]);
  const totals=solanaTotals(data,wallets);assert.equal(totals.value,200);assert.equal(totals.fees,0.000005);assert.equal(totals.partial,false);
  assert.equal(solanaTransfers({...data,history:{}},wallets,exchanges)[0].usd,null);

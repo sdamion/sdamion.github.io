@@ -3,6 +3,7 @@ import {isRewardSource} from './reward-sources.ts';
 import {isOutAddress} from './out-address.ts';
 import {sourceTypeFields,type SourceType} from './address-types.ts';
 import {depositScanWallets,depositReceipt} from './deposit-tracking.ts';
+import {visibleHistory} from './visible-history.ts';
 export type EthereumWallet={address:string;name:string;miner?:boolean;dex?:boolean;sourceType?:SourceType;deposit?:boolean;out?:boolean;group?:'swap';swapAddresses?:string[]};
 export type EthereumTransaction={id:string;hash:string;kind:'normal'|'internal';block:number;time:number;from:string;to:string;valueWei:string;feeWei:string|null;failed:boolean;transactionIndex?:number;traceIndex?:string};
 export type EthereumProvider='etherscan'|'blockscout';
@@ -84,9 +85,12 @@ export function directEthereumDeposit(tx:EthereumTransaction,wallets:EthereumWal
 export function ethereumDeposit(tx:EthereumTransaction,wallets:EthereumWallet[],exchanges:EthereumWallet[]){
   return tx.failed?null:depositReceipt('ethereum',tx.hash,tx.time,[{address:tx.from,raw:tx.valueWei}],[{address:tx.to,raw:tx.valueWei}],wallets,exchanges);
 }
-export function visibleEthereumTransactions(data:EthereumData,wallets:EthereumWallet[],exchanges:EthereumWallet[]){
+export function visibleEthereumTransactions(data:EthereumData,wallets:EthereumWallet[],exchanges:EthereumWallet[],pending:EthereumTransaction[]=[]){
   const transactions=ethereumTransactions(data,ethereumScanWallets(wallets,exchanges));
-  return transactions.filter(tx=>wallets.some(wallet=>wallet.address===tx.from||wallet.address===tx.to)||directEthereumDeposit(tx,wallets,exchanges));
+  const scanned=new Set(ethereumScanWallets(wallets,exchanges).map(wallet=>wallet.address));
+  return visibleHistory(transactions,pending,tx=>tx.id,
+    tx=>(scanned.has(tx.from)||scanned.has(tx.to))&&(wallets.some(wallet=>wallet.address===tx.from||wallet.address===tx.to)||directEthereumDeposit(tx,wallets,exchanges)),
+    (a,b)=>b.time-a.time||a.id.localeCompare(b.id));
 }
 export function ethereumSwapDirection(tx:EthereumTransaction,wallets:EthereumWallet[]):boolean|null{
   if(tx.failed||BigInt(tx.valueWei)===0n)return null;

@@ -6,11 +6,12 @@ import {availableTotal} from './portfolio-totals.ts';
 import {isOutAddress} from './out-address.ts';
 import {sourceTypeFields} from './address-types.ts';
 import {depositScanWallets,depositReceipt} from './deposit-tracking.ts';
+import {visibleHistory} from './visible-history.ts';
 
 export type BitcoinWallet=NativeWallet;
 export type BitcoinTransaction={hash:string;height:number;time:number;feeRaw:string;inputs:{address:string;raw:string}[];outputs:{address:string;raw:string}[]};
 export type BitcoinAccount={raw:string;tip:string;transactions:BitcoinTransaction[]};
-export type BitcoinData={accounts:Record<string,BitcoinAccount>;history:Record<string,number>;usd:number|null};
+export type BitcoinData={accounts:Record<string,BitcoinAccount>;pending?:BitcoinTransaction[];history:Record<string,number>;usd:number|null};
 export const emptyBitcoin=():BitcoinData=>({accounts:{},history:{},usd:null});
 export const bitcoinAmount=(raw:string)=>Number(BigInt(raw))/1e8;
 export function bitcoinAmountText(value:string){const raw=BigInt(value).toString().padStart(9,'0'),fraction=raw.slice(-8).replace(/0+$/,'');return raw.slice(0,-8)+(fraction?'.'+fraction:'');}
@@ -51,6 +52,7 @@ export function bitcoinData(value:unknown):BitcoinData{
   const data=value as BitcoinData,next=emptyBitcoin();
   if(!data||typeof data.accounts!=='object'||!data.accounts)return next;
   for(const [address,account] of Object.entries(data.accounts))if(validBitcoinAddress(address)&&account&&raw(account.raw)&&bitcoinHash(account.tip)&&Array.isArray(account.transactions)&&account.transactions.every(validBitcoinTransaction))next.accounts[address]=account;
+  if(Array.isArray(data.pending)&&data.pending.every(validBitcoinTransaction))next.pending=[...new Map(data.pending.map(tx=>[tx.hash,tx])).values()];
   for(const [date,price] of Object.entries(data.history||{}))if(/^\d{4}-\d{2}-\d{2}$/.test(date)&&Number.isFinite(price)&&price>0)next.history[date]=price;
   next.usd=Number.isFinite(data.usd)&&data.usd!>0?data.usd:null;
   return next;
@@ -66,8 +68,12 @@ export function bitcoinDeposit(tx:BitcoinTransaction,wallets:BitcoinWallet[],exc
   return depositReceipt('bitcoin',tx.hash,tx.time,tx.inputs,tx.outputs,wallets,exchanges);
 }
 export function visibleBitcoinTransactions(data:BitcoinData,wallets:BitcoinWallet[],exchanges:BitcoinWallet[]){
+  const ownedAddresses=new Set(wallets.map(wallet=>wallet.address));
   const owned=new Set(bitcoinTransactions(data,wallets).map(tx=>tx.hash));
-  return bitcoinTransactions(data,depositScanWallets(wallets,exchanges)).filter(tx=>owned.has(tx.hash)||bitcoinDeposit(tx,wallets,exchanges));
+  const scanned=new Set(depositScanWallets(wallets,exchanges).map(wallet=>wallet.address));
+  return visibleHistory(bitcoinTransactions(data,depositScanWallets(wallets,exchanges)),data.pending||[],tx=>tx.hash,
+    tx=>[...tx.inputs,...tx.outputs].some(row=>scanned.has(row.address))&&(owned.has(tx.hash)||[...tx.inputs,...tx.outputs].some(row=>ownedAddresses.has(row.address))||!!bitcoinDeposit(tx,wallets,exchanges)),
+    (a,b)=>b.height-a.height||a.hash.localeCompare(b.hash));
 }
 export function bitcoinTransfer(tx:BitcoinTransaction,wallets:BitcoinWallet[],exchanges:BitcoinWallet[]){
   const own=new Set(wallets.map(w=>w.address)),cex=new Set(exchanges.filter(w=>!own.has(w.address)&&isOutAddress(w)).map(w=>w.address));

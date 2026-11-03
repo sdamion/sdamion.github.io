@@ -77,6 +77,8 @@ export function useSolana(stake:string,enabled:boolean){
             rows.set(hash,tx);
             setDownloadProgress(progress.add([tx]));
           }
+          const completed=new Set(solanaTransactionsForCache(current.current).map(tx=>tx.hash));
+          setData({...current.current,pending:[...known.values()].filter(tx=>!completed.has(tx.hash))});
           if(!result.more){complete=true;break;}
           if(!result.signatures.length)throw new Error('Solana data unavailable. Saved data is retained.');before=result.signatures.at(-1);
         }

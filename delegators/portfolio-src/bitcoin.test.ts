@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {bech32,bech32m} from '@scure/base';
-import {validBitcoinAddress,normalizeBitcoinAddress,bitcoinWallets,bitcoinTransfer,bitcoinTableTransfer,bitcoinTransactions,bitcoinTotals,bitcoinTransfers,bitcoinFee,bitcoinAmountText,emptyBitcoin,type BitcoinTransaction} from './bitcoin.ts';
+import {validBitcoinAddress,normalizeBitcoinAddress,bitcoinWallets,bitcoinTransfer,bitcoinTableTransfer,bitcoinTransactions,visibleBitcoinTransactions,bitcoinTotals,bitcoinTransfers,bitcoinFee,bitcoinAmountText,emptyBitcoin,type BitcoinTransaction} from './bitcoin.ts';
 import {encodeBitcoinSettings,readBitcoinSettings} from './bitcoin-storage.ts';
 import {portfolioTransactionCounts} from './transaction-counts.ts';
 const address='1BoatSLRHtKNngkdXEeobR76b53LETtpyT',exchange='1BitcoinEaterAddressDontSendf59kuE',other='1CounterpartyXXXXXXXXXXXXXXXUWLpVr';
@@ -39,6 +39,17 @@ test('deduplication, confirmed holdings, satoshi fees, missing prices and encryp
   settings['tdsp-member-bitcoin-wallets:member']=JSON.stringify(own);
   assert.equal(portfolioTransactionCounts({settings,snapshot:null},'member').saved,2);
   delete settings[key+'::'+address+':0'];assert.throws(()=>readBitcoinSettings(key,name=>settings[name]??null));
+});
+test('pending verified Bitcoin rows survive cache reload without entering holdings or CEX totals',()=>{
+  const pending=tx({hash:'7'.repeat(64),inputs:[{address:other,raw:'1000'}],outputs:[{address:exchange,raw:'900'}]});
+  const data={...emptyBitcoin(),pending:[pending]},watched=[{...cex[0],deposit:true}];
+  assert.deepEqual(visibleBitcoinTransactions(data,[],watched),[pending]);
+  assert.deepEqual(bitcoinTransactions(data,watched),[]);
+  assert.deepEqual(bitcoinTransfers(data,own,watched),[]);
+  assert.equal(bitcoinTotals(data,own).value,null);
+  const key='tdsp-member-bitcoin-data:member',settings=encodeBitcoinSettings(key,data);
+  assert.deepEqual(readBitcoinSettings(key,name=>settings[name]??null),data);
+  delete settings[key+'::pending:0'];assert.throws(()=>readBitcoinSettings(key,name=>settings[name]??null));
 });
 test('saved BTC wallet/CEX connections remain visible with mixed inputs, without inventing financial attribution',()=>{
   const sender='3NRqmZ6pRPGUUsp2XK4dwo68G1UoR21Jky',destination='1N5D2vfM7wSagfzbdCbEuDXUsyGJMrLUxK',coSender='34J9crSscqrEAgQ7MtXexQHpgaa3f9Za1r';

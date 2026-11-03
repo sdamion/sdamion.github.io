@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {depositAddresses,depositScanWallets,depositReceipt} from './deposit-tracking.ts';
 import {bitcoinWallets,bitcoinDeposit,visibleBitcoinTransactions,bitcoinTransfers,bitcoinTotals,emptyBitcoin,type BitcoinTransaction} from './bitcoin.ts';
 import {nativeWallets,solanaDeposit,visibleSolanaTransactions,solanaTransfers,solanaTotals,type SolanaTransaction} from './solana.ts';
-import {ethereumWallets,ethereumDeposit} from './ethereum.ts';
+import {emptyEthereum,ethereumWallets,ethereumDeposit,visibleEthereumTransactions,ethereumTransfers} from './ethereum.ts';
 import {normalizeCexAddresses} from './cex.ts';
 import {cardanoAddressRows,type CardanoAddressBook} from './cardano-addresses.ts';
 import {cardanoDepositReceipts,encodeCardanoDeposits,readCardanoDeposits,scanCardanoDeposits} from './cardano-deposits.ts';
@@ -27,8 +27,10 @@ test('SOL and ETH share direct-deposit rules and suppress failures, exchange for
  const tx:SolanaTransaction={hash:'sol',slot:1,time:1700000000,payer:'shared',feeRaw:'5000',failed:false,transfers:[{from:'shared',to:'cex',raw:'1234567891'}]},sweep={...tx,hash:'sweep',transfers:[{from:'cex',to:'hot',raw:'1234562891'}]};
  const data={accounts:{cex:{raw:'99999999999',slot:1,checkpoint:null,transactions:[tx,sweep]}},history:{},usd:100},before=JSON.stringify(data);
  assert.equal(solanaDeposit(tx,[],watched)?.raw,'1234567891');assert.equal(solanaDeposit({...tx,failed:true},[],watched),null);assert.deepEqual(visibleSolanaTransactions(data,[],watched),[tx]);assert.deepEqual(solanaTransfers(data,[],watched),[]);assert.equal(solanaTotals(data,[]).value,0);assert.equal(solanaTotals(data,[]).fees,0);assert.equal(JSON.stringify(data),before);
+ assert.deepEqual(visibleSolanaTransactions({...data,accounts:{},pending:[tx]},[],watched),[tx]);assert.deepEqual(solanaTransfers({...data,accounts:{},pending:[tx]},[],watched),[]);
  const eth={id:'eth',hash:'0x'+'1'.repeat(64),kind:'normal' as const,block:1,time:1700000000,from:'shared',to:'cex',valueWei:'1234567890123456789',feeWei:'1',failed:false};
  assert.equal(ethereumDeposit(eth,[],watched)?.raw,eth.valueWei);assert.equal(ethereumDeposit({...eth,from:'cex'},[],watched),null);assert.equal(ethereumDeposit({...eth,failed:true},[],watched),null);
+ assert.deepEqual(visibleEthereumTransactions(emptyEthereum(),[],watched,[eth]),[eth]);assert.deepEqual(ethereumTransfers(emptyEthereum(),[],watched),[]);
  assert.equal(depositReceipt('ethereum',eth.hash,eth.time,[{address:'shared',raw:'1'}],[{address:'cex',raw:'1'}],[{address:'cex',name:'Owned'}],watched),null);
  const other={address:'other',name:'Other deposit',deposit:true};assert.equal(ethereumDeposit({...eth,from:'other'},[],[...watched,other]),null);
 });
@@ -39,6 +41,7 @@ test('Cardano deposit cache is separate, chunked, validated and reclassified aga
  const rows=cardanoDepositReceipts(data,targets,[],new Set());assert.equal(rows.length,1);assert.equal(rows[0].raw,'1000000','overlapping stake/payment labels never double-count an output');
  assert.deepEqual(cardanoDepositReceipts(data,targets,[],new Set([detail.tx_hash])),[]);assert.deepEqual(cardanoDepositReceipts(data,targets,['addr1shared'],new Set()),[]);
  const key='tdsp-member-cardano-deposits:member',encoded=encodeCardanoDeposits(key,data);assert.deepEqual(readCardanoDeposits(key,name=>encoded[name]??null),data);delete encoded[key+'::0'];assert.throws(()=>readCardanoDeposits(key,name=>encoded[name]??null));assert.equal(JSON.stringify(data),before);
+ const partial={...data,complete:false};const partialSettings=encodeCardanoDeposits(key,partial);assert.deepEqual(readCardanoDeposits(key,name=>partialSettings[name]??null),partial);
  const book:CardanoAddressBook={wallets:[],exchanges:[{address,name:'CEX'}],snapshot:null,memberStake:stake,busy:false,usd:null,onView:()=>{},saveWallets:()=>{throw Error('Not owned');},saveExchanges:rows=>{book.exchanges=rows;return true;}};
  assert.equal(cardanoAddressRows(book)[0].onDeposit!(true),true);assert.equal(book.exchanges[0].deposit,true);assert.equal(cardanoAddressRows(book)[0].onMining,undefined);assert.equal(cardanoAddressRows(book,true).length,0);
  cardanoAddressRows(book)[0].onType!('min');assert.equal(book.exchanges[0].deposit,false);
@@ -51,6 +54,14 @@ test('Cardano scanner resolves stake aliases, completes details and rejects inco
  };
  const targets=[{address:stake,name:'CEX',deposit:true}],scanned=await scanCardanoDeposits(targets,fetcher,new AbortController().signal);
  assert.deepEqual(scanned.details,[detail]);assert.deepEqual(calls,['account_addresses','address_txs','tx_info']);assert.equal(cardanoDepositReceipts(scanned,targets,[],new Set()).length,1);
- await assert.rejects(scanCardanoDeposits(targets,async(path,options)=>JSON.parse(String(options.body)).path==='tx_info'?new Response('[]'):fetcher(path,options),new AbortController().signal),/unavailable/);
+ const partial=await scanCardanoDeposits(targets,async(path,options)=>JSON.parse(String(options.body)).path==='tx_info'?new Response('[]'):fetcher(path,options),new AbortController().signal);
+ assert.equal(partial.complete,false);assert.deepEqual(partial.details,[]);
+ const second={...detail,tx_hash:'c'.repeat(64)},seen:Detail[][]=[];
+ const partialTwo=await scanCardanoDeposits(targets,async(_path,options)=>{
+  const {path,body}=JSON.parse(String(options.body));
+  return new Response(JSON.stringify(path==='account_addresses'?[{stake_address:stake,addresses:[address]}]:path==='address_txs'?[{tx_hash:detail.tx_hash,block_time:detail.tx_timestamp,block_height:1},{tx_hash:second.tx_hash,block_time:second.tx_timestamp,block_height:1}]:body._tx_hashes.length===1&&body._tx_hashes[0]===detail.tx_hash?[detail]:[]));
+ },new AbortController().signal,data=>seen.push(data.details));
+ assert.equal(partialTwo.complete,false);assert.deepEqual(partialTwo.details,[detail]);assert.ok(seen.some(rows=>rows.some(row=>row.tx_hash===detail.tx_hash)));
+ assert.equal(cardanoDepositReceipts(partialTwo,targets,[],new Set()).length,1);
  const control=new AbortController();control.abort();await assert.rejects(scanCardanoDeposits(targets,fetcher,control.signal));
 });

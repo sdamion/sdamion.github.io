@@ -1,7 +1,7 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {portfolioFetch} from './transport';
 import {portfolioSettings,flushVault} from './vault';
-import {bitcoinWallets,bitcoinHash,bitcoinNet,bitcoinTransactions,validBitcoinTransaction,emptyBitcoin,type BitcoinData,type BitcoinWallet,type BitcoinTransaction} from './bitcoin';
+import {bitcoinWallets,bitcoinHash,bitcoinNet,bitcoinTransactions,validBitcoinTransaction,emptyBitcoin,type BitcoinAccount,type BitcoinData,type BitcoinWallet,type BitcoinTransaction} from './bitcoin';
 import {encodeBitcoinSettings,readBitcoinSettings} from './bitcoin-storage';
 import {cachedTransactionProgress,emptyDownloadProgress,type DownloadProgress} from './download-progress';
 import {depositScanWallets} from './deposit-tracking';
@@ -29,10 +29,23 @@ export function useBitcoin(stake:string,enabled:boolean){
       const response=await portfolioFetch('/bitcoin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal});
       const result=await response.json();if(!response.ok)throw new Error(result.error||'Bitcoin data unavailable. Saved data is retained.');return result;
     }
+    const next:BitcoinData={...current.current,accounts:{...current.current.accounts}},pending=new Map((current.current.pending||[]).map(tx=>[tx.hash,tx])),staged=new Map<string,BitcoinAccount>();
+    let pendingDirty=false;
+    const newPending=new Set<string>();
+    const publishPending=()=>{
+      signal.throwIfAborted();
+      const completed=new Set(Object.values(next.accounts).flatMap(account=>account.transactions.map(tx=>tx.hash)));
+      next.pending=[...pending.values()].filter(tx=>!completed.has(tx.hash));
+      setData({...next,accounts:{...next.accounts}});
+    };
+    const persist=async()=>{
+      signal.throwIfAborted();publishPending();const settings=encodeBitcoinSettings(dataKey,next);
+      portfolioSettings.setItems(settings,portfolioSettings.keys().filter(key=>key.startsWith(dataKey+'::')&&!Object.hasOwn(settings,key)));
+      await flushVault();signal.throwIfAborted();current.current={...next,accounts:{...next.accounts}};setData(current.current);
+    };
     try{
       const head=await request({action:'tip'}),tip=head.hash;
       if(!bitcoinHash(tip)||!Number.isSafeInteger(head.height)||head.height<0)throw new Error('Bitcoin data unavailable. Saved data is retained.');
-      const next:BitcoinData={...current.current,accounts:{}};
       const reusable=new Map<string,boolean>(),downloaded=new Map<string,BitcoinTransaction>();
       setDownloadProgress(cachedTransactionProgress(bitcoinTransactions(current.current,scanWallets),tx=>tx.hash));
       for(const wallet of scanWallets){
@@ -55,9 +68,10 @@ export function useBitcoin(stake:string,enabled:boolean){
           if(!Array.isArray(page.transactions)||!page.transactions.every(validBitcoinTransaction)||typeof page.more!=='boolean')throw new Error('Bitcoin data unavailable. Saved data is retained.');
           for(const tx of page.transactions as BitcoinTransaction[]){
             if(rows.has(tx.hash)||![...tx.inputs,...tx.outputs].some(row=>row.address===wallet.address))throw new Error('Bitcoin data unavailable. Saved data is retained.');
-            rows.set(tx.hash,tx);downloaded.set(tx.hash,tx);
+            rows.set(tx.hash,tx);downloaded.set(tx.hash,tx);if(tx.height<=head.height){if(!pending.has(tx.hash)){pendingDirty=true;newPending.add(tx.hash);}pending.set(tx.hash,tx);}
             if(old.has(tx.hash)){reached=true;break;}
           }
+          publishPending();
           setDownloadProgress(cachedTransactionProgress([...downloaded.values()],tx=>tx.hash));
           if(reached||!page.more)break;
           if(!page.transactions.length)throw new Error('Bitcoin data unavailable. Saved data is retained.');
@@ -67,15 +81,15 @@ export function useBitcoin(stake:string,enabled:boolean){
         const transactions=[...rows.values()];
         if(transactions.length!==stats.count||transactions.reduce((sum,tx)=>sum+bitcoinNet(tx,[wallet]),0n)!==BigInt(stats.raw))throw new Error('Bitcoin history changed during refresh. Retry.');
         const anchored=transactions.filter(tx=>tx.height<=head.height);
-        next.accounts[wallet.address]={raw:String(anchored.reduce((sum,tx)=>sum+bitcoinNet(tx,[wallet]),0n)),tip,transactions:anchored};
+        staged.set(wallet.address,{raw:String(anchored.reduce((sum,tx)=>sum+bitcoinNet(tx,[wallet]),0n)),tip,transactions:anchored});
       }
-      if((await request({action:'block-status',hash:tip})).inBestChain!==true)throw new Error('Bitcoin history changed during refresh. Retry.');
-      // Commit all scanned addresses together, so shared transactions and balances stay coherent.
-      const persist=async()=>{
-        signal.throwIfAborted();const settings=encodeBitcoinSettings(dataKey,next);
-        portfolioSettings.setItems(settings,portfolioSettings.keys().filter(key=>key.startsWith(dataKey+'::')&&!Object.hasOwn(settings,key)));
-        await flushVault();signal.throwIfAborted();current.current=next;setData({...next});
-      };
+      if((await request({action:'block-status',hash:tip})).inBestChain!==true){
+        for(const hash of newPending)pending.delete(hash);
+        pendingDirty=false;setData(current.current);
+        throw new Error('Bitcoin history changed during refresh. Retry.');
+      }
+      for(const [address,account] of staged)next.accounts[address]=account;
+      pending.clear();
       await persist();setDownloadProgress(cachedTransactionProgress(bitcoinTransactions(next,scanWallets),tx=>tx.hash));
       const rates=await portfolioFetch('/historical-btc-prices',{signal});if(!rates.ok)throw new Error('Bitcoin prices unavailable.');
       const history=await rates.json();if(!Array.isArray(history.prices)||!history.prices.length)throw new Error('Bitcoin prices unavailable.');
@@ -83,7 +97,11 @@ export function useBitcoin(stake:string,enabled:boolean){
       for(const [time,price] of history.prices)if(Number.isFinite(time)&&Math.abs(time)<8640000000000000&&Number.isFinite(price)&&price>0)next.history[new Date(time).toISOString().slice(0,10)]=price;
       const quote=await portfolioFetch('/bitcoin-price',{signal});if(!quote.ok){await persist();throw new Error('Bitcoin prices unavailable.');}
       const {usd}=await quote.json();if(!Number.isFinite(usd)||usd<=0)throw new Error('Bitcoin prices unavailable.');next.usd=usd;await persist();
-    }catch(reason){if(!signal.aborted){setError(reason instanceof Error?reason.message:'Bitcoin data unavailable. Saved data is retained.');setDownloadProgress(cachedTransactionProgress(bitcoinTransactions(current.current,scanWallets),tx=>tx.hash));}}
+    }catch(reason){if(!signal.aborted){
+      if(pendingDirty)try{await persist();}catch{/* Preserve the original fetch error and last saved history. */}
+      setError(reason instanceof Error?reason.message:'Bitcoin data unavailable. Saved data is retained.');
+      setDownloadProgress(cachedTransactionProgress([...bitcoinTransactions(current.current,scanWallets),...(current.current.pending||[])],tx=>tx.hash));
+    }}
     finally{if(controller.current===control)setBusy(false);}
   },[enabled,loaded,scope,stake]);
   useEffect(()=>{void refresh();return()=>controller.current?.abort();},[refresh]);

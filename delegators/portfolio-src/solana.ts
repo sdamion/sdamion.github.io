@@ -5,6 +5,7 @@ import {isRewardSource} from './reward-sources.ts';
 import {isOutAddress} from './out-address.ts';
 import {sourceTypeFields,type SourceType} from './address-types.ts';
 import {depositScanWallets,depositReceipt} from './deposit-tracking.ts';
+import {visibleHistory} from './visible-history.ts';
 
 export type NativeWallet={address:string;name:string;miner?:boolean;dex?:boolean;sourceType?:SourceType;out?:boolean;deposit?:boolean};
 export type SolanaTransaction={hash:string;slot:number;time:number;payer:string;feeRaw:string;failed:boolean;transfers:{from:string;to:string;raw:string}[]};
@@ -40,18 +41,25 @@ export function solanaDeposit(tx:SolanaTransaction,wallets:NativeWallet[],exchan
 }
 export function visibleSolanaTransactions(data:SolanaData,wallets:NativeWallet[],exchanges:NativeWallet[]){
   const owned=new Set(solanaTransactions(data,wallets).map(tx=>tx.hash));
-  return solanaTransactions(data,depositScanWallets(wallets,exchanges)).filter(tx=>owned.has(tx.hash)||solanaDeposit(tx,wallets,exchanges));
+  const ownAddresses=new Set(wallets.map(wallet=>wallet.address));
+  const scanned=new Set(depositScanWallets(wallets,exchanges).map(wallet=>wallet.address));
+  return visibleHistory(solanaTransactions(data,depositScanWallets(wallets,exchanges)),data.pending||[],tx=>tx.hash,
+    tx=>[tx.payer,...tx.transfers.flatMap(row=>[row.from,row.to])].some(address=>scanned.has(address))&&(owned.has(tx.hash)||tx.transfers.some(row=>ownAddresses.has(row.from)||ownAddresses.has(row.to))||!!solanaDeposit(tx,wallets,exchanges)),
+    (a,b)=>b.slot-a.slot||a.hash.localeCompare(b.hash));
 }
-export function solanaTransfers(data:SolanaData,wallets:NativeWallet[],exchanges:NativeWallet[]):(FiatTransfer&{amount:number})[]{
-    const own=new Set(wallets.map(w=>w.address)),cex=new Set(exchanges.filter(isOutAddress).map(w=>w.address));
-  return solanaTransactions(data,wallets).flatMap(tx=>tx.transfers.flatMap((transfer,index)=>{
+export function solanaTransactionTransfers(tx:SolanaTransaction,wallets:NativeWallet[],exchanges:NativeWallet[],history:Record<string,number>):(FiatTransfer&{amount:number})[]{
+  const own=new Set(wallets.map(w=>w.address)),cex=new Set(exchanges.filter(isOutAddress).map(w=>w.address));
+  return tx.transfers.flatMap((transfer,index)=>{
     if(tx.failed||own.has(transfer.from)&&own.has(transfer.to))return [];
     const reward=own.has(transfer.to)&&isRewardSource(transfer.from,exchanges);
     const side=reward?'sell' as const:own.has(transfer.to)&&cex.has(transfer.from)?'buy' as const:own.has(transfer.from)&&cex.has(transfer.to)&&!isRewardSource(transfer.to,exchanges)?'sell' as const:null;
     if(!side)return [];
-    const amount=solAmount(transfer.raw),price=data.history[new Date(tx.time*1000).toISOString().slice(0,10)];
+    const amount=solAmount(transfer.raw),price=history[new Date(tx.time*1000).toISOString().slice(0,10)];
     return [{hash:`sol:${tx.hash}:${index}`,time:tx.time,side,amount,...(reward?{performance:false}:{}),usd:Number.isFinite(price)&&price>0?amount*price:null}];
-  }));
+  });
+}
+export function solanaTransfers(data:SolanaData,wallets:NativeWallet[],exchanges:NativeWallet[]):(FiatTransfer&{amount:number})[]{
+  return solanaTransactions(data,wallets).flatMap(tx=>solanaTransactionTransfers(tx,wallets,exchanges,data.history));
 }
 export function solanaTotals(data:SolanaData,wallets:NativeWallet[]){
   const own=new Set(wallets.map(w=>w.address)),transactions=solanaTransactions(data,wallets);

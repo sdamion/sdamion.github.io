@@ -1,5 +1,13 @@
 // Generated from the shared Portfolio translation catalog.
 window.TDSPPortfolioTranslationKeys = Object.freeze([
+  ["Needs review", "portfolio_text_review_title"],
+  ["{count} incomplete transactions · {errors} scan errors", "portfolio_text_review_count"],
+  ["These transactions have incomplete details or were saved during an interrupted scan. Only verified blockchain data is shown; incomplete history is excluded from financial calculations.", "portfolio_text_review_help"],
+  ["Retry Cardano scan", "portfolio_text_review_retry_ada"],
+  ["Retry Ethereum scan", "portfolio_text_review_retry_eth"],
+  ["Retry Solana scan", "portfolio_text_review_retry_sol"],
+  ["Retry Bitcoin scan", "portfolio_text_review_retry_btc"],
+  ["Review wallet addresses", "portfolio_text_review_wallets"],
   ["Wallet apps", "portfolio_text_wallet_apps"],
   ["Link another wallet app", "portfolio_text_wallet_link"],
   ["Link another wallet app for the same stake account after unlocking. Each app approves its own private unlock message. Linking keeps encryption in your browser and applies only to the storage location currently open.", "portfolio_text_wallet_link_help"],
@@ -1995,5 +2003,6 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
   , ["Wallet share unknown", "portfolio_text_btc_fee_unknown"]
   , ["Partial · BTC: fee ownership unknown for {count} transactions", "portfolio_text_btc_fee_partial"]
   , ["Cardano CEX deposits unavailable. Saved data is retained.", "portfolio_text_cardano_deposits_error"]
+  , ["Cardano CEX deposits partially loaded. Some transactions could not be checked; retry.", "portfolio_text_cardano_deposits_partial"]
   , ["Checking Cardano CEX deposits…", "portfolio_text_cardano_deposits_checking"]
 ]);
