@@ -18,7 +18,7 @@ ids.clear();
 await ethereumHistory({startBlock:0,endBlock:2},async()=>{throw new Error('must reuse checkpoint');},completed,Infinity,Infinity,count);
 assert.equal(ids.size,1,'resumed completed ranges contribute to download counts');
 
-for(const chain of ['ADA','ETH','SOL']){
+for(const chain of ['ADA','ETH','SOL','BTC']){
   const cached=[{id:'a'},{id:'b'},{id:'a'}];
   assert.deepEqual(cachedTransactionProgress(cached,row=>row.id),{downloaded:2,total:2},`${chain} displays its saved total before requesting new history`);
   const progress=createTransactionProgress(cached,row=>row.id);

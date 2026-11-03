@@ -3,8 +3,13 @@ import {portfolioFetch} from './transport';
 import {portfolioSettings,flushVault} from './vault';
 import {bitcoinWallets,bitcoinHash,bitcoinNet,bitcoinTransactions,validBitcoinTransaction,emptyBitcoin,type BitcoinAccount,type BitcoinData,type BitcoinWallet,type BitcoinTransaction} from './bitcoin';
 import {encodeBitcoinSettings,readBitcoinSettings} from './bitcoin-storage';
-import {cachedTransactionProgress,emptyDownloadProgress,type DownloadProgress} from './download-progress';
+import {cachedTransactionProgress,createTransactionProgress,emptyDownloadProgress,type DownloadProgress} from './download-progress';
 import {depositScanWallets} from './deposit-tracking';
+
+function cachedBitcoinRows(data:BitcoinData,wallets:BitcoinWallet[]){
+  const addresses=new Set(wallets.map(wallet=>wallet.address));
+  return [...bitcoinTransactions(data,wallets),...(data.pending||[]).filter(tx=>[...tx.inputs,...tx.outputs].some(row=>addresses.has(row.address)))];
+}
 
 export function useBitcoin(stake:string,enabled:boolean){
   const walletKey='tdsp-member-bitcoin-wallets:'+stake,cexKey='tdsp-member-bitcoin-cex:'+stake,dataKey='tdsp-member-bitcoin-data:'+stake;
@@ -16,8 +21,12 @@ export function useBitcoin(stake:string,enabled:boolean){
     controller.current?.abort();setLoadedStake(null);setBusy(false);setError('');setDownloadProgress(emptyDownloadProgress());
     if(!enabled){setWallets([]);setExchanges([]);current.current=emptyBitcoin();setData(current.current);return;}
     try{
-      setWallets(bitcoinWallets(JSON.parse(portfolioSettings.getItem(walletKey)||'[]')));setExchanges(bitcoinWallets(JSON.parse(portfolioSettings.getItem(cexKey)||'[]')));
-      current.current=readBitcoinSettings(dataKey,key=>portfolioSettings.getItem(key));setData(current.current);setLoadedStake(stake);
+      const savedWallets=bitcoinWallets(JSON.parse(portfolioSettings.getItem(walletKey)||'[]'));
+      const savedExchanges=bitcoinWallets(JSON.parse(portfolioSettings.getItem(cexKey)||'[]'));
+      current.current=readBitcoinSettings(dataKey,key=>portfolioSettings.getItem(key));
+      setWallets(savedWallets);setExchanges(savedExchanges);setData(current.current);
+      setDownloadProgress(cachedTransactionProgress(cachedBitcoinRows(current.current,depositScanWallets(savedWallets,savedExchanges)),tx=>tx.hash));
+      setLoadedStake(stake);
     }catch{setError('Bitcoin cache could not be opened.');}
     return()=>controller.current?.abort();
   },[enabled,stake]);
@@ -46,8 +55,10 @@ export function useBitcoin(stake:string,enabled:boolean){
     try{
       const head=await request({action:'tip'}),tip=head.hash;
       if(!bitcoinHash(tip)||!Number.isSafeInteger(head.height)||head.height<0)throw new Error('Bitcoin data unavailable. Saved data is retained.');
-      const reusable=new Map<string,boolean>(),downloaded=new Map<string,BitcoinTransaction>();
-      setDownloadProgress(cachedTransactionProgress(bitcoinTransactions(current.current,scanWallets),tx=>tx.hash));
+      const reusable=new Map<string,boolean>();
+      const saved=cachedBitcoinRows(current.current,scanWallets);
+      const progress=createTransactionProgress(saved,tx=>tx.hash);
+      setDownloadProgress(cachedTransactionProgress(saved,tx=>tx.hash));
       for(const wallet of scanWallets){
         const stats=await request({action:'address',address:wallet.address});
         if(stats.address!==wallet.address||!Number.isSafeInteger(stats.count)||stats.count<0||typeof stats.raw!=='string'||!/^\d{1,16}$/.test(stats.raw))throw new Error('Bitcoin data unavailable. Saved data is retained.');
@@ -68,11 +79,11 @@ export function useBitcoin(stake:string,enabled:boolean){
           if(!Array.isArray(page.transactions)||!page.transactions.every(validBitcoinTransaction)||typeof page.more!=='boolean')throw new Error('Bitcoin data unavailable. Saved data is retained.');
           for(const tx of page.transactions as BitcoinTransaction[]){
             if(rows.has(tx.hash)||![...tx.inputs,...tx.outputs].some(row=>row.address===wallet.address))throw new Error('Bitcoin data unavailable. Saved data is retained.');
-            rows.set(tx.hash,tx);downloaded.set(tx.hash,tx);if(tx.height<=head.height){if(!pending.has(tx.hash)){pendingDirty=true;newPending.add(tx.hash);}pending.set(tx.hash,tx);}
+            rows.set(tx.hash,tx);if(tx.height<=head.height){if(!pending.has(tx.hash)){pendingDirty=true;newPending.add(tx.hash);}pending.set(tx.hash,tx);}
             if(old.has(tx.hash)){reached=true;break;}
           }
           publishPending();
-          setDownloadProgress(cachedTransactionProgress([...downloaded.values()],tx=>tx.hash));
+          setDownloadProgress(progress.add(rows.values()));
           if(reached||!page.more)break;
           if(!page.transactions.length)throw new Error('Bitcoin data unavailable. Saved data is retained.');
           after=page.transactions.at(-1).hash;
@@ -90,7 +101,7 @@ export function useBitcoin(stake:string,enabled:boolean){
       }
       for(const [address,account] of staged)next.accounts[address]=account;
       pending.clear();
-      await persist();setDownloadProgress(cachedTransactionProgress(bitcoinTransactions(next,scanWallets),tx=>tx.hash));
+      await persist();setDownloadProgress(progress.complete(bitcoinTransactions(next,scanWallets)));
       const rates=await portfolioFetch('/historical-btc-prices',{signal});if(!rates.ok)throw new Error('Bitcoin prices unavailable.');
       const history=await rates.json();if(!Array.isArray(history.prices)||!history.prices.length)throw new Error('Bitcoin prices unavailable.');
       next.history={...next.history};
@@ -100,7 +111,7 @@ export function useBitcoin(stake:string,enabled:boolean){
     }catch(reason){if(!signal.aborted){
       if(pendingDirty)try{await persist();}catch{/* Preserve the original fetch error and last saved history. */}
       setError(reason instanceof Error?reason.message:'Bitcoin data unavailable. Saved data is retained.');
-      setDownloadProgress(cachedTransactionProgress([...bitcoinTransactions(current.current,scanWallets),...(current.current.pending||[])],tx=>tx.hash));
+      setDownloadProgress(cachedTransactionProgress(cachedBitcoinRows(current.current,scanWallets),tx=>tx.hash));
     }}
     finally{if(controller.current===control)setBusy(false);}
   },[enabled,loaded,scope,stake]);
