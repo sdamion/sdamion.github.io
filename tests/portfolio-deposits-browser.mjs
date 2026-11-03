@@ -92,6 +92,8 @@ try{
  await page.getByRole('alert').filter({hasText:'Synthetic later Ethereum page failed.'}).waitFor();
  await page.getByRole('alert').filter({hasText:'Synthetic later Solana transaction failed.'}).waitFor();
  await page.getByRole('button',{name:'Open CEX Transactions',exact:true}).click();
+ for(const message of ['Cardano CEX deposits partially loaded.','Synthetic later Bitcoin page failed.','Synthetic later Ethereum page failed.','Synthetic later Solana transaction failed.'])await cex.getByRole('status').filter({hasText:message}).waitFor();
+ for(const network of ['Cardano','Ethereum','Solana','Bitcoin'])assert.equal(await cex.getByRole('button',{name:`Retry ${network} scan`,exact:true}).count(),1,network+' scan retry is available in CEX Transactions');
  for(const [symbol,hash] of [['ADA',pendingAda.tx_hash],['BTC',pendingBtc.hash],['ETH',pendingEth.hash],['SOL',pendingSol.hash]]){
   await cex.getByRole('button',{name:symbol+' IN',exact:true}).click();
   const row=cex.locator('tbody tr').filter({has:page.locator(`a[href$="/${hash}"]`)});

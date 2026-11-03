@@ -90,6 +90,12 @@ try{
  await gain.locator('.portfolio-btc-comparison').waitFor();assert.match(await gain.locator('.portfolio-btc-comparison').innerText(),/0.99999 BTC[\s\S]*0.4 BTC/);
  await gain.getByRole('button',{name:'BTC IN',exact:true}).click();assert.equal(await gain.locator('.history-table tbody tr').count(),1);
  await gain.getByRole('button',{name:'BTC OUT',exact:true}).click();assert.equal(await gain.locator('.history-table tbody tr').count(),1);
+ await gain.locator('input[name="gain-loss-from"]').fill('2024-01-01');
+ assert.equal(await gain.locator('.history-table tbody tr').count(),0,'a later date hides older BTC transfers');
+ await gain.getByRole('button',{name:'Back',exact:true}).click();
+ await page.getByRole('button',{name:'Open CEX Transactions',exact:true}).click();
+ assert.equal(await gain.locator('input[name="gain-loss-from"]').inputValue(),'','reopening CEX transactions clears a stale date filter');
+ assert.equal(await gain.locator('.history-table tbody tr').count(),2,'older BTC IN and OUT transfers are visible again');
  for(const width of [1200,390,320]){await page.setViewportSize({width,height:900});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await page.screenshot({path:'/tmp/portfolio-bitcoin-'+width+'.png'});}
  await gain.getByRole('button',{name:'Back',exact:true}).click();await walletTile.click();await page.getByRole('button',{name:'Open DEX / CEX & Swap',exact:true}).click();
  const mining=page.getByRole('checkbox',{name:'Mining / services source: BTC Exchange',exact:true}),beforeMining=requests.length;await mining.check();
@@ -101,6 +107,10 @@ try{
  unavailable=true;await page.evaluate(()=>window.reopen());
  await page.getByRole('alert').filter({hasText:'Bitcoin data unavailable. Saved data is retained.'}).waitFor();
  assert.match(await page.getByRole('button',{name:'Open Assets',exact:true}).innerText(),/59,998/,'cached holdings survive provider failures');
+ await page.getByRole('button',{name:'Open CEX Transactions',exact:true}).click();
+ await gain.getByRole('status').filter({hasText:'Bitcoin data unavailable. Saved data is retained.'}).waitFor();
+ await gain.getByRole('button',{name:'Retry Bitcoin scan',exact:true}).waitFor();
+ await gain.getByRole('button',{name:'Back',exact:true}).click();
  unavailable=false;reorg=true;changedTip=true;const start=requests.length;await page.evaluate(()=>window.reopen());
  await page.waitForFunction(stake=>JSON.parse(window.fixtureStorage.getItem('tdsp-member-bitcoin-data:'+stake)).accounts['1BoatSLRHtKNngkdXEeobR76b53LETtpyT'].tip==='b'.repeat(64),stake);
  assert.ok(requests.slice(start).some(row=>row.action==='history'),'orphaned saved tips cause a fresh scan');

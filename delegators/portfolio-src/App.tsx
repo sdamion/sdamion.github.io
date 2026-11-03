@@ -488,6 +488,12 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   const cexPending=snapshot?.txs.filter(tx=>!hasCounterpartyData(snapshot.facts[tx.tx_hash])).length||0;
   const reviewErrors=[error,cardanoDeposits.error,ethereum.error,solana.error,bitcoin.error].filter(Boolean);
   const reviewCount=cexPending+(cardanoDeposits.data.complete===false?externalCardanoDeposits.length:0)+ethTransactions.filter(tx=>ethPending.has(tx.id)).length+solTransactions.filter(tx=>solPending.has(tx.hash)).length+btcTransactions.filter(tx=>btcPending.has(tx.hash)).length;
+  const scanIssues=[
+    {messages:[error,cardanoDeposits.error].filter(Boolean),pending:cexPending>0||cardanoDeposits.data.complete===false,label:'Retry Cardano scan',disabled:busy||cardanoDeposits.busy||!ready,retry:()=>{void refresh();void cardanoDeposits.refresh(true);}},
+    {messages:[ethereum.error].filter(Boolean),pending:ethPending.size>0,label:'Retry Ethereum scan',disabled:ethereum.busy||!ready,retry:()=>void ethereum.refresh()},
+    {messages:[solana.error].filter(Boolean),pending:solPending.size>0,label:'Retry Solana scan',disabled:solana.busy||!ready,retry:()=>void solana.refresh()},
+    {messages:[bitcoin.error].filter(Boolean),pending:btcPending.size>0,label:'Retry Bitcoin scan',disabled:bitcoin.busy||!ready,retry:()=>void bitcoin.refresh()}
+  ];
   const cexUnresolved=Object.values(cexFacts).filter(f=>isCexTransaction(f,cexAddresses)&&!cexAdaTransfer(f,cexAddresses)).length;
   const eta=analysis&&counted!==null?remainingSeconds(analysis.started,clock,analysis.done,analysis.total):null;
   const refreshTiming=refreshStarted&&syncing?`${t('Elapsed: {time}',{time:durationLabel((clock-refreshStarted)/1000)})}${busy?(eta!==null?` · ${t('Estimated analysis remaining: {time}',{time:durationLabel(eta)})}`:` · ${t('Estimating remaining time…')}`):''}`:'';
@@ -597,7 +603,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
         {btcAvailable.unattributedFees>0&&<span translate="no" className="small muted" role="status">{t('Partial · BTC: fee ownership unknown for {count} transactions',{count:btcAvailable.unattributedFees})}</span>}
         {feeNotes.map(note=><span key={note} translate="no" className="small muted" role="status">{t(note)}</span>)}
       </Metric>
-      {(cexAddresses.length>0||ethereum.exchanges.length>0||solana.exchanges.length>0||bitcoin.exchanges.length>0)&&<Metric label="CEX Transactions" openLabel="CEX Transactions" note={portfolioPartial||availableCex.partial||!ethHistoryReady||!solHistoryReady||!btcHistoryReady?partialNote:undefined} value={snapshot?tileGainDisplay:'Waiting for wallet balances'} tone={tileGain===null?'':tileGain<0?'negative':'positive'} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('gain-loss');}}/>}
+      {(cexAddresses.length>0||ethereum.exchanges.length>0||solana.exchanges.length>0||bitcoin.exchanges.length>0)&&<Metric label="CEX Transactions" openLabel="CEX Transactions" note={portfolioPartial||availableCex.partial||!ethHistoryReady||!solHistoryReady||!btcHistoryReady?partialNote:undefined} value={snapshot?tileGainDisplay:'Waiting for wallet balances'} tone={tileGain===null?'':tileGain<0?'negative':'positive'} onOpen={()=>{setQuery('');setFilter('all');setDateFrom('');setDateTo('');setPage(0);setSection('gain-loss');}}/>}
     </div></section>
     {section==='wallets'&&<AssetOverlay id="portfolio-wallets-overlay" name="Wallets" onClose={()=>setSection(null)}>
     <div className="portfolio-section">
@@ -706,16 +712,17 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
     {(section==='transactions'||section==='gain-loss'||section==='review')&&<PortfolioCurrencyContext.Provider value={currencyDisplay}><AssetOverlay id={section==='gain-loss'?'portfolio-gain-loss-overlay':section==='review'?'portfolio-review-overlay':'portfolio-transactions-overlay'} name={section==='gain-loss'?'CEX Transactions':section==='review'?'Needs review':'Transactions'} onClose={()=>setSection(null)}>
     {section==='review'&&<section className="portfolio-section">
       <p translate="no" className="small muted">{t('These transactions have incomplete details or were saved during an interrupted scan. Only verified blockchain data is shown; incomplete history is excluded from financial calculations.')}</p>
-      {reviewErrors.map((message,index)=><p key={index} translate="no" role="status" className="message">{t(message)}</p>)}
+      {scanIssues.flatMap(issue=>issue.messages).map((message,index)=><p key={index} translate="no" role="status" className="message">{t(message)}</p>)}
       <div className="governance-action-buttons">
-        {(cexPending>0||cardanoDeposits.data.complete===false||!!error||!!cardanoDeposits.error)&&<button type="button" className="governance-vote-secondary" disabled={busy||cardanoDeposits.busy||!ready} onClick={()=>{void refresh();void cardanoDeposits.refresh(true);}}>{t('Retry Cardano scan')}</button>}
-        {(ethPending.size>0||!!ethereum.error)&&<button type="button" className="governance-vote-secondary" disabled={ethereum.busy||!ready} onClick={()=>void ethereum.refresh()}>{t('Retry Ethereum scan')}</button>}
-        {(solPending.size>0||!!solana.error)&&<button type="button" className="governance-vote-secondary" disabled={solana.busy||!ready} onClick={()=>void solana.refresh()}>{t('Retry Solana scan')}</button>}
-        {(btcPending.size>0||!!bitcoin.error)&&<button type="button" className="governance-vote-secondary" disabled={bitcoin.busy||!ready} onClick={()=>void bitcoin.refresh()}>{t('Retry Bitcoin scan')}</button>}
+        {scanIssues.filter(issue=>issue.pending||issue.messages.length>0).map(issue=><button key={issue.label} type="button" className="governance-vote-secondary" disabled={issue.disabled} onClick={issue.retry}>{t(issue.label)}</button>)}
         <button type="button" className="governance-vote-secondary" onClick={()=>setSection('wallets')}>{t('Review wallet addresses')}</button>
       </div>
     </section>}
     {section==='gain-loss'&&<>
+    {scanIssues.some(issue=>issue.messages.length>0)&&<section className="portfolio-section">
+      {scanIssues.flatMap(issue=>issue.messages).map((message,index)=><p key={index} translate="no" role="status" className="message">{t(message)}</p>)}
+      <div className="governance-action-buttons">{scanIssues.filter(issue=>issue.messages.length>0).map(issue=><button key={issue.label} type="button" className="governance-vote-secondary" disabled={issue.disabled} onClick={issue.retry}>{t(issue.label)}</button>)}</div>
+    </section>}
     <div className="portfolio-comparison-controls">
       <label className="small">{t('Crypto')}<select aria-label={t('Comparison cryptocurrency')} value={comparisonCrypto} onChange={event=>setComparisonCrypto(event.target.value as ComparisonCrypto)}><option value="ADA">ADA</option><option value="BTC">BTC</option>{canEthereum&&<option value="ETH">ETH</option>}{canSolana&&<option value="SOL">SOL</option>}</select></label>
     </div>
