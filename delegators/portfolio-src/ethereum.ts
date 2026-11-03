@@ -4,6 +4,7 @@ import {isOutAddress,isInAddress} from './out-address.ts';
 import {sourceTypeFields,type SourceType} from './address-types.ts';
 import {depositScanWallets,depositReceipt} from './deposit-tracking.ts';
 import {visibleHistory} from './visible-history.ts';
+import {classifyCexFlow} from './cex-flow.ts';
 export type EthereumWallet={address:string;name:string;personalType?:'dex'|'cex';miner?:boolean;dex?:boolean;sourceType?:SourceType;deposit?:boolean;out?:boolean;in?:boolean;group?:'swap';swapAddresses?:string[]};
 export type EthereumTransaction={id:string;hash:string;kind:'normal'|'internal';block:number;time:number;from:string;to:string;valueWei:string;feeWei:string|null;failed:boolean;transactionIndex?:number;traceIndex?:string};
 export type EthereumProvider='etherscan'|'blockscout';
@@ -113,8 +114,10 @@ export function ethereumTransfer(tx:EthereumTransaction,wallets:EthereumWallet[]
   const owned=new Set(wallets.map(w=>w.address));
   if(owned.has(tx.from)&&owned.has(tx.to))return null;
   if(owned.has(tx.to)&&isRewardSource(tx.from,exchanges))return {side:'sell' as const,amount:weiToEth(tx.valueWei),mined:true};
-  const side=owned.has(tx.to)&&exchanges.some(e=>e.address===tx.from&&isInAddress(e))?'buy':owned.has(tx.from)&&exchanges.some(e=>e.address===tx.to&&isOutAddress(e))?'sell':null;
-  return side?{side,amount:weiToEth(tx.valueWei)}:null;
+  const incomingMatched=owned.has(tx.to)&&exchanges.some(e=>e.address===tx.from&&isInAddress(e));
+  const outgoingMatched=owned.has(tx.from)&&exchanges.some(e=>e.address===tx.to&&isOutAddress(e));
+  const flow=classifyCexFlow({incomingMatched,outgoingMatched,incomingRaw:incomingMatched?BigInt(tx.valueWei):null,outgoingRaw:outgoingMatched?BigInt(tx.valueWei):null});
+  return flow?.verified?{side:flow.side,amount:weiToEth(String(flow.raw))}:null;
 }
 export function ethereumTransfers(data:EthereumData,wallets:EthereumWallet[],exchanges:EthereumWallet[]){
   return ethereumTransactions(data,wallets).flatMap(tx=>{

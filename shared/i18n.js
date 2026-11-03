@@ -104,6 +104,7 @@
         ['Admin Area', 'admin_area'],
         ['Admin Users', 'admin_users'],
         ['Portfolio access', 'portfolio_access'],
+        ['No Portfolio networks are enabled for this account.', 'portfolio_no_networks'],
         ['Swap addresses identify counterparties in your wallet transactions. Their balances and unrelated history are not downloaded or included in your Portfolio.', 'portfolio_eth_swap_counterparties'],
         ['Ethereum scan checkpoint could not be opened. Saved data is retained.', 'portfolio_eth_scan_checkpoint_failed'],
         ['{chain}: {done} / {total} transactions', 'portfolio_download_counts'],

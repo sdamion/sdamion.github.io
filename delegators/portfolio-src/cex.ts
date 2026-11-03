@@ -5,6 +5,7 @@ import {transactionAmounts,historicalAdaPrice,adaUsdValue,lovelaceToAda} from '.
 import {isRewardReceipt,isRewardSource} from './reward-sources.ts';
 import {isOutAddress,isInAddress} from './out-address.ts';
 import {sourceTypeFields,type SourceType} from './address-types.ts';
+import {classifyCexFlow} from './cex-flow.ts';
 export type CexAddress={address:string;name:string;miner?:boolean;out?:boolean;in?:boolean;dex?:boolean;sourceType?:SourceType;deposit?:boolean};
 export function normalizeCexAddresses(value:unknown):CexAddress[]{
   if(!Array.isArray(value))return [];
@@ -55,28 +56,28 @@ export function isCexTransaction(fact:Fact|undefined,entries:CexAddress[]):boole
   return !!fact&&!isCardanoReward(fact,entries)&&(cexDestinations(fact,exchanges).length>0||cexSources(fact,exchanges).length>0);
 }
 
-export function cexAdaTransfer(fact:Fact,entries:CexAddress[]){
+function cexFlow(fact:Fact,entries:CexAddress[]){
   if(isCardanoReward(fact,entries))return null;
   const sources=cexSources(fact,entries.filter(entry=>!entry.miner)),destinations=cexDestinations(fact,entries);
   const net=BigInt(fact.adaRaw)+BigInt(fact.feeRaw||'0');
-  if(net>0n&&sources.length>0&&sources.length===fact.externalInputs?.length&&destinations.length===0)
-    return {side:'buy' as const,raw:net};
   const sold=destinations.filter(row=>!isRewardSource(row.address,entries)&&!(row.stakeAddress&&isRewardSource(row.stakeAddress,entries))).reduce((sum,row)=>sum+BigInt(row.lovelace),0n);
   // Known paid fees mean all transaction inputs are owned. Use the actual
   // exchange outputs: staking withdrawals or deposit refunds can offset the net.
-  if(sold>0n&&fact.feeRaw!==null)
-    return {side:'sell' as const,raw:sold};
-  return null;
+  return classifyCexFlow({
+    incomingMatched:net>0n&&sources.length>0&&destinations.length===0,
+    outgoingMatched:sold>0n,
+    incomingRaw:sources.length===fact.externalInputs?.length?net:null,
+    outgoingRaw:fact.feeRaw!==null?sold:null
+  });
+}
+export function cexAdaTransfer(fact:Fact,entries:CexAddress[]){
+  const flow=cexFlow(fact,entries);
+  return flow?.verified?{side:flow.side,raw:flow.raw!}:null;
 }
 // The table can show a matched receipt even when its CEX share is unverified.
 // Valuation and charts must continue to use cexAdaTransfer exclusively.
 export function cexTableTransfer(fact:Fact,entries:CexAddress[]){
-  const transfer=cexAdaTransfer(fact,entries);
-  if(transfer)return {...transfer,verified:true};
-  const net=BigInt(fact.adaRaw)+BigInt(fact.feeRaw||'0');
-  if(net>0n&&isCexTransaction(fact,entries)&&cexSources(fact,entries.filter(entry=>!entry.miner)).length>0)
-    return {side:'buy' as const,raw:null,verified:false};
-  return null;
+  return cexFlow(fact,entries);
 }
 export function isCardanoReward(fact:Fact,entries:CexAddress[]):boolean{
   return !fact.internal&&BigInt(fact.adaRaw)+BigInt(fact.feeRaw||'0')>=0n&&Object.values(fact.assets).every(raw=>BigInt(raw)>=0n)&&isRewardReceipt(fact.externalInputs||[],entries);

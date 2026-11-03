@@ -5,6 +5,7 @@ import {isRewardSource} from './reward-sources.ts';
 import {isOutAddress,isInAddress} from './out-address.ts';
 import {sourceTypeFields,type SourceType} from './address-types.ts';
 import {depositScanWallets,depositReceipt} from './deposit-tracking.ts';
+import {classifyCexFlow} from './cex-flow.ts';
 import {visibleHistory} from './visible-history.ts';
 
 export type NativeWallet={address:string;name:string;personalType?:'dex'|'cex';miner?:boolean;dex?:boolean;sourceType?:SourceType;out?:boolean;in?:boolean;deposit?:boolean};
@@ -52,10 +53,12 @@ export function solanaTransactionTransfers(tx:SolanaTransaction,wallets:NativeWa
   return tx.transfers.flatMap((transfer,index)=>{
     if(tx.failed||own.has(transfer.from)&&own.has(transfer.to))return [];
     const reward=own.has(transfer.to)&&isRewardSource(transfer.from,exchanges);
-    const side=reward?'sell' as const:own.has(transfer.to)&&incoming.has(transfer.from)?'buy' as const:own.has(transfer.from)&&outgoing.has(transfer.to)&&!isRewardSource(transfer.to,exchanges)?'sell' as const:null;
-    if(!side)return [];
+    const incomingMatched=own.has(transfer.to)&&incoming.has(transfer.from);
+    const outgoingMatched=own.has(transfer.from)&&outgoing.has(transfer.to)&&!isRewardSource(transfer.to,exchanges);
+    const flow=reward?{side:'sell' as const}:classifyCexFlow({incomingMatched,outgoingMatched,incomingRaw:incomingMatched?BigInt(transfer.raw):null,outgoingRaw:outgoingMatched?BigInt(transfer.raw):null});
+    if(!flow)return [];
     const amount=solAmount(transfer.raw),price=history[new Date(tx.time*1000).toISOString().slice(0,10)];
-    return [{hash:`sol:${tx.hash}:${index}`,time:tx.time,side,amount,...(reward?{performance:false}:{}),usd:Number.isFinite(price)&&price>0?amount*price:null}];
+    return [{hash:`sol:${tx.hash}:${index}`,time:tx.time,side:flow.side,amount,...(reward?{performance:false}:{}),usd:Number.isFinite(price)&&price>0?amount*price:null}];
   });
 }
 export function solanaTransfers(data:SolanaData,wallets:NativeWallet[],exchanges:NativeWallet[]):(FiatTransfer&{amount:number})[]{

@@ -8,7 +8,7 @@ const stake='stake1uxythldc4nmx45tvnwsqu4h5pyjd94udytm6f0tgnr44vecjd8vel',addres
 const bundle=await build({stdin:{contents:`import {createRoot} from 'react-dom/client';import Home from './App';const root=createRoot(document.getElementById('app'));let version=0;window.reopenPortfolio=(role='admin')=>root.render(<Home key={++version} memberStake="${stake}" role={role}/>);window.reopenPortfolio();`,loader:'tsx',resolveDir:source},bundle:true,write:false,format:'esm',jsx:'automatic',alias:{'@/lib/portfolio':path.join(source,'core.ts'),'@/lib/portfolio-cache':path.join(source,'cache.ts'),'@/components/ui/input':path.join(source,'ui.tsx'),'@/components/ui/table':path.join(source,'ui.tsx'),'@/components/ui/pagination':path.join(source,'ui.tsx')},plugins:[{name:'ethereum-fixture',setup(build){
   build.onLoad({filter:/\/PortfolioQuickstart\.tsx$/},()=>({loader:'tsx',contents:'export function PortfolioQuickstart(){return null;}'}));
   build.onLoad({filter:/\/vault\.ts$/},()=>({loader:'ts',contents:'export const portfolioSettings=window.fixtureStorage; export const flushVault=async()=>{}; export const storageMode=()=>"local";export const cachedSnapshot=()=>window.fixture;export const latestMemberSnapshot=()=>window.fixture;export const cacheSnapshot=async()=>{};'}));
-  build.onLoad({filter:/\/App\.tsx$/},async args=>({loader:'tsx',contents:(await readFile(args.path,'utf8')).replace('useState<Snapshot|null>(null)','useState<Snapshot|null>(window.fixture)').replace('setSnapshot(null);setError','setError').replace('async function refresh(fullScan=false){','async function refresh(fullScan=false){setInitialising(false);setRefreshStarted(1000);setClock(2000);setStatus("Balances updated · updating prices…");return;')}));
+  build.onLoad({filter:/\/App\.tsx$/},async args=>({loader:'tsx',contents:(await readFile(args.path,'utf8')).replace('useState<Snapshot|null>(null)','useState<Snapshot|null>(window.fixture)').replace('setSnapshot(canCardano?null:disabledCardanoSnapshot());setError','setError').replace('async function refresh(fullScan=false){','async function refresh(fullScan=false){setInitialising(false);setRefreshStarted(1000);setClock(2000);setStatus("Balances updated · updating prices…");return;')}));
 }}]});
 const browser=await chromium.launch({channel:'chrome',headless:true});
 try{
@@ -158,7 +158,7 @@ try{
   const ethCexSection=eth.locator('tr[data-address-id="ethereum:cex:'+exchange+'"]');
   await eth.getByRole('combobox',{name:'Network',exact:true}).selectOption('ethereum');
   assert.match(await ethCexSection.innerText(),/Bitvavo/);
-  const cexForm=eth.locator('form').filter({has:page.locator('#portfolio-exchange-address')});await cexForm.locator('input').nth(0).fill('Not a CEX');await cexForm.locator('input').nth(1).fill(address);await cexForm.getByRole('button',{name:'Add',exact:true}).click();
+  const cexForm=eth.locator('form').filter({has:page.locator('#portfolio-exchange-address')});await cexForm.locator('#portfolio-exchange-name').fill('Not a CEX');await cexForm.locator('#portfolio-exchange-address').fill(address);await cexForm.getByRole('button',{name:'Add',exact:true}).click();
   assert.match(await eth.innerText(),/Your own wallet cannot/);
   for(const width of [1200,390,320]){
     await page.setViewportSize({width,height:900});
@@ -240,9 +240,9 @@ try{
   await exchangeSetup.getByRole('combobox',{name:'Network',exact:true}).selectOption('ethereum');
   await exchangeSetup.getByRole('combobox',{name:'Address type',exact:true}).selectOption('swap');
   const swapForm=exchangeSetup.locator('form').filter({has:page.locator('#portfolio-exchange-address')}),swapAddress='0x'+'e'.repeat(40);
-  await swapForm.locator('input').nth(0).fill('ETH Swap');await swapForm.locator('input').nth(1).fill(address);await swapForm.getByRole('button',{name:'Add',exact:true}).click();
+  await swapForm.locator('#portfolio-exchange-name').fill('ETH Swap');await swapForm.locator('#portfolio-exchange-address').fill(address);await swapForm.getByRole('button',{name:'Add',exact:true}).click();
   assert.match(await exchangeSetup.innerText(),/This address is already saved/,'own wallets cannot be duplicated as swap wallets');
-  await swapForm.locator('input').nth(1).fill(swapAddress);await swapForm.getByRole('button',{name:'Add',exact:true}).click();
+  await swapForm.locator('#portfolio-exchange-address').fill(swapAddress);await swapForm.getByRole('button',{name:'Add',exact:true}).click();
   const savedWallets=await page.evaluate(stake=>JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-wallets:'+stake)),stake);
   assert.equal(savedWallets.length,2);assert.deepEqual(savedWallets.find(w=>w.address===swapAddress),{address:swapAddress,name:'ETH Swap',group:'swap'});
   assert.equal(savedWallets.find(w=>w.address===address).name,'ETH Savings','adding a swap retains regular wallets');
@@ -264,7 +264,7 @@ try{
   await page.evaluate(()=>window.reopenPortfolio());
   await walletsTile.click();await page.getByRole('button',{name:'Open DEX / CEX & Swap',exact:true}).click();
   assert.match(await swaps.innerText(),/ETH Swap/,'swap wallets restore in the shared address list');
-  assert.deepEqual(await page.locator('#portfolio-wallet-menu-exchanges table').first().locator('thead th').allTextContents(),['Network','Exchange','Address','OUT','Mining / Services Sources','Actions'],'all saved networks share the same OUT-address column');
+  assert.deepEqual(await page.locator('#portfolio-wallet-menu-exchanges table').first().locator('thead th').allTextContents(),['Network','Exchange','Address','IN','OUT','Mining / Services Sources','Actions'],'all saved networks share the same IN/OUT columns');
   await swaps.getByRole('button',{name:'Actions for ETH Swap',exact:true}).click();
   await page.getByRole('menuitem',{name:'Rename',exact:true}).click();
   await swaps.getByRole('textbox',{name:'Exchange name',exact:true}).fill('ETH Swap renamed');

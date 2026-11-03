@@ -15,18 +15,18 @@ function MemberPortfolio({wallet,role}:{wallet:WalletProvider;role:'delegator'|'
   const [stake,setStake]=useState(''),[error,setError]=useState('Verifying your wallet session…');
   const [ready,setReady]=useState(false),[settings,setSettings]=useState(false),[busy,setBusy]=useState(false),[version,setVersion]=useState(0);
   const [preference,setPreference]=useState<StorageMode|null>(null);
-  const [portfolioAccess,setPortfolioAccess]=useState({ethereum:false,solana:false});
+  const [portfolioAccess,setPortfolioAccess]=useState({cardano:true,ethereum:false,solana:false,bitcoin:false});
   useEffect(()=>{
     const control=new AbortController();
     const lock=()=>{control.abort();setStake('');setError('Your wallet session has ended. Close Portfolio and reconnect in the members area.');};
     window.addEventListener('tdsp:portfolio-session-expired',lock);
     portfolioFetch('/session',{signal:control.signal}).then(async r=>{
       if(!r.ok)throw new Error(r.status===404?'The TDSP backend needs the portfolio update before this tool can load.':'Connect your wallet in the members area first.');
-      const data=await r.json() as {stake_address?:string;portfolio_access?:{ethereum?:boolean;solana?:boolean}};
+      const data=await r.json() as {stake_address?:string;portfolio_access?:{cardano?:boolean;ethereum?:boolean;solana?:boolean;bitcoin?:boolean}};
       if(!data.stake_address||!validStakeAddress(data.stake_address))throw new Error('No mainnet stake address was returned for this member.');
       if(control.signal.aborted)return;
       const member=data.stake_address;
-      setPortfolioAccess({ethereum:data.portfolio_access?.ethereum===true,solana:data.portfolio_access?.solana===true});
+      setPortfolioAccess({cardano:data.portfolio_access?.cardano!==false,ethereum:data.portfolio_access?.ethereum===true,solana:data.portfolio_access?.solana===true,bitcoin:data.portfolio_access?.bitcoin===true});
       const saved=savedStorage(member);
       setStake(member);setPreference(saved);setError('');
       if(vaultUnlocked(member)){setReady(true);return;}
@@ -48,7 +48,7 @@ function MemberPortfolio({wallet,role}:{wallet:WalletProvider;role:'delegator'|'
         const response=await portfolioFetch('/session',{signal:control.signal});
         if(!response.ok)return;
         const data=await response.json();
-        if(!control.signal.aborted&&data.stake_address===stake)setPortfolioAccess({ethereum:data.portfolio_access?.ethereum===true,solana:data.portfolio_access?.solana===true});
+        if(!control.signal.aborted&&data.stake_address===stake)setPortfolioAccess({cardano:data.portfolio_access?.cardano!==false,ethereum:data.portfolio_access?.ethereum===true,solana:data.portfolio_access?.solana===true,bitcoin:data.portfolio_access?.bitcoin===true});
       }catch{/* Backend authorization remains authoritative during transient failures. */}finally{pending=false;}
     },60000);
     return()=>{clearInterval(timer);control.abort();};
@@ -60,10 +60,11 @@ function MemberPortfolio({wallet,role}:{wallet:WalletProvider;role:'delegator'|'
   if(!stake)return <main className="member-portfolio"><div className="portfolio-body"><h1>Member portfolio</h1><p role="status">{error}</p></div></main>;
   const mode=ready?storageMode():preference;
   const modeLabel=mode==='remote'?'Encrypted remote':'Local browser';
+  const hasNetwork=role==='admin'||Object.values(portfolioAccess).some(Boolean);
   return <><section className="member-portfolio"><div className="portfolio-body">{ready||preference?<>
     <div className="section-heading"><button type="button" className="governance-vote-secondary" title="Change Portfolio storage" aria-label={`Portfolio storage: ${modeLabel}. Change storage`} disabled={busy} onClick={()=>setSettings(true)}>{mode==='remote'?<Cloud size={16}/>:<HardDrive size={16}/>} {modeLabel}{!ready?' · Locked':''}</button></div>
     {!ready&&!settings&&<WalletConnectBox prompt="Review and approve the wallet message to unlock your encrypted Portfolio cache. This is separate from dashboard sign-in. Never share the signature. No transaction or network fee is created.">{!busy&&<div role="status" aria-live="polite"><p>{error||'Unlock Portfolio to continue.'}</p></div>}{!busy&&<button type="button" className="governance-vote-primary" onClick={()=>void apply(mode||'local',false)}>Unlock Portfolio</button>}</WalletConnectBox>}
-    </>:choice}</div></section>{ready&&!busy&&<Home key={`${stake}:${version}`} memberStake={stake} role={role} portfolioAccess={portfolioAccess}/>} {(ready||preference)&&settings&&<AssetOverlay id="portfolio-storage-overlay" name="Portfolio storage" onClose={()=>{if(!busy)setSettings(false);}}>{choice}</AssetOverlay>}</>;
+    </>:choice}</div></section>{ready&&!busy&&(hasNetwork?<Home key={`${stake}:${version}:${Object.values(portfolioAccess).join(':')}`} memberStake={stake} role={role} portfolioAccess={portfolioAccess}/>:<main className="member-portfolio"><div className="portfolio-body"><p role="status">No Portfolio networks are enabled for this account.</p></div></main>)} {(ready||preference)&&settings&&<AssetOverlay id="portfolio-storage-overlay" name="Portfolio storage" onClose={()=>{if(!busy)setSettings(false);}}>{choice}</AssetOverlay>}</>;
 }
 let portfolioInstance:{role:string;content:HTMLElement;destroy:()=>void}|null=null;
 export function mountPortfolio(container:HTMLElement,{role='delegator',getWallet=()=>null}:{role?:'delegator'|'admin';getWallet?:WalletProvider}={}){

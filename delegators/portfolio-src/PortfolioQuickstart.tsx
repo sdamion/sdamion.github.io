@@ -12,7 +12,7 @@ const steps=[
 const keyFor=(stake:string)=>`tdsp-portfolio-setup-v1:${stake}`;
 function completed(stake:string){try{return localStorage.getItem(keyFor(stake))==='done';}catch{return false;}}
 
-export function PortfolioQuickstart({stake,wallets,exchanges,swap}:{stake:string;wallets?:ReactNode;exchanges?:ReactNode;swap?:ReactNode}){
+export function PortfolioQuickstart({stake,cardano=true,wallets,exchanges,swap}:{stake:string;cardano?:boolean;wallets?:ReactNode;exchanges?:ReactNode;swap?:ReactNode}){
   const anchor=useRef<HTMLSpanElement>(null);
   const dismissed=useRef(false);
   const [open,setOpen]=useState(false),[step,setStep]=useState(0),[,setLanguage]=useState(0);
@@ -35,19 +35,20 @@ export function PortfolioQuickstart({stake,wallets,exchanges,swap}:{stake:string
     try{localStorage.setItem(keyFor(stake),'done');}catch{/* Keep dismissal for this session when storage is unavailable. */}
   };
   const t=(text:string)=>(window as unknown as {TDSPI18n?:{translateText:(value:string)=>string}}).TDSPI18n?.translateText(text)||text;
+  const shownSteps=cardano?steps:steps.slice(1),currentStep=Math.min(step,shownSteps.length-1),originalStep=cardano?currentStep:currentStep+1;
   return <><span ref={anchor} hidden/>{open&&<AssetOverlay id="portfolio-quickstart-overlay" name="Portfolio setup" onClose={close}>
     <section className="portfolio-section governance-markdown">
       <div translate="no">
-      <p className="small muted" aria-live="polite">{step+1} / {steps.length}</p>
-      <h2>{t(steps[step][0])}</h2>
-      <p>{t(steps[step][1])}</p>
+      <p className="small muted" aria-live="polite">{currentStep+1} / {shownSteps.length}</p>
+      <h2>{t(shownSteps[currentStep][0])}</h2>
+      <p>{t(shownSteps[currentStep][1])}</p>
       </div>
-      {step===1?wallets:step===2?exchanges:step===3?swap:null}
+      {originalStep===1?wallets:originalStep===2?exchanges:originalStep===3?swap:null}
       <div translate="no">
       <div className="section-heading">
         <button type="button" className="governance-vote-secondary" onClick={close}>{t('Skip setup')}</button>
         {step>0&&<button type="button" className="governance-vote-secondary" onClick={()=>setStep(value=>value-1)}>{t('Back')}</button>}
-        <button type="button" className="governance-vote-primary" onClick={()=>step===steps.length-1?close():setStep(value=>value+1)}>{t(step===steps.length-1?'Open Portfolio':'Next')}</button>
+        <button type="button" className="governance-vote-primary" onClick={()=>currentStep===shownSteps.length-1?close():setStep(value=>value+1)}>{t(currentStep===shownSteps.length-1?'Open Portfolio':'Next')}</button>
       </div>
       </div>
     </section>

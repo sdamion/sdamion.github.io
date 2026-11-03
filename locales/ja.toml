@@ -1514,6 +1514,7 @@ portfolio_text_services_source_help = "このアドレスからの受取は購�
 portfolio_text_services_proceeds = "マイニング / サービス収益"
 portfolio_text_services_receipt = "マイニング / サービスの受取"
 portfolio_access = "ポートフォリオへのアクセス"
+portfolio_no_networks = "このアカウントではポートフォリオのネットワークが有効になっていません。"
 portfolio_access_backend = "ポートフォリオへのアクセスにはバックエンドの更新が必要です。"
 portfolio_access_saving = "ポートフォリオへのアクセスを保存中..."
 portfolio_access_saved = "ポートフォリオへのアクセスを保存しました。"

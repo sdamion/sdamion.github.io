@@ -11,7 +11,7 @@ const bundle=await build({stdin:{resolveDir:source,loader:'tsx',contents:`import
  for(const [chain,enabled,wallets]of [['ethereum','ready',`[{address:'${eth}',name:'ETH One'},{address:'${eth2}',name:'ETH Two'}]`],['solana','enabled',`[{address:'${sol}',name:'SOL Wallet'}]`],['bitcoin','enabled',`[{address:'${btc}',name:'BTC Wallet'}]`]]){
   build.onLoad({filter:new RegExp('/use-'+chain+'\\.ts$')},()=>({loader:'ts',contents:`import {emptyDownloadProgress} from './download-progress';const wallets=${wallets};const allWallets=[...wallets${chain==='ethereum'?`,{address:'${swap}',name:'Swap',group:'swap'}`:''}];const empty={accounts:{},history:{},usd:null,updated:null};export function use${chain[0].toUpperCase()+chain.slice(1)}(stake,${enabled}){return {wallets:${enabled}?wallets:[],allWallets,swapWallets:[],exchanges:[],data:${enabled}?window.chainData.${chain}:empty,loaded:true,busy:false,error:'',status:'',downloadProgress:emptyDownloadProgress(),refresh:async()=>{},saveWallets:()=>true,saveExchanges:()=>true};}`}));
  }
- build.onLoad({filter:/\/App\.tsx$/},async args=>({loader:'tsx',contents:(await readFile(args.path,'utf8')).replace('useState<Snapshot|null>(null)','useState<Snapshot|null>(window.fixture)').replace('setSnapshot(null);setError','setError').replace('async function refresh(fullScan=false){','async function refresh(fullScan=false){setInitialising(false);setStatus("Ready");return;')}));
+ build.onLoad({filter:/\/App\.tsx$/},async args=>({loader:'tsx',contents:(await readFile(args.path,'utf8')).replace('useState<Snapshot|null>(null)','useState<Snapshot|null>(window.fixture)').replace('setSnapshot(canCardano?null:disabledCardanoSnapshot());setError','setError').replace('async function refresh(fullScan=false){','async function refresh(fullScan=false){setInitialising(false);setStatus("Ready");return;')}));
 }}]});
 const browser=await chromium.launch({channel:'chrome',headless:true});
 try{
@@ -46,6 +46,14 @@ try{
  },{eth,eth2,sol,btc,stake});
  await page.addScriptTag({type:'module',content:bundle.outputFiles[0].text});
  const assets=page.getByRole('button',{name:'Open Assets',exact:true});await assets.waitFor();assert.equal(requests.length,0);
+ await assets.click();await page.getByRole('button',{name:'Open FTs',exact:true}).click();
+ const ftTable=page.locator('#portfolio-holdings-overlay');
+ const foreignFt=ftTable.locator('tr').filter({hasText:'Shared ETH Token'});await foreignFt.waitFor();
+ await foreignFt.getByText('Set current price').click();
+ await foreignFt.getByLabel('Current USD price for Shared ETH Token').fill('2');
+ assert.match(await foreignFt.innerText(),/4\.46/,'a manual quote values the exact 2.23-token balance');
+ assert.equal(await page.evaluate(eth=>window.readInventory()['ethereum:'+eth].assets[0].raw,eth),'1230000','valuation never edits provider balance');
+ await ftTable.getByRole('button',{name:'Back',exact:true}).click();await ftTable.getByRole('button',{name:'Back',exact:true}).click();
  async function open(){await assets.click();await page.getByRole('button',{name:'Open NFTs',exact:true}).click();}
  await open();const gallery=page.locator('#portfolio-holdings-overlay');
  await gallery.getByText('BTC BRC20',{exact:true}).waitFor();await gallery.getByText('Owned Ordinal',{exact:true}).waitFor();await gallery.getByText('SOL Artwork',{exact:true}).waitFor();

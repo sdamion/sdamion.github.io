@@ -19,17 +19,23 @@ try{
  const authorizedRequest=async(url,options)=>{const body=JSON.parse(options.body);window.calls.push({url,method:options.method,body});if(window.failSave)throw new Error('Save failed');return body;};
  ${render}
  window.payload={capabilities:{portfolio_access:true},portfolio_delegators:[
-  {stake_address:'stake1'+'q'.repeat(53),ada_handle:'$alice',ethereum:false,solana:false},
-  {stake_address:'stake1'+'r'.repeat(53),ada_handle:'$bob',ethereum:false,solana:true}
+  {stake_address:'stake1'+'q'.repeat(53),ada_handle:'$alice',cardano:true,ethereum:false,solana:false,bitcoin:false},
+  {stake_address:'stake1'+'r'.repeat(53),ada_handle:'$bob',ethereum:false,solana:true,bitcoin:false}
  ]};renderPortfolioAccess(window.payload);`});
+ const aliceAda=page.getByRole('checkbox',{name:'ADA: $alice',exact:true});
  const aliceEth=page.getByRole('checkbox',{name:'ETH: $alice',exact:true});
  const aliceSol=page.getByRole('checkbox',{name:'SOL: $alice',exact:true});
+ const aliceBtc=page.getByRole('checkbox',{name:'BTC: $alice',exact:true});
+ assert.equal(await aliceAda.isChecked(),true,'Cardano starts enabled');
+ assert.equal(await page.getByRole('checkbox',{name:'ADA: $bob',exact:true}).isChecked(),true,'legacy grants default Cardano to enabled');
  await aliceEth.check();
  await page.getByRole('status').filter({hasText:'Portfolio access saved.'}).waitFor();
  assert.equal(await aliceEth.isChecked(),true);assert.equal(await aliceSol.isChecked(),false);
  assert.equal(await page.getByRole('checkbox',{name:'SOL: $bob',exact:true}).isChecked(),true);
  const saved=await page.evaluate(()=>window.calls[0]);
- assert.equal(saved.method,'PUT');assert.equal(saved.body.ethereum,true);assert.equal(saved.body.solana,false);
+ assert.equal(saved.method,'PUT');assert.equal(saved.body.cardano,true);assert.equal(saved.body.ethereum,true);assert.equal(saved.body.solana,false);assert.equal(saved.body.bitcoin,false);
+ await aliceAda.uncheck();await aliceBtc.check();
+ assert.equal(await aliceAda.isChecked(),false);assert.equal(await aliceBtc.isChecked(),true);
  await aliceEth.uncheck();assert.equal(await aliceEth.isChecked(),false);
  await page.evaluate(()=>window.failSave=true);
  await aliceSol.click();
@@ -42,5 +48,5 @@ try{
  }
  await page.evaluate(()=>renderPortfolioAccess({...window.payload,capabilities:{}}));
  assert.equal(await page.getByRole('checkbox').first().isDisabled(),true,'old backends fail closed');
- console.log('PASS: independent per-delegator ETH/SOL switches, saves, revocation, rollback and responsive layout.');
+ console.log('PASS: independent per-delegator ADA/ETH/SOL/BTC switches, saves, revocation, rollback and responsive layout.');
 }finally{await browser.close();}
