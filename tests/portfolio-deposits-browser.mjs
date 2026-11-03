@@ -115,8 +115,8 @@ try{
  const beforeRole=requests.length;await page.evaluate(()=>window.reopen('delegator'));await page.getByRole('button',{name:'Open Transactions',exact:true}).click();
  await transactions.getByText('123.456789 ADA',{exact:true}).first().waitFor();assert.equal(await transactions.locator('tbody tr').count(),2,'native deposit history remains access-gated');
  assert.equal(requests.slice(beforeRole).some(request=>request.network!=='cardano'),false,'revoked native access never scans cached watched addresses');
- await page.evaluate(()=>window.reopen());await page.getByRole('button',{name:'Portfolio not syncing. Refresh Portfolio',exact:true}).waitFor();await openAddresses();
+ await page.evaluate(()=>window.reopen());await page.getByRole('button',{name:'Portfolio not syncing. Refresh Portfolio',exact:true}).waitFor();await page.getByRole('button',{name:'Open Wallets',exact:true}).click();await page.getByRole('button',{name:'Open My Wallets',exact:true}).click();
  for(const network of Object.keys(addresses)){await page.getByRole('button',{name:'Actions for '+network+' deposit',exact:true}).click();await page.getByRole('menuitem',{name:'Stop tracking deposits',exact:true}).click();}
- await closeAddresses();await page.getByRole('button',{name:'Open Transactions',exact:true}).click();assert.equal(await transactions.locator('tbody tr').count(),0);
+ await page.locator('#portfolio-wallet-menu-wallets').getByRole('button',{name:'Back',exact:true}).click();await page.locator('#portfolio-wallets-overlay').getByRole('button',{name:'Back',exact:true}).click();await page.getByRole('button',{name:'Open Transactions',exact:true}).click();assert.equal(await transactions.locator('tbody tr').count(),0);
  assert.deepEqual(errors,[]);console.log('PASS: all four chains opt in through the shared CEX menu, discover external deposits without owned wallets, retain exact amounts/fees and cached history, hide sweeps, filter IN/OUT and stop tracking.');
 }finally{await browser.close();}

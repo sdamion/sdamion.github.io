@@ -34,3 +34,16 @@ test('owned and Swap rows have no role conversion actions; ETH source changes st
   assert.equal(nativeAddressRows(book,true)[0].onType,undefined);assert.equal(nativeAddressRows(book).find(row=>row.kind==='Swap')!.onType,undefined);
   nativeAddressRows(book)[0].onType!('svc');assert.equal(book.exchanges[0].deposit,false);assert.equal(book.exchanges[0].miner,true);assert.equal(book.exchanges[0].sourceType,'svc');
 });
+test('existing personal exchange targets can move to owned wallets with one shared role model',()=>{
+  const address='0x'+'1'.repeat(40);
+  const book:NativeAddressBook={network:'ethereum',enabled:true,wallets:[],exchanges:[{address,name:'My deposit',dex:true,deposit:true,in:true,out:false}],balance:()=> '1000000000000000000',usd:100,
+    saveWallets:rows=>{book.wallets=ethereumWallets(rows);return true;},saveExchanges:rows=>{book.exchanges=ethereumWallets(rows);return true;}};
+  const saved=nativeAddressRows(book)[0];
+  assert.equal(saved.onMakeOwn!(),true);
+  assert.equal(book.exchanges.length,0);
+  const owned=nativeAddressRows(book,true)[0];
+  assert.equal(owned.name,'My deposit');assert.equal(owned.kind,'Personal DEX wallet');
+  assert.equal(owned.balance?.raw,'1000000000000000000');
+  assert.equal(owned.onPersonalType!(undefined),true);
+  assert.equal(nativeAddressRows(book,true)[0].kind,undefined);
+});

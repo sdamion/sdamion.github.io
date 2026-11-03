@@ -5,6 +5,11 @@ import path from 'node:path';
 const require=createRequire(new URL('../delegators/portfolio-src/package.json',import.meta.url));
 const {build}=require('esbuild');
 const {chromium}=await import(process.argv[2]);
+for(const language of ['nl','ja','es']){
+ const catalog=await readFile(`locales/${language}.toml`,'utf8');
+ for(const key of ['portfolio_setup_wallet_help','portfolio_setup_exchange','portfolio_setup_exchange_help','portfolio_setup_swap_help','portfolio_setup_review','portfolio_setup_review_help'])
+  assert.match(catalog,new RegExp(`^${key} = ".+"$`,'m'),`${language}: ${key}`);
+}
 const bundle=await build({stdin:{contents:`
 import {createRoot} from 'react-dom/client';
 import {useEffect,useState} from 'react';
@@ -44,6 +49,7 @@ try{
  }
  await guide.getByRole('button',{name:'Next',exact:true}).click();
  await guide.getByRole('heading',{name:'Add your own wallets'}).waitFor();
+ assert.match(await guide.innerText(),/personal DEX or CEX wallets/);
  await guide.getByRole('button',{name:'Back',exact:true}).click();
  await guide.getByRole('heading',{name:'Your member wallet'}).waitFor();
  await page.evaluate(()=>window.dispatchEvent(new Event('tdsp:portfolio-hidden')));
@@ -52,6 +58,8 @@ try{
  await page.evaluate(()=>window.dispatchEvent(new Event('tdsp:portfolio-shown')));
  await guide.waitFor();
  for(let i=0;i<2;i++)await guide.getByRole('button',{name:'Next',exact:true}).click();
+ await guide.getByRole('heading',{name:'Mark IN senders and OUT destinations'}).waitFor();
+ assert.match(await guide.innerText(),/IN sender, OUT destination, or both/);
  await guide.getByLabel('Exchange name',{exact:true}).fill('Test exchange');
  const stake='stake1uxythldc4nmx45tvnwsqu4h5pyjd94udytm6f0tgnr44vecjd8vel';
  await guide.getByLabel('Payment, stake or Byron address',{exact:true}).fill(stake);
@@ -66,6 +74,9 @@ try{
  await guide.getByRole('button',{name:'Add',exact:true}).click();
  await guide.getByRole('link').waitFor();
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+ await guide.getByRole('button',{name:'Next',exact:true}).click();
+ await guide.getByRole('heading',{name:'Review your results'}).waitFor();
+ assert.match(await guide.innerText(),/ADA, BTC, ETH and SOL/);
  await guide.getByRole('button',{name:'Open Portfolio',exact:true}).click();
  await guide.waitFor({state:'detached'});
  assert.equal(await page.evaluate(()=>localStorage.getItem('tdsp-portfolio-setup-v1:test-member')),'done');
@@ -93,5 +104,5 @@ try{
  await guide.getByRole('button',{name:'Skip setup'}).click();
  await guide.waitFor({state:'detached'});
  assert.equal(await page.evaluate(()=>localStorage.getItem('tdsp-portfolio-setup-v1:test-member')),'done');
- console.log('PASS: four steps, back, skip, persistence, background updates, hide/show and mobile width');
+ console.log('PASS: five translated onboarding steps, back, skip, persistence, background updates, hide/show and mobile width');
 }finally{await browser.close();}

@@ -4,9 +4,10 @@ import {AssetOverlay} from './AssetOverlay';
 
 const steps=[
   ['Your member wallet','Your delegated stake key is included automatically. Its linked addresses, balances and transactions load in the background while you read this guide.'],
-  ['Add your own wallets','Add a stake key or payment address you own to include its balances and transactions. A stake key includes its linked addresses. Your member stake key is already included.'],
-  ['Add exchange addresses','Add known DEX / CEX payment addresses or stake keys to identify ADA transfers to and from exchanges. These use your buy/sell rule, not DEX trade decoding. Do not add your own wallets here.'],
-  ['Add Swap addresses','Add your internal Swap payment addresses or stake keys so their transfers are excluded from DEX / CEX totals. Shared service balances are not counted as yours. All additional addresses are optional and can be changed later in Wallets.']
+  ['Add your own wallets','In My Wallets, add addresses you control, including personal DEX or CEX wallets. Choose the wallet type; their on-chain balances and transactions count as yours. A stake key includes linked payment addresses. Never mark a shared exchange address as your wallet.'],
+  ['Mark IN senders and OUT destinations','In DEX / CEX & Swap, save external addresses and mark each as an IN sender, OUT destination, or both. IN requires a transfer to one of your personal wallets. OUT requires a transfer from a personal wallet to an address you marked OUT, even when the sending wallet is your personal DEX/CEX wallet.'],
+  ['Add Swap addresses','Keep Swap addresses separate from your personal wallets and IN/OUT counterparties. Internal transfers are excluded from exchange totals. You can change existing address roles later in Wallets; only move an exchange deposit to My Wallets if you control its balance.'],
+  ['Review your results','Check Transactions and CEX Transactions after the scan. The same IN/OUT rules apply to ADA, BTC, ETH and SOL. Incomplete or ambiguous transfers stay unverified; blockchain amounts and fees are never changed. EUR/USD values are estimates, not proof of a fiat sale.']
 ];
 const keyFor=(stake:string)=>`tdsp-portfolio-setup-v1:${stake}`;
 function completed(stake:string){try{return localStorage.getItem(keyFor(stake))==='done';}catch{return false;}}

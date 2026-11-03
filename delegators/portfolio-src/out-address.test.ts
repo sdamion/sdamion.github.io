@@ -1,10 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {isOutAddress} from './out-address.ts';
+import {isOutAddress,isInAddress} from './out-address.ts';
 import {ethereumTransfer,ethereumWallets,weiToEthText,visibleEthereumTransactions,ethereumValue,emptyEthereum,type EthereumTransaction} from './ethereum.ts';
 import {normalizeCexAddresses,cexAdaTransfer} from './cex.ts';
 import {solanaTransfers,nativeWallets} from './solana.ts';
 import {bitcoinTransfer,bitcoinWallets} from './bitcoin.ts';
+import {memberWallets} from './member.ts';
+import {bech32} from '@scure/base';
 const own='0x'+'a'.repeat(40),target='0x'+'b'.repeat(40),pool='0x'+'c'.repeat(40),wallet={address:own,name:'Own'},address={address:target,name:'My chosen destination'};
 const eth: EthereumTransaction={id:'0x'+'1'.repeat(64)+':normal',hash:'0x'+'1'.repeat(64),kind:'normal',block:1,time:1700000000,from:own,to:target,valueWei:'1234567890123456789',feeWei:'123456789123456',failed:false};
 test('OUT is an address choice, independent of its name, and never edits ETH blockchain values',()=>{
@@ -34,4 +36,31 @@ test('personal ETH deposits preserve provider data, deduplicate transfers and ex
   const data={...emptyEthereum(),usd:1000,accounts:{[own]:{balanceWei:'1000000000000000000',block:1,transactions:[eth]},[target]:{balanceWei:'99000000000000000000',block:1,transactions:[receipt,eth,sweep]}}};
   const before=JSON.stringify(data),dest={...address,deposit:true,out:true};
   assert.equal(visibleEthereumTransactions(data,[wallet],[dest]).length,2);assert.equal(visibleEthereumTransactions(data,[wallet],[{...dest,deposit:false}]).length,1);assert.equal(ethereumValue(data,[wallet]),1000);assert.equal(JSON.stringify(data),before);
+});
+test('one saved IN-only sender and OUT-only destination classify direction consistently without changing chain values',()=>{
+  const incoming={...address,in:true,out:false},outgoing={...address,in:false,out:true},original=JSON.stringify(eth);
+  assert.equal(isInAddress(incoming),true);assert.equal(isOutAddress(incoming),false);
+  assert.equal(isInAddress(outgoing),false);assert.equal(isOutAddress(outgoing),true);
+  assert.equal(ethereumTransfer({...eth,from:target,to:own},[wallet],[incoming])?.side,'buy');
+  assert.equal(ethereumTransfer({...eth,from:target,to:own},[wallet],[outgoing]),null);
+  assert.equal(ethereumTransfer(eth,[wallet],[outgoing])?.side,'sell');
+  assert.equal(ethereumTransfer(eth,[wallet],[incoming]),null);
+  const cardano={hash:'ada-in',time:1700000000,adaRaw:'1000000',feeRaw:'0',assets:{},decimals:{},wallets:[],swapCandidate:false,internal:false,externalInputs:[{address:'addr1cex',lovelace:'1000000'}],externalOutputs:[]};
+  assert.equal(cexAdaTransfer(cardano,[{address:'addr1cex',name:'Sender',in:true,out:false}])?.side,'buy');
+  assert.equal(cexAdaTransfer(cardano,[{address:'addr1cex',name:'Sender',in:false,out:true}]),null);
+  const solTx={hash:'sol',time:1700000000,slot:1,payer:own,feeRaw:'1',failed:false,transfers:[{from:target,to:own,raw:'100'}]};
+  const sol={accounts:{[own]:{raw:'0',slot:1,checkpoint:null,transactions:[solTx]}},history:{},usd:null};
+  assert.equal(solanaTransfers(sol,[wallet],[incoming]).length,1);
+  assert.equal(solanaTransfers(sol,[wallet],[outgoing]).length,0);
+  const btcTx={hash:'b'.repeat(64),height:1,time:1700000000,feeRaw:'1',inputs:[{address:target,raw:'101'}],outputs:[{address:own,raw:'100'}]};
+  assert.equal(bitcoinTransfer(btcTx,[wallet],[incoming])?.side,'buy');
+  assert.equal(bitcoinTransfer(btcTx,[wallet],[outgoing]),null);
+  assert.equal(JSON.stringify(eth),original);
+});
+test('personal wallet type survives encrypted-settings normalization while unknown roles are ignored',()=>{
+  const stake='stake1uxythldc4nmx45tvnwsqu4h5pyjd94udytm6f0tgnr44vecjd8vel';
+  const payment=bech32.encode('addr',bech32.toWords(Uint8Array.from([1,...Array(56).fill(1)])),1023);
+  assert.equal(memberWallets(stake,[{address:payment,label:'Personal',personalType:'cex'}])[1]?.personalType,'cex');
+  assert.equal(ethereumWallets([{...address,personalType:'dex'}])[0]?.personalType,'dex');
+  assert.equal(ethereumWallets([{...address,personalType:'unknown'}])[0]?.personalType,undefined);
 });

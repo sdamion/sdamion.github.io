@@ -25,7 +25,7 @@ test('portfolio sections use separate shared overlays and the universal tile ren
     assert.ok(app.includes(`section==='${section}'&&<AssetOverlay id="portfolio-${section}-overlay"`));
     assert.ok(app.includes(`setSection('${section}')`));
   }
-  assert.match(app,/id=\{section==='gain-loss'\?'portfolio-gain-loss-overlay':'portfolio-transactions-overlay'\}/);
+  assert.match(app,/id=\{section==='gain-loss'\?'portfolio-gain-loss-overlay':section==='review'\?'portfolio-review-overlay':'portfolio-transactions-overlay'\}/);
   assert.match(source('ui.tsx'),/TDSPRuntime.appendUniversalTileContent\(button/);
   assert.match(source('ui.tsx'),/role="button" tabIndex=\{0\}/);
   assert.match(source('ui.tsx'),/onKeyDown=/);
@@ -45,7 +45,7 @@ test('remote checkpoint messages are hidden without disabling persistence',()=>{
 test('CEX metric opens its shared transaction overlay without stale search or pagination',()=>{
   const app=source('App.tsx');
   assert.match(app,/<Metric label="CEX Transactions"[^\n]*onOpen=\{\(\)=>\{setQuery\(''\);setFilter\('all'\);setPage\(0\);setSection\('gain-loss'\);\}\}/);
-  assert.match(app,/name=\{section==='gain-loss'\?'CEX Transactions':'Transactions'\}/);
+  assert.match(app,/name=\{section==='gain-loss'\?'CEX Transactions':section==='review'\?'Needs review':'Transactions'\}/);
   const tile=app.split('\n').find(line=>line.includes('<Metric label="CEX Transactions"'));
   assert.match(tile,/note=\{portfolioPartial\|\|availableCex\.partial/);
   assert.doesNotMatch(tile,/breakdown=|Bought|Sold/);
@@ -111,11 +111,13 @@ test('Wallets uses shared section tiles and nested address overlays',()=>{
   assert.match(wallets,/name="Wallets"/);
   assert.match(wallets,/<WalletMenu/);
   const menu=source('WalletMenu.tsx');
-  for(const title of ['My Wallets','DEX / CEX & Swap','Byron DEX / CEX'])assert.ok(menu.includes(title));
+  for(const title of ['My Wallets','DEX / CEX & Swap'])assert.ok(menu.includes(title));
   assert.match(menu,/<MenuTile/);
   assert.match(menu,/<AssetOverlay/);
   assert.match(menu,/onClose=\{\(\)=>setSection\(null\)\}/);
-  assert.match(wallets,/<CexAddresses[^\n]*swap=\{\{wallets/);
+  assert.match(wallets,/<AddressList owned rows=\{\[\.\.\.ownAddressRows,\.\.\.legacyPersonalRows\]\}/);
+  assert.match(wallets,/<AddressList rows=\{counterpartyRows\}/);
+  assert.match(wallets,/<ByronExchanges/);
 });
 test('Assets opens holdings without a duplicate navigation tile',()=>{
   const app=source('App.tsx');

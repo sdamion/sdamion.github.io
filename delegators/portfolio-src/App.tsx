@@ -545,22 +545,24 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
     {network:'solana',enabled:canSolana,wallets:solana.wallets,exchanges:solana.exchanges,saveWallets:solana.saveWallets,saveExchanges:solana.saveExchanges,balance:address=>solana.data.accounts[address]?.raw,usd:solana.data.usd},
     {network:'bitcoin',enabled:isAdmin,wallets:bitcoin.wallets,exchanges:bitcoin.exchanges,saveWallets:bitcoin.saveWallets,saveExchanges:bitcoin.saveExchanges,balance:address=>bitcoin.data.accounts[address]?.raw,usd:bitcoin.data.usd}
   ];
-  function addAddress(counterparty:boolean,network:AddressNetwork,kind:'exchange'|'swap'|'dex',name:string,address:string,out?:boolean){
-    if(network!=='cardano')return addNativeAddress(nativeAddressBooks.find(book=>book.network===network)!,counterparty,kind,name,address,out);
+  function addAddress(counterparty:boolean,network:AddressNetwork,kind:'exchange'|'swap'|'dex',name:string,address:string,out?:boolean,incoming?:boolean,personalType?:'dex'|'cex'){
+    if(network!=='cardano')return addNativeAddress(nativeAddressBooks.find(book=>book.network===network)!,counterparty,kind,name,address,out,incoming,personalType);
     if(counterparty){
       if(ownedAddresses.includes(address))throw new Error('This address belongs to a wallet in your portfolio.');
       if(cexAddresses.some(row=>row.address===address)||wallets.some(row=>row.address===address))throw new Error('This address is already saved.');
-      return kind==='swap'?saveWallets(addSwapWallet(wallets,address,name)):saveCexAddresses([...cexAddresses,{address,name,dex:kind==='dex',...(typeof out==='boolean'?{out}:{})}]);
+      return kind==='swap'?saveWallets(addSwapWallet(wallets,address,name)):saveCexAddresses([...cexAddresses,{address,name,dex:kind==='dex',...(typeof out==='boolean'?{out}:{}),...(typeof incoming==='boolean'?{in:incoming}:{})}]);
     }
     if(wallets.some(row=>row.address===address)||ownedAddresses.includes(address))throw new Error('This address is already included.');
-    return saveWallets([...wallets,{address,label:name}]);
+    return saveWallets([...wallets,{address,label:name,...(personalType?{personalType}:{})}]);
   }
   const walletForm=<CryptoAddressForm id="portfolio-wallet" ethereum={canEthereum} solana={canSolana} bitcoin={isAdmin} onAdd={(...args)=>addAddress(false,...args)}/>;
   const exchangeForm=<CryptoAddressForm id="portfolio-exchange" counterparty ethereum={canEthereum} solana={canSolana} bitcoin={isAdmin} onAdd={(...args)=>addAddress(true,...args)}/>;
   const ethSwapWallets=ethereum.swapWallets,ethOwnWallets=ethereum.wallets;
   const cardanoAddressBook:CardanoAddressBook={wallets,exchanges:cexAddresses,snapshot,memberStake,busy,usd:currentAdaUsd,saveWallets,saveExchanges:saveCexAddresses,onView:setWalletDetails};
   const ownAddressRows:AddressListRow[]=[...cardanoAddressRows(cardanoAddressBook,true),...nativeAddressBooks.flatMap(book=>nativeAddressRows(book,true))];
-  const counterpartyRows:AddressListRow[]=[...cardanoAddressRows(cardanoAddressBook),...nativeAddressBooks.flatMap(book=>nativeAddressRows(book))];
+  const allCounterpartyRows:AddressListRow[]=[...cardanoAddressRows(cardanoAddressBook),...nativeAddressBooks.flatMap(book=>nativeAddressRows(book))];
+  const legacyPersonalRows=allCounterpartyRows.filter(row=>row.deposit===true);
+  const counterpartyRows=allCounterpartyRows.filter(row=>row.deposit!==true);
   const swapForm=<><CryptoAddressForm id="portfolio-swap" counterparty ethereum={canEthereum} initialKind="swap" onAdd={(...args)=>addAddress(true,...args)}/><AddressList rows={counterpartyRows.filter(row=>row.kind==='Swap')}/></>;
   const detailWallet=wallets.find(wallet=>wallet.address===walletDetails&&wallet.group!=='swap');
   return <PortfolioCurrencyContext.Provider value={currencyDisplay}><main className="member-portfolio"><PortfolioQuickstart stake={memberStake} wallets={walletForm} exchanges={exchangeForm} swap={swapForm}/><div className="portfolio-body"><div className="section-heading" aria-label="Portfolio refresh">
@@ -602,10 +604,11 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
       <button type="button" className="governance-vote-secondary" disabled={busy||!ready} onClick={()=>void refresh(true)}>Rescan all wallets</button>
       <p className="small muted">Rediscover linked addresses and check full transaction history, including excluded addresses for this scan only. Saved transaction details are reused.</p>
     </div>
-    <WalletMenu counts={{wallets:(refreshCounts?.total??wallets.filter(wallet=>wallet.group!=='swap').length)+ethOwnWallets.length+solana.wallets.length+bitcoin.wallets.length,exchanges:cexAddresses.length+ethereum.exchanges.length+solana.exchanges.length+bitcoin.exchanges.length,byron:cexAddresses.filter(entry=>validByronAddress(entry.address)).length,swap:wallets.filter(wallet=>wallet.group==='swap').length+ethSwapWallets.length}}
+    <WalletMenu counts={{wallets:(refreshCounts?.total??wallets.filter(wallet=>wallet.group!=='swap').length)+ethOwnWallets.length+solana.wallets.length+bitcoin.wallets.length+legacyPersonalRows.length,exchanges:counterpartyRows.filter(row=>row.kind!=='Swap').length,swap:wallets.filter(wallet=>wallet.group==='swap').length+ethSwapWallets.length}}
     wallets={<section className="portfolio-section"><p className="small muted">Your member stake address includes its linked payment addresses. Add only wallets you own.</p>
       {walletForm}
-      <AddressList owned rows={ownAddressRows}/>
+      {legacyPersonalRows.length>0&&<p className="small muted" translate="no">{t('Previously tracked personal exchange deposits are listed here. Move an address to My Wallets only if you control it; then its on-chain balance is included.')}</p>}
+      <AddressList owned rows={[...ownAddressRows,...legacyPersonalRows]}/>
       <p className="small muted">Wallets, entered prices and history use your selected encrypted storage. Manual prices and average costs are saved per asset for your member account and retained when wallets change.</p>
       {ethereum.exchanges.length>0&&!ethereum.wallets.length&&!ethereum.exchanges.some(wallet=>wallet.deposit)&&<p translate="no" role="status" className="message">{t('Add your own Ethereum wallet to scan ETH CEX transfers. CEX addresses are counterparties, not your holdings; shared exchange balances are never counted as yours.')}</p>}
       <div className="governance-action-buttons">
@@ -615,13 +618,14 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
       </div>
     </section>}
     exchanges={<section className="portfolio-section">
-      <p className="small muted" translate="no">{t('You choose which saved addresses are OUT addresses. This changes classification only; blockchain amounts, addresses, dates and fees are never edited. EUR/USD values are estimates, not confirmed fiat conversions.')}</p>
+      <p className="small muted" translate="no">{t('Mark external senders as IN and external destinations as OUT. Transfers only count when connected to a personal wallet. Blockchain amounts and fees are unchanged; EUR/USD values are estimates.')}</p>
       {exchangeForm}
       <AddressList rows={counterpartyRows}/>
       <details><summary translate="no">{t('Known DEX contracts')}</summary><KnownDexAddresses/></details>
+      {cexAddresses.some(entry=>validByronAddress(entry.address))&&<ByronExchanges facts={cexFacts} entries={cexAddresses} owned={ownedAddresses} wallets={displayWallets} history={snapshot?.history||{}} markets={snapshot?.markets||{}} complete={snapshot?.complete===true} onChange={saveCexAddresses}/>}
       {cexAddresses.length>0&&Object.values(snapshot?.facts||{}).some(fact=>!Array.isArray(fact.externalInputs))&&<p className="small muted">Refresh to load sender and recipient stake addresses for older cached transactions.</p>}
     </section>}
-    byron={<ByronExchanges facts={cexFacts} entries={cexAddresses} owned={ownedAddresses} wallets={displayWallets} history={snapshot?.history||{}} markets={snapshot?.markets||{}} complete={snapshot?.complete===true} onChange={saveCexAddresses}/>}/>
+    />
     {detailWallet&&<WalletCard key={detailWallet.address} detailsOnly wallet={detailWallet} primary={detailWallet.address===memberStake} snapshot={snapshot} busy={busy} excluded={excludedRefresh} onExclude={setRefreshExcluded} remove={()=>{}} onRename={label=>saveWallets(wallets.map(wallet=>wallet.address===detailWallet.address?{...wallet,label}:wallet))} onClose={()=>setWalletDetails(null)}/>}
     </AssetOverlay>}
     {section==='holdings'&&<AssetOverlay id="portfolio-holdings-overlay" name={holdingsGroup||'Assets'} onClose={()=>holdingsGroup?setHoldingsGroup(null):setSection(null)}>

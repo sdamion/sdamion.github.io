@@ -45,7 +45,7 @@ export function memberWallets(stake:string,saved:unknown){
   const member=savedRows.find(w=>w?.address===stake);
   return [{address:stake,label:typeof member?.label==='string'?member.label.trim().slice(0,60)||'Member stake address':'Member stake address',...refreshSettings(member)},...[...new Map(extras.map(w=>{
     const saved=savedRows.find(row=>row?.address===w.address),links=w.group==='swap'&&Array.isArray(saved?.swapAddresses)?[...new Set<string>(saved.swapAddresses.filter((address:unknown)=>typeof address==='string'&&(validAddress(address)||validByronAddress(address))&&address!==w.address))].slice(0,200):[];
-    return [w.address,{...w,...refreshSettings(saved),...(links.length?{swapAddresses:links}:{})}];
+    return [w.address,{...w,...(saved?.personalType==='dex'||saved?.personalType==='cex'?{personalType:saved.personalType}:{}),...refreshSettings(saved),...(links.length?{swapAddresses:links}:{})}];
   })).values()]];
 }
 export function resolveWalletGroups(wallets:{address:string;group?:'swap'}[],accounts:{stake_address:string;addresses:string[]}[]){

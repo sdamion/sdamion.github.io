@@ -42,6 +42,8 @@ try{
  const original=await page.evaluate(own=>JSON.parse(window.settings.get('tdsp-member-ethereum-data:'+window.stake)).accounts[own],own);
  async function addresses(){await page.getByRole('button',{name:'Open Wallets',exact:true}).click();await page.getByRole('button',{name:'Open DEX / CEX & Swap',exact:true}).click();}
  async function closeAddresses(){await page.locator('#portfolio-wallet-menu-exchanges').getByRole('button',{name:'Back',exact:true}).click();await page.locator('#portfolio-wallets-overlay').getByRole('button',{name:'Back',exact:true}).click();}
+ async function personalAddresses(){await page.getByRole('button',{name:'Open Wallets',exact:true}).click();await page.getByRole('button',{name:'Open My Wallets',exact:true}).click();}
+ async function closePersonalAddresses(){await page.locator('#portfolio-wallet-menu-wallets').getByRole('button',{name:'Back',exact:true}).click();await page.locator('#portfolio-wallets-overlay').getByRole('button',{name:'Back',exact:true}).click();}
  await addresses();const out=page.getByRole('checkbox',{name:'OUT address: My destination',exact:true});assert.equal(await out.isChecked(),false);await out.check();
  assert.deepEqual(await page.evaluate(own=>JSON.parse(window.settings.get('tdsp-member-ethereum-data:'+window.stake)).accounts[own],own),original,'OUT selection cannot edit blockchain data');
  await page.getByRole('button',{name:'Actions for My destination',exact:true}).click();await page.getByRole('menuitem',{name:'Track deposits to this address',exact:true}).click();
@@ -50,11 +52,11 @@ try{
  await transactions.getByText('ETH OUT',{exact:true}).waitFor();await transactions.getByText('Direct CEX deposit',{exact:true}).waitFor();
  assert.equal(await transactions.locator('a[href="https://etherscan.io/tx/'+outgoing.hash+'"]').count(),1);assert.equal(await transactions.locator('a[href="https://etherscan.io/tx/'+receipt.hash+'"]').count(),1);assert.equal(await transactions.locator('a[href="https://etherscan.io/tx/'+sweep.hash+'"]').count(),0);
  assert.ok(await transactions.getByText('1.234567890123456789 ETH',{exact:true}).count()>0);assert.ok(await transactions.getByText('0.000123456789123456 ETH',{exact:true}).count()>0);assert.equal(await transactions.getByRole('button',{name:'Fiat exits',exact:true}).count(),0);
- await transactions.getByRole('button',{name:'Back',exact:true}).click();await addresses();await out.uncheck();
+ await transactions.getByRole('button',{name:'Back',exact:true}).click();await personalAddresses();await out.uncheck();
  const sourceAfter=await page.evaluate(own=>JSON.parse(window.settings.get('tdsp-member-ethereum-data:'+window.stake)).accounts[own],own);assert.deepEqual(sourceAfter,original);
- for(const width of [1200,390,320]){await page.setViewportSize({width,height:1000});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await page.locator('#portfolio-wallet-menu-exchanges').screenshot({path:'/tmp/portfolio-out-address-'+width+'.png'});}
+ for(const width of [1200,390,320]){await page.setViewportSize({width,height:1000});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await page.locator('#portfolio-wallet-menu-wallets').screenshot({path:'/tmp/portfolio-out-address-'+width+'.png'});}
  for(const file of ['shared/portfolio-i18n-keys.js','shared/portfolio-i18n.js','shared/i18n.js'])await page.addScriptTag({content:await readFile(file,'utf8')});
  for(const language of ['nl','ja','es','en']){await page.evaluate(language=>window.TDSPI18n.setLanguage(language),language);const label=await page.evaluate(()=>window.TDSPI18n.translateText('OUT address: {name}').replace('{name}','My destination'));assert.equal(await page.getByRole('checkbox',{name:label,exact:true}).isChecked(),false);}
- await closeAddresses();await page.getByRole('button',{name:'Open Transactions',exact:true}).click();assert.equal(await transactions.getByText('ETH OUT',{exact:true}).count(),0);
+ await closePersonalAddresses();await page.getByRole('button',{name:'Open Transactions',exact:true}).click();assert.equal(await transactions.getByText('ETH OUT',{exact:true}).count(),0);
  assert.deepEqual(errors,[]);console.log('PASS: user-chosen OUT addresses, opt-in deposit history, exact blockchain amounts/fees, unmodified provider balances, source-data immutability, no fiat edit fields, languages and responsive layout.');
 }finally{await browser.close();}

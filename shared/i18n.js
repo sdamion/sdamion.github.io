@@ -3,9 +3,9 @@
     const DEFAULT_LANGUAGE = 'en';
     const LANGUAGE_CONFIG = Object.freeze({
         en: { label: 'English', flag: '🇺🇸' },
-        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20261103-review-transactions' },
-        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20261103-review-transactions' },
-        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20261103-review-transactions' }
+        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20261103-onboarding' },
+        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20261103-onboarding' },
+        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20261103-onboarding' }
     });
     const TRANSLATION_ATTR = 'data-i18n';
     const TRANSLATION_ORIGINAL_ATTR = 'data-i18n-original';
@@ -76,11 +76,13 @@
         ['Portfolio setup', 'portfolio_setup'],
         ['Skip setup', 'portfolio_setup_skip'],
         ['DEX / CEX & Swap', 'portfolio_setup_exchange_swap'],
-        ['Add exchange addresses', 'portfolio_setup_exchange'],
+        ['Mark IN senders and OUT destinations', 'portfolio_setup_exchange'],
         ['Add Swap addresses', 'portfolio_setup_swap'],
-        ['Add a stake key or payment address you own to include its balances and transactions. A stake key includes its linked addresses. Your member stake key is already included.', 'portfolio_setup_wallet_help'],
-        ['Add known DEX / CEX payment addresses or stake keys to identify ADA transfers to and from exchanges. These use your buy/sell rule, not DEX trade decoding. Do not add your own wallets here.', 'portfolio_setup_exchange_help'],
-        ['Add your internal Swap payment addresses or stake keys so their transfers are excluded from DEX / CEX totals. Shared service balances are not counted as yours. All additional addresses are optional and can be changed later in Cardano Wallets.', 'portfolio_setup_swap_help'],
+        ['In My Wallets, add addresses you control, including personal DEX or CEX wallets. Choose the wallet type; their on-chain balances and transactions count as yours. A stake key includes linked payment addresses. Never mark a shared exchange address as your wallet.', 'portfolio_setup_wallet_help'],
+        ['In DEX / CEX & Swap, save external addresses and mark each as an IN sender, OUT destination, or both. IN requires a transfer to one of your personal wallets. OUT requires a transfer from a personal wallet to an address you marked OUT, even when the sending wallet is your personal DEX/CEX wallet.', 'portfolio_setup_exchange_help'],
+        ['Keep Swap addresses separate from your personal wallets and IN/OUT counterparties. Internal transfers are excluded from exchange totals. You can change existing address roles later in Wallets; only move an exchange deposit to My Wallets if you control its balance.', 'portfolio_setup_swap_help'],
+        ['Review your results', 'portfolio_setup_review'],
+        ['Check Transactions and CEX Transactions after the scan. The same IN/OUT rules apply to ADA, BTC, ETH and SOL. Incomplete or ambiguous transfers stay unverified; blockchain amounts and fees are never changed. EUR/USD values are estimates, not proof of a fiat sale.', 'portfolio_setup_review_help'],
         ["Portfolio quickstart", 'portfolio_quickstart'],
         ["Next", 'portfolio_quickstart_next'],
         ["Back", 'portfolio_quickstart_back'],

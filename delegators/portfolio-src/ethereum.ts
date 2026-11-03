@@ -1,10 +1,10 @@
 import {blake2b} from '@noble/hashes/blake2.js';
 import {isRewardSource} from './reward-sources.ts';
-import {isOutAddress} from './out-address.ts';
+import {isOutAddress,isInAddress} from './out-address.ts';
 import {sourceTypeFields,type SourceType} from './address-types.ts';
 import {depositScanWallets,depositReceipt} from './deposit-tracking.ts';
 import {visibleHistory} from './visible-history.ts';
-export type EthereumWallet={address:string;name:string;miner?:boolean;dex?:boolean;sourceType?:SourceType;deposit?:boolean;out?:boolean;group?:'swap';swapAddresses?:string[]};
+export type EthereumWallet={address:string;name:string;personalType?:'dex'|'cex';miner?:boolean;dex?:boolean;sourceType?:SourceType;deposit?:boolean;out?:boolean;in?:boolean;group?:'swap';swapAddresses?:string[]};
 export type EthereumTransaction={id:string;hash:string;kind:'normal'|'internal';block:number;time:number;from:string;to:string;valueWei:string;feeWei:string|null;failed:boolean;transactionIndex?:number;traceIndex?:string};
 export type EthereumProvider='etherscan'|'blockscout';
 export type EthereumAccount={balanceWei:string;block:number;finalizedBlock?:number;transactions:EthereumTransaction[];provider?:EthereumProvider};
@@ -19,7 +19,7 @@ export function ethereumWallets(value:unknown):EthereumWallet[]{
     if(typeof item?.address!=='string'||typeof item?.name!=='string')continue;
     const address=item.address.trim().toLowerCase(),name=item.name.trim().slice(0,60);
     const links=item.group==='swap'&&Array.isArray(item.swapAddresses)?[...new Set<string>(item.swapAddresses.filter((value:unknown)=>typeof value==='string'&&validEthereumAddress(value)).map((value:string)=>value.toLowerCase()).filter((value:string)=>value!==address))].slice(0,200):[];
-    if(validEthereumAddress(address)&&name)rows.set(address,{address,name,...(item.miner===true?{miner:true}:{}),...(item.dex===true?{dex:true}:{}),...sourceTypeFields(item),...(item.deposit===true?{deposit:true}:{}),...(typeof item.out==='boolean'?{out:item.out}:{}),...(item.group==='swap'?{group:'swap' as const}:{}),...(links.length?{swapAddresses:links}:{})});
+    if(validEthereumAddress(address)&&name)rows.set(address,{address,name,...(item.personalType==='dex'||item.personalType==='cex'?{personalType:item.personalType}:{}),...(item.miner===true?{miner:true}:{}),...(item.dex===true?{dex:true}:{}),...sourceTypeFields(item),...(item.deposit===true?{deposit:true}:{}),...(typeof item.out==='boolean'?{out:item.out}:{}),...(typeof item.in==='boolean'?{in:item.in}:{}),...(item.group==='swap'?{group:'swap' as const}:{}),...(links.length?{swapAddresses:links}:{})});
     if(rows.size>=20)break;
   }
   return [...rows.values()];
@@ -113,7 +113,7 @@ export function ethereumTransfer(tx:EthereumTransaction,wallets:EthereumWallet[]
   const owned=new Set(wallets.map(w=>w.address));
   if(owned.has(tx.from)&&owned.has(tx.to))return null;
   if(owned.has(tx.to)&&isRewardSource(tx.from,exchanges))return {side:'sell' as const,amount:weiToEth(tx.valueWei),mined:true};
-  const side=owned.has(tx.to)&&exchanges.some(e=>e.address===tx.from&&isOutAddress(e))?'buy':owned.has(tx.from)&&exchanges.some(e=>e.address===tx.to&&isOutAddress(e))?'sell':null;
+  const side=owned.has(tx.to)&&exchanges.some(e=>e.address===tx.from&&isInAddress(e))?'buy':owned.has(tx.from)&&exchanges.some(e=>e.address===tx.to&&isOutAddress(e))?'sell':null;
   return side?{side,amount:weiToEth(tx.valueWei)}:null;
 }
 export function ethereumTransfers(data:EthereumData,wallets:EthereumWallet[],exchanges:EthereumWallet[]){
