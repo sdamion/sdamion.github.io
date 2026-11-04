@@ -136,6 +136,7 @@ try{
  await serviceSource.uncheck();
  await page.evaluate(({stake,own,cex,receipt,failed})=>{
   const swap='stake1u9ex0jtl4nv84rlzwuft5rczy2hgkjygewla04mgy7v2nccx4p4yr',time=1672963200;
+  window.fixtureStorage.setItem('tdsp-member-solana-cex:'+stake,JSON.stringify([{address:cex,name:'SOL Exchange',out:true}]));
   window.fixtureStorage.setItem('tdsp-member-wallets-v1:'+stake,JSON.stringify([{address:swap,label:'Simple Swap',group:'swap'}]));
   const data=JSON.parse(window.fixtureStorage.getItem('tdsp-member-solana-data:'+stake));
   data.history={'2023-01-06':103.801882};data.accounts[own].transactions=[
@@ -147,17 +148,16 @@ try{
  for(const width of [1200,390]){
   await page.setViewportSize({width,height:900});await page.evaluate(()=>window.reopen());
   await page.getByRole('button',{name:'Open Transactions',exact:true}).click();
-  const pair=page.locator('.portfolio-swap-pair');await pair.waitFor();
-  assert.match(await pair.innerText(),/ADA \/ SOL/);
-  assert.equal(await pair.locator('.portfolio-swap-leg').count(),2,'ADA and SOL share one combined row');
-  assert.match(await pair.innerText(),/102\.16/);assert.match(await pair.innerText(),/103\.80/);
-  assert.equal(await page.locator('.history-table tbody tr').count(),2,'dust stays on a separate row');
+  assert.equal(await page.locator('.portfolio-swap-pair').count(),0,'ADA and SOL are not paired on time and USD value alone');
+  await page.locator(`a[href="https://solscan.io/tx/${receipt}"]`).waitFor({timeout:5000});
+  assert.equal(await page.locator(`a[href="https://solscan.io/tx/${receipt}"]`).count(),1,'the SOL transfer remains visible');
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
   await page.screenshot({path:`/tmp/tdsp-solana-swap-${width}.png`,fullPage:true});
   await page.getByRole('button',{name:'Back',exact:true}).click();
   await page.getByRole('button',{name:'Open CEX Transactions',exact:true}).click();
-  assert.equal(await page.locator('.portfolio-swap-pair').count(),0,'matched pairs excluded from CEX');
-  assert.equal(await page.locator(`a[href="https://solscan.io/tx/${receipt}"]`).count(),0,'SOL swap is not shown as CEX out');
+  await page.locator('.portfolio-sol-comparison').waitFor();
+  assert.equal(await page.locator('.portfolio-swap-pair').count(),0,'no inferred ADA/SOL swap enters CEX');
+  assert.equal(await page.locator(`a[href="https://solscan.io/tx/${receipt}"]`).count(),1,'the saved CEX destination remains a SOL OUT transfer');
  }
  const count=requests.length;await page.evaluate(()=>window.reopen('delegator'));
  await page.getByRole('button',{name:'Open Wallets',exact:true}).click();await page.getByRole('button',{name:'Open My Wallets',exact:true}).click();

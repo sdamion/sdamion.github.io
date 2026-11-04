@@ -4,6 +4,7 @@ import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {ExternalLink,Trash2,ImageOff} from 'lucide-react';
 import {CryptoAddressForm,type AddressNetwork} from './CryptoAddressForm';
 import {depositScanWallets} from './deposit-tracking';
+import {saveWalletAddressBooks} from './wallet-address-book-save';
 import {useCardanoDeposits} from './use-cardano-deposits';
 import {cardanoDepositReceipts} from './cardano-deposits';
 import {DepositTransaction} from './DepositTransaction';
@@ -259,12 +260,13 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
       try{localStorage.setItem(SETTINGS,JSON.stringify(next));setWallets(next);return true;}
       catch{setCacheNotice('Wallet settings could not be saved to the selected cache.');return false;}
     }
-    const cleaned=excludeInternalExchanges(savedCexAddresses,exchangeExcludedAddresses(next,snapshot?.groups,snapshot?.swapGroups));
-    if(!saveCexAddresses(cleaned))return false;
-    next=memberWallets(memberStake,next);controller.current?.abort();
+    next=memberWallets(memberStake,next);
+    let cleaned:CexAddress[];
+    try{cleaned=saveWalletAddressBooks(localStorage,SETTINGS,CEX_SETTINGS,next,savedCexAddresses,exchangeExcludedAddresses(next,snapshot?.groups,snapshot?.swapGroups));}
+    catch{setCacheNotice('Wallet settings could not be saved to the selected cache.');return false;}
+    setCexAddresses(cleaned);controller.current?.abort();
     setBusy(true);setInitialising(false);setAnalysis(null);setCounting(null);setCounted(null);setTransactionStatus('');setStatus('Preparing wallet refresh…');
     const started=Date.now();setRefreshStarted(started);setClock(started);
-    try{localStorage.setItem(SETTINGS,JSON.stringify(next));}catch{setCacheNotice('Wallet settings could not be saved to the selected cache.');}
     setWallets(next);
     return true;
   }
@@ -344,7 +346,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   const assetAddresses=useMemo(()=>snapshot?holdingWalletAddresses(snapshot.infos):{},[snapshot]);
   const classifiedFacts=useMemo(()=>Object.fromEntries(Object.entries(snapshot?.facts||{}).map(([hash,fact])=>[hash,cexAdjustedFact(fact,cexAddresses)])),[snapshot,cexAddresses]);
   const savedSwapGroups=useMemo(()=>Object.fromEntries(wallets.filter(wallet=>wallet.group==='swap').map(wallet=>[wallet.address,[...snapshot?.swapGroups?.[wallet.address]||[],...wallet.swapAddresses||[]]])),[wallets,snapshot?.swapGroups]);
-  const crossChainSwaps=useMemo(()=>matchCrossChainSwaps(Object.values(classifiedFacts),swapAddresses,ethereum.data,ethereum.allWallets,snapshot?.history||{},0.05,savedSwapGroups,{data:solana.data,wallets:solana.wallets}),[classifiedFacts,swapAddresses,ethereum.data,ethereum.allWallets,snapshot?.history,savedSwapGroups,solana.data,solana.wallets]);
+  const crossChainSwaps=useMemo(()=>matchCrossChainSwaps(Object.values(classifiedFacts),swapAddresses,ethereum.data,ethereum.allWallets,snapshot?.history||{},0.05,savedSwapGroups),[classifiedFacts,swapAddresses,ethereum.data,ethereum.allWallets,snapshot?.history,savedSwapGroups]);
   useEffect(()=>{
     if(!ready||!ethereum.loaded)return;
     const owned=new Set(Object.values(snapshot?.groups||{}).flat());
@@ -357,7 +359,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   },[ready,ethereum.loaded,crossChainSwaps,classifiedFacts,wallets,snapshot?.groups,snapshot?.swapGroups,ethereum.data,ethereum.allWallets]);
   const cexFacts=useMemo(()=>Object.fromEntries(Object.entries(classifiedFacts).filter(([hash])=>!crossChainSwaps.cardano.has(hash))),[classifiedFacts,crossChainSwaps]);
   const ethTransfers=useMemo(()=>rawEthTransfers.filter(row=>!crossChainSwaps.ethereum.has(row.hash)),[rawEthTransfers,crossChainSwaps]);
-  const solTransfers=useMemo(()=>performanceTransfers(rawSolTransfers).filter(row=>!crossChainSwaps.solana.has(row.hash.split(':')[1])),[rawSolTransfers,crossChainSwaps]);
+  const solTransfers=useMemo(()=>performanceTransfers(rawSolTransfers),[rawSolTransfers]);
   const solTransfersByHash=useMemo(()=>{
     const rows=new Map<string,typeof solTransfers>();
     for(const row of solTransfers){const hash=row.hash.split(':')[1],group=rows.get(hash)||[];group.push(row);rows.set(hash,group);}return rows;
@@ -532,7 +534,6 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   });
   const solShown=solTransactions.filter(tx=>{
     if(!withinTransactionDates(tx.time,dateFrom,dateTo))return false;
-    const internalSwap=crossChainSwaps.solana.has(tx.hash);
     const transfers=solPending.has(tx.hash)?performanceTransfers(solanaTransactionTransfers(tx,solana.wallets,solana.exchanges,solana.data.history)):solTransfersByHash.get(tx.hash)||[];
     const deposit=solanaDeposit(tx,solana.wallets,solana.exchanges);
     const own=new Set(solana.wallets.map(w=>w.address));
@@ -542,7 +543,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
       if(!solPending.has(tx.hash))return false;
     }else if(section==='gain-loss'){
       if(!matchesCexOverlayFilter('solana',filter,transfers.map(row=>({side:row.side})),!!deposit))return false;
-    }else if(filter!=='all'&&!(filter==='swap'&&internalSwap)&&!(filter==='internal'&&internalSwap)&&!(filter==='cex'&&(transfers.length||deposit))&&!(filter==='receive'&&incoming)&&!(filter==='send'&&outgoing))return false;
+    }else if(filter!=='all'&&!(filter==='cex'&&(transfers.length||deposit))&&!(filter==='receive'&&incoming)&&!(filter==='send'&&outgoing))return false;
     const addresses=new Set([tx.payer,...tx.transfers.flatMap(row=>[row.from,row.to])]);
     const text=[tx.hash,'SOL',...[...solana.wallets,...solana.exchanges].filter(w=>addresses.has(w.address)).map(w=>w.name),...addresses];
     return matchesSearchText(query,text);
@@ -780,7 +781,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
     <section className="portfolio-section">
       <TransactionTable multiAsset={hasEthHistory||hasSolHistory||hasBtcHistory}>{shown.slice(currentPage*100,(currentPage+1)*100).map(({rows:group,nft})=>{
         const compact=group.length===2;
-const children=group.map(row=>row.chain==='deposit'?<DepositTransaction key={row.tx.hash} receipt={row.tx} addresses={depositAddressLabels} history={snapshot?.history||{}} adaHistory={snapshot?.history||{}} partial={cardanoDeposits.data.complete===false}/>:row.chain==='bitcoin'?<BitcoinTransaction key={row.tx.hash} tx={row.tx} cexOnly={section==='gain-loss'} partial={btcPending.has(row.tx.hash)} wallets={bitcoin.wallets} exchanges={bitcoin.exchanges} history={bitcoin.data.history} adaHistory={snapshot?.history||{}}/>:row.chain==='solana'?<SolanaTransaction key={row.tx.hash} compact={compact} internalSwap={crossChainSwaps.solana.has(row.tx.hash)} partial={solPending.has(row.tx.hash)} tx={row.tx} wallets={solana.wallets} exchanges={solana.exchanges} history={solana.data.history} adaHistory={snapshot?.history||{}}/>:row.chain==='ethereum'?<EthereumTransaction key={row.tx.id} compact={compact} tx={row.tx} internalSwap={crossChainSwaps.ethereum.has(row.tx.id)} partial={ethPending.has(row.tx.id)} wallets={ethereum.allWallets} exchanges={ethereum.exchanges} history={ethereum.data.history} adaHistory={snapshot?.history||{}}/>:section==='gain-loss'?<GainLossTransaction key={row.tx.tx_hash} tx={row.tx} fact={classifiedFacts[row.tx.tx_hash]} wallets={displayWallets} entries={cexAddresses} history={snapshot?.history||{}}/>:<Transaction key={row.tx.tx_hash} compact={compact} tx={row.tx} internalSwap={crossChainSwaps.cardano.has(row.tx.tx_hash)} fact={classifiedFacts[row.tx.tx_hash]} wallets={displayWallets} markets={snapshot?.markets||{}} history={snapshot?.history||{}} cexAddresses={cexAddresses} swapAddresses={swapAddresses} hiddenAsset={nft?.id} nftEvent={nft&&(row.tx.tx_hash===nft.acquisition.hash?nft.acquisition:nft.sale)}/>);
+const children=group.map(row=>row.chain==='deposit'?<DepositTransaction key={row.tx.hash} receipt={row.tx} addresses={depositAddressLabels} history={snapshot?.history||{}} adaHistory={snapshot?.history||{}} partial={cardanoDeposits.data.complete===false}/>:row.chain==='bitcoin'?<BitcoinTransaction key={row.tx.hash} tx={row.tx} cexOnly={section==='gain-loss'} partial={btcPending.has(row.tx.hash)} wallets={bitcoin.wallets} exchanges={bitcoin.exchanges} history={bitcoin.data.history} adaHistory={snapshot?.history||{}}/>:row.chain==='solana'?<SolanaTransaction key={row.tx.hash} compact={compact} partial={solPending.has(row.tx.hash)} tx={row.tx} wallets={solana.wallets} exchanges={solana.exchanges} history={solana.data.history} adaHistory={snapshot?.history||{}}/>:row.chain==='ethereum'?<EthereumTransaction key={row.tx.id} compact={compact} tx={row.tx} internalSwap={crossChainSwaps.ethereum.has(row.tx.id)} partial={ethPending.has(row.tx.id)} wallets={ethereum.allWallets} exchanges={ethereum.exchanges} history={ethereum.data.history} adaHistory={snapshot?.history||{}}/>:section==='gain-loss'?<GainLossTransaction key={row.tx.tx_hash} tx={row.tx} fact={classifiedFacts[row.tx.tx_hash]} wallets={displayWallets} entries={cexAddresses} history={snapshot?.history||{}}/>:<Transaction key={row.tx.tx_hash} compact={compact} tx={row.tx} internalSwap={crossChainSwaps.cardano.has(row.tx.tx_hash)} fact={classifiedFacts[row.tx.tx_hash]} wallets={displayWallets} markets={snapshot?.markets||{}} history={snapshot?.history||{}} cexAddresses={cexAddresses} swapAddresses={swapAddresses} hiddenAsset={nft?.id} nftEvent={nft&&(row.tx.tx_hash===nft.acquisition.hash?nft.acquisition:nft.sale)}/>);
         if(nft){
           const prices={buy:nft.acquisition.price,sell:nft.sale.price,acquisition:nft.acquisition.kind as 'Buy'|'Mint'};
           return <TransactionPair key={'nft:'+nft.id+':'+nft.acquisition.hash} heading={<div className="section-heading" data-nft-pair={nft.id}><AssetImage id={nft.id} name={nft.acquisition.name} market={snapshot?.markets[nft.id]} compact hideIdentifier preview tradePrices={prices}/><div translate="no" className="portfolio-nft-trade-labels"><strong>{t(nft.acquisition.kind)} / {t('Sell')}</strong><NftPriceLabels prices={prices}/></div></div>}>{children}</TransactionPair>;
