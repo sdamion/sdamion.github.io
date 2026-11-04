@@ -74,6 +74,20 @@ test('saved BTC wallet/CEX connections remain visible with mixed inputs, without
   const data=emptyBitcoin();data.accounts[sender]={raw:'0',tip,transactions:[send]};assert.deepEqual(bitcoinTransfers(data,wallets,exchanges),[]);
   assert.equal(bitcoinFee(send,wallets).paidRaw,null);assert.equal(JSON.stringify(send),before);
 });
+test('personal BTC CEX wallets retain IN and OUT rows after moving from counterparty addresses',()=>{
+  const personal=[{address:exchange,name:'My CEX wallet',personalType:'cex' as const}],wallets=[...personal,...own];
+  const incoming=tx({inputs:[{address:other,raw:'1000'}],outputs:[{address:exchange,raw:'900'}]});
+  const outgoing=tx({hash:'2'.repeat(64),inputs:[{address:exchange,raw:'1000'}],outputs:[{address:other,raw:'600'},{address:exchange,raw:'300'}]});
+  assert.deepEqual(bitcoinTableTransfer(incoming,wallets,[]),{side:'buy',raw:'900',verified:false,personal:true});
+  assert.deepEqual(bitcoinTableTransfer(outgoing,wallets,[]),{side:'sell',raw:'600',verified:false,personal:true});
+  assert.equal(bitcoinTransfer(incoming,wallets,[]),null,'unmarked exchange activity is not financial gain');
+  assert.equal(bitcoinTransfer(outgoing,wallets,[]),null,'unmarked exchange activity is not financial loss');
+  const internal=tx({hash:'3'.repeat(64),inputs:[{address:address,raw:'1000'}],outputs:[{address:exchange,raw:'900'}]});
+  assert.equal(bitcoinTableTransfer(internal,wallets,[]),null,'transfers between own wallets remain internal');
+  const mixed=tx({hash:'4'.repeat(64),inputs:[{address:exchange,raw:'500'},{address:other,raw:'500'}],outputs:[{address:other,raw:'900'}]});
+  assert.deepEqual(bitcoinTableTransfer(mixed,wallets,[]),{side:'sell',raw:null,verified:false,personal:true});
+  assert.equal(bitcoinTableTransfer(incoming,own,[]),null,'ordinary wallets do not become CEX activity');
+});
 test('total on-chain fees stay visible on incoming and mixed transactions without claiming wallet ownership',()=>{
   const receipt=tx({feeRaw:'1'}),outgoing=tx({hash:'2'.repeat(64),feeRaw:'123456',inputs:[{address,raw:'200000'}],outputs:[{address:exchange,raw:'76544'}]}),mixed=tx({hash:'3'.repeat(64),feeRaw:'1000',inputs:[{address,raw:'1000'},{address:other,raw:'1000'}],outputs:[{address:exchange,raw:'1000'}]});
   const before=JSON.stringify([receipt,outgoing,mixed]);

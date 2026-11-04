@@ -154,6 +154,28 @@ try{
  const connectedTx=transactions.locator('tbody tr').filter({has:page.locator('a[href="https://blockstream.info/tx/'+'5'.repeat(64)+'"]')});
  await connectedTx.waitFor();assert.match(await connectedTx.locator('td').first().innerText(),/-0[.,]10104651 BTC/,'regular transactions retain the actual owned-wallet net, not the shared CEX output');
  await transactions.getByRole('button',{name:'Back',exact:true}).click();
+ await page.evaluate(({stake,exchange})=>{
+  const walletKey='tdsp-member-bitcoin-wallets:'+stake,cexKey='tdsp-member-bitcoin-cex:'+stake,dataKey='tdsp-member-bitcoin-data:'+stake;
+  const wallets=JSON.parse(window.fixtureStorage.getItem(walletKey)),data=JSON.parse(window.fixtureStorage.getItem(dataKey));
+  window.fixtureStorage.setItem(walletKey,JSON.stringify([...wallets,{address:exchange,name:'Personal BTC CEX',personalType:'cex'}]));
+  window.fixtureStorage.setItem(cexKey,'[]');
+  data.accounts[exchange]={raw:'300',tip:'b'.repeat(64),transactions:[
+    {hash:'8'.repeat(64),height:2,time:1700000020,feeRaw:'100',inputs:[{address:'1CounterpartyXXXXXXXXXXXXXXXUWLpVr',raw:'1000'}],outputs:[{address:exchange,raw:'900'}]},
+    {hash:'9'.repeat(64),height:2,time:1700000030,feeRaw:'100',inputs:[{address:exchange,raw:'900'}],outputs:[{address:'1CounterpartyXXXXXXXXXXXXXXXUWLpVr',raw:'500'},{address:exchange,raw:'300'}]}
+  ]};
+  window.fixtureStorage.setItem(dataKey,JSON.stringify(data));window.previousMain=document.querySelector('main');window.reopen();
+ },{stake,exchange});
+ await page.setViewportSize({width:1200,height:900});
+ await page.waitForFunction(()=>window.previousMain&&!window.previousMain.isConnected);
+ await page.getByRole('alert').filter({hasText:'Bitcoin data unavailable. Saved data is retained.'}).waitFor();
+ await page.getByRole('button',{name:'Open CEX Transactions',exact:true}).click();
+ await gain.getByRole('button',{name:'BTC IN',exact:true}).click();
+ const personalIn=gain.locator('.history-table tbody tr').filter({has:page.locator('a[href="https://blockstream.info/tx/'+'8'.repeat(64)+'"]')});
+ await personalIn.waitFor();assert.match(await personalIn.locator('td').first().innerText(),/BTC IN[\s\S]*Personal wallet[\s\S]*Excluded from calculations/);
+ await gain.getByRole('button',{name:'BTC OUT',exact:true}).click();
+ const personalOut=gain.locator('.history-table tbody tr').filter({has:page.locator('a[href="https://blockstream.info/tx/'+'9'.repeat(64)+'"]')});
+ await personalOut.waitFor();assert.match(await personalOut.locator('td').first().innerText(),/BTC OUT[\s\S]*Personal wallet[\s\S]*Excluded from calculations/);
+ await gain.getByRole('button',{name:'Back',exact:true}).click();
  const count=requests.length;await page.evaluate(()=>window.reopen('delegator'));await walletTile.click();await page.getByRole('button',{name:'Open My Wallets',exact:true}).click();
  assert.equal(await page.locator('#portfolio-wallet-network option[value="bitcoin"]').count(),0,'Bitcoin remains admin-only');
  assert.equal(requests.length,count);

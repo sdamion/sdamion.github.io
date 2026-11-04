@@ -82,12 +82,24 @@ function bitcoinCexFlow(tx:BitcoinTransaction,wallets:BitcoinWallet[],exchanges:
   const outgoing=tx.outputs.filter(row=>!own.has(row.address)&&cex.has(row.address)).reduce((sum,row)=>sum+BigInt(row.raw),0n);
   const mined=net>0n&&externalInputs.length>0&&externalInputs.every(row=>exchanges.some(source=>source.address===row.address&&source.miner===true))&&outgoing===0n;
   if(mined)return {side:'sell' as const,raw:net,verified:true,mined:true as const};
-  return classifyCexFlow({
+  const marked=classifyCexFlow({
     incomingMatched:tx.inputs.some(row=>incoming.has(row.address)&&BigInt(row.raw)>0n)&&tx.outputs.some(row=>own.has(row.address)&&BigInt(row.raw)>0n),
     outgoingMatched:tx.inputs.some(row=>own.has(row.address)&&BigInt(row.raw)>0n)&&outgoing>0n,
     incomingRaw:net>0n&&externalInputs.length>0&&externalInputs.every(row=>incoming.has(row.address))&&outgoing===0n?net:null,
     outgoingRaw:tx.inputs.every(row=>own.has(row.address))?outgoing:null
   });
+  if(marked)return marked;
+  const personal=new Set(wallets.filter(wallet=>wallet.personalType==='cex'||wallet.personalType==='dex').map(wallet=>wallet.address));
+  if(!personal.size||![...tx.inputs,...tx.outputs].some(row=>personal.has(row.address)&&BigInt(row.raw)>0n))return null;
+  if([...tx.inputs,...tx.outputs].some(row=>own.has(row.address)&&!personal.has(row.address)))return null;
+  const personalNet=bitcoinNet(tx,wallets);
+  if(personalNet===0n)return null;
+  const onlyPersonalInputs=tx.inputs.every(row=>personal.has(row.address));
+  const noPersonalInputs=tx.inputs.every(row=>!personal.has(row.address));
+  const raw=personalNet>0n
+    ?noPersonalInputs?personalNet:null
+    :onlyPersonalInputs?tx.outputs.filter(row=>!own.has(row.address)).reduce((sum,row)=>sum+BigInt(row.raw),0n):null;
+  return {side:personalNet>0n?'buy' as const:'sell' as const,raw:raw&&raw>0n?raw:null,verified:false,personal:true as const};
 }
 export function bitcoinTransfer(tx:BitcoinTransaction,wallets:BitcoinWallet[],exchanges:BitcoinWallet[]){
   const flow=bitcoinCexFlow(tx,wallets,exchanges);
@@ -97,7 +109,7 @@ export function bitcoinTransfer(tx:BitcoinTransaction,wallets:BitcoinWallet[],ex
 // amounts to a wallet. Financial totals continue to use bitcoinTransfer only.
 export function bitcoinTableTransfer(tx:BitcoinTransaction,wallets:BitcoinWallet[],exchanges:BitcoinWallet[]){
   const flow=bitcoinCexFlow(tx,wallets,exchanges);
-  return flow?{side:flow.side,raw:flow.raw===null?null:String(flow.raw),verified:flow.verified,...('mined' in flow?{mined:true as const}:{})}:null;
+  return flow?{side:flow.side,raw:flow.raw===null?null:String(flow.raw),verified:flow.verified,...('mined' in flow?{mined:true as const}:{}),...('personal' in flow?{personal:true as const}:{})}:null;
 }
 export function bitcoinTransfers(data:BitcoinData,wallets:BitcoinWallet[],exchanges:BitcoinWallet[]):(FiatTransfer&{amount:number})[]{
   return bitcoinTransactions(data,wallets).flatMap(tx=>{

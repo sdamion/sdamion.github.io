@@ -3,8 +3,8 @@ import type {ReactNode} from 'react';
 import {MenuTile} from './ui';
 import {AssetOverlay} from './AssetOverlay';
 
-export function WalletMenu({wallets,exchanges,counts}:{wallets:ReactNode;exchanges:ReactNode;counts:{wallets:number;exchanges:number;swap:number}}){
-  const [section,setSection]=useState<'wallets'|'exchanges'|null>(null);
+export function WalletMenu({wallets,exchanges,counts,startSection=null}:{wallets:ReactNode;exchanges:ReactNode;counts:{wallets:number;exchanges:number;swap:number};startSection?:'wallets'|'exchanges'|null}){
+  const [section,setSection]=useState<'wallets'|'exchanges'|null>(startSection);
   const sections={
     wallets:{title:'My Wallets',content:wallets},
     exchanges:{title:'DEX / CEX & Swap',content:exchanges}

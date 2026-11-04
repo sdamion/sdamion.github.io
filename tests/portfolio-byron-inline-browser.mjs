@@ -29,6 +29,7 @@ try{
   await page.route('**/*',route=>route.fulfill({contentType:'text/html',body:'<div id="app"></div>'}));
   await page.goto('http://127.0.0.1:8998/');
   await page.evaluate(()=>{window.TDSPRuntime={formatAdaNumber(value){return new Intl.NumberFormat('en-US',{maximumFractionDigits:Math.abs(value)>=1?0:2}).format(value);},createAdaUsdAmount(ada){const span=document.createElement('span');span.textContent=String(ada)+' ADA';return span;}};window.createUniversalOverlay=options=>{const overlay=document.createElement('div');overlay.id=options.id;overlay.append(...options.bodyNodes);document.body.append(overlay);return {overlay};};});
+  await page.evaluate(()=>Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async value=>{window.copied=value;}}}));
   await page.addScriptTag({type:'module',content:bundle.outputFiles[0].text});
   await page.getByText('10 ADA',{exact:true}).waitFor();
   assert.equal(await page.getByRole('button',{name:'View'}).count(),0);
@@ -43,6 +44,10 @@ try{
   await page.getByRole('button',{name:'View'}).click();
   await page.locator('#portfolio-byron-amounts-overlay tbody tr').first().waitFor();
   assert.equal(await page.locator('#portfolio-byron-amounts-overlay tbody tr').count(),1);
+  const byronAddress=page.locator('#portfolio-byron-amounts-overlay .portfolio-address-link').first();
+  assert.match(await byronAddress.locator('a').getAttribute('href'),/^https:\/\/cardanoscan\.io\/address\//);
+  await byronAddress.getByRole('button',{name:'Copy address'}).click();
+  assert.equal(await page.evaluate(()=>window.copied),'exchange');
   await page.addStyleTag({content:await readFile('shared/styles.css','utf8')});
   await page.evaluate(()=>window.renderDirectory());
   await page.getByRole('button',{name:'Wallet one / Wallet two'}).waitFor();
@@ -91,6 +96,8 @@ try{
   await selectors.first().uncheck();
   assert.equal(await selectors.first().isChecked(),false);
   assert.equal(await page.locator('#portfolio-byron-amounts-overlay a[href*="/address/"]').count(),2);
+  await page.locator('#portfolio-byron-amounts-overlay .portfolio-address-link').first().getByRole('button',{name:'Copy address'}).click();
+  assert.match(await page.evaluate(()=>window.copied),/^DdzFFzCqrhs/);
   await page.evaluate(()=>window.renderDirectory(true));
   const bitvavo=page.getByRole('button',{name:'Bitvavo',exact:true});
   await bitvavo.waitFor();

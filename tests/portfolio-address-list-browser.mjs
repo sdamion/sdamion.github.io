@@ -17,8 +17,8 @@ function Fixture(){
  const [items,setItems]=useState(()=>JSON.parse(localStorage.getItem('items')||'${JSON.stringify(items)}'));
  const [owned,setOwned]=useState(false),[viewing,setViewing]=useState(null),[excluded,setExcluded]=useState(new Set());window.saved=items;
  function save(next){if(window.failSave)return false;localStorage.setItem('items',JSON.stringify(next));setItems(next);return true;}
- const rows=items.map((item,index)=>({...item,id:item.network+':'+item.address,linked:item.swapAddresses,removeDisabled:owned&&index===0,
- ...(owned?{onView:()=>{window.viewed=item.address;setViewing(item);}}:item.kind==='Swap'?{}:{onMining:miner=>save(items.map(row=>row.address===item.address?{...row,miner}:row))}),
+ const rows=items.map((item,index)=>({...item,id:item.network+':'+item.address,kind:owned?(item.personalType==='cex'?'Personal CEX wallet':item.personalType==='dex'?'Personal DEX wallet':undefined):item.kind,linked:item.swapAddresses,removeDisabled:owned&&index===0,
+ ...(owned?{onView:()=>{window.viewed=item.address;setViewing(item);},...(index?{onPersonalType:personalType=>save(items.map(row=>row.address===item.address?{...row,personalType}:row))}:{})}:item.kind==='Swap'?{}:{onMining:miner=>save(items.map(row=>row.address===item.address?{...row,miner}:row))}),
  onRename:name=>save(items.map(row=>row.address===item.address?{...row,name}:row)),onRemove:()=>save(items.filter(row=>row.address!==item.address))}));
  const linked='addr1testinglinked',snapshot={groups:{[items[0].address]:[linked]},infos:[{address:linked,balance:'1000000'}],facts:Object.fromEntries(Array.from({length:10},(_,index)=>['tx'+index,{hash:'tx'+index,wallets:[linked]}]))};
  return <main className="member-portfolio"><button onClick={()=>setOwned(value=>!value)}>Toggle owned</button><AddressList owned={owned} rows={rows}/>{viewing&&<WalletCard detailsOnly wallet={{address:viewing.address,label:viewing.name}} primary snapshot={snapshot} busy={false} excluded={excluded} remove={()=>{}} onExclude={(address,value)=>setExcluded(value?new Set([address]):new Set())} onClose={()=>setViewing(null)}/>}</main>;
@@ -37,7 +37,7 @@ try{
   await page.addScriptTag({type:'module',content:bundle.outputFiles[0].text});await page.locator('tbody tr').first().waitFor();
  };
  await mount();assert.equal(await page.locator('table').count(),1);
- assert.deepEqual(await page.locator('thead th').allTextContents(),['Network','Exchange','Address','OUT','Mining / Services Sources','Actions']);
+ assert.deepEqual(await page.locator('thead th').allTextContents(),['Network','Exchange','Address','IN','OUT','Mining / Services Sources','Actions']);
  assert.equal(await page.getByRole('checkbox').count(),4,'Swap rows are not mining counterparties');
  for(const item of items){
   const row=page.locator('tr[data-address-id="'+item.network+':'+item.address+'"]');
@@ -72,9 +72,33 @@ try{
  const details=page.locator('#portfolio-wallet-addresses');await details.getByRole('checkbox',{name:'Exclude addr1testinglinked from refresh',exact:true}).check();
  assert.equal(await details.getByRole('checkbox',{name:'Exclude addr1testinglinked from refresh',exact:true}).isChecked(),true,'View retains linked-address exclusions');
  await details.getByRole('button',{name:'Back',exact:true}).click();
+ assert.match(await first.innerText(),/Wallet type: Personal wallet/);
+ const btcRow=page.locator('tr[data-address-id="bitcoin:'+items[3].address+'"]');
+ await btcRow.getByRole('button',{name:'Actions for BTC Exchange',exact:true}).click();
+ const walletType=page.getByRole('combobox',{name:'Wallet type',exact:true});
+ assert.deepEqual(await walletType.locator('option').allTextContents(),['Personal wallet','Personal DEX wallet','Personal CEX wallet']);
+ await walletType.selectOption('cex');
+ assert.match(await btcRow.innerText(),/Wallet type: Personal CEX wallet/);
+ assert.deepEqual(await page.evaluate(address=>{const row=window.saved.find(item=>item.address===address);return {name:row.name,address:row.address,personalType:row.personalType};},items[3].address),{name:'BTC Exchange',address:items[3].address,personalType:'cex'});
+ await page.keyboard.press('Escape');
+ await btcRow.getByRole('button',{name:'Actions for BTC Exchange',exact:true}).click();await walletType.selectOption('dex');
+ assert.match(await btcRow.innerText(),/Wallet type: Personal DEX wallet/);await page.keyboard.press('Escape');
+ await btcRow.getByRole('button',{name:'Actions for BTC Exchange',exact:true}).click();await walletType.selectOption('');
+ assert.match(await btcRow.innerText(),/Wallet type: Personal wallet/);await page.keyboard.press('Escape');
+ for(const width of [390,320]){
+  await page.setViewportSize({width,height:900});await btcRow.getByRole('button',{name:'Actions for BTC Exchange',exact:true}).click();
+  const bounds=await page.getByRole('menu').boundingBox();assert.ok(bounds.x>=0&&bounds.x+bounds.width<=width+1&&bounds.y>=0&&bounds.y+bounds.height<=900);
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await page.keyboard.press('Escape');
+ }
+ await page.setViewportSize({width:1200,height:900});
+ await btcRow.getByRole('button',{name:'Actions for BTC Exchange',exact:true}).click();await page.getByRole('menuitem',{name:'Rename',exact:true}).click();
+ await btcRow.getByRole('textbox',{name:'Wallet name',exact:true}).fill('BTC Owned');await btcRow.getByRole('button',{name:'Save name',exact:true}).click();
+ assert.equal(await page.evaluate(address=>window.saved.find(row=>row.address===address).name,items[3].address),'BTC Owned');
+ await btcRow.getByRole('button',{name:'Actions for BTC Owned',exact:true}).click();await page.getByRole('menuitem',{name:'Remove',exact:true}).click();
+ assert.equal(await btcRow.count(),0,'owned wallet removal is available from the same menu');
  assert.equal(await page.getByRole('checkbox').count(),0,'owned wallets are not counterparty mining sources');
  await page.getByRole('button',{name:'Toggle owned',exact:true}).click();
- await page.getByRole('button',{name:'Actions for BTC Exchange',exact:true}).click();await page.getByRole('menuitem',{name:'Remove',exact:true}).click();assert.equal(await page.locator('tbody tr').count(),4);
+ assert.equal(await page.locator('tbody tr').count(),4);
  assert.deepEqual(errors,[]);
- console.log('PASS: one cross-network table, explorer links, exact-address clipboard copy, linked-address copy, menu keyboard/viewport behavior, persistent rename/source flags, failed saves/copy and protected own-wallet actions.');
+ console.log('PASS: one cross-network table, wallet type/rename/remove actions, explorer links, clipboard copy, menu keyboard/viewport behavior, failed saves and protected primary wallet.');
 }finally{await browser.close();}

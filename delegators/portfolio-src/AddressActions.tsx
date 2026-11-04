@@ -5,7 +5,7 @@ import {usePortfolioText} from './use-portfolio-text';
 import {addressTypes,type AddressType} from './address-types';
 import {rewardSourceHelp} from './reward-sources';
 
-export function AddressActions({id,name,onRename,onRemove,onView,addressType,onType,removeDisabled=false,extra=[]}:{id:string;name:string;onRename:()=>void;onRemove:()=>void;onView?:()=>void;addressType?:AddressType;onType?:(type:AddressType)=>void;removeDisabled?:boolean;extra?:{label:string;onSelect:()=>void}[]}){
+export function AddressActions({id,name,onRename,onRemove,onView,addressType,onType,personalType,onPersonalType,removeDisabled=false,extra=[]}:{id:string;name:string;onRename:()=>void;onRemove:()=>void;onView?:()=>void;addressType?:AddressType;onType?:(type:AddressType)=>void;personalType?:'dex'|'cex';onPersonalType?:(type:'dex'|'cex'|undefined)=>void;removeDisabled?:boolean;extra?:{label:string;onSelect:()=>void}[]}){
   const [open,setOpen]=useState(false),[position,setPosition]=useState({left:0,top:0}),button=useRef<HTMLButtonElement>(null),menu=useRef<HTMLDivElement>(null),t=usePortfolioText();
   const hasView=!!onView;
   useLayoutEffect(()=>{
@@ -37,6 +37,7 @@ export function AddressActions({id,name,onRename,onRemove,onView,addressType,onT
     {open&&createPortal(<div ref={menu} id={id} role="menu" aria-label={t('Actions for {name}',{name})} className="portfolio-address-actions-menu" style={position} translate="no">
       {onView&&<button type="button" role="menuitem" className="governance-vote-secondary" onClick={()=>run(onView)}><Eye size={16}/>{t('View')}</button>}
       {onType&&<label htmlFor={id+'-type'}>{t('Address type')}<select id={id+'-type'} className="governance-vote-secondary" value={addressType} title={addressType==='min'||addressType==='svc'?t(rewardSourceHelp):undefined} onChange={event=>onType(event.target.value as AddressType)}>{addressTypes.map(type=><option key={type.value} value={type.value}>{t(type.label)}</option>)}</select></label>}
+      {onPersonalType&&<label htmlFor={id+'-wallet-type'}>{t('Wallet type')}<select id={id+'-wallet-type'} className="governance-vote-secondary" value={personalType||''} onChange={event=>onPersonalType(event.target.value===''?undefined:event.target.value as 'dex'|'cex')}><option value="">{t('Personal wallet')}</option><option value="dex">{t('Personal DEX wallet')}</option><option value="cex">{t('Personal CEX wallet')}</option></select></label>}
       {extra.map(action=><button key={action.label} type="button" role="menuitem" className="governance-vote-secondary" onClick={()=>run(action.onSelect)}><Eye size={16}/>{t(action.label)}</button>)}
       <button type="button" role="menuitem" className="governance-vote-secondary" onClick={()=>run(onRename)}><Pencil size={16}/>{t('Rename')}</button>
       <button type="button" role="menuitem" className="governance-vote-secondary" disabled={removeDisabled} onClick={()=>run(onRemove)}><Trash2 size={16}/>{t('Remove')}</button>

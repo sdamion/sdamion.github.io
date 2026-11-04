@@ -1,6 +1,6 @@
 import {useMemo,useState,type ReactNode} from 'react';
-import {ExternalLink} from 'lucide-react';
 import {Input, AdaUsdAmount} from './ui';
+import {AddressLink} from './AddressLink';
 import {Table,TableHeader,TableBody,TableRow,TableHead,TableCell} from '@/components/ui/table';
 import {TransactionPagination} from './TransactionPagination';
 import {validByronAddress} from './exchange-address';
@@ -22,6 +22,7 @@ import {transferComparison} from './transfer-comparison';
 
 export function AddressTransactions({facts,address,addresses,entries,count,addressEditor,history={},wallets=[],summary=false}:{facts:Fact[];address:string;addresses?:string[];entries:CexAddress[];count:number;addressEditor?:ReactNode;history?:Record<string,number>;wallets?:{address:string;label:string}[];summary?:boolean}){
   const [open,setOpen]=useState(false);
+  const [copyError,setCopyError]=useState('');
   const rows=useMemo(()=>summary||open||count===1?byronGroupTransactions(facts,addresses||[address],entries):[],[facts,address,addresses,entries,open,count,summary]);
   const display=usePortfolioCurrency();
   const net=summary?byronGroupNet(rows):null;
@@ -45,7 +46,8 @@ export function AddressTransactions({facts,address,addresses,entries,count,addre
     return row.amountRaw===null?<span className="small muted">Mixed or unassigned sources</span>:<span title={row.sharedInputs?'Shared-input transaction total; counted once in Byron totals':undefined}>{row.side==='buy'?'IN':'OUT'} <TransactionAmount ada={amount.ada} usd={amount.usd} time={row.time} tone={row.side==='buy'?'negative':'positive'}/>{row.sharedInputs&&<span className="small muted"> · Shared transaction</span>}</span>;
   }
   return <><button type="button" className="governance-vote-secondary" onClick={()=>setOpen(true)}>View</button>{open&&<AssetOverlay id="portfolio-byron-amounts-overlay" name="Byron ADA amounts" onClose={()=>setOpen(false)}><section className="portfolio-section">
-    {addressEditor??(addresses||[address]).map(item=><div key={item}><a className="address" href={`https://cardanoscan.io/address/${item}`} target="_blank" rel="noreferrer">{short(item)} <ExternalLink size={12}/></a></div>)}
+    {copyError&&<p role="alert" className="negative">{copyError}</p>}
+    {addressEditor??(addresses||[address]).map(item=><div key={item}><AddressLink network="cardano" address={item} onError={setCopyError}/></div>)}
     <TransactionTable>{rows.map(row=>{
       const fact=facts.find(fact=>fact.hash===row.hash);
       const amount=transactionAmounts(row.amountRaw,row.time,history,fact?.feeRaw);
@@ -93,7 +95,7 @@ export function ByronExchanges({facts,entries,owned,history,markets={},wallets=[
           <Input name={`byron_name_${address}`} aria-label={`Wallet name for ${address}`} maxLength={60} placeholder="Wallet name" value={names[address]??savedNames[address]??''} onChange={event=>{const value=event.target.value;setNames(previous=>({...previous,[address]:value}));setStatus('');}}/>
         </div>)}</div>;
   const renderAddresses=(addresses:string[])=><div className="portfolio-inline-addresses">{addresses.map(address=><div key={address} className="portfolio-address-row">
-          <a className="address" title={address} href={`https://cardanoscan.io/address/${address}`} target="_blank" rel="noreferrer"><span>{address.slice(0,6)}…{address.slice(-4)}</span><ExternalLink size={12}/></a>
+          <AddressLink network="cardano" address={address} onError={setStatus}/>
           <label><input type="checkbox" name="byron_cex_selection" aria-label={`Include ${address} in Byron CEX`} checked={selected.has(address)} onChange={event=>{const checked=event.target.checked;setChoices(previous=>({...previous,[address]:checked}));setStatus('');}}/> CEX</label>{selected.has(address)&&!group.some(entry=>entry.address===address)&&<span className="small muted">Not saved</span>}
         </div>)}</div>;
   const addressEditor=(addresses:string[])=><><div className="portfolio-section">{addresses.map(address=><div key={address}>{renderNames([address])}{renderAddresses([address])}</div>)}</div><button type="button" className="governance-vote-primary" onClick={saveSelection}>Save selection</button><p role="status">{status}</p></>;
