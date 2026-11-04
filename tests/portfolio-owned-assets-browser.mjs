@@ -49,6 +49,7 @@ try{
  await assets.click();await page.getByRole('button',{name:'Open FTs',exact:true}).click();
  const ftTable=page.locator('#portfolio-holdings-overlay');
  const foreignFt=ftTable.locator('tr').filter({hasText:'Shared ETH Token'});await foreignFt.waitFor();
+ for(const name of ['Cardano FT','SOL FT','BTC Rune','BTC BRC20'])await ftTable.getByText(name,{exact:false}).first().waitFor();
  await foreignFt.getByText('Set current price').click();
  await foreignFt.getByLabel('Current USD price for Shared ETH Token').fill('2');
  assert.match(await foreignFt.innerText(),/4\.46/,'a manual quote values the exact 2.23-token balance');
@@ -56,27 +57,28 @@ try{
  await ftTable.getByRole('button',{name:'Back',exact:true}).click();await ftTable.getByRole('button',{name:'Back',exact:true}).click();
  async function open(){await assets.click();await page.getByRole('button',{name:'Open NFTs',exact:true}).click();}
  await open();const gallery=page.locator('#portfolio-holdings-overlay');
- await gallery.getByText('BTC BRC20',{exact:true}).waitFor();await gallery.getByText('Owned Ordinal',{exact:true}).waitFor();await gallery.getByText('SOL Artwork',{exact:true}).waitFor();
+ await gallery.getByText('Owned Ordinal',{exact:true}).waitFor();await gallery.getByText('SOL Artwork',{exact:true}).waitFor();
  await gallery.getByRole('button',{name:'Refresh owned assets',exact:true}).waitFor({state:'visible'});await page.waitForFunction(()=>!document.querySelector('button[aria-label="Refresh owned assets"]').disabled);
- for(const name of ['Cardano FT','Cardano NFT','Shared ETH Token','ETH Art One','ETH Art Two','SOL FT','SOL Artwork','BTC Rune','BTC BRC20'])assert.equal(await gallery.getByText(name,{exact:true}).count(),1,name+' is present once');
- const ft=gallery.locator('[data-owned-asset="ethereum:1:0x'+'3'.repeat(40)+'"]');assert.match(await ft.innerText(),/2\.23/);assert.match(await ft.innerText(),/ETH One.*ETH Two/);
+ for(const name of ['Cardano NFT','ETH Art One','ETH Art Two','SOL Artwork','Owned Ordinal'])assert.equal(await gallery.getByText(name,{exact:true}).count(),1,name+' is present once');
+ for(const name of ['Cardano FT','Shared ETH Token','SOL FT','BTC Rune','BTC BRC20'])assert.equal(await gallery.getByText(name,{exact:true}).count(),0,name+' is absent from NFTs');
+ for(const id of ['cardano:lovelace','ethereum:native','solana:native','bitcoin:native'])assert.equal(await gallery.locator('[data-owned-asset="'+id+'"]').count(),0,id+' is absent from NFTs');
  const saved=await page.evaluate(({eth,sol})=>({eth:window.readInventory()['ethereum:'+eth],sol:window.readInventory()['solana:'+sol]}),{eth,sol});
  assert.equal(saved.eth.assets[0].image,'https://gateway.pinata.cloud/ipfs/QmExample/eth.png');assert.equal(saved.eth.assets[0].raw,'1230000');assert.equal(saved.sol.assets[0].image,'https://gateway.pinata.cloud/ipfs/QmExample/sol.png');
  assert.equal(await gallery.getByRole('alert').count(),0,'valid provider gateway artwork cannot reject ETH or SOL inventory');
  assert.ok(!requests.some(row=>row.action==='activity'),'owned Ordinals do not require a historical transaction scan');
  for(const width of [1200,390,320]){await page.setViewportSize({width,height:1000});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await gallery.screenshot({path:'/tmp/portfolio-owned-assets-'+width+'.png'});}
- await gallery.getByLabel('Network',{exact:true}).selectOption('solana');assert.equal(await gallery.locator('.portfolio-nft-tile').count(),3);
- await gallery.getByLabel('Asset type',{exact:true}).selectOption('nft');assert.equal(await gallery.locator('.portfolio-nft-tile').count(),1);await gallery.getByLabel('Asset type',{exact:true}).selectOption('');await gallery.getByLabel('Network',{exact:true}).selectOption('');
- await gallery.getByLabel('Search owned assets',{exact:true}).fill('Shared ETH Token');assert.equal(await gallery.locator('.portfolio-nft-tile').count(),1);await gallery.getByLabel('Search owned assets',{exact:true}).fill('');
- const count=requests.length;await page.evaluate(()=>window.reopen());await open();await gallery.getByText('BTC BRC20',{exact:true}).waitFor();assert.equal(requests.length,count,'fresh member inventory cache avoids repeating provider calls');
+ await gallery.getByLabel('Network',{exact:true}).selectOption('solana');assert.equal(await gallery.locator('.portfolio-nft-tile').count(),1);
+ await gallery.getByLabel('Network',{exact:true}).selectOption('');
+ await gallery.getByLabel('Search owned assets',{exact:true}).fill('ETH Art One');assert.equal(await gallery.locator('.portfolio-nft-tile').count(),1);await gallery.getByLabel('Search owned assets',{exact:true}).fill('');
+ const count=requests.length;await page.evaluate(()=>window.reopen());await open();await gallery.getByText('Owned Ordinal',{exact:true}).waitFor();assert.equal(requests.length,count,'fresh member inventory cache avoids repeating provider calls');
  for(const file of ['shared/portfolio-i18n-keys.js','shared/portfolio-i18n.js','shared/i18n.js'])await page.addScriptTag({content:await readFile(file,'utf8')});
  for(const language of ['nl','ja','es','en']){
   await page.evaluate(language=>window.TDSPI18n.setLanguage(language),language);
-  const label=await page.evaluate(()=>window.TDSPI18n.translateText('Search owned assets'));await gallery.getByLabel(label,{exact:true}).waitFor();assert.match(await ft.innerText(),/2\.23/);assert.equal(await gallery.getByText('Shared ETH Token',{exact:true}).count(),1);
+  const label=await page.evaluate(()=>window.TDSPI18n.translateText('Search owned assets'));await gallery.getByLabel(label,{exact:true}).waitFor();assert.equal(await gallery.getByText('ETH Art One',{exact:true}).count(),1);assert.equal(await gallery.getByText('Shared ETH Token',{exact:true}).count(),0);
  }
  malformed=true;await gallery.getByRole('button',{name:'Refresh owned assets',exact:true}).click();await gallery.getByRole('alert').first().waitFor();await page.waitForFunction(()=>!document.querySelector('button[aria-label="Refresh owned assets"]').disabled);
- assert.deepEqual(await page.evaluate(eth=>window.readInventory()['ethereum:'+eth],eth),saved.eth,'malformed financial fields do not overwrite the last complete wallet inventory');assert.match(await ft.innerText(),/2\.23/);malformed=false;
- unavailable=true;await gallery.getByRole('button',{name:'Refresh owned assets',exact:true}).click();await gallery.getByRole('alert').first().waitFor();assert.equal(await gallery.getByText('BTC BRC20',{exact:true}).count(),1,'provider failure retains complete saved holdings');
- const final=requests.length;await page.waitForFunction(()=>!document.querySelector('button[aria-label="Refresh owned assets"]').disabled);await page.evaluate(()=>window.reopen('delegator'));await open();assert.equal(await gallery.getByText('Shared ETH Token',{exact:true}).count(),0);assert.equal(requests.length,final,'revoked chain rights hide cached holdings and prevent requests');
+ assert.deepEqual(await page.evaluate(eth=>window.readInventory()['ethereum:'+eth],eth),saved.eth,'malformed financial fields do not overwrite the last complete wallet inventory');assert.equal(await gallery.getByText('ETH Art One',{exact:true}).count(),1);malformed=false;
+ unavailable=true;await gallery.getByRole('button',{name:'Refresh owned assets',exact:true}).click();await gallery.getByRole('alert').first().waitFor();assert.equal(await gallery.getByText('Owned Ordinal',{exact:true}).count(),1,'provider failure retains complete saved holdings');
+ const final=requests.length;await page.waitForFunction(()=>!document.querySelector('button[aria-label="Refresh owned assets"]').disabled);await page.evaluate(()=>window.reopen('delegator'));await open();assert.equal(await gallery.getByText('ETH Art One',{exact:true}).count(),0);assert.equal(requests.length,final,'revoked chain rights hide cached holdings and prevent requests');
  assert.deepEqual(errors,[]);console.log('PASS: four-chain inventory, ETH/SOL provider IPFS artwork normalization, exact balances, strict malformed-data rejection, cache retention, filters, languages, access isolation and desktop/mobile layout.');
 }finally{await browser.close();}

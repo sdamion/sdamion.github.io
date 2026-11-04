@@ -53,7 +53,7 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
   ["raw units", "portfolio_text_owned_raw"],
   ["Open in explorer", "portfolio_text_owned_explorer"],
   ["Owned asset pages", "portfolio_text_owned_pages"],
-  ["All owned FTs, NFTs and Ordinals", "portfolio_text_owned_subtitle"],
+  ["Owned NFTs and Ordinals", "portfolio_text_owned_subtitle"],
   ["Owned assets unavailable. Saved data is retained.", "portfolio_text_owned_error"],
   ["Owned asset cache is incomplete. Saved data is retained.", "portfolio_text_owned_cache"],
   ["Owned asset scan is incomplete. Saved data is retained.", "portfolio_text_owned_scan"],

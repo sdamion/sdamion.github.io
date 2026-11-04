@@ -40,11 +40,10 @@ owned-wallet net, and no blockchain inputs, outputs or fees are rewritten.
 
 ## Combined owned assets
 
-Assets > NFTs is the combined current-owned inventory: Cardano FTs/NFTs and ADA,
-Ethereum ERC-20/721/1155/404 and ETH, Solana SPL/Token-2022 tokens, standard and
-compressed NFTs and SOL, and Bitcoin BTC, Ordinals, Runes and BRC-20 balances.
+Assets > NFTs shows current-owned NFTs and Ordinals across supported chains.
+Fungible tokens and native balances appear only in Assets > FTs.
 Only explicitly owned wallets are scanned; CEX and Swap addresses are not holdings.
-The existing FTs valuation view and Historical NFTs history remain separate.
+Historical NFTs remains a separate history view.
 
 `use-owned-assets.ts` loads on demand and replaces an address snapshot only after
 all its inventory pages succeed. Provider failures retain prior snapshots and are

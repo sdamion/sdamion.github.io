@@ -56,7 +56,7 @@ import {nftTransactions,type NftEvent} from './nft-history';
 import {NftPreview} from './NftHistory';
 import {OwnedAssetsGallery,type OwnedAssetRow} from './OwnedAssetsGallery';
 import {useOwnedAssets} from './use-owned-assets';
-import {mergeOwnedAssets,type AssetWallet} from './owned-assets';
+import {assetIsFt,mergeOwnedAssets,type AssetWallet} from './owned-assets';
 import {externalFtHoldings} from './external-holdings';
 import {useOrdinals} from './use-ordinals';
 import {ordinalHistory} from './ordinals';
@@ -432,6 +432,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
     ownedOrdinalRows.set(metadata.id,{id:ordinal.id,chain:'bitcoin',standard:'Ordinal',name:metadata.name,symbol:'',raw:'1',decimals:0,image:null,explorer:'https://ordiscan.com/inscription/'+metadata.id,wallets:[wallet.name],ordinal});
   }
   ownedAssetRows.push(...ownedOrdinalRows.values());
+  const ownedNftRows=ownedAssetRows.filter(row=>!assetIsFt(row));
   const groupRows=holdingsGroup?rows.filter(row=>assetGroup(row.id)===holdingsGroup):rows;
   const holdingEntries=policyTableRows(groupRows,expandedPolicies,r=>!missingCostsOnly||(r.cost===null&&(r.id==='lovelace'||overrides[r.id]?.excluded!==true)));
   const groupIncluded=includedAssets(groupRows,overrides);
@@ -662,7 +663,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
         const ethCount=group==='FTs'&&ethereum.wallets.length?1:0;
         const solCount=group==='FTs'&&solana.wallets.length?1:0;
         const btcCount=group==='FTs'&&bitcoin.wallets.length?1:0;
-        if(group==='NFTs')return <MenuTile key={group} title={group} value={num(ownedAssetRows.length,0)} onOpen={()=>setHoldingsGroup(group)}><p className="small muted" translate="no">{t('All owned FTs, NFTs and Ordinals')}</p></MenuTile>;
+        if(group==='NFTs')return <MenuTile key={group} title={group} value={num(ownedNftRows.length,0)} onOpen={()=>setHoldingsGroup(group)}><p className="small muted" translate="no">{t('Owned NFTs and Ordinals')}</p></MenuTile>;
         return <MenuTile key={group} title={group} value={formatPortfolioUsd(total,currencyDisplay)} onOpen={()=>setHoldingsGroup(group)}><p className="small muted">{t('{done} / {total} assets valued',{done:priced.length+includedExternalFts.filter(row=>row.value!==null).length+(ethCount&&!ethExcluded&&ethValue!==null?1:0)+(solCount&&!solExcluded&&solAvailable.value!==null?1:0)+(btcCount&&!btcExcluded&&btcAvailable.value!==null?1:0),total:active.length+includedExternalFts.length+(ethCount&&!ethExcluded?1:0)+(solCount&&!solExcluded?1:0)+(btcCount&&!btcExcluded?1:0)})}{assets.length-active.length+externalFtRows.length-includedExternalFts.length+(ethCount&&ethExcluded?1:0)+(solCount&&solExcluded?1:0)+(btcCount&&btcExcluded?1:0)?' · '+t('{count} excluded',{count:assets.length-active.length+externalFtRows.length-includedExternalFts.length+(ethCount&&ethExcluded?1:0)+(solCount&&solExcluded?1:0)+(btcCount&&btcExcluded?1:0)}):''}</p></MenuTile>;
       })}<MenuTile title="Historical NFTs" value={num(nftHistory.length,0)} onOpen={()=>setHoldingsGroup('Historical NFTs')}><NftPreview rows={nftHistory} markets={snapshot?.markets||{}}/></MenuTile><MenuTile title="Missing assets / prices" value={num(assetIssueCount,0)} onOpen={()=>setHoldingsGroup('Missing assets / prices')}/></div>}
       {holdingsGroup==='Missing assets / prices'&&<AssetIssues issues={assetIssues} settings={overrides} scanIncomplete={ownedAssetInventory.incomplete} scanErrors={ownedAssetInventory.errors} missingTransfers={gainFlows.filter(row=>row.usd===null).length} busy={syncing} onSetting={updateOverride} onDetails={setSelectedAsset} onAddresses={()=>{setHoldingsGroup(null);setWalletMenuStart('exchanges');setSection('wallets');}} onTransactions={()=>{setHoldingsGroup(null);setSection('transactions');}} onFlows={()=>{setHoldingsGroup(null);setSection('gain-loss');}} onInclude={id=>excludeAsset(id,false)} onRefresh={()=>{if(canCardano){void refresh();void cardanoDeposits.refresh(true);}void ethereum.refresh();void solana.refresh();void bitcoin.refresh();void ownedAssetInventory.refresh(true);}} onRefreshPurchases={canCardano&&snapshot?()=>void refreshAssetPurchases():undefined}/>}
@@ -672,7 +673,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
         {ordinals.error&&<p role="alert" className="small-text error-text" translate="no">{t(ordinals.error)}</p>}
         {nftHistory.length?<HistoricalNftCollage rows={nftHistory} markets={snapshot?.markets||{}} wallets={{...assetWallets,...ordinalNfts.wallets}} prices={nftPrices} events={nftEvents} onVisibleAssets={setHistoricalImageIds}/>:<p className="empty" translate="no">{t(ordinals.busy?'Loading historical NFTs…':'No NFTs found in loaded wallet history.')}</p>}
       </>}
-      {holdingsGroup==='NFTs'&&<OwnedAssetsGallery rows={ownedAssetRows} busy={ownedAssetInventory.busy||ordinals.busy} partial={!snapshot?.complete||ownedAssetInventory.incomplete||bitcoin.wallets.some(wallet=>!ordinals.data.accounts[wallet.address])||assetWalletTargets.some(wallet=>wallet.chain==='ethereum'?!ethereum.data.accounts[wallet.address]:wallet.chain==='solana'?!solana.data.accounts[wallet.address]:!bitcoin.data.accounts[wallet.address])} errors={[...ownedAssetInventory.errors,...(ordinals.error?[{wallet:'Bitcoin Ordinals',message:ordinals.error}]:[])]} onRefresh={()=>{void ownedAssetInventory.refresh(true).catch(()=>{});void ordinals.refresh(true);}}/>}
+      {holdingsGroup==='NFTs'&&<OwnedAssetsGallery rows={ownedNftRows} busy={ownedAssetInventory.busy||ordinals.busy} partial={!snapshot?.complete||ownedAssetInventory.incomplete||bitcoin.wallets.some(wallet=>!ordinals.data.accounts[wallet.address])||assetWalletTargets.some(wallet=>wallet.chain==='ethereum'?!ethereum.data.accounts[wallet.address]:wallet.chain==='solana'?!solana.data.accounts[wallet.address]:!bitcoin.data.accounts[wallet.address])} errors={[...ownedAssetInventory.errors,...(ordinals.error?[{wallet:'Bitcoin Ordinals',message:ordinals.error}]:[])]} onRefresh={()=>{void ownedAssetInventory.refresh(true).catch(()=>{});void ordinals.refresh(true);}}/>}
       {holdingsGroup==='FTs'&&<>
       <button type="button" className="governance-vote-secondary" disabled={busy||!snapshot} onClick={()=>void refreshAssetPurchases()}>Refresh all purchase data</button>
       {purchaseProgress&&<div aria-live="polite"><div className="section-heading"><span className="governance-vote-bar-track" style={{flex:1}} role="progressbar" aria-label="Purchase transactions checked" aria-valuemin={0} aria-valuemax={purchaseProgress.total} aria-valuenow={purchaseProgress.done}><span className="governance-vote-bar-fill governance-vote-bar-fill--yes" style={{flexBasis:`${purchaseProgress.done/purchaseProgress.total*100}%`}}/></span><span className="tdsp-bar-legend">{purchaseProgress.done} / {purchaseProgress.total}</span></div></div>}
