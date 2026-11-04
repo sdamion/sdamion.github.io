@@ -1,7 +1,8 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {portfolioFetch} from './transport';
 import {portfolioSettings,flushVault} from './vault';
-import {accountKey,encodeOwnedAssets,readOwnedAssets,normalizeOwnedAsset,validAssetWallet,type AssetWallet,type OwnedAsset,type OwnedAssetsData} from './owned-assets';
+import {accountKey,encodeOwnedAssets,readOwnedAssets,validAssetWallet,type AssetWallet,type OwnedAssetsData} from './owned-assets';
+import {scanOwnedAssets} from './owned-asset-scan';
 
 export function useOwnedAssets(stake:string,enabled:boolean,active:boolean,wallets:AssetWallet[]){
   const key='tdsp-member-owned-assets:'+stake;
@@ -24,28 +25,12 @@ export function useOwnedAssets(stake:string,enabled:boolean,active:boolean,walle
         const id=accountKey(wallet),saved=current.current[id];
         if(!force&&saved&&Date.now()-saved.checkedAt<600000)continue;
         try{
-          const assets:OwnedAsset[]=[],seen=new Set<string>();
-          const kinds=wallet.chain==='ethereum'?['tokens','nfts']:wallet.chain==='bitcoin'?['runes','brc20']:['assets'];
-          for(const kind of kinds){
-            let cursor:unknown=null;const cursors=new Set<string>();
-            for(let page=1;;page++){
-              if(page>1000)throw new Error('Owned asset scan is incomplete. Saved data is retained.');
-              signal.throwIfAborted();
-              const response=await portfolioFetch('/'+(wallet.chain==='bitcoin'?'bitcoin-ordinals':wallet.chain),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:wallet.chain==='bitcoin'?kind:'assets',address:wallet.address,...(wallet.chain==='ethereum'?{kind,cursor}:{page})}),signal});
-              const result=await response.json();if(!response.ok)throw new Error(result.error||'Owned assets unavailable. Saved data is retained.');
-              if(result.address!==wallet.address||!Array.isArray(result.assets))throw new Error('Owned assets unavailable. Saved data is retained.');
-              for(const value of result.assets){
-                const row=normalizeOwnedAsset(value);
-                if(!row||row.chain!==wallet.chain)throw new Error('Owned assets unavailable. Saved data is retained.');
-                if(seen.has(row.id))throw new Error('Owned asset scan is incomplete. Saved data is retained.');seen.add(row.id);assets.push(row);
-              }
-              if(wallet.chain==='ethereum'){
-                if(result.cursor===null)break;
-                if(!result.cursor||typeof result.cursor!=='object')throw new Error('Owned asset scan is incomplete. Saved data is retained.');
-                const next=JSON.stringify(result.cursor);if(cursors.has(next))throw new Error('Owned asset scan is incomplete. Saved data is retained.');cursors.add(next);cursor=result.cursor;
-              }else{if(typeof result.more!=='boolean')throw new Error('Owned asset scan is incomplete. Saved data is retained.');if(!result.more)break;}
-            }
-          }
+          const assets=await scanOwnedAssets(wallet,signal,async(endpoint,body)=>{
+            const response=await portfolioFetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal});
+            const result=await response.json();
+            if(!response.ok)throw new Error(result.error||'Owned assets unavailable. Saved data is retained.');
+            return result;
+          });
           signal.throwIfAborted();
           const next={...current.current,[id]:{chain:wallet.chain,address:wallet.address,checkedAt:Date.now(),assets}};
           const settings=encodeOwnedAssets(key,next);

@@ -42,6 +42,12 @@ for(const crypto of ['ADA','BTC'] as const){
 }
 assert.equal(transferComparison([input],entries,ada,btc,{},'ADA','EUR')[0].inFiat,null);
 assert.equal(transferComparison([input],entries,{},btc,fx,'BTC','USD')[0].incoming,null);
+const unpricedAda=transferComparison([input],entries,{},btc,fx,'ADA','USD').at(-1)!;
+assert.equal(unpricedAda.incoming,100,'known native ADA remains visible without a historical price');
+assert.equal(unpricedAda.inFiat,null);
+const mixedUnpricedAda=transferComparison([input],entries,{},btc,fx,'ADA','USD',[{hash:'eth:in',time,side:'buy',usd:50}]).at(-1)!;
+assert.equal(mixedUnpricedAda.incoming,null,'an unpriced non-ADA transfer keeps the aggregate unknown, without discarding native ADA');
+assert.equal(transferComparison([input],entries,{},btc,fx,'ADA','USD',[{hash:'eth:out',time,side:'sell',usd:50}])[0].incoming,100);
 const adaDisplay=transferComparison([input,output],entries,ada,btc,fx,'BTC','ADA').at(-1)!;
 assert.equal(adaDisplay.inFiat,100,'BTC comparison follows an ADA display selection using transfer-day prices');
 assert.equal(adaDisplay.outFiat,100);

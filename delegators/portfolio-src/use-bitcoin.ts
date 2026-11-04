@@ -5,6 +5,7 @@ import {bitcoinWallets,bitcoinHash,bitcoinNet,bitcoinTransactions,validBitcoinTr
 import {encodeBitcoinSettings,readBitcoinSettings} from './bitcoin-storage';
 import {cachedTransactionProgress,createTransactionProgress,emptyDownloadProgress,type DownloadProgress} from './download-progress';
 import {depositScanWallets} from './deposit-tracking';
+import {scanProviderPages} from './provider-scan';
 
 function cachedBitcoinRows(data:BitcoinData,wallets:BitcoinWallet[]){
   const addresses=new Set(wallets.map(wallet=>wallet.address));
@@ -73,21 +74,26 @@ export function useBitcoin(stake:string,enabled:boolean){
           reuse=reusable.get(saved.tip)===true;
         }
         const rows=new Map<string,BitcoinTransaction>(),old=new Map((reuse?saved?.transactions||[]:[]).map(tx=>[tx.hash,tx]));
-        let after:string|undefined,reached=false;
-        for(;;){
-          const page=await request({action:'history',address:wallet.address,...(after?{after}:{})});
-          if(!Array.isArray(page.transactions)||!page.transactions.every(validBitcoinTransaction)||typeof page.more!=='boolean')throw new Error('Bitcoin data unavailable. Saved data is retained.');
-          for(const tx of page.transactions as BitcoinTransaction[]){
-            if(rows.has(tx.hash)||![...tx.inputs,...tx.outputs].some(row=>row.address===wallet.address))throw new Error('Bitcoin data unavailable. Saved data is retained.');
-            rows.set(tx.hash,tx);if(tx.height<=head.height){if(!pending.has(tx.hash)){pendingDirty=true;newPending.add(tx.hash);}pending.set(tx.hash,tx);}
-            if(old.has(tx.hash)){reached=true;break;}
+        let reached=false;
+        await scanProviderPages<{transactions:BitcoinTransaction[];more:boolean},string>({
+          signal,error:'Bitcoin data unavailable. Saved data is retained.',
+          fetchPage:after=>request({action:'history',address:wallet.address,...(after?{after}:{})}),
+          validPage:(value):value is {transactions:BitcoinTransaction[];more:boolean}=>{
+            const page=value as {transactions?:unknown;more?:unknown};
+            return !!page&&Array.isArray(page.transactions)&&page.transactions.every(validBitcoinTransaction)&&typeof page.more==='boolean';
+          },
+          hasMore:page=>page.more,
+          nextCursor:page=>{if(!page.transactions.length)throw new Error('Bitcoin data unavailable. Saved data is retained.');return page.transactions.at(-1)!.hash;},
+          onPage:page=>{
+            for(const tx of page.transactions){
+              if(rows.has(tx.hash)||![...tx.inputs,...tx.outputs].some(row=>row.address===wallet.address))throw new Error('Bitcoin data unavailable. Saved data is retained.');
+              rows.set(tx.hash,tx);if(tx.height<=head.height){if(!pending.has(tx.hash)){pendingDirty=true;newPending.add(tx.hash);}pending.set(tx.hash,tx);}
+              if(old.has(tx.hash)){reached=true;break;}
+            }
+            publishPending();setDownloadProgress(progress.add(rows.values()));
+            return reached;
           }
-          publishPending();
-          setDownloadProgress(progress.add(rows.values()));
-          if(reached||!page.more)break;
-          if(!page.transactions.length)throw new Error('Bitcoin data unavailable. Saved data is retained.');
-          after=page.transactions.at(-1).hash;
-        }
+        });
         if(reached)for(const [hash,tx] of old)if(!rows.has(hash))rows.set(hash,tx);
         const transactions=[...rows.values()];
         if(transactions.length!==stats.count||transactions.reduce((sum,tx)=>sum+bitcoinNet(tx,[wallet]),0n)!==BigInt(stats.raw))throw new Error('Bitcoin history changed during refresh. Retry.');

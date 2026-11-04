@@ -5,6 +5,7 @@ import {emptySolana,nativeWallets,validSolana,validSolanaTransaction,type Solana
 import {encodeSolanaSettings,readSolanaSettings} from './solana-storage';
 import {cachedTransactionProgress,createTransactionProgress,emptyDownloadProgress,type DownloadProgress} from './download-progress';
 import {depositScanWallets} from './deposit-tracking';
+import {scanProviderPages} from './provider-scan';
 
 export function useSolana(stake:string,enabled:boolean){
   const walletKey='tdsp-member-solana-wallets:'+stake,cexKey='tdsp-member-solana-cex:'+stake,dataKey='tdsp-member-solana-data:'+stake;
@@ -64,25 +65,29 @@ export function useSolana(stake:string,enabled:boolean){
       const next:SolanaData={...current.current,accounts:Object.fromEntries(scanWallets.flatMap(w=>current.current.accounts[w.address]?[[w.address,current.current.accounts[w.address]]]:[])),history:{...current.current.history}};
       for(const wallet of scanWallets){
         const saved=current.current.accounts[wallet.address],rows=new Map((saved?.transactions||[]).map(tx=>[tx.hash,tx]));
-        let before:string|undefined,checkpoint=saved?.checkpoint||null,complete=false;
+        let checkpoint=saved?.checkpoint||null;
         const seen=new Set<string>();
-        for(let page=0;;page++){
-          const result=await request({action:'signatures',address:wallet.address,...(before?{before}:{}),...(saved?.checkpoint?{until:saved.checkpoint}:{})});
-          if(!Array.isArray(result.signatures)||!result.signatures.every((value:unknown)=>validSolana(value,64))||typeof result.more!=='boolean')throw new Error('Solana data unavailable. Saved data is retained.');
-          if(page===0&&result.signatures.length)checkpoint=result.signatures[0];
-          for(const hash of result.signatures){
-            if(seen.has(hash))throw new Error('Solana data unavailable. Saved data is retained.');seen.add(hash);
-            let tx=known.get(hash);
-            if(!tx){const response=await request({action:'transaction',address:wallet.address,signature:hash});if(!validSolanaTransaction(response.transaction)||response.transaction.hash!==hash)throw new Error('Solana data unavailable. Saved data is retained.');tx=response.transaction;known.set(hash,tx);if(++downloaded%25===0)await savePending();}
-            rows.set(hash,tx);
-            setDownloadProgress(progress.add([tx]));
+        await scanProviderPages<{signatures:string[];more:boolean},string>({
+          signal,error:'Solana data unavailable. Saved data is retained.',
+          fetchPage:before=>request({action:'signatures',address:wallet.address,...(before?{before}:{}),...(saved?.checkpoint?{until:saved.checkpoint}:{})}),
+          validPage:(value):value is {signatures:string[];more:boolean}=>{
+            const page=value as {signatures?:unknown;more?:unknown};
+            return !!page&&Array.isArray(page.signatures)&&page.signatures.every((hash:unknown)=>validSolana(hash,64))&&typeof page.more==='boolean';
+          },
+          hasMore:page=>page.more,
+          nextCursor:page=>{if(!page.signatures.length)throw new Error('Solana data unavailable. Saved data is retained.');return page.signatures.at(-1)!;},
+          onPage:async(result,page)=>{
+            if(page===0&&result.signatures.length)checkpoint=result.signatures[0];
+            for(const hash of result.signatures){
+              if(seen.has(hash))throw new Error('Solana data unavailable. Saved data is retained.');seen.add(hash);
+              let tx=known.get(hash);
+              if(!tx){const response=await request({action:'transaction',address:wallet.address,signature:hash});if(!validSolanaTransaction(response.transaction)||response.transaction.hash!==hash)throw new Error('Solana data unavailable. Saved data is retained.');tx=response.transaction;known.set(hash,tx);if(++downloaded%25===0)await savePending();}
+              rows.set(hash,tx);setDownloadProgress(progress.add([tx]));
+            }
+            const completed=new Set(solanaTransactionsForCache(current.current).map(tx=>tx.hash));
+            setData({...current.current,pending:[...known.values()].filter(tx=>!completed.has(tx.hash))});
           }
-          const completed=new Set(solanaTransactionsForCache(current.current).map(tx=>tx.hash));
-          setData({...current.current,pending:[...known.values()].filter(tx=>!completed.has(tx.hash))});
-          if(!result.more){complete=true;break;}
-          if(!result.signatures.length)throw new Error('Solana data unavailable. Saved data is retained.');before=result.signatures.at(-1);
-        }
-        if(!complete)throw new Error('Solana history is incomplete. Saved data is retained.');
+        });
         const balance=await request({action:'balance',address:wallet.address});
         if(typeof balance.raw!=='string'||!/^\d{1,30}$/.test(balance.raw)||!Number.isSafeInteger(balance.slot)||balance.slot<0)throw new Error('Solana data unavailable. Saved data is retained.');
         next.accounts[wallet.address]={raw:balance.raw,slot:balance.slot,checkpoint,transactions:[...rows.values()]};
