@@ -99,6 +99,7 @@ try{
   await cex.click();
   const gain=page.locator('#portfolio-gain-loss-overlay');
   await gain.locator('.portfolio-gain-comparison').waitFor();
+  assert.doesNotMatch(await gain.innerText(),/(?:ADA|ETH|SOL|BTC): [\d,]+ \/ [\d,]+ transactions|Missing prices: \d+ assets/,'download and missing-price status stays out of the CEX overlay');
   assert.match(await gain.locator('.portfolio-gain-comparison').innerText(),/100 ADA[\s\S]*50\.00/,'ADA IN shows native Cardano flows only');
   assert.match(await gain.locator('.portfolio-gain-result').innerText(),/1,000\.00/,'combined result still subtracts ADA and ETH purchases');
   assert.match(await gain.locator('.portfolio-eth-comparison').innerText(),/ETH IN[\s\S]*ETH OUT[\s\S]*1 ETH[\s\S]*1,000\.00[\s\S]*0 ETH/,'native ETH IN/OUT are shown separately from combined equivalents');
