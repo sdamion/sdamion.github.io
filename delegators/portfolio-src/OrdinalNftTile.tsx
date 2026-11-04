@@ -12,8 +12,8 @@ export function OrdinalNftTile({row,caption}:{row:HistoricalNftRow;caption:React
   if(!ordinal)return null;
   const source=failed?null:ordinalImage(ordinal.id,ordinal.contentType);
   const frame=ordinalFrame(ordinal.id,ordinal.contentType);
-  // Recursive artwork needs scripts, but never the site's origin, storage or navigation privileges.
-  const recursivePreview=(preview=false)=><iframe className={preview?'portfolio-ordinal-preview':'portfolio-ordinal-frame'} src={frame!} title={row.name} sandbox="allow-scripts" referrerPolicy="no-referrer" loading="eager" tabIndex={preview?0:-1} allow="camera 'none'; microphone 'none'; geolocation 'none'; payment 'none'; clipboard-read 'none'; clipboard-write 'none'; usb 'none'; fullscreen 'none'"/>;
+  // Recursive HTML needs scripts; SVG does not. Neither receives origin or storage access.
+  const recursivePreview=(preview=false)=><iframe className={preview?'portfolio-ordinal-preview':'portfolio-ordinal-frame'} src={frame!} title={row.name} sandbox={ordinal.contentType==='text/html'?'allow-scripts':''} referrerPolicy="no-referrer" loading="eager" tabIndex={preview?0:-1} allow="camera 'none'; microphone 'none'; geolocation 'none'; payment 'none'; clipboard-read 'none'; clipboard-write 'none'; usb 'none'; fullscreen 'none'"/>;
   return <><div ref={artwork.ref} className="portfolio-nft-tile" data-inscription={ordinal.id}>
     <button type="button" className="portfolio-image-preview-button" aria-label={t('View {name} details',{name:row.name})} onClick={()=>setOpen(true)}>
       {artwork.load&&source?<img className="portfolio-asset-image" src={source} alt={row.name} title={row.name} loading="eager" decoding="async" referrerPolicy="no-referrer" onError={()=>setFailed(true)}/>:artwork.load&&frame?recursivePreview():<span className="portfolio-nft-placeholder"><ImageOff size={32} aria-hidden="true"/></span>}{caption}

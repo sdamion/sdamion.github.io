@@ -28,7 +28,7 @@ export function ordinalImage(id:string,contentType:string|null){
   return ordinalId(id)&&['image/png','image/jpeg','image/gif','image/webp','image/avif'].includes(contentType||'')?`https://ordiscan.com/content/${id}`:null;
 }
 export function ordinalFrame(id:string,contentType:string|null){
-  return ordinalId(id)&&contentType==='text/html'?`https://ordiscan.com/content/${id}`:null;
+  return ordinalId(id)&&['text/html','image/svg+xml'].includes(contentType||'')?`https://ordiscan.com/content/${id}`:null;
 }
 export function ordinalHistory(data:OrdinalsData,bitcoin:BitcoinData,wallets:BitcoinWallet[]){
   const records=new Map<string,{firstReceived:number|null;wallets:Set<string>;owned:Set<string>}>();

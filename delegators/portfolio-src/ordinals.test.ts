@@ -40,8 +40,11 @@ test('only fixed raster inscription URLs are rendered; cache parts round-trip lo
   assert.equal(ordinalImage('javascript:alert(1)','image/png'),null);assert.equal(validOrdinalMetadata({...metadata(),ownerOutput:'bad'}),false);
   const recursive='af4caa26e26ddb6f7ffc150b9cda93c85c327d5bcff28ff976caf7f167d6d220i129';
   assert.equal(ordinalFrame(recursive,'text/html'),'https://ordiscan.com/content/'+recursive);
+  assert.equal(ordinalFrame(id,'image/svg+xml'),'https://ordiscan.com/content/'+id);
+  const svg='5dff2db542e909a1253bfeaea07bd95112e94f15ce4f1156ce6469d3b9b97720i0';
+  assert.equal(ordinalFrame(svg,'image/svg+xml'),'https://ordiscan.com/content/'+svg);
   for(const value of ['javascript:alert(1)','https://evil.example/','../index.html',recursive+'?x=1'])assert.equal(ordinalFrame(value,'text/html'),null);
-  for(const type of ['image/svg+xml','application/javascript',null])assert.equal(ordinalFrame(recursive,type),null);
+  for(const type of ['application/javascript','application/json',null])assert.equal(ordinalFrame(recursive,type),null);
   const {data}=fixture(),key='tdsp-member-bitcoin-ordinals:member',settings=encodeOrdinalsSettings(key,data);
   assert.deepEqual(readOrdinalsSettings(key,name=>settings[name]??null),data);
   delete settings[key+'::'+address+':events:0'];assert.throws(()=>readOrdinalsSettings(key,name=>settings[name]??null));

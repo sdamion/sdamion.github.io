@@ -28,6 +28,7 @@ try{
   const url=new URL(route.request().url()),operation=url.pathname.split('/').pop();
   if(url.hostname==='ordiscan.com'&&url.pathname.startsWith('/content/')){
    images.push(url.pathname);
+   if(url.pathname==='/content/'+held)return route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="#00bbaa"/></svg>'});
    if(url.pathname==='/content/'+html)return route.fulfill({contentType:'text/html',body:`<!doctype html><script src="/content/${dependency}"></script>`});
    if(url.pathname==='/content/'+dependency)return route.fulfill({contentType:'text/javascript',headers:{'Access-Control-Allow-Origin':'*'},body:`
      const canvas=document.createElement('canvas');canvas.width=100;canvas.height=100;document.documentElement.append(canvas);const context=canvas.getContext('2d');context.fillStyle='#00bbaa';context.fillRect(0,0,100,100);
@@ -58,7 +59,7 @@ try{
  async function openGallery(){await assets.click();await page.getByRole('button',{name:'Open Historical NFTs',exact:true}).click();}
  await openGallery();const gallery=page.locator('#portfolio-holdings-overlay');
  await gallery.locator('[data-inscription="'+sold+'"] img').waitFor();await gallery.locator('[data-inscription="'+html+'"] .portfolio-nft-caption').filter({hasText:'onerror'}).waitFor();
- assert.equal(await gallery.locator('.portfolio-nft-tile').count(),4,'Cardano NFTs and received/sent Ordinals share the gallery');
+ assert.equal(await gallery.locator('.portfolio-nft-tile').count(),3,'received, sent and currently owned Ordinals share the gallery');
  const soldTile=gallery.locator('[data-inscription="'+sold+'"]'),heldTile=gallery.locator('[data-inscription="'+held+'"]');
  assert.match(await soldTile.innerText(),/2023-11-14/);assert.equal(await soldTile.locator('.portfolio-nft-owned').count(),0);
  assert.match(await heldTile.locator('.portfolio-nft-owned').innerText(),/Owned[\s\S]*BTC Art Wallet/);
@@ -69,13 +70,16 @@ try{
  assert.equal(await recursiveTile.locator('iframe').getAttribute('sandbox'),'allow-scripts');
  assert.equal(await artwork.locator('html').evaluate(()=>window.parentBlocked&&window.storageBlocked&&window.documentBlocked),true,'artwork cannot read parent data or origin storage');
  assert.equal(await page.evaluate(()=>!!window.attacked),false);
- assert.equal(images.includes('/content/'+held),false,'SVG remains unsupported');
+ await heldTile.frameLocator('iframe').locator('svg rect').waitFor();
+ assert.equal(images.includes('/content/'+held),true,'SVG inscription loads in the sandboxed preview');
+ assert.equal(await heldTile.locator('iframe').getAttribute('sandbox'),'','SVG artwork cannot run scripts');
  await recursiveTile.getByRole('button').click();const recursiveOverlay=page.locator('#portfolio-ordinal-preview-overlay');
  await recursiveOverlay.frameLocator('iframe').locator('canvas').waitFor();
  assert.equal(await recursiveOverlay.locator('iframe').getAttribute('referrerpolicy'),'no-referrer');
  await recursiveOverlay.getByRole('button',{name:'Back',exact:true}).click();
  await heldTile.getByRole('button').click();const preview=page.locator('#portfolio-ordinal-preview-overlay');
- await preview.getByText('Preview unavailable for this inscription type.',{exact:true}).waitFor();assert.equal(await preview.locator('img,iframe,object,embed').count(),0);
+ await preview.frameLocator('iframe').locator('svg rect').waitFor();
+ assert.equal(await preview.locator('iframe').getAttribute('sandbox'),'','SVG preview cannot run scripts');
  assert.equal(await preview.getByRole('link',{name:'Open inscription in Ordiscan'}).getAttribute('rel'),'noopener noreferrer');await preview.getByRole('button',{name:'Back',exact:true}).click();
  assert.equal(await page.evaluate(({address})=>window.btcFixture.accounts[address].raw,{address}),'900');
  assert.doesNotMatch(await soldTile.innerText(),/Buy:|Sell:/,'BTC inscriptions never display fabricated ADA prices');
