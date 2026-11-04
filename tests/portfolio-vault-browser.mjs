@@ -73,15 +73,16 @@ try{
   assert.equal(await page.evaluate(()=>window.opened||0),0);
   await page.getByRole('button',{name:'Open Transactions',exact:true}).press('Enter');
   assert.equal(await page.evaluate(()=>window.opened),1);
-  const setting='tdsp-member-cex-v1:'+stake;
-  await page.evaluate(async({stake,setting})=>{
+  const setting='tdsp-member-cex-v1:'+stake,manualSetting='tdsp-member-cex-manual-v1:'+stake;
+  await page.evaluate(async({stake,setting,manualSetting})=>{
     localStorage.setItem(setting,JSON.stringify([{name:'Private exchange label',address:'legacy'}]));
     await window.vault.unlockPortfolio({signData:window.approve});
     if(!window.vault.vaultUnlocked(stake))throw new Error('not unlocked');
     window.vault.portfolioSettings.setItem(setting,'private-updated-label');
+    window.vault.portfolioSettings.setItem(manualSetting,JSON.stringify({'bitcoin:example':'1N5D2vfM7wSagfzbdCbEuDXUsyGJMrLUxK'}));
     await window.vault.flushVault();
     if(localStorage.getItem(setting)!==null)throw new Error('legacy plaintext retained');
-  },{stake,setting});
+  },{stake,setting,manualSetting});
   assert.ok(uploads.length>=2);
   assert.ok(!JSON.stringify(uploads).includes('private-updated-label'));
   assert.deepEqual(Object.keys(uploads[0]).sort(),['action','chunk_ids','chunks','commit_id','payload','revision']);
@@ -104,6 +105,7 @@ try{
   assert.equal(await page.evaluate(stake=>Object.keys(window.vault.latestMemberSnapshot(stake+'::other-wallet-set').facts).length,stake),2);
   assert.equal(await page.evaluate(()=>{try{window.vault.latestMemberSnapshot('another-member::test');return false;}catch{return true;}}),true);
   assert.equal(await page.evaluate(setting=>window.vault.portfolioSettings.getItem(setting),setting),'private-updated-label');
+  assert.equal(await page.evaluate(manualSetting=>JSON.parse(window.vault.portfolioSettings.getItem(manualSetting))['bitcoin:example'],manualSetting),'1N5D2vfM7wSagfzbdCbEuDXUsyGJMrLUxK','manual CEX choices survive encrypted vault reload');
   conflict=true;
   assert.equal(await page.evaluate(async setting=>{window.vault.portfolioSettings.setItem(setting,'do-not-overwrite');try{await window.vault.flushVault();return false;}catch{return !window.vault.vaultUnlocked();}},setting),true);
   conflict=false;

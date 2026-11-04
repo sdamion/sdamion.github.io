@@ -157,8 +157,12 @@ try{
  await page.evaluate(({stake,exchange})=>{
   const walletKey='tdsp-member-bitcoin-wallets:'+stake,cexKey='tdsp-member-bitcoin-cex:'+stake,dataKey='tdsp-member-bitcoin-data:'+stake;
   const wallets=JSON.parse(window.fixtureStorage.getItem(walletKey)),data=JSON.parse(window.fixtureStorage.getItem(dataKey));
-  window.fixtureStorage.setItem(walletKey,JSON.stringify([...wallets,{address:exchange,name:'Personal BTC CEX',personalType:'cex'}]));
+  const sender='3NRqmZ6pRPGUUsp2XK4dwo68G1UoR21Jky',destination='1N5D2vfM7wSagfzbdCbEuDXUsyGJMrLUxK',coSender='34J9crSscqrEAgQ7MtXexQHpgaa3f9Za1r';
+  window.fixtureStorage.setItem(walletKey,JSON.stringify([...wallets,{address:exchange,name:'Personal BTC CEX',personalType:'cex'},{address:sender,name:'My BTC wallet'},{address:destination,name:'My CEX wallet',personalType:'cex'}]));
   window.fixtureStorage.setItem(cexKey,'[]');
+  data.accounts[destination]={raw:'10149104',tip:'b'.repeat(64),transactions:[
+    {hash:'c4ce313f2b4ba8eff8cf1c77fde090e9ab11d9595eccebc5fd512938566c8e64',height:655289,time:1604445086,feeRaw:'66752',inputs:[{address:sender,raw:'10104651'},{address:coSender,raw:'111205'}],outputs:[{address:destination,raw:'10149104'}]}
+  ]};
   data.accounts[exchange]={raw:'300',tip:'b'.repeat(64),transactions:[
     {hash:'8'.repeat(64),height:2,time:1700000020,feeRaw:'100',inputs:[{address:'1CounterpartyXXXXXXXXXXXXXXXUWLpVr',raw:'1000'}],outputs:[{address:exchange,raw:'900'}]},
     {hash:'9'.repeat(64),height:2,time:1700000030,feeRaw:'100',inputs:[{address:exchange,raw:'900'}],outputs:[{address:'1CounterpartyXXXXXXXXXXXXXXXUWLpVr',raw:'500'},{address:exchange,raw:'300'}]}
@@ -175,6 +179,30 @@ try{
  await gain.getByRole('button',{name:'BTC OUT',exact:true}).click();
  const personalOut=gain.locator('.history-table tbody tr').filter({has:page.locator('a[href="https://blockstream.info/tx/'+'9'.repeat(64)+'"]')});
  await personalOut.waitFor();assert.match(await personalOut.locator('td').first().innerText(),/BTC OUT[\s\S]*Personal wallet[\s\S]*Excluded from calculations/);
+ await gain.getByRole('button',{name:'Back',exact:true}).click();
+ await page.getByRole('button',{name:'Open Transactions',exact:true}).click();
+ const publicLink=page.locator('a[href="https://blockstream.info/tx/c4ce313f2b4ba8eff8cf1c77fde090e9ab11d9595eccebc5fd512938566c8e64"]');
+ const publicTx=transactions.locator('tbody tr').filter({has:publicLink});await publicTx.waitFor();
+ const review=publicTx.locator('xpath=following-sibling::tr[1]');
+ const approval=review.getByRole('checkbox',{name:'Count transaction as CEX BTC IN'});
+ await page.setViewportSize({width:390,height:900});
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true,'manual review does not overflow mobile');
+ await page.setViewportSize({width:1200,height:900});
+ assert.equal(await approval.isChecked(),false,'unclear Bitcoin activity starts excluded');
+ await approval.check();
+ assert.equal(await page.evaluate(stake=>JSON.parse(window.fixtureStorage.getItem('tdsp-member-cex-manual-v1:'+stake))['bitcoin:c4ce313f2b4ba8eff8cf1c77fde090e9ab11d9595eccebc5fd512938566c8e64'],stake),'1N5D2vfM7wSagfzbdCbEuDXUsyGJMrLUxK','the decision is saved independently of blockchain history');
+ await transactions.getByRole('button',{name:'Back',exact:true}).click();
+ await page.getByRole('button',{name:'Open CEX Transactions',exact:true}).click();
+ await gain.getByRole('button',{name:'BTC IN',exact:true}).click();
+ await gain.locator('.history-table tbody tr').filter({has:publicLink}).waitFor();
+ assert.match(await gain.locator('.portfolio-btc-comparison').innerText(),/0[.,]10149104 BTC/,'manual on-chain BTC IN is added to CEX totals');
+ await gain.getByRole('button',{name:'Back',exact:true}).click();
+ await page.getByRole('button',{name:'Open Transactions',exact:true}).click();
+ await transactions.locator('tbody tr').filter({has:publicLink}).locator('xpath=following-sibling::tr[1]').getByRole('checkbox',{name:'Count transaction as CEX BTC IN'}).uncheck();
+ await transactions.getByRole('button',{name:'Back',exact:true}).click();
+ await page.getByRole('button',{name:'Open CEX Transactions',exact:true}).click();
+ await gain.getByRole('button',{name:'BTC IN',exact:true}).click();
+ assert.equal(await gain.locator('.history-table tbody tr').filter({has:publicLink}).count(),0,'removing manual approval removes only the CEX classification');
  await gain.getByRole('button',{name:'Back',exact:true}).click();
  const count=requests.length;await page.evaluate(()=>window.reopen('delegator'));await walletTile.click();await page.getByRole('button',{name:'Open My Wallets',exact:true}).click();
  assert.equal(await page.locator('#portfolio-wallet-network option[value="bitcoin"]').count(),0,'Bitcoin remains admin-only');
