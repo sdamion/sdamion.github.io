@@ -44,7 +44,7 @@ test('remote checkpoint messages are hidden without disabling persistence',()=>{
 });
 test('CEX metric opens its shared transaction overlay without stale search or pagination',()=>{
   const app=source('App.tsx');
-  assert.match(app,/<Metric label="CEX Transactions"[^\n]*onOpen=\{\(\)=>\{setQuery\(''\);setFilter\('all'\);setPage\(0\);setSection\('gain-loss'\);\}\}/);
+  assert.match(app,/<Metric label="CEX Transactions"[^\n]*onOpen=\{\(\)=>\{setQuery\(''\);setFilter\('all'\);setDateFrom\(''\);setDateTo\(''\);setPage\(0\);setSection\('gain-loss'\);\}\}/);
   assert.match(app,/name=\{section==='gain-loss'\?'CEX Transactions':section==='review'\?'Needs review':'Transactions'\}/);
   const tile=app.split('\n').find(line=>line.includes('<Metric label="CEX Transactions"'));
   assert.match(tile,/note=\{portfolioPartial\|\|availableCex\.partial/);

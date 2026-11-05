@@ -8,7 +8,7 @@ test('wallet changes show initialisation before counting, even without a snapsho
     const save = app.slice(app.indexOf('function saveWallets('), app.indexOf('function saveCexAddresses('));
     assert.ok(save.indexOf('setBusy(true)') < save.lastIndexOf('setWallets(next)'));
     assert.match(save, /setAnalysis\(null\);setCounting\(null\)/);
-    assert.match(app, /<MenuTile title="Wallets" value=\{refreshCounts\?[^\n]+:initialising\?'Initialising':'— \/ — active'\} loading=\{initialising\}/);
+    assert.match(app, /<MenuTile title="Wallets" value=\{refreshCounts\|\|!canCardano\?[^\n]+:initialising\?'Initialising':'— \/ — active'\} loading=\{initialising\}/);
     assert.match(read('delegators/portfolio-src/ui.tsx'), /progress.setAttribute\('aria-label',loadingLabel\)/);
 });
 
@@ -55,15 +55,16 @@ test('all linked addresses feed balances and transaction history, including spen
 });
 
 test('wallet and exchange addresses use compact shared table rows', () => {
-    const wallets = read('delegators/portfolio-src/WalletAddresses.tsx');
-    const cex = read('delegators/portfolio-src/CexAddresses.tsx');
+    const app = read('delegators/portfolio-src/App.tsx');
+    const addresses = read('delegators/portfolio-src/AddressList.tsx');
     const byron = read('delegators/portfolio-src/ByronExchanges.tsx');
-    assert.match(wallets, /return <><TableRow><TableCell><button[^\n]+>\{w.label\}<\/button><\/TableCell>/);
-    assert.match(cex, /<TableRow key=\{entry.address\}>/);
+    assert.match(app, /<AddressList owned rows=\{\[\.\.\.ownAddressRows,\.\.\.legacyPersonalRows\]\}\/>/);
+    assert.match(app, /<AddressList rows=\{counterpartyRows\}\/>/);
+    assert.match(addresses, /<TableRow key=\{row.id\} data-address-id=\{row.id\}>/);
+    assert.match(addresses, /<AddressLink network=\{row.network\} address=\{row.address\}/);
+    assert.match(addresses, /<AddressActions id=/);
     assert.match(byron, /addresses.map\(address=>/);
-    assert.match(byron, /title=\{address\}/);
-    assert.match(byron, /address.slice\(0,6\)/);
-    assert.match(byron, /address.slice\(-4\)/);
+    assert.match(byron, /<AddressLink network="cardano" address=\{address\} onError=\{setStatus\}\/>/);
 });
 
 test('storage choice is inside Portfolio, optional, and uses the universal settings overlay', () => {
