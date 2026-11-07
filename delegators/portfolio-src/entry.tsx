@@ -15,18 +15,18 @@ function MemberPortfolio({wallet,role}:{wallet:WalletProvider;role:'delegator'|'
   const [stake,setStake]=useState(''),[error,setError]=useState('Verifying your wallet session…');
   const [ready,setReady]=useState(false),[settings,setSettings]=useState(false),[busy,setBusy]=useState(false),[version,setVersion]=useState(0);
   const [preference,setPreference]=useState<StorageMode|null>(null);
-  const [portfolioAccess,setPortfolioAccess]=useState({cardano:true,ethereum:false,solana:false,bitcoin:false});
+  const [portfolioAccess,setPortfolioAccess]=useState({cardano:true,ethereum:false,robinhood:false,solana:false,bitcoin:false});
   useEffect(()=>{
     const control=new AbortController();
     const lock=()=>{control.abort();setStake('');setError('Your wallet session has ended. Close Portfolio and reconnect in the members area.');};
     window.addEventListener('tdsp:portfolio-session-expired',lock);
     portfolioFetch('/session',{signal:control.signal}).then(async r=>{
       if(!r.ok)throw new Error(r.status===404?'The TDSP backend needs the portfolio update before this tool can load.':'Connect your wallet in the members area first.');
-      const data=await r.json() as {stake_address?:string;portfolio_access?:{cardano?:boolean;ethereum?:boolean;solana?:boolean;bitcoin?:boolean}};
+      const data=await r.json() as {stake_address?:string;portfolio_access?:{cardano?:boolean;ethereum?:boolean;robinhood?:boolean;solana?:boolean;bitcoin?:boolean}};
       if(!data.stake_address||!validStakeAddress(data.stake_address))throw new Error('No mainnet stake address was returned for this member.');
       if(control.signal.aborted)return;
       const member=data.stake_address;
-      setPortfolioAccess({cardano:data.portfolio_access?.cardano!==false,ethereum:data.portfolio_access?.ethereum===true,solana:data.portfolio_access?.solana===true,bitcoin:data.portfolio_access?.bitcoin===true});
+      setPortfolioAccess({cardano:data.portfolio_access?.cardano!==false,ethereum:data.portfolio_access?.ethereum===true,robinhood:data.portfolio_access?.robinhood===true,solana:data.portfolio_access?.solana===true,bitcoin:data.portfolio_access?.bitcoin===true});
       const saved=savedStorage(member);
       setStake(member);setPreference(saved);setError('');
       if(vaultUnlocked(member)){setReady(true);return;}
@@ -48,7 +48,7 @@ function MemberPortfolio({wallet,role}:{wallet:WalletProvider;role:'delegator'|'
         const response=await portfolioFetch('/session',{signal:control.signal});
         if(!response.ok)return;
         const data=await response.json();
-        if(!control.signal.aborted&&data.stake_address===stake)setPortfolioAccess({cardano:data.portfolio_access?.cardano!==false,ethereum:data.portfolio_access?.ethereum===true,solana:data.portfolio_access?.solana===true,bitcoin:data.portfolio_access?.bitcoin===true});
+        if(!control.signal.aborted&&data.stake_address===stake)setPortfolioAccess({cardano:data.portfolio_access?.cardano!==false,ethereum:data.portfolio_access?.ethereum===true,robinhood:data.portfolio_access?.robinhood===true,solana:data.portfolio_access?.solana===true,bitcoin:data.portfolio_access?.bitcoin===true});
       }catch{/* Backend authorization remains authoritative during transient failures. */}finally{pending=false;}
     },60000);
     return()=>{clearInterval(timer);control.abort();};

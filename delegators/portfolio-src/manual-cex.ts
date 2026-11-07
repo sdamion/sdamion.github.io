@@ -4,7 +4,7 @@ import {bitcoinNet} from './bitcoin.ts';
 import type {EthereumTransaction,EthereumWallet,FiatTransfer} from './ethereum.ts';
 import type {SolanaTransaction,NativeWallet} from './solana.ts';
 
-export type CexNetwork='cardano'|'ethereum'|'solana'|'bitcoin';
+export type CexNetwork='cardano'|'ethereum'|'robinhood'|'solana'|'bitcoin';
 export type ManualCexChoice={address:string;name:string;raw:string};
 export type ManualCexCandidate={network:CexNetwork;hash:string;time:number;decimals:number;choices:ManualCexChoice[]};
 export type ManualCexDecisions=Record<string,string>;
@@ -13,7 +13,7 @@ export const manualCexKey=(network:CexNetwork,hash:string)=>`${network}:${hash}`
 
 export function readManualCexDecisions(value:unknown):ManualCexDecisions{
   if(!value||typeof value!=='object'||Array.isArray(value))return {};
-  return Object.fromEntries(Object.entries(value).filter(([key,address])=>/^(cardano|ethereum|solana|bitcoin):[a-zA-Z0-9:_-]{1,100}$/.test(key)&&typeof address==='string'&&address.length>0&&address.length<=128).slice(0,20000)) as ManualCexDecisions;
+  return Object.fromEntries(Object.entries(value).filter(([key,address])=>/^(cardano|ethereum|robinhood|solana|bitcoin):[a-zA-Z0-9:_-]{1,100}$/.test(key)&&typeof address==='string'&&address.length>0&&address.length<=128).slice(0,20000)) as ManualCexDecisions;
 }
 
 function choices<T extends {address:string;name:string;personalType?:'dex'|'cex'}>(wallets:T[],amount:(wallet:T)=>bigint):ManualCexChoice[]{
@@ -38,10 +38,10 @@ export function cardanoCexCandidate(fact:Fact,wallets:Wallet[],groups:Record<str
   return result.length?{network:'cardano',hash:fact.hash,time:fact.time,decimals:6,choices:result}:null;
 }
 
-export function ethereumCexCandidate(tx:EthereumTransaction,wallets:EthereumWallet[]):ManualCexCandidate|null{
+export function ethereumCexCandidate(tx:EthereumTransaction,wallets:EthereumWallet[],network:'ethereum'|'robinhood'='ethereum'):ManualCexCandidate|null{
   if(tx.failed||BigInt(tx.valueWei)===0n)return null;
   const result=choices(wallets.filter(wallet=>wallet.group!=='swap'&&(wallet.address===tx.from||wallet.address===tx.to)),wallet=>wallet.address===tx.from&&wallet.address===tx.to?0n:wallet.address===tx.to?BigInt(tx.valueWei):-BigInt(tx.valueWei));
-  return result.length?{network:'ethereum',hash:tx.id,time:tx.time,decimals:18,choices:result}:null;
+  return result.length?{network,hash:tx.id,time:tx.time,decimals:18,choices:result}:null;
 }
 
 export function solanaCexCandidate(tx:SolanaTransaction,wallets:NativeWallet[]):ManualCexCandidate|null{
@@ -66,5 +66,5 @@ export function manualCexFlow(candidate:ManualCexCandidate,selectedAddress:strin
   if(!choice)return null;
   const raw=BigInt(choice.raw),amount=Number(raw<0n?-raw:raw)/10**candidate.decimals;
   if(!Number.isFinite(amount)||amount<=0)return null;
-  return {network:candidate.network,hash:candidate.network==='bitcoin'?`btc:${candidate.hash}`:candidate.network==='solana'?`sol:${candidate.hash}:manual`:candidate.hash,time:candidate.time,side:raw>0n?'buy':'sell',amount,address:selectedAddress,usd:price!==null&&Number.isFinite(price)&&price>0?amount*price:null};
+  return {network:candidate.network,hash:candidate.network==='bitcoin'?`btc:${candidate.hash}`:candidate.network==='solana'?`sol:${candidate.hash}:manual`:candidate.network==='robinhood'?`rh:${candidate.hash}`:candidate.hash,time:candidate.time,side:raw>0n?'buy':'sell',amount,address:selectedAddress,usd:price!==null&&Number.isFinite(price)&&price>0?amount*price:null};
 }

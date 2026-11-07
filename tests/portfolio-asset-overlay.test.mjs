@@ -3,6 +3,12 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 
 const source=name=>readFileSync(new URL(`../delegators/portfolio-src/${name}`,import.meta.url),'utf8');
+test('Needs review tile remains available after pending transactions and errors clear',()=>{
+  const app=source('App.tsx');
+  assert.match(app,/<MenuTile title="Needs review"[^\n]*value=\{num\(reviewCount,0\)\}/);
+  assert.doesNotMatch(app,/reviewCount>0\|\|reviewErrors\.length>0/);
+  assert.match(app,/No transactions need review\./);
+});
 test('asset details use the universal overlay and retain the mounted portfolio',()=>{
   const overlay=source('AssetOverlay.tsx');
   assert.match(overlay,/host\.createUniversalOverlay\(/);

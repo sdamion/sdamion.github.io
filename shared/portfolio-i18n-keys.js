@@ -36,6 +36,7 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
   ["No missing asset data in loaded wallets.", "portfolio_text_asset_issues_empty"],
   ["IN/OUT is determined by saved address roles. Manual prices and costs are local estimates; blockchain amounts are unchanged.", "portfolio_text_asset_issues_help"],
   ["Needs review", "portfolio_text_review_title"],
+  ["No transactions need review.", "portfolio_text_review_empty"],
   ["{count} incomplete transactions · {errors} scan errors", "portfolio_text_review_count"],
   ["These transactions have incomplete details or were saved during an interrupted scan. Only verified blockchain data is shown; incomplete history is excluded from financial calculations.", "portfolio_text_review_help"],
   ["Retry Cardano scan", "portfolio_text_review_retry_ada"],
@@ -1889,6 +1890,9 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
   , ["{wallets} own wallets · {exchanges} CEX addresses", "portfolio_text_eth_address_counts"]
   , ["Add your own Ethereum wallet to scan ETH CEX transfers. CEX addresses are counterparties, not your holdings; shared exchange balances are never counted as yours.", "portfolio_text_eth_own_required"]
   , ["Refresh Ethereum wallets", "portfolio_text_eth_refresh_wallets"]
+  , ["Refresh Robinhood Chain wallets", "portfolio_text_rh_refresh_wallets"]
+  , ["Robinhood Chain transfer", "portfolio_text_rh_transfer"]
+  , ["Retry Robinhood Chain scan", "portfolio_text_rh_retry_scan"]
   , ["Miner", "portfolio_text_eth_miner"]
   , ["Ethereum Swap wallets", "portfolio_text_eth_swap_wallets"]
   , ["Internal cross-chain swap", "portfolio_text_internal_cross_chain_swap"]

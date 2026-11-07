@@ -16,6 +16,7 @@ type AssetSource={
 };
 export const assetSources:Record<AssetWallet['chain'],AssetSource>={
   ethereum:{label:'Ethereum',endpoint:'/ethereum',kinds:['tokens','nfts'],ftStandards:['Native','FT','ERC-20'],nftStandards:['NFT','ERC-721','ERC-1155','ERC-404'],pagination:'cursor',validAddress:validEthereumAddress,normalizeAddress:address=>address.toLowerCase(),explorerHosts:['eth.blockscout.com']},
+  robinhood:{label:'Robinhood Chain',endpoint:'/robinhood',kinds:['tokens','nfts'],ftStandards:['Native','FT','ERC-20'],nftStandards:['NFT','ERC-721','ERC-1155','ERC-404'],pagination:'cursor',validAddress:validEthereumAddress,normalizeAddress:address=>address.toLowerCase(),explorerHosts:['robinhoodchain.blockscout.com']},
   solana:{label:'Solana',endpoint:'/solana',kinds:['assets'],ftStandards:['Native','FT','SPL'],nftStandards:['NFT','V1_NFT','V2_NFT','ProgrammableNFT','MplCoreAsset','IdentityNFT','Compressed NFT'],pagination:'page',validAddress:validSolana,normalizeAddress:address=>address,explorerHosts:['solscan.io']},
   bitcoin:{label:'Bitcoin',endpoint:'/bitcoin-ordinals',kinds:['runes','brc20'],ftStandards:['Native','FT','Rune','BRC-20'],nftStandards:['NFT','Ordinal'],pagination:'page',validAddress:validBitcoinAddress,normalizeAddress:address=>address,explorerHosts:['ordiscan.com']}
 };

@@ -10,7 +10,7 @@ import {ethereumDeposit} from './ethereum';
 import {DepositTransaction} from './DepositTransaction';
 import {PartialHistoryNote} from './PartialHistoryNote';
 
-export function EthereumTransaction({tx,wallets,exchanges,history,adaHistory,internalSwap=false,compact=false,partial=false}:{tx:EthTransaction;wallets:EthereumWallet[];exchanges:EthereumWallet[];history:Record<string,number>;adaHistory:Record<string,number>;internalSwap?:boolean;compact?:boolean;partial?:boolean}){
+export function EthereumTransaction({tx,wallets,exchanges,history,adaHistory,internalSwap=false,compact=false,partial=false,network='ethereum'}:{tx:EthTransaction;wallets:EthereumWallet[];exchanges:EthereumWallet[];history:Record<string,number>;adaHistory:Record<string,number>;internalSwap?:boolean;compact?:boolean;partial?:boolean;network?:'ethereum'|'robinhood'}){
   const t=usePortfolioText(),date=new Date(tx.time*1000).toISOString().slice(0,10);
   const display=transactionCurrency(usePortfolioCurrency(),tx.time,adaHistory[date]??null);
   const price=history[date]??null,transfer=internalSwap?null:ethereumTransfer(tx,wallets,exchanges);
@@ -21,13 +21,13 @@ export function EthereumTransaction({tx,wallets,exchanges,history,adaHistory,int
   const incoming=ethereumSwapDirection(tx,wallets)??wallets.some(w=>w.address===tx.to);
   const deposit=directEthereumDeposit(tx,wallets,exchanges);
   const receipt=ethereumDeposit(tx,wallets,exchanges);
-  if(receipt)return <DepositTransaction receipt={receipt} addresses={[...wallets,...exchanges]} history={history} adaHistory={adaHistory} partial={partial}/>;
-  const label=compact?`ETH ${incoming?'IN':'OUT'}`:tx.failed?t('Failed'):internalSwap?t('Internal cross-chain swap'):deposit?t('Direct CEX deposit'):transfer?`ETH ${transfer.side==='buy'||'mined' in transfer?'IN':'OUT'}`:own.filter(wallet=>wallet.group!=='swap').length===2?t('Internal'):t('Ethereum transfer');
+  if(receipt&&network==='ethereum')return <DepositTransaction receipt={receipt} addresses={[...wallets,...exchanges]} history={history} adaHistory={adaHistory} partial={partial}/>;
+  const label=compact?`${network==='robinhood'?'RH':'ETH'} ${incoming?'IN':'OUT'}`:tx.failed?t('Failed'):internalSwap?t('Internal cross-chain swap'):deposit?t('Direct CEX deposit'):transfer?`${network==='robinhood'?'RH':'ETH'} ${transfer.side==='buy'||'mined' in transfer?'IN':'OUT'}`:own.filter(wallet=>wallet.group!=='swap').length===2?t('Internal'):network==='robinhood'?t('Robinhood Chain transfer'):t('Ethereum transfer');
   return <TransactionLayout compact={compact} cells={[
-    <><strong translate="no" className={transfer?.side==='sell'?'positive':''}>{format(amount)}</strong><div translate="no" className="small muted">{weiToEthText(tx.valueWei)} ETH</div><div className="small muted">{label}</div>{transfer&&'mined' in transfer&&<div className="small muted">{t('Mining / services receipt')}</div>}<a translate="no" href={`https://etherscan.io/tx/${tx.hash}`} target="_blank" rel="noreferrer">{short(tx.hash)} <ExternalLink size={12}/></a>{partial&&<PartialHistoryNote excluded/>}</>,
+    <><strong translate="no" className={transfer?.side==='sell'?'positive':''}>{format(amount)}</strong><div translate="no" className="small muted">{weiToEthText(tx.valueWei)} ETH</div><div className="small muted">{label}</div>{transfer&&'mined' in transfer&&<div className="small muted">{t('Mining / services receipt')}</div>}<a translate="no" href={`${network==='robinhood'?'https://robinhoodchain.blockscout.com':'https://etherscan.io'}/tx/${tx.hash}`} target="_blank" rel="noreferrer">{short(tx.hash)} <ExternalLink size={12}/></a>{partial&&<PartialHistoryNote excluded/>}</>,
     <span translate="no">{price!==null&&display?formatPortfolioUsd(price,display,6):'—'}<div className="small muted">ETH</div></span>,
     <span translate="no">{tx.kind==='internal'?t('Fee belongs to parent transaction'):format(fee)}{paidFee!==null&&<div className="small muted">{weiToEthText(paidFee)} ETH</div>}</span>,
-    <><TransactionAddresses network="ethereum" from={[addressRow(tx.from)]} to={[addressRow(tx.to)]}/>{deposit&&<div className="small muted">{t('External receipt · not an owned-wallet transfer')}</div>}</>,
+    <><TransactionAddresses network={network} from={[addressRow(tx.from)]} to={[addressRow(tx.to)]}/>{deposit&&<div className="small muted">{t('External receipt · not an owned-wallet transfer')}</div>}</>,
     <TransactionDate time={tx.time}/>
   ]}/>;
 }

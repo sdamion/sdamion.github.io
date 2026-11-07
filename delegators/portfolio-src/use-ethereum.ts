@@ -9,7 +9,7 @@ import {cachedTransactionProgress,createTransactionProgress,emptyDownloadProgres
 import {encodeEthereumScanCheckpoint,readEthereumScanCheckpoints} from './ethereum-scan-storage';
 import {ethereumScanStart} from './ethereum-finality';
 
-export function useEthereum(stake:string,ready:boolean){
+export function useEthereum(stake:string,ready:boolean,scanEnabled=ready){
   const walletKey='tdsp-member-ethereum-wallets:'+stake,cexKey='tdsp-member-ethereum-cex:'+stake,dataKey='tdsp-member-ethereum-data:'+stake;
   const scanKey=dataKey+'::scan';
   const [wallets,setWallets]=useState<EthereumWallet[]>([]),[exchanges,setExchanges]=useState<EthereumWallet[]>([]),[data,setData]=useState<EthereumData>(emptyEthereum);
@@ -35,10 +35,10 @@ export function useEthereum(stake:string,ready:boolean){
       const savedWallets=ethereumWallets(JSON.parse(portfolioSettings.getItem(walletKey)||'[]'));
       setWallets(savedWallets);
       const savedExchanges=ethereumWallets(JSON.parse(portfolioSettings.getItem(cexKey)||'[]'));setExchanges(savedExchanges);
-      const saved=readEthereumSettings(dataKey,key=>portfolioSettings.getItem(key),new Set(ethereumScanWallets(savedWallets,savedExchanges).map(wallet=>wallet.address)));current.current=saved;setData(saved);setLoadedStake(stake);
+      const saved=scanEnabled?readEthereumSettings(dataKey,key=>portfolioSettings.getItem(key),new Set(ethereumScanWallets(savedWallets,savedExchanges).map(wallet=>wallet.address))):emptyEthereum();current.current=saved;setData(saved);setLoadedStake(stake);
     }catch{setError('Ethereum cache could not be opened.');}
     return()=>controller.current?.abort();
-  },[ready,stake]);
+  },[ready,scanEnabled,stake]);
   const scope=trackedWallets.map(w=>w.address+':'+(w.deposit?'deposit':'owned')).sort().join('|');
   function savedTransactions(){
     const addresses=new Set(trackedWallets.map(wallet=>wallet.address));
@@ -52,17 +52,17 @@ export function useEthereum(stake:string,ready:boolean){
   }
   useEffect(()=>{
     historyCheckpoints.current.clear();
-    if(ready)try{
+    if(ready&&scanEnabled)try{
       historyCheckpoints.current=readEthereumScanCheckpoints(scanKey,portfolioSettings.keys(),key=>portfolioSettings.getItem(key));
       const addresses=new Set(trackedWallets.map(wallet=>wallet.address));
       const completed=new Set(Object.values(current.current.accounts).flatMap(account=>account.transactions.map(tx=>tx.id)));
       pendingRef.current=new Map([...historyCheckpoints.current].filter(([scope])=>addresses.has(scope.split(':')[0])).flatMap(([,ranges])=>[...ranges.values()].flatMap(range=>range.transactions)).filter(tx=>!completed.has(tx.id)).map(tx=>[tx.id,tx]));
       setPending([...pendingRef.current.values()]);
     }catch{setError('Ethereum scan checkpoint could not be opened. Saved data is retained.');}
-    setDownloadProgress(ready&&loaded&&trackedWallets.length?cachedTransactionProgress(savedTransactions(),tx=>tx.id):emptyDownloadProgress());
-  },[ready,loaded,stake,scope]);
+    setDownloadProgress(ready&&scanEnabled&&loaded&&trackedWallets.length?cachedTransactionProgress(savedTransactions(),tx=>tx.id):emptyDownloadProgress());
+  },[ready,scanEnabled,loaded,stake,scope]);
   const refresh=useCallback(async()=>{
-    if(!ready||!loaded||!trackedWallets.length)return;
+    if(!ready||!scanEnabled||!loaded||!trackedWallets.length)return;
     controller.current?.abort();const control=new AbortController();controller.current=control;
     const signal=control.signal;
     const saved=savedTransactions();
@@ -183,10 +183,10 @@ export function useEthereum(stake:string,ready:boolean){
       }
     }catch(e){if(!signal.aborted){setError(e instanceof Error?e.message:'Ethereum refresh failed. Saved data is retained.');setStatus('');}}
     finally{if(controller.current===control)setBusy(false);}
-  },[ready,loaded,scope,stake]);
+  },[ready,scanEnabled,loaded,scope,stake]);
   useEffect(()=>{void refresh();return()=>controller.current?.abort();},[refresh]);
   useEffect(()=>{
-    if(!ready||!loaded||!trackedWallets.length)return;
+    if(!ready||!scanEnabled||!loaded||!trackedWallets.length)return;
     const control=new AbortController();let pending=false;
     const updateQuote=async()=>{
       if(pending)return;pending=true;
@@ -203,7 +203,7 @@ export function useEthereum(stake:string,ready:boolean){
     void updateQuote();
     const timer=setInterval(()=>void updateQuote(),60000);
     return()=>{clearInterval(timer);control.abort();};
-  },[ready,loaded,scope,stake]);
+  },[ready,scanEnabled,loaded,scope,stake]);
   function saveWallets(next:EthereumWallet[]){
     if(!ready)return false;
     const normalized=ethereumWallets(next);
@@ -216,5 +216,5 @@ export function useEthereum(stake:string,ready:boolean){
     try{const normalized=ethereumWallets(next);portfolioSettings.setItem(cexKey,JSON.stringify(normalized));setExchanges(normalized);return true;}
     catch{setError('Ethereum wallet settings could not be saved.');return false;}
   }
-  return {wallets:ready?wallets.filter(wallet=>wallet.group!=='swap'):[],allWallets:ready?wallets:[],swapWallets:ready?wallets.filter(wallet=>wallet.group==='swap'):[],exchanges:ready?exchanges.filter(e=>!wallets.some(w=>w.address===e.address)):[],data:ready?data:emptyEthereum(),pending:ready&&loaded?pending:[],loaded:ready&&loaded,busy:ready&&busy,error:ready?error:'',status:ready?status:'',downloadProgress:ready?downloadProgress:emptyDownloadProgress(),refresh,saveWallets,saveExchanges};
+  return {wallets:ready?wallets.filter(wallet=>wallet.group!=='swap'):[],allWallets:ready?wallets:[],swapWallets:ready?wallets.filter(wallet=>wallet.group==='swap'):[],exchanges:ready?exchanges.filter(e=>!wallets.some(w=>w.address===e.address)):[],data:ready&&scanEnabled?data:emptyEthereum(),pending:ready&&scanEnabled&&loaded?pending:[],loaded:ready&&loaded,busy:ready&&scanEnabled&&busy,error:ready&&scanEnabled?error:'',status:ready&&scanEnabled?status:'',downloadProgress:ready&&scanEnabled?downloadProgress:emptyDownloadProgress(),refresh,saveWallets,saveExchanges};
 }

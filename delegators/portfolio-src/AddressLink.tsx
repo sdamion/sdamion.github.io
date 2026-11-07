@@ -5,11 +5,11 @@ import {validStakeAddress} from './member';
 import {usePortfolioText} from './use-portfolio-text';
 import type {AddressNetwork} from './address-networks';
 
-export function addressExplorer(network:AddressNetwork,address:string){
+export function addressExplorer(network:AddressNetwork|'robinhood',address:string){
   const value=encodeURIComponent(address);
-  return network==='ethereum'?`https://etherscan.io/address/${value}`:network==='solana'?`https://solscan.io/account/${value}`:network==='bitcoin'?`https://blockstream.info/address/${value}`:`https://cardanoscan.io/${validStakeAddress(address)?'stakekey':'address'}/${value}`;
+  return network==='robinhood'?`https://robinhoodchain.blockscout.com/address/${value}`:network==='ethereum'?`https://etherscan.io/address/${value}`:network==='solana'?`https://solscan.io/account/${value}`:network==='bitcoin'?`https://blockstream.info/address/${value}`:`https://cardanoscan.io/${validStakeAddress(address)?'stakekey':'address'}/${value}`;
 }
-export function AddressLink({network,address,name,onError}:{network:AddressNetwork;address:string;name?:string;onError:(message:string)=>void}){
+export function AddressLink({network,address,name,onError}:{network:AddressNetwork|'robinhood';address:string;name?:string;onError:(message:string)=>void}){
   const [copied,setCopied]=useState(false),t=usePortfolioText();
   useEffect(()=>{if(!copied)return;const timer=setTimeout(()=>setCopied(false),2000);return()=>clearTimeout(timer);},[copied]);
   return <span className="portfolio-address-link" translate="no">

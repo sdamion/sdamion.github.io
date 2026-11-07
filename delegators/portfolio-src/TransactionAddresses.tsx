@@ -4,7 +4,7 @@ import type {AddressNetwork} from './address-networks';
 import {uniqueTransactionAddresses,type TransactionAddress} from './transaction-addresses';
 import {usePortfolioText} from './use-portfolio-text';
 
-export function TransactionAddresses({network,from,to}:{network:AddressNetwork;from:TransactionAddress[];to:TransactionAddress[]}){
+export function TransactionAddresses({network,from,to}:{network:AddressNetwork|'robinhood';from:TransactionAddress[];to:TransactionAddress[]}){
   const t=usePortfolioText(),[error,setError]=useState('');
   const link=(row:TransactionAddress)=><><AddressLink network={network} address={row.address} name={row.name} onError={setError}/>{row.out&&<span className="small muted"> · {t('OUT address')}</span>}</>;
   const rows=(values:TransactionAddress[],direction:'From'|'To')=>{

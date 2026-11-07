@@ -6,7 +6,7 @@ import {ethereumTransactions,ethereumSwapDirection,weiToEth,type EthereumData,ty
 type Leg={id:string;time:number;usd:number;incoming:boolean;chain:'cardano'|'ethereum';scope:string[]};
 const SWAP_WINDOW_SECONDS=60*60;
 export type SwapPair={cardano:string;ethereum:string}|{cardano:string;cardanoReturn:string};
-export function groupSwapRows<T extends {chain:'cardano'|'ethereum'|'solana'|'bitcoin';tx:{tx_hash?:string;id?:string;hash?:string}}>(rows:T[],pairs:SwapPair[]){
+export function groupSwapRows<T extends {chain:'cardano'|'ethereum'|'robinhood'|'solana'|'bitcoin';tx:{tx_hash?:string;id?:string;hash?:string}}>(rows:T[],pairs:SwapPair[]){
   const rowId=(row:T)=>row.chain==='cardano'?row.tx.tx_hash:row.chain==='ethereum'?row.tx.id:row.tx.hash;
   const byId=new Map(rows.map(row=>[rowId(row),row]));
   const partners=new Map<string,string>();

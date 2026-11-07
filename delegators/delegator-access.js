@@ -1786,7 +1786,7 @@ function renderPortfolioAccess(payload) {
         const actions = document.createElement('div');
         actions.className = 'raffle-exclusion-actions';
         const inputs = {};
-        for (const [chain, title] of [['cardano', 'ADA'], ['ethereum', 'ETH'], ['solana', 'SOL'], ['bitcoin', 'BTC']]) {
+        for (const [chain, title] of [['cardano', 'ADA'], ['ethereum', 'ETH'], ['robinhood', 'Robinhood'], ['solana', 'SOL'], ['bitcoin', 'BTC']]) {
             const label = document.createElement('label');
             label.className = 'portfolio-access-toggle';
             const input = document.createElement('input');
@@ -1801,13 +1801,13 @@ function renderPortfolioAccess(payload) {
                 Object.values(inputs).forEach(control => { control.disabled = true; });
                 if (status) { status.classList.remove('is-error'); setTranslatedText(status, 'Saving Portfolio access...'); }
                 try {
-                    const saved = await authorizedRequest(ENDPOINTS.portfolioAccess, {method: 'PUT', body: JSON.stringify({stake_address: entry.stake_address, cardano: inputs.cardano.checked, ethereum: inputs.ethereum.checked, solana: inputs.solana.checked, bitcoin: inputs.bitcoin.checked})});
-                    for (const network of ['cardano', 'ethereum', 'solana', 'bitcoin']) entry[network] = saved[network] === true;
+                    const saved = await authorizedRequest(ENDPOINTS.portfolioAccess, {method: 'PUT', body: JSON.stringify({stake_address: entry.stake_address, cardano: inputs.cardano.checked, ethereum: inputs.ethereum.checked, robinhood: inputs.robinhood.checked, solana: inputs.solana.checked, bitcoin: inputs.bitcoin.checked})});
+                    for (const network of ['cardano', 'ethereum', 'robinhood', 'solana', 'bitcoin']) entry[network] = saved[network] === true;
                     if (status) setTranslatedText(status, 'Portfolio access saved.');
                 } catch (error) {
                     if (status) { status.textContent = error.message || t('Portfolio access could not be saved.'); status.classList.add('is-error'); }
                 } finally {
-                    for (const chain of ['cardano', 'ethereum', 'solana', 'bitcoin']) { inputs[chain].checked = entry[chain] === true; inputs[chain].disabled = !supported; }
+                    for (const chain of ['cardano', 'ethereum', 'robinhood', 'solana', 'bitcoin']) { inputs[chain].checked = entry[chain] === true; inputs[chain].disabled = !supported; }
                 }
             });
         }

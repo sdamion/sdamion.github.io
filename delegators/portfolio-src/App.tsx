@@ -53,6 +53,7 @@ import type {PaymentLink} from './mint-payments';
 import {PaymentLinks} from './PaymentLinks';
 import {AssetOverlay} from './AssetOverlay';
 import {historicalNfts,mergeHistoricalNfts} from './historical-nfts';
+import {robinhoodHistoricalNfts} from './robinhood-nfts';
 import {nftCollections,filterNftCollage,type NftPrices,type NftSort} from './nft-collage';
 import {nftTradePairs,nftCyclePrices,groupNftRows} from './nft-pairs';
 import {nftTransactions,type NftEvent} from './nft-history';
@@ -73,6 +74,9 @@ import {useBitcoin} from './use-bitcoin';
 import {BitcoinTransaction} from './BitcoinTransaction';
 import {bitcoinAmount,bitcoinAmountText,visibleBitcoinTransactions,bitcoinDeposit,bitcoinTransfers,bitcoinTableTransfer,bitcoinTotals,bitcoinNet} from './bitcoin';
 import {useEthereum} from './use-ethereum';
+import {useRobinhood} from './use-robinhood';
+import {RobinhoodTokenTransaction} from './RobinhoodTokenTransaction';
+import {RobinhoodNftTransaction} from './RobinhoodNftTransaction';
 import {useSolana} from './use-solana';
 import {SolanaTransaction} from './SolanaTransaction';
 import {visibleSolanaTransactions,solanaDeposit,solanaTransactionTransfers,solanaTransfers,solanaTotals,solAmount} from './solana';
@@ -114,7 +118,7 @@ function parseAmount(s?:string):number|null {if(!s?.trim())return null;const n=N
 const disabledCardanoSnapshot=():Snapshot=>({infos:[],txs:[],facts:{},markets:{},adaUsd:null,history:{},updated:'',complete:true,priceAt:null,groups:{},swapGroups:{}});
 
 
-export default function Home({memberStake,role='delegator',portfolioAccess}:{memberStake:string;role?:'delegator'|'admin';portfolioAccess?:{cardano?:boolean;ethereum:boolean;solana:boolean;bitcoin?:boolean}}){
+export default function Home({memberStake,role='delegator',portfolioAccess}:{memberStake:string;role?:'delegator'|'admin';portfolioAccess?:{cardano?:boolean;ethereum:boolean;robinhood?:boolean;solana:boolean;bitcoin?:boolean}}){
   const t=usePortfolioText();
   const SETTINGS='tdsp-member-wallets-v1:'+memberStake;
   const CEX_SETTINGS='tdsp-member-cex-v1:'+memberStake;
@@ -134,8 +138,9 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   const [walletMenuStart,setWalletMenuStart]=useState<'wallets'|'exchanges'|null>(null);
   const [section,setSection]=useState<'wallets'|'holdings'|'transactions'|'gain-loss'|'review'|null>(null);
   const isAdmin=role==='admin';
-  const canCardano=isAdmin||portfolioAccess?.cardano!==false,canEthereum=isAdmin||portfolioAccess?.ethereum===true,canSolana=isAdmin||portfolioAccess?.solana===true,canBitcoin=isAdmin||portfolioAccess?.bitcoin===true;
-  const ethereum=useEthereum(memberStake,ready&&canEthereum);
+  const canCardano=isAdmin||portfolioAccess?.cardano!==false,canEthereum=isAdmin||portfolioAccess?.ethereum===true,canRobinhood=isAdmin||portfolioAccess?.robinhood===true,canSolana=isAdmin||portfolioAccess?.solana===true,canBitcoin=isAdmin||portfolioAccess?.bitcoin===true;
+  const ethereum=useEthereum(memberStake,ready&&(canEthereum||canRobinhood),ready&&canEthereum);
+  const robinhood=useRobinhood(memberStake,ready&&canRobinhood,ethereum.allWallets,ethereum.exchanges);
   const solana=useSolana(memberStake,ready&&canSolana);
   const bitcoin=useBitcoin(memberStake,ready&&canBitcoin);
   const btcTransactions=useMemo(()=>visibleBitcoinTransactions(bitcoin.data,bitcoin.wallets,bitcoin.exchanges),[bitcoin.data,bitcoin.wallets,bitcoin.exchanges]);
@@ -147,11 +152,13 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   const solTransactions=useMemo(()=>visibleSolanaTransactions(solana.data,solana.wallets,solana.exchanges),[solana.data,solana.wallets,solana.exchanges]);
   const rawSolTransfers=useMemo(()=>solanaTransfers(solana.data,solana.wallets,solana.exchanges),[solana.data,solana.wallets,solana.exchanges]);
   const ethTransactions=useMemo(()=>visibleEthereumTransactions(ethereum.data,ethereum.wallets,ethereum.exchanges,ethereum.pending||[]),[ethereum.data,ethereum.wallets,ethereum.exchanges,ethereum.pending]);
+  const robinhoodTransactions=useMemo(()=>visibleEthereumTransactions(robinhood.data,ethereum.wallets,ethereum.exchanges),[robinhood.data,ethereum.wallets,ethereum.exchanges]);
   const rawEthTransfers=useMemo(()=>ethereumTransfers(ethereum.data,ethereum.wallets,ethereum.exchanges),[ethereum.data,ethereum.wallets,ethereum.exchanges]);
+  const rawRobinhoodTransfers=useMemo(()=>ethereumTransfers(robinhood.data,ethereum.wallets,ethereum.exchanges).map(row=>({...row,hash:'rh:'+row.hash})),[robinhood.data,ethereum.wallets,ethereum.exchanges]);
   const [holdingsGroup,setHoldingsGroup]=useState<'FTs'|'NFTs'|'All assets'|'Historical NFTs'|'Missing assets / prices'|null>(null);
   const [historicalImageIds,setHistoricalImageIds]=useState('');
   const ordinals=useOrdinals(memberStake,ready&&canBitcoin,bitcoin.wallets,bitcoin.data,section==='holdings'&&(holdingsGroup==='Historical NFTs'||holdingsGroup==='NFTs'),historicalImageIds,holdingsGroup==='NFTs');
-  const assetWalletTargets:AssetWallet[]=[...ethereum.wallets.filter(wallet=>wallet.group!=='swap').map(wallet=>({...wallet,chain:'ethereum' as const})),...solana.wallets.map(wallet=>({...wallet,chain:'solana' as const})),...bitcoin.wallets.map(wallet=>({...wallet,chain:'bitcoin' as const}))];
+  const assetWalletTargets:AssetWallet[]=[...(canEthereum?ethereum.wallets.filter(wallet=>wallet.group!=='swap').map(wallet=>({...wallet,chain:'ethereum' as const})):[]),...(canRobinhood?ethereum.wallets.filter(wallet=>wallet.group!=='swap').map(wallet=>({...wallet,chain:'robinhood' as const})):[]),...solana.wallets.map(wallet=>({...wallet,chain:'solana' as const})),...bitcoin.wallets.map(wallet=>({...wallet,chain:'bitcoin' as const}))];
   const ownedAssetInventory=useOwnedAssets(memberStake,ready,section==='holdings'&&(holdingsGroup==='NFTs'||holdingsGroup==='FTs'||holdingsGroup==='All assets'||holdingsGroup==='Historical NFTs'||holdingsGroup==='Missing assets / prices'),assetWalletTargets);
   const ordinalNfts=useMemo(()=>ordinalHistory(ordinals.data,bitcoin.data,bitcoin.wallets),[ordinals.data,bitcoin.data,bitcoin.wallets]);
   const {expanded:expandedPolicies,toggle:togglePolicy,reset:resetPolicies}=useTableGroups();
@@ -184,7 +191,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   const swapAddresses=useMemo(()=>swapAddressSet(wallets,snapshot?.swapGroups),[wallets,snapshot?.swapGroups]);
   const cexAddresses=useMemo(()=>canCardano?excludeInternalExchanges(savedCexAddresses,ownedAddresses):[],[savedCexAddresses,ownedAddresses,canCardano]);
   const cardanoDeposits=useCardanoDeposits(memberStake,ready&&canCardano,cexAddresses);
-  const syncing=busy||ethereum.busy||solana.busy||bitcoin.busy||cardanoDeposits.busy||ownedAssetInventory.busy;
+  const syncing=busy||ethereum.busy||robinhood.busy||solana.busy||bitcoin.busy||cardanoDeposits.busy||ownedAssetInventory.busy;
   const hasEthHistory=depositScanWallets(ethereum.allWallets,ethereum.exchanges).length>0,hasSolHistory=depositScanWallets(solana.wallets,solana.exchanges).length>0,hasBtcHistory=depositScanWallets(bitcoin.wallets,bitcoin.exchanges).length>0;
   const overrideKey='tdsp-member-basis:'+memberStake;
   const paymentKey='tdsp-member-payments:'+walletKey;
@@ -375,7 +382,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
     const rows=new Map<string,typeof solTransfers>();
     for(const row of solTransfers){const hash=row.hash.split(':')[1],group=rows.get(hash)||[];group.push(row);rows.set(hash,group);}return rows;
   },[solTransfers]);
-  const manualCandidates=useMemo(()=>new Map([...Object.values(classifiedFacts).map(fact=>cardanoCexCandidate(fact,wallets,snapshot?.groups)),...ethTransactions.map(tx=>ethereumCexCandidate(tx,ethereum.wallets)),...solTransactions.map(tx=>solanaCexCandidate(tx,solana.wallets)),...btcTransactions.map(tx=>bitcoinCexCandidate(tx,bitcoin.wallets))].filter((row):row is ManualCexCandidate=>row!==null).map(row=>[manualCexKey(row.network,row.hash),row])),[classifiedFacts,wallets,snapshot?.groups,ethTransactions,ethereum.wallets,solTransactions,solana.wallets,btcTransactions,bitcoin.wallets]);
+  const manualCandidates=useMemo(()=>new Map([...Object.values(classifiedFacts).map(fact=>cardanoCexCandidate(fact,wallets,snapshot?.groups)),...ethTransactions.map(tx=>ethereumCexCandidate(tx,ethereum.wallets)),...robinhoodTransactions.map(tx=>ethereumCexCandidate(tx,ethereum.wallets,'robinhood')),...solTransactions.map(tx=>solanaCexCandidate(tx,solana.wallets)),...btcTransactions.map(tx=>bitcoinCexCandidate(tx,bitcoin.wallets))].filter((row):row is ManualCexCandidate=>row!==null).map(row=>[manualCexKey(row.network,row.hash),row])),[classifiedFacts,wallets,snapshot?.groups,ethTransactions,robinhoodTransactions,ethereum.wallets,solTransactions,solana.wallets,btcTransactions,bitcoin.wallets]);
   const assetDecimals=useMemo(()=>knownDecimals(snapshot?.infos||[],Object.values(classifiedFacts)),[snapshot,classifiedFacts]);
   const payments=useMemo(()=>mintPayments(Object.values(classifiedFacts),paymentLinks),[classifiedFacts,paymentLinks]);
   const cexDollars=useMemo(()=>cexUsdNetPosition(Object.values(cexFacts),cexAddresses,holdings.find(h=>h.id==='lovelace')?.raw||'0',snapshot?.history||{},liveQuote?.usd??snapshot?.adaUsd??null),[cexFacts,cexAddresses,holdings,snapshot,liveQuote]);
@@ -384,22 +391,24 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   const miningTotals=useMemo(()=>ethHistoryAvailable?nativeTransferTotals(rawEthTransfers.filter(row=>row.performance===false),snapshot?.history||{},fx.history,comparisonFiat):{outgoing:null,outFiat:null},[ethHistoryAvailable,rawEthTransfers,snapshot,fx.history,comparisonFiat]);
   const ethBasis=useMemo(()=>ethereumReceiptBasis(ethereum.data,ethereum.wallets,ethereum.exchanges),[ethereum.data,ethereum.wallets,ethereum.exchanges]);
   const adaTransfers=useMemo(()=>cexTimeline(Object.values(cexFacts),cexAddresses,snapshot?.history||{}),[cexFacts,cexAddresses,snapshot?.history]);
-  const automaticCexKeys=useMemo(()=>new Set([...adaTransfers.map(row=>manualCexKey('cardano',row.hash)),...ethTransfers.map(row=>manualCexKey('ethereum',row.hash)),...solTransfers.map(row=>manualCexKey('solana',row.hash.split(':')[1])),...btcTransfers.map(row=>manualCexKey('bitcoin',row.hash.slice(4)))]),[adaTransfers,ethTransfers,solTransfers,btcTransfers]);
+  const automaticCexKeys=useMemo(()=>new Set([...adaTransfers.map(row=>manualCexKey('cardano',row.hash)),...ethTransfers.map(row=>manualCexKey('ethereum',row.hash)),...rawRobinhoodTransfers.map(row=>manualCexKey('robinhood',row.hash.slice(3))),...solTransfers.map(row=>manualCexKey('solana',row.hash.split(':')[1])),...btcTransfers.map(row=>manualCexKey('bitcoin',row.hash.slice(4)))]),[adaTransfers,ethTransfers,rawRobinhoodTransfers,solTransfers,btcTransfers]);
   const manualCexRows=useMemo(()=>new Map([...manualCandidates].flatMap(([key,candidate])=>{
     if((candidate.network==='cardano'&&crossChainSwaps.cardano.has(candidate.hash))||(candidate.network==='ethereum'&&(crossChainSwaps.ethereum.has(candidate.hash)||ethPending.has(candidate.hash)))||(candidate.network==='solana'&&solPending.has(candidate.hash))||(candidate.network==='bitcoin'&&btcPending.has(candidate.hash)))return [];
-    const history=candidate.network==='cardano'?snapshot?.history:candidate.network==='ethereum'?ethereum.data.history:candidate.network==='solana'?solana.data.history:bitcoin.data.history;
+    const history=candidate.network==='cardano'?snapshot?.history:candidate.network==='ethereum'?ethereum.data.history:candidate.network==='robinhood'?robinhood.data.history:candidate.network==='solana'?solana.data.history:bitcoin.data.history;
     const price=history?.[new Date(candidate.time*1000).toISOString().slice(0,10)]??null;
     const flow=manualCexFlow(candidate,manualCexDecisions[key],price,automaticCexKeys.has(key));
     return flow?[[key,flow] as const]:[];
-  })),[manualCandidates,manualCexDecisions,automaticCexKeys,crossChainSwaps,ethPending,solPending,btcPending,snapshot?.history,ethereum.data.history,solana.data.history,bitcoin.data.history]);
+  })),[manualCandidates,manualCexDecisions,automaticCexKeys,crossChainSwaps,ethPending,solPending,btcPending,snapshot?.history,ethereum.data.history,robinhood.data.history,solana.data.history,bitcoin.data.history]);
   const manualAdaTransfers=[...manualCexRows.values()].filter(row=>row.network==='cardano').map(row=>({...row,ada:row.amount}));
   const adaCexTransfers=[...adaTransfers,...manualAdaTransfers];
   const ethCexTransfers=[...ethTransfers,...[...manualCexRows.values()].filter(row=>row.network==='ethereum')];
+  const robinhoodCexTransfers=[...rawRobinhoodTransfers,...[...manualCexRows.values()].filter(row=>row.network==='robinhood')];
   const solCexTransfers=[...solTransfers,...[...manualCexRows.values()].filter(row=>row.network==='solana')];
   const btcCexTransfers=[...btcTransfers,...[...manualCexRows.values()].filter(row=>row.network==='bitcoin')];
   const adaCexTotals=snapshot?nativeTransferTotals(adaCexTransfers.map(row=>({...row,amount:row.ada})),snapshot.history,fx.history,comparisonFiat):{incoming:null,outgoing:null,inFiat:null,outFiat:null};
   const ethCexTotals=ethHistoryAvailable?nativeTransferTotals(performanceTransfers(ethCexTransfers),snapshot?.history||{},fx.history,comparisonFiat):{incoming:null,outgoing:null,inFiat:null,outFiat:null};
-  const cexFlows=[...adaCexTransfers,...performanceTransfers(ethCexTransfers),...solCexTransfers,...btcCexTransfers];
+  const robinhoodCexTotals=ethereum.wallets.some(wallet=>!!robinhood.data.accounts[wallet.address])?nativeTransferTotals(performanceTransfers(robinhoodCexTransfers),snapshot?.history||{},fx.history,comparisonFiat):{incoming:null,outgoing:null,inFiat:null,outFiat:null};
+  const cexFlows=[...adaCexTransfers,...performanceTransfers(ethCexTransfers),...performanceTransfers(robinhoodCexTransfers),...solCexTransfers,...btcCexTransfers];
   const btcHistoryReady=bitcoin.wallets.every(w=>!!bitcoin.data.accounts[w.address]);
   const btcCexTotals=bitcoin.wallets.length&&!bitcoin.wallets.some(w=>bitcoin.data.accounts[w.address])?{incoming:null,outgoing:null,inFiat:null,outFiat:null}:nativeTransferTotals(btcCexTransfers,snapshot?.history||{},fx.history,comparisonFiat);
   const btcServiceTotals=nativeTransferTotals(rawBtcTransfers.filter(row=>row.performance===false),snapshot?.history||{},fx.history,comparisonFiat);
@@ -436,7 +445,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   const externalFtRows=externalFtHoldings(mergeOwnedAssets(ownedAssetInventory.data,assetWalletTargets),overrides);
   const includedExternalFts=externalFtRows.filter(row=>!row.excluded);
   const included=includedAssets(rows,overrides),excludedCount=rows.length-included.length;
-  const nftHistory=useMemo(()=>[...historicalNfts(Object.values(classifiedFacts),holdings,snapshot?.markets||{}),...ordinalNfts.rows].sort((a,b)=>(b.firstReceived??0)-(a.firstReceived??0)||a.id.localeCompare(b.id)),[classifiedFacts,holdings,snapshot?.markets,ordinalNfts.rows]);
+  const nftHistory=useMemo(()=>[...historicalNfts(Object.values(classifiedFacts),holdings,snapshot?.markets||{}),...ordinalNfts.rows,...robinhoodHistoricalNfts(robinhood.nftHistory,ethereum.wallets)].sort((a,b)=>(b.firstReceived??0)-(a.firstReceived??0)||a.id.localeCompare(b.id)),[classifiedFacts,holdings,snapshot?.markets,ordinalNfts.rows,robinhood.nftHistory,ethereum.wallets]);
   const nftEvents=useMemo(()=>nftTransactions(nftHistory,Object.values(classifiedFacts),payments.acquisitions),[nftHistory,classifiedFacts,payments.acquisitions]);
   const nftPairs=useMemo(()=>nftTradePairs(nftEvents),[nftEvents]);
   const nftPrices=useMemo(()=>nftCyclePrices(nftEvents),[nftEvents]);
@@ -444,7 +453,8 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   const ownedAssetRows:OwnedAssetRow[]=rows.filter(row=>BigInt(row.raw)>0n).map(row=>({id:'cardano:'+row.id,chain:'cardano',standard:row.id==='lovelace'?'Native':assetGroup(row.id)==='NFTs'?'NFT':'FT',name:row.name,symbol:snapshot?.markets[row.id]?.ticker|| (row.id==='lovelace'?'ADA':''),raw:row.raw,decimals:row.id==='lovelace'?6:tokenDecimals(parseAmount(overrides[row.id]?.decimals))??row.automaticDecimals??null,image:assetImageCandidates(row.id,[snapshot?.markets[row.id]?.registry_logo,snapshot?.markets[row.id]?.cached_image,snapshot?.markets[row.id]?.wayup_image,snapshot?.markets[row.id]?.image])[0]||null,explorer:row.id==='lovelace'?null:'https://cardanoscan.io/token/'+row.id,wallets:assetWallets[row.id]||[]}));
   ownedAssetRows.push(...mergeOwnedAssets(ownedAssetInventory.data,assetWalletTargets));
   for(const native of [
-    {chain:'ethereum' as const,name:'Ethereum',symbol:'ETH',decimals:18,wallets:ethereum.wallets.filter(wallet=>wallet.group!=='swap'),balance:(address:string)=>ethereum.data.accounts[address]?.balanceWei},
+    {chain:'ethereum' as const,name:'Ethereum',symbol:'ETH',decimals:18,wallets:canEthereum?ethereum.wallets.filter(wallet=>wallet.group!=='swap'):[],balance:(address:string)=>ethereum.data.accounts[address]?.balanceWei},
+    {chain:'robinhood' as const,name:'Robinhood Chain',symbol:'ETH',decimals:18,wallets:canRobinhood?ethereum.wallets.filter(wallet=>wallet.group!=='swap'):[],balance:(address:string)=>robinhood.data.accounts[address]?.balanceWei},
     {chain:'solana' as const,name:'Solana',symbol:'SOL',decimals:9,wallets:solana.wallets,balance:(address:string)=>solana.data.accounts[address]?.raw},
     {chain:'bitcoin' as const,name:'Bitcoin',symbol:'BTC',decimals:8,wallets:bitcoin.wallets,balance:(address:string)=>bitcoin.data.accounts[address]?.raw}
   ]){
@@ -468,25 +478,37 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   const ada=Number(holdings.find(h=>h.id==='lovelace')?.raw||0)/1e6;
   const currentAdaUsd=liveQuote?.usd??snapshot?.adaUsd??null;
   const ethExcluded=overrides['ethereum:1:native']?.excluded===true;
-  const ethValue=ethereumValue(ethereum.data,ethereum.wallets);
-  const ethAvailable=ethereumAvailableTotals(ethereum.data,ethereum.wallets);
+  const ethValue=ethereumValue(ethereum.data,canEthereum?ethereum.wallets:[]);
+  const ethAvailable=ethereumAvailableTotals(ethereum.data,canEthereum?ethereum.wallets:[]);
+  const robinhoodExcluded=overrides['robinhood:4663:native']?.excluded===true;
+  const robinhoodAvailable=ethereumAvailableTotals(robinhood.data,canRobinhood?ethereum.wallets:[]);
   const solExcluded=overrides['solana:mainnet:native']?.excluded===true;
   const solAvailable=solanaTotals(solana.data,solana.wallets);
   const btcExcluded=overrides['bitcoin:mainnet:native']?.excluded===true;
   const btcAvailable=bitcoinTotals(bitcoin.data,bitcoin.wallets);
+  const nativeValuationRows=[
+    {enabled:canEthereum&&ethereum.wallets.length>0,excluded:ethExcluded,value:ethAvailable.value},
+    {enabled:canRobinhood&&ethereum.wallets.length>0,excluded:robinhoodExcluded,value:robinhoodAvailable.value},
+    {enabled:solana.wallets.length>0,excluded:solExcluded,value:solAvailable.value},
+    {enabled:bitcoin.wallets.length>0,excluded:btcExcluded,value:btcAvailable.value}
+  ];
+  const nativeValued=nativeValuationRows.filter(row=>row.enabled&&!row.excluded&&row.value!==null).length;
+  const nativeIncluded=nativeValuationRows.filter(row=>row.enabled&&!row.excluded).length;
+  const nativeExcluded=nativeValuationRows.filter(row=>row.enabled&&row.excluded).length;
   const assetIssues:AssetIssue[]=[
     ...rows.filter(row=>row.qty===null||row.price===null||row.cost===null).map(row=>({id:row.id,name:row.name,network:'ADA',missingPrice:row.price===null,missingCost:row.cost===null,missingDecimals:row.qty===null,editableCost:row.id!=='lovelace',excluded:overrides[row.id]?.excluded===true,details:true})),
     ...externalFtRows.filter(row=>row.price===null||row.average===null).map(row=>({id:row.id,name:row.name,network:row.chain.toUpperCase(),missingPrice:row.price===null,missingCost:row.average===null,missingDecimals:false,excluded:row.excluded,details:false})),
     ...([
-      {id:'ethereum:1:native',name:'Ethereum',network:'ETH',wallets:ethereum.wallets,missingBalance:ethereum.wallets.some(wallet=>!ethereum.data.accounts[wallet.address]),missingPrice:ethereum.data.usd===null,missingCost:ethBasis.usd===null},
+      {id:'ethereum:1:native',name:'Ethereum',network:'ETH',wallets:canEthereum?ethereum.wallets:[],missingBalance:ethereum.wallets.some(wallet=>!ethereum.data.accounts[wallet.address]),missingPrice:ethereum.data.usd===null,missingCost:ethBasis.usd===null},
+      {id:'robinhood:4663:native',name:'Robinhood Chain ETH',network:'RH',wallets:canRobinhood?ethereum.wallets:[],missingBalance:ethereum.wallets.some(wallet=>!robinhood.data.accounts[wallet.address]),missingPrice:robinhood.data.usd===null,missingCost:false},
       {id:'solana:mainnet:native',name:'Solana',network:'SOL',wallets:solana.wallets,missingBalance:solana.wallets.some(wallet=>!solana.data.accounts[wallet.address]),missingPrice:solana.data.usd===null,missingCost:false},
       {id:'bitcoin:mainnet:native',name:'Bitcoin',network:'BTC',wallets:bitcoin.wallets,missingBalance:bitcoin.wallets.some(wallet=>!bitcoin.data.accounts[wallet.address]),missingPrice:bitcoin.data.usd===null,missingCost:false}
     ]).filter(row=>row.wallets.length>0&&(row.missingBalance||row.missingPrice||row.missingCost)).map(row=>({id:row.id,name:row.name,network:row.network,missingBalance:row.missingBalance,missingPrice:row.missingPrice,missingCost:row.missingCost,missingDecimals:false,editablePrice:false,editableCost:false,excluded:overrides[row.id]?.excluded===true,details:false}))
   ];
-  const nativeCount=Number(ethereum.wallets.length>0)+Number(solana.wallets.length>0)+Number(bitcoin.wallets.length>0);
-  const availableAssets=availableTotal([holdingTotal(included,snapshot?.complete===true),...includedExternalFts.map(row=>row.value),...(!ethExcluded&&ethereum.wallets.length?[ethAvailable.value]:[]),...(!solExcluded&&solana.wallets.length?[solAvailable.value]:[]),...(!btcExcluded&&bitcoin.wallets.length?[btcAvailable.value]:[])]);
+  const nativeCount=Number(canEthereum&&ethereum.wallets.length>0)+Number(canRobinhood&&ethereum.wallets.length>0)+Number(solana.wallets.length>0)+Number(bitcoin.wallets.length>0);
+  const availableAssets=availableTotal([holdingTotal(included,snapshot?.complete===true),...includedExternalFts.map(row=>row.value),...(!ethExcluded&&canEthereum&&ethereum.wallets.length?[ethAvailable.value]:[]),...(!robinhoodExcluded&&canRobinhood&&ethereum.wallets.length?[robinhoodAvailable.value]:[]),...(!solExcluded&&solana.wallets.length?[solAvailable.value]:[]),...(!btcExcluded&&bitcoin.wallets.length?[btcAvailable.value]:[])]);
   const portfolioUsd=availableAssets.value;
-  const portfolioPartial=availableAssets.partial||included.some(row=>row.value===null)||ownedAssetInventory.incomplete||!ethExcluded&&ethAvailable.partial||!solExcluded&&solAvailable.partial||!btcExcluded&&btcAvailable.partial;
+  const portfolioPartial=availableAssets.partial||included.some(row=>row.value===null)||ownedAssetInventory.incomplete||canEthereum&&!ethExcluded&&ethAvailable.partial||canRobinhood&&!robinhoodExcluded&&robinhoodAvailable.partial||!solExcluded&&solAvailable.partial||!btcExcluded&&btcAvailable.partial;
   const portfolioAda=portfolioUsd!==null&&currentAdaUsd!==null&&currentAdaUsd>0?portfolioUsd/currentAdaUsd:null;
   const holdingsRate=holdingsCurrency==='ADA'?null:fiatRate(Date.now()/1000,holdingsCurrency,fx.history);
   const holdingsValue=holdingsCurrency==='ADA'?portfolioAda:portfolioUsd!==null&&holdingsRate!==null?portfolioUsd*holdingsRate:null;
@@ -501,7 +523,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
     const quote=currentValuation(id,units(String(raw),decimals),parseAmount(overrides[id]?.price),market,currentAdaUsd);
     return {hash:'service-token:'+id,time:Date.now()/1000,side:'sell' as const,usd:quote.value};
   });
-  const gainFlows=gainTransfers(cexFlows,[...serviceAdaTransfers,...rawEthTransfers.filter(row=>row.performance===false),...rawSolTransfers.filter(row=>row.performance===false),...rawBtcTransfers.filter(row=>row.performance===false),...serviceTokenTransfers]);
+  const gainFlows=gainTransfers(cexFlows,[...serviceAdaTransfers,...rawEthTransfers.filter(row=>row.performance===false),...rawRobinhoodTransfers.filter(row=>row.performance===false),...rawSolTransfers.filter(row=>row.performance===false),...rawBtcTransfers.filter(row=>row.performance===false),...serviceTokenTransfers]);
   const assetIssueCount=assetIssues.length+Number(ownedAssetInventory.incomplete)+gainFlows.filter(row=>row.usd===null).length;
   const availableCex=availableCexResult(gainFlows,portfolioUsd,holdingsCurrency,currentAdaUsd,snapshot?.history||{},fx.history,Date.now()/1000);
   const tileGain=availableCex.value;
@@ -514,30 +536,33 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   const loadedFacts=Object.keys(classifiedFacts).length;
   const transactionTotal=snapshot?.txs.length||0;
   const externalCardanoDeposits=cardanoDepositReceipts(cardanoDeposits.data,cexAddresses,ownedAddresses,new Set(snapshot?.txs.map(tx=>tx.tx_hash)||[]));
-  const allTransactionTotal=transactionTotal+externalCardanoDeposits.length+ethereum.downloadProgress.downloaded+solana.downloadProgress.downloaded+bitcoin.downloadProgress.downloaded;
+  const allTransactionTotal=transactionTotal+externalCardanoDeposits.length+(canEthereum?ethereum.downloadProgress.downloaded:0)+robinhood.downloadProgress.downloaded+Object.values(robinhood.tokenHistory).flat().length+Object.values(robinhood.nftHistory).flat().length+solana.downloadProgress.downloaded+bitcoin.downloadProgress.downloaded;
   const ethFees=ethAvailable.fees;
-  const availableFees=availableTotal([...(canCardano?[currentAdaUsd!==null?fees*currentAdaUsd:null]:[]),...(ethereum.wallets.length?[ethAvailable.feeUsd]:[]),...(solana.wallets.length?[solAvailable.feeUsd]:[]),...(bitcoin.wallets.length?[btcAvailable.feeUsd]:[])]);
+  const availableFees=availableTotal([...(canCardano?[currentAdaUsd!==null?fees*currentAdaUsd:null]:[]),...(canEthereum&&ethereum.wallets.length?[ethAvailable.feeUsd]:[]),...(canRobinhood&&ethereum.wallets.length?[robinhoodAvailable.feeUsd]:[]),...(solana.wallets.length?[solAvailable.feeUsd]:[]),...(bitcoin.wallets.length?[btcAvailable.feeUsd]:[])]);
   const feeUsd=availableFees.value;
   const feeNotes=networkFeeNotes([
     ...(canCardano?[{chain:'ADA',historyComplete:snapshot?.complete===true,feeUsd:currentAdaUsd!==null?fees*currentAdaUsd:null}]:[]),
-    ...(ethereum.wallets.length?[{chain:'ETH',historyComplete:!ethAvailable.feesPartial,feeUsd:ethAvailable.feeUsd,feeKnown:ethAvailable.fees!==null}]:[]),
+    ...(canEthereum&&ethereum.wallets.length?[{chain:'ETH',historyComplete:!ethAvailable.feesPartial,feeUsd:ethAvailable.feeUsd,feeKnown:ethAvailable.fees!==null}]:[]),
+    ...(canRobinhood&&ethereum.wallets.length?[{chain:'RH',historyComplete:!robinhoodAvailable.feesPartial,feeUsd:robinhoodAvailable.feeUsd,feeKnown:robinhoodAvailable.fees!==null}]:[]),
     ...(solana.wallets.length?[{chain:'SOL',historyComplete:!solAvailable.feesPartial,feeUsd:solAvailable.feeUsd,feeKnown:solAvailable.fees!==null}]:[]),
     ...(bitcoin.wallets.length?[{chain:'BTC',historyComplete:btcHistoryReady,feeUsd:btcAvailable.feeUsd,feeKnown:btcAvailable.fees!==null}]:[])
   ],holdingsCurrency==='ADA'?currentAdaUsd!==null&&currentAdaUsd>0:holdingsRate!==null);
   const downloadChains=[
     ...(canCardano?[{chain:'ADA',progress:transactionProgress([...(snapshot?.txs.filter(tx=>!!snapshot.facts[tx.tx_hash])||[]),...externalCardanoDeposits.map(tx=>({tx_hash:tx.hash}))],tx=>tx.tx_hash,counting!==null||cardanoDeposits.busy?null:counted!==null?counted+externalCardanoDeposits.length:snapshot?.complete?transactionTotal+externalCardanoDeposits.length:null)}]:[]),
-    ...(ethereum.wallets.length||ethereum.exchanges.some(wallet=>wallet.deposit)?[{chain:'ETH',progress:ethereum.downloadProgress}]:[]),
+    ...(canEthereum&&(ethereum.wallets.length||ethereum.exchanges.some(wallet=>wallet.deposit))?[{chain:'ETH',progress:ethereum.downloadProgress}]:[]),
+    ...(canRobinhood&&ethereum.wallets.length?[{chain:'RH',progress:robinhood.downloadProgress}]:[]),
     ...(hasSolHistory?[{chain:'SOL',progress:solana.downloadProgress}]:[]),
     ...(hasBtcHistory?[{chain:'BTC',progress:bitcoin.downloadProgress}]:[])
   ];
   const combinedProgress=combinedTransactionProgress(downloadChains.map(row=>row.progress));
-  const partialNote=<DownloadStatus chains={downloadChains} missingWallets={ethereum.wallets.filter(wallet=>!ethereum.data.accounts[wallet.address]).length+solana.wallets.filter(wallet=>!solana.data.accounts[wallet.address]).length+bitcoin.wallets.filter(wallet=>!bitcoin.data.accounts[wallet.address]).length} missingAssets={included.filter(row=>row.value===null).length+includedExternalFts.filter(row=>row.value===null).length+Number(ownedAssetInventory.incomplete)+Number(!ethExcluded&&ethereum.wallets.length>0&&ethAvailable.value===null)+Number(!solExcluded&&solana.wallets.length>0&&solAvailable.value===null)+Number(!btcExcluded&&bitcoin.wallets.length>0&&btcAvailable.value===null)} missingTransfers={gainFlows.filter(row=>row.usd===null).length} missingCurrency={holdingsCurrency!=='ADA'&&holdingsRate===null}/>;
+  const partialNote=<DownloadStatus chains={downloadChains} missingWallets={(canEthereum?ethereum.wallets.filter(wallet=>!ethereum.data.accounts[wallet.address]).length:0)+(canRobinhood?ethereum.wallets.filter(wallet=>!robinhood.data.accounts[wallet.address]).length:0)+solana.wallets.filter(wallet=>!solana.data.accounts[wallet.address]).length+bitcoin.wallets.filter(wallet=>!bitcoin.data.accounts[wallet.address]).length} missingAssets={included.filter(row=>row.value===null).length+includedExternalFts.filter(row=>row.value===null).length+Number(ownedAssetInventory.incomplete)+Number(canEthereum&&!ethExcluded&&ethereum.wallets.length>0&&ethAvailable.value===null)+Number(canRobinhood&&!robinhoodExcluded&&ethereum.wallets.length>0&&robinhoodAvailable.value===null)+Number(!solExcluded&&solana.wallets.length>0&&solAvailable.value===null)+Number(!btcExcluded&&bitcoin.wallets.length>0&&btcAvailable.value===null)} missingTransfers={gainFlows.filter(row=>row.usd===null).length} missingCurrency={holdingsCurrency!=='ADA'&&holdingsRate===null}/>;
   const cexPending=snapshot?.txs.filter(tx=>!hasCounterpartyData(snapshot.facts[tx.tx_hash])).length||0;
-  const reviewErrors=[error,cardanoDeposits.error,ethereum.error,solana.error,bitcoin.error].filter(Boolean);
+  const reviewErrors=[error,cardanoDeposits.error,ethereum.error,robinhood.error,solana.error,bitcoin.error].filter(Boolean);
   const reviewCount=cexPending+(cardanoDeposits.data.complete===false?externalCardanoDeposits.length:0)+ethTransactions.filter(tx=>ethPending.has(tx.id)).length+solTransactions.filter(tx=>solPending.has(tx.hash)).length+btcTransactions.filter(tx=>btcPending.has(tx.hash)).length;
   const scanIssues=[
     {messages:[error,cardanoDeposits.error].filter(Boolean),pending:cexPending>0||cardanoDeposits.data.complete===false,label:'Retry Cardano scan',disabled:busy||cardanoDeposits.busy||!ready,retry:()=>{void refresh();void cardanoDeposits.refresh(true);}},
     {messages:[ethereum.error].filter(Boolean),pending:ethPending.size>0,label:'Retry Ethereum scan',disabled:ethereum.busy||!ready,retry:()=>void ethereum.refresh()},
+    {messages:[robinhood.error].filter(Boolean),pending:false,label:'Retry Robinhood Chain scan',disabled:robinhood.busy||!ready,retry:()=>void robinhood.refresh()},
     {messages:[solana.error].filter(Boolean),pending:solPending.size>0,label:'Retry Solana scan',disabled:solana.busy||!ready,retry:()=>void solana.refresh()},
     {messages:[bitcoin.error].filter(Boolean),pending:btcPending.size>0,label:'Retry Bitcoin scan',disabled:bitcoin.busy||!ready,retry:()=>void bitcoin.refresh()}
   ];
@@ -558,6 +583,28 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
     const matches=section==='review'?ethPending.has(tx.id):section==='gain-loss'?matchesCexOverlayFilter('ethereum',filter,manual?[manual]:transfer?[{side:transfer.side,mined:'mined' in transfer}]:[],deposit):filter==='all'||filter===kind||filter==='cex'&&(!!transfer||!!manual||deposit)||filter==='swap'&&swap;
     const names=[...ethereum.allWallets,...ethereum.exchanges].filter(w=>[w.address,...('swapAddresses' in w?w.swapAddresses||[]:[])].some(address=>address===tx.from||address===tx.to)).map(w=>w.name);
     return matches&&withinTransactionDates(tx.time,dateFrom,dateTo)&&matchesSearchText(query,[tx.hash,tx.from,tx.to,'ETH',...names]);
+  });
+  const robinhoodShown=robinhoodTransactions.filter(tx=>{
+    const own=new Set(ethereum.wallets.map(wallet=>wallet.address));
+    const transfer=ethereumTransfer(tx,ethereum.wallets,ethereum.exchanges);
+    const deposit=directEthereumDeposit(tx,ethereum.wallets,ethereum.exchanges);
+    const manual=manualCexRows.get(manualCexKey('robinhood',tx.id));
+    const kind=own.has(tx.from)&&own.has(tx.to)?'internal':own.has(tx.from)?'send':'receive';
+    const matches=section==='review'?false:section==='gain-loss'?matchesCexOverlayFilter('robinhood',filter,manual?[manual]:transfer?[{side:transfer.side,mined:'mined' in transfer}]:[],deposit):filter==='all'||filter===kind||filter==='cex'&&(!!manual||!!transfer||deposit);
+    const names=[...ethereum.allWallets,...ethereum.exchanges].filter(wallet=>wallet.address===tx.from||wallet.address===tx.to).map(wallet=>wallet.name);
+    return matches&&withinTransactionDates(tx.time,dateFrom,dateTo)&&matchesSearchText(query,[tx.hash,tx.from,tx.to,'RH','Robinhood Chain',...names]);
+  });
+  const robinhoodTokenShown=[...new Map(Object.values(robinhood.tokenHistory).flat().map(row=>[row.hash+':'+row.logIndex,row])).values()].filter(row=>{
+    if(section==='review'||section==='gain-loss')return false;
+    const own=new Set(ethereum.wallets.map(wallet=>wallet.address));
+    const direction=own.has(row.from)?'send':'receive';
+    return (filter==='all'||filter===direction)&&withinTransactionDates(row.time,dateFrom,dateTo)&&matchesSearchText(query,[row.hash,row.from,row.to,row.name,row.symbol,'RH']);
+  });
+  const robinhoodNftShown=[...new Map(Object.values(robinhood.nftHistory).flat().map(row=>[row.hash+':'+row.logIndex,row])).values()].filter(row=>{
+    if(section==='review'||section==='gain-loss')return false;
+    const own=new Set(ethereum.wallets.map(wallet=>wallet.address));
+    const direction=own.has(row.from)?'send':'receive';
+    return (filter==='all'||filter===direction)&&withinTransactionDates(row.time,dateFrom,dateTo)&&matchesSearchText(query,[row.hash,row.from,row.to,row.name,row.id,'RH']);
   });
   const solShown=solTransactions.filter(tx=>{
     if(!withinTransactionDates(tx.time,dateFrom,dateTo))return false;
@@ -586,8 +633,8 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   });
   const depositAddressLabels=cexAddresses.flatMap(row=>(cardanoDeposits.data.groups[row.address]||[row.address]).map(address=>({...row,address})));
   const cardanoDepositRows=externalCardanoDeposits.filter(receipt=>withinTransactionDates(receipt.time,dateFrom,dateTo)&&(section==='review'?cardanoDeposits.data.complete===false:section==='gain-loss'?matchesCexOverlayFilter('cardano',filter,[],true):['all','receive','cex'].includes(filter))&&matchesSearchText(query,[receipt.hash,...receipt.from,...receipt.to,...depositAddressLabels.filter(row=>receipt.from.includes(row.address)||receipt.to.includes(row.address)).map(row=>row.name)]));
-  const groupedRows=groupNftRows(groupSwapRows([...cardanoShown.map(tx=>({chain:'cardano' as const,time:tx.block_time,tx})),...ethereumShown.map(tx=>({chain:'ethereum' as const,time:tx.time,tx})),...solShown.map(tx=>({chain:'solana' as const,time:tx.time,tx})),...bitcoinShown.map(tx=>({chain:'bitcoin' as const,time:tx.time,tx}))].sort((a,b)=>b.time-a.time),crossChainSwaps.pairs),section==='transactions'?nftPairs:[]);
-  const shown=[...groupedRows,...cardanoDepositRows.map(tx=>({rows:[{chain:'deposit' as const,time:tx.time,tx}],nft:undefined}))].sort((a,b)=>Math.max(...b.rows.map(row=>row.time))-Math.max(...a.rows.map(row=>row.time)));
+  const groupedRows=groupNftRows(groupSwapRows([...cardanoShown.map(tx=>({chain:'cardano' as const,time:tx.block_time,tx})),...ethereumShown.map(tx=>({chain:'ethereum' as const,time:tx.time,tx})),...robinhoodShown.map(tx=>({chain:'robinhood' as const,time:tx.time,tx})),...solShown.map(tx=>({chain:'solana' as const,time:tx.time,tx})),...bitcoinShown.map(tx=>({chain:'bitcoin' as const,time:tx.time,tx}))].sort((a,b)=>b.time-a.time),crossChainSwaps.pairs),section==='transactions'?nftPairs:[]);
+  const shown=[...groupedRows,...cardanoDepositRows.map(tx=>({rows:[{chain:'deposit' as const,time:tx.time,tx}],nft:undefined})),...robinhoodTokenShown.map(tx=>({rows:[{chain:'robinhood-token' as const,time:tx.time,tx}],nft:undefined})),...robinhoodNftShown.map(tx=>({rows:[{chain:'robinhood-nft' as const,time:tx.time,tx}],nft:undefined}))].sort((a,b)=>Math.max(...b.rows.map(row=>row.time))-Math.max(...a.rows.map(row=>row.time)));
   const visibleEthIds=new Set(ethereumShown.map(tx=>tx.id));
   const visibleSolIds=new Set(solShown.map(tx=>tx.hash));
   const visibleBtcIds=new Set(bitcoinShown.map(tx=>tx.hash));
@@ -595,7 +642,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   useEffect(()=>{if(page!==currentPage)setPage(currentPage);},[page,currentPage]);
 
   const nativeAddressBooks:NativeAddressBook[]=[
-    {network:'ethereum',enabled:canEthereum,wallets:ethereum.allWallets,exchanges:ethereum.exchanges,saveWallets:ethereum.saveWallets,saveExchanges:ethereum.saveExchanges,balance:address=>ethereum.data.accounts[address]?.balanceWei,usd:ethereum.data.usd},
+    {network:'ethereum',enabled:canEthereum||canRobinhood,wallets:ethereum.allWallets,exchanges:ethereum.exchanges,saveWallets:ethereum.saveWallets,saveExchanges:ethereum.saveExchanges,balance:address=>(canEthereum?ethereum.data:robinhood.data).accounts[address]?.balanceWei,usd:canEthereum?ethereum.data.usd:robinhood.data.usd},
     {network:'solana',enabled:canSolana,wallets:solana.wallets,exchanges:solana.exchanges,saveWallets:solana.saveWallets,saveExchanges:solana.saveExchanges,balance:address=>solana.data.accounts[address]?.raw,usd:solana.data.usd},
     {network:'bitcoin',enabled:canBitcoin,wallets:bitcoin.wallets,exchanges:bitcoin.exchanges,saveWallets:bitcoin.saveWallets,saveExchanges:bitcoin.saveExchanges,balance:address=>bitcoin.data.accounts[address]?.raw,usd:bitcoin.data.usd}
   ];
@@ -610,23 +657,23 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
     if(wallets.some(row=>row.address===address)||ownedAddresses.includes(address))throw new Error('This address is already included.');
     return saveWallets([...wallets,{address,label:name,...(personalType?{personalType}:{})}]);
   }
-  const walletForm=<CryptoAddressForm id="portfolio-wallet" cardano={canCardano} ethereum={canEthereum} solana={canSolana} bitcoin={canBitcoin} onAdd={(...args)=>addAddress(false,...args)}/>;
-  const exchangeForm=<CryptoAddressForm id="portfolio-exchange" counterparty cardano={canCardano} ethereum={canEthereum} solana={canSolana} bitcoin={canBitcoin} onAdd={(...args)=>addAddress(true,...args)}/>;
+  const walletForm=<CryptoAddressForm id="portfolio-wallet" cardano={canCardano} ethereum={canEthereum||canRobinhood} solana={canSolana} bitcoin={canBitcoin} onAdd={(...args)=>addAddress(false,...args)}/>;
+  const exchangeForm=<CryptoAddressForm id="portfolio-exchange" counterparty cardano={canCardano} ethereum={canEthereum||canRobinhood} solana={canSolana} bitcoin={canBitcoin} onAdd={(...args)=>addAddress(true,...args)}/>;
   const ethSwapWallets=ethereum.swapWallets,ethOwnWallets=ethereum.wallets;
   const cardanoAddressBook:CardanoAddressBook={wallets,exchanges:cexAddresses,snapshot,memberStake,busy,usd:currentAdaUsd,saveWallets,saveExchanges:saveCexAddresses,onView:setWalletDetails};
   const ownAddressRows:AddressListRow[]=[...(canCardano?cardanoAddressRows(cardanoAddressBook,true):[]),...nativeAddressBooks.flatMap(book=>nativeAddressRows(book,true))];
   const allCounterpartyRows:AddressListRow[]=[...(canCardano?cardanoAddressRows(cardanoAddressBook):[]),...nativeAddressBooks.flatMap(book=>nativeAddressRows(book))];
   const legacyPersonalRows=allCounterpartyRows.filter(row=>row.deposit===true);
   const counterpartyRows=allCounterpartyRows.filter(row=>row.deposit!==true);
-  const swapForm=<><CryptoAddressForm id="portfolio-swap" counterparty cardano={canCardano} ethereum={canEthereum} initialKind="swap" onAdd={(...args)=>addAddress(true,...args)}/><AddressList rows={counterpartyRows.filter(row=>row.kind==='Swap')}/></>;
+  const swapForm=<><CryptoAddressForm id="portfolio-swap" counterparty cardano={canCardano} ethereum={canEthereum||canRobinhood} initialKind="swap" onAdd={(...args)=>addAddress(true,...args)}/><AddressList rows={counterpartyRows.filter(row=>row.kind==='Swap')}/></>;
   const detailWallet=canCardano?wallets.find(wallet=>wallet.address===walletDetails&&wallet.group!=='swap'):undefined;
   return <PortfolioCurrencyContext.Provider value={currencyDisplay}><main className="member-portfolio"><PortfolioQuickstart stake={memberStake} cardano={canCardano} wallets={walletForm} exchanges={exchangeForm} swap={swapForm}/><div className="portfolio-body"><div className="section-heading" aria-label="Portfolio refresh">
-    <PortfolioRefresh onRefresh={()=>{if(canCardano){void refresh();void cardanoDeposits.refresh(true);}void ethereum.refresh();void solana.refresh();void bitcoin.refresh();void ownedAssetInventory.refresh(true);}} disabled={syncing||!ready} busy={syncing} currencyControl={<select className="governance-vote-secondary" aria-label={t('Comparison currency')} value={holdingsCurrency} onChange={event=>setHoldingsCurrency(event.target.value as 'ADA'|ComparisonFiat)}>{canCardano&&<option value="ADA">ADA</option>}<option value="USD">USD ($)</option><option value="EUR">EUR (€)</option><option value="JPY">JPY (¥)</option></select>}/>
+    <PortfolioRefresh onRefresh={()=>{if(canCardano){void refresh();void cardanoDeposits.refresh(true);}void ethereum.refresh();void robinhood.refresh();void solana.refresh();void bitcoin.refresh();void ownedAssetInventory.refresh(true);}} disabled={syncing||!ready} busy={syncing} currencyControl={<select className="governance-vote-secondary" aria-label={t('Comparison currency')} value={holdingsCurrency} onChange={event=>setHoldingsCurrency(event.target.value as 'ADA'|ComparisonFiat)}>{canCardano&&<option value="ADA">ADA</option>}<option value="USD">USD ($)</option><option value="EUR">EUR (€)</option><option value="JPY">JPY (¥)</option></select>}/>
   </div>
     <section className="portfolio-section"><div className="tdsp-tile-grid">
       <MenuTile title="Wallets" info="Shows saved wallets and scan status. Open to manage your own wallets and exchange addresses." value={refreshCounts||!canCardano?`${num((refreshCounts?.active||0)+ethereum.wallets.length+solana.wallets.length+bitcoin.wallets.length,0)} / ${num((refreshCounts?.total||0)+ethereum.wallets.length+solana.wallets.length+bitcoin.wallets.length,0)} active`:initialising?'Initialising':'— / — active'} loading={initialising} loadingLabel={status} onOpen={()=>setSection('wallets')}>
         <WalletSyncStatus cardano={!canCardano||initialising||error?'':busy&&analysis?transactionStatus||status:completedRefreshStatus} ethereum={ethereum.busy?ethereum.status:undefined} solana={solana.busy?'Checking Solana transactions…':undefined} messages={[
-          {text:error,error:true},{text:notice},{text:ethereum.error,error:true},{text:solana.error,error:true},{text:bitcoin.error,error:true},{text:cardanoDeposits.error,error:true},{text:cardanoDeposits.busy?'Checking Cardano CEX deposits…':''},{text:bitcoin.busy?'Checking Bitcoin transactions…':''},
+          {text:error,error:true},{text:notice},{text:ethereum.error,error:true},{text:robinhood.error,error:true},{text:robinhood.busy?robinhood.status:''},{text:solana.error,error:true},{text:bitcoin.error,error:true},{text:cardanoDeposits.error,error:true},{text:cardanoDeposits.busy?'Checking Cardano CEX deposits…':''},{text:bitcoin.busy?'Checking Bitcoin transactions…':''},
           {text:storageMode()!=='remote'?cacheNotice:''},
           {text:payments.errors.length?'Some saved payment links cannot be applied to the loaded history. Open the asset image to review its purchase payments.':'',error:true},
           {text:snapshot&&comparisonCrypto==='BTC'&&!bitcoin.wallets.length?btc.status||'BTC equivalents use transfer-day ADA/USD and BTC/USD prices, not actual Bitcoin purchases.':''},
@@ -637,27 +684,28 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
       <MenuTile title="Transactions" info="Shows loaded on-chain transfers across enabled networks. Open to search and inspect transaction details." value={snapshot?num(allTransactionTotal,0):'—'} analysis={snapshot?{done:combinedProgress.downloaded,total:combinedProgress.total,counting:combinedProgress.total===null,busy:syncing,compact:true}:undefined} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('transactions');}}>
         <DownloadStatus chains={downloadChains} showDiscovery={!(syncing)}/>
       </MenuTile>
-      {(reviewCount>0||reviewErrors.length>0)&&<MenuTile title="Needs review" info="Lists incomplete transactions and scan errors that need another check before they can be used in calculations." value={num(reviewCount,0)} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('review');}}>
+      <MenuTile title="Needs review" info="Lists incomplete transactions and scan errors that need another check before they can be used in calculations." value={num(reviewCount,0)} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('review');}}>
         <p translate="no" className="small muted">{t('{count} incomplete transactions · {errors} scan errors',{count:reviewCount,errors:reviewErrors.length})}</p>
-      </MenuTile>}
+      </MenuTile>
       <MenuTile title="Assets" info="Shows the estimated value of included assets across your wallets. Open for fungible tokens, NFTs, history and missing data." value={holdingsDisplay} onOpen={()=>{resetPolicies();setHoldingsGroup(null);setSection('holdings');}}>
         {portfolioPartial&&partialNote}
-        <p className="small muted">{t('{done} / {total} assets valued',{done:valued.length+includedExternalFts.filter(row=>row.value!==null).length+(ethereum.wallets.length&&!ethExcluded&&ethValue!==null?1:0)+(solana.wallets.length&&!solExcluded&&solAvailable.value!==null?1:0)+(bitcoin.wallets.length&&!btcExcluded&&btcAvailable.value!==null?1:0),total:included.length+includedExternalFts.length+(ethereum.wallets.length&&!ethExcluded?1:0)+(solana.wallets.length&&!solExcluded?1:0)+(bitcoin.wallets.length&&!btcExcluded?1:0)})}{excludedCount+externalFtRows.length-includedExternalFts.length+(ethereum.wallets.length&&ethExcluded?1:0)+(solana.wallets.length&&solExcluded?1:0)+(bitcoin.wallets.length&&btcExcluded?1:0)?' · '+t('{count} excluded',{count:excludedCount+externalFtRows.length-includedExternalFts.length+(ethereum.wallets.length&&ethExcluded?1:0)+(solana.wallets.length&&solExcluded?1:0)+(bitcoin.wallets.length&&btcExcluded?1:0)}):''}</p>
+        <p className="small muted">{t('{done} / {total} assets valued',{done:valued.length+includedExternalFts.filter(row=>row.value!==null).length+nativeValued,total:included.length+includedExternalFts.length+nativeIncluded})}{excludedCount+externalFtRows.length-includedExternalFts.length+nativeExcluded?' · '+t('{count} excluded',{count:excludedCount+externalFtRows.length-includedExternalFts.length+nativeExcluded}):''}</p>
         {(holdingsCurrency==='EUR'||holdingsCurrency==='JPY')&&holdingsValue===null&&<p className="small muted" role="status">{t(fx.status||'Historical exchange rates unavailable')}</p>}
       </MenuTile>
       <Metric label="Network fees paid" info="Totals the network fees attributed to your wallets from loaded transactions. Unknown fee ownership is shown as partial." value={loadedFacts||snapshot?.complete?nativeCount?formatPortfolioUsd(feeUsd,currencyDisplay):formatPortfolioAda(fees,currencyDisplay):'Waiting for transaction details'}>
         {canCardano&&nativeCount>0&&<span translate="no" className="small">ADA: {loadedFacts||snapshot?.complete?formatPortfolioAda(fees,currencyDisplay):'—'}</span>}
-        {ethereum.wallets.length>0&&<span translate="no" className="small">ETH: {ethFees===null?'—':`${ethFees.toLocaleString(undefined,{maximumFractionDigits:8})} ETH`} · {formatPortfolioUsd(ethAvailable.feeUsd,currencyDisplay)}</span>}
+        {canEthereum&&ethereum.wallets.length>0&&<span translate="no" className="small">ETH: {ethFees===null?'—':`${ethFees.toLocaleString(undefined,{maximumFractionDigits:8})} ETH`} · {formatPortfolioUsd(ethAvailable.feeUsd,currencyDisplay)}</span>}
+        {canRobinhood&&ethereum.wallets.length>0&&<span translate="no" className="small">RH: {robinhoodAvailable.fees===null?'—':`${robinhoodAvailable.fees.toLocaleString(undefined,{maximumFractionDigits:8})} ETH`} · {formatPortfolioUsd(robinhoodAvailable.feeUsd,currencyDisplay)}</span>}
         {solana.wallets.length>0&&<span translate="no" className="small">SOL: {solAvailable.fees===null?'—':`${solAvailable.fees.toLocaleString(undefined,{maximumFractionDigits:9})} SOL`} · {formatPortfolioUsd(solAvailable.feeUsd,currencyDisplay)}</span>}
         {bitcoin.wallets.length>0&&<span translate="no" className="small">BTC: {btcAvailable.feesRaw===null?'—':`${btcAvailable.feesPartial?'≥ ':''}${bitcoinAmountText(btcAvailable.feesRaw)} BTC`} · {formatPortfolioUsd(btcAvailable.feeUsd,currencyDisplay)}</span>}
         {btcAvailable.unattributedFees>0&&<span translate="no" className="small muted" role="status">{t('Partial · BTC: fee ownership unknown for {count} transactions',{count:btcAvailable.unattributedFees})}</span>}
         {feeNotes.map(note=><span key={note} translate="no" className="small muted" role="status">{t(note)}</span>)}
       </Metric>
-      {(cexAddresses.length>0||ethereum.exchanges.length>0||solana.exchanges.length>0||bitcoin.exchanges.length>0||bitcoin.wallets.some(wallet=>wallet.personalType==='cex'||wallet.personalType==='dex'))&&<Metric label="CEX Transactions" info="Summarizes classified IN and OUT transfers for exchange addresses. Open to review flows and their estimated values." openLabel="CEX Transactions" note={portfolioPartial||availableCex.partial||!ethHistoryReady||!solHistoryReady||!btcHistoryReady?partialNote:undefined} value={snapshot?tileGainDisplay:'Waiting for wallet balances'} tone={tileGain===null?'':tileGain<0?'negative':'positive'} onOpen={()=>{setQuery('');setFilter('all');setDateFrom('');setDateTo('');setPage(0);setSection('gain-loss');}}/>}
+      {(cexAddresses.length>0||ethereum.exchanges.length>0||solana.exchanges.length>0||bitcoin.exchanges.length>0||bitcoin.wallets.some(wallet=>wallet.personalType==='cex'||wallet.personalType==='dex'))&&<Metric label="CEX Transactions" info="Summarizes classified IN and OUT transfers for exchange addresses. Open to review flows and their estimated values." openLabel="CEX Transactions" note={portfolioPartial||availableCex.partial||canEthereum&&!ethHistoryReady||!solHistoryReady||!btcHistoryReady?partialNote:undefined} value={snapshot?tileGainDisplay:'Waiting for wallet balances'} tone={tileGain===null?'':tileGain<0?'negative':'positive'} onOpen={()=>{setQuery('');setFilter('all');setDateFrom('');setDateTo('');setPage(0);setSection('gain-loss');}}/>}
     </div></section>
     {section==='wallets'&&<AssetOverlay id="portfolio-wallets-overlay" name="Wallets" onClose={()=>{setSection(null);setWalletMenuStart(null);}}>
     <div className="portfolio-section">
-      <button type="button" className="governance-vote-secondary" disabled={syncing||!ready} onClick={()=>{if(canCardano)void refresh(true);void ethereum.refresh();void solana.refresh();void bitcoin.refresh();void ownedAssetInventory.refresh(true);}}>Rescan all wallets</button>
+      <button type="button" className="governance-vote-secondary" disabled={syncing||!ready} onClick={()=>{if(canCardano)void refresh(true);void ethereum.refresh();void robinhood.refresh();void solana.refresh();void bitcoin.refresh();void ownedAssetInventory.refresh(true);}}>Rescan all wallets</button>
       <p className="small muted">Rediscover linked addresses and check full transaction history, including excluded addresses for this scan only. Saved transaction details are reused.</p>
     </div>
     <WalletMenu startSection={walletMenuStart} counts={{wallets:(canCardano?(refreshCounts?.total??wallets.filter(wallet=>wallet.group!=='swap').length):0)+ethOwnWallets.length+solana.wallets.length+bitcoin.wallets.length+legacyPersonalRows.length,exchanges:counterpartyRows.filter(row=>row.kind!=='Swap').length,swap:(canCardano?wallets.filter(wallet=>wallet.group==='swap').length:0)+ethSwapWallets.length}}
@@ -669,6 +717,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
       {ethereum.exchanges.length>0&&!ethereum.wallets.length&&!ethereum.exchanges.some(wallet=>wallet.deposit)&&<p translate="no" role="status" className="message">{t('Add your own Ethereum wallet to scan ETH CEX transfers. CEX addresses are counterparties, not your holdings; shared exchange balances are never counted as yours.')}</p>}
       <div className="governance-action-buttons">
         {canEthereum&&<button type="button" className="governance-vote-secondary" disabled={ethereum.busy||!ready||!hasEthHistory} onClick={()=>void ethereum.refresh()}>{t('Refresh Ethereum wallets')}</button>}
+        {canRobinhood&&<button type="button" className="governance-vote-secondary" disabled={robinhood.busy||!ready||!ethereum.wallets.length} onClick={()=>void robinhood.refresh()}>{t('Refresh Robinhood Chain wallets')}</button>}
         {canSolana&&<button type="button" className="governance-vote-secondary" disabled={solana.busy||!hasSolHistory} onClick={()=>void solana.refresh()}>{t('Refresh Solana wallets')}</button>}
         {canBitcoin&&<button type="button" className="governance-vote-secondary" disabled={bitcoin.busy||!hasBtcHistory} onClick={()=>void bitcoin.refresh()} translate="no">{t('Refresh Bitcoin wallets')}</button>}
       </div>
@@ -688,17 +737,14 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
     <section className="portfolio-section">
       {!holdingsGroup&&<div className="tdsp-tile-grid">{(['FTs','NFTs'] as const).map(group=>{
         const assets=rows.filter(row=>assetGroup(row.id)===group),active=includedAssets(assets,overrides),priced=active.filter(row=>row.value!==null);
-        const total=availableTotal([holdingTotal(active,snapshot?.complete===true),...(group==='FTs'?includedExternalFts.map(row=>row.value):[]),...(group==='FTs'&&!ethExcluded&&ethereum.wallets.length?[ethAvailable.value]:[]),...(group==='FTs'&&!solExcluded&&solana.wallets.length?[solAvailable.value]:[]),...(group==='FTs'&&!btcExcluded&&bitcoin.wallets.length?[btcAvailable.value]:[])]).value;
-        const ethCount=group==='FTs'&&ethereum.wallets.length?1:0;
-        const solCount=group==='FTs'&&solana.wallets.length?1:0;
-        const btcCount=group==='FTs'&&bitcoin.wallets.length?1:0;
+        const total=availableTotal([holdingTotal(active,snapshot?.complete===true),...(group==='FTs'?includedExternalFts.map(row=>row.value):[]),...(group==='FTs'?nativeValuationRows.filter(row=>row.enabled&&!row.excluded).map(row=>row.value):[])]).value;
         if(group==='NFTs')return <MenuTile key={group} title={group} info="Shows NFTs and Ordinals currently owned in your scanned wallets." value={num(ownedNftRows.length,0)} onOpen={()=>setHoldingsGroup(group)}><p className="small muted" translate="no">{t('Owned NFTs and Ordinals')}</p></MenuTile>;
-        return <MenuTile key={group} title={group} info="Shows fungible tokens and their estimated value across scanned wallets." value={formatPortfolioUsd(total,currencyDisplay)} onOpen={()=>setHoldingsGroup(group)}><p className="small muted">{t('{done} / {total} assets valued',{done:priced.length+includedExternalFts.filter(row=>row.value!==null).length+(ethCount&&!ethExcluded&&ethValue!==null?1:0)+(solCount&&!solExcluded&&solAvailable.value!==null?1:0)+(btcCount&&!btcExcluded&&btcAvailable.value!==null?1:0),total:active.length+includedExternalFts.length+(ethCount&&!ethExcluded?1:0)+(solCount&&!solExcluded?1:0)+(btcCount&&!btcExcluded?1:0)})}{assets.length-active.length+externalFtRows.length-includedExternalFts.length+(ethCount&&ethExcluded?1:0)+(solCount&&solExcluded?1:0)+(btcCount&&btcExcluded?1:0)?' · '+t('{count} excluded',{count:assets.length-active.length+externalFtRows.length-includedExternalFts.length+(ethCount&&ethExcluded?1:0)+(solCount&&solExcluded?1:0)+(btcCount&&btcExcluded?1:0)}):''}</p></MenuTile>;
+        return <MenuTile key={group} title={group} info="Shows fungible tokens and their estimated value across scanned wallets." value={formatPortfolioUsd(total,currencyDisplay)} onOpen={()=>setHoldingsGroup(group)}><p className="small muted">{t('{done} / {total} assets valued',{done:priced.length+includedExternalFts.filter(row=>row.value!==null).length+nativeValued,total:active.length+includedExternalFts.length+nativeIncluded})}{assets.length-active.length+externalFtRows.length-includedExternalFts.length+nativeExcluded?' · '+t('{count} excluded',{count:assets.length-active.length+externalFtRows.length-includedExternalFts.length+nativeExcluded}):''}</p></MenuTile>;
       })}<MenuTile title="All assets" info="Lists every scanned fungible token, NFT and Ordinal in one view, with network and type filters." value={num(ownedAssetRows.length,0)} onOpen={()=>setHoldingsGroup('All assets')}/><MenuTile title="Historical NFTs" info="Shows NFT and Ordinal history alongside currently owned items. Some networks only provide current ownership." value={num(nftDisplayHistory.length,0)} onOpen={()=>setHoldingsGroup('Historical NFTs')}><NftPreview rows={nftDisplayHistory} markets={snapshot?.markets||{}}/></MenuTile><MenuTile title="Missing assets / prices" info="Lists assets with missing balances, prices or purchase data and offers review actions without changing blockchain records." value={num(assetIssueCount,0)} onOpen={()=>setHoldingsGroup('Missing assets / prices')}/></div>}
-      {holdingsGroup==='Missing assets / prices'&&<AssetIssues issues={assetIssues} settings={overrides} scanIncomplete={ownedAssetInventory.incomplete} scanErrors={ownedAssetInventory.errors} missingTransfers={gainFlows.filter(row=>row.usd===null).length} busy={syncing} onSetting={updateOverride} onDetails={setSelectedAsset} onAddresses={()=>{setHoldingsGroup(null);setWalletMenuStart('exchanges');setSection('wallets');}} onTransactions={()=>{setHoldingsGroup(null);setSection('transactions');}} onFlows={()=>{setHoldingsGroup(null);setSection('gain-loss');}} onInclude={id=>excludeAsset(id,false)} onRefresh={()=>{if(canCardano){void refresh();void cardanoDeposits.refresh(true);}void ethereum.refresh();void solana.refresh();void bitcoin.refresh();void ownedAssetInventory.refresh(true);}} onRefreshPurchases={canCardano&&snapshot?()=>void refreshAssetPurchases():undefined}/>}
+      {holdingsGroup==='Missing assets / prices'&&<AssetIssues issues={assetIssues} settings={overrides} scanIncomplete={ownedAssetInventory.incomplete} scanErrors={ownedAssetInventory.errors} missingTransfers={gainFlows.filter(row=>row.usd===null).length} busy={syncing} onSetting={updateOverride} onDetails={setSelectedAsset} onAddresses={()=>{setHoldingsGroup(null);setWalletMenuStart('exchanges');setSection('wallets');}} onTransactions={()=>{setHoldingsGroup(null);setSection('transactions');}} onFlows={()=>{setHoldingsGroup(null);setSection('gain-loss');}} onInclude={id=>excludeAsset(id,false)} onRefresh={()=>{if(canCardano){void refresh();void cardanoDeposits.refresh(true);}void ethereum.refresh();void robinhood.refresh();void solana.refresh();void bitcoin.refresh();void ownedAssetInventory.refresh(true);}} onRefreshPurchases={canCardano&&snapshot?()=>void refreshAssetPurchases():undefined}/>}
       {holdingsGroup==='Historical NFTs'&&<>
         {!snapshot?.complete&&<p className="small muted" translate="no">{t('Partial history')}</p>}
-        {nftDisplayHistory.some(row=>row.chain&&row.chain!=='cardano'&&!row.ordinal)&&<p className="small muted" translate="no">{t('Non-Cardano NFT entries currently show owned assets only; transfer history is not available.')}</p>}
+        {nftDisplayHistory.some(row=>row.chain&&row.chain!=='cardano'&&row.chain!=='robinhood'&&!row.ordinal)&&<p className="small muted" translate="no">{t('Non-Cardano NFT entries currently show owned assets only; transfer history is not available.')}</p>}
       {canBitcoin&&bitcoin.wallets.length>0&&<div className="section-heading"><button type="button" className="governance-vote-secondary" disabled={ordinals.busy||bitcoin.busy} onClick={()=>void ordinals.refresh(true)} translate="no">{t('Refresh Bitcoin Ordinals')}</button>{ordinals.busy&&<span role="status" translate="no">{t('Checking Bitcoin Ordinals…')} {t('Ordinals: {count} records checked',{count:ordinals.checked})}</span>}</div>}
         {ordinals.error&&<p role="alert" className="small-text error-text" translate="no">{t(ordinals.error)}</p>}
         {nftDisplayHistory.length?<HistoricalNftCollage rows={nftDisplayHistory} markets={snapshot?.markets||{}} wallets={{...assetWallets,...ordinalNfts.wallets}} prices={nftPrices} events={nftEvents} onVisibleAssets={setHistoricalImageIds}/>:<p className="empty" translate="no">{t(ordinals.busy?'Loading historical NFTs…':'No NFTs found in loaded wallet history.')}</p>}
@@ -723,13 +769,21 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
         <TableCell translate="no">—</TableCell><TableCell translate="no">—</TableCell>
         <TableCell><AssetExclusionToggle compact name="Solana" excluded={solExcluded} onChange={excluded=>excludeAsset('solana:mainnet:native',excluded)}/></TableCell>
       </TableRow>}
-      {holdingsGroup==='FTs'&&ethereum.wallets.length>0&&<TableRow>
+      {holdingsGroup==='FTs'&&canEthereum&&ethereum.wallets.length>0&&<TableRow>
         <TableCell><button type="button" className="governance-vote-secondary" onClick={()=>setSection('wallets')}>Ethereum · ETH</button></TableCell>
         <TableCell translate="no">{ethereum.wallets.every(w=>ethereum.data.accounts[w.address])?num(ethereum.wallets.reduce((sum,w)=>sum+weiToEth(ethereum.data.accounts[w.address].balanceWei),0)):'—'}</TableCell>
         <TableCell translate="no">{formatPortfolioUsd(ethereum.data.usd,currencyDisplay)}</TableCell>
         <TableCell translate="no">{formatPortfolioUsd(ethValue,currencyDisplay)}</TableCell>
         <TableCell translate="no">{formatPortfolioUsd(ethBasis.average,currencyDisplay)}<div className="small muted">{t(!ethBasis.reconciled?'Waiting for transaction history to reconcile with the wallet balance':ethBasis.usd===null?'Missing receipt prices':'Mining adds ETH with zero purchase cost. Daily prices estimate known purchases.')}</div></TableCell><TableCell translate="no">{formatPortfolioUsd(ethValue!==null&&ethBasis.usd!==null?ethValue-ethBasis.usd:null,currencyDisplay)}</TableCell>
         <TableCell><AssetExclusionToggle compact name="Ethereum" excluded={ethExcluded} onChange={excluded=>excludeAsset('ethereum:1:native',excluded)}/></TableCell>
+      </TableRow>}
+      {holdingsGroup==='FTs'&&canRobinhood&&ethereum.wallets.length>0&&<TableRow>
+        <TableCell><button type="button" className="governance-vote-secondary" onClick={()=>setSection('wallets')}>Robinhood Chain · ETH</button></TableCell>
+        <TableCell translate="no">{ethereum.wallets.every(wallet=>robinhood.data.accounts[wallet.address])?num(ethereum.wallets.reduce((sum,wallet)=>sum+weiToEth(robinhood.data.accounts[wallet.address].balanceWei),0)):'—'}</TableCell>
+        <TableCell translate="no">{formatPortfolioUsd(robinhood.data.usd,currencyDisplay)}</TableCell>
+        <TableCell translate="no">{formatPortfolioUsd(robinhoodAvailable.value,currencyDisplay)}</TableCell>
+        <TableCell>—</TableCell><TableCell>—</TableCell>
+        <TableCell><AssetExclusionToggle compact name="Robinhood Chain ETH" excluded={robinhoodExcluded} onChange={excluded=>excludeAsset('robinhood:4663:native',excluded)}/></TableCell>
       </TableRow>}
       {holdingsGroup==='FTs'&&externalFtRows.map(row=><TableRow key={row.id}>
         <TableCell translate="no">{row.name} <span className="small muted">{row.chain.toUpperCase()} · {row.standard}</span></TableCell>
@@ -788,12 +842,13 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
       <label className="small">{t('Crypto')}<select aria-label={t('Comparison cryptocurrency')} value={comparisonCrypto} onChange={event=>setComparisonCrypto(event.target.value as ComparisonCrypto)}>{canCardano&&<option value="ADA">ADA</option>}{canBitcoin&&<option value="BTC">BTC</option>}{canEthereum&&<option value="ETH">ETH</option>}{canSolana&&<option value="SOL">SOL</option>}</select></label>
     </div>
     <div className="tdsp-chart-overview portfolio-gain-overview">
-    <CexTimeline facts={Object.fromEntries(cardanoShown.map(tx=>[tx.tx_hash,classifiedFacts[tx.tx_hash]]))} entries={cexAddresses} history={snapshot?.history||{}} btcHistory={btcHistory} ethHistory={ethereum.data.history} solHistory={solana.data.history} fxHistory={fx.history} crypto={comparisonCrypto} currency={comparisonFiat} busy={syncing} dateFrom={dateFrom} dateTo={dateTo} additional={[...manualAdaTransfers.filter(row=>cardanoShown.some(tx=>tx.tx_hash===row.hash)),...performanceTransfers(ethCexTransfers).filter(row=>visibleEthIds.has(row.hash)),...solCexTransfers.filter(row=>visibleSolIds.has(row.hash.split(':')[1])),...btcCexTransfers.filter(row=>visibleBtcIds.has(row.hash.slice(4)))]}/>
+    <CexTimeline facts={Object.fromEntries(cardanoShown.map(tx=>[tx.tx_hash,classifiedFacts[tx.tx_hash]]))} entries={cexAddresses} history={snapshot?.history||{}} btcHistory={btcHistory} ethHistory={ethereum.data.history} solHistory={solana.data.history} fxHistory={fx.history} crypto={comparisonCrypto} currency={comparisonFiat} busy={syncing} dateFrom={dateFrom} dateTo={dateTo} additional={[...manualAdaTransfers.filter(row=>cardanoShown.some(tx=>tx.tx_hash===row.hash)),...performanceTransfers(ethCexTransfers).filter(row=>visibleEthIds.has(row.hash)),...performanceTransfers(robinhoodCexTransfers).filter(row=>robinhoodShown.some(tx=>row.hash==='rh:'+tx.id)),...solCexTransfers.filter(row=>visibleSolIds.has(row.hash.split(':')[1])),...btcCexTransfers.filter(row=>visibleBtcIds.has(row.hash.slice(4)))]}/>
     <section className="portfolio-section tdsp-chart-summary portfolio-gain-summary" aria-label="ADA Gains/Loss breakdown">
       {(dateFrom||dateTo||query||filter!=='all')&&<p className="small muted">Gain/loss totals cover all loaded history and current wallet balances. Filters apply to the transfer graph and transaction list below.</p>}
       {ethereum.exchanges.length>0&&!ethereum.wallets.length&&!ethereum.exchanges.some(wallet=>wallet.deposit)&&<p translate="no" role="status" className="message">{t('Add your own Ethereum wallet to scan ETH CEX transfers. CEX addresses are counterparties, not your holdings; shared exchange balances are never counted as yours.')} <button type="button" className="governance-vote-secondary" onClick={()=>setSection('wallets')}>{t('Wallets')}</button></p>}
       {snapshot&&<NativeTransferSummary symbol="ADA" totals={adaCexTotals} currency={comparisonFiat} className="portfolio-gain-comparison" proceeds={serviceReceipts.length?{amount:serviceAdaTotals.outgoing,value:serviceAdaTotals.outFiat,details:[...serviceAssets].map(([id,raw])=><div key={id} className="small"><AssetImage id={id} name={snapshot.markets[id]?.name||assetName(id)} market={snapshot.markets[id]} compact/> {units(String(raw),assetDecimals[id])===null?String(raw)+' raw':num(units(String(raw),assetDecimals[id])!,8)}</div>)}:undefined}/>}
       {ethereum.wallets.length>0&&<NativeTransferSummary symbol="ETH" totals={ethCexTotals} currency={comparisonFiat} className="portfolio-eth-comparison" proceeds={ethereum.exchanges.some(w=>w.miner)?{amount:miningTotals.outgoing,value:miningTotals.outFiat}:undefined}/>}
+      {canRobinhood&&ethereum.wallets.length>0&&<NativeTransferSummary symbol="RH ETH" totals={robinhoodCexTotals} currency={comparisonFiat} className="portfolio-eth-comparison"/>}
       {solana.wallets.length>0&&<NativeTransferSummary symbol="SOL" totals={solCexTotals} currency={comparisonFiat} className="portfolio-sol-comparison" proceeds={rawSolTransfers.some(row=>row.performance===false)?{amount:solServiceTotals.outgoing,value:solServiceTotals.outFiat}:undefined}/>}
       {bitcoin.wallets.length>0&&<NativeTransferSummary symbol="BTC" totals={btcCexTotals} currency={comparisonFiat} className="portfolio-btc-comparison" proceeds={rawBtcTransfers.some(row=>row.performance===false)?{amount:btcServiceTotals.outgoing,value:btcServiceTotals.outFiat}:undefined}/>}
       <div className="portfolio-gain-result">
@@ -805,21 +860,21 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
         <p className="small muted">{snapshot?.complete&&!cexPending&&!cexUnresolved?'':'Partial · '}Transfer-day prices plus current wallet value; not exchange execution prices.{cexPending?` ${num(cexPending,0)} transactions need CEX address checks.`:''}{cexUnresolved?` ${num(cexUnresolved,0)} mixed CEX transactions excluded.`:''}{cexDollars.missingPrices+manualAdaTransfers.filter(row=>row.usd===null).length?` ${cexDollars.missingPrices+manualAdaTransfers.filter(row=>row.usd===null).length} transfers have no historical USD price.`:''}</p>
       </details>
     </section></div></>}
-    <TransactionFilters id={section} options={section==='review'?{all:'All'}:section==='gain-loss'?{all:'All',in:'ADA IN',out:'ADA OUT',...(hasEthHistory?{'eth-in':'ETH IN','eth-out':'ETH OUT'}:{}),...(hasSolHistory?{'sol-in':'SOL IN','sol-out':'SOL OUT'}:{}),...(hasBtcHistory?{'btc-in':'BTC IN','btc-out':'BTC OUT'}:{})}:undefined} query={query} onQuery={value=>{setQuery(value);setFilter('all');}} filter={filter} onFilter={setFilter} dateFrom={dateFrom} dateTo={dateTo} onDates={(from,to)=>{setDateFrom(from);setDateTo(to);}} pagination={<TransactionPagination position="top" page={currentPage} count={shown.length} onPage={setPage}/>}/>
+    <TransactionFilters id={section} options={section==='review'?{all:'All'}:section==='gain-loss'?{all:'All',in:'ADA IN',out:'ADA OUT',...(hasEthHistory&&canEthereum?{'eth-in':'ETH IN','eth-out':'ETH OUT'}:{}),...(canRobinhood?{'rh-in':'RH IN','rh-out':'RH OUT'}:{}),...(hasSolHistory?{'sol-in':'SOL IN','sol-out':'SOL OUT'}:{}),...(hasBtcHistory?{'btc-in':'BTC IN','btc-out':'BTC OUT'}:{})}:undefined} query={query} onQuery={value=>{setQuery(value);setFilter('all');}} filter={filter} onFilter={setFilter} dateFrom={dateFrom} dateTo={dateTo} onDates={(from,to)=>{setDateFrom(from);setDateTo(to);}} pagination={<TransactionPagination position="top" page={currentPage} count={shown.length} onPage={setPage}/>}/>
     <section className="portfolio-section">
-      <TransactionTable multiAsset={hasEthHistory||hasSolHistory||hasBtcHistory}>{shown.slice(currentPage*100,(currentPage+1)*100).map(({rows:group,nft})=>{
+      <TransactionTable multiAsset={hasEthHistory||canRobinhood||hasSolHistory||hasBtcHistory}>{shown.slice(currentPage*100,(currentPage+1)*100).map(({rows:group,nft})=>{
         const compact=group.length===2;
-const children=group.map(row=>row.chain==='deposit'?<DepositTransaction key={row.tx.hash} receipt={row.tx} addresses={depositAddressLabels} history={snapshot?.history||{}} adaHistory={snapshot?.history||{}} partial={cardanoDeposits.data.complete===false}/>:row.chain==='bitcoin'?<BitcoinTransaction key={row.tx.hash} tx={row.tx} cexOnly={section==='gain-loss'} partial={btcPending.has(row.tx.hash)} wallets={bitcoin.wallets} exchanges={bitcoin.exchanges} history={bitcoin.data.history} adaHistory={snapshot?.history||{}}/>:row.chain==='solana'?<SolanaTransaction key={row.tx.hash} compact={compact} partial={solPending.has(row.tx.hash)} tx={row.tx} wallets={solana.wallets} exchanges={solana.exchanges} history={solana.data.history} adaHistory={snapshot?.history||{}}/>:row.chain==='ethereum'?<EthereumTransaction key={row.tx.id} compact={compact} tx={row.tx} internalSwap={crossChainSwaps.ethereum.has(row.tx.id)} partial={ethPending.has(row.tx.id)} wallets={ethereum.allWallets} exchanges={ethereum.exchanges} history={ethereum.data.history} adaHistory={snapshot?.history||{}}/>:section==='gain-loss'?<GainLossTransaction key={row.tx.tx_hash} tx={row.tx} fact={classifiedFacts[row.tx.tx_hash]} wallets={displayWallets} entries={cexAddresses} history={snapshot?.history||{}}/>:<Transaction key={row.tx.tx_hash} compact={compact} tx={row.tx} internalSwap={crossChainSwaps.cardano.has(row.tx.tx_hash)} fact={classifiedFacts[row.tx.tx_hash]} wallets={displayWallets} markets={snapshot?.markets||{}} history={snapshot?.history||{}} cexAddresses={cexAddresses} swapAddresses={swapAddresses} hiddenAsset={nft?.id} nftEvent={nft&&(row.tx.tx_hash===nft.acquisition.hash?nft.acquisition:nft.sale)}/>);
+const children=group.map(row=>row.chain==='deposit'?<DepositTransaction key={row.tx.hash} receipt={row.tx} addresses={depositAddressLabels} history={snapshot?.history||{}} adaHistory={snapshot?.history||{}} partial={cardanoDeposits.data.complete===false}/>:row.chain==='robinhood-token'?<RobinhoodTokenTransaction key={'rh-token:'+row.tx.hash+':'+row.tx.logIndex} transfer={row.tx} wallets={ethereum.allWallets}/>:row.chain==='robinhood-nft'?<RobinhoodNftTransaction key={'rh-nft:'+row.tx.hash+':'+row.tx.logIndex} transfer={row.tx} wallets={ethereum.allWallets}/>:row.chain==='bitcoin'?<BitcoinTransaction key={row.tx.hash} tx={row.tx} cexOnly={section==='gain-loss'} partial={btcPending.has(row.tx.hash)} wallets={bitcoin.wallets} exchanges={bitcoin.exchanges} history={bitcoin.data.history} adaHistory={snapshot?.history||{}}/>:row.chain==='solana'?<SolanaTransaction key={row.tx.hash} compact={compact} partial={solPending.has(row.tx.hash)} tx={row.tx} wallets={solana.wallets} exchanges={solana.exchanges} history={solana.data.history} adaHistory={snapshot?.history||{}}/>:row.chain==='robinhood'?<EthereumTransaction key={'rh:'+row.tx.id} network="robinhood" compact={compact} tx={row.tx} wallets={ethereum.allWallets} exchanges={ethereum.exchanges} history={robinhood.data.history} adaHistory={snapshot?.history||{}}/>:row.chain==='ethereum'?<EthereumTransaction key={row.tx.id} compact={compact} tx={row.tx} internalSwap={crossChainSwaps.ethereum.has(row.tx.id)} partial={ethPending.has(row.tx.id)} wallets={ethereum.allWallets} exchanges={ethereum.exchanges} history={ethereum.data.history} adaHistory={snapshot?.history||{}}/>:section==='gain-loss'?<GainLossTransaction key={row.tx.tx_hash} tx={row.tx} fact={classifiedFacts[row.tx.tx_hash]} wallets={displayWallets} entries={cexAddresses} history={snapshot?.history||{}}/>:<Transaction key={row.tx.tx_hash} compact={compact} tx={row.tx} internalSwap={crossChainSwaps.cardano.has(row.tx.tx_hash)} fact={classifiedFacts[row.tx.tx_hash]} wallets={displayWallets} markets={snapshot?.markets||{}} history={snapshot?.history||{}} cexAddresses={cexAddresses} swapAddresses={swapAddresses} hiddenAsset={nft?.id} nftEvent={nft&&(row.tx.tx_hash===nft.acquisition.hash?nft.acquisition:nft.sale)}/>);
         if(nft){
           const prices={buy:nft.acquisition.price,sell:nft.sale.price,acquisition:nft.acquisition.kind as 'Buy'|'Mint'};
           return <TransactionPair key={'nft:'+nft.id+':'+nft.acquisition.hash} heading={<div className="section-heading" data-nft-pair={nft.id}><AssetImage id={nft.id} name={nft.acquisition.name} market={snapshot?.markets[nft.id]} compact hideIdentifier preview tradePrices={prices}/><div translate="no" className="portfolio-nft-trade-labels"><strong>{t(nft.acquisition.kind)} / {t('Sell')}</strong><NftPriceLabels prices={prices}/></div></div>}>{children}</TransactionPair>;
         }
         if(compact)return <TransactionPair crossChain={group.some(row=>row.chain!=='cardano')} symbols={group.some(row=>row.chain==='solana')?'ADA / SOL':'ADA / ETH'} key={group[0].chain==='cardano'?group[0].tx.tx_hash:group[0].chain==='ethereum'?group[0].tx.id:group[0].tx.hash}>{children}</TransactionPair>;
-        const row=group[0],network=row.chain,hash=row.chain==='cardano'?row.tx.tx_hash:row.chain==='ethereum'?row.tx.id:row.tx.hash;
-        const key=network==='deposit'?'':manualCexKey(network,hash),candidate=manualCandidates.get(key);
+        const row=group[0],network=row.chain,hash=row.chain==='cardano'?row.tx.tx_hash:row.chain==='ethereum'||row.chain==='robinhood'?row.tx.id:row.tx.hash;
+        const key=network==='deposit'||network==='robinhood-token'||network==='robinhood-nft'?'':manualCexKey(network,hash),candidate=manualCandidates.get(key);
         const review=section!=='review'&&candidate&&!automaticCexKeys.has(key)&&!(network==='cardano'&&crossChainSwaps.cardano.has(hash))&&!(network==='ethereum'&&(crossChainSwaps.ethereum.has(hash)||ethPending.has(hash)))&&!(network==='solana'&&solPending.has(hash))&&!(network==='bitcoin'&&btcPending.has(hash));
         return <Fragment key={network+':'+hash}>{children}{review&&<TransactionCexReview candidate={candidate} savedAddress={manualCexDecisions[key]} onChange={address=>setManualCexDecision(candidate,address)}/>}</Fragment>;
-      })}</TransactionTable>{!shown.length&&<p className="empty">{busy?'Loading transactions…':'No matching transactions.'}</p>}
+      })}</TransactionTable>{!shown.length&&<p className="empty">{busy?'Loading transactions…':section==='review'&&!query&&!dateFrom&&!dateTo&&reviewCount===0&&reviewErrors.length===0?t('No transactions need review.'):'No matching transactions.'}</p>}
       <TransactionPagination position="bottom" page={currentPage} count={shown.length} onPage={setPage}/>
       {section==='gain-loss'?<p className="small muted table-note">USD amounts use daily UTC transfer-date prices. The Fee column shows only fees paid by your wallets. Unknown fee shares are not estimated.</p>:<p className="small muted table-note">Internal transfers require all inputs and outputs to belong to tracked addresses. Their net change is only the fee. Mixed transactions remain separate. Buy/sell labels are inferred from opposing ADA and token changes; multi-step DEX orders may need further reconciliation.</p>}
     </section></AssetOverlay></PortfolioCurrencyContext.Provider>}

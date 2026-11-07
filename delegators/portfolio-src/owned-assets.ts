@@ -2,7 +2,7 @@ import {assetSources} from './asset-source-registry.ts';
 import {assetImageUrl} from './asset-image.ts';
 import {compactBlock,expandBlock,CACHE_RECORDS_PER_PART} from './compact-storage.ts';
 
-export type AssetChain='cardano'|'ethereum'|'solana'|'bitcoin';
+export type AssetChain='cardano'|'ethereum'|'robinhood'|'solana'|'bitcoin';
 export type OwnedAsset={id:string;chain:AssetChain;standard:string;name:string;symbol:string;raw:string;decimals:number|null;image:string|null;explorer:string|null};
 export type AssetWallet={chain:Exclude<AssetChain,'cardano'>;address:string;name:string};
 export type AssetAccount={chain:AssetWallet['chain'];address:string;checkedAt:number;assets:OwnedAsset[]};
