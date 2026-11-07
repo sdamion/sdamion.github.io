@@ -50,6 +50,7 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
   ["All networks", "portfolio_text_owned_networks"],
   ["Asset type", "portfolio_text_owned_type"],
   ["All assets", "portfolio_text_owned_all"],
+  ["Non-Cardano NFT entries currently show owned assets only; transfer history is not available.", "portfolio_text_owned_history_partial"],
   ["NFTs / Ordinals", "portfolio_text_owned_nfts"],
   ["Refresh owned assets", "portfolio_text_owned_refresh"],
   ["Checking owned assets…", "portfolio_text_owned_checking"],

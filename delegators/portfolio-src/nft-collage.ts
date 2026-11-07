@@ -48,9 +48,16 @@ export function nftCollections(rows:ReturnType<typeof historicalNfts>){
   for(const row of rows){const policy=nftCollectionKey(row);const assets=groups.get(policy)||[];assets.push(row);groups.set(policy,assets);}
   return [...groups].map(([policy,assets])=>({policy,count:assets.length,name:assets[0].ordinal?'Bitcoin Ordinals'+(assets[0].ordinal.collection?' · '+assets[0].ordinal.collection:''):collectionNames[policy]||assets.map(asset=>collectionNameHints.get(collectionName(asset.name).trim().toLowerCase())).find(Boolean)||collectionRepresentative(assets)?.name||short(policy)})).sort((a,b)=>a.name.localeCompare(b.name)||a.policy.localeCompare(b.policy));
 }
-export const nftCollectionKey=(row:ReturnType<typeof historicalNfts>[number])=>row.ordinal?'bitcoin:ordinals:'+(row.ordinal.collection||'unclassified'):row.id.slice(0,56);
+export const nftCollectionKey=(row:ReturnType<typeof historicalNfts>[number])=>{
+  if(row.ordinal)return 'bitcoin:ordinals:'+(row.ordinal.collection||'unclassified');
+  if(row.chain&&row.chain!=='cardano'){
+    const contract=/^([^:]+:[^:]+:0x[a-f0-9]{40}):/.exec(row.id);
+    return contract?.[1]||row.chain+':nfts';
+  }
+  return row.id.slice(0,56);
+};
 export function filterNftCollage(rows:ReturnType<typeof historicalNfts>,prices:NftPrices,wallets:Record<string,string[]>,query:string,collection:string,sort:NftSort){
-  return rows.filter(row=>(!collection||nftCollectionKey(row)===collection)&&matchesSearchText(query,[row.name,row.id,...wallets[row.id]||[]])).sort((a,b)=>{
+  return rows.filter(row=>(!collection||nftCollectionKey(row)===collection)&&matchesSearchText(query,[row.name,row.id,...(row.wallets||wallets[row.id]||[])])).sort((a,b)=>{
     const tie=(b.firstReceived??0)-(a.firstReceived??0)||a.name.localeCompare(b.name)||a.id.localeCompare(b.id);
     if(sort==='date')return tie;
     const side=sort.startsWith('buy')?'buy':'sell',left=prices[a.id]?.[side]??null,right=prices[b.id]?.[side]??null;

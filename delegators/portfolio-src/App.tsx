@@ -52,14 +52,14 @@ import {mintPayments,paymentBudget} from './mint-payments';
 import type {PaymentLink} from './mint-payments';
 import {PaymentLinks} from './PaymentLinks';
 import {AssetOverlay} from './AssetOverlay';
-import {historicalNfts} from './historical-nfts';
+import {historicalNfts,mergeHistoricalNfts} from './historical-nfts';
 import {nftCollections,filterNftCollage,type NftPrices,type NftSort} from './nft-collage';
 import {nftTradePairs,nftCyclePrices,groupNftRows} from './nft-pairs';
 import {nftTransactions,type NftEvent} from './nft-history';
 import {NftPreview} from './NftHistory';
 import {OwnedAssetsGallery,type OwnedAssetRow} from './OwnedAssetsGallery';
 import {useOwnedAssets} from './use-owned-assets';
-import {assetIsFt,mergeOwnedAssets,type AssetWallet} from './owned-assets';
+import {assetIsNft,mergeOwnedAssets,type AssetWallet} from './owned-assets';
 import {externalFtHoldings} from './external-holdings';
 import {useOrdinals} from './use-ordinals';
 import {ordinalHistory} from './ordinals';
@@ -148,11 +148,11 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   const rawSolTransfers=useMemo(()=>solanaTransfers(solana.data,solana.wallets,solana.exchanges),[solana.data,solana.wallets,solana.exchanges]);
   const ethTransactions=useMemo(()=>visibleEthereumTransactions(ethereum.data,ethereum.wallets,ethereum.exchanges,ethereum.pending||[]),[ethereum.data,ethereum.wallets,ethereum.exchanges,ethereum.pending]);
   const rawEthTransfers=useMemo(()=>ethereumTransfers(ethereum.data,ethereum.wallets,ethereum.exchanges),[ethereum.data,ethereum.wallets,ethereum.exchanges]);
-  const [holdingsGroup,setHoldingsGroup]=useState<'FTs'|'NFTs'|'Historical NFTs'|'Missing assets / prices'|null>(null);
+  const [holdingsGroup,setHoldingsGroup]=useState<'FTs'|'NFTs'|'All assets'|'Historical NFTs'|'Missing assets / prices'|null>(null);
   const [historicalImageIds,setHistoricalImageIds]=useState('');
   const ordinals=useOrdinals(memberStake,ready&&canBitcoin,bitcoin.wallets,bitcoin.data,section==='holdings'&&(holdingsGroup==='Historical NFTs'||holdingsGroup==='NFTs'),historicalImageIds,holdingsGroup==='NFTs');
   const assetWalletTargets:AssetWallet[]=[...ethereum.wallets.filter(wallet=>wallet.group!=='swap').map(wallet=>({...wallet,chain:'ethereum' as const})),...solana.wallets.map(wallet=>({...wallet,chain:'solana' as const})),...bitcoin.wallets.map(wallet=>({...wallet,chain:'bitcoin' as const}))];
-  const ownedAssetInventory=useOwnedAssets(memberStake,ready,section==='holdings'&&(holdingsGroup==='NFTs'||holdingsGroup==='FTs'||holdingsGroup==='Missing assets / prices'),assetWalletTargets);
+  const ownedAssetInventory=useOwnedAssets(memberStake,ready,section==='holdings'&&(holdingsGroup==='NFTs'||holdingsGroup==='FTs'||holdingsGroup==='All assets'||holdingsGroup==='Historical NFTs'||holdingsGroup==='Missing assets / prices'),assetWalletTargets);
   const ordinalNfts=useMemo(()=>ordinalHistory(ordinals.data,bitcoin.data,bitcoin.wallets),[ordinals.data,bitcoin.data,bitcoin.wallets]);
   const {expanded:expandedPolicies,toggle:togglePolicy,reset:resetPolicies}=useTableGroups();
   const btc=useBtcHistory(section==='gain-loss'&&canBitcoin);
@@ -459,7 +459,8 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
     ownedOrdinalRows.set(metadata.id,{id:ordinal.id,chain:'bitcoin',standard:'Ordinal',name:metadata.name,symbol:'',raw:'1',decimals:0,image:null,explorer:'https://ordiscan.com/inscription/'+metadata.id,wallets:[wallet.name],ordinal});
   }
   ownedAssetRows.push(...ownedOrdinalRows.values());
-  const ownedNftRows=ownedAssetRows.filter(row=>!assetIsFt(row));
+  const ownedNftRows=ownedAssetRows.filter(assetIsNft);
+  const nftDisplayHistory=mergeHistoricalNfts(nftHistory,ownedNftRows);
   const groupRows=holdingsGroup?rows.filter(row=>assetGroup(row.id)===holdingsGroup):rows;
   const holdingEntries=policyTableRows(groupRows,expandedPolicies,r=>!missingCostsOnly||(r.cost===null&&(r.id==='lovelace'||overrides[r.id]?.excluded!==true)));
   const groupIncluded=includedAssets(groupRows,overrides);
@@ -693,15 +694,16 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
         const btcCount=group==='FTs'&&bitcoin.wallets.length?1:0;
         if(group==='NFTs')return <MenuTile key={group} title={group} value={num(ownedNftRows.length,0)} onOpen={()=>setHoldingsGroup(group)}><p className="small muted" translate="no">{t('Owned NFTs and Ordinals')}</p></MenuTile>;
         return <MenuTile key={group} title={group} value={formatPortfolioUsd(total,currencyDisplay)} onOpen={()=>setHoldingsGroup(group)}><p className="small muted">{t('{done} / {total} assets valued',{done:priced.length+includedExternalFts.filter(row=>row.value!==null).length+(ethCount&&!ethExcluded&&ethValue!==null?1:0)+(solCount&&!solExcluded&&solAvailable.value!==null?1:0)+(btcCount&&!btcExcluded&&btcAvailable.value!==null?1:0),total:active.length+includedExternalFts.length+(ethCount&&!ethExcluded?1:0)+(solCount&&!solExcluded?1:0)+(btcCount&&!btcExcluded?1:0)})}{assets.length-active.length+externalFtRows.length-includedExternalFts.length+(ethCount&&ethExcluded?1:0)+(solCount&&solExcluded?1:0)+(btcCount&&btcExcluded?1:0)?' · '+t('{count} excluded',{count:assets.length-active.length+externalFtRows.length-includedExternalFts.length+(ethCount&&ethExcluded?1:0)+(solCount&&solExcluded?1:0)+(btcCount&&btcExcluded?1:0)}):''}</p></MenuTile>;
-      })}<MenuTile title="Historical NFTs" value={num(nftHistory.length,0)} onOpen={()=>setHoldingsGroup('Historical NFTs')}><NftPreview rows={nftHistory} markets={snapshot?.markets||{}}/></MenuTile><MenuTile title="Missing assets / prices" value={num(assetIssueCount,0)} onOpen={()=>setHoldingsGroup('Missing assets / prices')}/></div>}
+      })}<MenuTile title="All assets" value={num(ownedAssetRows.length,0)} onOpen={()=>setHoldingsGroup('All assets')}/><MenuTile title="Historical NFTs" value={num(nftDisplayHistory.length,0)} onOpen={()=>setHoldingsGroup('Historical NFTs')}><NftPreview rows={nftDisplayHistory} markets={snapshot?.markets||{}}/></MenuTile><MenuTile title="Missing assets / prices" value={num(assetIssueCount,0)} onOpen={()=>setHoldingsGroup('Missing assets / prices')}/></div>}
       {holdingsGroup==='Missing assets / prices'&&<AssetIssues issues={assetIssues} settings={overrides} scanIncomplete={ownedAssetInventory.incomplete} scanErrors={ownedAssetInventory.errors} missingTransfers={gainFlows.filter(row=>row.usd===null).length} busy={syncing} onSetting={updateOverride} onDetails={setSelectedAsset} onAddresses={()=>{setHoldingsGroup(null);setWalletMenuStart('exchanges');setSection('wallets');}} onTransactions={()=>{setHoldingsGroup(null);setSection('transactions');}} onFlows={()=>{setHoldingsGroup(null);setSection('gain-loss');}} onInclude={id=>excludeAsset(id,false)} onRefresh={()=>{if(canCardano){void refresh();void cardanoDeposits.refresh(true);}void ethereum.refresh();void solana.refresh();void bitcoin.refresh();void ownedAssetInventory.refresh(true);}} onRefreshPurchases={canCardano&&snapshot?()=>void refreshAssetPurchases():undefined}/>}
       {holdingsGroup==='Historical NFTs'&&<>
         {!snapshot?.complete&&<p className="small muted" translate="no">{t('Partial history')}</p>}
+        {nftDisplayHistory.some(row=>row.chain&&row.chain!=='cardano'&&!row.ordinal)&&<p className="small muted" translate="no">{t('Non-Cardano NFT entries currently show owned assets only; transfer history is not available.')}</p>}
       {canBitcoin&&bitcoin.wallets.length>0&&<div className="section-heading"><button type="button" className="governance-vote-secondary" disabled={ordinals.busy||bitcoin.busy} onClick={()=>void ordinals.refresh(true)} translate="no">{t('Refresh Bitcoin Ordinals')}</button>{ordinals.busy&&<span role="status" translate="no">{t('Checking Bitcoin Ordinals…')} {t('Ordinals: {count} records checked',{count:ordinals.checked})}</span>}</div>}
         {ordinals.error&&<p role="alert" className="small-text error-text" translate="no">{t(ordinals.error)}</p>}
-        {nftHistory.length?<HistoricalNftCollage rows={nftHistory} markets={snapshot?.markets||{}} wallets={{...assetWallets,...ordinalNfts.wallets}} prices={nftPrices} events={nftEvents} onVisibleAssets={setHistoricalImageIds}/>:<p className="empty" translate="no">{t(ordinals.busy?'Loading historical NFTs…':'No NFTs found in loaded wallet history.')}</p>}
+        {nftDisplayHistory.length?<HistoricalNftCollage rows={nftDisplayHistory} markets={snapshot?.markets||{}} wallets={{...assetWallets,...ordinalNfts.wallets}} prices={nftPrices} events={nftEvents} onVisibleAssets={setHistoricalImageIds}/>:<p className="empty" translate="no">{t(ordinals.busy?'Loading historical NFTs…':'No NFTs found in loaded wallet history.')}</p>}
       </>}
-      {holdingsGroup==='NFTs'&&<OwnedAssetsGallery rows={ownedNftRows} busy={ownedAssetInventory.busy||ordinals.busy} partial={!snapshot?.complete||ownedAssetInventory.incomplete||bitcoin.wallets.some(wallet=>!ordinals.data.accounts[wallet.address])||assetWalletTargets.some(wallet=>wallet.chain==='ethereum'?!ethereum.data.accounts[wallet.address]:wallet.chain==='solana'?!solana.data.accounts[wallet.address]:!bitcoin.data.accounts[wallet.address])} errors={[...ownedAssetInventory.errors,...(ordinals.error?[{wallet:'Bitcoin Ordinals',message:ordinals.error}]:[])]} onRefresh={()=>{void ownedAssetInventory.refresh(true).catch(()=>{});void ordinals.refresh(true);}}/>}
+      {(holdingsGroup==='NFTs'||holdingsGroup==='All assets')&&<OwnedAssetsGallery rows={holdingsGroup==='NFTs'?ownedNftRows:ownedAssetRows} showTypeFilter={holdingsGroup==='All assets'} busy={ownedAssetInventory.busy||ordinals.busy} partial={!snapshot?.complete||ownedAssetInventory.incomplete||bitcoin.wallets.some(wallet=>!ordinals.data.accounts[wallet.address])||assetWalletTargets.some(wallet=>wallet.chain==='ethereum'?!ethereum.data.accounts[wallet.address]:wallet.chain==='solana'?!solana.data.accounts[wallet.address]:!bitcoin.data.accounts[wallet.address])} errors={[...ownedAssetInventory.errors,...(ordinals.error?[{wallet:'Bitcoin Ordinals',message:ordinals.error}]:[])]} onRefresh={()=>{void ownedAssetInventory.refresh(true).catch(()=>{});void ordinals.refresh(true);}}/>}
       {holdingsGroup==='FTs'&&<>
       <button type="button" className="governance-vote-secondary" disabled={busy||!snapshot} onClick={()=>void refreshAssetPurchases()}>Refresh all purchase data</button>
       {purchaseProgress&&<div aria-live="polite"><div className="section-heading"><span className="governance-vote-bar-track" style={{flex:1}} role="progressbar" aria-label="Purchase transactions checked" aria-valuemin={0} aria-valuemax={purchaseProgress.total} aria-valuenow={purchaseProgress.done}><span className="governance-vote-bar-fill governance-vote-bar-fill--yes" style={{flexBasis:`${purchaseProgress.done/purchaseProgress.total*100}%`}}/></span><span className="tdsp-bar-legend">{purchaseProgress.done} / {purchaseProgress.total}</span></div></div>}
@@ -871,7 +873,7 @@ function HistoricalNftCollage({rows,markets,wallets={},prices={},events=[],onVis
     <label translate="no">{t('Sort images')}<select aria-label={t('Sort images')} value={sort} onChange={event=>{setSort(event.target.value as NftSort);setPage(0);}}>{Object.entries({date:'Newest received first','buy-high':'Buy price: high to low','buy-low':'Buy price: low to high','sell-high':'Sell price: high to low','sell-low':'Sell price: low to high'}).map(([value,label])=><option key={value} value={value}>{t(label)}</option>)}</select></label></div>
     </TransactionFilters>
     <div className="portfolio-nft-gallery">
-    {filtered.length?<div className="portfolio-nft-collage">{visible.map(row=>row.ordinal?<OrdinalNftTile key={row.id} row={row} caption={<NftCaption name={row.name} firstReceived={row.firstReceived}/>}/>:<AssetImage key={row.id} id={row.id} name={row.name} market={markets[row.id]} preview collage={{firstReceived:row.firstReceived,prices:prices[row.id],minted:mintedIds.has(row.id),ownedWallets:/^\d+$/.test(row.raw)&&BigInt(row.raw)>0n?wallets[row.id]||[]:undefined}}/>)}</div>:<p className="empty" translate="no">{t('No matching NFTs.')}</p>}
+    {filtered.length?<div className="portfolio-nft-collage">{visible.map(row=>row.ordinal?<OrdinalNftTile key={row.id} row={row} caption={<NftCaption name={row.name} firstReceived={row.firstReceived}/>}/>:<AssetImage key={row.id} id={row.id} name={row.name} market={markets[row.id]} preferredImage={row.image} preview collage={{firstReceived:row.firstReceived,prices:prices[row.id],minted:mintedIds.has(row.id),ownedWallets:/^\d+$/.test(row.raw)&&BigInt(row.raw)>0n?row.wallets||wallets[row.id]||[]:undefined}}/>)}</div>:<p className="empty" translate="no">{t('No matching NFTs.')}</p>}
     {filtered.length>pageSize&&<TransactionPagination position="bottom" page={current.page} count={filtered.length} pageSize={pageSize} onPage={setPage} ariaLabel="Historical NFT pages"/>}
     </div>
   </>;
@@ -897,11 +899,11 @@ function NftCaption({name,firstReceived,prices,minted=false}:{name:string;firstR
   },[name,date,prices?.buy,prices?.sell,minted]);
   return <span ref={ref} className="portfolio-nft-caption" translate="no"><strong title={name}>{name}</strong><span title={date}>{date}</span><NftPriceLabels prices={prices} minted={minted}/></span>;
 }
-function AssetImage({id,name,market,onOpen,compact=false,hideIdentifier=false,preview=false,collage,tradePrices}:{id:string;name:string;market?:Market;onOpen?:()=>void;compact?:boolean;hideIdentifier?:boolean;preview?:boolean;collage?:{firstReceived:number|null;ownedWallets?:string[];minted?:boolean;prices?:NftPrices[string]};tradePrices?:NftPrices[string]}){
+function AssetImage({id,name,market,preferredImage,onOpen,compact=false,hideIdentifier=false,preview=false,collage,tradePrices}:{id:string;name:string;market?:Market;preferredImage?:string|null;onOpen?:()=>void;compact?:boolean;hideIdentifier?:boolean;preview?:boolean;collage?:{firstReceived:number|null;ownedWallets?:string[];minted?:boolean;prices?:NftPrices[string]};tradePrices?:NftPrices[string]}){
   const [failed,setFailed]=useState<string[]>([]);
   const [previewSource,setPreviewSource]=useState<string|null>(null);
   const t=usePortfolioText();
-  const source=assetImageCandidates(id,[market?.registry_logo,market?.cached_image,market?.wayup_image,market?.image,market?.image_url,market?.logo]).find(url=>!failed.includes(url));
+  const source=assetImageCandidates(id,[preferredImage,market?.registry_logo,market?.cached_image,market?.wayup_image,market?.image,market?.image_url,market?.logo]).find(url=>!failed.includes(url));
   const image=source?<img className="portfolio-asset-image" src={source} alt={name} title={name} width={48} height={48} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={()=>setFailed(previous=>[...previous,source])}/>:null;
   const caption=collage?<NftCaption name={name} firstReceived={collage.firstReceived} prices={collage.prices} minted={collage.minted}/>:null;
   const thumbnail=preview&&image?<button type="button" className="portfolio-image-preview-button" aria-label={t('View {name} details').replace('{name}',name)} onClick={()=>setPreviewSource(source!)}>{image}{caption}</button>:collage?<div className="portfolio-nft-placeholder"><ImageOff size={32} aria-hidden="true"/>{caption}</div>:image;

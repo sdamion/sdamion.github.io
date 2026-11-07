@@ -9,10 +9,12 @@ export type AssetAccount={chain:AssetWallet['chain'];address:string;checkedAt:nu
 export type OwnedAssetsData=Record<string,AssetAccount>;
 export const accountKey=(wallet:Pick<AssetWallet,'chain'|'address'>)=>wallet.chain+':'+assetSources[wallet.chain].normalizeAddress(wallet.address);
 export const validAssetWallet=(row:Pick<AssetWallet,'chain'|'address'>)=>Object.hasOwn(assetSources,row.chain)&&assetSources[row.chain].validAddress(row.address);
-export const assetIsFt=(row:OwnedAsset)=>['Native','FT','ERC-20','SPL','Rune','BRC-20'].includes(row.standard);
+export const assetIsFt=(row:OwnedAsset)=>row.chain==='cardano'?['Native','FT'].includes(row.standard):assetSources[row.chain].ftStandards.includes(row.standard);
+export const assetIsNft=(row:OwnedAsset)=>row.chain==='cardano'?row.standard==='NFT':assetSources[row.chain].nftStandards.includes(row.standard);
 export function validOwnedAsset(value:unknown):value is OwnedAsset{
   const row=value as OwnedAsset;
   if(!row||typeof row.id!=='string'||row.id.length>350||!Object.hasOwn(assetSources,row.chain)||!row.id.startsWith(row.chain+':')||typeof row.standard!=='string'||row.standard.length>40||!['name','symbol'].every(key=>typeof row[key as 'name'|'symbol']==='string'&&row[key as 'name'|'symbol'].length<=200)||typeof row.raw!=='string'||!/^\d{1,100}$/.test(row.raw)||!(row.decimals===null||Number.isSafeInteger(row.decimals)&&row.decimals>=0&&row.decimals<=255))return false;
+  if(!assetIsFt(row)&&!assetIsNft(row))return false;
   if(row.image!==null&&(!row.image||assetImageUrl(row.image)!==row.image))return false;
   try{if(row.explorer!==null){const url=new URL(row.explorer);if(url.protocol!=='https:'||url.username||url.password||!Object.values(assetSources).some(source=>source.explorerHosts.includes(url.hostname)))return false;}}catch{return false;}
   return true;

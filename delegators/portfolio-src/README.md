@@ -40,10 +40,22 @@ owned-wallet net, and no blockchain inputs, outputs or fees are rewritten.
 
 ## Combined owned assets
 
-Assets > NFTs shows current-owned NFTs and Ordinals across supported chains.
-Fungible tokens and native balances appear only in Assets > FTs.
+Assets > All assets shows current FT, NFT, Ordinal and native holdings through
+one searchable, network- and type-filterable gallery. Assets > NFTs uses the
+same gallery for NFTs and Ordinals; fungible tokens remain in Assets > FTs.
 Only explicitly owned wallets are scanned; CEX and Swap addresses are not holdings.
-Historical NFTs remains a separate history view.
+Historical NFTs includes Cardano transaction history and Bitcoin Ordinal history,
+plus currently owned NFTs from registered chains. Those extra owned rows keep an
+unknown first-received date and no invented purchase or sale price. A complete
+historical transfer feed for Ethereum/Solana is not yet available.
+
+`asset-source-registry.ts` defines provider endpoint, pagination, address rules,
+display name and supported FT/NFT standards for each non-Cardano chain. Add a
+provider adapter and register its standards there before exposing a new chain;
+unknown standards fail validation instead of being guessed as NFTs. The shared
+gallery, filters, exact balance merge, image fallback and current-owned historical
+projection then use that registration. Network access gates, native balance scan
+and wallet-form wiring still need explicit integration for a new chain.
 
 `use-owned-assets.ts` loads on demand and replaces an address snapshot only after
 all its inventory pages succeed. Provider failures retain prior snapshots and are

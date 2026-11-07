@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {historicalNfts} from '../delegators/portfolio-src/historical-nfts.ts';
+import {historicalNfts,mergeHistoricalNfts} from '../delegators/portfolio-src/historical-nfts.ts';
 
 test('includes sold NFTs and current holdings exactly once without counting FTs or unrelated metadata',()=>{
   const facts=[{assets:{sold:'-1',held:'1',ft:'500'}},{assets:{sold:'1',held:'0'}}];
@@ -24,4 +24,19 @@ test('sorts by first receipt newest first, with stable name ties and unknown dat
   const original=JSON.stringify(facts);
   assert.deepEqual(historicalNfts(facts,[],markets).map(row=>row.id),['newest','tieA','tieZ','old','unknown']);
   assert.equal(JSON.stringify(facts),original);
+});
+test('owned NFTs from registered chains join historical gallery without inventing dates or prices',()=>{
+  const cardano={id:'a'.repeat(56)+'01',name:'Cardano art',raw:'1',firstReceived:100};
+  const owned=[
+    {id:'cardano:'+cardano.id,chain:'cardano',standard:'NFT',name:cardano.name,raw:'1',image:'https://example.com/ada.png',wallets:['ADA wallet']},
+    {id:'ethereum:1:0x'+'1'.repeat(40)+':431',chain:'ethereum',standard:'ERC-721',name:'ETH art',raw:'1',image:'https://example.com/eth.png',wallets:['ETH wallet']},
+    {id:'solana:mainnet:mint',chain:'solana',standard:'Compressed NFT',name:'SOL art',raw:'1',image:'https://example.com/sol.png',wallets:['SOL wallet']},
+    {id:'ethereum:1:native',chain:'ethereum',standard:'Native',name:'ETH',raw:'1',image:null,wallets:['ETH wallet']}
+  ];
+  const rows=mergeHistoricalNfts([cardano],owned);
+  assert.equal(rows.length,3);
+  assert.equal(rows.find(row=>row.id===cardano.id).firstReceived,100);
+  assert.equal(rows.find(row=>row.chain==='ethereum').firstReceived,null);
+  assert.equal(rows.find(row=>row.chain==='ethereum').image,'https://example.com/eth.png');
+  assert.equal(rows.find(row=>row.chain==='solana').wallets[0],'SOL wallet');
 });

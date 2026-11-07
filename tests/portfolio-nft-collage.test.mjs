@@ -34,6 +34,16 @@ test('ADA Handle collection names use exact policies without renaming individual
   assert.equal(JSON.stringify(rows),original);
   assert.notEqual(nftCollections([{...rows[0],id:'a'.repeat(56)+'01'}])[0].name,'ADA Handle');
 });
+test('Ethereum NFT instances group by contract without mixing other chains',()=>{
+  const contract='0x'+'1'.repeat(40),rows=[
+    {id:`ethereum:1:${contract}:1`,chain:'ethereum',name:'Art 1',raw:'1',firstReceived:null},
+    {id:`ethereum:1:${contract}:2`,chain:'ethereum',name:'Art 2',raw:'1',firstReceived:null},
+    {id:'solana:mainnet:mint',chain:'solana',name:'SOL Art',raw:'1',firstReceived:null}
+  ];
+  const groups=nftCollections(rows);
+  assert.equal(groups.find(row=>row.policy===`ethereum:1:${contract}`).count,2);
+  assert.equal(groups.find(row=>row.policy==='solana:nfts').count,1);
+});
 test('uses latest known allocated purchases and per-NFT trade proceeds, never unknown transfers',()=>{
   const facts=[fact('buy',10,{nft:'1'},'-11000000'),fact('sell',20,{nft:'-2'},'39000000'),fact('transfer',30,{nft:'1'},'0'),fact('bundle',40,{nft:'1',other:'1'},'-50000000'),fact('internal',50,{nft:'1'},'-90000000',{internal:true})];
   const originals=JSON.stringify(facts);
