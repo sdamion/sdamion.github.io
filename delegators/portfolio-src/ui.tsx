@@ -1,6 +1,8 @@
 import React from 'react';
 import {createPortal} from 'react-dom';
+import {Info} from 'lucide-react';
 import {usePortfolioCurrency,formatPortfolioUsd,formatPortfolioAda} from './portfolio-currency';
+import {usePortfolioText} from './use-portfolio-text';
 export function PortfolioMessage({children,error=false,...props}:React.ComponentProps<'p'>&{error?:boolean}){
   return <p {...props} role={error?'alert':'status'} className={`small-text${error?' error-text':''}`}>{children}</p>;
 }
@@ -13,7 +15,16 @@ export function AdaUsdAmount({ada,usd}:{ada:number|null;usd:number|null}){
   },[ada,usd,display]);
   return display?<span translate="no">{display.currency==='ADA'?formatPortfolioAda(ada,display):formatPortfolioUsd(usd,display)}</span>:<span ref={ref}/>;
 }
-export function MenuTile({title,value,onOpen,analysis,loading=false,loadingLabel='Initialising',children}:{title:string;value:string;onOpen:()=>void;loading?:boolean;loadingLabel?:string;analysis?:{done:number;total:number|null;counting:boolean;busy:boolean;status?:string;compact?:boolean};children?:React.ReactNode}){
+export function TileInfo({title,description}:{title:string;description:string}){
+  const [open,setOpen]=React.useState(false);
+  const t=usePortfolioText();
+  const id=React.useId();
+  return <div className="portfolio-tile-info" onClick={event=>event.stopPropagation()} onKeyDown={event=>{event.stopPropagation();if(event.key==='Escape')setOpen(false);}}>
+    <button type="button" className="portfolio-tile-info-button" aria-label={t('About {title}',{title:t(title)})} aria-expanded={open} aria-controls={id} title={t('About {title}',{title:t(title)})} onClick={()=>setOpen(value=>!value)}><Info size={17} aria-hidden="true"/></button>
+    {open&&<p id={id} className="portfolio-tile-info-text">{t(description)}</p>}
+  </div>;
+}
+export function MenuTile({title,value,onOpen,info,analysis,loading=false,loadingLabel='Initialising',children}:{title:string;value:string;onOpen:()=>void;info?:string;loading?:boolean;loadingLabel?:string;analysis?:{done:number;total:number|null;counting:boolean;busy:boolean;status?:string;compact?:boolean};children?:React.ReactNode}){
   const ref=React.useRef<HTMLDivElement>(null);
   const footer=React.useMemo(()=>document.createElement('div'),[]);
   React.useLayoutEffect(()=>{
@@ -48,10 +59,10 @@ export function MenuTile({title,value,onOpen,analysis,loading=false,loadingLabel
       const percentage=document.createElement('span');percentage.className='tdsp-bar-legend';percentage.textContent=counting?'…':`${percent.toLocaleString(undefined,{maximumFractionDigits:1})}%`;
       row.append(track,percentage);if(!analysis.compact)button.append(label);button.append(row);
     }
-    if(children)button.append(footer);
-  },[title,value,loading,loadingLabel,analysis?.done,analysis?.total,analysis?.counting,analysis?.busy,analysis?.status,analysis?.compact,!!children,footer]);
+    if(children||info)button.append(footer);
+  },[title,value,loading,loadingLabel,analysis?.done,analysis?.total,analysis?.counting,analysis?.busy,analysis?.status,analysis?.compact,!!children,info,footer]);
   const interactive=(target:EventTarget|null)=>target instanceof Element&&!!target.closest('button,a,input,select,textarea');
-  return <div ref={ref} role="button" tabIndex={0} className="governance-card governance-menu-card" onClick={event=>{if(!interactive(event.target))onOpen();}} onKeyDown={event=>{if(!interactive(event.target)&&(event.key==='Enter'||event.key===' ')){event.preventDefault();onOpen();}}} aria-label={`Open ${title}`} aria-busy={loading}>{children&&createPortal(children,footer)}</div>;
+  return <div ref={ref} role="button" tabIndex={0} className="governance-card governance-menu-card" onClick={event=>{if(!interactive(event.target))onOpen();}} onKeyDown={event=>{if(!interactive(event.target)&&(event.key==='Enter'||event.key===' ')){event.preventDefault();onOpen();}}} aria-label={`Open ${title}`} aria-busy={loading}>{(children||info)&&createPortal(<>{children}{info&&<TileInfo title={title} description={info}/>}</>,footer)}</div>;
 }
 export const Input=(props:React.ComponentProps<'input'>)=><input {...props}/>;
 const TableLabels=React.createContext<string[]>([]);

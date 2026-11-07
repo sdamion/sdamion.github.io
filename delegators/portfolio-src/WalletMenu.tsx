@@ -11,8 +11,8 @@ export function WalletMenu({wallets,exchanges,counts,startSection=null}:{wallets
   };
   return <>
     <div className="tdsp-tile-grid">
-      <MenuTile title={sections.wallets.title} value={String(counts.wallets)} onOpen={()=>setSection('wallets')}/>
-      <MenuTile title={sections.exchanges.title} value={String(counts.exchanges+counts.swap)} onOpen={()=>setSection('exchanges')}/>
+      <MenuTile title={sections.wallets.title} info="Lists your own wallets, including personal exchange deposit wallets and their balances." value={String(counts.wallets)} onOpen={()=>setSection('wallets')}/>
+      <MenuTile title={sections.exchanges.title} info="Lists exchange and swap counterparties used to classify transfers, without treating shared balances as yours." value={String(counts.exchanges+counts.swap)} onOpen={()=>setSection('exchanges')}/>
     </div>
     {section&&<AssetOverlay id={`portfolio-wallet-menu-${section}`} name={sections[section].title} onClose={()=>setSection(null)}>{sections[section].content}</AssetOverlay>}
   </>;

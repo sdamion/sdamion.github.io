@@ -2532,6 +2532,60 @@ textarea[data-auto-size] {
     text-align: left;
 }
 
+.member-portfolio .tdsp-tile-grid > .governance-menu-card {
+    position: relative;
+    padding-right: 48px;
+}
+
+.member-portfolio .tdsp-tile-grid > .governance-menu-card:has(.portfolio-tile-info-button[aria-expanded="true"]) {
+    z-index: 2;
+}
+
+.portfolio-tile-info {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+}
+
+.portfolio-tile-info-button {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+}
+
+.portfolio-tile-info-button:hover,
+.portfolio-tile-info-button:focus-visible {
+    color: var(--accent-strong);
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+}
+
+.portfolio-tile-info-text {
+    position: absolute;
+    top: 30px;
+    right: 0;
+    width: min(260px, calc(100vw - 48px));
+    margin: 0;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--governance-card-bg);
+    color: var(--text);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+    font-size: 0.85rem;
+    line-height: 1.45;
+    font-weight: 400;
+    white-space: normal;
+    z-index: 3;
+}
+
 .governance-summary-clickable {
     cursor: pointer;
 }

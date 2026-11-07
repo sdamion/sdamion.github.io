@@ -29,7 +29,7 @@ export function SwapWallets({wallets,groups={},onChange,inline=false,showForm=tr
   );
   if(inline)return content;
   return <>
-    <MenuTile title="Swap" value={String(members.length)} onOpen={()=>setOpen(true)}/>
+    <MenuTile title="Swap" info="Shows swap-linked wallets and addresses used to identify exchange activity." value={String(members.length)} onOpen={()=>setOpen(true)}/>
     {open&&<AssetOverlay id="portfolio-swap-wallets-overlay" name="Swap" onClose={()=>setOpen(false)}>{content}</AssetOverlay>}
   </>;
 }
