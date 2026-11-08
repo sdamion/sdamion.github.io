@@ -13,10 +13,15 @@ export function portfolioTransactionCounts(data:{settings:Record<string,string>;
     const wallets=ownedEthereumWallets(ethereumWallets(read('tdsp-member-ethereum-wallets:')));
     eth=ethereumTransactionCount(readEthereumSettings('tdsp-member-ethereum-data:'+stake,key=>data.settings[key]??null,new Set(wallets.map(wallet=>wallet.address))),wallets);
   }catch{/* Incomplete storage is not reported as saved. */}
+  let robinhood=0;
+  try{
+    const wallets=ownedEthereumWallets(ethereumWallets(read('tdsp-member-robinhood-wallets:')));
+    robinhood=ethereumTransactionCount(readEthereumSettings('tdsp-member-robinhood-data:'+stake,key=>data.settings[key]??null,new Set(wallets.map(wallet=>wallet.address))),wallets);
+  }catch{/* Incomplete storage is not reported as saved. */}
   const cardanoSaved=Object.keys(data.snapshot?.data.facts||{}).length;
   let sol=0;
   try{sol=solanaTransactions(readSolanaSettings('tdsp-member-solana-data:'+stake,key=>data.settings[key]??null),nativeWallets(read('tdsp-member-solana-wallets:'))).length;}catch{/* Incomplete storage is not reported as saved. */}
   let btc=0;
   try{btc=bitcoinTransactions(readBitcoinSettings('tdsp-member-bitcoin-data:'+stake,key=>data.settings[key]??null),bitcoinWallets(read('tdsp-member-bitcoin-wallets:'))).length;}catch{/* Incomplete storage is not reported as saved. */}
-  return {saved:cardanoSaved+eth+sol+btc,total:(data.snapshot?.data.txs.length||0)+eth+sol+btc,cardanoSaved};
+  return {saved:cardanoSaved+eth+robinhood+sol+btc,total:(data.snapshot?.data.txs.length||0)+eth+robinhood+sol+btc,cardanoSaved};
 }

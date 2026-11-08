@@ -6,6 +6,7 @@ import type {AddressNetwork} from './address-networks.ts';
 const filters:Record<AddressNetwork,{in:string;out:string}>={
   cardano:{in:'in',out:'out'},
   ethereum:{in:'eth-in',out:'eth-out'},
+  robinhood:{in:'rh-in',out:'rh-out'},
   solana:{in:'sol-in',out:'sol-out'},
   bitcoin:{in:'btc-in',out:'btc-out'}
 };

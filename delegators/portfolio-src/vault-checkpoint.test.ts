@@ -21,6 +21,11 @@ data.settings['tdsp-member-ethereum-data:'+stake]=JSON.stringify({accounts:{
 assert.deepEqual(portfolioTransactionCounts(data,stake),{saved:2,total:3,cardanoSaved:1});
 assert.deepEqual(portfolioTransactionCounts({...data,snapshot:null},stake),{saved:1,total:1,cardanoSaved:0});
 assert.deepEqual(portfolioTransactionCounts({...data,settings:{['tdsp-member-ethereum-data:'+stake]:'invalid JSON'}},stake),{saved:1,total:2,cardanoSaved:1});
+const robinhoodData={...data,settings:{...data.settings,
+  ['tdsp-member-robinhood-wallets:'+stake]:JSON.stringify([{address:wallet,name:'RH wallet'}]),
+  ['tdsp-member-robinhood-data:'+stake]:JSON.stringify({accounts:{[wallet]:{balanceWei:'0',block:1,transactions:[normal]}},history:{},usd:null,updated:null})
+}};
+assert.deepEqual(portfolioTransactionCounts(robinhoodData,stake),{saved:3,total:4,cardanoSaved:1});
 const first=await prepareCheckpoint(data,key,stake,null);
 assert.equal(first.saved,2);
 assert.equal(first.total,3);

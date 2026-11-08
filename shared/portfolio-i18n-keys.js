@@ -1859,6 +1859,8 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
   ["This address is already saved.", "portfolio_text_eth_duplicate"],
   ["Your own wallet cannot be added as a CEX address.", "portfolio_text_eth_owned"],
   ["A maximum of 20 Ethereum addresses can be added.", "portfolio_text_eth_limit"],
+  ["A maximum of 20 EVM addresses can be added.", "portfolio_text_evm_limit"],
+  ["Robinhood wallet settings could not be opened. Saved data is retained.", "portfolio_text_rh_settings_error"],
   ["Copy address", "portfolio_text_eth_copy"],
   ["Could not copy address.", "portfolio_text_eth_copy_failed"],
   ["Refresh", "portfolio_text_eth_refresh"],

@@ -84,7 +84,7 @@ try{
  await page.locator('#own-network').selectOption('robinhood');
  await page.locator('#own-name').fill('My RH');await page.locator('#own-address').fill(eth.toUpperCase());
  await page.locator('#own').getByRole('button',{name:'Add',exact:true}).click();
- assert.deepEqual(await page.evaluate(()=>window.saved.own[1]),{network:'ethereum',name:'My RH',address:eth},'Robinhood uses the shared EVM wallet book');
+ assert.deepEqual(await page.evaluate(()=>window.saved.own[1]),{network:'robinhood',name:'My RH',address:eth},'Robinhood uses its own wallet book');
  await mount();
  for(const [key,address] of [['ada',stake],['eth',eth],['sol',sol]]){
    const row=page.locator('tbody tr').filter({has:page.locator('a[title="'+address+'"]')});
