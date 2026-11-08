@@ -24,8 +24,8 @@ function Fixture(){
  const save=(key,set)=>(next)=>{if(window.rejectSave)return false;localStorage.setItem(key,JSON.stringify(next));set(next);return true;};
  window.saved={ada:entries,eth,sol,own};
  return <main className="member-portfolio">
- <section id="own"><CryptoAddressForm id="own" ethereum solana onAdd={(network,kind,name,address)=>{setOwn([...own,{network,name,address}]);return true;}}/></section>
- <section id="counterparty"><CryptoAddressForm id="external" counterparty ethereum solana onAdd={(network,kind,name,address)=>{
+ <section id="own"><CryptoAddressForm id="own" ethereum robinhood solana onAdd={(network,kind,name,address)=>{setOwn([...own,{network,name,address}]);return true;}}/></section>
+ <section id="counterparty"><CryptoAddressForm id="external" counterparty ethereum robinhood solana onAdd={(network,kind,name,address)=>{
    if(network==='cardano')return save('ada',setEntries)([...entries,{address,name,miner:true}]);
    const rows=network==='ethereum'?eth:sol;
    return save(network==='ethereum'?'eth':'sol',network==='ethereum'?setEth:setSol)([...rows,{address,name,miner:true,...(kind==='dex'?{dex:true}:{})}]);
@@ -51,6 +51,7 @@ try{
  assert.equal(await external.locator('[name="service_address"]').count(),1);
  assert.equal(await page.locator('#own [name="service_address"]').count(),1);
  assert.equal(await page.locator('#restricted select option').count(),1,'disabled chains are not offered');
+ assert.equal(await page.locator('#own-network option[value="robinhood"]').textContent(),'Robinhood Chain');
  for(const [network,address] of [['cardano',stake],['ethereum',eth],['solana',sol]]){
    await external.locator('#external-network').selectOption(network);
    await external.locator('#external-type').selectOption(network==='cardano'?'exchange':'dex');
@@ -80,6 +81,10 @@ try{
  await page.locator('#own-name').fill('My SOL');await page.locator('#own-address').fill(sol);
  await page.locator('#own').getByRole('button',{name:'Add',exact:true}).click();
  assert.deepEqual(await page.evaluate(()=>window.saved.own),[{network:'solana',name:'My SOL',address:sol}]);
+ await page.locator('#own-network').selectOption('robinhood');
+ await page.locator('#own-name').fill('My RH');await page.locator('#own-address').fill(eth.toUpperCase());
+ await page.locator('#own').getByRole('button',{name:'Add',exact:true}).click();
+ assert.deepEqual(await page.evaluate(()=>window.saved.own[1]),{network:'ethereum',name:'My RH',address:eth},'Robinhood uses the shared EVM wallet book');
  await mount();
  for(const [key,address] of [['ada',stake],['eth',eth],['sol',sol]]){
    const row=page.locator('tbody tr').filter({has:page.locator('a[title="'+address+'"]')});

@@ -63,6 +63,21 @@ test('all native chains support deposit tracking while Swap remains ETH-only',()
   assert.equal(eth.exchanges[0].deposit,true);assert.equal(nativeAddressRows(eth).find(row=>row.address==='deposit')!.onMining,undefined);
   for(const network of ['bitcoin','solana'] as const){const book=fixture(network);assert.equal(addNativeAddress(book,true,'swap','Unsupported','swap'),false);assert.deepEqual(book.wallets,[]);addNativeAddress(book,true,'exchange','External','external');assert.equal(nativeAddressRows(book)[0].onDeposit!(true),true);assert.equal(book.exchanges[0].deposit,true);assert.equal(nativeAddressRows(book)[0].onMining,undefined);assert.deepEqual(book.wallets,[]);}
 });
+test('Robinhood and Ethereum share one EVM address entry but keep balances distinct',()=>{
+  const book=fixture('ethereum');
+  book.label='Ethereum / Robinhood Chain';
+  book.balance=()=> '1000000000000000000';
+  book.additionalBalance={balance:()=> '2000000000000000000',usd:2500,symbol:'RH ETH'};
+  assert.equal(addNativeAddress(book,false,'exchange','EVM wallet','0x'+'1'.repeat(40)),true);
+  assert.throws(()=>addNativeAddress(book,false,'exchange','Duplicate','0x'+'1'.repeat(40)),/already saved/);
+  const [row]=nativeAddressRows(book,true);
+  assert.equal(book.wallets.length,1);
+  assert.equal(row.network,'ethereum');
+  assert.equal(row.networkLabel,'Ethereum / Robinhood Chain');
+  assert.equal(row.balance?.raw,'1000000000000000000');
+  assert.equal(row.additionalBalance?.raw,'2000000000000000000');
+  assert.equal(row.additionalBalance?.symbol,'RH ETH');
+});
 test('shared limits preserve existing ETH/SOL limits and do not impose one on BTC',()=>{
   for(const network of ['ethereum','solana','bitcoin'] as const){const book=fixture(network);book.wallets=Array.from({length:20},(_,i)=>({address:String(i),name:String(i)}));if(network==='bitcoin')assert.equal(addNativeAddress(book,false,'exchange','More','more'),true);else assert.throws(()=>addNativeAddress(book,false,'exchange','More','more'));}
 });

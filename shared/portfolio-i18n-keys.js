@@ -1855,6 +1855,7 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
   ["Ethereum DEX / CEX addresses", "portfolio_text_eth_cex"],
   ["Ethereum address", "portfolio_text_eth_address"],
   ["Enter an Ethereum mainnet address (0x…).", "portfolio_text_eth_invalid"],
+  ["Enter a valid EVM address (0x…).", "portfolio_text_evm_invalid"],
   ["This address is already saved.", "portfolio_text_eth_duplicate"],
   ["Your own wallet cannot be added as a CEX address.", "portfolio_text_eth_owned"],
   ["A maximum of 20 Ethereum addresses can be added.", "portfolio_text_eth_limit"],

@@ -642,7 +642,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   useEffect(()=>{if(page!==currentPage)setPage(currentPage);},[page,currentPage]);
 
   const nativeAddressBooks:NativeAddressBook[]=[
-    {network:'ethereum',enabled:canEthereum||canRobinhood,wallets:ethereum.allWallets,exchanges:ethereum.exchanges,saveWallets:ethereum.saveWallets,saveExchanges:ethereum.saveExchanges,balance:address=>(canEthereum?ethereum.data:robinhood.data).accounts[address]?.balanceWei,usd:canEthereum?ethereum.data.usd:robinhood.data.usd},
+    {network:'ethereum',label:canEthereum&&canRobinhood?'Ethereum / Robinhood Chain':canRobinhood?'Robinhood Chain':'Ethereum',explorerNetwork:canRobinhood&&!canEthereum?'robinhood':'ethereum',enabled:canEthereum||canRobinhood,wallets:ethereum.allWallets,exchanges:ethereum.exchanges,saveWallets:ethereum.saveWallets,saveExchanges:ethereum.saveExchanges,balance:address=>(canEthereum?ethereum.data:robinhood.data).accounts[address]?.balanceWei,usd:canEthereum?ethereum.data.usd:robinhood.data.usd,...(canEthereum&&canRobinhood?{additionalBalance:{balance:(address:string)=>robinhood.data.accounts[address]?.balanceWei,usd:robinhood.data.usd,symbol:'RH ETH'}}:{})},
     {network:'solana',enabled:canSolana,wallets:solana.wallets,exchanges:solana.exchanges,saveWallets:solana.saveWallets,saveExchanges:solana.saveExchanges,balance:address=>solana.data.accounts[address]?.raw,usd:solana.data.usd},
     {network:'bitcoin',enabled:canBitcoin,wallets:bitcoin.wallets,exchanges:bitcoin.exchanges,saveWallets:bitcoin.saveWallets,saveExchanges:bitcoin.saveExchanges,balance:address=>bitcoin.data.accounts[address]?.raw,usd:bitcoin.data.usd}
   ];
@@ -657,15 +657,15 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
     if(wallets.some(row=>row.address===address)||ownedAddresses.includes(address))throw new Error('This address is already included.');
     return saveWallets([...wallets,{address,label:name,...(personalType?{personalType}:{})}]);
   }
-  const walletForm=<CryptoAddressForm id="portfolio-wallet" cardano={canCardano} ethereum={canEthereum||canRobinhood} solana={canSolana} bitcoin={canBitcoin} onAdd={(...args)=>addAddress(false,...args)}/>;
-  const exchangeForm=<CryptoAddressForm id="portfolio-exchange" counterparty cardano={canCardano} ethereum={canEthereum||canRobinhood} solana={canSolana} bitcoin={canBitcoin} onAdd={(...args)=>addAddress(true,...args)}/>;
+  const walletForm=<CryptoAddressForm id="portfolio-wallet" cardano={canCardano} ethereum={canEthereum} robinhood={canRobinhood} solana={canSolana} bitcoin={canBitcoin} onAdd={(...args)=>addAddress(false,...args)}/>;
+  const exchangeForm=<CryptoAddressForm id="portfolio-exchange" counterparty cardano={canCardano} ethereum={canEthereum} robinhood={canRobinhood} solana={canSolana} bitcoin={canBitcoin} onAdd={(...args)=>addAddress(true,...args)}/>;
   const ethSwapWallets=ethereum.swapWallets,ethOwnWallets=ethereum.wallets;
   const cardanoAddressBook:CardanoAddressBook={wallets,exchanges:cexAddresses,snapshot,memberStake,busy,usd:currentAdaUsd,saveWallets,saveExchanges:saveCexAddresses,onView:setWalletDetails};
   const ownAddressRows:AddressListRow[]=[...(canCardano?cardanoAddressRows(cardanoAddressBook,true):[]),...nativeAddressBooks.flatMap(book=>nativeAddressRows(book,true))];
   const allCounterpartyRows:AddressListRow[]=[...(canCardano?cardanoAddressRows(cardanoAddressBook):[]),...nativeAddressBooks.flatMap(book=>nativeAddressRows(book))];
   const legacyPersonalRows=allCounterpartyRows.filter(row=>row.deposit===true);
   const counterpartyRows=allCounterpartyRows.filter(row=>row.deposit!==true);
-  const swapForm=<><CryptoAddressForm id="portfolio-swap" counterparty cardano={canCardano} ethereum={canEthereum||canRobinhood} initialKind="swap" onAdd={(...args)=>addAddress(true,...args)}/><AddressList rows={counterpartyRows.filter(row=>row.kind==='Swap')}/></>;
+  const swapForm=<><CryptoAddressForm id="portfolio-swap" counterparty cardano={canCardano} ethereum={canEthereum} robinhood={canRobinhood} initialKind="swap" onAdd={(...args)=>addAddress(true,...args)}/><AddressList rows={counterpartyRows.filter(row=>row.kind==='Swap')}/></>;
   const detailWallet=canCardano?wallets.find(wallet=>wallet.address===walletDetails&&wallet.group!=='swap'):undefined;
   return <PortfolioCurrencyContext.Provider value={currencyDisplay}><main className="member-portfolio"><PortfolioQuickstart stake={memberStake} cardano={canCardano} wallets={walletForm} exchanges={exchangeForm} swap={swapForm}/><div className="portfolio-body"><div className="section-heading" aria-label="Portfolio refresh">
     <PortfolioRefresh onRefresh={()=>{if(canCardano){void refresh();void cardanoDeposits.refresh(true);}void ethereum.refresh();void robinhood.refresh();void solana.refresh();void bitcoin.refresh();void ownedAssetInventory.refresh(true);}} disabled={syncing||!ready} busy={syncing} currencyControl={<select className="governance-vote-secondary" aria-label={t('Comparison currency')} value={holdingsCurrency} onChange={event=>setHoldingsCurrency(event.target.value as 'ADA'|ComparisonFiat)}>{canCardano&&<option value="ADA">ADA</option>}<option value="USD">USD ($)</option><option value="EUR">EUR (€)</option><option value="JPY">JPY (¥)</option></select>}/>
@@ -684,9 +684,9 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
       <MenuTile title="Transactions" info="Shows loaded on-chain transfers across enabled networks. Open to search and inspect transaction details." value={snapshot?num(allTransactionTotal,0):'—'} analysis={snapshot?{done:combinedProgress.downloaded,total:combinedProgress.total,counting:combinedProgress.total===null,busy:syncing,compact:true}:undefined} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('transactions');}}>
         <DownloadStatus chains={downloadChains} showDiscovery={!(syncing)}/>
       </MenuTile>
-      <MenuTile title="Needs review" info="Lists incomplete transactions and scan errors that need another check before they can be used in calculations." value={num(reviewCount,0)} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('review');}}>
+      {reviewCount>0&&<MenuTile title="Needs review" info="Lists incomplete transactions and scan errors that need another check before they can be used in calculations." value={num(reviewCount,0)} onOpen={()=>{setQuery('');setFilter('all');setPage(0);setSection('review');}}>
         <p translate="no" className="small muted">{t('{count} incomplete transactions · {errors} scan errors',{count:reviewCount,errors:reviewErrors.length})}</p>
-      </MenuTile>
+      </MenuTile>}
       <MenuTile title="Assets" info="Shows the estimated value of included assets across your wallets. Open for fungible tokens, NFTs, history and missing data." value={holdingsDisplay} onOpen={()=>{resetPolicies();setHoldingsGroup(null);setSection('holdings');}}>
         {portfolioPartial&&partialNote}
         <p className="small muted">{t('{done} / {total} assets valued',{done:valued.length+includedExternalFts.filter(row=>row.value!==null).length+nativeValued,total:included.length+includedExternalFts.length+nativeIncluded})}{excludedCount+externalFtRows.length-includedExternalFts.length+nativeExcluded?' · '+t('{count} excluded',{count:excludedCount+externalFtRows.length-includedExternalFts.length+nativeExcluded}):''}</p>
