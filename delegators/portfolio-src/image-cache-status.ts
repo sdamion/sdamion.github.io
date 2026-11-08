@@ -1,6 +1,6 @@
 import type {Market} from './core.ts';
 
-type ImageState={token_id:string;state:string;cached_image?:string;retryAt?:number};
+export type ImageState={token_id:string;state:string;cached_image?:string;retryAt?:number};
 const cachedPath=/^\/api\/portfolio\/images\/[a-f0-9]{64}\.(png|jpg|gif|webp)$/;
 export function cachedImageProgress(ids:string[],markets:Record<string,Market>){
   const assets=[...new Set(ids)].filter(id=>/^[a-f0-9]{56}(?:[a-f0-9]{2}){0,32}$/.test(id));
@@ -17,7 +17,7 @@ export function applyCachedImages(markets:Record<string,Market>,images:Record<st
   return next;
 }
 
-export async function watchImageCache(ids:string[],request:(ids:string[])=>Promise<{tokens:ImageState[]}>,publish:(images:Record<string,string>)=>void,signal:AbortSignal,wait:(ms:number)=>Promise<void>,now=Date.now){
+export async function watchImageCache(ids:string[],request:(ids:string[])=>Promise<{tokens:ImageState[]}>,publish:(images:Record<string,string>)=>void,signal:AbortSignal,wait:(ms:number)=>Promise<void>,now=Date.now,onStatus?:(rows:ImageState[])=>void,retryUnavailable=false){
   const pending=new Map(ids.map(id=>[id,0]));
   while(pending.size&&!signal.aborted){
     const due=[...pending].filter(([,at])=>at<=now()).map(([id])=>id);
@@ -32,12 +32,16 @@ export async function watchImageCache(ids:string[],request:(ids:string[])=>Promi
       }
       signal.throwIfAborted();
       if(!Array.isArray(result.tokens))throw new Error('Invalid image cache status.');
+      onStatus?.(result.tokens.filter(row=>row&&allowed.has(row.token_id)));
       const images:Record<string,string>={};
       for(const row of result.tokens){
         if(!row||!allowed.has(row.token_id))continue;
         if(row.state==='cached'&&typeof row.cached_image==='string'&&cachedPath.test(row.cached_image)){
           images[row.token_id]=row.cached_image;pending.delete(row.token_id);
-        }else if(row.state==='unavailable')pending.delete(row.token_id);
+        }else if(row.state==='unavailable'){
+          if(retryUnavailable)pending.set(row.token_id,now()+60000);
+          else pending.delete(row.token_id);
+        }
         // Status checks do not start downloads during the server's cooldown.
         else if(row.state==='deferred'&&typeof row.retryAt==='number'&&Number.isSafeInteger(row.retryAt)&&row.retryAt>now())pending.set(row.token_id,Math.min(row.retryAt,now()+60000));
       }

@@ -43,3 +43,14 @@ test('status checks stop when unavailable or cancelled and ignore unsolicited as
   const control=new AbortController();control.abort();
   await watchImageCache([id],async()=>assert.fail('unexpected request'),()=>{},control.signal,async()=>{});
 });
+test('image status exposes only requested failed IDs and their later recovery',async()=>{
+  const states:unknown[]=[],control=new AbortController();let calls=0,clock=0;
+  await watchImageCache([id],async()=>({tokens:[{token_id:'unknown',state:'deferred'},++calls===1?{token_id:id,state:'deferred',retryAt:60000}:{token_id:id,state:'cached',cached_image:url}]}),()=>{},control.signal,async ms=>{clock+=ms;},()=>clock,rows=>states.push(rows));
+  assert.deepEqual(states,[[{token_id:id,state:'deferred',retryAt:60000}],[{token_id:id,state:'cached',cached_image:url}]]);
+});
+test('Robinhood images recheck unavailable status after a later NFT scan',async()=>{
+  const nftId=`robinhood:4663:0x${'a'.repeat(40)}:7`;
+  let calls=0,clock=0;const updates:unknown[]=[];
+  await watchImageCache([nftId],async()=>({tokens:[++calls===1?{token_id:nftId,state:'unavailable'}:{token_id:nftId,state:'cached',cached_image:url}]}),images=>updates.push(images),new AbortController().signal,async ms=>{clock+=ms;},()=>clock,undefined,true);
+  assert.equal(calls,2);assert.equal(clock,60000);assert.deepEqual(updates,[{[nftId]:url}]);
+});

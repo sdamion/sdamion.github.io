@@ -27,3 +27,12 @@ test('owned Robinhood NFT merges with history without replacing Ethereum asset',
   assert.equal(rows.find(row=>row.id===id)?.image,image);
   assert.equal(rows.find(row=>row.id===id)?.firstReceived,1794000000);
 });
+
+test('revealed owned image replaces the pre-reveal image without changing history',()=>{
+  const revealed='https://gateway.pinata.cloud/ipfs/bafyrevealed/9743.png';
+  const rows=mergeHistoricalNfts(robinhoodHistoricalNfts({[wallet]:[transfer]},[{address:wallet,name:'Robinhood'}]),[
+    {id,chain:'robinhood',standard:'ERC-721',name:'TMO: INITIATES',symbol:'',raw:'1',decimals:0,image:revealed,explorer:null,wallets:['Robinhood']}
+  ]);
+  assert.equal(rows[0].image,revealed);
+  assert.equal(rows[0].firstReceived,transfer.time);
+});

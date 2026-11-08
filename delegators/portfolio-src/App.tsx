@@ -130,6 +130,8 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   const [initialising,setInitialising]=useState(false);
   const [purchaseProgress,setPurchaseProgress]=useState<{done:number;total:number}|null>(null);
   const [error,setError]=useState(''),[notice,setNotice]=useState(''),[cacheNotice,setCacheNotice]=useState('');
+  const [imageFailures,setImageFailures]=useState<Record<string,true>>({});
+  const [cachedNftImages,setCachedNftImages]=useState<Record<string,string>>({});
   const [filter,setFilter]=useState('all'),[query,setQuery]=useState(''),[overrides,setOverrides]=useState<Overrides>({});
   const [paymentLinks,setPaymentLinks]=useState<PaymentLink[]>([]);
   const [missingCostsOnly,setMissingCostsOnly]=useState(false);
@@ -346,6 +348,9 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   }
   const holdings=useMemo(()=>snapshot?combineHoldings(snapshot.infos):[],[snapshot]);
   const missingImageIds=[...new Set([...holdings.map(h=>h.id),...(selectedAsset?[selectedAsset]:[]),...(section==='holdings'&&holdingsGroup==='Historical NFTs'?historicalImageIds.split('|'):[])])].filter(id=>/^[a-f0-9]{56}(?:[a-f0-9]{2}){0,32}$/.test(id)&&!snapshot?.markets[id]?.registry_logo&&!snapshot?.markets[id]?.cached_image).sort().join('|');
+  const robinhoodImageIds=[...new Set([...Object.values(robinhood.nftHistory).flat().map(row=>row.id),...Object.values(ownedAssetInventory.data).flatMap(account=>account.assets.filter(asset=>asset.chain==='robinhood'&&assetIsNft(asset)).map(asset=>asset.id))])].filter(id=>/^robinhood:4663:0x[a-f0-9]{40}:[0-9]{1,100}$/.test(id)).sort().join('|');
+  const missingImageSet=new Set([...missingImageIds.split('|'),...robinhoodImageIds.split('|')]);
+  const failedImageIds=Object.keys(imageFailures).filter(id=>missingImageSet.has(id));
   useEffect(()=>{
     if(!ready||busy||!missingImageIds)return;
     const control=new AbortController(),signal=control.signal;
@@ -357,9 +362,34 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
       if(!previous||signal.aborted)return previous;
       const markets=applyCachedImages(previous.markets,images);
       return markets===previous.markets?previous:{...previous,markets};
-    }),signal,ms=>waitForRetry(ms,signal)).catch(()=>{/* Image availability never interrupts portfolio analysis. */});
+    }),signal,ms=>waitForRetry(ms,signal),Date.now,states=>setImageFailures(previous=>{
+      const next={...previous};
+      for(const row of states){if(row.state==='deferred'||row.state==='unavailable')next[row.token_id]=true;else if(row.state==='cached')delete next[row.token_id];}
+      return next;
+    })).catch(()=>{/* Image availability never interrupts portfolio analysis. */});
     return()=>control.abort();
   },[ready,busy,key,missingImageIds]);
+  useEffect(()=>{
+    if(!ready||!canRobinhood||!robinhoodImageIds)return;
+    const control=new AbortController(),signal=control.signal;
+    void watchImageCache(robinhoodImageIds.split('|'),async assets=>{
+      const response=await portfolioFetch('/image-status',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({assets}),signal});
+      if(!response.ok)throw new Error('Image cache status unavailable.');
+      return response.json();
+    },images=>setCachedNftImages(previous=>({...previous,...images})),signal,ms=>waitForRetry(ms,signal),Date.now,states=>{
+      setCachedNftImages(previous=>{
+        const next={...previous};let changed=false;
+        for(const row of states)if(row.state!=='cached'&&Object.hasOwn(next,row.token_id)){delete next[row.token_id];changed=true;}
+        return changed?next:previous;
+      });
+      setImageFailures(previous=>{
+      const next={...previous};
+      for(const row of states){if(row.state==='deferred'||row.state==='unavailable')next[row.token_id]=true;else if(row.state==='cached')delete next[row.token_id];}
+      return next;
+      });
+    },true).catch(()=>{/* Image availability never interrupts portfolio analysis. */});
+    return()=>control.abort();
+  },[ready,canRobinhood,key,robinhoodImageIds,robinhood.data.updated,ownedAssetInventory.data]);
   const assetWallets=useMemo(()=>snapshot?holdingWalletNames(snapshot.infos,wallets,snapshot.groups):{},[snapshot,wallets]);
   const assetAddresses=useMemo(()=>snapshot?holdingWalletAddresses(snapshot.infos):{},[snapshot]);
   const classifiedFacts=useMemo(()=>Object.fromEntries(Object.entries(snapshot?.facts||{}).map(([hash,fact])=>[hash,cexAdjustedFact(fact,cexAddresses)])),[snapshot,cexAddresses]);
@@ -445,13 +475,13 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   const externalFtRows=externalFtHoldings(mergeOwnedAssets(ownedAssetInventory.data,assetWalletTargets),overrides);
   const includedExternalFts=externalFtRows.filter(row=>!row.excluded);
   const included=includedAssets(rows,overrides),excludedCount=rows.length-included.length;
-  const nftHistory=useMemo(()=>[...historicalNfts(Object.values(classifiedFacts),holdings,snapshot?.markets||{}),...ordinalNfts.rows,...robinhoodHistoricalNfts(robinhood.nftHistory,robinhood.wallets)].sort((a,b)=>(b.firstReceived??0)-(a.firstReceived??0)||a.id.localeCompare(b.id)),[classifiedFacts,holdings,snapshot?.markets,ordinalNfts.rows,robinhood.nftHistory,robinhood.wallets]);
+  const nftHistory=useMemo(()=>[...historicalNfts(Object.values(classifiedFacts),holdings,snapshot?.markets||{}),...ordinalNfts.rows,...robinhoodHistoricalNfts(robinhood.nftHistory,robinhood.wallets).map(row=>({...row,image:cachedNftImages[row.id]||row.image}))].sort((a,b)=>(b.firstReceived??0)-(a.firstReceived??0)||a.id.localeCompare(b.id)),[classifiedFacts,holdings,snapshot?.markets,ordinalNfts.rows,robinhood.nftHistory,robinhood.wallets,cachedNftImages]);
   const nftEvents=useMemo(()=>nftTransactions(nftHistory,Object.values(classifiedFacts),payments.acquisitions),[nftHistory,classifiedFacts,payments.acquisitions]);
   const nftPairs=useMemo(()=>nftTradePairs(nftEvents),[nftEvents]);
   const nftPrices=useMemo(()=>nftCyclePrices(nftEvents),[nftEvents]);
   const assetGroup=(id:string)=>id!=='lovelace'&&snapshot?.markets[id]?.is_nft===true?'NFTs':'FTs';
   const ownedAssetRows:OwnedAssetRow[]=rows.filter(row=>BigInt(row.raw)>0n).map(row=>({id:'cardano:'+row.id,chain:'cardano',standard:row.id==='lovelace'?'Native':assetGroup(row.id)==='NFTs'?'NFT':'FT',name:row.name,symbol:snapshot?.markets[row.id]?.ticker|| (row.id==='lovelace'?'ADA':''),raw:row.raw,decimals:row.id==='lovelace'?6:tokenDecimals(parseAmount(overrides[row.id]?.decimals))??row.automaticDecimals??null,image:assetImageCandidates(row.id,[snapshot?.markets[row.id]?.registry_logo,snapshot?.markets[row.id]?.cached_image,snapshot?.markets[row.id]?.wayup_image,snapshot?.markets[row.id]?.image])[0]||null,explorer:row.id==='lovelace'?null:'https://cardanoscan.io/token/'+row.id,wallets:assetWallets[row.id]||[]}));
-  ownedAssetRows.push(...mergeOwnedAssets(ownedAssetInventory.data,assetWalletTargets));
+  ownedAssetRows.push(...mergeOwnedAssets(ownedAssetInventory.data,assetWalletTargets).map(row=>cachedNftImages[row.id]?{...row,image:cachedNftImages[row.id]}:row));
   for(const native of [
     {chain:'ethereum' as const,name:'Ethereum',symbol:'ETH',decimals:18,wallets:canEthereum?ethereum.wallets.filter(wallet=>wallet.group!=='swap'):[],balance:(address:string)=>ethereum.data.accounts[address]?.balanceWei},
     {chain:'robinhood' as const,name:'Robinhood Chain',symbol:'ETH',decimals:18,wallets:canRobinhood?robinhood.wallets.filter(wallet=>wallet.group!=='swap'):[],balance:(address:string)=>robinhood.data.accounts[address]?.balanceWei},
@@ -524,7 +554,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
     return {hash:'service-token:'+id,time:Date.now()/1000,side:'sell' as const,usd:quote.value};
   });
   const gainFlows=gainTransfers(cexFlows,[...serviceAdaTransfers,...rawEthTransfers.filter(row=>row.performance===false),...rawRobinhoodTransfers.filter(row=>row.performance===false),...rawSolTransfers.filter(row=>row.performance===false),...rawBtcTransfers.filter(row=>row.performance===false),...serviceTokenTransfers]);
-  const assetIssueCount=assetIssues.length+Number(ownedAssetInventory.incomplete)+gainFlows.filter(row=>row.usd===null).length;
+  const assetIssueCount=assetIssues.length+failedImageIds.length+Number(ownedAssetInventory.incomplete)+gainFlows.filter(row=>row.usd===null).length;
   const availableCex=availableCexResult(gainFlows,portfolioUsd,holdingsCurrency,currentAdaUsd,snapshot?.history||{},fx.history,Date.now()/1000);
   const tileGain=availableCex.value;
   const tileGainDisplay=(tileGain!==null&&tileGain<0?'− ':'')+formatPortfolioAmount(tileGain===null?null:Math.abs(tileGain),currencyDisplay);
@@ -690,6 +720,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
       </MenuTile>}
       <MenuTile title="Assets" info="Shows the estimated value of included assets across your wallets. Open for fungible tokens, NFTs, history and missing data." value={holdingsDisplay} onOpen={()=>{resetPolicies();setHoldingsGroup(null);setSection('holdings');}}>
         {portfolioPartial&&partialNote}
+        {!!failedImageIds.length&&<p className="small muted" translate="no">{t('{count} asset images need attention',{count:failedImageIds.length})}: {failedImageIds.slice(0,2).map((id,index)=><span key={id} style={{overflowWrap:'anywhere'}}>{index?', ':''}{id}</span>)}{failedImageIds.length>2?'…':''}</p>}
         <p className="small muted">{t('{done} / {total} assets valued',{done:valued.length+includedExternalFts.filter(row=>row.value!==null).length+nativeValued,total:included.length+includedExternalFts.length+nativeIncluded})}{excludedCount+externalFtRows.length-includedExternalFts.length+nativeExcluded?' · '+t('{count} excluded',{count:excludedCount+externalFtRows.length-includedExternalFts.length+nativeExcluded}):''}</p>
         {(holdingsCurrency==='EUR'||holdingsCurrency==='JPY')&&holdingsValue===null&&<p className="small muted" role="status">{t(fx.status||'Historical exchange rates unavailable')}</p>}
       </MenuTile>
@@ -742,7 +773,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
         if(group==='NFTs')return <MenuTile key={group} title={group} info="Shows NFTs and Ordinals currently owned in your scanned wallets." value={num(ownedNftRows.length,0)} onOpen={()=>setHoldingsGroup(group)}><p className="small muted" translate="no">{t('Owned NFTs and Ordinals')}</p></MenuTile>;
         return <MenuTile key={group} title={group} info="Shows fungible tokens and their estimated value across scanned wallets." value={formatPortfolioUsd(total,currencyDisplay)} onOpen={()=>setHoldingsGroup(group)}><p className="small muted">{t('{done} / {total} assets valued',{done:priced.length+includedExternalFts.filter(row=>row.value!==null).length+nativeValued,total:active.length+includedExternalFts.length+nativeIncluded})}{assets.length-active.length+externalFtRows.length-includedExternalFts.length+nativeExcluded?' · '+t('{count} excluded',{count:assets.length-active.length+externalFtRows.length-includedExternalFts.length+nativeExcluded}):''}</p></MenuTile>;
       })}<MenuTile title="All assets" info="Lists every scanned fungible token, NFT and Ordinal in one view, with network and type filters." value={num(ownedAssetRows.length,0)} onOpen={()=>setHoldingsGroup('All assets')}/><MenuTile title="Historical NFTs" info="Shows NFT and Ordinal history alongside currently owned items. Some networks only provide current ownership." value={num(nftDisplayHistory.length,0)} onOpen={()=>setHoldingsGroup('Historical NFTs')}><NftPreview rows={nftDisplayHistory} markets={snapshot?.markets||{}}/></MenuTile><MenuTile title="Missing assets / prices" info="Lists assets with missing balances, prices or purchase data and offers review actions without changing blockchain records." value={num(assetIssueCount,0)} onOpen={()=>setHoldingsGroup('Missing assets / prices')}/></div>}
-      {holdingsGroup==='Missing assets / prices'&&<AssetIssues issues={assetIssues} settings={overrides} scanIncomplete={ownedAssetInventory.incomplete} scanErrors={ownedAssetInventory.errors} missingTransfers={gainFlows.filter(row=>row.usd===null).length} busy={syncing} onSetting={updateOverride} onDetails={setSelectedAsset} onAddresses={()=>{setHoldingsGroup(null);setWalletMenuStart('exchanges');setSection('wallets');}} onTransactions={()=>{setHoldingsGroup(null);setSection('transactions');}} onFlows={()=>{setHoldingsGroup(null);setSection('gain-loss');}} onInclude={id=>excludeAsset(id,false)} onRefresh={()=>{if(canCardano){void refresh();void cardanoDeposits.refresh(true);}void ethereum.refresh();void robinhood.refresh();void solana.refresh();void bitcoin.refresh();void ownedAssetInventory.refresh(true);}} onRefreshPurchases={canCardano&&snapshot?()=>void refreshAssetPurchases():undefined}/>}
+      {holdingsGroup==='Missing assets / prices'&&<AssetIssues issues={assetIssues} failedImageIds={failedImageIds} settings={overrides} scanIncomplete={ownedAssetInventory.incomplete} scanErrors={ownedAssetInventory.errors} missingTransfers={gainFlows.filter(row=>row.usd===null).length} busy={syncing} onSetting={updateOverride} onDetails={setSelectedAsset} onAddresses={()=>{setHoldingsGroup(null);setWalletMenuStart('exchanges');setSection('wallets');}} onTransactions={()=>{setHoldingsGroup(null);setSection('transactions');}} onFlows={()=>{setHoldingsGroup(null);setSection('gain-loss');}} onInclude={id=>excludeAsset(id,false)} onRefresh={()=>{if(canCardano){void refresh();void cardanoDeposits.refresh(true);}void ethereum.refresh();void robinhood.refresh();void solana.refresh();void bitcoin.refresh();void ownedAssetInventory.refresh(true);}} onRefreshPurchases={canCardano&&snapshot?()=>void refreshAssetPurchases():undefined}/>}
       {holdingsGroup==='Historical NFTs'&&<>
         {!snapshot?.complete&&<p className="small muted" translate="no">{t('Partial history')}</p>}
         {nftDisplayHistory.some(row=>row.chain&&row.chain!=='cardano'&&row.chain!=='robinhood'&&!row.ordinal)&&<p className="small muted" translate="no">{t('Non-Cardano NFT entries currently show owned assets only; transfer history is not available.')}</p>}

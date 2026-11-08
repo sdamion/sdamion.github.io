@@ -4,6 +4,7 @@ portfolio_text_tile_wallets = "Toont opgeslagen wallets en scanstatus. Open om e
 portfolio_text_tile_transactions = "Toont geladen on-chain overboekingen van ingeschakelde netwerken. Open om transacties te zoeken en te bekijken."
 portfolio_text_tile_review = "Toont onvolledige transacties en scanfouten die opnieuw gecontroleerd moeten worden voordat ze meetellen in berekeningen."
 portfolio_text_tile_assets = "Toont de geschatte waarde van meegetelde assets in je wallets. Open voor tokens, NFTs, historie en ontbrekende gegevens."
+portfolio_text_image_failures = "{count} assetafbeeldingen vragen aandacht"
 portfolio_text_tile_fees = "Telt netwerkkosten op die aan jouw wallets zijn toegekend. Onbekende kostentoewijzing wordt als gedeeltelijk getoond."
 portfolio_text_tile_cex = "Vat geclassificeerde IN- en UIT-overboekingen voor exchange-adressen samen. Open voor geldstromen en geschatte waarden."
 portfolio_text_tile_nfts = "Toont NFTs en Ordinals die je momenteel bezit in gescande wallets."

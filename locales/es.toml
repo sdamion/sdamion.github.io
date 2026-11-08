@@ -4,6 +4,7 @@ portfolio_text_tile_wallets = "Muestra las carteras guardadas y el estado del es
 portfolio_text_tile_transactions = "Muestra transferencias en cadena cargadas de las redes habilitadas. Abre para buscar e inspeccionar transacciones."
 portfolio_text_tile_review = "Enumera transacciones incompletas y errores de escaneo que requieren revisión antes de entrar en los cálculos."
 portfolio_text_tile_assets = "Muestra el valor estimado de los activos incluidos en tus carteras. Abre para ver tokens, NFT, historial y datos faltantes."
+portfolio_text_image_failures = "{count} imágenes de activos necesitan atención"
 portfolio_text_tile_fees = "Suma las comisiones de red atribuidas a tus carteras en las transacciones cargadas. La atribución desconocida se indica como parcial."
 portfolio_text_tile_cex = "Resume las transferencias IN y OUT clasificadas para direcciones de intercambio. Abre para revisar movimientos y valores estimados."
 portfolio_text_tile_nfts = "Muestra los NFT y Ordinals que posees actualmente en las carteras escaneadas."

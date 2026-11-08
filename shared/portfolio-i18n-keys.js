@@ -5,6 +5,7 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
   ["Shows loaded on-chain transfers across enabled networks. Open to search and inspect transaction details.", "portfolio_text_tile_transactions"],
   ["Lists incomplete transactions and scan errors that need another check before they can be used in calculations.", "portfolio_text_tile_review"],
   ["Shows the estimated value of included assets across your wallets. Open for fungible tokens, NFTs, history and missing data.", "portfolio_text_tile_assets"],
+  ["{count} asset images need attention", "portfolio_text_image_failures"],
   ["Totals the network fees attributed to your wallets from loaded transactions. Unknown fee ownership is shown as partial.", "portfolio_text_tile_fees"],
   ["Summarizes classified IN and OUT transfers for exchange addresses. Open to review flows and their estimated values.", "portfolio_text_tile_cex"],
   ["Shows NFTs and Ordinals currently owned in your scanned wallets.", "portfolio_text_tile_nfts"],

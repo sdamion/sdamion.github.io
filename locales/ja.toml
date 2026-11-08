@@ -4,6 +4,7 @@ portfolio_text_tile_wallets = "保存済みウォレットとスキャン状況�
 portfolio_text_tile_transactions = "有効なネットワークの読み込み済みオンチェーン送金を表示します。開くと、取引を検索して詳細を確認できます。"
 portfolio_text_tile_review = "計算に含める前に再確認が必要な、不完全な取引とスキャンエラーを表示します。"
 portfolio_text_tile_assets = "ウォレット内で集計対象となる資産の推定価値を表示します。トークン、NFT、履歴、欠損データを確認できます。"
+portfolio_text_image_failures = "{count}件のアセット画像に確認が必要です"
 portfolio_text_tile_fees = "読み込み済み取引から自分のウォレットに帰属するネットワーク手数料を合計します。帰属不明の手数料は一部のみとして表示します。"
 portfolio_text_tile_cex = "取引所アドレスの分類済み入金・出金を要約します。開くと、送金と推定価値を確認できます。"
 portfolio_text_tile_nfts = "スキャン済みウォレットで現在所有するNFTとOrdinalsを表示します。"

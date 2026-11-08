@@ -8,7 +8,7 @@ export function mergeHistoricalNfts(history:HistoricalNftRow[],owned:(OwnedAsset
     if(!assetIsNft(asset)||BigInt(asset.raw)===0n)continue;
     const id=asset.chain==='cardano'?asset.id.slice('cardano:'.length):asset.id;
     const previous=rows.get(id);
-    rows.set(id,previous?{...previous,image:previous.image||asset.image,wallets:asset.wallets}:{id,name:asset.name,raw:asset.raw,firstReceived:null,image:asset.image,chain:asset.chain,wallets:asset.wallets});
+    rows.set(id,previous?{...previous,image:asset.image||previous.image,wallets:asset.wallets}:{id,name:asset.name,raw:asset.raw,firstReceived:null,image:asset.image,chain:asset.chain,wallets:asset.wallets});
   }
   return [...rows.values()].sort((a,b)=>(b.firstReceived??0)-(a.firstReceived??0)||a.id.localeCompare(b.id));
 }

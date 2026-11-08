@@ -6,8 +6,8 @@ export type AssetIssue={id:string;name:string;network:string;missingPrice:boolea
 type Setting='price'|'average'|'decimals';
 type Action=Setting|'details'|'addresses'|'transactions'|'flows'|'include';
 
-export function AssetIssues({issues,settings,scanIncomplete,scanErrors=[],missingTransfers,busy,onSetting,onDetails,onAddresses,onTransactions,onFlows,onInclude,onRefresh,onRefreshPurchases}:{
-  issues:AssetIssue[];settings:Record<string,{price?:string;average?:string;decimals?:string}>;scanIncomplete:boolean;scanErrors?:{wallet:string;message:string}[];missingTransfers:number;busy:boolean;
+export function AssetIssues({issues,failedImageIds=[],settings,scanIncomplete,scanErrors=[],missingTransfers,busy,onSetting,onDetails,onAddresses,onTransactions,onFlows,onInclude,onRefresh,onRefreshPurchases}:{
+  issues:AssetIssue[];failedImageIds?:string[];settings:Record<string,{price?:string;average?:string;decimals?:string}>;scanIncomplete:boolean;scanErrors?:{wallet:string;message:string}[];missingTransfers:number;busy:boolean;
   onSetting:(id:string,field:Setting,value:string)=>void;onDetails:(id:string)=>void;onAddresses:()=>void;onTransactions:()=>void;onFlows:()=>void;onInclude:(id:string)=>void;onRefresh:()=>void;onRefreshPurchases?:()=>void;
 }){
   const t=usePortfolioText(),[actions,setActions]=useState<Record<string,Action|''>>({});
@@ -15,6 +15,7 @@ export function AssetIssues({issues,settings,scanIncomplete,scanErrors=[],missin
     <div className="section-heading"><button type="button" className="governance-vote-secondary" disabled={busy} onClick={onRefresh}>{t('Refresh owned assets')}</button>{onRefreshPurchases&&issues.some(issue=>issue.missingCost)&&<button type="button" className="governance-vote-secondary" disabled={busy} onClick={onRefreshPurchases}>{t('Refresh all purchase data')}</button>}</div>
     {scanIncomplete&&<p role="status" className="small muted">{t('Partial asset coverage. Refresh to check every saved wallet.')}</p>}
     {scanErrors.map((error,index)=><p key={error.wallet+':'+index} role="alert" className="small negative" translate="no">{error.wallet&&<strong>{error.wallet}: </strong>}{t(error.message)}</p>)}
+    {!!failedImageIds.length&&<details className="small"><summary>{t('{count} asset images need attention',{count:failedImageIds.length})}</summary><ul>{failedImageIds.map(id=><li key={id}><code style={{overflowWrap:'anywhere'}}>{id}</code></li>)}</ul></details>}
     {missingTransfers>0&&<p role="status" className="small muted">{t('{count} transfers have no historical USD price.',{count:missingTransfers})}</p>}
     <p className="small muted">{t('IN/OUT is determined by saved address roles. Manual prices and costs are local estimates; blockchain amounts are unchanged.')}</p>
     {issues.length?<Table variant="standard"><TableHeader><TableRow><TableHead>{t('Asset')}</TableHead><TableHead>{t('Network')}</TableHead><TableHead>{t('Missing data')}</TableHead><TableHead>{t('Actions')}</TableHead></TableRow></TableHeader><TableBody>
@@ -46,6 +47,6 @@ export function AssetIssues({issues,settings,scanIncomplete,scanErrors=[],missin
           </TableCell>
         </TableRow>;
       })}
-    </TableBody></Table>:<p className="empty">{t('No missing asset data in loaded wallets.')}</p>}
+    </TableBody></Table>:!failedImageIds.length&&<p className="empty">{t('No missing asset data in loaded wallets.')}</p>}
   </section>;
 }
