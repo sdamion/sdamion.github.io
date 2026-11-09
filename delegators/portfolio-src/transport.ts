@@ -3,7 +3,7 @@ import {acceptRenewedSession} from './session';
 import {requestWithPortfolioLimit} from './portfolio-limit';
 let activeRole:'delegator'|'admin'='delegator';
 export function setSessionRole(role:'delegator'|'admin'){activeRole=role;}
-export function sessionToken(){return sessionStorage.getItem('tdsp-raffle-session-'+activeRole)||'';}
+export function sessionToken(){return sessionStorage.getItem('tdsp-portfolio-session')||sessionStorage.getItem('tdsp-raffle-session-'+activeRole)||'';}
 export function portfolioUpload(body:string,signal:AbortSignal,progress:(loaded:number,total:number)=>void,retryRenewed=true):Promise<Response>{
   return requestWithPortfolioLimit(()=>sendPortfolioUpload(body,signal,progress,retryRenewed),signal);
 }

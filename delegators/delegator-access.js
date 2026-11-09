@@ -545,7 +545,9 @@ function cardanoscanTransactionLink(txHash) {
 }
 
 function showAuthenticatedUi(authenticated) {
-    if (!authenticated) window.dispatchEvent(new CustomEvent('tdsp:portfolio-session-expired'));
+    if (!authenticated && !sessionStorage.getItem('tdsp-portfolio-session')) window.dispatchEvent(new CustomEvent('tdsp:portfolio-session-expired'));
+    const publicPortfolio = document.getElementById('portfolio-public-access');
+    if (publicPortfolio) publicPortfolio.hidden = authenticated;
     const access = document.getElementById('raffle-access');
     const protectedArea = document.getElementById('raffle-protected');
     if (access) access.hidden = authenticated;
@@ -624,7 +626,7 @@ function setPrizeOverlay(open) {
 }
 
 async function openMemberPortfolio() {
-    if (closePortfolio || !sessionToken || document.getElementById('raffle-protected')?.hidden) return;
+    if (closePortfolio) return;
     const container = document.createElement('div');
     container.className = 'member-portfolio-host';
     const refreshAction = document.createElement('span');
@@ -652,10 +654,10 @@ async function openMemberPortfolio() {
     closePortfolio = close;
     container.textContent = t('Loading member portfolio…');
     try {
-        const module = await import('./portfolio/app.js?v=20261108-nft-image-cache');
+        const module = await import('./portfolio/app.js?v=20261109-account-passkeys');
         if (closed) return;
         container.replaceChildren();
-        dispose = module.mountPortfolio(container, { role: ROLE, getWallet: (reconnect, stake, linkAnother) => linkAnother ? reconnectPortfolioWallet(stake, true) : reconnect && !portfolioUnlockWallet ? reconnectPortfolioWallet(stake) : portfolioUnlockWallet });
+        dispose = module.mountPortfolio(container, { role: ROLE, connectWallet: () => { closePortfolio?.(); populateWallets().catch(error => setStatus(error.message, true)); }, getWallet: (reconnect, stake, linkAnother) => linkAnother ? reconnectPortfolioWallet(stake, true) : reconnect && !portfolioUnlockWallet ? reconnectPortfolioWallet(stake) : portfolioUnlockWallet });
     } catch (error) {
         if (!closed) container.textContent = t(error.message || 'Portfolio could not be loaded. Close and try again.');
     }
@@ -2248,6 +2250,7 @@ async function init(options = {}) {
     document.getElementById('raffle-open')?.addEventListener('click', () => setRaffleOverlay(true));
     document.getElementById('raffle-prizes-open')?.addEventListener('click', () => setPrizeOverlay(true));
     document.getElementById('member-portfolio-open')?.addEventListener('click', openMemberPortfolio);
+    document.getElementById('member-portfolio-public-open')?.addEventListener('click', openMemberPortfolio);
     document.getElementById('raffle-admin-users-open')?.addEventListener('click', () => setRaffleOverlay(true, 'admins'));
     document.getElementById('portfolio-access-open')?.addEventListener('click', () => setRaffleOverlay(true, 'portfolio_access'));
     document.getElementById('website-status-open')?.addEventListener('click', async () => {

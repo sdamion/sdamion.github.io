@@ -1,5 +1,28 @@
 # Member portfolio
 
+## X login and passkeys
+
+Portfolio can be opened from the dashboard before connecting a wallet. Continue
+with X to create an account and a PRF-capable passkey, or sign in directly with an
+existing passkey. These accounts use the complete Portfolio with all networks,
+local/remote encrypted storage, manually added wallets and the existing analysis.
+No stake address is fabricated or automatically added. Existing wallet login and
+wallet-encrypted portfolios remain available as separate identities.
+
+Passkey encryption material stays in memory; reload requires another assertion.
+Additional passkeys can be linked from unlocked storage settings, separately for
+each storage location. X alone cannot recover a lost passkey encryption key.
+Deploy the matching koios-proxy backend and configure the secret, RP ID, origins,
+X OAuth app and callback URLs documented in
+`koios-proxy/member-portfolio/README-account-login.md`. Missing configuration leaves
+wallet login available and account-login buttons disabled.
+
+Build with `node delegators/portfolio-src/build.mjs`. Run
+`node tests/portfolio-account-browser.mjs /absolute/path/to/playwright/index.mjs`
+from the website root for native Chrome PRF, encrypted persistence and account
+login checks against the sibling backend checkout. X responses in this test are
+fixtures; actual X credentials are not needed.
+
 ## Shared CEX Deposit Tracking
 
 All four supported networks expose Actions > Track deposits to this address on

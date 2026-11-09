@@ -4,7 +4,7 @@ import type {StorageMode} from './vault';
 import {CacheUploadProgress} from './CacheUploadProgress';
 import {usePortfolioText} from './use-portfolio-text';
 
-export function StorageChoice({stake,active,busy,error,onApply,onDelete,onLink,linkedApps=1}:{stake:string;active:boolean;busy:boolean;error:string;onApply:(mode:StorageMode,copy:boolean)=>void;onDelete:(mode:StorageMode)=>void;onLink?:()=>void;linkedApps?:number}){
+export function StorageChoice({stake,active,busy,error,onApply,onDelete,onLink,linkedApps=1,account=false}:{stake:string;active:boolean;busy:boolean;error:string;onApply:(mode:StorageMode,copy:boolean)=>void;onDelete:(mode:StorageMode)=>void;onLink?:()=>void;linkedApps?:number;account?:boolean}){
   const mobile=isPortfolioMobile();
   const t=usePortfolioText();
   const [mode,setMode]=useState<StorageMode>(mobile?'remote':storageMode()||preferredStorage(stake)),[copy,setCopy]=useState(false),[deleting,setDeleting]=useState<StorageMode|null>(null);
@@ -15,14 +15,16 @@ export function StorageChoice({stake,active,busy,error,onApply,onDelete,onLink,l
         <span>Remote</span><span>Local</span>
         <input type="range" name="portfolio-storage" aria-label="Portfolio storage" aria-valuetext={mode==='remote'?'Remote':'Local'} min="0" max="1" step="1" value={mode==='remote'?0:1} disabled={mobile} onChange={event=>setMode(event.target.value==='0'?'remote':'local')}/>
       </div>
-      <p className="small muted" role="status">{mode==='remote'?'Encrypted before upload. Unlock with your wallet on desktop or mobile. Deleted after 365 days of inactivity.':'Encrypted in this browser only. Unlock with your wallet. Desktop only; clearing browser data can remove it.'}</p>
+      <p className="small muted" role="status">{account?(mode==='remote'?'Encrypted before upload. Unlock with your passkey on desktop or mobile. Deleted after 365 days of inactivity.':'Encrypted in this browser only. Unlock with your passkey. Desktop only; clearing browser data can remove it.'):mode==='remote'?'Encrypted before upload. Unlock with your wallet on desktop or mobile. Deleted after 365 days of inactivity.':'Encrypted in this browser only. Unlock with your wallet. Desktop only; clearing browser data can remove it.'}</p>
       {active&&<label className="small"><input type="checkbox" name="portfolio-copy-storage" checked={copy} onChange={event=>setCopy(event.target.checked)}/> Copy the currently loaded Portfolio to the selected location, replacing its existing cache.</label>}
       <button type="button" className="governance-vote-primary" onClick={()=>onApply(mode,copy)}>{busy?'Updating storage…':active?'Apply storage choice':'Open Portfolio'}</button>
       <details><summary className="small">Storage details and deletion</summary>
+      {account?<p className="small muted">Your passkey unlocks AES-256-GCM encrypted storage. The encryption key stays in this browser. Use the original synced passkey on another device; X login alone cannot recover the data. Additional passkeys must be linked after unlocking, separately for each storage location. Inactive caches expire after 365 days.</p>:<>
       <p className="small muted">Local browser · desktop only</p>
       <p className="small muted">Local data is encrypted with AES-256-GCM before saving in this browser. A separate wallet message approval unlocks it; no transaction, fee or cache upload. Use the original wallet app or an app linked to this storage location, with the same stake account. There is no recovery without wallet access. Expired data is removed on the next visit after 365 days of inactivity.</p>
       <p className="small muted">Encrypted remote cache</p>
       <p className="small muted">Available on desktop, phones and tablets with a compatible wallet. Requires a separate wallet message approval, not a transaction or fee. Your browser encrypts data with AES-256-GCM before upload. The private signature and derived key never go to the backend. Sign in with the same stake account and compatible wallet to unlock it on another device. No admin recovery. The server deletes inactive caches after 365 days; background refresh does not extend this.</p>
+      </>}
       <p className="small muted">Both modes still use the backend to fetch public blockchain and price data. Encryption protects the stored remote cache, not against malicious website code or browser extensions while unlocked.</p>
       <p className="small muted">Without copying, the selected location loads its own saved data. Switching does not delete the other copy.</p>
       <div className="section-heading"><button type="button" className="governance-vote-secondary" onClick={()=>setDeleting('local')}>Delete local cache</button><button type="button" className="governance-vote-secondary" onClick={()=>setDeleting('remote')}>Delete remote cache</button></div>

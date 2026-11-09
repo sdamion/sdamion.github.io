@@ -1,6 +1,7 @@
 import {useEffect,useRef,useState} from 'react';
 import type {ReactNode} from 'react';
 import {AssetOverlay} from './AssetOverlay';
+import {isAccountOwner} from './identity';
 
 const steps=[
   ['Your member wallet','Your delegated stake key is included automatically. Its linked addresses, balances and transactions load in the background while you read this guide.'],
@@ -35,7 +36,8 @@ export function PortfolioQuickstart({stake,cardano=true,wallets,exchanges,swap}:
     try{localStorage.setItem(keyFor(stake),'done');}catch{/* Keep dismissal for this session when storage is unavailable. */}
   };
   const t=(text:string)=>(window as unknown as {TDSPI18n?:{translateText:(value:string)=>string}}).TDSPI18n?.translateText(text)||text;
-  const shownSteps=cardano?steps:steps.slice(1),currentStep=Math.min(step,shownSteps.length-1),originalStep=cardano?currentStep:currentStep+1;
+  const includeMember=cardano&&!isAccountOwner(stake);
+  const shownSteps=includeMember?steps:steps.slice(1),currentStep=Math.min(step,shownSteps.length-1),originalStep=includeMember?currentStep:currentStep+1;
   return <><span ref={anchor} hidden/>{open&&<AssetOverlay id="portfolio-quickstart-overlay" name="Portfolio setup" onClose={close}>
     <section className="portfolio-section governance-markdown">
       <div translate="no">

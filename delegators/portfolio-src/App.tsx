@@ -111,6 +111,7 @@ import {normalizeCexAddresses,cexAdjustedFact,isCexTransaction,isCardanoReward,c
 import type {CexAddress} from './cex';
 import {durationLabel,remainingSeconds} from './progress';
 import {memberWallets,walletTransactionCount} from './member';
+import {isAccountOwner} from './identity';
 import {historicalPrices,refreshCardanoPortfolio} from './cardano-refresh';
 const num=(n:number,max=6)=>n.toLocaleString('en-US',{maximumFractionDigits:max});
 type Overrides=Record<string,{average?:string;price?:string;decimals?:string;excluded?:boolean}>;
@@ -187,7 +188,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   const key=walletKey+swapOwnershipScope(wallets);
   const excludedRefresh=useMemo(()=>refreshExcludedAddresses(wallets),[wallets]);
   const activeWalletGroups=useMemo(()=>activeAnalysedWalletGroups(snapshot,excludedRefresh),[snapshot,excludedRefresh]);
-  const refreshCounts=canCardano?walletRefreshCounts(snapshot?.groups,excludedRefresh,activeWalletGroups,memberStake):null;
+  const refreshCounts=canCardano?walletRefreshCounts(snapshot?.groups,excludedRefresh,activeWalletGroups,isAccountOwner(memberStake)?undefined:memberStake):null;
   const trackedAddresses=useMemo(()=>new Set(Object.values(snapshot?.groups||{}).flat()),[snapshot?.groups]);
   const ownedAddresses=useMemo(()=>exchangeExcludedAddresses(wallets,snapshot?.groups,snapshot?.swapGroups),[wallets,snapshot?.groups,snapshot?.swapGroups]);
   const swapAddresses=useMemo(()=>swapAddressSet(wallets,snapshot?.swapGroups),[wallets,snapshot?.swapGroups]);

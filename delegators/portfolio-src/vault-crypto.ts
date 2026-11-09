@@ -2,6 +2,7 @@ import {decode,encode,Tagged} from 'cborg';
 import {bech32} from '@scure/base';
 import {blake2b} from '@noble/hashes/blake2.js';
 import {validStakeAddress} from './member.ts';
+import {isAccountOwner} from './identity.ts';
 
 const text=new TextEncoder();
 const hex=(s:string)=>{
@@ -10,6 +11,7 @@ const hex=(s:string)=>{
 };
 const same=(a:Uint8Array,b:Uint8Array)=>a.length===b.length&&a.every((v,i)=>v===b[i]);
 export function unlockMessage(stake:string){
+  if(isAccountOwner(stake))return `TDSP Portfolio account cache v1\nMember: ${stake}`;
   if(!validStakeAddress(stake))throw new Error('A verified stake address is required.');
   return `TDSP Portfolio private cache unlock v1\nApplication: www.thedutchstakepool.com\nNetwork: Cardano Mainnet\nStake address: ${stake}\nPurpose: derive a private encryption key in this browser only.\nNever publish or share this signature. This is not a login or transaction.`;
 }

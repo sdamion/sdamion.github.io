@@ -599,6 +599,7 @@ function requestUpstream(target, options = {}) {
       headers['content-length'] = String(options.body.length);
     }
     if (options.authorization) headers.authorization = options.authorization;
+    if (options.origin) headers.origin = options.origin;
     if (TDSP_API_HOST && targetUrl.host !== TDSP_API_HOST) {
       headers.host = TDSP_API_HOST;
     }
@@ -724,13 +725,13 @@ export const server = createServer(async (req, res) => {
 
   try {
     if (url.pathname.startsWith('/api/portfolio/')) {
-      if (!/^\/api\/portfolio\/(session|cardano|markets|price|historical-prices|historical-btc-prices|historical-fx-prices|vault)$/.test(url.pathname) || !['GET', 'POST'].includes(req.method)) {
+      if (!/^\/api\/portfolio\/(session|cardano|markets|price|historical-prices|historical-btc-prices|historical-fx-prices|vault|auth\/(?:config|x\/(?:start|exchange)|passkeys\/(?:register|login)\/(?:options|verify)|logout))$/.test(url.pathname) || !['GET', 'POST'].includes(req.method)) {
         sendJson(res, 404, { error: 'Portfolio endpoint not found' });
         return;
       }
       const body = req.method === 'POST' ? await readRequestBody(req, url.pathname === '/api/portfolio/vault' ? 32 * 1024 * 1024 : 8192) : null;
       await proxyRequest(`${process.env.PORTFOLIO_API_ORIGIN || TDSP_API_ORIGIN}${url.pathname}`, res, {
-        method: req.method, body, authorization: String(req.headers.authorization || ''), timeoutMs: 45000
+        method: req.method, body, authorization: String(req.headers.authorization || ''), origin: String(req.headers.origin || ''), timeoutMs: 45000
       });
       return;
     }

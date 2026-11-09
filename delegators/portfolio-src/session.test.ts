@@ -15,3 +15,12 @@ assert.equal(data.size,0);
 data.set('tdsp-raffle-session-delegator','different-login');
 acceptRenewedSession(storage,'old','late');
 assert.equal(storage.getItem('tdsp-raffle-session-delegator'),'different-login');
+
+// Portfolio sessions renew independently of the wallet session, and logout wins.
+data.set('tdsp-portfolio-session','account-old');
+acceptRenewedSession(storage,'account-old','account-new');
+assert.equal(storage.getItem('tdsp-portfolio-session'),'account-new');
+assert.equal(storage.getItem('tdsp-raffle-session-delegator'),'different-login');
+data.delete('tdsp-portfolio-session');
+acceptRenewedSession(storage,'account-new','late-account-renewal');
+assert.equal(storage.getItem('tdsp-portfolio-session'),null);

@@ -5,6 +5,8 @@ import {setUploadProgress,resetUploadProgress} from './upload-progress';
 import {portfolioTransactionCounts} from './transaction-counts';
 import type {Snapshot} from './cache';
 import {memberWallets} from './member';
+import {accountKey} from './account-auth';
+import {isAccountOwner} from './identity';
 import {loadLocal,saveLocal,removeLocal} from './local-store';
 import {compactEthereumSettings} from './ethereum-storage';
 import {compactSolanaSettings} from './solana-storage';
@@ -49,13 +51,15 @@ async function importLegacy(stake:string):Promise<Data>{
   for(let i=0;i<localStorage.length;i++){const name=localStorage.key(i)!;if(ownSetting(stake,name))data.settings[name]=localStorage.getItem(name)!;}
   data.snapshot=await legacySnapshot(stake,data.settings);return data;
 }
-async function signingKey(stake:string,wallet:SigningWallet){
+async function signingKey(stake:string,wallet:SigningWallet|null){
+  if(isAccountOwner(stake))return accountKey(stake);
+  if(!wallet)throw new Error('Reconnect your wallet to unlock Portfolio.');
   const payload=Array.from(new TextEncoder().encode(unlockMessage(stake)),b=>b.toString(16).padStart(2,'0')).join('');
   return deriveVaultKey(stake,await wallet.signData(payload,stake));
 }
-export async function openLocalPortfolio(stake:string,wallet:SigningWallet){
+export async function openLocalPortfolio(stake:string,wallet:SigningWallet|null){
   if(isPortfolioMobile())throw new Error('Local Portfolio storage is desktop-only. Choose encrypted remote cache on mobile.');
-  if(!wallet)throw new Error('Reconnect your wallet to unlock encrypted local Portfolio storage.');
+  if(!wallet&&!isAccountOwner(stake))throw new Error('Reconnect your wallet to unlock encrypted local Portfolio storage.');
   lockVault();const attempt=unlockGeneration;
   const wrappingKey=await signingKey(stake,wallet);let key=wrappingKey,links:WalletLinks|undefined;
   if(attempt!==unlockGeneration)throw new Error('Portfolio opening cancelled.');
@@ -65,7 +69,7 @@ export async function openLocalPortfolio(stake:string,wallet:SigningWallet){
     const saved=stored.data as {encrypted_version?:number;payload?:any;version?:number};
     if(saved.encrypted_version!==undefined){
       if(saved.encrypted_version!==1)throw new Error('Unsupported local Portfolio encryption version.');
-      try{const opened=await openWalletLinkedVault(wrappingKey,stake,saved.payload);key=opened.key;links=opened.links;data=expandBlock(opened.data);}catch{throw new Error(saved.payload?.version===2?'This wallet app could not unlock the saved Portfolio. Use a linked wallet app and the same stake account. The cache has not been changed.':'This wallet approval could not unlock the saved local Portfolio. Use the same wallet app and stake account. The cache has not been changed.');}
+      try{const opened=await openWalletLinkedVault(wrappingKey,stake,saved.payload);key=opened.key;links=opened.links;data=expandBlock(opened.data);}catch{if(isAccountOwner(stake))throw new Error('This passkey could not unlock the saved local Portfolio. Use a passkey linked to this storage location. The cache has not been changed.');throw new Error(saved.payload?.version===2?'This wallet app could not unlock the saved Portfolio. Use a linked wallet app and the same stake account. The cache has not been changed.':'This wallet approval could not unlock the saved local Portfolio. Use the same wallet app and stake account. The cache has not been changed.');}
     }else data=stored.data as Data;
   }else data=await importLegacy(stake);
   if(data.version!==1||!data.settings||typeof data.settings!=='object')throw new Error('Unsupported Portfolio cache version.');
@@ -75,12 +79,12 @@ export async function openLocalPortfolio(stake:string,wallet:SigningWallet){
   try{lastActivity=Date.now();await flushVault();rememberStorage(stake,'local');}
   catch(error){if(state===current){clearTimeout(timer);timer=undefined;current.controller.abort();state=null;}throw error;}
 }
-export async function unlockPortfolio(wallet:{signData:(payload:string,address:string)=>Promise<{signature:string;key:string}>},{role='delegator'}:{role?:'delegator'|'admin'}={}){
+export async function unlockPortfolio(wallet:SigningWallet|null,{role='delegator'}:{role?:'delegator'|'admin'}={}){
   lockVault();setSessionRole(role);
   const attempt=unlockGeneration;
   const check=()=>{if(attempt!==unlockGeneration)throw new Error('Portfolio unlock cancelled. Sign in again.');};
   const session=await portfolioFetch('/session');if(!session.ok)throw new Error('Sign in to the members area first.');
-  const {stake_address:stake}=await session.json();
+  const identity=await session.json(),stake=identity.member_id||identity.stake_address;
   check();
   const wrappingKey=await signingKey(stake,wallet);let key=wrappingKey,links:WalletLinks|undefined;
   check();
@@ -92,7 +96,7 @@ export async function unlockPortfolio(wallet:{signData:(payload:string,address:s
   let index:CheckpointIndex|undefined;
   if(stored.payload){
     let decoded;
-    try{const opened=await openWalletLinkedVault(wrappingKey,stake,stored.payload);decoded=opened.data;key=opened.key;links=opened.links;}catch{throw new Error(stored.payload?.version===2?'This wallet app could not unlock the saved Portfolio. Use a linked wallet app and the same stake account. The cache has not been changed.':'This wallet approval could not unlock the saved Portfolio. Use the same wallet app and stake account. The cache has not been changed.');}
+    try{const opened=await openWalletLinkedVault(wrappingKey,stake,stored.payload);decoded=opened.data;key=opened.key;links=opened.links;}catch{if(isAccountOwner(stake))throw new Error('This passkey could not unlock the saved Portfolio. Use a passkey linked to this storage location. The cache has not been changed.');throw new Error(stored.payload?.version===2?'This wallet app could not unlock the saved Portfolio. Use a linked wallet app and the same stake account. The cache has not been changed.':'This wallet approval could not unlock the saved Portfolio. Use the same wallet app and stake account. The cache has not been changed.');}
     if(decoded.version===2){index=decoded;data=await restoreCheckpoint(decoded,key,stake,async ids=>{check();const result=await portfolioFetch('/vault',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'chunks',ids})});if(!result.ok)throw new Error('Encrypted checkpoint could not be loaded. Reopen Portfolio to retry.');return (await result.json()).chunks;});}
     else data=decoded;
     if(data.version!==1||!data.settings||typeof data.settings!=='object')throw new Error('Unsupported Portfolio cache version.');
@@ -110,7 +114,7 @@ export async function unlockPortfolio(wallet:{signData:(payload:string,address:s
 let walletLinkPending=false;
 export function linkedWalletCount(){return state?.confirmedLinks??1;}
 export function walletLinkGeneration(){return unlockGeneration;}
-export async function linkPortfolioWallet(wallet:SigningWallet,expectedStake?:string,expectedGeneration=unlockGeneration){
+export async function linkPortfolioWallet(wallet:SigningWallet|null,expectedStake?:string,expectedGeneration=unlockGeneration,newKey?:CryptoKey){
   if(walletLinkPending)throw new Error('Wallet app linking is already in progress.');
   const current=active();
   if(expectedGeneration!==unlockGeneration||expectedStake&&expectedStake!==current.stake)throw new Error('Portfolio linking cancelled. Unlock Portfolio again.');
@@ -125,7 +129,7 @@ export async function linkPortfolioWallet(wallet:SigningWallet,expectedStake?:st
       if(stored.wallet_link_version!==1)throw new Error('Update the backend before linking another wallet app.');
       if(stored.revision!==current.revision)throw new Error('Portfolio changed on another device. Sign in and unlock again before saving.');
     }
-    const wrappingKey=await signingKey(current.stake,wallet);check();
+    const wrappingKey=newKey||await signingKey(current.stake,wallet);check();
     await flushVault();check();
     const linked=await addWalletKeyLink(current.key!,current.links?.wrappingKey||current.key!,wrappingKey,current.stake,current.links);check();
     if(!linked.changed)return false;
@@ -141,7 +145,7 @@ export async function switchStorage(mode:StorageMode,stake:string,wallet:Signing
   await flushVault();const previous=state,attempt=unlockGeneration;const data=copyCurrent&&previous?structuredClone(previous.data):null;
   try{
     if(mode==='local')await openLocalPortfolio(stake,wallet!);
-    else {if(!wallet)throw new Error('Reconnect your wallet in the members area to enable encrypted remote storage.');await unlockPortfolio(wallet,{role});}
+    else {if(!wallet&&!isAccountOwner(stake))throw new Error('Reconnect your wallet in the members area to enable encrypted remote storage.');await unlockPortfolio(wallet,{role});}
     if(data){const current=active();if(current.stake!==stake)throw new Error('Wrong Portfolio member.');current.data=data;changed();await flushVault();}
   }catch(error){if(previous&&unlockGeneration<=attempt+1){state={...previous,controller:new AbortController()};rememberStorage(previous.stake,previous.mode);}throw error;}
 }

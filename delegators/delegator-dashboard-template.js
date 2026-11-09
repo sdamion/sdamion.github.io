@@ -41,6 +41,7 @@
         return createTemplate(`
             <div class="raffle-page raffle-embedded raffle-overlay-page">
                 <main class="raffle-main">
+                    <section id="portfolio-public-access" class="raffle-shell"><button id="member-portfolio-public-open" type="button" class="governance-menu-card raffle-open-tile"><strong class="governance-card-title">Portfolio</strong><span class="governance-card-detail">Continue with X, passkey or wallet</span></button></section>
                     <section data-wallet-connect id="raffle-access">
                         <div id="raffle-wallet-list" class="wallet-list raffle-wallet-list"></div>
                     </section>

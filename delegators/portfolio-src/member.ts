@@ -1,4 +1,5 @@
 import {validAddress} from './core.ts';
+import {isAccountOwner} from './identity.ts';
 import {validByronAddress} from './byron-address.ts';
 import type {Wallet} from './core.ts';
 export function refreshExcludedAddresses(wallets:Wallet[]):Set<string>{
@@ -39,11 +40,11 @@ export function sameTrackedAddresses(previous:Record<string,string[]>|undefined,
   return JSON.stringify(flatten(previous))===JSON.stringify(flatten(current));
 }
 export function memberWallets(stake:string,saved:unknown){
-  if(!validStakeAddress(stake))throw new Error('A verified mainnet stake address is required.');
+  if(!validStakeAddress(stake)&&!isAccountOwner(stake))throw new Error('A verified Portfolio identity is required.');
   const extras=Array.isArray(saved)?saved.filter(w=>w&&typeof w.address==='string'&&(validWalletAddress(w.address)||(w.group==='swap'&&validByronAddress(w.address)))&&w.address!==stake&&typeof w.label==='string').map(w=>({address:w.address,label:w.group==='swap'?(w.label.trim().slice(0,60)||'Swap'):w.label,...(w.group==='swap'?{group:'swap' as const}:{})})):[];
   const savedRows=Array.isArray(saved)?saved:[];
   const member=savedRows.find(w=>w?.address===stake);
-  return [{address:stake,label:typeof member?.label==='string'?member.label.trim().slice(0,60)||'Member stake address':'Member stake address',...refreshSettings(member)},...[...new Map(extras.map(w=>{
+  return [...(!isAccountOwner(stake)?[{address:stake,label:typeof member?.label==='string'?member.label.trim().slice(0,60)||'Member stake address':'Member stake address',...refreshSettings(member)}]:[]),...[...new Map(extras.map(w=>{
     const saved=savedRows.find(row=>row?.address===w.address),links=w.group==='swap'&&Array.isArray(saved?.swapAddresses)?[...new Set<string>(saved.swapAddresses.filter((address:unknown)=>typeof address==='string'&&(validAddress(address)||validByronAddress(address))&&address!==w.address))].slice(0,200):[];
     return [w.address,{...w,...(saved?.personalType==='dex'||saved?.personalType==='cex'?{personalType:saved.personalType}:{}),...refreshSettings(saved),...(links.length?{swapAddresses:links}:{})}];
   })).values()]];
