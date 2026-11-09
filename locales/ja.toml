@@ -1631,3 +1631,12 @@ portfolio_text_account_local = "このブラウザーだけに暗号化して保
 portfolio_text_account_linked = "この保存先にパスキーを連携しました。両方の保存先を使う場合は、もう一方にも別途連携してください。"
 portfolio_text_account_unsupported = "このパスキーではPortfolioのデータを暗号化できません。PRF対応のパスキープロバイダーを選ぶか、ウォレットでログインしてください。"
 portfolio_text_account_storage_details = "パスキーでAES-256-GCM暗号化ストレージを解除します。暗号鍵はこのブラウザー内に保持されます。別の端末では元の同期済みパスキーまたは連携した予備のパスキーを使ってください。追加のパスキーは解除後に保存先ごとに連携する必要があります。未使用のキャッシュは365日で期限切れになります。"
+
+# Passkeys linked to an existing wallet Portfolio
+portfolio_text_account_link_wallet_create = "現在のPortfolioにパスキーを追加"
+portfolio_text_account_link_wallet_existing = "既存のPortfolioパスキーを連携"
+portfolio_text_account_link_wallet_info = "このPortfolioと現在の暗号化キャッシュにパスキーを連携します。ステークID、ウォレット、保存済みの分析を引き継ぎます。"
+portfolio_text_account_link_wallet_open = "現在のウォレットPortfolioを開く"
+portfolio_text_account_link_wallet_unlock = "現在のウォレットPortfolioを開き、キャッシュのロックを解除してからパスキーを追加してください。"
+portfolio_text_account_link_wallet_login = "現在のPortfolioに連携したパスキーを使うか、ウォレットPortfolioを開いて追加してください。"
+portfolio_text_account_link_wallet_count = "連携済み解除方法: {count}件"

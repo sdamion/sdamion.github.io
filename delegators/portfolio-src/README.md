@@ -2,12 +2,20 @@
 
 ## Passkey accounts
 
+For an existing wallet Portfolio, sign in with the wallet, unlock its saved cache
+and choose **Add passkey to current Portfolio**. Registration is bound to the
+verified wallet session. Passkey login resolves to the same stake, storage keys,
+wallet settings and saved analysis; no separate empty cache is created. The
+existing wallet still unlocks the cache. Link the same passkey to another storage
+location using **Link existing Portfolio passkey** after opening that location.
+
+
 Portfolio can be opened from the dashboard before connecting a wallet. Create a
 PRF-capable passkey to make a standalone account, or sign in directly with an
 existing passkey. These accounts use the complete Portfolio with all networks,
 local/remote encrypted storage, manually added wallets and the existing analysis.
-No social login or username is required. Existing wallet login and wallet-encrypted
-portfolios remain available as separate identities.
+No social login or username is required. Wallet login and wallet-encrypted portfolios remain available; passkeys created
+from an unlocked wallet Portfolio share that identity and cache.
 
 Passkey encryption material stays in memory; reload requires another assertion.
 Additional passkeys can be linked from unlocked storage settings, separately for
@@ -21,6 +29,8 @@ Build with `node delegators/portfolio-src/build.mjs`. Run
 `node tests/portfolio-account-browser.mjs /absolute/path/to/playwright/index.mjs`
 from the website root for native Chrome PRF, standalone enrollment, encrypted
 persistence and account login checks against the sibling backend checkout.
+`tests/portfolio-wallet-passkey-browser.mjs` checks existing local/remote wallet
+caches, original-wallet access and subsequent passkey-only login.
 
 ## Shared CEX Deposit Tracking
 

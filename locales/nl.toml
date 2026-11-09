@@ -1631,3 +1631,12 @@ portfolio_text_account_local = "Alleen versleuteld in deze browser. Ontgrendel m
 portfolio_text_account_linked = "Passkey gekoppeld aan deze opslaglocatie. Koppel hem afzonderlijk aan de andere opslaglocatie als je beide gebruikt."
 portfolio_text_account_unsupported = "Deze passkey kan Portfolio-gegevens niet versleutelen. Kies een passkeyprovider met PRF-ondersteuning of gebruik wallet-login."
 portfolio_text_account_storage_details = "Je passkey ontgrendelt opslag die met AES-256-GCM is versleuteld. De encryptiesleutel blijft in deze browser. Gebruik je oorspronkelijke gesynchroniseerde passkey of een gekoppelde reservepasskey op een ander apparaat. Extra passkeys moeten na het ontgrendelen afzonderlijk aan elke opslaglocatie worden gekoppeld. Inactieve caches verlopen na 365 dagen."
+
+# Passkeys linked to an existing wallet Portfolio
+portfolio_text_account_link_wallet_create = "Passkey toevoegen aan huidig Portfolio"
+portfolio_text_account_link_wallet_existing = "Bestaande Portfolio-passkey koppelen"
+portfolio_text_account_link_wallet_info = "Koppel een passkey aan dit Portfolio en de huidige versleutelde cache. Je stake-identiteit, wallets en opgeslagen analyse blijven bij elkaar."
+portfolio_text_account_link_wallet_open = "Huidig wallet-Portfolio openen"
+portfolio_text_account_link_wallet_unlock = "Open je huidige wallet-Portfolio en voeg een passkey toe nadat je de cache hebt ontgrendeld."
+portfolio_text_account_link_wallet_login = "Gebruik een passkey die aan je huidige Portfolio is gekoppeld, of open het wallet-Portfolio om er een toe te voegen."
+portfolio_text_account_link_wallet_count = "{count} gekoppelde ontgrendelmethoden"

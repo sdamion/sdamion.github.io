@@ -2084,4 +2084,11 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
   , ["Passkey linked to this storage location. Link it to your other storage location separately if you use both.", "portfolio_text_account_linked"]
   , ["This passkey cannot encrypt Portfolio data. Choose a passkey provider with PRF support, or use wallet login.", "portfolio_text_account_unsupported"]
   , ["Your passkey unlocks AES-256-GCM encrypted storage. The encryption key stays in this browser. Use your original synced passkey or a linked backup passkey on another device. Additional passkeys must be linked after unlocking, separately for each storage location. Inactive caches expire after 365 days.", "portfolio_text_account_storage_details"]
+  , ["Add passkey to current Portfolio", "portfolio_text_account_link_wallet_create"]
+  , ["Link existing Portfolio passkey", "portfolio_text_account_link_wallet_existing"]
+  , ["Link a passkey to this Portfolio and its current encrypted cache. Your stake identity, wallets and saved analysis stay together.", "portfolio_text_account_link_wallet_info"]
+  , ["Open current wallet Portfolio", "portfolio_text_account_link_wallet_open"]
+  , ["Open your current wallet Portfolio and add a passkey after unlocking its cache.", "portfolio_text_account_link_wallet_unlock"]
+  , ["Use a passkey linked to your current Portfolio, or open the wallet Portfolio to add one.", "portfolio_text_account_link_wallet_login"]
+  , ["{count} linked unlock methods", "portfolio_text_account_link_wallet_count"]
 ]);

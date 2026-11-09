@@ -8,7 +8,7 @@ const prfSalt=text.encode('TDSP Portfolio passkey encryption v1');
 let unlocked:{member:string;key:CryptoKey;credential:string}|null=null;
 let generation=0;
 export function clearAccountKey(){generation++;unlocked=null;}
-export function hasAccountKey(){return !!unlocked;}
+export function hasAccountKey(member?:string){return !!unlocked&&(!member||unlocked.member===member);}
 export function accountKey(member:string){if(unlocked?.member!==member)throw new Error('Approve your passkey to unlock Portfolio.');return unlocked.key;}
 export async function authRequest(path:string,body?:unknown,token=sessionStorage.getItem(ACCOUNT_SESSION_KEY)||'',signal?:AbortSignal){
   const response=await fetch(`${apiBase}/auth/${path}`,{method:body===undefined?'GET':'POST',cache:'no-store',headers:{'Content-Type':'application/json',...(token?{Authorization:`Bearer ${token}`}:{})},...(body!==undefined?{body:JSON.stringify(body)}:{}),signal:signal?AbortSignal.any([signal,AbortSignal.timeout(30000)]):AbortSignal.timeout(30000)});

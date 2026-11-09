@@ -1631,3 +1631,12 @@ portfolio_text_account_local = "Se cifra solo en este navegador. Desbloquea con 
 portfolio_text_account_linked = "Clave de acceso vinculada a esta ubicación. Si usas ambas ubicaciones, vincúlala también a la otra por separado."
 portfolio_text_account_unsupported = "Esta clave de acceso no puede cifrar los datos de Portfolio. Elige un proveedor compatible con PRF o accede con tu cartera."
 portfolio_text_account_storage_details = "Tu clave de acceso desbloquea el almacenamiento cifrado con AES-256-GCM. La clave de cifrado permanece en este navegador. Usa tu clave sincronizada original o una clave de respaldo vinculada en otro dispositivo. Las claves adicionales deben vincularse después de desbloquear, por separado para cada ubicación. Las cachés inactivas caducan a los 365 días."
+
+# Passkeys linked to an existing wallet Portfolio
+portfolio_text_account_link_wallet_create = "Añadir clave de acceso al Portfolio actual"
+portfolio_text_account_link_wallet_existing = "Vincular clave de acceso de Portfolio existente"
+portfolio_text_account_link_wallet_info = "Vincula una clave de acceso a este Portfolio y su caché cifrada actual. Tu identidad de participación, carteras y análisis guardado se conservan juntos."
+portfolio_text_account_link_wallet_open = "Abrir el Portfolio actual de la cartera"
+portfolio_text_account_link_wallet_unlock = "Abre tu Portfolio actual de la cartera y añade una clave de acceso después de desbloquear su caché."
+portfolio_text_account_link_wallet_login = "Usa una clave de acceso vinculada a tu Portfolio actual o abre el Portfolio de la cartera para añadir una."
+portfolio_text_account_link_wallet_count = "{count} métodos de desbloqueo vinculados"
