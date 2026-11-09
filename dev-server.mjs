@@ -725,7 +725,7 @@ export const server = createServer(async (req, res) => {
 
   try {
     if (url.pathname.startsWith('/api/portfolio/')) {
-      if (!/^\/api\/portfolio\/(session|cardano|markets|price|historical-prices|historical-btc-prices|historical-fx-prices|vault|auth\/(?:config|x\/(?:start|exchange)|passkeys\/(?:register|login)\/(?:options|verify)|logout))$/.test(url.pathname) || !['GET', 'POST'].includes(req.method)) {
+      if (!/^\/api\/portfolio\/(session|cardano|markets|price|historical-prices|historical-btc-prices|historical-fx-prices|vault|auth\/(?:config|passkeys\/(?:register|login)\/(?:options|verify)|logout))$/.test(url.pathname) || !['GET', 'POST'].includes(req.method)) {
         sendJson(res, 404, { error: 'Portfolio endpoint not found' });
         return;
       }

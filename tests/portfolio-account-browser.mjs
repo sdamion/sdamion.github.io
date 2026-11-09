@@ -1,5 +1,5 @@
 // Usage: node tests/portfolio-account-browser.mjs /absolute/path/to/playwright/index.mjs
-// X's network responses are fixtures; WebAuthn and encryption use Chrome's real implementations.
+// WebAuthn and encryption use Chrome's real implementations; public chain providers are offline fixtures.
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 import {mkdtemp,rm,readFile} from 'node:fs/promises';
@@ -18,8 +18,7 @@ const {chromium}=await import(process.argv[2]),directory=await mkdtemp(path.join
 const app=express();
 const server=await new Promise(resolve=>{const server=app.listen(0,'localhost',()=>resolve(server));}),origin=`http://localhost:${server.address().port}`;
 const store=createAccountStore(path.join(directory,'accounts.json'));
-let providerUser={id:'900001',username:'test_portfolio'};
-const auth=createPortfolioAccountAuth({store,secret:'browser-test-secret-'.repeat(3),origins:[origin],rpID:'localhost',callbackURL:origin+'/api/portfolio/auth/x/callback',frontendCallbackURL:origin+'/delegators/portfolio-auth-callback.html',xClientID:'fixture',fetcher:async url=>Response.json(url.endsWith('/token')?{access_token:'fixture-x-access-token'}:{data:providerUser})});
+const auth=createPortfolioAccountAuth({store,secret:'browser-test-secret-'.repeat(3),origins:[origin],rpID:'localhost'});
 const vaultStore=createVaultStore({directory:path.join(directory,'vaults')});
 installPortfolioBodyParsers(app,{authenticate:req=>auth.verify(String(req.headers.authorization||'').slice(7)),sendAuthError:(res,error)=>res.status(error.status||500).json({error:error.message})});
 app.use('/api/portfolio/auth',createPortfolioAuthRouter(auth,{rateLimit:()=>true,sendError:(res,error)=>res.status(error.status||500).json({error:error.message})}));
@@ -35,7 +34,6 @@ const browser=await chromium.launch({channel:'chrome',headless:true});
 try{
  const context=await browser.newContext({viewport:{width:1200,height:900}}),page=await context.newPage(),errors=[],requests=[];page.setDefaultTimeout(15000);
  page.on('pageerror',error=>errors.push(error.message));
- await context.route('https://x.com/i/oauth2/authorize**',route=>{const state=new URL(route.request().url()).searchParams.get('state');return route.fulfill({status:302,headers:{location:origin+'/api/portfolio/auth/x/callback?state='+state+'&code=fixture'}});});
  page.on('request',request=>{if(request.url().includes('/api/portfolio/'))requests.push(request.postData()||'');});
  const cdp=await context.newCDPSession(page);await cdp.send('WebAuthn.enable');
  const {authenticatorId}=await cdp.send('WebAuthn.addVirtualAuthenticator',{options:{protocol:'ctap2',ctap2Version:'ctap2_1',transport:'internal',hasResidentKey:true,hasUserVerification:true,isUserVerified:true,hasPrf:true,automaticPresenceSimulation:true}});
@@ -43,7 +41,9 @@ try{
  await page.addScriptTag({content:await readFile('shared/runtime.js','utf8')});
  async function mount(){if(!await page.evaluate(()=>!!window.TDSPRuntime))await page.addScriptTag({content:await readFile('shared/runtime.js','utf8')});await page.evaluate(async()=>{window.createUniversalOverlay=options=>{const overlay=document.createElement('section');overlay.id=options.id;overlay.append(...options.bodyNodes);document.body.append(overlay);return {overlay};};window.portfolio=await import('/fixture.js');window.dispose=window.portfolio.mountPortfolio(document.getElementById('root'),{connectWallet:()=>{window.walletRequested=true;}});});}
  await mount();
- await page.getByRole('button',{name:'Continue with X',exact:true}).click();
+ assert.equal(await page.getByRole('button',{name:'Continue with X',exact:true}).count(),0);
+ for(const path of ['x/start','x/exchange','x/callback']){const response=await page.request.get(origin+'/api/portfolio/auth/'+path);assert.equal(response.status(),404);}
+ assert.deepEqual(await (await page.request.get(origin+'/api/portfolio/auth/config')).json(),{passkeys:true});
  await page.getByRole('button',{name:'Create passkey & open Portfolio',exact:true}).click();
  await page.getByRole('button',{name:'Open Portfolio',exact:true}).click();
  await page.getByRole('button',{name:'Open Assets',exact:true}).waitFor();
@@ -84,12 +84,10 @@ try{
  await cdp.send('WebAuthn.removeVirtualAuthenticator',{authenticatorId:secondAuthenticator});
  await cdp.send('WebAuthn.addVirtualAuthenticator',{options:{protocol:'ctap2',transport:'internal',hasResidentKey:true,hasUserVerification:true,isUserVerified:true,automaticPresenceSimulation:true}});
  const beforeUnsupported=(await vaultStore.open(account.id)).payload;
- providerUser={id:'900002',username:'unsupported_prf'};
- await page.getByRole('button',{name:'Continue with X',exact:true}).click();
  await page.getByRole('button',{name:'Create passkey & open Portfolio',exact:true}).click();
  await page.getByRole('alert').filter({hasText:'This passkey cannot encrypt Portfolio data.'}).waitFor();
- assert.equal((await store.read()).accounts.find(row=>row.x_id==='900002').credentials.length,0);
+ assert.equal((await store.read()).accounts.length,1,'unsupported PRF never creates a persisted account');
  assert.deepEqual((await vaultStore.open(account.id)).payload,beforeUnsupported);
  assert.deepEqual(errors,[]);
- console.log('PASS: X bootstrap, native PRF enrollment, full Portfolio, encrypted checkpoints, logout, discoverable login, local/remote switching, reload, second passkey linking, unsupported PRF and responsive layout.');
+ console.log('PASS: standalone passkey registration, native PRF enrollment, full Portfolio, encrypted checkpoints, logout, discoverable login, local/remote switching, reload, second passkey linking, unsupported PRF and responsive layout.');
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve));await rm(directory,{recursive:true,force:true});}

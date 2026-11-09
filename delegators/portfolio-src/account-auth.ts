@@ -20,14 +20,14 @@ function serialise(credential:PublicKeyCredential){
   // PRF output is private encryption material: never send getClientExtensionResults() to the server.
   return {id:credential.id,rawId:encode(credential.rawId),type:credential.type,authenticatorAttachment:credential.authenticatorAttachment,clientExtensionResults:{},response:{clientDataJSON:encode(response.clientDataJSON),...(response.attestationObject?{attestationObject:encode(response.attestationObject),transports:response.getTransports?.()||[]}:{}),...(response.authenticatorData?{authenticatorData:encode(response.authenticatorData),signature:encode(response.signature),userHandle:response.userHandle?encode(response.userHandle):null}:{})}};
 }
-export async function registerPasskey(token:string,signal?:AbortSignal){
+export async function registerPasskey(token='',signal?:AbortSignal){
   supported();const request=await authRequest('passkeys/register/options',{},token,signal),options=request.options;
   const credential=await navigator.credentials.create({publicKey:{...options,challenge:decode(options.challenge),user:{...options.user,id:decode(options.user.id)},excludeCredentials:options.excludeCredentials?.map((row:any)=>({...row,id:decode(row.id)})),extensions:{prf:{}}},signal} as CredentialCreationOptions) as PublicKeyCredential|null;
   if(!credential)throw new Error('Passkey creation cancelled.');
   const extensions=credential.getClientExtensionResults() as {prf?:{enabled?:boolean}};
   if(!extensions.prf?.enabled)throw new Error('This passkey cannot encrypt Portfolio data. Choose a passkey provider with PRF support, or use wallet login.');
-  await authRequest('passkeys/register/verify',{id:request.id,response:serialise(credential)},token,signal);
-  return credential.id;
+  const enrollment=await authRequest('passkeys/register/verify',{id:request.id,response:serialise(credential)},token,signal);
+  return {credentialID:credential.id,token:enrollment.token||token};
 }
 export async function authenticatePasskey(token='',credentialID?:string,signal?:AbortSignal,{save=true}={}){
   supported();const attempt=generation;
@@ -51,24 +51,4 @@ export async function signOutAccount(){
   clearAccountKey();sessionStorage.removeItem(ACCOUNT_SESSION_KEY);
   window.dispatchEvent(new Event('tdsp:portfolio-session-expired'));
   if(token)await authRequest('logout',{},token);
-}
-export async function signInWithX(signal:AbortSignal){
-  // Open synchronously in the click handler so popup blockers do not reject an awaited open().
-  const popup=window.open('about:blank','tdsp-portfolio-x','popup,width=560,height=720');
-  if(!popup)throw new Error('Allow the X sign-in popup and try again.');
-  let cleanup=()=>{};
-  try{
-    const verifier=encode(crypto.getRandomValues(new Uint8Array(32))),binding=encode(await crypto.subtle.digest('SHA-256',text.encode(verifier)));
-    const result=await authRequest('x/start',{binding},'',signal);
-    const code=await new Promise<string>((resolve,reject)=>{
-      const listener=(event:MessageEvent)=>{if(event.origin!==location.origin||event.source!==popup||event.data?.type!=='tdsp:portfolio-x')return;event.data.code?resolve(event.data.code):reject(new Error('X sign-in cancelled.'));};
-      const abort=()=>reject(new Error('X sign-in cancelled.'));
-      const timer=setInterval(()=>{if(popup.closed)reject(new Error('X sign-in window closed.'));},500);
-      const deadline=setTimeout(()=>reject(new Error('X sign-in expired. Please retry.')),300000);
-      cleanup=()=>{window.removeEventListener('message',listener);signal.removeEventListener('abort',abort);clearInterval(timer);clearTimeout(deadline);};
-      window.addEventListener('message',listener);signal.addEventListener('abort',abort,{once:true});
-      if(signal.aborted){abort();return;}popup.location.href=result.url;
-    });
-    return await authRequest('x/exchange',{code,verifier},'',signal);
-  }finally{cleanup();popup.close();}
 }
