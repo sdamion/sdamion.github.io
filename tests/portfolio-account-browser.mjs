@@ -28,7 +28,7 @@ app.all('/api/portfolio/:operation',async(req,res)=>{
  try{const response=await handler({operation:req.params.operation,method:req.method,body:req.body,token:String(req.headers.authorization||'').slice(7)});res.status(response.status).set(Object.fromEntries(response.headers)).send(await response.text());}catch(error){res.status(error.status||500).json({error:error.message});}
 });
 app.get('/fixture.js',(req,res)=>res.type('application/javascript').send(bundle.outputFiles[0].text));
-app.get('/fixture',(req,res)=>res.type('text/html').send('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/shared/styles.css"><link rel="stylesheet" href="/delegators/raffle.css"><div id="portfolio-refresh-action"></div><div id="root"></div>'));
+app.get('/fixture',(req,res)=>res.type('text/html').send('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/shared/styles.css"><link rel="stylesheet" href="/delegators/raffle.css"><div id="portfolio-refresh-action"></div><div id="portfolio-settings-action"></div><div id="root"></div>'));
 app.use(express.static(process.cwd()));
 const browser=await chromium.launch({channel:'chrome',headless:true});
 try{
@@ -54,7 +54,8 @@ try{
  assert.ok(!requests.some(body=>body.includes('prf')||body.includes('account secret marker')),'PRF output and plaintext never reach auth/vault endpoints');
  // Close the setup guide if it was opened by the full App.
  await page.evaluate(()=>document.getElementById('portfolio-quickstart-overlay')?.remove());
- await page.getByRole('button',{name:'Sign out of Portfolio',exact:true}).click();
+ await page.getByRole('button',{name:'Portfolio settings',exact:true}).click();
+ await page.getByRole('button',{name:'Change Portfolio login',exact:true}).click();
  await page.getByRole('button',{name:'Sign in with passkey',exact:true}).click();
  await page.getByRole('button',{name:'Open Assets',exact:true}).waitFor();
  assert.equal(await page.evaluate(member=>JSON.parse(window.portfolio.portfolioSettings.getItem('tdsp-member-basis:'+member)).private,account.id),'account secret marker');
@@ -75,12 +76,14 @@ try{
  try{await page.getByText('Passkey linked to this storage location. Link it to your other storage location separately if you use both.',{exact:true}).waitFor();}catch(error){throw new Error(JSON.stringify({errors,text:await page.locator('body').innerText()}),{cause:error});}
  assert.equal((await store.read()).accounts[0].credentials.length,2);
  assert.equal((await vaultStore.open(account.id)).payload.version,2);
- await page.getByRole('button',{name:'Sign out of Portfolio',exact:true}).click();
+ await page.getByRole('button',{name:'Portfolio settings',exact:true}).click();
+ await page.getByRole('button',{name:'Change Portfolio login',exact:true}).click();
  await page.getByRole('button',{name:'Sign in with passkey',exact:true}).click();
  await page.getByRole('button',{name:'Open Assets',exact:true}).waitFor();
  assert.equal(await page.evaluate(member=>JSON.parse(window.portfolio.portfolioSettings.getItem('tdsp-member-basis:'+member)).private,account.id),'account secret marker');
  // An authenticator without PRF never registers a misleading usable encryption key.
- await page.getByRole('button',{name:'Sign out of Portfolio',exact:true}).click();
+ await page.getByRole('button',{name:'Portfolio settings',exact:true}).click();
+ await page.getByRole('button',{name:'Change Portfolio login',exact:true}).click();
  await cdp.send('WebAuthn.removeVirtualAuthenticator',{authenticatorId:secondAuthenticator});
  await cdp.send('WebAuthn.addVirtualAuthenticator',{options:{protocol:'ctap2',transport:'internal',hasResidentKey:true,hasUserVerification:true,isUserVerified:true,automaticPresenceSimulation:true}});
  const beforeUnsupported=(await vaultStore.open(account.id)).payload;

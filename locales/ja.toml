@@ -1640,3 +1640,4 @@ portfolio_text_account_link_wallet_open = "現在のウォレットPortfolioを�
 portfolio_text_account_link_wallet_unlock = "現在のウォレットPortfolioを開き、キャッシュのロックを解除してからパスキーを追加してください。"
 portfolio_text_account_link_wallet_login = "現在のPortfolioに連携したパスキーを使うか、ウォレットPortfolioを開いて追加してください。"
 portfolio_text_account_link_wallet_count = "連携済み解除方法: {count}件"
+portfolio_text_settings = "Portfolioの設定"

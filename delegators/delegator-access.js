@@ -632,6 +632,9 @@ async function openMemberPortfolio() {
     const refreshAction = document.createElement('span');
     refreshAction.id = 'portfolio-refresh-action';
     refreshAction.className = 'overlay-dialog-header-actions';
+    const settingsAction = document.createElement('span');
+    settingsAction.id = 'portfolio-settings-action';
+    settingsAction.className = 'overlay-dialog-header-actions';
     const returnFocus = document.activeElement;
     let dispose = null;
     let closed = false;
@@ -649,12 +652,12 @@ async function openMemberPortfolio() {
         dialogClass: 'governance-dialog-wide governance-dialog-fit-content portfolio-dialog',
         closeLabel: 'Close portfolio', closeOverlay: close, returnFocus,
         closeOnBackdrop: false,
-        bodyNodes: [container], enableSearch: false, extraActions: [refreshAction]
+        bodyNodes: [container], enableSearch: false, extraActions: [refreshAction, settingsAction]
     });
     closePortfolio = close;
     container.textContent = t('Loading member portfolio…');
     try {
-        const module = await import('./portfolio/app.js?v=20261112-wallet-detection');
+        const module = await import('./portfolio/app.js?v=20261112-portfolio-settings');
         if (closed) return;
         container.replaceChildren();
         dispose = module.mountPortfolio(container, { role: ROLE, connectWallet: () => { closePortfolio?.(); populateWallets().catch(error => setStatus(error.message, true)); }, getWallet: (reconnect, stake, linkAnother) => linkAnother ? reconnectPortfolioWallet(stake, true) : reconnect && !portfolioUnlockWallet ? reconnectPortfolioWallet(stake) : portfolioUnlockWallet });

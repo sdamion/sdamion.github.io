@@ -3,6 +3,7 @@ import {createRoot} from 'react-dom/client';
 import Home from './App';
 import {portfolioFetch,setSessionRole,sessionToken} from './transport';
 import {AccountLogin} from './AccountLogin';
+import {PortfolioSettings} from './PortfolioSettings';
 import {ACCOUNT_SESSION_KEY,clearAccountKey,hasAccountKey,signOutAccount,registerPasskey,authenticatePasskey,authRequest} from './account-auth';
 import {isAccountOwner} from './identity';
 import {validStakeAddress} from './member';
@@ -86,12 +87,11 @@ function MemberPortfolio({wallet,role}:{wallet:WalletProvider;role:'delegator'|'
 let portfolioInstance:{role:string;content:HTMLElement;destroy:()=>void}|null=null;
 function PortfolioGate({wallet,role,onWallet}:{wallet:WalletProvider;role:'delegator'|'admin';onWallet?:()=>void}){
   const [signedIn,setSignedIn]=useState(()=>!!sessionToken()&&(!sessionStorage.getItem(ACCOUNT_SESSION_KEY)||hasAccountKey()));
-  const [error,setError]=useState('');
   useEffect(()=>{const lock=()=>{clearAccountKey();sessionStorage.removeItem(ACCOUNT_SESSION_KEY);setSignedIn(false);};const shown=()=>setSignedIn(!!sessionToken()&&(!sessionStorage.getItem(ACCOUNT_SESSION_KEY)||hasAccountKey()));window.addEventListener('tdsp:portfolio-session-expired',lock);window.addEventListener('tdsp:portfolio-shown',shown);return()=>{window.removeEventListener('tdsp:portfolio-session-expired',lock);window.removeEventListener('tdsp:portfolio-shown',shown);};},[]);
   function chooseWallet(){const token=sessionStorage.getItem(ACCOUNT_SESSION_KEY);clearAccountKey();sessionStorage.removeItem(ACCOUNT_SESSION_KEY);if(token)void authRequest('logout',{},token).catch(()=>{});if(sessionStorage.getItem('tdsp-raffle-session-'+role))setSignedIn(true);else onWallet?.();}
   if(!signedIn)return <AccountLogin walletConnected={!!sessionStorage.getItem('tdsp-raffle-session-'+role)} onSignedIn={()=>setSignedIn(true)} onWallet={onWallet||sessionStorage.getItem('tdsp-raffle-session-'+role)?chooseWallet:undefined}/>;
   const account=!!sessionStorage.getItem(ACCOUNT_SESSION_KEY);
-  return <><div className="member-portfolio section-heading"><button type="button" className="governance-vote-secondary" onClick={()=>void (async()=>{try{await flushVault();if(account)await signOutAccount();else{lockVault();setSignedIn(false);}}catch(e){setError(e instanceof Error?e.message:'Could not change login.');}})()}>{account?'Sign out of Portfolio':'Change Portfolio login'}</button>{error&&<p role="alert">{error}</p>}</div><MemberPortfolio wallet={wallet} role={role}/></>;
+  return <><PortfolioSettings onChangeLogin={async()=>{await flushVault();if(account)await signOutAccount();else{lockVault();setSignedIn(false);}}}/><MemberPortfolio wallet={wallet} role={role}/></>;
 }
 export function mountPortfolio(container:HTMLElement,{role='delegator',getWallet=()=>null,connectWallet}:{role?:'delegator'|'admin';getWallet?:WalletProvider;connectWallet?:()=>void}={}){
   if(portfolioInstance&&portfolioInstance.role!==role)portfolioInstance.destroy();

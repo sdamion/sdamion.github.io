@@ -1640,3 +1640,4 @@ portfolio_text_account_link_wallet_open = "Abrir el Portfolio actual de la carte
 portfolio_text_account_link_wallet_unlock = "Abre tu Portfolio actual de la cartera y añade una clave de acceso después de desbloquear su caché."
 portfolio_text_account_link_wallet_login = "Usa una clave de acceso vinculada a tu Portfolio actual o abre el Portfolio de la cartera para añadir una."
 portfolio_text_account_link_wallet_count = "{count} métodos de desbloqueo vinculados"
+portfolio_text_settings = "Configuración de Portfolio"
