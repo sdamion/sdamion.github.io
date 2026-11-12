@@ -550,7 +550,7 @@ function showAuthenticatedUi(authenticated) {
     if (publicPortfolio) publicPortfolio.hidden = authenticated;
     const access = document.getElementById('raffle-access');
     const protectedArea = document.getElementById('raffle-protected');
-    if (access) access.hidden = authenticated;
+    if (access) access.hidden = authenticated || ROLE === 'delegator';
     if (protectedArea) protectedArea.hidden = !authenticated;
 }
 
@@ -654,7 +654,7 @@ async function openMemberPortfolio() {
     closePortfolio = close;
     container.textContent = t('Loading member portfolio…');
     try {
-        const module = await import('./portfolio/app.js?v=20261109-wallet-passkeys');
+        const module = await import('./portfolio/app.js?v=20261112-wallet-detection');
         if (closed) return;
         container.replaceChildren();
         dispose = module.mountPortfolio(container, { role: ROLE, connectWallet: () => { closePortfolio?.(); populateWallets().catch(error => setStatus(error.message, true)); }, getWallet: (reconnect, stake, linkAnother) => linkAnother ? reconnectPortfolioWallet(stake, true) : reconnect && !portfolioUnlockWallet ? reconnectPortfolioWallet(stake) : portfolioUnlockWallet });
@@ -1590,7 +1590,10 @@ async function populateWallets() {
     const { BrowserWallet } = await loadMesh();
     if (!list.isConnected) return;
     const wallets = BrowserWallet.getInstalledWallets();
-    if (!wallets.length) throw new Error(t('No CIP-30 Cardano wallet extension was detected.'));
+    const access = document.getElementById('raffle-access');
+    if (access) access.hidden = !wallets.length;
+    const detail = document.querySelector('#member-portfolio-public-open .governance-card-detail');
+    if (detail) setTranslatedText(detail, wallets.length ? 'Continue with passkey or wallet' : 'Sign in with passkey');
     wallets.forEach(walletInfo => {
         const button = document.createElement('button');
         button.type = 'button';

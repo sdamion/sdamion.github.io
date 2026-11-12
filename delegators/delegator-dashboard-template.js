@@ -10,6 +10,7 @@
                 prompt: 'Select wallet and connect',
                 content: [...connect.childNodes]
             });
+            box.hidden = connect.hidden;
             connect.replaceWith(box);
         }
         markDashboardStaticText(root);
@@ -42,7 +43,7 @@
             <div class="raffle-page raffle-embedded raffle-overlay-page">
                 <main class="raffle-main">
                     <section id="portfolio-public-access" class="raffle-shell"><button id="member-portfolio-public-open" type="button" class="governance-menu-card raffle-open-tile"><strong class="governance-card-title">Portfolio</strong><span class="governance-card-detail">Continue with passkey or wallet</span></button></section>
-                    <section data-wallet-connect id="raffle-access">
+                    <section data-wallet-connect id="raffle-access" hidden>
                         <div id="raffle-wallet-list" class="wallet-list raffle-wallet-list"></div>
                     </section>
 
