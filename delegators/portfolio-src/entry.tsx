@@ -85,6 +85,12 @@ function MemberPortfolio({wallet,role}:{wallet:WalletProvider;role:'delegator'|'
     </>:choice}</div></section>{ready&&!busy&&(hasNetwork?<Home key={`${stake}:${version}:${Object.values(portfolioAccess).join(':')}`} memberStake={stake} role={role} portfolioAccess={portfolioAccess}/>:<main className="member-portfolio"><div className="portfolio-body"><p role="status">No Portfolio networks are enabled for this account.</p></div></main>)} {(ready||preference)&&settings&&<AssetOverlay id="portfolio-storage-overlay" name="Portfolio storage" onClose={()=>{if(!busy)setSettings(false);}}>{choice}</AssetOverlay>}</>;
 }
 let portfolioInstance:{role:string;content:HTMLElement;destroy:()=>void}|null=null;
+export async function signInPortfolioWithPasskey(){
+  await flushVault();
+  portfolioInstance?.destroy();
+  lockVault();
+  return authenticatePasskey();
+}
 function PortfolioGate({wallet,role,onWallet}:{wallet:WalletProvider;role:'delegator'|'admin';onWallet?:()=>void}){
   const [signedIn,setSignedIn]=useState(()=>!!sessionToken()&&(!sessionStorage.getItem(ACCOUNT_SESSION_KEY)||hasAccountKey()));
   useEffect(()=>{const lock=()=>{clearAccountKey();sessionStorage.removeItem(ACCOUNT_SESSION_KEY);setSignedIn(false);};const shown=()=>setSignedIn(!!sessionToken()&&(!sessionStorage.getItem(ACCOUNT_SESSION_KEY)||hasAccountKey()));window.addEventListener('tdsp:portfolio-session-expired',lock);window.addEventListener('tdsp:portfolio-shown',shown);return()=>{window.removeEventListener('tdsp:portfolio-session-expired',lock);window.removeEventListener('tdsp:portfolio-shown',shown);};},[]);

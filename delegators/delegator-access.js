@@ -52,6 +52,7 @@ let SESSION_KEY = `tdsp-raffle-session-${ROLE}`;
 let sessionToken = sessionStorage.getItem(SESSION_KEY) || '';
 const dashboardChildOverlays = new Map();
 let closePortfolio = null;
+let passkeyLoginPending = false;
 let portfolioUnlockWallet = null;
 let adminTransactionWallet = null;
 let raffleAnchorSupported = false;
@@ -623,6 +624,25 @@ function setPrizeOverlay(open) {
     closeDashboardChildOverlay('prizes');
 }
 
+async function connectPortfolioPasskey() {
+    if (passkeyLoginPending) return;
+    passkeyLoginPending = true;
+    const button = document.getElementById('member-portfolio-public-open');
+    if (button) { button.disabled = true; button.setAttribute('aria-busy', 'true'); }
+    setStatus('Waiting for your passkey…');
+    try {
+        const module = await import('./portfolio/app.js?v=20261112-direct-passkey-login');
+        await module.signInPortfolioWithPasskey();
+        setStatus('');
+        await openMemberPortfolio();
+    } catch (error) {
+        setStatus(error?.name === 'NotAllowedError' ? 'Passkey request cancelled or timed out. Please retry.' : error?.message || 'Sign-in failed.', true);
+    } finally {
+        passkeyLoginPending = false;
+        if (button) { button.disabled = false; button.removeAttribute('aria-busy'); }
+    }
+}
+
 async function openMemberPortfolio() {
     if (closePortfolio) return;
     const container = document.createElement('div');
@@ -655,7 +675,7 @@ async function openMemberPortfolio() {
     closePortfolio = close;
     container.textContent = t('Loading member portfolio…');
     try {
-        const module = await import('./portfolio/app.js?v=20261112-wallet-first-passkeys');
+        const module = await import('./portfolio/app.js?v=20261112-direct-passkey-login');
         if (closed) return;
         container.replaceChildren();
         dispose = module.mountPortfolio(container, { role: ROLE, connectWallet: () => { closePortfolio?.(); populateWallets().catch(error => setStatus(error.message, true)); }, getWallet: (reconnect, stake, linkAnother) => linkAnother ? reconnectPortfolioWallet(stake, true) : reconnect && !portfolioUnlockWallet ? reconnectPortfolioWallet(stake) : portfolioUnlockWallet });
@@ -2255,7 +2275,7 @@ async function init(options = {}) {
     document.getElementById('raffle-open')?.addEventListener('click', () => setRaffleOverlay(true));
     document.getElementById('raffle-prizes-open')?.addEventListener('click', () => setPrizeOverlay(true));
     document.getElementById('member-portfolio-open')?.addEventListener('click', openMemberPortfolio);
-    document.getElementById('member-portfolio-public-open')?.addEventListener('click', openMemberPortfolio);
+    document.getElementById('member-portfolio-public-open')?.addEventListener('click', connectPortfolioPasskey);
     document.getElementById('raffle-admin-users-open')?.addEventListener('click', () => setRaffleOverlay(true, 'admins'));
     document.getElementById('portfolio-access-open')?.addEventListener('click', () => setRaffleOverlay(true, 'portfolio_access'));
     document.getElementById('website-status-open')?.addEventListener('click', async () => {

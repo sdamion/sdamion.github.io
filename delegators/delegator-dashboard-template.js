@@ -44,7 +44,7 @@
                 <main class="raffle-main">
                     <section data-wallet-connect id="raffle-access">
                         <div id="raffle-wallet-list" class="wallet-list raffle-wallet-list">
-                            <button id="member-portfolio-public-open" type="button" class="wallet-option" aria-describedby="raffle-passkey-help"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="9" r="6"></circle><path d="m13.5 13.5 8 8M17 17l3-3M19 19l3-3"></path></svg><span data-i18n-auto data-i18n-auto-original="Passkey">Passkey</span></button>
+                            <button id="member-portfolio-public-open" type="button" class="wallet-option" aria-describedby="raffle-passkey-help"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="11" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg><span data-i18n-auto data-i18n-auto-original="Passkey">Passkey</span></button>
                         </div>
                         <p id="raffle-passkey-help" class="small muted">To create a passkey for your wallet Portfolio, connect your wallet first, then add a passkey in Portfolio storage settings.</p>
                     </section>

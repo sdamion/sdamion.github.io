@@ -13,6 +13,8 @@ const {createVaultStore}=await import(path.join(backend,'member-portfolio/vault-
 const {installPortfolioBodyParsers}=await import(path.join(backend,'member-portfolio/body-parser.mjs'));
 const require=createRequire(new URL('../delegators/portfolio-src/package.json',import.meta.url)),{build}=require('esbuild');
 const source=path.resolve('delegators/portfolio-src');
+const release=(await readFile('delegators/delegator-access.js','utf8')).match(/import\('\.\/portfolio\/app\.js\?v=([^']+)'\)/)[1];
+const bundleUrl='/delegators/portfolio/app.js?v='+release;
 const bundle=await build({stdin:{resolveDir:source,contents:"export * from './entry'; export {portfolioSettings,flushVault,switchStorage} from './vault'; export {registerPasskey,authenticatePasskey} from './account-auth';"},bundle:true,write:false,format:'esm',jsx:'automatic',target:'es2020',define:{'process.env.NODE_ENV':'"production"'},alias:{'@/lib/portfolio':source+'/core.ts','@/lib/portfolio-cache':source+'/cache.ts','@/components/ui/input':source+'/ui.tsx','@/components/ui/table':source+'/ui.tsx','@/components/ui/pagination':source+'/ui.tsx'}});
 const {chromium}=await import(process.argv[2]),directory=await mkdtemp(path.join(os.tmpdir(),'portfolio-account-browser-'));
 const app=express();
@@ -28,8 +30,8 @@ app.all('/api/portfolio/:operation',async(req,res)=>{
  if(!['session','vault'].includes(req.params.operation))return res.status(503).json({error:'Fixture: provider offline'});
  try{const response=await handler({operation:req.params.operation,method:req.method,body:req.body,token:String(req.headers.authorization||'').slice(7)});res.status(response.status).set(Object.fromEntries(response.headers)).send(await response.text());}catch(error){res.status(error.status||500).json({error:error.message});}
 });
-app.get('/fixture.js',(req,res)=>res.type('application/javascript').send(bundle.outputFiles[0].text));
-app.get('/fixture',(req,res)=>res.type('text/html').send('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/shared/styles.css"><link rel="stylesheet" href="/delegators/raffle.css"><div id="portfolio-refresh-action"></div><div id="portfolio-settings-action"></div><div id="root"></div>'));
+app.get('/delegators/portfolio/app.js',(req,res)=>res.type('application/javascript').send(bundle.outputFiles[0].text));
+app.get('/fixture',(req,res)=>res.type('text/html').send('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/shared/styles.css"><link rel="stylesheet" href="/delegators/raffle.css"><div id="portfolio-refresh-action"></div><div id="portfolio-settings-action"></div><div id="dashboard"></div><div id="root"></div>'));
 app.use(express.static(process.cwd()));
 const browser=await chromium.launch({channel:'chrome',headless:true});
 try{
@@ -40,7 +42,15 @@ try{
  const {authenticatorId}=await cdp.send('WebAuthn.addVirtualAuthenticator',{options:{protocol:'ctap2',ctap2Version:'ctap2_1',transport:'internal',hasResidentKey:true,hasUserVerification:true,isUserVerified:true,hasPrf:true,automaticPresenceSimulation:true}});
  await page.goto(origin+'/fixture');
  await page.addScriptTag({content:await readFile('shared/runtime.js','utf8')});
- async function mount(){if(!await page.evaluate(()=>!!window.TDSPRuntime))await page.addScriptTag({content:await readFile('shared/runtime.js','utf8')});await page.evaluate(async()=>{window.createUniversalOverlay=options=>{const overlay=document.createElement('section');overlay.id=options.id;overlay.append(...options.bodyNodes);document.body.append(overlay);return {overlay};};window.portfolio=await import('/fixture.js');window.dispose=window.portfolio.mountPortfolio(document.getElementById('root'),{connectWallet:()=>{window.walletRequested=true;}});});}
+ async function mount(){
+  if(!await page.evaluate(()=>!!window.TDSPRuntime))await page.addScriptTag({content:await readFile('shared/runtime.js','utf8')});
+  await page.addScriptTag({url:origin+'/delegators/delegator-dashboard-template.js'});
+  await page.evaluate(()=>document.getElementById('dashboard').append(window.TDSPDelegatorDashboardTemplates.createDelegatorsDashboardBody()));
+  await page.addScriptTag({url:origin+'/delegators/delegator-access.js'});
+  await page.evaluate(()=>window.TDSPDelegatorAccess.initOverlay('delegator'));
+  await page.evaluate(async bundleUrl=>{window.createUniversalOverlay=options=>{const overlay=document.createElement('section');overlay.id=options.id;overlay.append(...(options.extraActions||[]),...options.bodyNodes);document.body.append(overlay);return {overlay};};window.portfolio=await import(bundleUrl);window.dispose=window.portfolio.mountPortfolio(document.getElementById('root'),{connectWallet:()=>{window.walletRequested=true;}});},bundleUrl);
+ }
+
  await mount();
  assert.equal(await page.getByRole('button',{name:'Continue with X',exact:true}).count(),0);
  for(const path of ['x/start','x/exchange','x/callback']){const response=await page.request.get(origin+'/api/portfolio/auth/'+path);assert.equal(response.status(),404);}
@@ -59,8 +69,15 @@ try{
  await page.evaluate(()=>document.getElementById('portfolio-quickstart-overlay')?.remove());
  await page.getByRole('button',{name:'Portfolio settings',exact:true}).click();
  await page.getByRole('button',{name:'Change Portfolio login',exact:true}).click();
- await page.getByRole('button',{name:'Sign in with passkey',exact:true}).click();
- await page.getByRole('button',{name:'Open Assets',exact:true}).waitFor();
+ let releaseLogin;const holdLogin=new Promise(resolve=>{releaseLogin=resolve;});
+ await page.route('**/auth/passkeys/login/options',async route=>{await holdLogin;await route.continue();});
+ const loginOptions=page.waitForRequest(request=>request.url().endsWith('/auth/passkeys/login/options'));
+ await page.getByRole('button',{name:'Passkey',exact:true}).click();await loginOptions;
+ assert.equal(await page.locator('#member-portfolio-overlay').count(),0,'no Portfolio menu opens before authentication');
+ assert.equal(await page.getByRole('button',{name:'Passkey',exact:true}).isDisabled(),true);
+ releaseLogin();
+ try{await page.getByRole('button',{name:'Open Assets',exact:true}).waitFor();}catch(error){throw new Error(JSON.stringify({errors,text:await page.locator('body').innerText()}),{cause:error});}
+ await page.unroute('**/auth/passkeys/login/options');
  assert.equal(await page.evaluate(member=>JSON.parse(window.portfolio.portfolioSettings.getItem('tdsp-member-basis:'+member)).private,member),'account secret marker');
  // Switching storage reuses the passkey in memory and performs no wallet request.
  await page.evaluate(async member=>{await window.portfolio.switchStorage('local',member,null,'delegator',true);await window.portfolio.switchStorage('remote',member,null,'delegator',false);},member);
@@ -94,5 +111,5 @@ try{
  assert.equal((await store.read()).accounts.length,1,'unsupported PRF never creates a persisted account');
  assert.deepEqual((await vaultStore.open(member)).payload,beforeUnsupported);
  assert.deepEqual(errors,[]);
- console.log('PASS: wallet-required registration, no signed-out creation option, native PRF enrollment, full Portfolio, encrypted checkpoints, logout, discoverable login, local/remote switching, reload, second passkey linking, unsupported PRF and responsive layout.');
+ console.log('PASS: wallet-required registration, no signed-out creation option, native PRF enrollment, full Portfolio, encrypted checkpoints, logout, direct dashboard passkey login without an extra menu, local/remote switching, reload, second passkey linking, unsupported PRF and responsive layout.');
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve));await rm(directory,{recursive:true,force:true});}

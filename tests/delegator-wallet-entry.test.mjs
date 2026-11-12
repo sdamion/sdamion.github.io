@@ -44,7 +44,7 @@ function context(token=''){
     window:{},document:{body:{classList:{remove(){}}},getElementById(){return null;},querySelectorAll(){return []; }},
     setRaffleRole(){},showAuthenticatedUi(value){state.authenticated=value;},
     async populateWallets(){state.discoveries++;},async loadProtectedArea(){state.authenticated=true;},
-    setStatus(){},logout(){},openMemberPortfolio(){},improveLostStakeMessage(){},submitDraw(){},submitExclusions(){},submitAdminUsers(){},submitLostStakeMessage(){}
+    setStatus(){},logout(){},openMemberPortfolio(){},connectPortfolioPasskey(){},improveLostStakeMessage(){},submitDraw(){},submitExclusions(){},submitAdminUsers(){},submitLostStakeMessage(){}
   });
   vm.runInContext(init,ctx);
   return {ctx,state};
