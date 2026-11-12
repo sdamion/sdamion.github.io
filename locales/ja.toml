@@ -1641,3 +1641,7 @@ portfolio_text_account_link_wallet_unlock = "現在のウォレットPortfolio�
 portfolio_text_account_link_wallet_login = "現在のPortfolioに連携したパスキーを使うか、ウォレットPortfolioを開いて追加してください。"
 portfolio_text_account_link_wallet_count = "連携済み解除方法: {count}件"
 portfolio_text_settings = "Portfolioの設定"
+portfolio_text_login_passkey = "パスキー"
+portfolio_text_login_wallet_or_passkey = "接続するウォレットまたはパスキーを選択"
+portfolio_text_login_passkey_only = "接続するパスキーを選択"
+portfolio_text_login_passkey_help = "ウォレットのPortfolio用にパスキーを作成するには、まずウォレットを接続し、Portfolioのストレージ設定でパスキーを追加してください。"

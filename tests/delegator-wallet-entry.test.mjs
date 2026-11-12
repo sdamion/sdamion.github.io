@@ -66,7 +66,7 @@ test('delegator template shows the short connection prompt without an extra conn
   const delegator=template.slice(template.indexOf('function createDelegatorsDashboardBody'),template.indexOf('function createAdmin'));
   assert.match(delegator,/data-wallet-connect/);
   assert.match(template,/createWalletConnectBox/);
-  assert.match(template,/Select wallet and connect/);
+  assert.match(template,/Select Passkey to connect/);
   assert.match(delegator,/id="raffle-wallet-list"/);
   assert.doesNotMatch(delegator,/Connect Delegator Wallet/);
 });

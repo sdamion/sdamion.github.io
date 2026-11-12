@@ -1,5 +1,5 @@
 import {useEffect,useRef,useState} from 'react';
-import {authRequest,registerPasskey,authenticatePasskey} from './account-auth';
+import {authRequest,authenticatePasskey} from './account-auth';
 
 function hasCardanoWallet(){
   const cardano=(window as Window&{cardano?:Record<string,{enable?:unknown;name?:unknown;icon?:unknown;apiVersion?:unknown}>}).cardano;
@@ -7,7 +7,7 @@ function hasCardanoWallet(){
 }
 
 export function AccountLogin({onSignedIn,onWallet,walletConnected=false}:{onSignedIn:()=>void;onWallet?:()=>void;walletConnected?:boolean}){
-  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[enrollment,setEnrollment]=useState<{token:string;credentialID:string}|null>(null),[config,setConfig]=useState({passkeys:false});
+  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[config,setConfig]=useState({passkeys:false});
   const [walletAvailable,setWalletAvailable]=useState(hasCardanoWallet);
   const control=useRef(new AbortController());
   useEffect(()=>{const detect=()=>setWalletAvailable(hasCardanoWallet());window.addEventListener('focus',detect);window.addEventListener('tdsp:portfolio-shown',detect);return()=>{window.removeEventListener('focus',detect);window.removeEventListener('tdsp:portfolio-shown',detect);};},[]);
@@ -18,11 +18,10 @@ export function AccountLogin({onSignedIn,onWallet,walletConnected=false}:{onSign
     <p>Track your wallets, assets and transactions across all Portfolio networks.</p>
     <div className="section-heading">
       <button type="button" className="governance-vote-primary" disabled={busy||!config.passkeys} onClick={()=>void run(async()=>{await authenticatePasskey('',undefined,control.current.signal);onSignedIn();})}>{busy?'Waiting for your passkey…':'Sign in with passkey'}</button>
-      {!walletConnected&&<button type="button" className="governance-vote-secondary" disabled={busy||!config.passkeys} onClick={()=>void run(async()=>{const created=enrollment||await registerPasskey('',control.current.signal);setEnrollment(created);await authenticatePasskey(created.token,created.credentialID,control.current.signal);onSignedIn();})}>{enrollment?'Continue with passkey':'Create passkey & open Portfolio'}</button>}
       {onWallet&&walletAvailable&&<button type="button" className="governance-vote-secondary" disabled={busy} onClick={onWallet}>{walletConnected?'Open current wallet Portfolio':'Connect wallet'}</button>}
     </div>
     {walletConnected&&<p>Open your current wallet Portfolio and add a passkey after unlocking its cache.</p>}
-    <p className="small muted">{walletConnected?'Use a passkey linked to your current Portfolio, or open the wallet Portfolio to add one.':'Your passkey creates your account and encrypts Portfolio data in your browser. Keep access to your original synced passkey or a linked backup passkey. Wallet login remains available for your existing wallet Portfolio.'}</p>
+    <p className="small muted">{walletConnected?'Use a passkey linked to your current Portfolio, or open the wallet Portfolio to add one.':'To create a passkey for your wallet Portfolio, connect your wallet first, then add a passkey in Portfolio storage settings.'}</p>
     {!config.passkeys&&!busy&&<p className="small muted">Passkey login becomes available when the server is configured.</p>}
     {error&&<p role="alert">{error}</p>}
   </div></div></section>;

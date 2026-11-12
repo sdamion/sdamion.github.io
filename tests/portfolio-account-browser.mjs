@@ -13,12 +13,13 @@ const {createVaultStore}=await import(path.join(backend,'member-portfolio/vault-
 const {installPortfolioBodyParsers}=await import(path.join(backend,'member-portfolio/body-parser.mjs'));
 const require=createRequire(new URL('../delegators/portfolio-src/package.json',import.meta.url)),{build}=require('esbuild');
 const source=path.resolve('delegators/portfolio-src');
-const bundle=await build({stdin:{resolveDir:source,contents:"export * from './entry'; export {portfolioSettings,flushVault,switchStorage} from './vault';"},bundle:true,write:false,format:'esm',jsx:'automatic',target:'es2020',define:{'process.env.NODE_ENV':'"production"'},alias:{'@/lib/portfolio':source+'/core.ts','@/lib/portfolio-cache':source+'/cache.ts','@/components/ui/input':source+'/ui.tsx','@/components/ui/table':source+'/ui.tsx','@/components/ui/pagination':source+'/ui.tsx'}});
+const bundle=await build({stdin:{resolveDir:source,contents:"export * from './entry'; export {portfolioSettings,flushVault,switchStorage} from './vault'; export {registerPasskey,authenticatePasskey} from './account-auth';"},bundle:true,write:false,format:'esm',jsx:'automatic',target:'es2020',define:{'process.env.NODE_ENV':'"production"'},alias:{'@/lib/portfolio':source+'/core.ts','@/lib/portfolio-cache':source+'/cache.ts','@/components/ui/input':source+'/ui.tsx','@/components/ui/table':source+'/ui.tsx','@/components/ui/pagination':source+'/ui.tsx'}});
 const {chromium}=await import(process.argv[2]),directory=await mkdtemp(path.join(os.tmpdir(),'portfolio-account-browser-'));
 const app=express();
 const server=await new Promise(resolve=>{const server=app.listen(0,'localhost',()=>resolve(server));}),origin=`http://localhost:${server.address().port}`;
 const store=createAccountStore(path.join(directory,'accounts.json'));
-const auth=createPortfolioAccountAuth({store,secret:'browser-test-secret-'.repeat(3),origins:[origin],rpID:'localhost'});
+const member='stake1u9ex0jtl4nv84rlzwuft5rczy2hgkjygewla04mgy7v2nccx4p4yr';
+const auth=createPortfolioAccountAuth({store,secret:'browser-test-secret-'.repeat(3),origins:[origin],rpID:'localhost',verifyWallet:async token=>{if(token!=='verified-wallet-fixture')throw new Error('Invalid wallet session');return {owner:member,binding:'wallet-fixture'};}});
 const vaultStore=createVaultStore({directory:path.join(directory,'vaults')});
 installPortfolioBodyParsers(app,{authenticate:req=>auth.verify(String(req.headers.authorization||'').slice(7)),sendAuthError:(res,error)=>res.status(error.status||500).json({error:error.message})});
 app.use('/api/portfolio/auth',createPortfolioAuthRouter(auth,{rateLimit:()=>true,sendError:(res,error)=>res.status(error.status||500).json({error:error.message})}));
@@ -44,12 +45,14 @@ try{
  assert.equal(await page.getByRole('button',{name:'Continue with X',exact:true}).count(),0);
  for(const path of ['x/start','x/exchange','x/callback']){const response=await page.request.get(origin+'/api/portfolio/auth/'+path);assert.equal(response.status(),404);}
  assert.deepEqual(await (await page.request.get(origin+'/api/portfolio/auth/config')).json(),{passkeys:true});
- await page.getByRole('button',{name:'Create passkey & open Portfolio',exact:true}).click();
+ assert.equal(await page.getByRole('button',{name:'Create passkey & open Portfolio',exact:true}).count(),0);
+ const anonymous=await page.request.post(origin+'/api/portfolio/auth/passkeys/register/options',{headers:{Origin:origin},data:{}});assert.equal(anonymous.status(),401);
+ await page.evaluate(async()=>{const created=await window.portfolio.registerPasskey('verified-wallet-fixture');await window.portfolio.authenticatePasskey(created.token,created.credentialID);window.dispatchEvent(new Event('tdsp:portfolio-shown'));});
  await page.getByRole('button',{name:'Open Portfolio',exact:true}).click();
  await page.getByRole('button',{name:'Open Assets',exact:true}).waitFor();
- const account=(await store.read()).accounts[0];assert.ok(account.id.startsWith('portfolio:'));assert.equal(account.credentials.length,1);
- await page.evaluate(async member=>{localStorage.setItem('tdsp-portfolio-setup-v1:'+member,'done');window.portfolio.portfolioSettings.setItem('tdsp-member-basis:'+member,JSON.stringify({private:'account secret marker'}));await window.portfolio.flushVault();},account.id);
- const saved=await vaultStore.open(account.id);assert.ok(saved.payload);assert.ok(!JSON.stringify(saved).includes('account secret marker'));
+ const account=(await store.read()).accounts[0];assert.ok(account.id.startsWith('portfolio:'));assert.equal(account.wallet_owner,member);assert.equal(account.credentials.length,1);
+ await page.evaluate(async member=>{localStorage.setItem('tdsp-portfolio-setup-v1:'+member,'done');window.portfolio.portfolioSettings.setItem('tdsp-member-basis:'+member,JSON.stringify({private:'account secret marker'}));await window.portfolio.flushVault();},member);
+ const saved=await vaultStore.open(member);assert.ok(saved.payload);assert.ok(!JSON.stringify(saved).includes('account secret marker'));
  const credentials=await cdp.send('WebAuthn.getCredentials',{authenticatorId});assert.equal(credentials.credentials.length,1);
  assert.ok(!requests.some(body=>body.includes('prf')||body.includes('account secret marker')),'PRF output and plaintext never reach auth/vault endpoints');
  // Close the setup guide if it was opened by the full App.
@@ -58,16 +61,16 @@ try{
  await page.getByRole('button',{name:'Change Portfolio login',exact:true}).click();
  await page.getByRole('button',{name:'Sign in with passkey',exact:true}).click();
  await page.getByRole('button',{name:'Open Assets',exact:true}).waitFor();
- assert.equal(await page.evaluate(member=>JSON.parse(window.portfolio.portfolioSettings.getItem('tdsp-member-basis:'+member)).private,account.id),'account secret marker');
+ assert.equal(await page.evaluate(member=>JSON.parse(window.portfolio.portfolioSettings.getItem('tdsp-member-basis:'+member)).private,member),'account secret marker');
  // Switching storage reuses the passkey in memory and performs no wallet request.
- await page.evaluate(async member=>{await window.portfolio.switchStorage('local',member,null,'delegator',true);await window.portfolio.switchStorage('remote',member,null,'delegator',false);},account.id);
- assert.equal(await page.evaluate(member=>JSON.parse(window.portfolio.portfolioSettings.getItem('tdsp-member-basis:'+member)).private,account.id),'account secret marker');
+ await page.evaluate(async member=>{await window.portfolio.switchStorage('local',member,null,'delegator',true);await window.portfolio.switchStorage('remote',member,null,'delegator',false);},member);
+ assert.equal(await page.evaluate(member=>JSON.parse(window.portfolio.portfolioSettings.getItem('tdsp-member-basis:'+member)).private,member),'account secret marker');
  assert.equal(await page.evaluate(()=>window.walletRequested||false),false);
  for(const width of [1200,390]){await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);await page.screenshot({path:'/private/tmp/portfolio-account-'+width+'.png',fullPage:true});}
  assert.deepEqual(errors,[]);
  // A reload has a session token but no private key: require a new passkey assertion.
  await page.reload();await mount();await page.getByRole('button',{name:'Sign in with passkey',exact:true}).click();try{await page.getByRole('button',{name:'Open Assets',exact:true}).waitFor();}catch(error){throw new Error(JSON.stringify({errors,text:await page.locator('body').innerText()}),{cause:error});}
- assert.equal(await page.evaluate(member=>JSON.parse(window.portfolio.portfolioSettings.getItem('tdsp-member-basis:'+member)).private,account.id),'account secret marker');
+ assert.equal(await page.evaluate(member=>JSON.parse(window.portfolio.portfolioSettings.getItem('tdsp-member-basis:'+member)).private,member),'account secret marker');
  // Link a second native PRF passkey and force login with only that credential available.
  await page.getByRole('button',{name:'Portfolio storage: Encrypted remote. Change storage',exact:true}).click();
  await cdp.send('WebAuthn.removeVirtualAuthenticator',{authenticatorId});
@@ -75,22 +78,21 @@ try{
  await page.getByRole('button',{name:'Add another passkey',exact:true}).click();
  try{await page.getByText('Passkey linked to this storage location. Link it to your other storage location separately if you use both.',{exact:true}).waitFor();}catch(error){throw new Error(JSON.stringify({errors,text:await page.locator('body').innerText()}),{cause:error});}
  assert.equal((await store.read()).accounts[0].credentials.length,2);
- assert.equal((await vaultStore.open(account.id)).payload.version,2);
+ assert.equal((await vaultStore.open(member)).payload.version,2);
  await page.getByRole('button',{name:'Portfolio settings',exact:true}).click();
  await page.getByRole('button',{name:'Change Portfolio login',exact:true}).click();
  await page.getByRole('button',{name:'Sign in with passkey',exact:true}).click();
  await page.getByRole('button',{name:'Open Assets',exact:true}).waitFor();
- assert.equal(await page.evaluate(member=>JSON.parse(window.portfolio.portfolioSettings.getItem('tdsp-member-basis:'+member)).private,account.id),'account secret marker');
- // An authenticator without PRF never registers a misleading usable encryption key.
- await page.getByRole('button',{name:'Portfolio settings',exact:true}).click();
- await page.getByRole('button',{name:'Change Portfolio login',exact:true}).click();
+ assert.equal(await page.evaluate(member=>JSON.parse(window.portfolio.portfolioSettings.getItem('tdsp-member-basis:'+member)).private,member),'account secret marker');
+ // An authenticator without PRF cannot be added to the signed-in Portfolio.
+ await page.getByRole('button',{name:'Portfolio storage: Encrypted remote. Change storage',exact:true}).click();
  await cdp.send('WebAuthn.removeVirtualAuthenticator',{authenticatorId:secondAuthenticator});
  await cdp.send('WebAuthn.addVirtualAuthenticator',{options:{protocol:'ctap2',transport:'internal',hasResidentKey:true,hasUserVerification:true,isUserVerified:true,automaticPresenceSimulation:true}});
- const beforeUnsupported=(await vaultStore.open(account.id)).payload;
- await page.getByRole('button',{name:'Create passkey & open Portfolio',exact:true}).click();
- await page.getByRole('alert').filter({hasText:'This passkey cannot encrypt Portfolio data.'}).waitFor();
+ const beforeUnsupported=(await vaultStore.open(member)).payload;
+ await page.getByRole('button',{name:'Add another passkey',exact:true}).click();
+ await page.getByRole('status').filter({hasText:'This passkey cannot encrypt Portfolio data.'}).waitFor();
  assert.equal((await store.read()).accounts.length,1,'unsupported PRF never creates a persisted account');
- assert.deepEqual((await vaultStore.open(account.id)).payload,beforeUnsupported);
+ assert.deepEqual((await vaultStore.open(member)).payload,beforeUnsupported);
  assert.deepEqual(errors,[]);
- console.log('PASS: standalone passkey registration, native PRF enrollment, full Portfolio, encrypted checkpoints, logout, discoverable login, local/remote switching, reload, second passkey linking, unsupported PRF and responsive layout.');
+ console.log('PASS: wallet-required registration, no signed-out creation option, native PRF enrollment, full Portfolio, encrypted checkpoints, logout, discoverable login, local/remote switching, reload, second passkey linking, unsupported PRF and responsive layout.');
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve));await rm(directory,{recursive:true,force:true});}

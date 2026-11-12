@@ -7,7 +7,7 @@
         if (connect) {
             const { box } = window.TDSPRuntime.createWalletConnectBox({
                 id: connect.id,
-                prompt: 'Select wallet and connect',
+                prompt: 'Select Passkey to connect',
                 content: [...connect.childNodes]
             });
             box.hidden = connect.hidden;
@@ -42,9 +42,11 @@
         return createTemplate(`
             <div class="raffle-page raffle-embedded raffle-overlay-page">
                 <main class="raffle-main">
-                    <section id="portfolio-public-access" class="raffle-shell"><button id="member-portfolio-public-open" type="button" class="governance-menu-card raffle-open-tile"><strong class="governance-card-title">Portfolio</strong><span class="governance-card-detail">Continue with passkey or wallet</span></button></section>
-                    <section data-wallet-connect id="raffle-access" hidden>
-                        <div id="raffle-wallet-list" class="wallet-list raffle-wallet-list"></div>
+                    <section data-wallet-connect id="raffle-access">
+                        <div id="raffle-wallet-list" class="wallet-list raffle-wallet-list">
+                            <button id="member-portfolio-public-open" type="button" class="wallet-option" aria-describedby="raffle-passkey-help"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="9" r="6"></circle><path d="m13.5 13.5 8 8M17 17l3-3M19 19l3-3"></path></svg><span data-i18n-auto data-i18n-auto-original="Passkey">Passkey</span></button>
+                        </div>
+                        <p id="raffle-passkey-help" class="small muted">To create a passkey for your wallet Portfolio, connect your wallet first, then add a passkey in Portfolio storage settings.</p>
                     </section>
 
                     <section class="raffle-shell" id="raffle-protected" hidden>

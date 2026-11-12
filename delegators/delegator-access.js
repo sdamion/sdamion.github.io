@@ -546,11 +546,9 @@ function cardanoscanTransactionLink(txHash) {
 
 function showAuthenticatedUi(authenticated) {
     if (!authenticated && !sessionStorage.getItem('tdsp-portfolio-session')) window.dispatchEvent(new CustomEvent('tdsp:portfolio-session-expired'));
-    const publicPortfolio = document.getElementById('portfolio-public-access');
-    if (publicPortfolio) publicPortfolio.hidden = authenticated;
     const access = document.getElementById('raffle-access');
     const protectedArea = document.getElementById('raffle-protected');
-    if (access) access.hidden = authenticated || ROLE === 'delegator';
+    if (access) access.hidden = authenticated;
     if (protectedArea) protectedArea.hidden = !authenticated;
 }
 
@@ -657,7 +655,7 @@ async function openMemberPortfolio() {
     closePortfolio = close;
     container.textContent = t('Loading member portfolio…');
     try {
-        const module = await import('./portfolio/app.js?v=20261112-portfolio-settings');
+        const module = await import('./portfolio/app.js?v=20261112-wallet-first-passkeys');
         if (closed) return;
         container.replaceChildren();
         dispose = module.mountPortfolio(container, { role: ROLE, connectWallet: () => { closePortfolio?.(); populateWallets().catch(error => setStatus(error.message, true)); }, getWallet: (reconnect, stake, linkAnother) => linkAnother ? reconnectPortfolioWallet(stake, true) : reconnect && !portfolioUnlockWallet ? reconnectPortfolioWallet(stake) : portfolioUnlockWallet });
@@ -1588,15 +1586,16 @@ async function submitLostStakeMessage(event) {
 
 async function populateWallets() {
     const list = document.getElementById('raffle-wallet-list');
-    list.replaceChildren();
+    const passkey = document.getElementById('member-portfolio-public-open');
+    list.replaceChildren(...(passkey ? [passkey] : []));
     setStatus('Detecting installed Cardano wallets...');
     const { BrowserWallet } = await loadMesh();
     if (!list.isConnected) return;
     const wallets = BrowserWallet.getInstalledWallets();
     const access = document.getElementById('raffle-access');
-    if (access) access.hidden = !wallets.length;
-    const detail = document.querySelector('#member-portfolio-public-open .governance-card-detail');
-    if (detail) setTranslatedText(detail, wallets.length ? 'Continue with passkey or wallet' : 'Sign in with passkey');
+    if (access) access.hidden = false;
+    const prompt = access?.querySelector('.wallet-connect-prompt');
+    if (prompt) setTranslatedText(prompt, wallets.length ? 'Select Wallet or Passkey to connect' : 'Select Passkey to connect');
     wallets.forEach(walletInfo => {
         const button = document.createElement('button');
         button.type = 'button';
@@ -1610,7 +1609,8 @@ async function populateWallets() {
         button.addEventListener('click', () => connectWallet(walletInfo).catch(error => {
             setStatus(error?.info || error.message || t('Wallet access failed.'), true);
         }));
-        list.appendChild(button);
+        if (passkey) passkey.before(button);
+        else list.appendChild(button);
     });
     setStatus('');
 }
@@ -2223,7 +2223,6 @@ function logout() {
     sessionStorage.removeItem(ADMIN_SESSION_KEY);
     showAuthenticatedUi(false);
     postEmbeddedDelegatorIdentity();
-    document.getElementById('raffle-wallet-list').replaceChildren();
     setStatus('Wallet session closed.');
     if (ROLE === 'delegator') populateWallets().catch(error => setStatus(error.message, true));
 }
