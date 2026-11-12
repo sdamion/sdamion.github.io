@@ -55,6 +55,7 @@ try{
  supportsLinks=false;const approvalsBefore=approvals.length;
  await page.evaluate(async()=>{let rejected=false;try{await window.vault.linkPortfolioWallet(window.wallet(1));}catch(error){rejected=error.message.includes('Update the backend');}if(!rejected)throw Error('old backend allowed');});assert.equal(approvals.length,approvalsBefore);assert.deepEqual(stored,legacy);supportsLinks=true;
  await page.evaluate(()=>{window.choice=1;window.vault.mountPortfolio(document.getElementById('root'),{getWallet:(reconnect,stake,linkAnother)=>{window.linkChooser=linkAnother;return window.wallet(linkAnother?window.choice:0);}});});
+ await page.getByRole('button',{name:'Portfolio settings',exact:true}).click();
  await page.getByRole('button',{name:/Portfolio storage:/}).click();const settings=page.locator('#portfolio-storage-overlay');
  await settings.getByRole('button',{name:'Link another wallet app',exact:true}).click();await settings.getByText('Wallet app linked. It can now unlock this saved Portfolio.',{exact:true}).waitFor();
  assert.equal(await page.evaluate(()=>window.linkChooser),true);assert.equal(stored.payload.version,2);assert.equal(stored.payload.wallet_keys.length,2);

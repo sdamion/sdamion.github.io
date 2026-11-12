@@ -55,6 +55,8 @@ try{for(const mode of ['remote','local']){
    window.portfolio.mountPortfolio(document.getElementById('root'),{getWallet:()=>window.wallet});
   },{token:walletLogin.token,stake,mode});
   await page.getByRole('button',{name:'Open Assets',exact:true}).waitFor();
+  assert.equal(await page.getByRole('button',{name:'Add passkey to current Portfolio',exact:true}).count(),0);
+  await page.getByRole('button',{name:'Portfolio settings',exact:true}).click();
   await page.getByRole('button',{name:'Add passkey to current Portfolio',exact:true}).click();
   try{await page.getByText('Passkey linked to this storage location. Link it to your other storage location separately if you use both.',{exact:true}).waitFor();}catch(error){throw new Error(JSON.stringify({mode,errors,text:await page.locator('body').innerText()}),{cause:error});}
   const records=(await store.read()).accounts;assert.equal(records.length,1);assert.equal(records[0].wallet_owner,stake);assert.equal(records[0].credentials.length,1);

@@ -3,7 +3,7 @@
 ## Passkey accounts
 
 For an existing wallet Portfolio, sign in with the wallet, unlock its saved cache
-and choose **Add passkey to current Portfolio**. Registration is bound to the
+and open the three-dot **Portfolio settings** menu, then choose **Add passkey to current Portfolio**. Registration is bound to the
 verified wallet session. Passkey login resolves to the same stake, storage keys,
 wallet settings and saved analysis; no separate empty cache is created. The
 existing wallet still unlocks the cache. Link the same passkey to another storage

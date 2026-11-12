@@ -89,6 +89,7 @@ try{
  await page.reload();await mount();await page.getByRole('button',{name:'Sign in with passkey',exact:true}).click();try{await page.getByRole('button',{name:'Open Assets',exact:true}).waitFor();}catch(error){throw new Error(JSON.stringify({errors,text:await page.locator('body').innerText()}),{cause:error});}
  assert.equal(await page.evaluate(member=>JSON.parse(window.portfolio.portfolioSettings.getItem('tdsp-member-basis:'+member)).private,member),'account secret marker');
  // Link a second native PRF passkey and force login with only that credential available.
+ await page.getByRole('button',{name:'Portfolio settings',exact:true}).click();
  await page.getByRole('button',{name:'Portfolio storage: Encrypted remote. Change storage',exact:true}).click();
  await cdp.send('WebAuthn.removeVirtualAuthenticator',{authenticatorId});
  const {authenticatorId:secondAuthenticator}=await cdp.send('WebAuthn.addVirtualAuthenticator',{options:{protocol:'ctap2',ctap2Version:'ctap2_1',transport:'internal',hasResidentKey:true,hasUserVerification:true,isUserVerified:true,hasPrf:true,automaticPresenceSimulation:true}});
@@ -102,6 +103,7 @@ try{
  await page.getByRole('button',{name:'Open Assets',exact:true}).waitFor();
  assert.equal(await page.evaluate(member=>JSON.parse(window.portfolio.portfolioSettings.getItem('tdsp-member-basis:'+member)).private,member),'account secret marker');
  // An authenticator without PRF cannot be added to the signed-in Portfolio.
+ await page.getByRole('button',{name:'Portfolio settings',exact:true}).click();
  await page.getByRole('button',{name:'Portfolio storage: Encrypted remote. Change storage',exact:true}).click();
  await cdp.send('WebAuthn.removeVirtualAuthenticator',{authenticatorId:secondAuthenticator});
  await cdp.send('WebAuthn.addVirtualAuthenticator',{options:{protocol:'ctap2',transport:'internal',hasResidentKey:true,hasUserVerification:true,isUserVerified:true,automaticPresenceSimulation:true}});

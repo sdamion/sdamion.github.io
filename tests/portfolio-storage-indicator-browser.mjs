@@ -17,13 +17,14 @@ const bundle=await build({entryPoints:[path.resolve('delegators/portfolio-src/en
     export const vaultUnlocked=()=>mode!==null;
     export const flushVault=async()=>{};
     export const unlockPortfolio=async()=>{};
+    export const lockVault=()=>{mode=null;};
     export const linkedWalletCount=()=>1;
     export const walletLinkGeneration=()=>1;
     export const linkPortfolioWallet=async()=>true;
     export const deleteStoredCache=async()=>{mode=null;};
     export async function switchStorage(next,stake,wallet){if(!wallet)throw new Error(next==='remote'?'Reconnect your wallet in the members area to enable encrypted remote storage.':'Reconnect your wallet to unlock encrypted local Portfolio storage.');window.approvals=(window.approvals||0)+1;await new Promise((resolve,reject)=>window.approve=ok=>ok?resolve():reject(new Error('Wallet approval declined')));mode=next;localStorage.setItem('storage',next);}
   `}));
-  build.onLoad({filter:/\/transport\.ts$/},()=>({loader:'ts',contents:`export const setSessionRole=()=>{};export const portfolioFetch=async()=>({ok:true,json:async()=>({stake_address:'${stake}'})});`}));
+  build.onLoad({filter:/\/transport\.ts$/},()=>({loader:'ts',contents:`export const apiBase='/api/portfolio';export const sessionToken=()=> 'wallet-session';export const setSessionRole=()=>{};export const portfolioFetch=async()=>({ok:true,json:async()=>({stake_address:'${stake}'})});`}));
   build.onLoad({filter:/\/App\.tsx$/},()=>({loader:'tsx',contents:'export default function Home(){return <div>Portfolio contents</div>;}'}));
   build.onLoad({filter:/\/CacheUploadProgress\.tsx$/},()=>({loader:'tsx',contents:'export function CacheUploadProgress(){return null;}'}));
 }}]});
@@ -53,7 +54,10 @@ try{
   await page.evaluate(()=>window.approve(true));
   await page.getByText('Portfolio contents',{exact:true}).waitFor();
   assert.equal(await page.getByRole('heading',{name:'Portfolio storage'}).count(),0);
+  assert.equal(await page.getByRole('button',{name:'Portfolio storage: Encrypted remote. Change storage',exact:true}).count(),0);
+  await page.getByRole('button',{name:'Portfolio settings',exact:true}).click();
   await page.getByRole('button',{name:'Portfolio storage: Encrypted remote. Change storage',exact:true}).waitFor();
+  await page.locator('#portfolio-settings-overlay').getByRole('button',{name:'Back',exact:true}).click();
   await page.reload();await mount();
   await page.getByText('Reconnect your wallet in the members area to enable encrypted remote storage.',{exact:true}).waitFor();
   await page.getByRole('button',{name:'Unlock Portfolio',exact:true}).click();
@@ -66,13 +70,15 @@ try{
   await page.waitForFunction(()=>window.approvals===2);
   await page.evaluate(()=>window.approve(true));
   await page.getByText('Portfolio contents',{exact:true}).waitFor();
-  await page.getByRole('button',{name:'Portfolio storage: Encrypted remote. Change storage',exact:true}).click();
+  await page.getByRole('button',{name:'Portfolio settings',exact:true}).click();
+ await page.getByRole('button',{name:'Portfolio storage: Encrypted remote. Change storage',exact:true}).click();
   await page.getByRole('slider',{name:'Portfolio storage',exact:true}).focus();
   await page.keyboard.press('ArrowRight');
   assert.equal(await page.getByRole('slider',{name:'Portfolio storage',exact:true}).inputValue(),'1');
   await page.getByRole('button',{name:'Apply storage choice',exact:true}).click();
   await page.waitForFunction(()=>window.approvals===3);
   await page.evaluate(()=>window.approve(true));
+  await page.getByRole('button',{name:'Portfolio settings',exact:true}).click();
   await page.getByRole('button',{name:'Portfolio storage: Local browser. Change storage',exact:true}).waitFor();
   await page.reload();await mount();
   await page.getByText('Reconnect your wallet to unlock encrypted local Portfolio storage.',{exact:true}).waitFor();

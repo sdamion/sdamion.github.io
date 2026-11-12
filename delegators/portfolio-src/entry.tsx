@@ -8,14 +8,13 @@ import {ACCOUNT_SESSION_KEY,clearAccountKey,hasAccountKey,signOutAccount,registe
 import {isAccountOwner} from './identity';
 import {validStakeAddress} from './member';
 import {vaultUnlocked,lockVault,flushVault,switchStorage,deleteStoredCache,savedStorage,storageMode,isPortfolioMobile,linkPortfolioWallet,linkedWalletCount,walletLinkGeneration} from './vault';
-import {Cloud,HardDrive} from 'lucide-react';
 import type {SigningWallet,StorageMode} from './vault';
 import {StorageChoice} from './StorageChoice';
 import {AssetOverlay} from './AssetOverlay';
 import {WalletConnectBox} from './WalletConnectBox';
 export {unlockPortfolio,vaultUnlocked} from './vault';
 type WalletProvider=(reconnect?:boolean,stake?:string,linkAnother?:boolean)=>SigningWallet|null|Promise<SigningWallet|null>;
-function MemberPortfolio({wallet,role}:{wallet:WalletProvider;role:'delegator'|'admin'}){
+function MemberPortfolio({wallet,role,onChangeLogin}:{wallet:WalletProvider;role:'delegator'|'admin';onChangeLogin:()=>Promise<void>}){
   const account=!!sessionStorage.getItem(ACCOUNT_SESSION_KEY);
   const [stake,setStake]=useState(''),[error,setError]=useState('Verifying your Portfolio session…');
   const [ready,setReady]=useState(false),[settings,setSettings]=useState(false),[busy,setBusy]=useState(false),[version,setVersion]=useState(0);
@@ -75,14 +74,13 @@ function MemberPortfolio({wallet,role}:{wallet:WalletProvider;role:'delegator'|'
     finally{if(proof?.token)void authRequest('logout',{},proof.token).catch(()=>{});setReady(vaultUnlocked(stake));setBusy(false);}
   }
   const choice=<><StorageChoice stake={stake} active={ready} busy={busy} error={error} onApply={apply} onDelete={remove} onLink={validStakeAddress(stake)?linkWallet:undefined} linkedApps={linkedWalletCount()} account={account}/>{ready&&<div className="portfolio-section"><p>Link a passkey to this Portfolio and its current encrypted cache. Your stake identity, wallets and saved analysis stay together.</p><div className="section-heading"><button type="button" className="governance-vote-secondary" disabled={busy} onClick={()=>void addPasskey()}>{account?'Add another passkey':'Add passkey to current Portfolio'}</button><button type="button" className="governance-vote-secondary" disabled={busy} onClick={()=>void addPasskey(true)}>Link existing Portfolio passkey</button></div></div>}</>;
-  if(!stake)return <main className="member-portfolio"><div className="portfolio-body"><h1>Member portfolio</h1><p role="status">{error}</p></div></main>;
   const mode=ready?storageMode():preference;
-  const modeLabel=mode==='remote'?'Encrypted remote':'Local browser';
+  const menu=<PortfolioSettings onChangeLogin={onChangeLogin} onStorage={stake&&(ready||preference)?()=>setSettings(true):undefined} mode={mode} locked={!ready} disabled={busy} onAddPasskey={ready&&!account?()=>{setSettings(true);void addPasskey();}:undefined}/>;
+  if(!stake)return <>{menu}<main className="member-portfolio"><div className="portfolio-body"><h1>Member portfolio</h1><p role="status">{error}</p></div></main></>;
   const hasNetwork=role==='admin'||Object.values(portfolioAccess).some(Boolean);
-  return <><section className="member-portfolio"><div className="portfolio-body">{ready||preference?<>
-    <div className="section-heading"><button type="button" className="governance-vote-secondary" title="Change Portfolio storage" aria-label={`Portfolio storage: ${modeLabel}. Change storage`} disabled={busy} onClick={()=>setSettings(true)}>{mode==='remote'?<Cloud size={16}/>:<HardDrive size={16}/>} {modeLabel}{!ready?' · Locked':''}</button>{ready&&!account&&!settings&&<button type="button" className="governance-vote-secondary" disabled={busy} onClick={()=>{setSettings(true);void addPasskey();}}>Add passkey to current Portfolio</button>}</div>
+  return <>{menu}{!ready&&<section className="member-portfolio"><div className="portfolio-body">{preference?<>
     {!ready&&!settings&&<WalletConnectBox prompt={account?'Open your encrypted Portfolio with the passkey you approved at sign-in.':'Review and approve the wallet message to unlock your encrypted Portfolio cache. This is separate from dashboard sign-in. Never share the signature. No transaction or network fee is created.'}>{!busy&&<div role="status" aria-live="polite"><p>{error||'Unlock Portfolio to continue.'}</p></div>}{!busy&&<button type="button" className="governance-vote-primary" onClick={()=>void apply(mode||'local',false)}>Unlock Portfolio</button>}</WalletConnectBox>}
-    </>:choice}</div></section>{ready&&!busy&&(hasNetwork?<Home key={`${stake}:${version}:${Object.values(portfolioAccess).join(':')}`} memberStake={stake} role={role} portfolioAccess={portfolioAccess}/>:<main className="member-portfolio"><div className="portfolio-body"><p role="status">No Portfolio networks are enabled for this account.</p></div></main>)} {(ready||preference)&&settings&&<AssetOverlay id="portfolio-storage-overlay" name="Portfolio storage" onClose={()=>{if(!busy)setSettings(false);}}>{choice}</AssetOverlay>}</>;
+    </>:choice}</div></section>}{ready&&!busy&&(hasNetwork?<Home key={`${stake}:${version}:${Object.values(portfolioAccess).join(':')}`} memberStake={stake} role={role} portfolioAccess={portfolioAccess}/>:<main className="member-portfolio"><div className="portfolio-body"><p role="status">No Portfolio networks are enabled for this account.</p></div></main>)} {(ready||preference)&&settings&&<AssetOverlay id="portfolio-storage-overlay" name="Portfolio storage" onClose={()=>{if(!busy)setSettings(false);}}>{choice}</AssetOverlay>}</>;
 }
 let portfolioInstance:{role:string;content:HTMLElement;destroy:()=>void}|null=null;
 export async function signInPortfolioWithPasskey(){
@@ -97,7 +95,7 @@ function PortfolioGate({wallet,role,onWallet}:{wallet:WalletProvider;role:'deleg
   function chooseWallet(){const token=sessionStorage.getItem(ACCOUNT_SESSION_KEY);clearAccountKey();sessionStorage.removeItem(ACCOUNT_SESSION_KEY);if(token)void authRequest('logout',{},token).catch(()=>{});if(sessionStorage.getItem('tdsp-raffle-session-'+role))setSignedIn(true);else onWallet?.();}
   if(!signedIn)return <AccountLogin walletConnected={!!sessionStorage.getItem('tdsp-raffle-session-'+role)} onSignedIn={()=>setSignedIn(true)} onWallet={onWallet||sessionStorage.getItem('tdsp-raffle-session-'+role)?chooseWallet:undefined}/>;
   const account=!!sessionStorage.getItem(ACCOUNT_SESSION_KEY);
-  return <><PortfolioSettings onChangeLogin={async()=>{await flushVault();if(account)await signOutAccount();else{lockVault();setSignedIn(false);}}}/><MemberPortfolio wallet={wallet} role={role}/></>;
+  return <MemberPortfolio wallet={wallet} role={role} onChangeLogin={async()=>{await flushVault();if(account)await signOutAccount();else{lockVault();setSignedIn(false);}}}/>;
 }
 export function mountPortfolio(container:HTMLElement,{role='delegator',getWallet=()=>null,connectWallet}:{role?:'delegator'|'admin';getWallet?:WalletProvider;connectWallet?:()=>void}={}){
   if(portfolioInstance&&portfolioInstance.role!==role)portfolioInstance.destroy();
