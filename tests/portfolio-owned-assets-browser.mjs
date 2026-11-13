@@ -28,6 +28,7 @@ try{
    let result;
    if(operation==='ethereum')result={address:body.address,assets:body.kind==='tokens'?[token('ethereum','ethereum:1:0x'+'3'.repeat(40),'ERC-20','Shared ETH Token',body.address===eth?'1230000':'1000000',6)]:[token('ethereum','ethereum:1:0x'+'4'.repeat(40)+':'+(body.address===eth?'1':'2'),'ERC-721','ETH Art '+(body.address===eth?'One':'Two'),'1',0)],cursor:null};
    else if(operation==='solana')result={address:sol,assets:[token('solana','solana:mainnet:ft','SPL','SOL FT','5000',3),token('solana','solana:mainnet:nft','Compressed NFT','SOL Artwork','1',0)],more:false};
+   else if(body.action==='activity')result={address:btc,rows:[],more:false};
    else if(body.action==='owned')result={address:btc,rows:[{id:ordinal,number:123,contentType:'image/png',owner:btc,ownerOutput:'b'.repeat(64)+':0',created:1600000000,genesisAddress:btc,name:'Owned Ordinal',collection:null}],more:false};
    else result={address:btc,assets:[token('bitcoin','bitcoin:'+body.action+':TOKEN',body.action==='runes'?'Rune':'BRC-20',body.action==='runes'?'BTC Rune':'BTC BRC20','100',body.action==='runes'?null:0)],more:false};
    if(malformed&&operation==='ethereum'&&body.address===eth&&body.kind==='tokens')result.assets[0].raw='1.5';
@@ -40,16 +41,19 @@ try{
  await page.goto('http://127.0.0.1:8997/');await page.addScriptTag({content:await readFile('shared/runtime.js','utf8')});await page.addStyleTag({content:await readFile('shared/styles.css','utf8')});
  await page.evaluate(({eth,eth2,sol,btc,stake})=>{
   const settings=new Map();window.fixtureStorage={getItem:key=>settings.get(key)??null,setItem:(key,value)=>settings.set(key,value),keys:()=>[...settings.keys()],setItems:(values,remove=[])=>{for(const key of remove)settings.delete(key);for(const [key,value]of Object.entries(values))settings.set(key,value);}};
-  window.chainData={ethereum:{accounts:Object.fromEntries([eth,eth2].map(address=>[address,{balanceWei:'1000000000000000000',block:1,transactions:[]}])),history:{},usd:1000,updated:null},solana:{accounts:{[sol]:{raw:'1000000000',slot:1,checkpoint:null,transactions:[]}},history:{},usd:100},bitcoin:{accounts:{[btc]:{raw:'100000000',tip:'f'.repeat(64),transactions:[]}},history:{},usd:100000}};
-  const policy='1'.repeat(56),ft=policy+'41',nft=policy+'42';window.fixture={groups:{[stake]:['addr1fixture']},infos:[{address:'addr1fixture',balance:'1000000',utxo_set:[{tx_hash:'c'.repeat(64),tx_index:0,value:'1000000',asset_list:[{policy_id:policy,asset_name:'41',quantity:'2500',decimals:3},{policy_id:policy,asset_name:'42',quantity:'1',decimals:0}]}]}],facts:{},txs:[],markets:{[ft]:{name:'Cardano FT',decimals:3},[nft]:{name:'Cardano NFT',decimals:0,is_nft:true}},adaUsd:1,history:{},complete:true};
+  window.chainData={ethereum:{accounts:Object.fromEntries([eth,eth2].map(address=>[address,{balanceWei:'1000000000000000000',block:1,transactions:[{id:'0x'+'1'.repeat(64)+':normal',hash:'0x'+'1'.repeat(64),kind:'normal',block:1,time:1700000200,from:'0x'+'8'.repeat(40),to:address,valueWei:'1000000000000000000',feeWei:'0',failed:false}]}])),history:{},usd:1000,updated:null},solana:{accounts:{[sol]:{raw:'1000000000',slot:1,checkpoint:null,transactions:[{hash:'1'.repeat(64),slot:1,time:1700000100,payer:'outside',feeRaw:'0',failed:false,transfers:[{from:'outside',to:sol,raw:'1000000000'}]}]}},history:{},usd:100},bitcoin:{accounts:{[btc]:{raw:'100000000',tip:'f'.repeat(64),transactions:[{hash:'d'.repeat(64),height:1,time:1700000300,feeRaw:'0',inputs:[{address:'outside',raw:'100000000'}],outputs:[{address:btc,raw:'100000000'}]},{hash:'b'.repeat(64),height:3,time:1700000500,feeRaw:'0',inputs:[{address:'outside',raw:'1'}],outputs:[{address:btc,raw:'1'}]},{hash:'a'.repeat(64),height:2,time:1700000450,feeRaw:'0',inputs:[{address:'outside',raw:'1'}],outputs:[{address:btc,raw:'1'}]}]}},history:{},usd:100000}};
+  const policy='1'.repeat(56),ft=policy+'41',nft=policy+'42';window.fixture={groups:{[stake]:['addr1fixture']},infos:[{address:'addr1fixture',balance:'1000000',utxo_set:[{tx_hash:'c'.repeat(64),tx_index:0,value:'1000000',asset_list:[{policy_id:policy,asset_name:'41',quantity:'2500',decimals:3},{policy_id:policy,asset_name:'42',quantity:'1',decimals:0}]}]}],facts:{receive:{hash:'c'.repeat(64),time:1700000250,wallets:[stake],decimals:{[ft]:3,[nft]:0},adaRaw:'1000000',feeRaw:'0',assets:{[ft]:'2500',[nft]:'1'},internal:false,swapCandidate:false}},txs:[],markets:{[ft]:{name:'Cardano FT',decimals:3},[nft]:{name:'Cardano NFT',decimals:0,is_nft:true}},adaUsd:1,history:{},complete:true};
   window.createUniversalOverlay=options=>{const overlay=document.createElement('section');overlay.id=options.id;const back=document.createElement('button');back.textContent='Back';back.onclick=options.closeOverlay;overlay.append(back,...options.bodyNodes);document.body.append(overlay);return {overlay};};
  },{eth,eth2,sol,btc,stake});
  await page.addScriptTag({type:'module',content:bundle.outputFiles[0].text});
- const assets=page.getByRole('button',{name:'Open Assets',exact:true});await assets.waitFor();assert.equal(requests.length,0);
+ const assets=page.getByRole('button',{name:'Open Assets',exact:true});try{await assets.waitFor();}catch(error){throw new Error(JSON.stringify({errors,text:await page.locator('body').innerText()}),{cause:error});}assert.equal(requests.length,0);
  await assets.click();await page.getByRole('button',{name:'Open FTs',exact:true}).click();
  const ftTable=page.locator('#portfolio-holdings-overlay');
  const foreignFt=ftTable.locator('tr').filter({hasText:'Shared ETH Token'});await foreignFt.waitFor();
  for(const name of ['Cardano FT','SOL FT','BTC Rune','BTC BRC20'])await ftTable.getByText(name,{exact:false}).first().waitFor();
+ const ftOrder=await ftTable.locator('tbody tr td:first-child').allTextContents();
+ assert.ok(ftOrder[0].includes('Bitcoin')&&ftOrder[1].includes('ADA')&&ftOrder[2].includes('Cardano FT')&&ftOrder[3].includes('Ethereum')&&ftOrder[4].includes('Solana'),JSON.stringify(ftOrder));
+ await ftTable.getByLabel('Sort assets',{exact:true}).selectOption('value');await ftTable.getByLabel('Sort assets',{exact:true}).selectOption('date');
  await foreignFt.getByText('Set current price').click();
  await foreignFt.getByLabel('Current USD price for Shared ETH Token').fill('2');
  assert.match(await foreignFt.innerText(),/4\.46/,'a manual quote values the exact 2.23-token balance');
@@ -66,6 +70,13 @@ try{
  assert.equal(saved.eth.assets[0].image,'https://gateway.pinata.cloud/ipfs/QmExample/eth.png');assert.equal(saved.eth.assets[0].raw,'1230000');assert.equal(saved.sol.assets[0].image,'https://gateway.pinata.cloud/ipfs/QmExample/sol.png');
  assert.equal(await gallery.getByRole('alert').count(),0,'valid provider gateway artwork cannot reject ETH or SOL inventory');
  assert.ok(!requests.some(row=>row.action==='activity'),'owned Ordinals do not require a historical transaction scan');
+ assert.deepEqual((await gallery.locator('.portfolio-nft-caption strong').allTextContents()).slice(0,2),['Owned Ordinal','Cardano NFT'],'NFT receipt dates interleave Bitcoin and Cardano before undated assets');
+ await gallery.getByRole('button',{name:'Back',exact:true}).click();await gallery.getByRole('button',{name:'Open All assets',exact:true}).click();await gallery.getByText('Owned Ordinal',{exact:true}).waitFor();
+ assert.deepEqual((await gallery.locator('.portfolio-nft-caption strong').allTextContents()).slice(0,2),['Owned Ordinal','Bitcoin'],'all assets use one cross-chain timeline');
+ await gallery.getByRole('button',{name:'Back',exact:true}).click();await gallery.getByRole('button',{name:'Open Historical NFTs',exact:true}).click();await gallery.getByText('Owned Ordinal',{exact:true}).waitFor();
+ await page.waitForFunction(()=>!document.querySelector('#portfolio-holdings-overlay button')?.disabled);
+ assert.deepEqual((await gallery.locator('.portfolio-nft-collage .portfolio-nft-caption strong').allTextContents()).slice(0,2),['Owned Ordinal','Cardano NFT'],'historical NFTs preserve the same date order');
+ await gallery.getByRole('button',{name:'Back',exact:true}).click();await gallery.getByRole('button',{name:'Open NFTs',exact:true}).click();await gallery.getByText('Owned Ordinal',{exact:true}).waitFor();
  for(const width of [1200,390,320]){await page.setViewportSize({width,height:1000});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await gallery.screenshot({path:'/tmp/portfolio-owned-assets-'+width+'.png'});}
  await gallery.getByLabel('Network',{exact:true}).selectOption('solana');assert.equal(await gallery.locator('.portfolio-nft-tile').count(),1);
  await gallery.getByLabel('Network',{exact:true}).selectOption('');

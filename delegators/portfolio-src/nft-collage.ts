@@ -3,6 +3,7 @@ import type {Fact,Acquisitions} from './core.ts';
 import {collectionName,collectionRepresentative} from './holding-groups.ts';
 import {matchesSearchText} from './transaction-search.ts';
 import type {historicalNfts} from './historical-nfts';
+import {compareAssetDates} from './asset-dates.ts';
 
 export type NftPrices=Record<string,{buy:number|null;sell:number|null;acquisition?:'Buy'|'Mint'}>;
 export type NftSort='date'|'buy-high'|'buy-low'|'sell-high'|'sell-low';
@@ -58,7 +59,7 @@ export const nftCollectionKey=(row:ReturnType<typeof historicalNfts>[number])=>{
 };
 export function filterNftCollage(rows:ReturnType<typeof historicalNfts>,prices:NftPrices,wallets:Record<string,string[]>,query:string,collection:string,sort:NftSort){
   return rows.filter(row=>(!collection||nftCollectionKey(row)===collection)&&matchesSearchText(query,[row.name,row.id,...(row.wallets||wallets[row.id]||[])])).sort((a,b)=>{
-    const tie=(b.firstReceived??0)-(a.firstReceived??0)||a.name.localeCompare(b.name)||a.id.localeCompare(b.id);
+    const tie=compareAssetDates(a,b);
     if(sort==='date')return tie;
     const side=sort.startsWith('buy')?'buy':'sell',left=prices[a.id]?.[side]??null,right=prices[b.id]?.[side]??null;
     if(left===null||right===null)return left===right?tie:left===null?1:-1;

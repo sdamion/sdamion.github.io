@@ -631,7 +631,7 @@ async function connectPortfolioPasskey() {
     if (button) { button.disabled = true; button.setAttribute('aria-busy', 'true'); }
     setStatus('Waiting for your passkey…');
     try {
-        const module = await import('./portfolio/app.js?v=20261112-portfolio-settings-actions');
+        const module = await import('./portfolio/app.js?v=20261113-assets-date-order');
         await module.signInPortfolioWithPasskey();
         setStatus('');
         await openMemberPortfolio();
@@ -675,7 +675,7 @@ async function openMemberPortfolio() {
     closePortfolio = close;
     container.textContent = t('Loading member portfolio…');
     try {
-        const module = await import('./portfolio/app.js?v=20261112-portfolio-settings-actions');
+        const module = await import('./portfolio/app.js?v=20261113-assets-date-order');
         if (closed) return;
         container.replaceChildren();
         dispose = module.mountPortfolio(container, { role: ROLE, connectWallet: () => { closePortfolio?.(); populateWallets().catch(error => setStatus(error.message, true)); }, getWallet: (reconnect, stake, linkAnother) => linkAnother ? reconnectPortfolioWallet(stake, true) : reconnect && !portfolioUnlockWallet ? reconnectPortfolioWallet(stake) : portfolioUnlockWallet });

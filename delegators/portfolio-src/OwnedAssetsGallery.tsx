@@ -10,14 +10,15 @@ import {assetSources} from './asset-source-registry';
 import {assetImageCandidates} from './asset-image';
 import type {HistoricalNftRow} from './historical-nfts';
 import {useArtworkLoading} from './use-artwork-loading';
+import {sortAssetsByDate} from './asset-dates';
 
-export type OwnedAssetRow=OwnedAsset&{wallets:string[];ordinal?:HistoricalNftRow};
+export type OwnedAssetRow=OwnedAsset&{wallets:string[];ordinal?:HistoricalNftRow;firstReceived?:number|null};
 const chainLabel=(network:OwnedAsset['chain'])=>network==='cardano'?'Cardano':assetSources[network].label;
 export function OwnedAssetsGallery({rows,busy,partial,errors,onRefresh,showTypeFilter=false}:{rows:OwnedAssetRow[];busy:boolean;partial:boolean;errors:{wallet:string;message:string}[];onRefresh:()=>void;showTypeFilter?:boolean}){
   const t=usePortfolioText(),[query,setQuery]=useState(''),[chain,setChain]=useState(''),[kind,setKind]=useState(''),[page,setPage]=useState(0);
-  const filtered=rows.filter(row=>(!chain||row.chain===chain)&&(!kind||(kind==='fts'?assetIsFt(row):assetIsNft(row)))&&[row.id,row.name,row.symbol,row.standard,...row.wallets].join(' ').toLowerCase().includes(query.trim().toLowerCase())).sort((a,b)=>a.chain.localeCompare(b.chain)||a.name.localeCompare(b.name)||a.id.localeCompare(b.id));
+  const filtered=sortAssetsByDate(rows.filter(row=>(!chain||row.chain===chain)&&(!kind||(kind==='fts'?assetIsFt(row):assetIsNft(row)))&&[row.id,row.name,row.symbol,row.standard,...row.wallets].join(' ').toLowerCase().includes(query.trim().toLowerCase())));
   const size=24,current=Math.min(page,Math.max(0,Math.ceil(filtered.length/size)-1)),visible=filtered.slice(current*size,(current+1)*size);
-  const caption=(row:OwnedAssetRow)=><span className="portfolio-nft-caption" translate="no"><strong>{row.name}</strong><span>{t(chainLabel(row.chain))} · {t(row.standard)}</span><span>{t('Balance')}: {assetQuantity(row)} {row.decimals===null?t('raw units'):row.symbol}</span><span>{row.wallets.join(' · ')}</span></span>;
+  const caption=(row:OwnedAssetRow)=><span className="portfolio-nft-caption" translate="no"><strong>{row.name}</strong><span>{t(chainLabel(row.chain))} · {t(row.standard)}</span><span>{row.firstReceived?t('First received: {date}',{date:new Date(row.firstReceived*1000).toISOString().slice(0,10)}):t('First received: unknown')}</span><span>{t('Balance')}: {assetQuantity(row)} {row.decimals===null?t('raw units'):row.symbol}</span><span>{row.wallets.join(' · ')}</span></span>;
   return <>
     <div className="portfolio-owned-asset-controls">
       <input type="search" aria-label={t('Search owned assets')} placeholder={t('Asset name, ID or wallet name')} value={query} onChange={event=>{setQuery(event.target.value);setPage(0);}}/>
@@ -25,6 +26,7 @@ export function OwnedAssetsGallery({rows,busy,partial,errors,onRefresh,showTypeF
       {showTypeFilter&&<label translate="no">{t('Asset type')}<select aria-label={t('Asset type')} value={kind} onChange={event=>{setKind(event.target.value);setPage(0);}}><option value="">{t('All assets')}</option><option value="fts">{t('FTs')}</option><option value="nfts">{t('NFTs')}</option></select></label>}
       <button type="button" className="governance-vote-secondary" aria-label={t('Refresh owned assets')} title={t('Refresh owned assets')} disabled={busy} onClick={onRefresh}><RefreshCw size={18} aria-hidden="true"/></button>
     </div>
+    <p className="small muted" translate="no">{t('Newest received first')}</p>
     {busy&&<p role="status" translate="no">{t('Checking owned assets…')}</p>}
     {partial&&<p className="small muted" translate="no">{t('Partial asset coverage. Refresh to check every saved wallet.')}</p>}
     {errors.map((error,index)=><p key={index} role="alert" className="small-text error-text" translate="no">{error.wallet&&error.wallet+': '}{t(error.message)}</p>)}

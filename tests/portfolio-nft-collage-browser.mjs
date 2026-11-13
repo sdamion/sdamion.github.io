@@ -24,16 +24,16 @@ try{
   for(const width of [1200,390]){
     await page.setViewportSize({width,height:1000});
     const mobile=width<768;
-    await page.waitForFunction(count=>document.querySelectorAll('.portfolio-nft-tile').length===count,mobile?1:6);
-    assert.equal(await tiles.count(),mobile?1:6);
-    await page.waitForFunction(count=>window.visibleAssetIds.split('|').length===count,mobile?1:6);
+    await page.waitForFunction(count=>document.querySelectorAll('.portfolio-nft-tile').length===count,mobile?3:6);
+    assert.equal(await tiles.count(),mobile?3:6);
+    await page.waitForFunction(count=>window.visibleAssetIds.split('|').length===count,mobile?3:6);
     assert.equal(await page.locator('.portfolio-nft-owned').count(),mobile?1:2);
     assert.equal(await tiles.first().locator('.portfolio-nft-owned').innerText(),'Owned\nMain wallet, Ledger');
     assert.equal(await page.locator('.portfolio-nft-placeholder').count(),mobile?0:1);
     assert.equal(await page.locator('.portfolio-nft-caption').first().innerText(),'Frigid #0\nFirst received: 2024-01-13\nBuy: 10 ADA\nSell: 50 ADA');
     if(!mobile)assert.match(await page.locator('.portfolio-nft-caption').nth(1).innerText(),/2024-01-12/);
     const columns=await page.locator('.portfolio-nft-collage').evaluate(node=>getComputedStyle(node).gridTemplateColumns.split(' ').length);
-    assert.equal(columns,mobile?1:3);
+    assert.equal(columns,3);
     const grid=await page.locator('.portfolio-nft-collage').boundingBox();assert.ok(grid.height<=821,JSON.stringify(grid));
     for(const tile of await tiles.all()){
       const bounds=await tile.boundingBox();assert.ok(bounds.x>=0&&bounds.x+bounds.width<=width);
@@ -42,14 +42,14 @@ try{
     }
     if(!mobile)assert.ok(await page.locator('.portfolio-nft-caption strong').nth(1).evaluate(node=>parseFloat(getComputedStyle(node).fontSize)<14));
     await page.screenshot({path:`/private/tmp/portfolio-nft-collage-${width}.png`,fullPage:true});
-    await page.getByRole('button',{name:'Next page',exact:true}).click();assert.equal(await tiles.count(),mobile?1:6);
+    await page.getByRole('button',{name:'Next page',exact:true}).click();assert.equal(await tiles.count(),mobile?3:6);
     if(!mobile)assert.match(await page.locator('.portfolio-nft-caption').first().innerText(),/Frigid #6/);
-    if(mobile)assert.match(await page.locator('.portfolio-nft-caption').innerText(),/Frigid #1/);
-    const nextFirst=(mobile?'a':'b').repeat(56)+(mobile?'01':'06');
+    if(mobile)assert.match(await page.locator('.portfolio-nft-caption').first().innerText(),/Frigid #3/);
+    const nextFirst=(mobile?'a':'b').repeat(56)+(mobile?'03':'06');
     await page.waitForFunction(id=>window.visibleAssetIds.split('|').includes(id),nextFirst);
     assert.equal(await page.evaluate(()=>window.visibleAssetIds.includes('a'.repeat(56)+'00')),false,'previous page is no longer watched');
-    assert.equal(await page.locator('.portfolio-nft-owned').count(),0,'sold NFTs are not marked owned even with old wallet labels');
-    await page.getByRole('button',{name:'Previous page',exact:true}).click();assert.equal(await tiles.count(),mobile?1:6);
+    assert.equal(await page.locator('.portfolio-nft-owned').count(),mobile?1:0,'ownership follows current balances rather than historical wallet labels');
+    await page.getByRole('button',{name:'Previous page',exact:true}).click();assert.equal(await tiles.count(),mobile?3:6);
     const button=page.locator('.portfolio-image-preview-button').first();await button.focus();await page.keyboard.press('Enter');
     await page.locator('.portfolio-image-preview').waitFor();
     await page.getByRole('button',{name:'Back',exact:true}).click();
@@ -68,5 +68,5 @@ try{
   await sort.selectOption('sell-high');assert.match(await tiles.first().innerText(),/Frigid #0/);
   await page.evaluate(()=>window.collageRoot.unmount());
   assert.equal(await page.evaluate(()=>window.visibleAssetIds),'','closing the collage clears historical image polling');
-  assert.deepEqual(errors,[]);console.log('PASS: NFT collage shows six images on desktop and one on mobile, with pagination, dates and previews.');
+  assert.deepEqual(errors,[]);console.log('PASS: NFT collage shows six images on desktop and three on mobile, with pagination, dates and previews.');
 }finally{await browser.close();}

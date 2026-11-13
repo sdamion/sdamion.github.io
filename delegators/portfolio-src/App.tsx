@@ -62,6 +62,7 @@ import {OwnedAssetsGallery,type OwnedAssetRow} from './OwnedAssetsGallery';
 import {useOwnedAssets} from './use-owned-assets';
 import {assetIsNft,mergeOwnedAssets,type AssetWallet} from './owned-assets';
 import {externalFtHoldings} from './external-holdings';
+import {assetReceiptDates,sortAssetsByDate} from './asset-dates';
 import {useOrdinals} from './use-ordinals';
 import {ordinalHistory} from './ordinals';
 import {OrdinalNftTile} from './OrdinalNftTile';
@@ -159,6 +160,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   const rawEthTransfers=useMemo(()=>ethereumTransfers(ethereum.data,ethereum.wallets,ethereum.exchanges),[ethereum.data,ethereum.wallets,ethereum.exchanges]);
   const rawRobinhoodTransfers=useMemo(()=>ethereumTransfers(robinhood.data,robinhood.wallets,robinhood.exchanges).map(row=>({...row,hash:'rh:'+row.hash})),[robinhood.data,robinhood.wallets,robinhood.exchanges]);
   const [holdingsGroup,setHoldingsGroup]=useState<'FTs'|'NFTs'|'All assets'|'Historical NFTs'|'Missing assets / prices'|null>(null);
+  const [holdingsSort,setHoldingsSort]=useState<'date'|'value'>('date');
   const [historicalImageIds,setHistoricalImageIds]=useState('');
   const ordinals=useOrdinals(memberStake,ready&&canBitcoin,bitcoin.wallets,bitcoin.data,section==='holdings'&&(holdingsGroup==='Historical NFTs'||holdingsGroup==='NFTs'),historicalImageIds,holdingsGroup==='NFTs');
   const assetWalletTargets:AssetWallet[]=[...(canEthereum?ethereum.wallets.filter(wallet=>wallet.group!=='swap').map(wallet=>({...wallet,chain:'ethereum' as const})):[]),...(canRobinhood?robinhood.wallets.filter(wallet=>wallet.group!=='swap').map(wallet=>({...wallet,chain:'robinhood' as const})):[]),...solana.wallets.map(wallet=>({...wallet,chain:'solana' as const})),...bitcoin.wallets.map(wallet=>({...wallet,chain:'bitcoin' as const}))];
@@ -477,6 +479,7 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
   const includedExternalFts=externalFtRows.filter(row=>!row.excluded);
   const included=includedAssets(rows,overrides),excludedCount=rows.length-included.length;
   const nftHistory=useMemo(()=>[...historicalNfts(Object.values(classifiedFacts),holdings,snapshot?.markets||{}),...ordinalNfts.rows,...robinhoodHistoricalNfts(robinhood.nftHistory,robinhood.wallets).map(row=>({...row,image:cachedNftImages[row.id]||row.image}))].sort((a,b)=>(b.firstReceived??0)-(a.firstReceived??0)||a.id.localeCompare(b.id)),[classifiedFacts,holdings,snapshot?.markets,ordinalNfts.rows,robinhood.nftHistory,robinhood.wallets,cachedNftImages]);
+  const assetDates=useMemo(()=>assetReceiptDates({facts:Object.values(classifiedFacts),nfts:nftHistory,ethereum:{data:ethereum.data,wallets:ethereum.wallets},robinhood:{data:robinhood.data,wallets:robinhood.wallets,tokens:robinhood.tokenHistory},solana:{data:solana.data,wallets:solana.wallets},bitcoin:{data:bitcoin.data,wallets:bitcoin.wallets}}),[classifiedFacts,nftHistory,ethereum.data,ethereum.wallets,robinhood.data,robinhood.wallets,robinhood.tokenHistory,solana.data,solana.wallets,bitcoin.data,bitcoin.wallets]);
   const nftEvents=useMemo(()=>nftTransactions(nftHistory,Object.values(classifiedFacts),payments.acquisitions),[nftHistory,classifiedFacts,payments.acquisitions]);
   const nftPairs=useMemo(()=>nftTradePairs(nftEvents),[nftEvents]);
   const nftPrices=useMemo(()=>nftCyclePrices(nftEvents),[nftEvents]);
@@ -500,10 +503,13 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
     ownedOrdinalRows.set(metadata.id,{id:ordinal.id,chain:'bitcoin',standard:'Ordinal',name:metadata.name,symbol:'',raw:'1',decimals:0,image:null,explorer:'https://ordiscan.com/inscription/'+metadata.id,wallets:[wallet.name],ordinal});
   }
   ownedAssetRows.push(...ownedOrdinalRows.values());
+  for(const row of ownedAssetRows){row.firstReceived=assetDates[row.id]??null;if(row.ordinal)row.ordinal={...row.ordinal,firstReceived:row.firstReceived};}
   const ownedNftRows=ownedAssetRows.filter(assetIsNft);
   const nftDisplayHistory=mergeHistoricalNfts(nftHistory,ownedNftRows);
   const groupRows=holdingsGroup?rows.filter(row=>assetGroup(row.id)===holdingsGroup):rows;
-  const holdingEntries=policyTableRows(groupRows,expandedPolicies,r=>!missingCostsOnly||(r.cost===null&&(r.id==='lovelace'||overrides[r.id]?.excluded!==true)));
+  const includeHolding=(r:typeof rows[number])=>!missingCostsOnly||(r.cost===null&&(r.id==='lovelace'||overrides[r.id]?.excluded!==true));
+  const holdingEntries=holdingsSort==='date'?groupRows.filter(includeHolding).map(asset=>({asset})):policyTableRows(groupRows,expandedPolicies,includeHolding);
+  const orderedFtRows=<T extends {id:string;name:string},>(entries:T[])=>holdingsSort==='date'?sortAssetsByDate(entries,assetDates):entries;
   const groupIncluded=includedAssets(groupRows,overrides);
   const valued=included.filter(r=>r.value!==null),covered=included.filter(r=>r.pnl!==null);
   const ada=Number(holdings.find(h=>h.id==='lovelace')?.raw||0)/1e6;
@@ -784,74 +790,76 @@ export default function Home({memberStake,role='delegator',portfolioAccess}:{mem
       </>}
       {(holdingsGroup==='NFTs'||holdingsGroup==='All assets')&&<OwnedAssetsGallery rows={holdingsGroup==='NFTs'?ownedNftRows:ownedAssetRows} showTypeFilter={holdingsGroup==='All assets'} busy={ownedAssetInventory.busy||ordinals.busy} partial={!snapshot?.complete||ownedAssetInventory.incomplete||bitcoin.wallets.some(wallet=>!ordinals.data.accounts[wallet.address])||assetWalletTargets.some(wallet=>wallet.chain==='ethereum'?!ethereum.data.accounts[wallet.address]:wallet.chain==='solana'?!solana.data.accounts[wallet.address]:!bitcoin.data.accounts[wallet.address])} errors={[...ownedAssetInventory.errors,...(ordinals.error?[{wallet:'Bitcoin Ordinals',message:ordinals.error}]:[])]} onRefresh={()=>{void ownedAssetInventory.refresh(true).catch(()=>{});void ordinals.refresh(true);}}/>}
       {holdingsGroup==='FTs'&&<>
+      <label translate="no">{t('Sort assets')}<select aria-label={t('Sort assets')} value={holdingsSort} onChange={event=>setHoldingsSort(event.target.value as 'date'|'value')}><option value="date">{t('Newest received first')}</option><option value="value">{t('Value and collections')}</option></select></label>
       <button type="button" className="governance-vote-secondary" disabled={busy||!snapshot} onClick={()=>void refreshAssetPurchases()}>Refresh all purchase data</button>
       {purchaseProgress&&<div aria-live="polite"><div className="section-heading"><span className="governance-vote-bar-track" style={{flex:1}} role="progressbar" aria-label="Purchase transactions checked" aria-valuemin={0} aria-valuemax={purchaseProgress.total} aria-valuenow={purchaseProgress.done}><span className="governance-vote-bar-fill governance-vote-bar-fill--yes" style={{flexBasis:`${purchaseProgress.done/purchaseProgress.total*100}%`}}/></span><span className="tdsp-bar-legend">{purchaseProgress.done} / {purchaseProgress.total}</span></div></div>}
       <label className="small"><input type="checkbox" checked={missingCostsOnly} onChange={e=>setMissingCostsOnly(e.target.checked)}/> Show holdings with missing purchase cost ({valuationCoverage(groupIncluded).missingCost})</label>
       {(groupRows.length>0||holdingsGroup==='FTs'&&(nativeCount>0||externalFtRows.length>0))&&<Table className="portfolio-holdings-table"><TableHeader><TableRow>{['Asset','Balance','Price · USD','Value · USD','Average buy · USD','Gain / loss','Exclude'].map(label=><TableHead translate="no" key={label}>{t(label).replace('USD',holdingsCurrency)}</TableHead>)}</TableRow></TableHeader><TableBody>
-      {holdingsGroup==='FTs'&&bitcoin.wallets.length>0&&<TableRow>
-        <TableCell><button type="button" className="governance-vote-secondary" onClick={()=>setSection('wallets')}>Bitcoin · BTC</button></TableCell>
+      {orderedFtRows([
+      ...(bitcoin.wallets.length>0?[{id:'bitcoin:native',name:'Bitcoin',content:<TableRow key="bitcoin:native">
+        <TableCell><button type="button" className="governance-vote-secondary" onClick={()=>setSection('wallets')}>Bitcoin · BTC</button>{holdingsSort==='date'&&<AssetReceived time={assetDates['bitcoin:native']}/>}</TableCell>
         <TableCell translate="no">{btcHistoryReady?num(bitcoin.wallets.reduce((sum,w)=>sum+bitcoinAmount(bitcoin.data.accounts[w.address].raw),0),8):'—'}</TableCell>
         <TableCell translate="no">{formatPortfolioUsd(bitcoin.data.usd,currencyDisplay)}</TableCell><TableCell translate="no">{formatPortfolioUsd(btcAvailable.value,currencyDisplay)}</TableCell>
         <TableCell translate="no">—</TableCell><TableCell translate="no">—</TableCell>
         <TableCell><AssetExclusionToggle compact name="Bitcoin" excluded={btcExcluded} onChange={excluded=>excludeAsset('bitcoin:mainnet:native',excluded)}/></TableCell>
-      </TableRow>}
-      {holdingsGroup==='FTs'&&solana.wallets.length>0&&<TableRow>
-        <TableCell><button type="button" className="governance-vote-secondary" onClick={()=>setSection('wallets')}>Solana · SOL</button></TableCell>
+      </TableRow>}]:[]),
+      ...(solana.wallets.length>0?[{id:'solana:native',name:'Solana',content:<TableRow key="solana:native">
+        <TableCell><button type="button" className="governance-vote-secondary" onClick={()=>setSection('wallets')}>Solana · SOL</button>{holdingsSort==='date'&&<AssetReceived time={assetDates['solana:native']}/>}</TableCell>
         <TableCell translate="no">{solHistoryReady?num(solana.wallets.reduce((sum,w)=>sum+solAmount(solana.data.accounts[w.address].raw),0),9):'—'}</TableCell>
         <TableCell translate="no">{formatPortfolioUsd(solana.data.usd,currencyDisplay)}</TableCell><TableCell translate="no">{formatPortfolioUsd(solAvailable.value,currencyDisplay)}</TableCell>
         <TableCell translate="no">—</TableCell><TableCell translate="no">—</TableCell>
         <TableCell><AssetExclusionToggle compact name="Solana" excluded={solExcluded} onChange={excluded=>excludeAsset('solana:mainnet:native',excluded)}/></TableCell>
-      </TableRow>}
-      {holdingsGroup==='FTs'&&canEthereum&&ethereum.wallets.length>0&&<TableRow>
-        <TableCell><button type="button" className="governance-vote-secondary" onClick={()=>setSection('wallets')}>Ethereum · ETH</button></TableCell>
+      </TableRow>}]:[]),
+      ...(canEthereum&&ethereum.wallets.length>0?[{id:'ethereum:native',name:'Ethereum',content:<TableRow key="ethereum:native">
+        <TableCell><button type="button" className="governance-vote-secondary" onClick={()=>setSection('wallets')}>Ethereum · ETH</button>{holdingsSort==='date'&&<AssetReceived time={assetDates['ethereum:native']}/>}</TableCell>
         <TableCell translate="no">{ethereum.wallets.every(w=>ethereum.data.accounts[w.address])?num(ethereum.wallets.reduce((sum,w)=>sum+weiToEth(ethereum.data.accounts[w.address].balanceWei),0)):'—'}</TableCell>
         <TableCell translate="no">{formatPortfolioUsd(ethereum.data.usd,currencyDisplay)}</TableCell>
         <TableCell translate="no">{formatPortfolioUsd(ethValue,currencyDisplay)}</TableCell>
         <TableCell translate="no">{formatPortfolioUsd(ethBasis.average,currencyDisplay)}<div className="small muted">{t(!ethBasis.reconciled?'Waiting for transaction history to reconcile with the wallet balance':ethBasis.usd===null?'Missing receipt prices':'Mining adds ETH with zero purchase cost. Daily prices estimate known purchases.')}</div></TableCell><TableCell translate="no">{formatPortfolioUsd(ethValue!==null&&ethBasis.usd!==null?ethValue-ethBasis.usd:null,currencyDisplay)}</TableCell>
         <TableCell><AssetExclusionToggle compact name="Ethereum" excluded={ethExcluded} onChange={excluded=>excludeAsset('ethereum:1:native',excluded)}/></TableCell>
-      </TableRow>}
-      {holdingsGroup==='FTs'&&canRobinhood&&robinhood.wallets.length>0&&<TableRow>
-        <TableCell><button type="button" className="governance-vote-secondary" onClick={()=>setSection('wallets')}>Robinhood Chain · ETH</button></TableCell>
+      </TableRow>}]:[]),
+      ...(canRobinhood&&robinhood.wallets.length>0?[{id:'robinhood:native',name:'Robinhood Chain',content:<TableRow key="robinhood:native">
+        <TableCell><button type="button" className="governance-vote-secondary" onClick={()=>setSection('wallets')}>Robinhood Chain · ETH</button>{holdingsSort==='date'&&<AssetReceived time={assetDates['robinhood:native']}/>}</TableCell>
         <TableCell translate="no">{robinhood.wallets.every(wallet=>robinhood.data.accounts[wallet.address])?num(robinhood.wallets.reduce((sum,wallet)=>sum+weiToEth(robinhood.data.accounts[wallet.address].balanceWei),0)):'—'}</TableCell>
         <TableCell translate="no">{formatPortfolioUsd(robinhood.data.usd,currencyDisplay)}</TableCell>
         <TableCell translate="no">{formatPortfolioUsd(robinhoodAvailable.value,currencyDisplay)}</TableCell>
         <TableCell>—</TableCell><TableCell>—</TableCell>
         <TableCell><AssetExclusionToggle compact name="Robinhood Chain ETH" excluded={robinhoodExcluded} onChange={excluded=>excludeAsset('robinhood:4663:native',excluded)}/></TableCell>
-      </TableRow>}
-      {holdingsGroup==='FTs'&&externalFtRows.map(row=><TableRow key={row.id}>
-        <TableCell translate="no">{row.name} <span className="small muted">{row.chain.toUpperCase()} · {row.standard}</span></TableCell>
+      </TableRow>}]:[]),
+      ...externalFtRows.map(row=>({id:row.id,name:row.name,content:<TableRow key={row.id}>
+        <TableCell translate="no">{row.name} <span className="small muted">{row.chain.toUpperCase()} · {row.standard}</span>{holdingsSort==='date'&&<AssetReceived time={assetDates[row.id]}/>}</TableCell>
         <TableCell translate="no">{row.quantity} {row.symbol}</TableCell>
         <TableCell>{row.price===null?t('Unavailable'):formatPortfolioUsd(row.price,currencyDisplay)}<details><summary translate="no" className="small">{t('Set current price')} (USD)</summary><Input aria-label={`Current USD price for ${row.name}`} type="number" min="0" step="any" value={overrides[row.id]?.price||''} onChange={event=>updateOverride(row.id,'price',event.target.value)}/></details></TableCell>
         <TableCell>{formatPortfolioUsd(row.value,currencyDisplay)}</TableCell>
         <TableCell>{formatPortfolioUsd(row.average,currencyDisplay)}<details><summary translate="no" className="small">{t('Set average buy price')} (USD)</summary><Input aria-label={`Average buy price in USD for ${row.name}`} type="number" min="0" step="any" value={overrides[row.id]?.average||''} onChange={event=>updateOverride(row.id,'average',event.target.value)}/></details></TableCell>
         <TableCell className={row.pnl===null?'muted':row.pnl>=0?'positive':'negative'}>{row.pnl===null?'—':formatPortfolioUsd(row.pnl,currencyDisplay)}{row.pnl===null&&<div className="small muted">{t('Purchase cost required for gain / loss')}</div>}</TableCell>
         <TableCell><AssetExclusionToggle compact name={row.name} excluded={row.excluded} onChange={excluded=>excludeAsset(row.id,excluded)}/></TableCell>
-      </TableRow>)}
-      {holdingEntries.map(entry=>{
+      </TableRow>})),
+      ...holdingEntries.map(entry=>{
         if('policy' in entry){
           const active=includedAssets(entry.assets,overrides),priced=active.filter(row=>row.value!==null),expanded=expandedPolicies.has(entry.policy);
           const total=holdingTotal(active,snapshot?.complete===true);
           const totals=holdingGroupTotals(active);
           const representative=collectionRepresentative(entry.assets)!,name=representative.name??t('Collection');
-          return <TableRow key={`policy:${entry.policy}`} className="portfolio-policy-row">
+          return {id:'cardano:'+entry.policy,name:representative?.name||entry.policy,content:<TableRow key={`policy:${entry.policy}`} className="portfolio-policy-row">
             <TableCell><TableGroupToggle expanded={expanded} title={name} onToggle={()=>togglePolicy(entry.policy)}><AssetImage compact hideIdentifier id={representative.asset.id} name={name} market={snapshot?.markets[representative.asset.id]}/></TableGroupToggle></TableCell>
             <TableCell><span translate="no">{totals.quantity===null?'—':num(totals.quantity)}</span><div translate="no" className="small muted">{t('{count} assets',{count:entry.assets.length})} · {t('{done} / {total} assets valued',{done:priced.length,total:active.length})}</div></TableCell>
             <TableCell translate="no">{formatPortfolioUsd(totals.price,currencyDisplay)}</TableCell><TableCell translate="no">{formatPortfolioUsd(total,currencyDisplay)}{holdingsCurrency!=='ADA'&&<div className="small muted">{formatPortfolioUsd(total,{...currencyDisplay,currency:'ADA'})}</div>}</TableCell>
             <TableCell translate="no">{formatPortfolioUsd(totals.buyAverage,currencyDisplay)}</TableCell>
             <TableCell translate="no" className={totals.pnl===null?'muted':totals.pnl>=0?'positive':'negative'}>{formatPortfolioUsd(totals.pnl===null?null:Math.abs(totals.pnl),currencyDisplay)}</TableCell>
             <TableCell translate="no">{t('{count} excluded',{count:entry.assets.length-active.length})}</TableCell>
-          </TableRow>;
+          </TableRow>};
         }
         const r=entry.asset;
-        return <TableRow key={`asset:${r.id}`}>
-        <TableCell><AssetImage id={r.id} name={r.name} market={snapshot?.markets[r.id]} onOpen={()=>setSelectedAsset(r.id)}/></TableCell>
+        return {id:'cardano:'+r.id,name:r.name,content:<TableRow key={`asset:${r.id}`}>
+        <TableCell><AssetImage id={r.id} name={r.name} market={snapshot?.markets[r.id]} onOpen={()=>setSelectedAsset(r.id)}/>{holdingsSort==='date'&&<AssetReceived time={assetDates['cardano:'+r.id]}/>}</TableCell>
         <TableCell>{r.qty===null?`${r.raw} raw units`:num(r.qty)}{r.id!=='lovelace'&&r.automaticDecimals==null&&<label className="small muted">Token decimals<Input aria-label={`Token decimals for ${r.name}`} type="number" min="0" max="30" step="1" value={overrides[r.id]?.decimals??''} onChange={e=>updateOverride(r.id,'decimals',e.target.value)} placeholder="Required to calculate value"/></label>}</TableCell>
         <TableCell>{r.price!==null?(r.quote.source==='wayup'||r.quote.source==='fallback'?'≈ ':'')+usd(r.price):'Unavailable'}{r.quote.source!=='wayup'&&<div className="small muted">{r.quote.source==='manual'?'Your price':r.quote.source==='fallback'?'User-defined fallback, not a market quote':r.price!==null?'Market estimate':''}</div>}<details><summary translate="no" className="small">{t('Set current price')} (USD)</summary><Input aria-label={`Current USD price for ${r.name}`} type="number" min="0" step="any" value={overrides[r.id]?.price||''} onChange={e=>updateOverride(r.id,'price',e.target.value)} placeholder="Use market quote"/></details></TableCell>
         <TableCell>{r.value===null?'—':usd(r.value)}</TableCell>
         <TableCell>{r.id==='lovelace'?<><strong>{adaLive?.averageReceiptUsd!=null?(adaLive.provisional?'≈ ':'')+formatPortfolioUsd(adaLive.averageReceiptUsd,currencyDisplay,6):'—'}</strong><div className="small muted">All incoming ADA · weighted receipt-date prices{adaLive?.provisional?' · Partial history':''}</div>{!!adaLive?.missingReceiptAda&&<div className="small muted">Historical prices missing for {num(adaLive.missingReceiptAda)} ADA</div>}{r.cost!==null?<div className="small muted">Remaining cost for gain/loss: {usd(r.cost)}</div>:<div className="small muted">{adaBasisStatus}</div>}</>:<><strong>{r.buyAverage!==null?usd(r.buyAverage):'Unavailable'}</strong><div className="small muted">{parseAmount(overrides[r.id]?.average)!==null?'Your average cost':r.buyAverage!==null?'Known purchases · weighted historical USD cost':r.qty===null?'Token decimals required for per-unit price':'Purchase cost or historical USD price missing'}</div><details><summary translate="no" className="small">{t('Set average buy price')} (USD)</summary><Input className="cost-input" aria-label={`Average buy price in USD for ${r.name}`} type="number" min="0" step="any" value={overrides[r.id]?.average||''} onChange={e=>updateOverride(r.id,'average',e.target.value)} placeholder="Use calculated purchase cost"/></details></>}</TableCell>
         <TableCell className={overrides[r.id]?.excluded||r.pnl===null?'muted':r.pnl>=0?'positive':'negative'}>{r.pnl===null?'—':((r.id==='lovelace'&&provisional)||r.estimatedPurchaseCost?'≈ ':'')+signed(r.pnl)}{r.estimatedPurchaseCost&&<div className="small muted">Known purchase average · estimated cost</div>}{r.pnl===null&&r.value!==null&&<div className="small muted">Purchase cost required for gain / loss</div>}{r.pnl!==null&&r.cost!==null&&r.cost>0&&<div className="small">{num(r.pnl/r.cost*100,2)}%{r.id==='lovelace'&&provisional?' · provisional':''}</div>}</TableCell>
         <TableCell>{r.id!=='lovelace'&&<AssetExclusionToggle compact name={r.name} excluded={overrides[r.id]?.excluded===true} onChange={excluded=>excludeAsset(r.id,excluded)}/>}</TableCell>
-      </TableRow>;})}</TableBody></Table>}{!groupRows.length&&!(holdingsGroup==='FTs'&&(nativeCount||externalFtRows.length))&&<p className="empty">{busy?'Fetching balances…':'No unspent holdings at the tracked addresses.'}</p>}
+      </TableRow>};})]).map(entry=>entry.content)}</TableBody></Table>}{!groupRows.length&&!(holdingsGroup==='FTs'&&(nativeCount||externalFtRows.length))&&<p className="empty">{busy?'Fetching balances…':'No unspent holdings at the tracked addresses.'}</p>}
       <p className="small muted table-note">Remaining cost uses the same calculation during and after refresh. ADA history must reconcile with the wallet balance; token lots must match the current holding. Missing history or receipt prices are not treated as zero. Values update as new facts and prices arrive, not because refresh finishes. Sends, spends and fees remove proportional ADA cost; internal transfers never reset the average. Daily prices approximate receipt-time prices. This is your receipt-price benchmark, not an exchange execution price or tax calculation. Token costs use FIFO trades, linked mint payments or your entry. Performance excludes realised gains; current holdings already reflect fees.</p>
       </>}
     </section>
@@ -936,6 +944,11 @@ const children=group.map(row=>row.chain==='deposit'?<DepositTransaction key={row
 function AssetExclusionToggle({name,excluded,onChange,compact=false}:{name:string;excluded:boolean;onChange:(excluded:boolean)=>void;compact?:boolean}){
   const t=usePortfolioText();
   return <label className="small muted"><input type="checkbox" checked={excluded} aria-label={t('Exclude {name} from Assets Across Wallets',{name})} onChange={event=>onChange(event.target.checked)}/>{!compact&&t('Exclude from Assets Across Wallets')}</label>;
+}
+
+function AssetReceived({time}:{time?:number|null}){
+  const t=usePortfolioText();
+  return <div className="small muted" translate="no">{time?t('First received: {date}',{date:new Date(time*1000).toISOString().slice(0,10)}):t('First received: unknown')}</div>;
 }
 
 function HistoricalNftCollage({rows,markets,wallets={},prices={},events=[],onVisibleAssets}:{rows:ReturnType<typeof historicalNfts>;markets:Record<string,Market>;wallets?:Record<string,string[]>;prices?:NftPrices;events?:NftEvent[];onVisibleAssets?:(ids:string)=>void}){

@@ -111,6 +111,13 @@ mainnets. Untracked wallets, staking/DeFi positions, bridges, other EVM networks
 and other Bitcoin token protocols are not implicitly scanned. Provider indexing
 may lag; this is not a promise that every possible asset protocol is covered.
 
+Assets across chains share one receipt-date timeline, newest first, in FTs,
+NFTs, All assets and Historical NFTs. Receipt dates come from loaded transaction
+history; inventory refresh times and mint metadata do not imply acquisition.
+Assets without a known receipt date appear last. The FT selector also retains
+its value and collection view. Date sorting uses individual assets so collection
+headers cannot separate assets with adjacent receipt dates.
+
 ## Bitcoin Ordinals
 
 Historical NFTs merges Cardano NFTs with Ordinals discovered for owned BTC
