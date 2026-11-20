@@ -15,6 +15,12 @@ try{
   const page=await browser.newPage({viewport:{width:1200,height:900}}),errors=[],requests=[];
   let quoteUnavailable=false,indexerUnavailable=false,primaryLimited=false,temporaryLimit=0,fallbackIncomplete=false,headBlockscout=false,windowLimited=false,historyUsd=1000,durableMode='',finalizedBlock=135;
   page.on('pageerror',error=>errors.push(error.message));
+ async function withSyncDetails(check){
+  await page.getByRole('button',{name:'Sync details',exact:true}).click();
+  const details=page.locator('#portfolio-sync-details-overlay');await details.locator('section').waitFor();
+  try{return await check(details);}finally{await details.getByRole('button',{name:'Back',exact:true}).click();}
+ }
+
   await page.route('**/*',async route=>{
     const url=new URL(route.request().url()),operation=url.pathname.split('/').pop();
     let result;
@@ -64,8 +70,8 @@ try{
   const assets=page.getByRole('button',{name:'Open Assets',exact:true}),cex=page.getByRole('button',{name:'Open CEX Transactions',exact:true});
   const walletsTile=page.getByRole('button',{name:'Open Wallets',exact:true});
   await walletsTile.waitFor({timeout:10000}).catch(error=>{console.error('Portfolio startup errors:',errors);throw error;});
-  await walletsTile.getByRole('status').filter({hasText:'Refreshed'}).waitFor();
-  assert.match(await walletsTile.innerText(),/Refreshed .+ · completed in \d+(?:m \d+)?s/,'refresh completion date and duration belong to Wallets');
+  await withSyncDetails(details=>details.getByRole('status').filter({hasText:'Refreshed'}).waitFor());
+  assert.match(await withSyncDetails(details=>details.innerText()),/Refreshed .+ · completed in \d+(?:m \d+)?s/,'refresh completion date and duration belong to Sync details');
   assert.equal(await page.getByRole('timer').count(),0,'the live refresh timer disappears after completion');
   assert.doesNotMatch(await walletsTile.innerText(),/^(?:Updated|Images:)/m,'obsolete update and image status lines are hidden');
   assert.equal(await page.getByRole('button',{name:'Open Ethereum Wallets',exact:true}).count(),0);
@@ -144,12 +150,13 @@ try{
   assert.ok(!(await own.innerText()).includes('Ethereum CEX addresses'));
   quoteUnavailable=true;historyUsd=1200;
   await own.getByRole('button',{name:'Refresh Ethereum wallets',exact:true}).click();
-  await page.getByRole('alert').filter({hasText:'Current Ethereum price unavailable.'}).waitFor();
-  assert.equal(await walletsTile.getByRole('alert').filter({hasText:'Current Ethereum price unavailable.'}).count(),1,'API errors appear in Wallets');
+  await withSyncDetails(details=>details.getByRole('alert').filter({hasText:'Current Ethereum price unavailable.'}).waitFor());
+  assert.equal(await walletsTile.getByRole('alert').count(),0,'API errors stay out of Wallets');
+  assert.equal(await withSyncDetails(details=>details.getByRole('alert').filter({hasText:'Current Ethereum price unavailable.'}).count()),1,'API errors appear in Sync details');
   const stored=await page.evaluate(stake=>JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)),stake);
   assert.equal(stored.history['2023-01-06'],1200,'historical CEX prices are cached even when the live quote fails');
   assert.equal(stored.accounts[address].transactions.length,1,'complete history is cached before optional quotes');
-  assert.ok(await page.getByText('ETH: 1 / 1 transactions',{exact:true}).count(),'completed transaction count remains visible when current prices fail');
+  assert.ok(await withSyncDetails(details=>details.getByText('ETH: 1 / 1 transactions',{exact:true}).count()),'completed transaction count remains visible when current prices fail');
   await page.waitForFunction(()=>!document.querySelector('main [role="status"]')?.textContent?.includes('Checking Ethereum'));
   await page.waitForTimeout(100);
   assert.ok(requests.filter(r=>r.action==='history').slice(-2).every(r=>r.startBlock===136),'cached Ethereum history only checks the reorg window and new blocks');
@@ -168,8 +175,9 @@ try{
   }
   indexerUnavailable=true;
   await page.evaluate(()=>window.reopenPortfolio());
-  await page.getByRole('alert').filter({hasText:'Ethereum refresh failed. Saved data is retained.'}).waitFor();
-  const apiError=page.getByRole('alert').filter({hasText:'Ethereum refresh failed. Saved data is retained.'});
+  await withSyncDetails(details=>details.getByRole('alert').filter({hasText:'Ethereum refresh failed. Saved data is retained.'}).waitFor());
+  await withSyncDetails(async details=>{
+  const apiError=details.getByRole('alert').filter({hasText:'Ethereum refresh failed. Saved data is retained.'});
   for(const width of [1200,390,320]){
     await page.setViewportSize({width,height:900});
     const typography=await apiError.evaluate(el=>{
@@ -184,6 +192,7 @@ try{
     assert.ok(parseFloat(typography.size)<=15,'error text remains compact');
     assert.ok(typography.fits,'error text wraps on mobile');
   }
+  });
   await cex.click();
   await page.locator('#portfolio-gain-loss-overlay .portfolio-eth-comparison').waitFor();
   assert.match(await page.locator('#portfolio-gain-loss-overlay .portfolio-eth-comparison').innerText(),/1 ETH[\s\S]*1,200\.00/,'reopening restores cached ETH quantities and CEX values while the indexer is unavailable');
@@ -201,16 +210,15 @@ try{
     window.fixtureStorage.setItem(cexKey,JSON.stringify(sources));
     window.fixtureStorage.setItem(key,JSON.stringify(data));window.reopenPortfolio();
   },{stake,address});
-  await page.getByRole('alert').filter({hasText:'Ethereum refresh failed. Saved data is retained.'}).waitFor();
+  await withSyncDetails(details=>details.getByRole('alert').filter({hasText:'Ethereum refresh failed. Saved data is retained.'}).waitFor());
   const fees=page.locator('main .governance-menu-card').filter({hasText:'Network fees paid'});
   assert.match(await fees.locator('.governance-card-title').innerText(),/[0-9]/,'the combined fee total remains visible');
   assert.doesNotMatch(await fees.innerText(),/(?:ADA|ETH):/,'the fee tile omits per-chain detail');
   assert.doesNotMatch(await fees.innerText(),/Partial/,'complete fee history does not inherit unrelated valuation warnings');
   const overviewTiles=page.locator('main .portfolio-body > .portfolio-section > .tdsp-tile-grid').first();
-  assert.ok(await walletsTile.locator('[role="status"]').count()>0,'Wallets retains scan details');
+  assert.equal(await walletsTile.locator('[role="status"], progress, [role="progressbar"]').count(),0,'Wallets omits sync details');
   for(const tile of await overviewTiles.locator(':scope > *').all()){
-    if(await tile.getAttribute('aria-label')==='Open Wallets')continue;
-    assert.equal(await tile.locator('p, .small, [role="status"], [role="progressbar"]').count(),0,'other overview tiles omit extra status and breakdowns');
+    assert.equal(await tile.locator('p, .small, [role="status"], [role="progressbar"]').count(),0,'all overview tiles omit extra status and breakdowns');
   }
 
   await walletsTile.click();await page.getByRole('button',{name:'Open My Wallets',exact:true}).click();
@@ -384,7 +392,7 @@ try{
   primaryLimited=true;
   fallbackIncomplete=true;
   await page.getByRole('button',{name:'Refresh Ethereum wallets',exact:true}).click();
-  await page.getByRole('alert').filter({hasText:'Etherscan rate limit reached.'}).waitFor();
+  await withSyncDetails(details=>details.getByRole('alert').filter({hasText:'Etherscan rate limit reached.'}).waitFor());
   assert.deepEqual(await page.evaluate(stake=>JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)).accounts,stake),cachedBeforeFallback,'an incomplete fallback leaves all previous account history intact');
   fallbackIncomplete=false;
   const successfulFallbackStart=requests.length;
@@ -432,13 +440,13 @@ try{
     window.fixtureStorage.setItem('tdsp-member-ethereum-data:'+stake,JSON.stringify({accounts:{},history:{},usd:null,updated:null}));
     window.reopenPortfolio();
   },stake);
-  await page.getByRole('alert').filter({hasText:'Fixture history interrupted'}).waitFor();
+  await withSyncDetails(details=>details.getByRole('alert').filter({hasText:'Fixture history interrupted'}).waitFor());
   const savedRanges=await page.evaluate(stake=>window.fixtureStorage.keys().filter(key=>key.startsWith('tdsp-member-ethereum-data:'+stake+'::scan::')),stake);
   assert.equal(savedRanges.length,2,'a confirmed first-page prefix is persisted before the next page fails');
   indexerUnavailable=true;
   await page.evaluate(()=>window.reopenPortfolio());
-  await page.getByRole('alert').filter({hasText:'Ethereum refresh failed. Saved data is retained.'}).waitFor();
-  assert.ok(await page.getByText('ETH: 1 / 1 transactions',{exact:true}).count(),'the saved ETH receipt total is restored even when the provider is offline');
+  await withSyncDetails(details=>details.getByRole('alert').filter({hasText:'Ethereum refresh failed. Saved data is retained.'}).waitFor());
+  assert.ok(await withSyncDetails(details=>details.getByText('ETH: 1 / 1 transactions',{exact:true}).count()),'the saved ETH receipt total is restored even when the provider is offline');
   indexerUnavailable=false;
   const resumedStart=requests.length;durableMode='resume';
   await page.evaluate(()=>window.reopenPortfolio());
@@ -448,7 +456,7 @@ try{
   durableMode='';finalizedBlock=180;
   await page.evaluate(()=>window.reopenPortfolio());
   await page.waitForFunction(stake=>Object.values(JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)).accounts)[0].finalizedBlock===180,stake);
-  await walletsTile.getByRole('status').filter({hasText:'Refreshed'}).waitFor();
+  await withSyncDetails(details=>details.getByRole('status').filter({hasText:'Refreshed'}).waitFor());
   const finalizedStart=requests.length;
   await page.evaluate(stake=>{window.previousEthereumUpdate=JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)).updated;window.reopenPortfolio();},stake);
   await page.waitForFunction(stake=>JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)).updated!==window.previousEthereumUpdate,stake);
@@ -464,7 +472,7 @@ try{
   assert.equal(unavailableHistory.length,2,'missing finality still updates both history kinds');
   assert.ok(unavailableHistory.every(row=>row.startBlock===181),'missing finality never rereads the verified prefix');
   assert.equal(await page.evaluate(stake=>Object.values(JSON.parse(window.fixtureStorage.getItem('tdsp-member-ethereum-data:'+stake)).accounts)[0].finalizedBlock,stake),180,'missing finality does not advance the saved boundary');
-  assert.equal(await page.getByRole('alert').filter({hasText:'Ethereum finalized block unavailable.'}).count(),0);
+  assert.equal(await withSyncDetails(details=>details.getByRole('alert').filter({hasText:'Ethereum finalized block unavailable.'}).count()),0);
   assert.deepEqual(errors,[]);
   console.log('PASS: Ethereum wallets, native holdings/exclusion, combined CEX totals and filters, incremental refresh, own-wallet rejection and mobile layout.');
 }finally{await browser.close();}

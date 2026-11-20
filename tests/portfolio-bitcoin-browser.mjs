@@ -18,6 +18,12 @@ try{
  const page=await browser.newPage({viewport:{width:1200,height:900}}),errors=[],requests=[];
  let unavailable=false,reorg=false,changedTip=false,noQuote=false;
  page.on('pageerror',error=>errors.push(error.message));
+ async function withSyncDetails(check){
+  await page.getByRole('button',{name:'Sync details',exact:true}).click();
+  const details=page.locator('#portfolio-sync-details-overlay');await details.locator('section').waitFor();
+  try{return await check(details);}finally{await details.getByRole('button',{name:'Back',exact:true}).click();}
+ }
+
  await page.route('**/*',async route=>{
   const operation=new URL(route.request().url()).pathname.split('/').pop();let result;
   if(operation==='bitcoin'){
@@ -42,6 +48,8 @@ try{
  });
  await page.addScriptTag({type:'module',content:bundle.outputFiles[0].text});
  const walletTile=page.getByRole('button',{name:'Open Wallets',exact:true});await walletTile.waitFor();
+ assert.equal(await walletTile.locator('[role="status"], progress, [role="progressbar"]').count(),0,'Wallets has no sync status or progress');
+ assert.equal(await page.locator('#portfolio-sync-details-overlay').count(),0,'details stay closed until requested');
  await walletTile.click();await page.getByRole('button',{name:'Open DEX / CEX & Swap',exact:true}).click();
  const external=page.locator('#portfolio-wallet-menu-exchanges');
  await external.getByRole('combobox',{name:'Network',exact:true}).selectOption('bitcoin');
@@ -105,7 +113,7 @@ try{
  assert.equal(await gain.locator('.history-table tbody tr').count(),0,'marked sources are not BTC IN or OUT');
  await gain.getByRole('button',{name:'Back',exact:true}).click();await walletTile.click();await page.getByRole('button',{name:'Open DEX / CEX & Swap',exact:true}).click();await mining.uncheck();
  unavailable=true;await page.evaluate(()=>window.reopen());
- await page.getByRole('alert').filter({hasText:'Bitcoin data unavailable. Saved data is retained.'}).waitFor();
+ await withSyncDetails(details=>details.getByRole('alert').filter({hasText:'Bitcoin data unavailable. Saved data is retained.'}).waitFor());
  assert.match(await page.getByRole('button',{name:'Open Assets',exact:true}).innerText(),/59,998/,'cached holdings survive provider failures');
  await page.getByRole('button',{name:'Open CEX Transactions',exact:true}).click();
  await gain.getByRole('status').filter({hasText:'Bitcoin data unavailable. Saved data is retained.'}).waitFor();
@@ -119,8 +127,8 @@ try{
   delete value.storageVersion;value.accounts[address].transactions=[receipt,send,{hash:'4'.repeat(64),height:2,time:1700000015,feeRaw:'7000',inputs:[{address,raw:'10000'},{address:exchange,raw:'10000'}],outputs:[{address,raw:'13000'}]}];
   window.fixtureStorage.setItem(key,JSON.stringify(value));window.reopen();
  },{stake,address,exchange,receipt,send});
- await page.getByRole('alert').filter({hasText:'Bitcoin data unavailable. Saved data is retained.'}).waitFor();
- assert.doesNotMatch(await feeTile.innerText(),/BTC:|fee ownership unknown/,'the fee tile keeps only its main value');assert.match(await walletTile.innerText(),/fee ownership unknown for 1 transactions/,'mixed fee ownership is reported in Wallets');
+ await withSyncDetails(details=>details.getByRole('alert').filter({hasText:'Bitcoin data unavailable. Saved data is retained.'}).waitFor());
+ assert.doesNotMatch(await feeTile.innerText(),/BTC:|fee ownership unknown/,'the fee tile keeps only its main value');assert.doesNotMatch(await walletTile.innerText(),/fee ownership unknown/,'Wallets no longer contains sync warnings');assert.match(await withSyncDetails(details=>details.innerText()),/fee ownership unknown for 1 transactions/,'mixed fee ownership is reported in Sync details');
  await page.getByRole('button',{name:'Open Transactions',exact:true}).click();const mixed=transactions.locator('tbody tr').filter({has:page.locator('a[href="https://blockstream.info/tx/'+'4'.repeat(64)+'"]')});
  await mixed.waitFor();assert.match(await mixed.locator('td').nth(2).innerText(),/— BTC[\s\S]*Wallet share unknown/,'mixed fees are not attributed speculatively');
  assert.doesNotMatch(await mixed.locator('td').nth(2).innerText(),/7000|7[.,]000/);
@@ -136,7 +144,7 @@ try{
   window.fixtureStorage.setItem(cexKey,JSON.stringify(JSON.parse(window.fixtureStorage.getItem(cexKey)).map(row=>({...row,out:true,miner:false}))));
   window.reopen();
  },{stake,address,exchange});
- await page.getByRole('alert').filter({hasText:'Bitcoin data unavailable. Saved data is retained.'}).waitFor();
+ await withSyncDetails(details=>details.getByRole('alert').filter({hasText:'Bitcoin data unavailable. Saved data is retained.'}).waitFor());
  await page.getByRole('button',{name:'Open CEX Transactions',exact:true}).click();
  await gain.getByRole('button',{name:'BTC OUT',exact:true}).click();
  const connected=gain.locator('.history-table tbody tr').filter({has:page.locator('a[href="https://blockstream.info/tx/'+'5'.repeat(64)+'"]')});
@@ -171,7 +179,7 @@ try{
  },{stake,exchange});
  await page.setViewportSize({width:1200,height:900});
  await page.waitForFunction(()=>window.previousMain&&!window.previousMain.isConnected);
- await page.getByRole('alert').filter({hasText:'Bitcoin data unavailable. Saved data is retained.'}).waitFor();
+ await withSyncDetails(details=>details.getByRole('alert').filter({hasText:'Bitcoin data unavailable. Saved data is retained.'}).waitFor());
  await page.getByRole('button',{name:'Open CEX Transactions',exact:true}).click();
  await gain.getByRole('button',{name:'BTC IN',exact:true}).click();
  const personalIn=gain.locator('.history-table tbody tr').filter({has:page.locator('a[href="https://blockstream.info/tx/'+'8'.repeat(64)+'"]')});

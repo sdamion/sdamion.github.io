@@ -10,7 +10,7 @@ const bundle=await build({stdin:{contents:`
   import {createElement} from 'react';
   import {PortfolioRefresh} from './PortfolioRefresh';
   const root=createRoot(document.getElementById('app'));
-  window.renderRefresh=busy=>root.render(createElement(PortfolioRefresh,{busy,disabled:busy,onRefresh:()=>window.refreshes=(window.refreshes||0)+1}));
+  window.renderRefresh=busy=>root.render(createElement(PortfolioRefresh,{busy,disabled:busy,onDetails:()=>window.detailsOpened=(window.detailsOpened||0)+1,onRefresh:()=>window.refreshes=(window.refreshes||0)+1}));
   window.renderRefresh(false);
 `,resolveDir:path.resolve('delegators/portfolio-src')},bundle:true,write:false,format:'esm',jsx:'automatic'});
 const browser=await chromium.launch({channel:'chrome',headless:true});
@@ -30,6 +30,10 @@ try{
   await page.evaluate(()=>window.renderRefresh(true));
   await page.waitForFunction(()=>document.querySelector('.portfolio-sync-button')?.disabled);
   assert.equal(await refresh.getAttribute('title'),'Portfolio syncing');
+  const details=page.getByRole('button',{name:'Sync details',exact:true});
+  assert.equal(await details.isEnabled(),true,'sync details remain accessible while refresh is busy');
+  await details.click();assert.equal(await page.evaluate(()=>window.detailsOpened),1);
+  assert.equal(await page.evaluate(()=>window.refreshes),1,'opening details does not start another sync');
   await page.waitForFunction(()=>getComputedStyle(document.querySelector('.portfolio-sync-button')).backgroundColor==='rgb(21, 128, 61)');
   assert.equal(await refresh.evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(21, 128, 61)');
   assert.equal(await refresh.locator('svg').evaluate(el=>getComputedStyle(el).animationName),'portfolio-sync-blink');

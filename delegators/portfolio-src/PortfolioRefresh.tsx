@@ -1,11 +1,11 @@
 import {useEffect,useState} from 'react';
 import {createPortal} from 'react-dom';
-import {RefreshCw,Info,ChevronDown} from 'lucide-react';
+import {RefreshCw,Info,ChevronDown,ListChecks} from 'lucide-react';
 import {PortfolioGuide} from './PortfolioGuide';
 import type {ReactNode} from 'react';
 import {usePortfolioText} from './use-portfolio-text';
 
-export function PortfolioRefresh({busy,disabled,onRefresh,currencyControl}:{busy:boolean;disabled:boolean;onRefresh:()=>void;currencyControl?:ReactNode}){
+export function PortfolioRefresh({busy,disabled,onRefresh,onDetails,currencyControl}:{busy:boolean;disabled:boolean;onRefresh:()=>void;onDetails?:()=>void;currencyControl?:ReactNode}){
   const t=usePortfolioText();
   const syncLabel=t(busy?'Portfolio syncing':'Portfolio not syncing');
   const [host,setHost]=useState<HTMLElement|null>(null);
@@ -18,5 +18,5 @@ export function PortfolioRefresh({busy,disabled,onRefresh,currencyControl}:{busy
     window.addEventListener('tdsp:portfolio-hidden',hide);
     return()=>{window.removeEventListener('tdsp:portfolio-shown',show);window.removeEventListener('tdsp:portfolio-hidden',hide);};
   },[]);
-  return <>{host&&createPortal(<>{currencyControl&&<span className="portfolio-currency-select">{currencyControl}<ChevronDown size={16} aria-hidden="true"/></span>}<button type="button" className="governance-back-to-root" title="Portfolio guide" aria-label="Portfolio guide" onClick={()=>setGuide(true)}><Info size={18} aria-hidden="true"/></button><button type="button" translate="no" className={`governance-back-to-root portfolio-sync-button${busy?' is-syncing':''}`} title={syncLabel} aria-label={`${syncLabel}. ${t('Refresh Portfolio')}`} aria-busy={busy} disabled={disabled} onClick={onRefresh}><RefreshCw size={18} aria-hidden="true"/></button></>,host)}{guide&&<PortfolioGuide onClose={()=>setGuide(false)}/>}</>;
+  return <>{host&&createPortal(<>{currencyControl&&<span className="portfolio-currency-select">{currencyControl}<ChevronDown size={16} aria-hidden="true"/></span>}<button type="button" className="governance-back-to-root" title="Portfolio guide" aria-label="Portfolio guide" onClick={()=>setGuide(true)}><Info size={18} aria-hidden="true"/></button>{onDetails&&<button type="button" className="governance-back-to-root" title={t('Sync details')} aria-label={t('Sync details')} onClick={onDetails}><ListChecks size={18} aria-hidden="true"/></button>}<button type="button" translate="no" className={`governance-back-to-root portfolio-sync-button${busy?' is-syncing':''}`} title={syncLabel} aria-label={`${syncLabel}. ${t('Refresh Portfolio')}`} aria-busy={busy} disabled={disabled} onClick={onRefresh}><RefreshCw size={18} aria-hidden="true"/></button></>,host)}{guide&&<PortfolioGuide onClose={()=>setGuide(false)}/>}</>;
 }

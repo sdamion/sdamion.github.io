@@ -2098,4 +2098,6 @@ window.TDSPPortfolioTranslationKeys = Object.freeze([
   , ["Select Wallet or Passkey to connect", "portfolio_text_login_wallet_or_passkey"]
   , ["Select Passkey to connect", "portfolio_text_login_passkey_only"]
   , ["To create a passkey for your wallet Portfolio, connect your wallet first, then add a passkey in Portfolio storage settings.", "portfolio_text_login_passkey_help"]
+  , ["Sync details", "portfolio_text_sync_details"]
+  , ["Open to manage your own wallets and exchange addresses.", "portfolio_text_wallets_manage_info"]
 ]);

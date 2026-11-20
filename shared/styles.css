@@ -102,6 +102,12 @@
 #portfolio-refresh-action .portfolio-sync-button.is-syncing svg { animation: portfolio-sync-blink 1.2s ease-in-out infinite; }
 @keyframes portfolio-sync-blink { 50% { opacity: .25; } }
 @media (prefers-reduced-motion: reduce) { #portfolio-refresh-action .portfolio-sync-button.is-syncing svg { animation: none; } }
+@media (max-width: 400px) {
+    .portfolio-dialog > .overlay-dialog-header .overlay-dialog-header-actions { gap: 4px; }
+    .portfolio-dialog > .overlay-dialog-header :is(.governance-back-to-root, .governance-close) { width: 30px; min-width: 30px; padding-inline: 4px; }
+    .portfolio-dialog #portfolio-refresh-action select { max-width: 80px; padding-inline: 6px 24px; }
+    .portfolio-dialog #portfolio-refresh-action .portfolio-currency-select svg { inset-inline-end: 6px; }
+}
 .member-portfolio .portfolio-comparison-crypto { display: inline-flex; align-items: center; gap: 5px; }
 .member-portfolio .portfolio-comparison-crypto img { width: 16px; height: 16px; flex: 0 0 16px; object-fit: contain; }
 .member-portfolio .portfolio-timeline p { margin: 0; }
