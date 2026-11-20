@@ -8,6 +8,7 @@ import os from 'node:os';
 const backend=path.resolve(process.argv[3]||'../koios-proxy');
 const requireBackend=createRequire(path.join(backend,'package.json')),express=requireBackend('express');
 const {createAccountStore,createPortfolioAccountAuth,createPortfolioAuthRouter,fullPortfolioAccess}=await import(path.join(backend,'member-portfolio/account-auth.mjs'));
+const {createRaffleService}=await import(path.join(backend,'raffle.js'));
 const {createMemberPortfolioHandler}=await import(path.join(backend,'member-portfolio/index.mjs'));
 const {createVaultStore}=await import(path.join(backend,'member-portfolio/vault-store.mjs'));
 const {installPortfolioBodyParsers}=await import(path.join(backend,'member-portfolio/body-parser.mjs'));
@@ -21,7 +22,9 @@ const app=express();
 const server=await new Promise(resolve=>{const server=app.listen(0,'localhost',()=>resolve(server));}),origin=`http://localhost:${server.address().port}`;
 const store=createAccountStore(path.join(directory,'accounts.json'));
 const member='stake1u9ex0jtl4nv84rlzwuft5rczy2hgkjygewla04mgy7v2nccx4p4yr';
-const auth=createPortfolioAccountAuth({store,secret:'browser-test-secret-'.repeat(3),origins:[origin],rpID:'localhost',verifyWallet:async token=>{if(token!=='verified-wallet-fixture')throw new Error('Invalid wallet session');return {owner:member,binding:'wallet-fixture'};}});
+let raffles;
+const raffle=createRaffleService({adminAddress:'stake1uxg7k2rzm28glx8decjmulsxrwwaxrn2t45mcvu5fyfscuc6z2mjz',sessionSecret:'dashboard-browser-secret-'.repeat(3),loadPool:async()=>({delegators:[{stake_address:member,amount_lovelace:'100000000'}]}),loadRaffles:async()=>raffles,saveRaffles:async value=>{raffles=value;}});
+const auth=createPortfolioAccountAuth({store,secret:'browser-test-secret-'.repeat(3),origins:[origin],rpID:'localhost',issueDashboardSession:owner=>raffle.createPasskeyDashboardSession(owner),verifyWallet:async token=>{if(token!=='verified-wallet-fixture')throw new Error('Invalid wallet session');return {owner:member,binding:'wallet-fixture'};}});
 const vaultStore=createVaultStore({directory:path.join(directory,'vaults')});
 installPortfolioBodyParsers(app,{authenticate:req=>auth.verify(String(req.headers.authorization||'').slice(7)),sendAuthError:(res,error)=>res.status(error.status||500).json({error:error.message})});
 app.use('/api/portfolio/auth',createPortfolioAuthRouter(auth,{rateLimit:()=>true,sendError:(res,error)=>res.status(error.status||500).json({error:error.message})}));
@@ -30,6 +33,7 @@ app.all('/api/portfolio/:operation',async(req,res)=>{
  if(!['session','vault'].includes(req.params.operation))return res.status(503).json({error:'Fixture: provider offline'});
  try{const response=await handler({operation:req.params.operation,method:req.method,body:req.body,token:String(req.headers.authorization||'').slice(7)});res.status(response.status).set(Object.fromEntries(response.headers)).send(await response.text());}catch(error){res.status(error.status||500).json({error:error.message});}
 });
+for(const [endpoint,load] of [['delegator',token=>raffle.getDelegatorView(token)],['admin',token=>raffle.getAdminView(token)]])app.get('/__raffle_'+endpoint+'_proxy__',async(req,res)=>{try{res.json(await load(String(req.headers.authorization||'').slice(7)));}catch(error){res.status(error.status||500).json({error:error.message});}});
 app.get('/delegators/portfolio/app.js',(req,res)=>res.type('application/javascript').send(bundle.outputFiles[0].text));
 app.get('/fixture',(req,res)=>res.type('text/html').send('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/shared/styles.css"><link rel="stylesheet" href="/delegators/raffle.css"><div id="portfolio-refresh-action"></div><div id="portfolio-settings-action"></div><div id="dashboard"></div><div id="root"></div>'));
 app.use(express.static(process.cwd()));
@@ -76,6 +80,13 @@ try{
  assert.equal(await page.locator('#member-portfolio-overlay').count(),0,'no Portfolio menu opens before authentication');
  assert.equal(await page.getByRole('button',{name:'Passkey',exact:true}).isDisabled(),true);
  releaseLogin();
+ await page.locator('#raffle-protected').waitFor({state:'visible'});
+ assert.equal(await page.locator('#member-portfolio-overlay').count(),0,'passkey login lands on dashboard without opening Portfolio');
+ assert.equal(await page.locator('#raffle-access').isVisible(),false);
+ const accountToken=await page.evaluate(()=>sessionStorage.getItem('tdsp-portfolio-session'));
+ const forged=await page.request.post(origin+'/api/portfolio/auth/dashboard/session',{headers:{Origin:origin,Authorization:'Bearer '+accountToken},data:{role:'admin',address:'stake1uxg7k2rzm28glx8decjmulsxrwwaxrn2t45mcvu5fyfscuc6z2mjz'}});
+ const dashboard=await forged.json();assert.equal(dashboard.role,'delegator');assert.equal(dashboard.address,member);
+ await page.locator('#member-portfolio-open').click();
  try{await page.getByRole('button',{name:'Open Assets',exact:true}).waitFor();}catch(error){throw new Error(JSON.stringify({errors,text:await page.locator('body').innerText()}),{cause:error});}
  await page.unroute('**/auth/passkeys/login/options');
  assert.equal(await page.evaluate(member=>JSON.parse(window.portfolio.portfolioSettings.getItem('tdsp-member-basis:'+member)).private,member),'account secret marker');
@@ -102,6 +113,24 @@ try{
  await page.getByRole('button',{name:'Sign in with passkey',exact:true}).click();
  await page.getByRole('button',{name:'Open Assets',exact:true}).waitFor();
  assert.equal(await page.evaluate(member=>JSON.parse(window.portfolio.portfolioSettings.getItem('tdsp-member-basis:'+member)).private,member),'account secret marker');
+ // The same native passkey lands on Admin Area after the server grants that stake admin rights.
+ raffles={admin_users:[{address:member}]};
+ await page.locator('#raffle-logout').click();
+ await page.locator('#raffle-access').waitFor({state:'visible'});
+ await page.evaluate(()=>window.addEventListener('tdsp:open-admin-dashboard',()=>{
+   document.getElementById('dashboard').replaceChildren(window.TDSPDelegatorDashboardTemplates.createAdminDashboardBody());
+   void window.TDSPDelegatorAccess.initOverlay('admin');
+ }));
+ await page.locator('#raffle-access #member-portfolio-public-open').click();
+ await page.locator('#raffle-protected').waitFor({state:'visible'});
+ await page.locator('#website-status-open').waitFor({state:'visible'});
+ assert.equal(await page.locator('#raffle-protected h1').textContent(),'Admin Area');
+ assert.equal(await page.locator('#member-portfolio-overlay').count(),0,'admin passkey lands on Admin Area before Portfolio');
+ const adminToken=await page.evaluate(()=>sessionStorage.getItem('tdsp-raffle-session-admin'));
+ assert.equal(raffle.verifySession(adminToken,'admin').address,member);
+ assert.equal(await page.evaluate(()=>sessionStorage.getItem('tdsp-raffle-session-delegator')),null);
+ await page.locator('#member-portfolio-open').click();
+ await page.getByRole('button',{name:'Open Assets',exact:true}).waitFor();
  // An authenticator without PRF cannot be added to the signed-in Portfolio.
  await page.getByRole('button',{name:'Portfolio settings',exact:true}).click();
  await page.getByRole('button',{name:'Portfolio storage: Encrypted remote. Change storage',exact:true}).click();
@@ -112,6 +141,9 @@ try{
  await page.getByRole('status').filter({hasText:'This passkey cannot encrypt Portfolio data.'}).waitFor();
  assert.equal((await store.read()).accounts.length,1,'unsupported PRF never creates a persisted account');
  assert.deepEqual((await vaultStore.open(member)).payload,beforeUnsupported);
+ await page.locator('#raffle-logout').click();
+ await page.waitForFunction(()=>!sessionStorage.getItem('tdsp-portfolio-session')&&!sessionStorage.getItem('tdsp-raffle-session-admin')&&!sessionStorage.getItem('tdsp-raffle-session-delegator'));
+ await page.locator('#raffle-protected').waitFor({state:'hidden'});
  assert.deepEqual(errors,[]);
- console.log('PASS: wallet-required registration, no signed-out creation option, native PRF enrollment, full Portfolio, encrypted checkpoints, logout, direct dashboard passkey login without an extra menu, local/remote switching, reload, second passkey linking, unsupported PRF and responsive layout.');
+ console.log('PASS: wallet-required registration, no signed-out creation option, native PRF enrollment, full Portfolio, encrypted checkpoints, logout, passkey login lands on user/admin dashboards before opening Portfolio, server-owned role selection, dashboard lock clears both sessions, local/remote switching, reload, second passkey linking, unsupported PRF and responsive layout.');
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve));await rm(directory,{recursive:true,force:true});}

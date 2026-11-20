@@ -83,6 +83,13 @@ function MemberPortfolio({wallet,role,onChangeLogin}:{wallet:WalletProvider;role
     </>:choice}</div></section>}{ready&&!busy&&(hasNetwork?<Home key={`${stake}:${version}:${Object.values(portfolioAccess).join(':')}`} memberStake={stake} role={role} portfolioAccess={portfolioAccess}/>:<main className="member-portfolio"><div className="portfolio-body"><p role="status">No Portfolio networks are enabled for this account.</p></div></main>)} {(ready||preference)&&settings&&<AssetOverlay id="portfolio-storage-overlay" name="Portfolio storage" onClose={()=>{if(!busy)setSettings(false);}}>{choice}</AssetOverlay>}</>;
 }
 let portfolioInstance:{role:string;content:HTMLElement;destroy:()=>void}|null=null;
+export function getPortfolioDashboardSession(){
+  return authRequest('dashboard/session',{},sessionStorage.getItem(ACCOUNT_SESSION_KEY)||'');
+}
+export async function signOutPortfolioAccount(){
+  await flushVault();
+  await signOutAccount().catch(()=>{/* Local keys and tokens are cleared even if the logout request fails. */});
+}
 export async function signInPortfolioWithPasskey(){
   await flushVault();
   portfolioInstance?.destroy();

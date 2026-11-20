@@ -10,7 +10,12 @@ existing wallet still unlocks the cache. Link the same passkey to another storag
 location using **Link existing Portfolio passkey** after opening that location.
 
 
-The dashboard's Passkey option signs in with an existing passkey. To create your
+The dashboard's Passkey option signs in with an existing passkey and displays the
+admin or user dashboard. The backend resolves the linked stake and checks its current
+permissions; standalone accounts and non-delegators see Portfolio access only.
+Portfolio opens when its dashboard tile is selected. Lock clears both the dashboard
+and passkey sessions. Deploy the matching backend and frontend for this flow.
+To create your
 first passkey, sign in with a wallet, open and unlock Portfolio, then add the
 passkey in storage settings. Anonymous passkey creation is rejected by the
 backend. Existing independent passkey accounts retain their original identity

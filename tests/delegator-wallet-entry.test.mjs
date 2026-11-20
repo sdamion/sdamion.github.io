@@ -40,7 +40,7 @@ test('missing stake keys and testnet wallets cannot authenticate',async()=>{
 function context(token=''){
   const state={discoveries:0,authenticated:null};
   const ctx=vm.createContext({
-    ROLE:'delegator',IS_EMBEDDED:false,sessionToken:token,
+    ROLE:'delegator',IS_EMBEDDED:false,sessionToken:token,sessionStorage:{getItem(){return null;}},
     window:{},document:{body:{classList:{remove(){}}},getElementById(){return null;},querySelectorAll(){return []; }},
     setRaffleRole(){},showAuthenticatedUi(value){state.authenticated=value;},
     async populateWallets(){state.discoveries++;},async loadProtectedArea(){state.authenticated=true;},

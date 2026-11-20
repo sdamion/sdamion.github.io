@@ -631,16 +631,48 @@ async function connectPortfolioPasskey() {
     if (button) { button.disabled = true; button.setAttribute('aria-busy', 'true'); }
     setStatus('Waiting for your passkey…');
     try {
-        const module = await import('./portfolio/app.js?v=20261113-assets-date-order');
+        const module = await import('./portfolio/app.js?v=20261118-passkey-dashboard');
         await module.signInPortfolioWithPasskey();
+        await restorePasskeyDashboard(module);
         setStatus('');
-        await openMemberPortfolio();
     } catch (error) {
         setStatus(error?.name === 'NotAllowedError' ? 'Passkey request cancelled or timed out. Please retry.' : error?.message || 'Sign-in failed.', true);
     } finally {
         passkeyLoginPending = false;
         if (button) { button.disabled = false; button.removeAttribute('aria-busy'); }
     }
+}
+
+async function restorePasskeyDashboard(module) {
+    const session = await module.getPortfolioDashboardSession();
+    // A previous wallet's privileges must never carry over to a different passkey.
+    sessionStorage.removeItem('tdsp-raffle-session-delegator');
+    sessionStorage.removeItem(ADMIN_SESSION_KEY);
+    portfolioUnlockWallet = null;
+    adminTransactionWallet = null;
+    sessionToken = '';
+    if (session.role === 'admin') {
+        sessionStorage.setItem(ADMIN_SESSION_KEY, session.token);
+        window.dispatchEvent(new CustomEvent('tdsp:open-admin-dashboard'));
+        return;
+    }
+    if (session.role === 'delegator') {
+        sessionToken = session.token;
+        sessionStorage.setItem('tdsp-raffle-session-delegator', sessionToken);
+        await loadProtectedArea();
+        return;
+    }
+    // Historical standalone accounts and non-delegators retain their Portfolio dashboard.
+    showAuthenticatedUi(true);
+    for (const id of ['raffle-open', 'raffle-prizes-open']) {
+        const tile = document.getElementById(id);
+        if (tile) tile.hidden = true;
+    }
+    const label = document.querySelector('#raffle-protected .eyebrow');
+    if (label) setTranslatedText(label, 'Portfolio');
+    const identity = document.getElementById('raffle-identity');
+    if (identity) identity.hidden = true;
+    postEmbeddedDelegatorIdentity();
 }
 
 async function openMemberPortfolio() {
@@ -675,7 +707,7 @@ async function openMemberPortfolio() {
     closePortfolio = close;
     container.textContent = t('Loading member portfolio…');
     try {
-        const module = await import('./portfolio/app.js?v=20261113-assets-date-order');
+        const module = await import('./portfolio/app.js?v=20261118-passkey-dashboard');
         if (closed) return;
         container.replaceChildren();
         dispose = module.mountPortfolio(container, { role: ROLE, connectWallet: () => { closePortfolio?.(); populateWallets().catch(error => setStatus(error.message, true)); }, getWallet: (reconnect, stake, linkAnother) => linkAnother ? reconnectPortfolioWallet(stake, true) : reconnect && !portfolioUnlockWallet ? reconnectPortfolioWallet(stake) : portfolioUnlockWallet });
@@ -2065,6 +2097,12 @@ async function submitExclusions(event) {
 }
 
 function renderDelegator(payload) {
+    for (const id of ['raffle-open', 'raffle-prizes-open']) {
+        const tile = document.getElementById(id);
+        if (tile) tile.hidden = false;
+    }
+    const label = document.querySelector('#raffle-protected .eyebrow');
+    if (label) setTranslatedText(label, 'Verified TDSP delegator');
     const identity = document.getElementById('raffle-identity');
     if (IS_EMBEDDED || window.TDSPRaffleOverlayActive) {
         identity.replaceChildren();
@@ -2234,13 +2272,23 @@ async function submitDraw(event) {
     }
 }
 
-function logout() {
+async function logout() {
+    if (sessionStorage.getItem('tdsp-portfolio-session')) {
+        try {
+            const module = await import('./portfolio/app.js?v=20261118-passkey-dashboard');
+            await module.signOutPortfolioAccount();
+        } catch (error) {
+            setStatus(error.message, true);
+            return;
+        }
+    }
     portfolioUnlockWallet = null;
     closePortfolio?.();
     setRaffleOverlay(false);
     sessionToken = '';
     sessionStorage.removeItem(SESSION_KEY);
     sessionStorage.removeItem(ADMIN_SESSION_KEY);
+    sessionStorage.removeItem('tdsp-raffle-session-delegator');
     showAuthenticatedUi(false);
     postEmbeddedDelegatorIdentity();
     setStatus('Wallet session closed.');
@@ -2334,6 +2382,16 @@ async function init(options = {}) {
     document.getElementById('raffle-exclusions-form')?.addEventListener('submit', submitExclusions);
     document.getElementById('raffle-admin-users-form')?.addEventListener('submit', submitAdminUsers);
     document.getElementById('raffle-lost-stake-message-form')?.addEventListener('submit', submitLostStakeMessage);
+    if (!sessionToken && sessionStorage.getItem('tdsp-portfolio-session') && ROLE === 'delegator') {
+        try {
+            const module = await import('./portfolio/app.js?v=20261118-passkey-dashboard');
+            await restorePasskeyDashboard(module);
+            document.body.classList.remove('raffle-auth-gate-pending');
+            return;
+        } catch (error) {
+            setStatus(error.message || 'Dashboard could not be loaded. Please try again.', true);
+        }
+    }
     if (sessionToken) {
         try {
             await loadProtectedArea();
