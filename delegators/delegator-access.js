@@ -631,7 +631,7 @@ async function connectPortfolioPasskey() {
     if (button) { button.disabled = true; button.setAttribute('aria-busy', 'true'); }
     setStatus('Waiting for your passkey…');
     try {
-        const module = await import('./portfolio/app.js?v=20261118-passkey-dashboard');
+        const module = await import('./portfolio/app.js?v=20261120-clean-portfolio-tiles');
         await module.signInPortfolioWithPasskey();
         await restorePasskeyDashboard(module);
         setStatus('');
@@ -707,7 +707,7 @@ async function openMemberPortfolio() {
     closePortfolio = close;
     container.textContent = t('Loading member portfolio…');
     try {
-        const module = await import('./portfolio/app.js?v=20261118-passkey-dashboard');
+        const module = await import('./portfolio/app.js?v=20261120-clean-portfolio-tiles');
         if (closed) return;
         container.replaceChildren();
         dispose = module.mountPortfolio(container, { role: ROLE, connectWallet: () => { closePortfolio?.(); populateWallets().catch(error => setStatus(error.message, true)); }, getWallet: (reconnect, stake, linkAnother) => linkAnother ? reconnectPortfolioWallet(stake, true) : reconnect && !portfolioUnlockWallet ? reconnectPortfolioWallet(stake) : portfolioUnlockWallet });
@@ -2275,7 +2275,7 @@ async function submitDraw(event) {
 async function logout() {
     if (sessionStorage.getItem('tdsp-portfolio-session')) {
         try {
-            const module = await import('./portfolio/app.js?v=20261118-passkey-dashboard');
+            const module = await import('./portfolio/app.js?v=20261120-clean-portfolio-tiles');
             await module.signOutPortfolioAccount();
         } catch (error) {
             setStatus(error.message, true);
@@ -2384,7 +2384,7 @@ async function init(options = {}) {
     document.getElementById('raffle-lost-stake-message-form')?.addEventListener('submit', submitLostStakeMessage);
     if (!sessionToken && sessionStorage.getItem('tdsp-portfolio-session') && ROLE === 'delegator') {
         try {
-            const module = await import('./portfolio/app.js?v=20261118-passkey-dashboard');
+            const module = await import('./portfolio/app.js?v=20261120-clean-portfolio-tiles');
             await restorePasskeyDashboard(module);
             document.body.classList.remove('raffle-auth-gate-pending');
             return;

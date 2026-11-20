@@ -11,7 +11,7 @@ const future={hash:'3'.repeat(64),height:3,time:1700000020,feeRaw:'0',inputs:[{a
 const bundle=await build({stdin:{resolveDir:source,loader:'tsx',contents:`import {createRoot} from 'react-dom/client';import Home from './App';let version=0;const root=createRoot(document.getElementById('app'));window.reopen=(role='admin')=>root.render(<Home key={++version} memberStake="${stake}" role={role}/>);window.reopen();`},bundle:true,write:false,format:'esm',jsx:'automatic',alias:{'@/lib/portfolio':path.join(source,'core.ts'),'@/lib/portfolio-cache':path.join(source,'cache.ts'),'@/components/ui/input':path.join(source,'ui.tsx'),'@/components/ui/table':path.join(source,'ui.tsx'),'@/components/ui/pagination':path.join(source,'ui.tsx')},plugins:[{name:'fixture',setup(build){
  build.onLoad({filter:/\/PortfolioQuickstart\.tsx$/},()=>({loader:'tsx',contents:'export function PortfolioQuickstart(){return null;}'}));
  build.onLoad({filter:/\/vault\.ts$/},()=>({loader:'ts',contents:'export const portfolioSettings=window.fixtureStorage;export const flushVault=async()=>{};export const storageMode=()=>"local";export const cachedSnapshot=()=>window.fixture;export const latestMemberSnapshot=()=>window.fixture;export const cacheSnapshot=async()=>{};'}));
- build.onLoad({filter:/\/App\.tsx$/},async args=>({loader:'tsx',contents:(await readFile(args.path,'utf8')).replace('useState<Snapshot|null>(null)','useState<Snapshot|null>(window.fixture)').replace('setSnapshot(null);setError','setError').replace('async function refresh(fullScan=false){','async function refresh(fullScan=false){setInitialising(false);setStatus("Ready");return;')}));
+ build.onLoad({filter:/\/App\.tsx$/},async args=>({loader:'tsx',contents:(await readFile(args.path,'utf8')).replace('useState<Snapshot|null>(null)','useState<Snapshot|null>(window.fixture)').replace('setSnapshot(canCardano?null:disabledCardanoSnapshot());setError','setError').replace('async function refresh(fullScan=false){','async function refresh(fullScan=false){setInitialising(false);setStatus("Ready");return;')}));
 }}]});
 const browser=await chromium.launch({channel:'chrome',headless:true});
 try{
@@ -64,7 +64,7 @@ try{
  await own.getByRole('alert').filter({hasText:'Enter a valid Bitcoin mainnet address.'}).waitFor();
  await own.locator('#portfolio-wallet-address').fill(address);await own.getByRole('button',{name:'Add',exact:true}).click();
  await own.getByText('$59,998.00',{exact:true}).waitFor();
- const feeTile=page.locator('main .governance-menu-card').filter({hasText:'Network fees paid'});assert.match(await feeTile.innerText(),/BTC: 0\.00001 BTC/,'paid BTC fees remain visible separately');
+ const feeTile=page.locator('main .governance-menu-card').filter({hasText:'Network fees paid'});assert.match(await feeTile.locator('.governance-card-title').innerText(),/[0-9]/,'the total paid fee remains visible');assert.doesNotMatch(await feeTile.innerText(),/BTC:/,'per-chain fee detail is removed from the fee tile');
  for(const width of [1200,390,320]){await page.setViewportSize({width,height:900});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));}
  assert.ok(requests.filter(row=>row.address).every(row=>row.address===address));
  await own.getByRole('button',{name:'Back',exact:true}).click();await page.locator('#portfolio-wallets-overlay').getByRole('button',{name:'Back',exact:true}).click();
@@ -120,7 +120,7 @@ try{
   window.fixtureStorage.setItem(key,JSON.stringify(value));window.reopen();
  },{stake,address,exchange,receipt,send});
  await page.getByRole('alert').filter({hasText:'Bitcoin data unavailable. Saved data is retained.'}).waitFor();
- assert.match(await feeTile.innerText(),/BTC: ≥ 0\.00001 BTC/,'mixed inputs retain the confirmed paid subtotal');assert.match(await feeTile.innerText(),/fee ownership unknown for 1 transactions/);
+ assert.doesNotMatch(await feeTile.innerText(),/BTC:|fee ownership unknown/,'the fee tile keeps only its main value');assert.match(await walletTile.innerText(),/fee ownership unknown for 1 transactions/,'mixed fee ownership is reported in Wallets');
  await page.getByRole('button',{name:'Open Transactions',exact:true}).click();const mixed=transactions.locator('tbody tr').filter({has:page.locator('a[href="https://blockstream.info/tx/'+'4'.repeat(64)+'"]')});
  await mixed.waitFor();assert.match(await mixed.locator('td').nth(2).innerText(),/— BTC[\s\S]*Wallet share unknown/,'mixed fees are not attributed speculatively');
  assert.doesNotMatch(await mixed.locator('td').nth(2).innerText(),/7000|7[.,]000/);

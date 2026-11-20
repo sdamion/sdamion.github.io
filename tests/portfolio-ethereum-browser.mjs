@@ -203,8 +203,16 @@ try{
   },{stake,address});
   await page.getByRole('alert').filter({hasText:'Ethereum refresh failed. Saved data is retained.'}).waitFor();
   const fees=page.locator('main .governance-menu-card').filter({hasText:'Network fees paid'});
-  assert.match(await fees.innerText(),/ADA:[\s\S]*ETH: 0[.,]00021 ETH/,'ADA and ETH gas have separate lines on the fee tile');
+  assert.match(await fees.locator('.governance-card-title').innerText(),/[0-9]/,'the combined fee total remains visible');
+  assert.doesNotMatch(await fees.innerText(),/(?:ADA|ETH):/,'the fee tile omits per-chain detail');
   assert.doesNotMatch(await fees.innerText(),/Partial/,'complete fee history does not inherit unrelated valuation warnings');
+  const overviewTiles=page.locator('main .portfolio-body > .portfolio-section > .tdsp-tile-grid').first();
+  assert.ok(await walletsTile.locator('[role="status"]').count()>0,'Wallets retains scan details');
+  for(const tile of await overviewTiles.locator(':scope > *').all()){
+    if(await tile.getAttribute('aria-label')==='Open Wallets')continue;
+    assert.equal(await tile.locator('p, .small, [role="status"], [role="progressbar"]').count(),0,'other overview tiles omit extra status and breakdowns');
+  }
+
   await walletsTile.click();await page.getByRole('button',{name:'Open My Wallets',exact:true}).click();
   assert.equal(await page.getByRole('checkbox',{name:'Miner wallet: ETH Savings',exact:true}).count(),0,'mining checkbox is removed from own wallets');
   await page.locator('#portfolio-wallet-menu-wallets').getByRole('button',{name:'Back',exact:true}).click();
