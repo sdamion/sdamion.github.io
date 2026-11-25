@@ -48,24 +48,24 @@
 
     <!-- Preload Logo -->
     <link rel="preload" href="tdsp_logo.webp?v=20260727-smooth-lines" as="image" type="image/webp">
-    <link rel="stylesheet" href="shared/styles.css?v=20261120-sync-details">
+    <link rel="stylesheet" href="shared/styles.css?v=20261125-remove-stats">
     <link rel="stylesheet" href="delegators/raffle.css?v=20261009-portfolio-access">
 
     <script src="shared/runtime.js?v=20261006-gain-tile-currency" defer></script>
-    <script src="shared/portfolio-i18n-keys.js?v=20261120-sync-details" defer></script>
+    <script src="shared/portfolio-i18n-keys.js?v=20261125-remove-stats" defer></script>
     <script src="shared/portfolio-i18n.js?v=20261006-portfolio-crypto-amount-logos" defer></script>
-    <script src="shared/i18n.js?v=20261120-sync-details" defer></script>
+    <script src="shared/i18n.js?v=20261125-remove-stats" defer></script>
     <script src="shared/site-controls.js?v=20260918-ask-full-width" defer></script>
     <script src="shared/database-status.js?v=20260819-database-status-module" defer></script>
     <script src="vendor/chart-loader.js?v=20260817-section-folders" defer></script>
     <script src="pool/linked-pool-lists.js?v=20260818-linked-pool-lists" defer></script>
     <script src="pool/status.js?v=20261015-pool-status" defer></script>
     <script src="delegators/pool-delegators-list.js?v=20260820-delegator-usd" defer></script>
-    <script src="delegators/delegator-dashboard-template.js?v=20261120-sync-details" defer></script>
+    <script src="delegators/delegator-dashboard-template.js?v=20261125-remove-stats" defer></script>
     <script src="home/news-overlay.js?v=20260818-news-overlay-module" defer></script>
     <script src="home/cardano-events.js?v=20260819-language-flags" defer></script>
     <script src="home/prices.js?v=20260918-ask-full-width" defer></script>
-    <script src="home/index.js?v=20261120-sync-details" defer></script>
+    <script src="home/index.js?v=20261125-remove-stats" defer></script>
     <script src="starch/company-alerts.js?v=20260928-multiple-company-alerts" defer></script>
 </head>
 <body>
@@ -74,8 +74,6 @@
             <div class="menu-bar">
                 <nav class="menu-bar__nav nav" aria-label="Main navigation">
                     <a class="nav-link nav-home-link" href="#home" data-i18n="nav_home">Home</a>
-                    <a class="nav-link" href="#pool" data-i18n="nav_spo">SPO</a>
-                    <a class="nav-link" href="#drep" data-i18n="nav_drep">DRep</a>
                     <a class="nav-link" href="#governance" data-i18n="nav_governance">Governance</a>
                     <a class="nav-link" href="#starch" data-i18n="nav_starch">Starch</a>
                     <span class="nav-row-break" aria-hidden="true"></span>
@@ -193,195 +191,6 @@
             </div>
         </section>
 
-        <section class="section pool-section" id="pool">
-            <div class="section-inner">
-                <h2 data-i18n="spo_stats">SPO Stats</h2>
-                <div class="tdsp-identity-line pool-id-line">
-                    <span data-i18n="pool_id">Pool ID</span>
-                    <strong id="pool-id">...</strong>
-                    <button class="tdsp-identity-action-button pool-id-stake-button" type="button" data-stake-open data-i18n="stake_now">Stake Now</button>
-                    <button class="pool-copy-icon-button pool-id-copy-button" type="button" data-copy-target="pool-id" aria-label="Copy stake pool ID" title="Copy pool ID">⧉</button>
-                </div>
-                <div class="tdsp-tile-grid tdsp-tile-grid--section" id="pool-summary" aria-live="polite">
-                    <div id="pool-delegators-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show pool delegators">
-                        <strong id="pool-delegators">...</strong>
-                        <span class="pool-provider-label">
-                            <svg class="pool-provider-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
-                                <circle cx="9" cy="7" r="4"></circle>
-                                <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"></path>
-                            </svg>
-                            <span class="pool-provider-label-text" data-i18n="delegators">Delegators</span>
-                        </span>
-                    </div>
-                    <div>
-                        <strong id="pool-live-stake">...</strong>
-                        <span class="pool-provider-label">
-                            <span class="pool-provider-icon pool-provider-symbol" aria-hidden="true">₳</span>
-                            <span class="pool-provider-label-text" data-i18n="live_stake">Live stake</span>
-                        </span>
-                    </div>
-                    <div>
-                        <strong id="pool-saturation">...</strong>
-                        <span class="pool-provider-label">
-                            <svg class="pool-provider-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                <path d="M20 13a8 8 0 1 0-16 0"></path>
-                                <path d="m12 13 4-4"></path>
-                                <path d="M4 17h16"></path>
-                            </svg>
-                            <span class="pool-provider-label-text" data-i18n="saturation">Saturation</span>
-                        </span>
-                    </div>
-                    <div>
-                        <strong id="pool-pledge">...</strong>
-                        <span class="pool-provider-label">
-                            <span class="pool-provider-icon pool-provider-symbol" aria-hidden="true">₳</span>
-                            <span class="pool-provider-label-text" data-i18n="pledge">Pledge</span>
-                        </span>
-                    </div>
-                    <div>
-                        <strong id="pool-margin">...</strong>
-                        <span class="pool-provider-label">
-                            <svg class="pool-provider-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                <line x1="19" x2="5" y1="5" y2="19"></line>
-                                <circle cx="6.5" cy="6.5" r="2.5"></circle>
-                                <circle cx="17.5" cy="17.5" r="2.5"></circle>
-                            </svg>
-                            <span class="pool-provider-label-text" data-i18n="margin">Margin</span>
-                        </span>
-                    </div>
-                    <div>
-                        <strong id="pool-fixed-cost">...</strong>
-                        <span class="pool-provider-label">
-                            <span class="pool-provider-icon pool-provider-symbol" aria-hidden="true">₳</span>
-                            <span class="pool-provider-label-text" data-i18n="fixed_cost">Fixed cost</span>
-                        </span>
-                    </div>
-                    <div aria-live="polite">
-                        <strong id="pool-lifetime-blocks">...</strong>
-                        <span class="pool-provider-label">
-                            <svg class="pool-provider-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                <path d="m21 8-9 5-9-5"></path>
-                                <path d="m3 8 9-5 9 5v8l-9 5-9-5Z"></path>
-                                <path d="m12 13 9-5"></path>
-                                <path d="M12 13v8"></path>
-                            </svg>
-                            <span class="pool-provider-label-text" data-i18n="lifetime_blocks">Lifetime Blocks</span>
-                        </span>
-                    </div>
-                    <div id="leader-schedule" aria-live="polite">
-                        <strong id="leader-schedule-count">...</strong>
-                        <span class="pool-provider-label">
-                            <svg class="pool-provider-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                <path d="m21 8-9 5-9-5"></path>
-                                <path d="m3 8 9-5 9 5v8l-9 5-9-5Z"></path>
-                                <path d="m12 13 9-5"></path>
-                                <path d="M12 13v8"></path>
-                            </svg>
-                            <span id="leader-schedule-meta" class="pool-provider-label-text" data-i18n="possible_blocks_current_epoch">Possible Blocks Current Epoch</span>
-                        </span>
-                    </div>
-                    <div>
-                        <strong id="pool-relays-up" class="pool-status-value">...</strong>
-                        <span class="pool-provider-label">
-                            <svg class="pool-provider-icon pool-relay-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                <rect width="20" height="8" x="2" y="2" rx="2"></rect>
-                                <rect width="20" height="8" x="2" y="14" rx="2"></rect>
-                                <path d="M6 6h.01M6 18h.01"></path>
-                            </svg>
-                            <span id="pool-relays-meta" class="pool-provider-label-text">Relay ...</span>
-                        </span>
-                    </div>
-                    <div id="pool-mithril-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show active Mithril signers">
-                        <strong id="pool-mithril-status" class="pool-status-value">...</strong>
-                        <span class="pool-provider-label"><img class="pool-provider-icon pool-provider-icon--monochrome" src="mithril-logo.svg" alt="">Mithril</span>
-                    </div>
-                    <div id="pool-starch-status-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show active miners for Starch company B0ADAD">
-                        <strong id="pool-starch-status" class="pool-status-value">...</strong>
-                        <span class="pool-provider-label"><img class="pool-provider-icon" src="starchCompanyLogo.webp?v=20260727-retina" alt=""><span id="pool-starch-miner-label" class="pool-provider-label-text">... Starch Miners</span></span>
-                    </div>
-                    <div id="pool-realfi-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Open Realfi SPO">
-                        <strong class="pool-status-value" data-i18n="active">Active</strong>
-                        <span class="pool-provider-label"><img class="pool-provider-icon" src="realfi-logo.svg" alt=""><span data-i18n="realfi_spo">Realfi SPO</span></span>
-                    </div>
-                    <div id="gov-spo-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show stake pool operator directory">
-                        <strong id="gov-spo-count">0</strong>
-                        <span data-i18n="spos">SPOs</span>
-                        <span class="governance-summary-subvalue" id="gov-spo-total-delegated">Delegated ₳ 0</span>
-                        <span class="governance-summary-subvalue" id="gov-spo-scan-status" hidden></span>
-                    </div>
-                    <div id="retired-spo-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show retired stake pools">
-                        <strong id="retired-spo-count" class="pool-status-value is-inactive">0</strong>
-                        <span data-i18n="retired_spos">Retired SPOs</span>
-                        <span class="governance-summary-subvalue" id="retired-spo-total-delegated">
-                            <span data-i18n="delegated">Delegated</span>
-                            <span class="pool-status-value is-inactive">₳ 0</span>
-                        </span>
-                    </div>
-                    <div id="spo-nakamoto-card" class="pool-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show SPO Nakamoto coefficients">
-                        <strong id="spo-nakamoto-values">--</strong>
-                        <span data-i18n="nakamoto_coefficient">Nakamoto Coefficient</span>
-                    </div>
-                </div>
-                <div class="pool-relays" id="pool-relays">
-                    <p class="small-text" data-i18n="loading_relay_status">Loading relay status...</p>
-                </div>
-                <p class="refresh-time small-text"><span data-i18n="last_updated">Last Updated:</span> <span id="pool-last-updated">Never</span></p>
-            </div>
-        </section>
-
-        <section class="section" id="drep">
-            <div class="section-inner">
-                <h2 data-i18n="drep_stats">DRep Stats</h2>
-                <div class="tdsp-identity-line pool-id-line">
-                    <span data-i18n="drep_id">DRep ID</span>
-                    <strong id="tdsp-drep-id">drep1yg5gkkyxwwr7d6qflf2qqp6drkp9432h6cvtmun0dqthusqlkz8hj</strong>
-                    <button class="tdsp-identity-action-button pool-id-stake-button" type="button" data-drep-open data-i18n="make_drep">Make DRep</button>
-                    <button class="pool-copy-icon-button pool-id-copy-button" type="button" data-copy-target="tdsp-drep-id" aria-label="Copy DamionDutch DRep ID" title="Copy DRep ID">⧉</button>
-                </div>
-                <div class="tdsp-tile-grid tdsp-tile-grid--governance" id="drep-stats-summary">
-                    <div id="tdsp-drep-status-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show DamionDutch DRep status">
-                        <strong id="tdsp-drep-status">Loading...</strong>
-                        <span>DamionDutch</span>
-                    </div>
-                    <div id="tdsp-drep-delegators-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show DamionDutch DRep delegators">
-                        <strong id="tdsp-drep-delegators">Loading...</strong>
-                        <span data-i18n="delegators">Delegators</span>
-                    </div>
-                    <div id="tdsp-drep-delegation-card" class="governance-menu-card">
-                        <strong id="tdsp-drep-delegation">Loading...</strong>
-                        <span data-i18n="delegation">Delegation</span>
-                    </div>
-                    <div id="tdsp-drep-voted-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show DamionDutch voted governance actions">
-                        <strong id="tdsp-drep-voted">Loading...</strong>
-                        <span data-i18n="voted_gov_actions">Voted Gov Actions</span>
-                    </div>
-                    <div id="drep-council-card" class="governance-summary-clickable governance-menu-card">
-                        <strong data-i18n="active">Active</strong>
-                        <span class="pool-provider-label"><img class="pool-provider-icon" src="drep-council-logo.svg" width="20" height="20" alt="DRep Council"><span class="pool-provider-label-text" data-i18n="drep_council">DRep Council</span></span>
-                        <span id="drep-council-power" data-i18n-auto data-i18n-auto-original="Voting power: ...">Voting power: ...</span>
-                    </div>
-                    <div id="gov-drep-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show DRep directory">
-                        <strong id="gov-drep-count">0</strong>
-                        <span data-i18n="dreps">DReps</span>
-                        <span class="governance-summary-subvalue" id="gov-drep-total-power" hidden></span>
-                    </div>
-                    <div id="gov-drep-inactive-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show inactive DReps">
-                        <strong id="gov-drep-inactive-count" class="pool-status-value is-inactive">0</strong>
-                        <span data-i18n="inactive_dreps">Inactive DReps</span>
-                        <span class="governance-summary-subvalue" id="gov-drep-inactive-power">
-                            <span data-i18n="delegated">Delegated</span>
-                            <span class="pool-status-value is-inactive">₳ 0</span>
-                        </span>
-                    </div>
-                    <div id="gov-drep-top10-card" class="governance-summary-clickable governance-menu-card" role="button" tabindex="0" aria-label="Show top 10 DReps by voting power">
-                        <strong id="gov-drep-top10-power">₳ 0</strong>
-                        <span data-i18n="top_10_dreps">Top 10 DReps</span>
-                        <span class="governance-summary-subvalue" id="gov-drep-top10-count" data-i18n="voting_power">Voting Power</span>
-                    </div>
-                </div>
-            </div>
-        </section>
 
         <section class="section governance-page" id="governance">
             <div class="section-inner">

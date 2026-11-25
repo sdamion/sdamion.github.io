@@ -410,10 +410,6 @@ document.addEventListener("DOMContentLoaded", () => {
         { key: 'prices', callback: () => fetchPrices({ force: true }), interval: 30000 },
         { key: 'news', callback: fetchCryptoNews, interval: 300000 },
         { key: 'events', callback: fetchCardanoEvents, interval: 900000, options: { selector: '#calendar' } },
-        { key: 'pool', callback: fetchPoolStatus, interval: 300000 },
-        { key: 'mithril', callback: fetchMithrilStatus, interval: 300000, options: { selector: '#pool' } },
-        { key: 'starch-pools', callback: fetchStarchPoolStatus, interval: 300000, options: { selector: '#pool' } },
-        { key: 'leader-schedule', callback: fetchLeaderSchedule, interval: 300000, options: { selector: '#pool' } },
         { key: 'database-status', callback: fetchDatabaseStatus, interval: 300000 }
     ];
     installRefreshTaskObservers(refreshTasks);
@@ -723,7 +719,7 @@ function getDelegatorDashboardTemplates() {
 
 function loadDelegatorAccessModule() {
     if (window.TDSPDelegatorAccess?.initOverlay) return Promise.resolve(window.TDSPDelegatorAccess);
-    return window.TDSPRuntime.loadScript('delegators/delegator-access.js?v=20261120-sync-details', {
+    return window.TDSPRuntime.loadScript('delegators/delegator-access.js?v=20261125-remove-stats', {
         datasetName: 'delegatorAccess',
         selector: 'script[data-delegator-access]',
         ready: () => window.TDSPDelegatorAccess?.initOverlay ? window.TDSPDelegatorAccess : null

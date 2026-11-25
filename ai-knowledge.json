@@ -18,20 +18,6 @@
       "aliases": ["Stake Now", "stake with TDSP", "delegate to TDSP", "staking", "delegeren", "delegar", "ステーキング", "委任"]
     },
     {
-      "id": "spo",
-      "title": "Stake pool information",
-      "url": "https://www.thedutchstakepool.com/#pool",
-      "summary": "The SPO section shows current TDSP pool statistics, delegation, saturation, pledge, margin, fixed cost, lifetime blocks, possible blocks, relay status, Mithril status, and related Cardano stake-pool directories. Current values are supplied by the live backend catalog rather than this static description.",
-      "aliases": ["SPO Stats", "pool statistics", "stake pool operator", "poolgegevens", "estadisticas del pool", "ステークプール情報"]
-    },
-    {
-      "id": "drep",
-      "title": "DRep information",
-      "url": "https://www.thedutchstakepool.com/#drep",
-      "summary": "The DRep section presents DamionDutch DRep status, delegators, delegated voting power, voting activity, DRep Council information, the DRep directory, inactive DReps, and top DReps. Current identities, totals, and votes come from the live backend catalog.",
-      "aliases": ["DRep Stats", "DamionDutch DRep", "delegated representative", "DRep gegevens", "representante delegado", "DRep情報"]
-    },
-    {
       "id": "governance",
       "title": "Cardano governance",
       "url": "https://www.thedutchstakepool.com/#governance",
