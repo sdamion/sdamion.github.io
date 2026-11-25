@@ -5,7 +5,7 @@ import test from 'node:test';
 
 const source=readFileSync(new URL('../delegators/delegator-access.js',import.meta.url),'utf8');
 const init=source.slice(source.indexOf('async function init(options = {})'),source.indexOf('window.TDSPDelegatorAccess ='));
-const connect=source.slice(source.indexOf('async function connectWallet(walletInfo)'),source.indexOf('async function walletHasAdminCredential'));
+const connect=source.slice(source.indexOf('async function connectWallet(walletInfo)'),source.indexOf('async function populateWallets('));
 function walletContext(addresses,network=1){
   const state={authenticated:[],choices:[]};
   const wallet={getNetworkId:async()=>network};

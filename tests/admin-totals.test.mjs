@@ -4,7 +4,7 @@ import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 
 const source = readFileSync(new URL('../delegators/delegator-access.js', import.meta.url), 'utf8');
-const setter = source.slice(source.indexOf('function setTranslatedText('), source.indexOf('function readLostStakeMessagedAddresses('));
+const setter = source.slice(source.indexOf('function setTranslatedText('), source.indexOf('function loadMesh('));
 const render = source.slice(source.indexOf('function renderAdminUsers('), source.indexOf('async function saveAdminUsers('));
 
 test('Admin user counts survive the translation pass triggered by opening overlays', () => {

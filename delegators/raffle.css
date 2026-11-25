@@ -20,10 +20,6 @@
     background: transparent;
 }
 
-.raffle-page.raffle-embedded .raffle-site-header {
-    display: none;
-}
-
 .raffle-page.raffle-embedded .raffle-main {
     width: 100%;
     padding: 0;
@@ -79,10 +75,6 @@
     overflow-wrap: anywhere;
 }
 
-.raffle-stats {
-    margin: 0;
-}
-
 .raffle-open-tile {
     width: 100%;
     min-width: 0;
@@ -91,26 +83,10 @@
     appearance: none;
 }
 
-.raffle-overlay-body {
-    display: grid;
-    gap: 20px;
-    width: 100%;
-}
-
 .raffle-admin-panel {
     display: grid;
     gap: 20px;
     width: 100%;
-    min-width: 0;
-}
-
-.raffle-overlay-body > *,
-.raffle-draws,
-.raffle-draw-card,
-.raffle-winner,
-.raffle-draw-card details {
-    width: 100%;
-    max-width: 100%;
     min-width: 0;
 }
 
@@ -146,30 +122,6 @@
     box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.15);
 }
 
-.raffle-confirm {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    margin: 6px 0;
-}
-
-.raffle-confirm :is(input[type="checkbox"], input[type="radio"]) {
-    flex: 0 0 auto;
-    margin-top: 3px;
-}
-
-.raffle-publish-options {
-    display: grid;
-    gap: 0.65rem;
-    margin: 0;
-    padding: 0;
-    border: 0;
-}
-
-.raffle-publish-options legend {
-    margin-bottom: 0.65rem;
-}
-
 .raffle-exclusion-list {
     display: grid;
     gap: 8px;
@@ -191,42 +143,11 @@
     min-width: 0;
 }
 
-.raffle-exclusion-state {
-    width: fit-content;
-}
-
-.raffle-exclusion-state.is-excluded {
-    color: #fb7185;
-}
-
-.raffle-exclusion-state.is-included {
-    color: #34d399;
-}
-
 .raffle-exclusion-actions {
     display: flex;
     flex-wrap: wrap;
     justify-content: flex-end;
     gap: 8px;
-}
-
-.portfolio-access-toggle {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    white-space: nowrap;
-}
-
-.raffle-lost-stake-sort-label {
-    align-self: center;
-    color: var(--muted);
-    font-size: var(--tdsp-detail-size);
-    font-weight: 700;
-}
-
-.raffle-lost-stake-sort {
-    width: auto;
-    min-width: 170px;
 }
 
 .raffle-lost-stake-toggle {
@@ -245,158 +166,9 @@
     margin: 0;
     accent-color: var(--accent);
 }
-
-.raffle-exclusion-remove,
-.raffle-exclusion-toggle {
+.raffle-exclusion-remove {
     min-height: 38px;
     padding: 7px 10px;
-}
-
-.raffle-lost-stake-select-wrap {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 48px;
-    min-height: 48px;
-    cursor: pointer;
-}
-
-.raffle-lost-stake-select {
-    width: 26px;
-    height: 26px;
-    margin: 0;
-    cursor: pointer;
-    accent-color: var(--accent);
-}
-
-.raffle-lost-stake-row {
-    display: grid;
-    grid-template-columns: minmax(104px, max-content) minmax(0, 1fr) auto 48px auto;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-    min-width: 0;
-    min-height: 0;
-    padding: 9px 12px;
-    text-align: left;
-    font: inherit;
-    appearance: none;
-}
-
-.raffle-lost-stake-amount {
-    color: var(--accent);
-    font-size: var(--tdsp-tile-detail-size);
-    font-weight: 800;
-    line-height: 1.2;
-    white-space: nowrap;
-}
-
-.raffle-lost-stake-identity {
-    min-width: 0;
-    color: var(--tdsp-tile-detail-color);
-    font-size: var(--tdsp-tile-detail-size);
-    font-weight: var(--tdsp-tile-detail-weight);
-    line-height: 1.25;
-    overflow-wrap: anywhere;
-    word-break: break-word;
-}
-
-.raffle-lost-stake-identity-label {
-    color: var(--muted);
-    font-size: 0.9em;
-    font-weight: 700;
-}
-
-.raffle-lost-stake-row .tdsp-responsive-identifier,
-.raffle-lost-stake-row .tdsp-responsive-identifier-full,
-.raffle-lost-stake-row .tdsp-responsive-identifier-short {
-    white-space: normal;
-    overflow-wrap: anywhere;
-    word-break: break-word;
-}
-
-.raffle-lost-stake-row .raffle-lost-stake-select,
-.raffle-lost-stake-row .raffle-lost-stake-select-wrap {
-    position: static;
-}
-
-.raffle-lost-stake-copy {
-    flex: none;
-    justify-self: center;
-}
-
-.raffle-lost-stake-sent {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 48px;
-    min-width: 48px;
-    min-height: 48px;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    background: var(--surface);
-    color: var(--muted);
-    cursor: pointer;
-    font-size: 1.2rem;
-    font-weight: 800;
-    line-height: 1;
-    opacity: 0.72;
-    padding: 0;
-    transition: border-color 160ms ease, color 160ms ease, opacity 160ms ease, transform 160ms ease;
-}
-
-.raffle-lost-stake-sent.is-marked {
-    border-color: var(--accent);
-    color: var(--accent);
-    opacity: 1;
-}
-
-.raffle-lost-stake-sent:active {
-    transform: scale(0.96);
-}
-
-.raffle-lost-stake-detail {
-    display: grid;
-    gap: 10px;
-    min-width: 0;
-    padding: 14px;
-}
-
-.raffle-lost-stake-detail-row {
-    display: grid;
-    gap: 4px;
-    min-width: 0;
-}
-
-.raffle-lost-stake-wallet-editor {
-    display: grid;
-    gap: 8px;
-    min-width: 0;
-}
-
-.raffle-lost-stake-wallet-editor input {
-    width: 100%;
-    min-width: 0;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    background: var(--surface);
-    color: var(--text);
-    font: inherit;
-    overflow-wrap: anywhere;
-    padding: 10px 12px;
-}
-
-.raffle-lost-stake-pools {
-    display: grid;
-    gap: 8px;
-    min-width: 0;
-}
-
-.raffle-lost-stake-pool {
-    display: grid;
-    gap: 6px;
-    min-width: 0;
-    padding: 12px;
 }
 
 @media (max-width: 560px) {
@@ -407,69 +179,6 @@
     .raffle-exclusion-actions {
         justify-content: flex-start;
     }
-
-    .raffle-lost-stake-row {
-        grid-template-columns: minmax(92px, max-content) minmax(0, 1fr) auto 48px auto;
-        padding: 8px 10px;
-    }
-}
-
-.raffle-draws {
-    display: grid;
-    gap: 14px;
-}
-
-.raffle-draw-card {
-    position: relative;
-    display: grid;
-    gap: 12px;
-    min-width: 0;
-    padding: 18px;
-    overflow: hidden;
-}
-
-.raffle-draw-card.has-prize-image {
-    padding-right: 82px;
-}
-
-.raffle-prize-image {
-    position: absolute;
-    top: 50%;
-    right: 18px;
-    display: block;
-    width: 44px;
-    height: 44px;
-    object-fit: contain;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    background: var(--overlay-surface-muted);
-    transform: translateY(-50%);
-}
-
-.raffle-prize-token-link {
-    color: var(--accent-strong);
-    text-decoration: none;
-    width: max-content;
-    max-width: 100%;
-}
-
-.raffle-prize-token-link:hover,
-.raffle-prize-token-link:focus-visible {
-    text-decoration: underline;
-}
-
-.raffle-draw-card :is(h3, p) {
-    margin: 0;
-}
-
-.raffle-winner {
-    display: grid;
-    gap: 5px;
-}
-
-.raffle-prize,
-.raffle-winner > span {
-    display: block;
 }
 
 .raffle-address-line {
@@ -488,33 +197,6 @@
     font: inherit;
 }
 
-.raffle-draw-card details {
-    min-width: 0;
-}
-
-.raffle-draw-card summary {
-    cursor: pointer;
-}
-
-.raffle-draw-card details[open] {
-    display: grid;
-    gap: 8px;
-}
-
-.raffle-on-chain-proof,
-.raffle-on-chain-actions {
-    display: grid;
-    gap: 8px;
-    min-width: 0;
-    padding-top: 12px;
-    border-top: 1px solid var(--line);
-}
-
-.raffle-on-chain-proof :is(p, a),
-.raffle-on-chain-actions p {
-    overflow-wrap: anywhere;
-}
-
 .raffle-inline-status {
     margin: 0;
 }
@@ -526,9 +208,7 @@
 .raffle-inline-status.is-error {
     color: #fb7185;
 }
-
-.raffle-identity,
-.raffle-empty {
+.raffle-identity {
     min-width: 0;
     padding: 16px;
 }
@@ -573,17 +253,7 @@
     .raffle-title-row {
         align-items: flex-start;
     }
-
-    .raffle-stats {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .raffle-stats > div {
-        min-width: 0;
-    }
-
-    .raffle-form,
-    .raffle-draw-card {
+.raffle-form {
         padding: 14px;
     }
 

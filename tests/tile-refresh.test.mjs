@@ -102,7 +102,7 @@ test('dashboard refresh renews cached loaders and coalesces concurrent refreshes
         drepVoteStatsPayloadPromises: new Map([['old', {}]]),
         refreshActiveGovernanceGroup: () => { calls++; return pending; },
         loadCouncilMembers: async () => {}, loadSpoDirectory: async () => {},
-        loadTreasuryData: async () => {}, loadCatalystFundDirectory: async () => {},
+        loadTreasuryData: async () => { rendered++; }, loadCatalystFundDirectory: async () => {},
         loadCipDirectory: async () => {}, loadTdspDrepStats: async () => ({ count: 26 }),
         governanceTdspDrep: { renderCards: stats => { rendered += stats.count; } },
         console
@@ -111,11 +111,10 @@ test('dashboard refresh renews cached loaders and coalesces concurrent refreshes
     const first = context.refreshDashboardTiles();
     assert.equal(context.refreshDashboardTiles(), first);
     assert.equal(calls, 1);
-    assert.equal(context.spoDirectoryPromise, null);
-    assert.equal(context.drepVoteStatsPayloadPromises.size, 0);
+    assert.equal(context.treasuryPromise, null);
     resolve();
     await first;
-    assert.equal(rendered, 26);
+    assert.equal(rendered, 1);
     assert.equal(context.dashboardRefreshPromise, null);
     assert.ok(context.dashboardRefreshedAt > 0);
     await context.refreshDashboardTiles();

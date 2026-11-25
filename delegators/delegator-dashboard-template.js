@@ -22,7 +22,7 @@
         if (!(root instanceof HTMLElement)) return;
         root.querySelectorAll('p, h1, h2, strong, span, button, label, legend, summary').forEach(element => {
             if (!(element instanceof HTMLElement)) return;
-            if (element.closest('#raffle-wallet-list, #raffle-draws, #raffle-prizes-list, #raffle-exclusion-list, #raffle-admin-user-list, #raffle-lost-stake-list')) return;
+            if (element.closest('#raffle-wallet-list, #raffle-admin-user-list')) return;
             if (element.querySelector('input, textarea, code, img, span.governance-close-icon')) return;
             const text = String(element.textContent || '').replace(/\s+/g, ' ').trim();
             if (!text) return;
@@ -125,10 +125,6 @@
                                     <button class="governance-vote-secondary" type="submit">Add Admin Users</button>
                                     <p class="raffle-inline-status" id="raffle-admin-users-status" role="status" aria-live="polite"></p>
                                 </form>
-                            </section>
-<section class="raffle-admin-panel" data-raffle-view-panel="portfolio_access" hidden>
-                                <div id="portfolio-access-list" class="raffle-exclusion-list"></div>
-                                <p id="portfolio-access-status" class="raffle-inline-status" role="status" aria-live="polite"></p>
                             </section>
             </div>
         `);

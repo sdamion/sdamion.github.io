@@ -8,7 +8,7 @@ import os from 'node:os';
 const backend=path.resolve(process.argv[3]||'../koios-proxy');
 const requireBackend=createRequire(path.join(backend,'package.json')),express=requireBackend('express');
 const {createAccountStore,createPortfolioAccountAuth,createPortfolioAuthRouter,fullPortfolioAccess}=await import(path.join(backend,'member-portfolio/account-auth.mjs'));
-const {createRaffleService}=await import(path.join(backend,'raffle.js'));
+const {createDashboardAuthService}=await import(path.join(backend,'dashboard-auth.js'));
 const {createMemberPortfolioHandler}=await import(path.join(backend,'member-portfolio/index.mjs'));
 const {createVaultStore}=await import(path.join(backend,'member-portfolio/vault-store.mjs'));
 const {installPortfolioBodyParsers}=await import(path.join(backend,'member-portfolio/body-parser.mjs'));
@@ -23,7 +23,7 @@ const server=await new Promise(resolve=>{const server=app.listen(0,'localhost',(
 const store=createAccountStore(path.join(directory,'accounts.json'));
 const member='stake1u9ex0jtl4nv84rlzwuft5rczy2hgkjygewla04mgy7v2nccx4p4yr';
 let raffles;
-const raffle=createRaffleService({adminAddress:'stake1uxg7k2rzm28glx8decjmulsxrwwaxrn2t45mcvu5fyfscuc6z2mjz',sessionSecret:'dashboard-browser-secret-'.repeat(3),loadPool:async()=>({delegators:[{stake_address:member,amount_lovelace:'100000000'}]}),loadRaffles:async()=>raffles,saveRaffles:async value=>{raffles=value;}});
+const raffle=createDashboardAuthService({adminAddress:'stake1uxg7k2rzm28glx8decjmulsxrwwaxrn2t45mcvu5fyfscuc6z2mjz',sessionSecret:'dashboard-browser-secret-'.repeat(3),loadPool:async()=>({delegators:[{stake_address:member,amount_lovelace:'100000000'}]}),loadAdmins:async()=>raffles,saveAdmins:async value=>{raffles=value;}});
 const auth=createPortfolioAccountAuth({store,secret:'browser-test-secret-'.repeat(3),origins:[origin],rpID:'localhost',issueDashboardSession:owner=>raffle.createPasskeyDashboardSession(owner),verifyWallet:async token=>{if(token!=='verified-wallet-fixture')throw new Error('Invalid wallet session');return {owner:member,binding:'wallet-fixture'};}});
 const vaultStore=createVaultStore({directory:path.join(directory,'vaults')});
 installPortfolioBodyParsers(app,{authenticate:req=>auth.verify(String(req.headers.authorization||'').slice(7)),sendAuthError:(res,error)=>res.status(error.status||500).json({error:error.message})});

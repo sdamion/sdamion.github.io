@@ -72,14 +72,8 @@ const CATALYST_PROPOSAL_SUMMARY_API_BASE_URL = (
     'CATALYST_PROPOSAL_SUMMARY_API_BASE_URL'
   )
 ).replace(/\/+$/, '');
-const SPO_DIRECTORY_URL = normalizeAllowedApiUrl(
-  process.env.SPO_DIRECTORY_URL || `${TDSP_API_ORIGIN}/api/spos/directory`,
-  'SPO_DIRECTORY_URL'
-);
-const RETIRED_SPO_DIRECTORY_URL = normalizeAllowedApiUrl(
-  process.env.RETIRED_SPO_DIRECTORY_URL || `${TDSP_API_ORIGIN}/api/spos/retired`,
-  'RETIRED_SPO_DIRECTORY_URL'
-);
+
+
 const CONSTITUTION_CHAT_API_URL = normalizeAllowedApiUrl(
   process.env.CONSTITUTION_CHAT_API_URL || `${TDSP_API_ORIGIN}/api/constitution/chat`,
   'CONSTITUTION_CHAT_API_URL'
@@ -203,30 +197,16 @@ const proxyRoutes = {
   '/__website_status_proxy__': () => `${TDSP_API_ORIGIN}/api/raffle/admin/website-status`,
   '/__raffle_admin_proxy__': () =>
     `${TDSP_API_ORIGIN}/api/raffle/admin`,
-  '/__raffle_admin_preview_proxy__': () => `${TDSP_API_ORIGIN}/api/raffle/admin/draw/preview`,
-  '/__raffle_admin_draw_proxy__': () =>
-    `${TDSP_API_ORIGIN}/api/raffle/admin/draw`,
-  '/__raffle_admin_exclusions_proxy__': () =>
-    `${TDSP_API_ORIGIN}/api/raffle/admin/exclusions`,
+
+
   '/__raffle_admin_users_proxy__': () =>
     `${TDSP_API_ORIGIN}/api/raffle/admin/users`,
-  '/__raffle_admin_portfolio_access_proxy__': () => `${TDSP_API_ORIGIN}/api/raffle/admin/portfolio-access`,
-  '/__raffle_admin_lost_stake_proxy__': () =>
-    `${TDSP_API_ORIGIN}/api/raffle/admin/lost-stake`,
-  '/__raffle_admin_lost_stake_message_state_proxy__': () =>
-    `${TDSP_API_ORIGIN}/api/raffle/admin/lost-stake/message-state`,
-  '/__raffle_admin_anchor_proxy__': () =>
-    `${TDSP_API_ORIGIN}/api/raffle/admin/anchor`,
+
+
   '/__raffle_delegator_proxy__': () =>
     `${TDSP_API_ORIGIN}/api/raffle/delegator`,
-  '/__raffle_prizes_proxy__': () =>
-    `${TDSP_API_ORIGIN}/api/raffle/prizes`,
-  '/__raffle_prize_image_proxy__': url => {
-    const file = String(url.searchParams.get('file') || '').trim();
-    return /^[0-9a-f]+\.(png|jpg|webp|gif|svg)$/i.test(file)
-      ? `${TDSP_API_ORIGIN}/api/raffle/prize-image/${encodeURIComponent(file)}`
-      : null;
-  },
+
+
   '/__mithril_proxy__': () =>
     `${TDSP_API_ORIGIN}/api/mithril`,
   '/__leader_schedule_proxy__': () =>
@@ -254,16 +234,7 @@ const proxyRoutes = {
       ? `${TDSP_API_ORIGIN}/api/proposal/${encodeURIComponent(proposalId)}/votes`
       : null;
   },
-  '/__proposal_rationale_proxy__': url => {
-    const proposalId = String(url.searchParams.get('proposalId') || '').toLowerCase();
-    const drepId = String(url.searchParams.get('drepId') || '').toLowerCase();
-    if (!/^gov_action1[0-9a-z]{20,140}$/.test(proposalId) || !/^(drep1[0-9a-z]{20,140}|[0-9a-f]{56,64})$/.test(drepId)) {
-      return null;
-    }
-    const lang = String(url.searchParams.get('lang') || '').trim();
-    const params = lang ? `?lang=${encodeURIComponent(lang)}` : '';
-    return `${TDSP_API_ORIGIN}/api/proposal/${encodeURIComponent(proposalId)}/drep/${encodeURIComponent(drepId)}/rationale${params}`;
-  },
+
   '/__proposal_detail_proxy__': url => {
     const proposalId = String(url.searchParams.get('proposalId') || '').toLowerCase();
     return /^gov_action1[0-9a-z]{20,120}$/.test(proposalId)
@@ -276,44 +247,8 @@ const proxyRoutes = {
       ? appendLanguageParam(`${TDSP_API_ORIGIN}/api/proposal/${encodeURIComponent(proposalId)}/summary`, url)
       : null;
   },
-  '/__drep_directory_proxy__': url => {
-    const type = url.searchParams.get('type');
-    if (type === 'directory') return `${TDSP_API_ORIGIN}/api/dreps/directory`;
-    if (type === 'metadata-compact') return `${TDSP_API_ORIGIN}/api/dreps/metadata/compact`;
-    if (type === 'metadata') return `${TDSP_API_ORIGIN}/api/dreps/metadata`;
-    if (type === 'info') return `${TDSP_API_ORIGIN}/api/dreps/info`;
-    return null;
-  },
-  '/__drep_council_proxy__': () => `${TDSP_API_ORIGIN}/api/dreps/council`,
-  '/__drep_correlation_proxy__': () =>
-    `${TDSP_API_ORIGIN}/api/dreps/correlation`,
-  '/__drep_vote_stats_proxy__': url => {
-    const ids = String(url.searchParams.get('ids') || '')
-      .split(',')
-      .map(value => value.trim().toLowerCase())
-      .filter(value => /^drep1[0-9a-z]{20,120}$/.test(value) || /^[0-9a-f]{56}$/.test(value))
-      .slice(0, 50);
-    const params = ids.length ? `?ids=${encodeURIComponent(ids.join(','))}` : '';
-    return `${TDSP_API_ORIGIN}/api/dreps/vote-stats${params}`;
-  },
-  '/__drep_detail_proxy__': url => {
-    const drepId = url.searchParams.get('drepId');
-    return drepId
-      ? `${TDSP_API_ORIGIN}/api/drep/${encodeURIComponent(drepId)}`
-      : null;
-  },
-  '/__spo_directory_proxy__': () =>
-    SPO_DIRECTORY_URL,
-  '/__retired_spo_directory_proxy__': () =>
-    RETIRED_SPO_DIRECTORY_URL,
-  '/__spo_rescan_status_proxy__': () =>
-    `${TDSP_API_ORIGIN}/api/spos/rescan/status`,
-  '/__spo_detail_proxy__': url => {
-    const poolId = String(url.searchParams.get('poolId') || '').toLowerCase();
-    return /^pool1[0-9a-z]{20,120}$/.test(poolId)
-      ? `${TDSP_API_ORIGIN}/api/spo/${encodeURIComponent(poolId)}`
-      : null;
-  },
+
+
   '/__metadata_proxy__': url => {
     const metadataUrl = url.searchParams.get('url');
     const refresh = url.searchParams.get('refresh') === '1' ? '&refresh=1' : '';
@@ -356,76 +291,9 @@ async function requestJson(target, timeoutMs = 30_000) {
   return JSON.parse(upstream.body.toString('utf8'));
 }
 
-function cachedRecordName(entry) {
-  return [
-    entry?.name,
-    entry?.given_name,
-    entry?.meta_json?.body?.givenName,
-    entry?.meta_json?.body?.name,
-    entry?.metadata?.name
-  ].map(value => String(value || '').trim()).find(Boolean) || null;
-}
 
 async function getDirectoryCompatibilityPayload(pathname, url) {
-  if (pathname === '/__drep_directory_proxy__' && url.searchParams.get('type') === 'directory') {
-    const [metadata, info] = await Promise.all([
-      requestJson(`${TDSP_API_ORIGIN}/api/dreps/metadata`),
-      requestJson(`${TDSP_API_ORIGIN}/api/dreps/info`)
-    ]);
-    const dreps = Object.values(info || {}).filter(Boolean).map(entry => {
-      const drepId = entry?.drep_id || entry?.drep_id_bech32 || null;
-      const metadataEntry = metadata?.[drepId] || metadata?.[entry?.hex] || null;
-      return {
-        drep_id: drepId,
-        hex: entry?.hex || null,
-        name: cachedRecordName(metadataEntry) || cachedRecordName(entry) || drepId,
-        active: entry?.active === true,
-        amount: entry?.amount || '0'
-      };
-    }).filter(entry => entry.drep_id || entry.hex);
-    return { count: dreps.length, dreps };
-  }
 
-  if (pathname === '/__spo_directory_proxy__') {
-    const payload = await requestJson(`${TDSP_API_ORIGIN}/api/spos`);
-    return {
-      updated_at: payload?.updated_at || null,
-      activity_checked_at: payload?.activity_checked_at || null,
-      count: Number(payload?.count) || 0,
-      active_count: Number(payload?.active_count) || 0,
-      inactive_count: Number(payload?.inactive_count) || 0,
-      total_delegated_lovelace: payload?.total_delegated_lovelace || '0',
-      spos: (payload?.spos || []).map(spo => {
-        const relays = Array.isArray(spo?.relays) ? spo.relays : [];
-        const providers = [...new Map(relays
-          .map(relay => relay?.provider)
-          .filter(provider => provider?.id && provider?.name)
-          .map(provider => [provider.id, provider.name])).values()];
-        return {
-          pool_id: spo?.pool_id || null,
-          name: spo?.name || null,
-          ticker: spo?.ticker || null,
-          delegated_lovelace: spo?.delegated_lovelace || '0',
-          delegator_count: Number(spo?.delegator_count) || 0,
-          saturation_pct: Number(spo?.saturation_pct) || 0,
-          status: spo?.status || null,
-          pledge_lovelace: spo?.pledge_lovelace || '0',
-          live_pledge_lovelace: spo?.live_pledge_lovelace || '0',
-          active: typeof spo?.active === 'boolean' ? spo.active : null,
-          pledge_met: typeof spo?.pledge_met === 'boolean' ? spo.pledge_met : null,
-          relay_active: typeof spo?.relay_active === 'boolean' ? spo.relay_active : null,
-          relay_check_required: spo?.relay_check_required === true,
-          active_relay_count: Number(spo?.active_relay_count) || 0,
-          inactive_reasons: Array.isArray(spo?.inactive_reasons) ? spo.inactive_reasons : [],
-          relays,
-          cloud_hosting_type: relays.length && relays.every(relay => relay?.provider?.id)
-            ? 'cloud-spo'
-            : 'spo',
-          cloud_service: providers.join(', ')
-        };
-      })
-    };
-  }
 
   if (pathname === '/__committee_proxy__') {
     const payload = await requestJson(`${TDSP_API_ORIGIN}/api/committee`);
@@ -773,21 +641,18 @@ export const server = createServer(async (req, res) => {
         '/__raffle_auth_verify_proxy__',
         '/__raffle_admin_proxy__',
         '/__website_status_proxy__',
-        '/__raffle_admin_draw_proxy__',
-        '/__raffle_admin_preview_proxy__',
-        '/__raffle_admin_exclusions_proxy__',
+
+
         '/__raffle_admin_users_proxy__',
-        '/__raffle_admin_portfolio_access_proxy__',
-        '/__raffle_admin_lost_stake_proxy__',
-        '/__raffle_admin_lost_stake_message_state_proxy__',
-        '/__raffle_admin_anchor_proxy__',
+
+
         '/__raffle_delegator_proxy__',
-        '/__raffle_prizes_proxy__',
-        '/__raffle_prize_image_proxy__'
+
+
       ].includes(url.pathname)) {
-        const allowedMethods = url.pathname === '/__website_status_proxy__' || url.pathname === '/__raffle_admin_proxy__' || url.pathname === '/__raffle_admin_lost_stake_proxy__' || url.pathname === '/__raffle_delegator_proxy__' || url.pathname === '/__raffle_prizes_proxy__' || url.pathname === '/__raffle_prize_image_proxy__'
+        const allowedMethods = url.pathname === '/__website_status_proxy__' || url.pathname === '/__raffle_admin_proxy__' || url.pathname === '/__raffle_delegator_proxy__'
           ? new Set(['GET'])
-          : url.pathname === '/__raffle_admin_exclusions_proxy__' || url.pathname === '/__raffle_admin_users_proxy__' || url.pathname === '/__raffle_admin_portfolio_access_proxy__' || url.pathname === '/__raffle_admin_lost_stake_message_state_proxy__'
+          : url.pathname === '/__raffle_admin_users_proxy__'
             ? new Set(['POST', 'PUT'])
             : new Set(['POST']);
         if (!allowedMethods.has(req.method || 'GET')) {
@@ -808,19 +673,12 @@ export const server = createServer(async (req, res) => {
         return;
       }
       if (
-        (
-          url.pathname === '/__drep_directory_proxy__' &&
-          url.searchParams.get('type') === 'directory'
-        ) ||
         [
-          '/__drep_detail_proxy__',
-          '/__drep_vote_stats_proxy__',
-          '/__drep_correlation_proxy__',
+
+
           '/__proposal_votes_proxy__',
-          '/__proposal_rationale_proxy__',
-          '/__spo_directory_proxy__',
-          '/__retired_spo_directory_proxy__',
-          '/__spo_rescan_status_proxy__',
+
+
           '/__committee_proxy__',
           '/__committee_member_proxy__',
           '/__starch_directory_proxy__'
@@ -843,24 +701,7 @@ export const server = createServer(async (req, res) => {
         }
         return;
       }
-      if (
-        url.pathname === '/__drep_directory_proxy__' &&
-        url.searchParams.get('type') === 'metadata-compact'
-      ) {
-        let upstream = await requestUpstream(target, { timeoutMs: 30_000 });
-        if (upstream.statusCode === 404) {
-          upstream = await requestUpstream(
-            `${TDSP_API_ORIGIN}/api/dreps/metadata`,
-            { timeoutMs: 30_000 }
-          );
-        }
-        res.writeHead(upstream.statusCode, {
-          'cache-control': 'no-store',
-          'content-type': upstream.contentType || 'application/json; charset=utf-8'
-        });
-        res.end(req.method === 'HEAD' ? undefined : upstream.body);
-        return;
-      }
+
       await proxyRequest(target, res);
       return;
     }

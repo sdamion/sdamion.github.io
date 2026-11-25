@@ -29,7 +29,7 @@ test('admin passkey opens the admin dashboard and clears the previous identity',
   assert.deepEqual(state.events,['tdsp:open-admin-dashboard']);
   assert.equal(storage.get('tdsp-raffle-session-admin'),'verified-admin');
   assert.equal(storage.has('tdsp-raffle-session-delegator'),false);
-  assert.equal(ctx.portfolioUnlockWallet,null);assert.equal(ctx.adminTransactionWallet,null);
+  assert.equal(ctx.portfolioUnlockWallet,null);
   assert.equal(ctx.passkeyLoginPending,false);
 });
 test('member passkey loads the user dashboard without opening Portfolio',async()=>{
@@ -40,12 +40,11 @@ test('member passkey loads the user dashboard without opening Portfolio',async()
   assert.equal(storage.get('tdsp-raffle-session-delegator'),'verified-member');
   assert.equal(storage.has('tdsp-raffle-session-admin'),false);
 });
-test('standalone passkey shows a dashboard containing only its permitted Portfolio tile',async()=>{
+test('historical standalone passkeys cannot restore a removed user Portfolio dashboard',async()=>{
   const {ctx,state,storage}=fixture({role:'portfolio',member_id:'portfolio:legacy'});
-  await ctx.restorePasskeyDashboard(ctx.module);
-  assert.equal(state.authenticated,true);assert.equal(state.loads,0);
+  await assert.rejects(ctx.restorePasskeyDashboard(ctx.module), /available to admins only/);
+  assert.equal(state.authenticated,false);assert.equal(state.loads,0);
   assert.equal(storage.size,0);assert.equal(ctx.sessionToken,'');
-  assert.equal(state.tiles['raffle-open'].hidden,true);assert.equal(state.tiles['raffle-prizes-open'].hidden,true);
 });
 test('cancelled passkey stays on login and reports the cancellation',async()=>{
   const {ctx,state}=fixture({});

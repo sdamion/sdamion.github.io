@@ -1,6 +1,6 @@
 (function () {
     const GOVERNANCE_RICH_TEXT_SCRIPT_SRC = 'governance/governance-rich-text.js?v=20260818-continuation-lists';
-    const GOVERNANCE_API_SCRIPT_SRC = 'governance/governance-api.js?v=20260831-retired-spo-only';
+    const GOVERNANCE_API_SCRIPT_SRC = 'governance/governance-api.js?v=20261125-unused-cleanup';
     const GOVERNANCE_ASSISTANT_SCRIPT_SRC = 'governance/governance-assistant.js?v=20260918-ask-full-width';
     const GOVERNANCE_FUNDING_DIRECTORY_SCRIPT_SRC = 'governance/governance-funding-directory.js?v=20260817-modular-funding-directory';
     const GOVERNANCE_BUSINESS_LINKS_SCRIPT_SRC = 'governance/governance-business-links.js?v=20260818-modular-business-links-domain';
@@ -8,7 +8,7 @@
     const GOVERNANCE_CATALYST_FORMAT_SCRIPT_SRC = 'governance/governance-catalyst-format.js?v=20260922-universal-ada-usd';
     const GOVERNANCE_PIE_CHART_SCRIPT_SRC = 'governance/governance-pie-chart.js?v=20260819-not-voted-graph-language';
     const GOVERNANCE_CATALYST_CHARTS_SCRIPT_SRC = 'governance/governance-catalyst-charts.js?v=20260819-funding-labels';
-    const GOVERNANCE_ACTION_BUTTONS_SCRIPT_SRC = 'governance/governance-action-buttons.js?v=20260817-modular-action-buttons';
+    const GOVERNANCE_ACTION_BUTTONS_SCRIPT_SRC = 'governance/governance-action-buttons.js?v=20261125-unused-cleanup';
     const GOVERNANCE_BOT_CONTEXTS_SCRIPT_SRC = 'governance/governance-bot-contexts.js?v=20260817-modular-bot-contexts';
     const GOVERNANCE_PROPOSAL_SUMMARY_SCRIPT_SRC = 'governance/governance-proposal-summary.js?v=20260827-summary-language';
     const GOVERNANCE_COPY_SCRIPT_SRC = 'governance/governance-copy.js?v=20260817-modular-copy';
@@ -19,25 +19,22 @@
     const GOVERNANCE_EPOCH_CLOCK_SCRIPT_SRC = 'governance/governance-epoch-clock.js?v=20260820-menu-alerts-epoch';
     const GOVERNANCE_VOTE_DATA_SCRIPT_SRC = 'governance/governance-vote-data.js?v=20260817-modular-vote-data';
     const GOVERNANCE_DREP_UTILS_SCRIPT_SRC = 'governance/governance-drep-utils.js?v=20260817-modular-drep-utils';
-    const GOVERNANCE_DREP_VOTES_SCRIPT_SRC = 'governance/governance-drep-votes.js?v=20261002-shared-bars-security';
-    const GOVERNANCE_DREP_NCL_SCRIPT_SRC = 'governance/governance-drep-ncl.js?v=20261002-shared-bars-security';
-    const GOVERNANCE_DREP_STATUS_SCRIPT_SRC = 'governance/governance-drep-status.js?v=20260817-modular-drep-status';
-    const GOVERNANCE_DREP_CORRELATION_SCRIPT_SRC = 'governance/governance-drep-correlation.js?v=20261002-shared-bars-security';
-    const GOVERNANCE_DREP_TOP10_SCRIPT_SRC = 'governance/governance-drep-top10.js?v=20261002-shared-bars-security';
-    const GOVERNANCE_TDSP_DREP_SCRIPT_SRC = 'governance/governance-tdsp-drep.js?v=20260820-delegator-usd';
+    const GOVERNANCE_DREP_VOTES_SCRIPT_SRC = 'governance/governance-drep-votes.js?v=20261125-unused-cleanup';
+
+
     const GOVERNANCE_PROPOSAL_DISPLAY_SCRIPT_SRC = 'governance/governance-proposal-display.js?v=20260817-modular-proposal-display';
-    const GOVERNANCE_SCRIPT_SRC = 'governance/governance.js?v=20261030-local-mesh';
+    const GOVERNANCE_SCRIPT_SRC = 'governance/governance.js?v=20261125-unused-cleanup';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
-        '#drep',
-        '#gov-spo-card',
+
+
         '#tdspbot-open',
         '#site-alerts-button'
     ];
     const GOVERNANCE_TRIGGER_SELECTORS = [
         'a[href="#governance"]',
-        'a[href="#drep"]',
-        '#gov-spo-card',
+
+
         '#tdspbot-open',
         '#site-alerts-button'
     ];
@@ -169,36 +166,6 @@
                 datasetName: 'governanceDrepVotes',
                 selector: 'script[data-governance-drep-votes]',
                 ready: () => window.TDSPDrepVotes || null
-            })
-        )).then(() => (
-            window.TDSPRuntime.loadScript(GOVERNANCE_DREP_NCL_SCRIPT_SRC, {
-                datasetName: 'governanceDrepNcl',
-                selector: 'script[data-governance-drep-ncl]',
-                ready: () => window.TDSPDrepNcl || null
-            })
-        )).then(() => (
-            window.TDSPRuntime.loadScript(GOVERNANCE_DREP_STATUS_SCRIPT_SRC, {
-                datasetName: 'governanceDrepStatus',
-                selector: 'script[data-governance-drep-status]',
-                ready: () => window.TDSPDrepStatus || null
-            })
-        )).then(() => (
-            window.TDSPRuntime.loadScript(GOVERNANCE_DREP_CORRELATION_SCRIPT_SRC, {
-                datasetName: 'governanceDrepCorrelation',
-                selector: 'script[data-governance-drep-correlation]',
-                ready: () => window.TDSPDrepCorrelation || null
-            })
-        )).then(() => (
-            window.TDSPRuntime.loadScript(GOVERNANCE_DREP_TOP10_SCRIPT_SRC, {
-                datasetName: 'governanceDrepTop10',
-                selector: 'script[data-governance-drep-top10]',
-                ready: () => window.TDSPDrepTop10 || null
-            })
-        )).then(() => (
-            window.TDSPRuntime.loadScript(GOVERNANCE_TDSP_DREP_SCRIPT_SRC, {
-                datasetName: 'governanceTdspDrep',
-                selector: 'script[data-governance-tdsp-drep]',
-                ready: () => window.TDSPTdspDrep || null
             })
         )).then(() => (
             window.TDSPRuntime.loadScript(GOVERNANCE_PROPOSAL_DISPLAY_SCRIPT_SRC, {

@@ -719,7 +719,7 @@ function getDelegatorDashboardTemplates() {
 
 function loadDelegatorAccessModule() {
     if (window.TDSPDelegatorAccess?.initOverlay) return Promise.resolve(window.TDSPDelegatorAccess);
-    return window.TDSPRuntime.loadScript('delegators/delegator-access.js?v=20261125-no-raffles', {
+    return window.TDSPRuntime.loadScript('delegators/delegator-access.js?v=20261125-unused-cleanup', {
         datasetName: 'delegatorAccess',
         selector: 'script[data-delegator-access]',
         ready: () => window.TDSPDelegatorAccess?.initOverlay ? window.TDSPDelegatorAccess : null
@@ -1481,7 +1481,7 @@ function setResponsiveIdentifierText(id, value) {
 }
 
 function initResponsiveIdentifiers() {
-    ['pool-id', 'tdsp-drep-id'].forEach(id => {
+    ['pool-id'].forEach(id => {
         const element = document.getElementById(id);
         if (element) setResponsiveIdentifierText(id, element.textContent);
     });

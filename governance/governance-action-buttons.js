@@ -2,11 +2,9 @@
     function createActionButtonsModule({
         createCatalystContext,
         createGovernanceContext,
-        isGovernanceOpenForVoting,
         onAskBot,
         onOpenCatalystSummary,
-        onOpenGovernanceSummary,
-        onOpenVote
+        onOpenGovernanceSummary
     }) {
         function createGovernanceButtons(proposal, options = {}) {
             const actions = createButtonGroup();
@@ -24,13 +22,7 @@
                     event => onAskBot(createGovernanceContext(proposal), event.currentTarget)
                 ));
             }
-            if (options.showVote !== false && isGovernanceOpenForVoting(proposal)) {
-                actions.appendChild(createButton(
-                    'Vote as DRep',
-                    'governance-detail-vote-button',
-                    event => onOpenVote(proposal, event.currentTarget)
-                ));
-            }
+
             return actions;
         }
 

@@ -14,17 +14,6 @@
         weed: 'https://x.com/CardanoWEED'
     });
 
-    function createSpoDirectoryLookup(payload) {
-        const byPoolId = new Map();
-        const byName = new Map();
-        (payload?.spos || []).forEach(spo => {
-            const poolId = String(spo?.pool_id || '').trim().toLowerCase();
-            const name = window.TDSPRuntime.normalizeSearchText(spo?.name);
-            if (poolId) byPoolId.set(poolId, spo);
-            if (name && !byName.has(name)) byName.set(name, spo);
-        });
-        return { byPoolId, byName };
-    }
 
     function getExternalHttpUrl(value) {
         const url = String(value || '').trim();
@@ -61,28 +50,6 @@
         return row;
     }
 
-    async function hydrateStarchPoolSpoCards(list, pools, options) {
-        const spoDirectory = window.TDSPSpoDirectory;
-        if (!spoDirectory?.load || !spoDirectory?.createCard) return;
-
-        const lookup = createSpoDirectoryLookup(await spoDirectory.load());
-        if (!list.isConnected) return;
-        const fragment = document.createDocumentFragment();
-
-        pools.forEach(pool => {
-            const poolId = String(pool?.pool_id || '').trim().toLowerCase();
-            const poolName = window.TDSPRuntime.normalizeSearchText(pool?.name);
-            const spo = poolId ? lookup.byPoolId.get(poolId) : lookup.byName.get(poolName);
-            fragment.appendChild(spo
-                ? spoDirectory.createCard({
-                    ...spo,
-                    name: String(pool?.name || spo.name || 'No Name'),
-                    ticker: String(pool?.ticker || spo.ticker || '').toUpperCase()
-                })
-                : createStarchPoolFallbackCard(pool, options));
-        });
-        list.replaceChildren(fragment);
-    }
 
     function createStarchPoolsList(starchPools = [], options = {}) {
         const list = document.createElement('div');
@@ -98,7 +65,7 @@
 
         const pools = [...starchPools];
         pools.forEach(pool => list.appendChild(createStarchPoolFallbackCard(pool, options)));
-        hydrateStarchPoolSpoCards(list, pools, options).catch(() => {});
+
 
         return list;
     }
@@ -143,23 +110,6 @@
         return row;
     }
 
-    async function hydrateMithrilSignerSpoCards(list, signers) {
-        const spoDirectory = window.TDSPSpoDirectory;
-        if (!spoDirectory?.load || !spoDirectory?.createCard) return;
-
-        const lookup = createSpoDirectoryLookup(await spoDirectory.load());
-        if (!list.isConnected) return;
-        const fragment = document.createDocumentFragment();
-
-        signers.forEach((signer, index) => {
-            const poolId = String(signer?.pool_id || '').trim().toLowerCase();
-            const spo = lookup.byPoolId.get(poolId);
-            fragment.appendChild(spo
-                ? spoDirectory.createCard(spo)
-                : createMithrilSignerFallbackCard(signer, index));
-        });
-        list.replaceChildren(fragment);
-    }
 
     function createMithrilSignersList(mithrilSigners = []) {
         const list = document.createElement('div');
@@ -173,7 +123,7 @@
 
         const signers = [...mithrilSigners];
         signers.forEach((signer, index) => list.appendChild(createMithrilSignerFallbackCard(signer, index)));
-        hydrateMithrilSignerSpoCards(list, signers).catch(() => {});
+
 
         return list;
     }

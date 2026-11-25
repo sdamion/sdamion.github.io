@@ -13,17 +13,14 @@
         cleanText,
         createBotContext,
         createMenuOverlay,
-        fetchJson,
         formatVoteChoice,
         getDrepIdentifier,
         getDrepName,
         getProposalMeta,
-        getProposalRationaleUrl,
         getProposalTitle,
         removeMenuOverlay
     }) {
-        const RATIONALE_TRANSLATION_POLL_LIMIT = 60;
-        const RATIONALE_TRANSLATION_POLL_MS = 5000;
+
 
         function createRationaleButton(vote, context = {}) {
             if (!vote || !context?.proposal?.proposal_id && !vote?.proposal_id && !vote?.proposalId && !vote?.gov_action_id) return null;
@@ -79,17 +76,7 @@
                     }
             });
 
-            if (!rationale) {
-                loadRationale(vote, {
-                    proposalId,
-                    drepId: getDrepIdentifier(vote) || context.drepId,
-                    text,
-                    content
-                }).catch(() => {
-                    if (!text.isConnected) return;
-                    setAutoTranslatedText(text, 'Vote rationale could not be loaded from the API. The koios-proxy container may need the latest image or this vote has no on-chain rationale metadata.');
-                });
-            }
+            if (!rationale) setAutoTranslatedText(text, 'No rationale was included with this vote.');
         }
 
         function closeRationaleOverlay() {
@@ -136,69 +123,6 @@
             return text.length > 28 ? `${text.slice(0, 14)}...${text.slice(-10)}` : text;
         }
 
-        async function loadRationale(vote, { proposalId, drepId, text, content }) {
-            if (!proposalId || !drepId) throw new Error('Missing DRep vote rationale lookup data');
-            const payload = await fetchJson(getFreshRationaleUrl(proposalId, drepId), { cache: 'no-store' });
-            if (!text.isConnected) return;
-
-            applyLoadedRationalePayload(vote, payload, { content });
-            const rationale = getRationaleText(vote);
-            if (rationale) {
-                setAutoTranslatedText(text, rationale);
-            } else {
-                setAutoTranslatedText(text, 'No on-chain rationale metadata found for this DRep vote.');
-            }
-
-            if (payload?._translation?.status === 'pending' && rationale) {
-                setAutoTranslatedText(text, getRationaleTranslationPendingMessage());
-                pollRationaleTranslation(vote, { proposalId, drepId, text, content }).catch(() => {});
-            }
-        }
-
-        async function pollRationaleTranslation(vote, { proposalId, drepId, text, content }) {
-            for (let attempt = 0; attempt < RATIONALE_TRANSLATION_POLL_LIMIT; attempt += 1) {
-                await delay(RATIONALE_TRANSLATION_POLL_MS);
-                if (!text.isConnected) return;
-                const payload = await fetchJson(getFreshRationaleUrl(proposalId, drepId), { cache: 'no-store' });
-                if (!text.isConnected) return;
-                applyLoadedRationalePayload(vote, payload, { content });
-                if (payload?._translation?.status === 'ready') {
-                    const rationale = getRationaleText(vote);
-                    setAutoTranslatedText(text, rationale || 'No on-chain rationale metadata found for this DRep vote.');
-                    return;
-                }
-            }
-        }
-
-        function applyLoadedRationalePayload(vote, payload, { content }) {
-            if (payload?.vote) {
-                const voteRows = Array.from(content.querySelectorAll('.governance-detail-row'));
-                const hasVoteRow = voteRows.some(row => row.textContent.includes('Vote'));
-                if (!hasVoteRow) addDetailRow(content, 'Vote', payload.vote);
-            }
-            vote.vote_tx_hash = payload?.vote_tx_hash || vote.vote_tx_hash;
-            appendTransactionLinkRow(content, getTransactionId(vote));
-            vote.tx_metadata = payload?.metadata || vote.tx_metadata;
-            vote.onchain_metadata = payload?.metadata || vote.onchain_metadata;
-            vote.anchor_metadata = payload?.anchor_metadata || vote.anchor_metadata;
-            vote.anchor_rationale = payload?.rationale_source === 'anchor' ? payload?.rationale || vote.anchor_rationale : vote.anchor_rationale;
-            vote.rationale = payload?.rationale || vote.rationale;
-            vote._translation = payload?._translation || vote._translation;
-        }
-
-        function delay(ms) {
-            return new Promise(resolve => window.setTimeout(resolve, ms));
-        }
-
-        function getFreshRationaleUrl(proposalId, drepId) {
-            const url = getProposalRationaleUrl(proposalId, drepId);
-            const separator = url.includes('?') ? '&' : '?';
-            return `${url}${separator}_rationalePoll=${Date.now()}`;
-        }
-
-        function getRationaleTranslationPendingMessage() {
-            return 'Translating vote rationale to selected language...';
-        }
 
         function getRationaleText(vote) {
             const directCandidates = [
@@ -297,7 +221,7 @@
             normalizeNullableNumber,
             normalizeOnchainMetadataNumber
         });
-    }
+}
 
     window.TDSPDrepVotes = Object.freeze({
         create: createDrepVotes

@@ -16,7 +16,6 @@ try {
     await page.addStyleTag({ content: await readFile('shared/styles.css', 'utf8') });
     await page.addScriptTag({ path: 'shared/runtime.js' });
     await page.addScriptTag({ path: 'shared/i18n.js' });
-    await page.addScriptTag({ path: 'governance/governance-drep-ncl.js' });
     const governance = await readFile('governance/governance.js', 'utf8');
     for (const [start, end] of [
         ['createTreasuryTileBar', 'getTreasuryHeaderAmount'],
@@ -32,18 +31,10 @@ try {
         window.normalizePercentageNumber = Number;
         window.setGovernanceAutoTranslatedText = window.TDSPRuntime.setAutoTranslatedText;
         window.setGovernanceAutoTranslatedAriaLabel = window.TDSPRuntime.setAutoTranslatedAriaLabel;
-        const drep = window.TDSPDrepNcl.create({
-            formatNclAdaAmount: value => `\u20b3 ${value}`, formatVoteChoice: value => value,
-            getNclBalanceActions: () => [{ id: 'b', epoch: 650, ask: 10 }],
-            getNclSpentActions: () => [{ id: 'a', epoch: 650, ask: 40 }],
-            getNclValues: () => ({ limit: 100 }), getNclPeriod: () => ({ startEpoch: 613, endEpoch: 713 }),
-            getProposalTotalAsk: proposal => proposal.ask
-        });
         const elements = [
             createStarchMinerStatusBar(12, 3, 20),
             createTreasuryTileBar([{ value: 75e6, label: 'In', className: 'governance-vote-bar-fill--yes' }, { value: 25e6, label: 'Out', className: 'governance-vote-bar-fill--no' }], 'Treasury'),
             createGovernanceVoteBarSegment({ yes: 75, no: 25 }),
-            drep.createSpendBar({ name: 'Test', voteStats: { actions: [{ id: 'a', vote: 'Yes' }] } }),
             createConstitutionalCommitteeMemberVoteBar(1)
         ];
         document.body.className = 'theme-dark';
@@ -59,15 +50,14 @@ try {
     assert.equal(await page.locator('#untrusted-bar img').count(), 0);
     assert.deepEqual(await page.locator('#untrusted-bar .governance-vote-bar-fill').evaluateAll(nodes => nodes.map(node => node.style.flexBasis)), ['0%', '0%']);
     assert.match(await page.locator('#bar-0').innerText(), /Online 12.*Offline 3.*Status unavailable 5/s);
-    assert.match(await page.locator('#bar-3').innerText(), /NCL Used.*40.*NCL Available.*60.*Pipeline.*10/s);
-    assert.match(await page.locator('#bar-4').innerText(), /Voted 80%.*Not voted 20%/s);
-    const widths = await page.locator('.governance-vote-bar-fill, .drep-ncl-bar-fill').evaluateAll(nodes => nodes.map(node => node.style.flexBasis));
+    assert.match(await page.locator('#bar-3').innerText(), /Voted 80%.*Not voted 20%/s);
+    const widths = await page.locator('.governance-vote-bar-fill').evaluateAll(nodes => nodes.map(node => node.style.flexBasis));
     for (const language of ['nl', 'ja', 'es', 'en']) {
         await page.evaluate(language => window.TDSPI18n.setLanguage(language), language);
-        assert.deepEqual(await page.locator('.governance-vote-bar-fill, .drep-ncl-bar-fill').evaluateAll(nodes => nodes.map(node => node.style.flexBasis)), widths);
+        assert.deepEqual(await page.locator('.governance-vote-bar-fill').evaluateAll(nodes => nodes.map(node => node.style.flexBasis)), widths);
         assert.match(await page.locator('#bar-0').innerText(), /12.*3.*5/s);
         assert.match(await page.locator('#bar-2').innerText(), /75%.*25%/s);
-        assert.match(await page.locator('#bar-3').innerText(), /40.*60.*10/s);
+        assert.match(await page.locator('#bar-3').innerText(), /80.*20/s);
         if (language === 'nl') {
             assert.match(await page.locator('#bar-2').innerText(), /Ja.*Nee/s);
             assert.doesNotMatch(await page.locator('#bar-0').innerText(), /Status unavailable/);

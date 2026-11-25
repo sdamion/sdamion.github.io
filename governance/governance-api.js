@@ -87,12 +87,6 @@
             return withCurrentLanguage(`${endpoints.proposalSummaryBase}/${encodeURIComponent(proposalId)}/summary`);
         }
 
-        function proposalDrepRationale(proposalId, drepId) {
-            if (isLocalPreview) {
-                return withParams(endpoints.localProposalRationale, addCurrentLanguage({ proposalId, drepId }));
-            }
-            return withCurrentLanguage(`${endpoints.proposalRationaleBase}/${encodeURIComponent(proposalId)}/drep/${encodeURIComponent(drepId)}/rationale`);
-        }
 
         function committeeInfo() {
             return isLocalPreview ? endpoints.localCommittee : endpoints.committeeInfo;
@@ -105,50 +99,6 @@
             return `${endpoints.committeeMemberBase}/${encodeURIComponent(memberId)}`;
         }
 
-        function spoDirectory() {
-            return isLocalPreview ? endpoints.localSpoDirectory : endpoints.spoDirectory;
-        }
-
-        function retiredSpoDirectory() {
-            return isLocalPreview ? endpoints.localRetiredSpoDirectory : endpoints.retiredSpoDirectory;
-        }
-
-        function spoRescanStatus() {
-            return isLocalPreview ? endpoints.localSpoRescanStatus : endpoints.spoRescanStatus;
-        }
-
-        function spoDetail(poolId) {
-            if (isLocalPreview) {
-                return withParams(endpoints.localSpoDetail, { poolId });
-            }
-            return `${endpoints.spoDetailBase}/${encodeURIComponent(poolId)}`;
-        }
-
-        function drepInfo() {
-            if (isLocalPreview) {
-                return `${endpoints.localDrepDirectory}?type=directory`;
-            }
-            return endpoints.drepInfo;
-        }
-
-        function drepDetail(drepId) {
-            if (isLocalPreview) {
-                return withParams(endpoints.localDrepDetail, { drepId });
-            }
-            return `${endpoints.drepDetailBase}/${encodeURIComponent(drepId)}`;
-        }
-
-        function drepVoteStats(ids = []) {
-            const params = ids.length ? `?ids=${encodeURIComponent(ids.join(','))}` : '';
-            if (isLocalPreview) {
-                return `${endpoints.localDrepVoteStats}${params}`;
-            }
-            return `${endpoints.drepVoteStats}${params}`;
-        }
-
-        function drepCorrelation() {
-            return isLocalPreview ? endpoints.localDrepCorrelation : endpoints.drepCorrelation;
-        }
 
         function metadata(url, options = {}) {
             const params = new URLSearchParams({ url });
@@ -167,32 +117,21 @@
             return Promise.race([promise, timeout]).finally(() => window.clearTimeout(timeoutId));
         }
 
-        return Object.freeze({
-            catalystPilot2026,
-            catalystProposalDetail,
-            catalystProposalSummary,
-            catalystProposals,
-            cips,
-            committeeInfo,
-            committeeMember,
-            compactDashboard,
-            dashboard,
-            drepCorrelation,
-            drepDetail,
-            drepInfo,
-            drepVoteStats,
-            metadata,
-            proposalDetail,
-            proposalDrepRationale,
-            proposalSummary,
-            proposalVotes,
-            retiredSpoDirectory,
-            spoDetail,
-            spoDirectory,
-            spoRescanStatus,
-            withTimeout
-        });
-    }
+        return Object.freeze({catalystPilot2026,
+catalystProposalDetail,
+catalystProposalSummary,
+catalystProposals,
+cips,
+committeeInfo,
+committeeMember,
+compactDashboard,
+dashboard,
+metadata,
+proposalDetail,
+proposalSummary,
+proposalVotes,
+withTimeout});
+}
 
     window.TDSPGovernanceApi = Object.freeze({
         create: createGovernanceApiModule

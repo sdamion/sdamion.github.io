@@ -12,7 +12,7 @@ const {createAccountStore,createPortfolioAccountAuth,createPortfolioAuthRouter,f
 const {createMemberPortfolioHandler,resolvePortfolioWalletOwner}=await import(path.join(backend,'member-portfolio/index.mjs'));
 const {createVaultStore}=await import(path.join(backend,'member-portfolio/vault-store.mjs'));
 const {installPortfolioBodyParsers}=await import(path.join(backend,'member-portfolio/body-parser.mjs'));
-const {createRaffleService}=await import(path.join(backend,'raffle.js'));
+const {createDashboardAuthService}=await import(path.join(backend,'dashboard-auth.js'));
 const require=createRequire(new URL('../delegators/portfolio-src/package.json',import.meta.url)),{build}=require('esbuild');
 const {encode}=await import('../delegators/portfolio-src/node_modules/cborg/cborg.js');
 const {bech32}=await import('../delegators/portfolio-src/node_modules/@scure/base/index.js');
@@ -26,7 +26,7 @@ const browser=await chromium.launch({channel:'chrome',headless:true});
 try{for(const mode of ['remote','local']){
  const app=express(),server=await new Promise(resolve=>{const server=app.listen(0,'localhost',()=>resolve(server));}),origin=`http://localhost:${server.address().port}`;
  const store=createAccountStore(path.join(directory,mode,'accounts.json')),vaultStore=createVaultStore({directory:path.join(directory,mode,'vaults')});
- const raffle=createRaffleService({sessionSecret:'real-wallet-session-test-secret',loadPool:async()=>({pool_id:'pool1fixture',delegators:[{stake_address:stake,amount_lovelace:'100000000'}]}),loadRaffles:async()=>null,saveRaffles:async()=>{}});
+ const raffle=createDashboardAuthService({sessionSecret:'real-wallet-session-test-secret',loadPool:async()=>({pool_id:'pool1fixture',delegators:[{stake_address:stake,amount_lovelace:'100000000'}]}),loadAdmins:async()=>null,saveAdmins:async()=>{}});
  const challenge=await raffle.issueChallenge({role:'delegator',address:stake,clientId:'browser'}),signed=approve(Buffer.from(challenge.payload));
  const walletLogin=await raffle.authenticate({challengeId:challenge.challenge_id,address:stake,clientId:'browser',...signed});
  const auth=createPortfolioAccountAuth({store,secret:'passkey-wallet-test-secret-'.repeat(3),origins:[origin],rpID:'localhost',verifyWallet:async token=>{const session=await raffle.verifyPortfolioSession(token);return {owner:await resolvePortfolioWalletOwner(session),binding:session.id};}});

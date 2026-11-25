@@ -2669,8 +2669,6 @@ textarea[data-auto-size] {
     font-weight: var(--tdsp-tile-detail-weight);
     line-height: var(--tdsp-tile-detail-line-height);
 }
-
-.drep-ncl-bar,
 .governance-vote-bar {
     display: grid;
     gap: 6px;
@@ -2688,8 +2686,6 @@ textarea[data-auto-size] {
 .governance-vote-bars .governance-vote-bar {
     margin-top: 0;
 }
-
-.drep-ncl-bar-track,
 .governance-vote-bar-track {
     display: flex;
     width: 100%;
@@ -2698,24 +2694,10 @@ textarea[data-auto-size] {
     border-radius: 999px;
     background: rgba(148, 163, 184, 0.16);
 }
-
-.drep-ncl-bar-fill,
 .governance-vote-bar-fill {
     display: block;
     min-width: 0;
     transition: flex-basis 0.25s ease;
-}
-
-.drep-ncl-bar-fill--spend {
-    background: #fb7185;
-}
-
-.drep-ncl-bar-fill--left {
-    background: #34d399;
-}
-
-.drep-ncl-bar-fill--pipeline {
-    background: #38bdf8;
 }
 
 .treasury-flow-bar-fill--left {
@@ -2729,27 +2711,13 @@ textarea[data-auto-size] {
 .governance-vote-bar-fill--no {
     background: #fb7185;
 }
-
 .tdsp-bar-legend,
-.drep-ncl-bar-label,
 .governance-vote-bar-label {
     display: block;
     font-size: calc(var(--tdsp-tile-detail-size) * 0.82);
     font-weight: var(--tdsp-tile-detail-weight);
     line-height: 1.2;
     overflow-wrap: anywhere;
-}
-
-.drep-ncl-label-item--used {
-    color: #fb7185;
-}
-
-.drep-ncl-label-item--available {
-    color: #34d399;
-}
-
-.drep-ncl-label-item--pipeline {
-    color: #38bdf8;
 }
 
 .governance-vote-label-item--yes {
@@ -3163,10 +3131,7 @@ textarea[data-auto-size] {
     width: 24px;
     height: 24px;
 }
-
 .governance-vote-button,
-.governance-vote-choice,
-.governance-vote-submit,
 .governance-vote-secondary,
 .governance-become-drep-button {
     min-height: 42px;
@@ -3194,43 +3159,13 @@ textarea[data-auto-size] {
 .governance-become-drep-button:focus-visible {
     transform: none;
 }
-
-.governance-drep-registration-form,
-.governance-drep-registration-field {
+.governance-drep-registration-form {
     display: grid;
     gap: 10px;
 }
 
 .governance-drep-registration-form {
     gap: 14px;
-}
-
-.governance-drep-registration-field input,
-.governance-drep-registration-field textarea {
-    width: 100%;
-    min-width: 0;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    padding: 10px 12px;
-    background: var(--control-surface);
-    color: var(--text);
-    font: inherit;
-}
-
-.governance-drep-registration-field input {
-    min-height: 44px;
-}
-
-.governance-drep-registration-field textarea {
-    min-height: 104px;
-    resize: vertical;
-}
-
-.governance-drep-registration-field input:focus,
-.governance-drep-registration-field textarea:focus {
-    border-color: var(--accent);
-    outline: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
-    outline-offset: 1px;
 }
 
 .governance-drep-registration-checkbox {
@@ -3248,12 +3183,6 @@ textarea[data-auto-size] {
     accent-color: var(--accent);
 }
 
-.governance-drep-metadata-url-controls {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 10px;
-}
-
 .governance-create-metadata-button {
     white-space: nowrap;
 }
@@ -3263,22 +3192,7 @@ textarea[data-auto-size] {
     opacity: 0.65;
 }
 
-.governance-drep-registration-help {
-    margin: 0;
-}
-
-.governance-drep-govtool-link {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    text-decoration: none;
-}
-
 @media (max-width: 600px) {
-    .governance-drep-metadata-url-controls {
-        grid-template-columns: 1fr;
-    }
 }
 
 .governance-vote-button {
@@ -3288,112 +3202,14 @@ textarea[data-auto-size] {
     border-color: var(--accent);
     color: #fff;
 }
-
-.governance-vote-button:hover,
-.governance-vote-submit:hover {
+.governance-vote-button:hover {
     background: var(--accent-strong);
     border-color: var(--accent-strong);
     transform: none;
 }
-
-.governance-vote-flow {
-    display: grid;
-    gap: 14px;
-}
-
-.governance-vote-warning,
-.governance-vote-selection,
-.governance-vote-review {
-    padding: 16px;
-}
-
-.governance-vote-rationale {
-    display: grid;
-    gap: 12px;
-    margin-top: 16px;
-    padding-top: 16px;
-    border-top: 1px solid var(--line);
-}
-
-.governance-vote-review-links,
-.governance-vote-rationale-actions {
-    margin-top: 14px;
-}
-
-.governance-vote-rationale-output {
-    display: grid;
-    gap: 10px;
-}
-
-.governance-vote-rationale-status {
-    margin: 0;
-}
-
-.governance-vote-warning p,
-.governance-vote-review-warning,
-.governance-vote-status {
-    margin: 8px 0 0;
-    color: var(--muted);
-    line-height: 1.5;
-}
-
-.governance-vote-action-id-line {
-    margin-top: 10px;
-}
-
-.governance-drep-id.governance-vote-action-id {
-    display: block;
-    padding: 7px 0;
-    color: var(--muted);
-    font-size: 0.82rem;
-    line-height: 1.35;
-    overflow-wrap: anywhere;
-    white-space: normal;
-}
-
-.governance-vote-choices {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
-}
-
-.governance-vote-choice:hover,
 .governance-vote-secondary:hover {
     background: var(--control-hover-surface);
     transform: none;
-}
-
-.governance-vote-submit {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: #fff;
-}
-
-.governance-vote-submit:disabled {
-    cursor: wait;
-    opacity: 0.65;
-}
-
-.governance-vote-wallet-list {
-    display: grid;
-    gap: 10px;
-}
-
-.governance-vote-review {
-    display: grid;
-    gap: 10px;
-}
-
-.governance-vote-review .governance-detail-row {
-    margin: 0;
-}
-
-.governance-vote-status.is-error {
-    color: #fb7185;
-}
-
-.governance-vote-success {
-    color: #34d399;
 }
 
 @media (max-width: 520px) {
@@ -3424,10 +3240,6 @@ textarea[data-auto-size] {
         width: 100%;
         min-width: 0;
         padding-inline: 10px;
-    }
-
-    .governance-vote-choices {
-        grid-template-columns: 1fr;
     }
 }
 
@@ -3460,48 +3272,6 @@ textarea[data-auto-size] {
 
 .governance-votes.vote-neutral {
     color: var(--muted);
-}
-
-.governance-drep-vote-card {
-    padding-right: 128px;
-}
-
-.governance-drep-vote-status {
-    position: absolute;
-    top: 14px;
-    right: 16px;
-    max-width: 112px;
-    margin: 0;
-    font-size: var(--tdsp-tile-detail-size);
-    font-weight: var(--tdsp-tile-detail-weight);
-    line-height: var(--tdsp-tile-detail-line-height);
-    text-align: right;
-    white-space: nowrap;
-}
-
-.governance-drep-vote-card .governance-rationale-read-button {
-    position: absolute;
-    top: 36px;
-    right: 16px;
-    min-height: 0;
-    max-width: 112px;
-    margin: 0;
-    border: 0;
-    padding: 0;
-    background: transparent;
-    color: var(--accent-strong);
-    font-size: var(--tdsp-tile-detail-size);
-    font-weight: var(--tdsp-tile-detail-weight);
-    line-height: var(--tdsp-tile-detail-line-height);
-    text-align: right;
-    white-space: nowrap;
-}
-
-.governance-drep-vote-card .governance-rationale-read-button:hover,
-.governance-drep-vote-card .governance-rationale-read-button:focus-visible {
-    background: transparent;
-    color: var(--accent);
-    transform: none;
 }
 
 /* Governance Overlay */
@@ -3695,149 +3465,7 @@ textarea[data-auto-size] {
     box-sizing: border-box;
 }
 
-.spo-geographic-map {
-    width: 100%;
-    margin: 0;
-}
-
-.spo-geographic-map__canvas {
-    position: relative;
-    width: 100%;
-    aspect-ratio: 2 / 1;
-    overflow: hidden;
-    margin-top: 12px;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    background-color: rgba(94, 234, 212, 0.04);
-    touch-action: none;
-    cursor: zoom-in;
-}
-
-.spo-geographic-map__canvas.is-zoomed {
-    cursor: grab;
-}
-
-.spo-geographic-map__canvas.is-zoomed:active {
-    cursor: grabbing;
-}
-
-.spo-geographic-map__viewport {
-    position: absolute;
-    inset: 0;
-    background-image: url('../world-map-cc0.svg');
-    background-position: center;
-    background-repeat: no-repeat;
-    background-size: 100% 100%;
-    transform-origin: center;
-    will-change: transform;
-}
-
-.spo-geographic-map__markers {
-    position: absolute;
-    z-index: 2;
-    inset: 0;
-    overflow: hidden;
-    pointer-events: none;
-}
-
-.spo-geographic-map__controls {
-    position: absolute;
-    z-index: 4;
-    top: 10px;
-    right: 10px;
-    display: flex;
-    gap: 6px;
-}
-
-.spo-geographic-map__control {
-    display: grid;
-    width: 34px;
-    height: 34px;
-    padding: 0;
-    place-items: center;
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    color: var(--text);
-    background: var(--overlay-surface);
-    font: inherit;
-    font-weight: 700;
-    cursor: pointer;
-}
-
-.spo-geographic-map__control:is(:hover, :focus-visible) {
-    color: #5eead4;
-    border-color: #5eead4;
-}
-
-.spo-geographic-map__marker {
-    --marker-size: 12px;
-    position: absolute;
-    width: var(--marker-size);
-    height: var(--marker-size);
-    min-width: 8px;
-    min-height: 8px;
-    padding: 0;
-    border: 2px solid #ffffff;
-    border-radius: 50%;
-    background: #14b8a6;
-    box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.22);
-    transform: translate(-50%, -50%);
-    pointer-events: auto;
-    cursor: pointer;
-}
-
-.spo-geographic-map__marker:is(:hover, :focus-visible) {
-    z-index: 2;
-    background: #5eead4;
-    box-shadow: 0 0 0 5px rgba(94, 234, 212, 0.3);
-}
-
-.spo-geographic-map__marker--tdsp {
-    z-index: 3;
-    display: grid;
-    width: 22px;
-    height: 22px;
-    min-width: 22px;
-    min-height: 22px;
-    place-items: center;
-    border: 0;
-    color: #f59e0b;
-    background: transparent;
-    box-shadow: none;
-    font-size: 22px;
-    line-height: 1;
-}
-
-.spo-geographic-map__marker--tdsp::before {
-    content: "\2605";
-}
-
-.spo-geographic-map__marker--tdsp:is(:hover, :focus-visible) {
-    color: #fbbf24;
-    background: transparent;
-    filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.8));
-    box-shadow: none;
-}
-
-.spo-geographic-map figcaption {
-    margin-top: 8px;
-}
-
 @media (max-width: 700px) {
-    .spo-geographic-map__marker {
-        width: calc(var(--marker-size) - 2px);
-        height: calc(var(--marker-size) - 2px);
-        border-width: 1px;
-    }
-
-    .spo-geographic-map__marker--tdsp {
-        width: 20px;
-        height: 20px;
-        min-width: 20px;
-        min-height: 20px;
-        border-width: 0;
-        font-size: 20px;
-    }
 }
 
 .governance-vote-chart-layout {
@@ -4186,54 +3814,6 @@ textarea[data-auto-size] {
     gap: 10px;
 }
 
-.governance-spo-detail-stats,
-.governance-spo-relay-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-    gap: 10px;
-}
-
-.governance-spo-detail-stats {
-    margin: 12px 0;
-}
-
-.governance-spo-detail-stat,
-.governance-spo-relay {
-    padding: 14px;
-}
-
-.governance-spo-detail-stat span,
-.governance-spo-relay span {
-    display: block;
-    margin-top: 4px;
-    color: var(--muted);
-    font-size: 0.9rem;
-}
-
-.governance-spo-relay-address-line {
-    margin: 8px 0 6px;
-}
-
-.governance-spo-relay .governance-spo-relay-location {
-    margin: 6px 0;
-    overflow-wrap: anywhere;
-}
-
-.governance-spo-provider {
-    display: inline-flex;
-    gap: 8px;
-    align-items: center;
-}
-
-.governance-spo-relay .governance-spo-provider {
-    display: inline-flex;
-}
-
-.governance-cc-member.governance-spo-directory-card {
-    position: relative;
-    padding-right: 58px;
-}
-
 .governance-directory-list-card {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
@@ -4296,22 +3876,6 @@ textarea[data-auto-size] {
     white-space: nowrap;
 }
 
-.governance-spo-hosting-icon {
-    position: absolute;
-    top: 16px;
-    right: 16px;
-    width: 30px;
-    height: 30px;
-}
-
-.governance-spo-hosting-icon.is-cloud {
-    color: #f87171;
-}
-
-.governance-spo-hosting-icon.is-hardware {
-    color: #34d399;
-}
-
 .governance-cc-member {
     display: block;
     padding: 14px;
@@ -4371,10 +3935,6 @@ textarea[data-auto-size] {
     color: var(--tdsp-tile-detail-color);
 }
 
-.governance-drep-status-chart {
-    margin-bottom: 6px;
-}
-
 .governance-drep-member-copy {
     min-width: 0;
 }
@@ -4401,69 +3961,6 @@ textarea[data-auto-size] {
 
 .governance-drep-copy-button:hover {
     transform: translateY(-50%);
-}
-
-.governance-drep-directory-card {
-    padding-right: 96px;
-}
-
-.governance-drep-directory-card .governance-drep-member-status {
-    position: absolute;
-    top: 14px;
-    right: 16px;
-    max-width: 78px;
-    margin: 0;
-    color: var(--tdsp-tile-detail-color);
-    font-size: var(--tdsp-tile-detail-size);
-    font-weight: var(--tdsp-tile-detail-weight);
-    line-height: var(--tdsp-tile-detail-line-height);
-    text-align: right;
-    white-space: nowrap;
-}
-
-.governance-drep-member--active .governance-drep-member-status {
-    color: #14b8a6;
-}
-
-.governance-drep-member--inactive .governance-drep-member-status {
-    color: #ef4444;
-}
-
-.governance-drep-profile-card {
-    display: grid;
-    gap: 10px;
-}
-
-.governance-drep-profile-card .governance-markdown-section > strong {
-    font-size: var(--tdsp-tile-detail-size);
-}
-
-.governance-drep-profile-card .governance-markdown p,
-.governance-drep-profile-card .governance-markdown li {
-    font-size: inherit;
-    line-height: 1.45;
-}
-
-.governance-drep-profile-link-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-.governance-drep-profile-link {
-    min-height: 0;
-    padding: 7px 10px;
-    font-size: calc(var(--tdsp-tile-detail-size) * 0.9);
-    line-height: var(--tdsp-tile-detail-line-height);
-}
-
-.governance-drep-name-link {
-    cursor: pointer;
-}
-
-.governance-drep-name-link:hover,
-.governance-drep-name-link:focus-visible {
-    color: var(--accent-strong);
 }
 
 .governance-cc-actions {
@@ -5914,7 +5411,6 @@ html[data-theme="dark"] input {
     background: var(--governance-card-hover-bg);
     outline: none;
 }
-
 .governance-menu-overlay button:not(.governance-close):not(.governance-back-to-root):not(.pool-copy-icon-button):not(.pool-id-copy-button):not(.pool-delegator-copy-button):not(.governance-action-id-copy-button):not(.governance-detail-copy-button):not(.governance-drep-copy-button),
 .raffle-page button:not(.governance-close):not(.governance-back-to-root):not(.pool-copy-icon-button):not(.pool-id-copy-button):not(.pool-delegator-copy-button):not(.governance-action-id-copy-button):not(.governance-detail-copy-button):not(.governance-drep-copy-button),
 .stake-continue-button,
@@ -5922,12 +5418,9 @@ html[data-theme="dark"] input {
 .pool-id-stake-button,
 .pool-notification-button,
 .governance-vote-button,
-.governance-vote-choice,
-.governance-vote-submit,
 .governance-vote-secondary,
 .governance-become-drep-button,
 .governance-create-metadata-button,
-.governance-drep-govtool-link,
 .governance-overlay-action-button,
 .governance-overlay-bot-button,
 .governance-action-buttons button,
