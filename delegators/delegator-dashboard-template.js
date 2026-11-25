@@ -66,10 +66,6 @@
                                 <strong class="governance-card-title">Prizes</strong>
                                 <span class="governance-card-detail" id="raffle-prizes-summary">Raffle wallet tokens</span>
                             </button>
-                            <button class="governance-menu-card raffle-open-tile" id="member-portfolio-open" type="button">
-                                <strong class="governance-card-title">Portfolio</strong>
-                                <span class="governance-card-detail">Wallet transactions, average ADA cost and gain / loss</span>
-                            </button>
                         </div>
                     </section>
                     <p id="raffle-status" class="wallet-status raffle-status" role="status" aria-live="polite" hidden></p>
@@ -158,9 +154,6 @@
                             <button class="governance-menu-card raffle-open-tile" id="raffle-admin-users-open" type="button">
                                 <strong class="governance-card-title">Admin Users</strong>
                                 <span class="governance-card-detail" id="raffle-dashboard-admin-count">1 admin</span>
-                            </button>
-                            <button class="governance-menu-card raffle-open-tile" id="portfolio-access-open" type="button">
-                                <strong class="governance-card-title">Portfolio access</strong>
                             </button>
                             <button class="governance-menu-card raffle-open-tile" id="website-status-open" type="button">
                                 <strong class="governance-card-title">Website Status</strong>

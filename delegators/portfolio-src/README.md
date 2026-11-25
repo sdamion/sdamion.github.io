@@ -1,5 +1,10 @@
 # Member portfolio
 
+Portfolio is now admin-only. The backend rechecks the current admin roster for
+wallet and passkey access. Historical standalone accounts and ordinary users
+cannot access or create Portfolio caches. Admin encryption and passkeys remain
+unchanged. Deploy the matching backend before relying on this restriction.
+
 ## Passkey accounts
 
 For an existing wallet Portfolio, sign in with the wallet, unlock its saved cache
