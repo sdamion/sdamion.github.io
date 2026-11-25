@@ -71,13 +71,8 @@ const lostStakeMessagedAddresses = new Set(readLostStakeMessagedAddresses());
 const lostStakeWalletOverrides = readLostStakeWalletOverrides();
 
 const RAFFLE_ADMIN_VIEW_TITLES = Object.freeze({
-    menu: 'Raffles',
-    draw: 'Draw',
-    exclusions: 'Exclusion List',
-    history: 'History',
     admins: 'Admin Users',
-    portfolio_access: 'Portfolio access',
-    lost_stake: 'Lost stake'
+    portfolio_access: 'Portfolio access'
 });
 
 const RAFFLE_ANCHOR_UNAVAILABLE = 'On-chain proof is not available in the running Koios proxy yet. Pull the latest proxy image and restart the container, then reload this page.';
@@ -553,20 +548,14 @@ function showAuthenticatedUi(authenticated) {
     if (protectedArea) protectedArea.hidden = !authenticated;
 }
 
-function setRaffleAdminView(view = 'menu', { focus = true } = {}) {
+function setRaffleAdminView(view = 'admins', { focus = true } = {}) {
     if (ROLE !== 'admin') return;
-    const normalizedView = Object.hasOwn(RAFFLE_ADMIN_VIEW_TITLES, view) ? view : 'menu';
+    const normalizedView = Object.hasOwn(RAFFLE_ADMIN_VIEW_TITLES, view) ? view : 'admins';
     raffleAdminView = normalizedView;
-    // Sibling views replace one another; the Raffles menu stays underneath.
     closeDashboardChildOverlay('raffle-view');
-    const content = normalizedView === 'menu'
-        ? document.getElementById('raffle-admin-menu')
-        : document.querySelector(`[data-raffle-view-panel="${normalizedView}"]`);
-    openDashboardChildOverlay(normalizedView === 'menu' ? 'raffles' : 'raffle-view',
+    const content = document.querySelector(`[data-raffle-view-panel="${normalizedView}"]`);
+    openDashboardChildOverlay('raffle-view',
         RAFFLE_ADMIN_VIEW_TITLES[normalizedView], content);
-    if (normalizedView === 'lost_stake' && !lostStakePayload) {
-        loadLostStake().catch(error => renderLostStakeError(error.message));
-    }
 }
 
 function closeDashboardChildOverlay(key) {
@@ -605,10 +594,9 @@ function openDashboardChildOverlay(key, title, content) {
     dashboardChildOverlays.set(key, close);
 }
 
-function setRaffleOverlay(open, initialAdminView = 'menu') {
+function setRaffleOverlay(open, initialAdminView = 'admins') {
     if (open) {
         if (ROLE === 'admin') setRaffleAdminView(initialAdminView);
-        else openDashboardChildOverlay('raffles', 'Raffles', document.getElementById('raffle-draws'));
         return;
     }
     closeDashboardChildOverlay('raffle-view');
@@ -631,7 +619,7 @@ async function connectPortfolioPasskey() {
     if (button) { button.disabled = true; button.setAttribute('aria-busy', 'true'); }
     setStatus('Waiting for your passkey…');
     try {
-        const module = await import('./portfolio/app.js?v=20261125-admin-portfolio');
+        const module = await import('./portfolio/app.js?v=20261125-no-raffles');
         await module.signInPortfolioWithPasskey();
         await restorePasskeyDashboard(module);
         setStatus('');
@@ -707,7 +695,7 @@ async function openMemberPortfolio() {
     closePortfolio = close;
     container.textContent = t('Loading member portfolio…');
     try {
-        const module = await import('./portfolio/app.js?v=20261125-admin-portfolio');
+        const module = await import('./portfolio/app.js?v=20261125-no-raffles');
         if (closed) return;
         container.replaceChildren();
         dispose = module.mountPortfolio(container, { role: ROLE, connectWallet: () => { closePortfolio?.(); populateWallets().catch(error => setStatus(error.message, true)); }, getWallet: (reconnect, stake, linkAnother) => linkAnother ? reconnectPortfolioWallet(stake, true) : reconnect && !portfolioUnlockWallet ? reconnectPortfolioWallet(stake) : portfolioUnlockWallet });
@@ -1768,6 +1756,7 @@ function createDrawCard(draw, viewerAddress = null) {
 
 function renderDraws(draws, viewerAddress = null) {
     const list = document.getElementById('raffle-draws');
+    if (!list) return;
     list.replaceChildren();
     if (!draws.length) {
         const empty = document.createElement('p');
@@ -1781,50 +1770,8 @@ function renderDraws(draws, viewerAddress = null) {
 
 function renderAdmin(payload) {
     renderPortfolioAccess(payload);
-    raffleMinimumSupported = payload.capabilities?.minimum_stake === true;
-    raffleAnchorSupported = payload.capabilities?.on_chain_proof === true;
-    raffleExclusionsSupported = payload.capabilities?.stake_key_exclusions === true;
-    raffleExclusionTogglesSupported = payload.capabilities?.stake_key_exclusion_toggles === true;
-    const exclusions = Array.isArray(payload.excluded_stake_addresses) ? payload.excluded_stake_addresses : [];
-    raffleStakeKeyExclusions = Array.isArray(payload.stake_key_exclusions)
-        ? payload.stake_key_exclusions
-        : (Array.isArray(payload.excluded_delegators)
-            ? payload.excluded_delegators.map(entry => ({ ...entry, enabled: true }))
-            : exclusions.map(stakeAddress => ({ stake_address: stakeAddress, enabled: true })));
-    const exclusionsInput = document.getElementById('raffle-excluded-stake-keys');
-    if (exclusionsInput) exclusionsInput.value = '';
-    const exclusionsCount = document.getElementById('raffle-exclusions-count');
-    if (exclusionsCount) {
-        const includedCount = raffleStakeKeyExclusions.filter(entry => entry.enabled === false).length;
-        setTranslatedText(exclusionsCount, `${exclusions.length.toLocaleString('en-US')} excluded · ${includedCount.toLocaleString('en-US')} included in raffles`);
-    }
-    const menuExclusionsCount = document.getElementById('raffle-menu-exclusion-count');
-    if (menuExclusionsCount) {
-        setTranslatedText(menuExclusionsCount, `${exclusions.length.toLocaleString('en-US')} excluded`);
-    }
-    renderExcludedStakeKeys(raffleStakeKeyExclusions);
-    const exclusionsForm = document.getElementById('raffle-exclusions-form');
-    const exclusionsSubmit = exclusionsForm?.querySelector('button[type="submit"]');
-    if (exclusionsSubmit) exclusionsSubmit.disabled = !raffleExclusionsSupported;
-    const exclusionsStatus = document.getElementById('raffle-exclusions-status');
-    if (exclusionsStatus && !raffleExclusionsSupported) {
-        exclusionsStatus.textContent = t(RAFFLE_EXCLUSIONS_UNAVAILABLE);
-        exclusionsStatus.classList.add('is-error');
-    }
-    setTranslatedText(document.getElementById('raffle-eligible-count'), Number(payload.pool?.eligible_count || 0).toLocaleString('en-US'));
-    setTranslatedText(document.getElementById('raffle-total-stake'), formatAda(payload.pool?.total_eligible_lovelace));
-    setTranslatedText(document.getElementById('raffle-snapshot-time'), payload.pool?.updated_at
-        ? `Pool snapshot ${formatDate(payload.pool.updated_at)}`
-        : 'Pool snapshot time unavailable');
-    const draws = Array.isArray(payload.draws) ? payload.draws : [];
-    const menuHistoryCount = document.getElementById('raffle-menu-history-count');
-    if (menuHistoryCount) {
-        setTranslatedText(menuHistoryCount, `${draws.length.toLocaleString('en-US')} published raffle${draws.length === 1 ? '' : 's'}`);
-    }
-    renderDraws(draws);
     raffleAdminUsers = Array.isArray(payload.admin_users) ? payload.admin_users : [];
     renderAdminUsers(raffleAdminUsers);
-    if (lostStakePayload) renderLostStake(lostStakePayload);
 }
 
 function renderPortfolioAccess(payload) {
@@ -2121,12 +2068,6 @@ function renderDelegator(payload) {
             return;
         }
     }
-    renderDraws(payload.draws || [], payload.stake_address);
-    loadRafflePrizes().catch(error => {
-        const summary = document.getElementById('raffle-prizes-summary');
-        if (summary) setTranslatedText(summary, 'Prize wallet unavailable');
-        console.warn(`Raffle prize wallet could not be loaded: ${error.message}`);
-    });
 }
 
 async function loadProtectedArea() {
@@ -2275,7 +2216,7 @@ async function submitDraw(event) {
 async function logout() {
     if (sessionStorage.getItem('tdsp-portfolio-session')) {
         try {
-            const module = await import('./portfolio/app.js?v=20261125-admin-portfolio');
+            const module = await import('./portfolio/app.js?v=20261125-no-raffles');
             await module.signOutPortfolioAccount();
         } catch (error) {
             setStatus(error.message, true);
@@ -2384,7 +2325,7 @@ async function init(options = {}) {
     document.getElementById('raffle-lost-stake-message-form')?.addEventListener('submit', submitLostStakeMessage);
     if (!sessionToken && sessionStorage.getItem('tdsp-portfolio-session') && ROLE === 'delegator') {
         try {
-            const module = await import('./portfolio/app.js?v=20261125-admin-portfolio');
+            const module = await import('./portfolio/app.js?v=20261125-no-raffles');
             await restorePasskeyDashboard(module);
             document.body.classList.remove('raffle-auth-gate-pending');
             return;
