@@ -23,7 +23,7 @@
 
 
     const GOVERNANCE_PROPOSAL_DISPLAY_SCRIPT_SRC = 'governance/governance-proposal-display.js?v=20260817-modular-proposal-display';
-    const GOVERNANCE_SCRIPT_SRC = 'governance/governance.js?v=20261125-unused-cleanup';
+    const GOVERNANCE_SCRIPT_SRC = 'governance/governance.js?v=20261126-action-overlay-fix';
     const GOVERNANCE_TARGET_SELECTORS = [
         '#governance',
 

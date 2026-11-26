@@ -410,6 +410,7 @@ document.addEventListener("DOMContentLoaded", () => {
         { key: 'prices', callback: () => fetchPrices({ force: true }), interval: 30000 },
         { key: 'news', callback: fetchCryptoNews, interval: 300000 },
         { key: 'events', callback: fetchCardanoEvents, interval: 900000, options: { selector: '#calendar' } },
+        { key: 'starch-pools', callback: fetchStarchPoolStatus, interval: 300000, options: { selector: '#starch' } },
         { key: 'database-status', callback: fetchDatabaseStatus, interval: 300000 }
     ];
     installRefreshTaskObservers(refreshTasks);
@@ -719,7 +720,7 @@ function getDelegatorDashboardTemplates() {
 
 function loadDelegatorAccessModule() {
     if (window.TDSPDelegatorAccess?.initOverlay) return Promise.resolve(window.TDSPDelegatorAccess);
-    return window.TDSPRuntime.loadScript('delegators/delegator-access.js?v=20261125-unused-cleanup', {
+    return window.TDSPRuntime.loadScript('delegators/delegator-access.js?v=20261126-dashboard-load-fixes', {
         datasetName: 'delegatorAccess',
         selector: 'script[data-delegator-access]',
         ready: () => window.TDSPDelegatorAccess?.initOverlay ? window.TDSPDelegatorAccess : null
@@ -862,8 +863,13 @@ function closeMithrilSignersOverlay(restoreFocus = true) {
     closePoolMenuOverlay('pool-mithril-overlay', restoreFocus);
 }
 
-function openStarchPoolsOverlay(returnFocus = document.activeElement) {
+async function openStarchPoolsOverlay(returnFocus = document.activeElement) {
     closeStarchPoolsOverlay(false);
+    try {
+        await fetchStarchPoolStatus();
+    } catch (error) {
+        console.warn('Starch pools refresh failed before opening overlay', error);
+    }
     const { starchPools = [], starchPoolStatus = null } = window.TDSPPoolStatus?.getState?.() || {};
 
     const epoch = Number(starchPoolStatus?.epoch);

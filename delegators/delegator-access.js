@@ -223,7 +223,7 @@ async function connectPortfolioPasskey() {
     if (button) { button.disabled = true; button.setAttribute('aria-busy', 'true'); }
     setStatus('Waiting for your passkey…');
     try {
-        const module = await import('./portfolio/app.js?v=20261125-unused-cleanup');
+        const module = await import('./portfolio/app.js?v=20261126-dashboard-load-fixes');
         await module.signInPortfolioWithPasskey();
         await restorePasskeyDashboard(module);
         setStatus('');
@@ -288,7 +288,7 @@ async function openMemberPortfolio() {
     closePortfolio = close;
     container.textContent = t('Loading member portfolio…');
     try {
-        const module = await import('./portfolio/app.js?v=20261125-unused-cleanup');
+        const module = await import('./portfolio/app.js?v=20261126-dashboard-load-fixes');
         if (closed) return;
         container.replaceChildren();
         dispose = module.mountPortfolio(container, { role: ROLE, connectWallet: () => { closePortfolio?.(); populateWallets().catch(error => setStatus(error.message, true)); }, getWallet: (reconnect, stake, linkAnother) => linkAnother ? reconnectPortfolioWallet(stake, true) : reconnect && !portfolioUnlockWallet ? reconnectPortfolioWallet(stake) : portfolioUnlockWallet });
@@ -657,7 +657,7 @@ async function loadProtectedArea() {
 async function logout() {
     if (sessionStorage.getItem('tdsp-portfolio-session')) {
         try {
-            const module = await import('./portfolio/app.js?v=20261125-unused-cleanup');
+            const module = await import('./portfolio/app.js?v=20261126-dashboard-load-fixes');
             await module.signOutPortfolioAccount();
         } catch (error) {
             setStatus(error.message, true);
@@ -734,7 +734,7 @@ async function init(options = {}) {
 
     if (!sessionToken && sessionStorage.getItem('tdsp-portfolio-session') && ROLE === 'delegator') {
         try {
-            const module = await import('./portfolio/app.js?v=20261125-unused-cleanup');
+            const module = await import('./portfolio/app.js?v=20261126-dashboard-load-fixes');
             await restorePasskeyDashboard(module);
             document.body.classList.remove('raffle-auth-gate-pending');
             return;

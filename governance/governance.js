@@ -4743,6 +4743,14 @@ function addMarkdownDetailSection(container, label, value) {
     governanceDetailRendering.addMarkdownDetailSection(container, label, value);
 }
 
+function extractGovernanceImageCandidates(proposal) {
+    return governanceRichText.extractImageCandidates([
+        proposal?.meta_json,
+        proposal?.meta_json?.body,
+        proposal?.proposal_description
+    ]);
+}
+
 function addEmbeddedGovernanceImages(container, proposal, candidates = extractGovernanceImageCandidates(proposal)) {
     if (!candidates.length) return;
 
