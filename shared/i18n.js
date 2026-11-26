@@ -3,9 +3,9 @@
     const DEFAULT_LANGUAGE = 'en';
     const LANGUAGE_CONFIG = Object.freeze({
         en: { label: 'English', flag: '🇺🇸' },
-        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20261126-pilot-payments' },
-        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20261126-pilot-payments' },
-        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20261126-pilot-payments' }
+        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20261126-recipient-history' },
+        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20261126-recipient-history' },
+        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20261126-recipient-history' }
     });
     const TRANSLATION_ATTR = 'data-i18n';
     const TRANSLATION_ORIGINAL_ATTR = 'data-i18n-original';
@@ -166,6 +166,10 @@
         ['Cancel', 'cancel'],
         ['Catalyst funding status', 'catalyst_funding_status'],
         ['Received amount unavailable', 'catalyst_received_amount_unavailable'],
+        ['Historical ADA estimate (fund result date)', 'catalyst_historical_ada_estimate'],
+        ['Historical ADA estimate unavailable', 'catalyst_historical_ada_unavailable'],
+        ['Fund result date', 'catalyst_fund_result_date'],
+        ['Coinbase daily closing rate; not the actual ADA payout', 'catalyst_historical_ada_basis'],
         ['Catalyst vote overview', 'catalyst_vote_overview'],
         ['Catalyst proposal', 'catalyst_proposal'],
         ['Catalyst proposal context', 'catalyst_proposal_context'],

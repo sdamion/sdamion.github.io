@@ -164,6 +164,42 @@
             return row;
         }
 
+        function createRecipientAmountRow(usdValue, equivalent, usdPending = false) {
+            const row = createFundingAmountRow(usdValue, null, usdPending);
+            if (hasNumericValue(equivalent?.amount)) {
+                const amount = document.createElement('strong');
+                amount.className = 'funding-recipient-ada-value';
+                amount.setAttribute('translate', 'no');
+                amount.textContent = formatAdaAmount(Number(equivalent.amount));
+                row.appendChild(amount);
+            }
+            const note = document.createElement('span');
+            note.className = 'governance-card-detail';
+            window.TDSPRuntime.setAutoTranslatedText(note, !hasNumericValue(equivalent?.amount)
+                ? 'Historical ADA estimate unavailable'
+                : equivalent?.estimated ? 'Historical ADA estimate (fund result date)' : 'ADA');
+            row.appendChild(note);
+            if (equivalent?.estimated && equivalent.date) {
+                const date = document.createElement('span');
+                date.className = 'governance-card-detail';
+                const label = document.createElement('span');
+                window.TDSPRuntime.setAutoTranslatedText(label, 'Fund result date');
+                const value = document.createElement('span');
+                value.setAttribute('translate', 'no');
+                const rate = hasNumericValue(equivalent.usd_rate) && Number(equivalent.usd_rate) > 0
+                    ? '$' + Number(equivalent.usd_rate).toLocaleString('en-US', {maximumFractionDigits: 8})
+                    : '--';
+                value.textContent = `: ${equivalent.date} · ADA/USD: ${rate}`;
+                date.append(label, value);
+                row.appendChild(date);
+                const basis = document.createElement('span');
+                basis.className = 'governance-card-detail';
+                window.TDSPRuntime.setAutoTranslatedText(basis, 'Coinbase daily closing rate; not the actual ADA payout');
+                row.appendChild(basis);
+            }
+            return row;
+        }
+
         function getProposalUsdTotals(proposals) {
             return (Array.isArray(proposals) ? proposals : []).reduce((totals, proposal) => ({
                 asked: totals.asked + (Number(proposal?.amount_requested_usd) || 0),
@@ -236,6 +272,7 @@
         return Object.freeze({
             appendMilestoneIndicator,
             createFundingAmountRow,
+            createRecipientAmountRow,
             formatAdaAmount,
             formatCurrencyAmount,
             formatFundAmount,

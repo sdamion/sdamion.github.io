@@ -1,4 +1,8 @@
 [strings]
+catalyst_historical_ada_estimate = "過去のADA換算額（ファンド結果発表日）"
+catalyst_historical_ada_unavailable = "過去のADA換算額は不明です"
+catalyst_fund_result_date = "ファンド結果発表日"
+catalyst_historical_ada_basis = "Coinbaseの日次終値。実際のADA支払額ではありません"
 catalyst_received_amount_unavailable = "受領額は不明です"
 portfolio_text_tile_about = "{title}について"
 portfolio_text_tile_wallets = "保存済みウォレットとスキャン状況を表示します。開くと、自分のウォレットと取引所アドレスを管理できます。"

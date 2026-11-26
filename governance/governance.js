@@ -2392,9 +2392,9 @@ function createTreasuryBusinessCard(group) {
         errorMessage: 'Funding recipient could not be opened.'
     });
 
-    const amount = createFundingRecipientAmountRow(
+    const amount = governanceCatalystFormat.createRecipientAmountRow(
         group.value,
-        group.adaValue,
+        group.received_ada_equivalent,
         group.usdPending
     );
     window.TDSPRuntime?.appendUniversalTileContent?.(openButton, {
@@ -2516,9 +2516,9 @@ function createCatalystBusinessProjectCard(project) {
         errorMessage: 'Catalyst project could not be opened.'
     });
 
-    const amount = createFundingRecipientAmountRow(
+    const amount = governanceCatalystFormat.createRecipientAmountRow(
         project.amount_received_usd,
-        project.amount_received_ada,
+        project.received_ada_equivalent,
         !hasNumericValue(project.amount_received_usd)
     );
     window.TDSPRuntime?.appendUniversalTileContent?.(openButton, {
@@ -2656,6 +2656,15 @@ function renderCatalystProposalDetail(container, proposal) {
     addDetailRow(container, 'Status', proposal.project_status || proposal.funding_status);
     addDetailRow(container, 'Requested', formatCatalystProposalAmount(proposal, 'requested'));
     addDetailRow(container, 'Received', formatCatalystProposalAmount(proposal, 'received') ?? 'Received amount unavailable');
+    const equivalent = proposal.received_ada_equivalent;
+    if (equivalent?.estimated) {
+        addDetailRow(container, 'Historical ADA estimate (fund result date)', hasNumericValue(equivalent.amount)
+            ? formatCatalystAdaAmount(equivalent.amount)
+            : 'Historical ADA estimate unavailable');
+        addDetailRow(container, 'Fund result date', equivalent.date);
+        if (hasNumericValue(equivalent.usd_rate)) addDetailRow(container, 'Historical ADA/USD', formatCatalystUsdRate(equivalent.usd_rate));
+        addDetailRow(container, 'Source', 'Coinbase daily closing rate; not the actual ADA payout');
+    }
     if (hasNumericValue(proposal.ada_usd_rate)) {
         addDetailRow(
             container,
