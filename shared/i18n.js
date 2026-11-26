@@ -3,9 +3,9 @@
     const DEFAULT_LANGUAGE = 'en';
     const LANGUAGE_CONFIG = Object.freeze({
         en: { label: 'English', flag: '🇺🇸' },
-        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20261125-unused-cleanup' },
-        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20261125-unused-cleanup' },
-        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20261125-unused-cleanup' }
+        nl: { label: 'Nederlands', flag: '🇳🇱', url: 'locales/nl.toml?v=20261126-pilot-payments' },
+        es: { label: 'Español', flag: '🇪🇸', url: 'locales/es.toml?v=20261126-pilot-payments' },
+        ja: { label: '日本語', flag: '🇯🇵', url: 'locales/ja.toml?v=20261126-pilot-payments' }
     });
     const TRANSLATION_ATTR = 'data-i18n';
     const TRANSLATION_ORIGINAL_ATTR = 'data-i18n-original';
@@ -165,6 +165,7 @@
         ['Candle close', 'candle_close'],
         ['Cancel', 'cancel'],
         ['Catalyst funding status', 'catalyst_funding_status'],
+        ['Received amount unavailable', 'catalyst_received_amount_unavailable'],
         ['Catalyst vote overview', 'catalyst_vote_overview'],
         ['Catalyst proposal', 'catalyst_proposal'],
         ['Catalyst proposal context', 'catalyst_proposal_context'],

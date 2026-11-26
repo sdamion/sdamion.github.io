@@ -70,9 +70,14 @@
         }
 
         function formatProposalAmount(proposal, kind) {
-            const amount = Number(proposal?.[`amount_${kind}_usd`]);
-            if (!Number.isFinite(amount)) return null;
-            return formatCurrencyAmount(amount, 'USD');
+            if (kind === 'received' && proposal?.source === 'project_catalyst_pilot_2026'
+                && proposal.payment_data_available !== true) return null;
+            const usd = proposal?.[`amount_${kind}_usd`];
+            if (hasNumericValue(usd)) return formatCurrencyAmount(usd, 'USD');
+            const amount = proposal?.[`amount_${kind}`];
+            return String(proposal?.currency || '').toUpperCase() === 'ADA' && hasNumericValue(amount)
+                ? formatAdaAmount(Number(amount))
+                : null;
         }
 
         function getFundNumber(value) {

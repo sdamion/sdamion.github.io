@@ -2233,7 +2233,9 @@ function createCatalystProposalCard(proposal) {
             ? resolveCatalystBusinessName(proposal.business)
             : 'Unknown Catalyst proposer',
         detailItems: [
-            `Received ${formatCatalystProposalAmount(proposal, 'received') || '--'}`
+            formatCatalystProposalAmount(proposal, 'received') === null
+                ? 'Received amount unavailable'
+                : `Received ${formatCatalystProposalAmount(proposal, 'received')}`
         ]
     });
     appendCatalystMilestoneIndicator(openButton, proposal);
@@ -2653,8 +2655,8 @@ function renderCatalystProposalDetail(container, proposal) {
     );
     addDetailRow(container, 'Status', proposal.project_status || proposal.funding_status);
     addDetailRow(container, 'Requested', formatCatalystProposalAmount(proposal, 'requested'));
-    addDetailRow(container, 'Received', formatCatalystProposalAmount(proposal, 'received'));
-    if (Number.isFinite(Number(proposal.ada_usd_rate))) {
+    addDetailRow(container, 'Received', formatCatalystProposalAmount(proposal, 'received') ?? 'Received amount unavailable');
+    if (hasNumericValue(proposal.ada_usd_rate)) {
         addDetailRow(
             container,
             'Historical ADA/USD',

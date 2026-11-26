@@ -1,4 +1,5 @@
 [strings]
+catalyst_received_amount_unavailable = "Ontvangen bedrag niet beschikbaar"
 portfolio_text_tile_about = "Over {title}"
 portfolio_text_tile_wallets = "Toont opgeslagen wallets en scanstatus. Open om eigen wallets en exchange-adressen te beheren."
 portfolio_text_tile_transactions = "Toont geladen on-chain overboekingen van ingeschakelde netwerken. Open om transacties te zoeken en te bekijken."

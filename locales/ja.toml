@@ -1,4 +1,5 @@
 [strings]
+catalyst_received_amount_unavailable = "受領額は不明です"
 portfolio_text_tile_about = "{title}について"
 portfolio_text_tile_wallets = "保存済みウォレットとスキャン状況を表示します。開くと、自分のウォレットと取引所アドレスを管理できます。"
 portfolio_text_tile_transactions = "有効なネットワークの読み込み済みオンチェーン送金を表示します。開くと、取引を検索して詳細を確認できます。"

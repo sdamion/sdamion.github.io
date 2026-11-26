@@ -1,4 +1,5 @@
 [strings]
+catalyst_received_amount_unavailable = "Importe recibido no disponible"
 portfolio_text_tile_about = "Acerca de {title}"
 portfolio_text_tile_wallets = "Muestra las carteras guardadas y el estado del escaneo. Abre para gestionar tus carteras y direcciones de intercambio."
 portfolio_text_tile_transactions = "Muestra transferencias en cadena cargadas de las redes habilitadas. Abre para buscar e inspeccionar transacciones."
